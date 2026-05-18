@@ -24,16 +24,9 @@
 #include "PsyX/PsyX_globals.h"
 #include "PsyX/PsyX_render.h"
 
-#ifdef _WIN32
-#define CLOCKS_PER_SEC_FIX CLOCKS_PER_SEC
-#else
-#define CLOCKS_PER_SEC_FIX ((clock_t)1000000)
-#endif
-
-#include <time.h>
-static clock_t startClock;
-#define ResetRCnt(x) startClock = clock();
-#define GetRCnt(x)   ((clock() - startClock) * 15720) / CLOCKS_PER_SEC_FIX
+static Uint32 startTick;
+#define ResetRCnt(x) startTick = SDL_GetTicks();
+#define GetRCnt(x)   ((SDL_GetTicks() - startTick) * 15720) / 1000
 
 #define BUILD        926
 #define u_char       unsigned char
