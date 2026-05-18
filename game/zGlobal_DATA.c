@@ -40,7 +40,7 @@ void AH_Sign_LInB();
 // void DECOMP_AH_SaveObj_LInB();	-- DONE
 // void DECOMP_AH_WarpPad_LInB();	-- DONE
 
-void CS_Thread_LInB();
+// CS_Thread_LInB moved to game/233/233_01_CS_Thread_LInB.c
 
 // temporary, until 231 compiles into PC port
 #ifdef REBUILD_PC
@@ -112,9 +112,7 @@ void AH_Sign_LInB()
 // void DECOMP_AH_SaveObj_LInB() {}	-- DONE
 // void DECOMP_AH_WarpPad_LInB() {}	-- DONE
 
-void CS_Thread_LInB()
-{
-}
+// CS_Thread_LInB moved to game/233/233_01_CS_Thread_LInB.c
 #endif
 
 // Missing from Decomp/General:

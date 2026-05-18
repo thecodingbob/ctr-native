@@ -20,7 +20,12 @@ void DECOMP_CS_Thread_ThTick(struct Thread *t)
 	struct Thread *parentThread;
 
 	if (DECOMP_CS_Thread_UseOpcode(inst, cs))
+	{
 		t->flags |= 0x800;
+
+		if ((sdata->gGT->gameMode2 & 0x80) != 0)
+			goto thTick_epilogue;
+	}
 
 	DECOMP_CS_Thread_MoveOnPath(t);
 	DECOMP_CS_Thread_AnimateScale(t);
@@ -70,7 +75,7 @@ void DECOMP_CS_Thread_ThTick(struct Thread *t)
 		{
 			inst->alphaScale = 0;
 
-			if ((sdata->gGT->gameMode2 & 0x1) != 0)
+			if ((sdata->gGT->timer & 0x1) != 0)
 			{
 				inst->alphaScale = (DECOMP_MixRNG_Scramble() & 0x7ff) + 1024;
 			}
@@ -81,18 +86,23 @@ void DECOMP_CS_Thread_ThTick(struct Thread *t)
 	if (cs->Subtitles.lngIndex > 0)
 	{
 		struct GameTracker *gGT = sdata->gGT;
-		u_short textRect[6];
+		int textWidth;
+		u_short textRect[4];
 
-		textRect[0] = cs->Subtitles.textPos[1] - 236;
-		textRect[1] = cs->Subtitles.colors - 4;
+		textWidth = DECOMP_DecalFont_DrawMultiLine(
+			sdata->lngStrings[cs->Subtitles.lngIndex],
+			cs->Subtitles.textPos[0],
+			cs->Subtitles.textPos[1],
+			460,
+			cs->Subtitles.font,
+			cs->Subtitles.colors);
+
+		textRect[0] = cs->Subtitles.textPos[0] - 236;
+		textRect[1] = cs->Subtitles.textPos[1] - 4;
 		textRect[2] = 472;
-		textRect[3] = (cs->Subtitles.font << 0x10) >> 0x10;
-		textRect[4] = cs->Subtitles.textPos[0] + 8;
-		textRect[5] = 460;
+		textRect[3] = (short)textWidth + 8;
 
-		DECOMP_DecalFont_DrawMultiLine(sdata->lngStrings[cs->Subtitles.lngIndex], textRect[0], textRect[1], textRect[2], textRect[3], textRect[5]);
-
-		DECOMP_RECTMENU_DrawInnerRect((u_short *)&textRect, 4, gGT->pushBuffer[0].ptrOT);
+		DECOMP_RECTMENU_DrawInnerRect(textRect, 4, gGT->backBuffer->otMem.startPlusFour);
 	}
 
 thTick_epilogue:

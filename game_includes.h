@@ -551,6 +551,7 @@
 #include "game/233/233_13_CS_DestroyPodium_StartDriving.c"
 #include "game/233/233_14_CS_Thread_UseOpcode.c"
 #include "game/233/233_15_CS_Thread_AnimateScale.c"
+#include "game/233/233_01_CS_Thread_LInB.c"
 #include "game/233/233_stubs.c"
 #include "game/233/233_24_CS_Thread_Init.c"
 #include "game/233/233_25_CS_Instance_InitMatrix.c"
