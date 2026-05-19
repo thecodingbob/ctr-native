@@ -31,6 +31,9 @@ static void DECOMP_COLL_SearchBSP_CallbackPARAM_VisitChild(struct BSP *root, uns
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001ebec-0x8001ede4
+// NOTE(aalhendi): PSX-backfeed blocker: native scratchpad divergence. Retail
+// uses 0x1f800030-0x1f80006f as a register-save/traversal stack; ctr-native
+// uses host recursion and must restore the scratchpad contract before PSX use.
 void DECOMP_COLL_SearchBSP_CallbackPARAM(struct BSP *root, struct BoundingBox *bbox, void (*callback)(struct BSP *, struct ScratchpadStruct *),
                                          struct ScratchpadStruct *param)
 {
