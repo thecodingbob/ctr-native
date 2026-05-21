@@ -3,8 +3,8 @@
 void DECOMP_VehStuckProc_RIP_Init(struct Thread *t, struct Driver *d)
 {
 #ifdef CTR_NATIVE
-	// NOTE(aalhendi): PC build shim until the full PlantEaten stuck-proc
-	// cluster is wired into native; retail calls VehStuckProc_PlantEaten_Init.
+	// TODO(aalhendi): Port and wire the full PlantEaten stuck-proc cluster;
+	// retail calls VehStuckProc_PlantEaten_Init here.
 	DECOMP_VehPhysProc_FreezeEndEvent_Init(t, d);
 #else
 	VehStuckProc_PlantEaten_Init(t, d);

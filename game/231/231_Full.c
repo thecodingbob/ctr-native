@@ -27,7 +27,7 @@
 #include "231_042_RB_RainCloud_ThTick.c"
 #include "231_043_RB_RainCloud_Init.c"
 
-// TODO(aalhendi) Particle_FuncPtr_PotionShatter.
+// TODO(aalhendi): Particle_FuncPtr_PotionShatter.
 // TODO(aalhendi): 044
 #include "231_045_RB_Explosion_InitGeneric.c"
 #include "231_046_RB_Blowup_ProcessBucket.c"
@@ -48,7 +48,7 @@
 // TODO(aalhendi): 061-077 (crate, crystal, default LevInst, and CTR letters).
 
 // TODO(aalhendi):  RB_MakeInstanceReflective. Keep the temporary zGlobal stub until ported
-// TODO(aalhendi) 231_073_RB_Default_LInB
+// TODO(aalhendi): 231_073_RB_Default_LInB
 
 #include "231_082_085_RB_Armadillo.c"
 #include "231_086_088_RB_Fireball.c"
