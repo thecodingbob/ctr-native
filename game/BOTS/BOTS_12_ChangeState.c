@@ -1,6 +1,7 @@
 #include <common.h>
 
-u32 DECOMP_BOTS_ChangeState(struct Driver *driverVictim, int damageType, struct Driver *driverAttacker, int reason)
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80016b00-0x80016ec8
+u32 BOTS_ChangeState(struct Driver *driverVictim, int damageType, struct Driver *driverAttacker, int reason)
 {
 	driverVictim->ChangeState_param2 = 0;
 
@@ -56,7 +57,7 @@ u32 DECOMP_BOTS_ChangeState(struct Driver *driverVictim, int damageType, struct 
 		{
 			if (driverVictim->instSelf->thread->modelIndex == DYNAMIC_PLAYER && driverVictim->burnTimer == 0)
 			{
-				OtherFX_Play(0x69, 1);
+				DECOMP_OtherFX_Play(0x69, 1);
 			}
 
 			driverVictim->burnTimer = 0xf00;
@@ -96,7 +97,7 @@ u32 DECOMP_BOTS_ChangeState(struct Driver *driverVictim, int damageType, struct 
 
 		if (driverVictim->instSelf->thread->modelIndex == DYNAMIC_PLAYER && driverVictim->botData.unk5bc.ai_squishCooldown == 0)
 		{
-			OtherFX_Play(0x5a, 1);
+			DECOMP_OtherFX_Play(0x5a, 1);
 		}
 
 		driverVictim->botData.unk5ba = 3;
@@ -127,7 +128,7 @@ u32 DECOMP_BOTS_ChangeState(struct Driver *driverVictim, int damageType, struct 
 		driverVictim->botData.ai_progress_cooldown = 0x3c;
 	}
 
-	if (damageType)
+	if (driverAttacker != NULL && damageType != 0)
 	{
 		driverAttacker->numTimesAttacked++;
 		switch (damageType)
@@ -144,4 +145,9 @@ u32 DECOMP_BOTS_ChangeState(struct Driver *driverVictim, int damageType, struct 
 		}
 	}
 	return 1;
+}
+
+u32 DECOMP_BOTS_ChangeState(struct Driver *driverVictim, int damageType, struct Driver *driverAttacker, int reason)
+{
+	return BOTS_ChangeState(driverVictim, damageType, driverAttacker, reason);
 }

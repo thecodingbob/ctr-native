@@ -2,7 +2,7 @@
 
 // budget 216/224
 
-void DECOMP_RB_RainCloud_FadeAway(struct Thread *t)
+void RB_RainCloud_FadeAway(struct Thread *t)
 {
 	struct Instance *inst;
 	struct Instance *parentInst;
@@ -41,4 +41,9 @@ void DECOMP_RB_RainCloud_FadeAway(struct Thread *t)
 		t->flags |= 0x800;
 	}
 	return;
+}
+
+void DECOMP_RB_RainCloud_FadeAway(struct Thread *t)
+{
+	RB_RainCloud_FadeAway(t);
 }

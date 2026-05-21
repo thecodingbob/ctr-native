@@ -1,6 +1,7 @@
 #include <common.h>
 
-void DECOMP_SubmitName_RestoreName(s16 param_1)
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004aa08-0x8004aa60
+void SubmitName_RestoreName(s16 param_1)
 {
 	struct GameTracker *gGT = sdata->gGT;
 
@@ -17,4 +18,9 @@ void DECOMP_SubmitName_RestoreName(s16 param_1)
 		cursor = 1001;
 
 	gGT->typeCursorPosition = cursor;
+}
+
+void DECOMP_SubmitName_RestoreName(s16 param_1)
+{
+	SubmitName_RestoreName(param_1);
 }

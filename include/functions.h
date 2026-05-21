@@ -225,7 +225,7 @@ void GAMEPROG_GetPtrHighScoreTrack();
 // void GhostReplay_ThTick();
 // GhostReplay_Init1()
 // GhostTape_Start()
-// GhostTape_End()
+void GhostTape_End(void);
 void GhostTape_WriteMoves(s16 param_1);
 void GhostTape_WriteBoosts(int reserves, u8 type, int fireLevel);
 void GhostTape_Destroy();
@@ -599,8 +599,8 @@ void MainFreeze_IfPressStart();
 
 // MainGameEnd
 
-// MainGameEnd_SoloRaceGetReward()
-// MainGameEnd_SoloRaceSaveHighScore()
+void MainGameEnd_SoloRaceGetReward(int subtractTimeCrateBonus);
+void MainGameEnd_SoloRaceSaveHighScore(void);
 // void MainGameEnd_Initialize(s16);
 
 // MainGameStart (?)
@@ -651,8 +651,8 @@ int MATH_Sin(u32 angle);
 int MATH_Cos(u32 angle);
 int MATH_FastSqrt(int dist, int unk);
 MATRIX *MATH_HitboxMatrix(MATRIX *output, MATRIX *input);
-void MATH_VectorLength(VECTOR *input);
-int MATH_VectorNormalize(VECTOR *input);
+s32 MATH_VectorLength(SVec3 *input);
+s32 MATH_VectorNormalize(SVec3 *input);
 void MATH_MatrixMul(MATRIX *output, MATRIX *input, VECTOR *rotate);
 
 // MEMCARD
@@ -843,7 +843,7 @@ u32 SelectProfile_InputLogic(struct RectMenu *menu, s16 param_2, u32 confirm);
 
 // SubmitName
 
-// SubmitName_RestoreName()
+void SubmitName_RestoreName(s16 param_1);
 s16 SubmitName_DrawMenu(u16 stringID);
 void SubmitName_MenuProc(struct RectMenu *menu);
 
@@ -913,12 +913,12 @@ void UI_RenderFrame_Racing();
 void UI_RenderFrame_AdvHub();
 void UI_RenderFrame_CrystChall();
 void UI_RenderFrame_Wumpa3D_2P3P4P(struct GameTracker *gGT);
-// UI_VsQuipReadDriver()
-// UI_VsQuipAssign()
-// UI_VsQuipAssignAll()
+u32 UI_VsQuipReadDriver(struct Driver *driver, int offset, int size);
+void UI_VsQuipAssign(struct Driver *driver, struct QuipMeta *meta, struct Driver *bestDriver, int characterID);
+void UI_VsQuipAssignAll(void);
 void UI_VsQuipDrawAll();
 void UI_VsWaitForPressX();
-// UI_RaceEnd_GetDriverClock()
+void UI_RaceEnd_GetDriverClock(struct Driver *driver);
 void UI_RaceStart_IntroText1P();
 void UI_RaceEnd_MenuProc();
 // UI_CupStandings_FinalizeCupRanks()
@@ -1054,7 +1054,7 @@ void VehPickupItem_ShootOnCirclePress(struct Driver *driver);
 
 // More VehPtr
 
-void VehStuckProc_MaskGrab_FindDestPos(struct Thread *t, struct Driver *d);
+void VehStuckProc_MaskGrab_FindDestPos(struct Driver *d, struct QuadBlock *quad);
 void VehStuckProc_MaskGrab_Particles(struct Thread *t, struct Driver *d);
 void VehStuckProc_MaskGrab_Update(struct Thread *t, struct Driver *d);
 void VehStuckProc_MaskGrab_PhysLinear(struct Thread *t, struct Driver *d);

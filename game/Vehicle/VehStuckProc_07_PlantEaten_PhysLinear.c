@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_VehStuckProc_PlantEaten_PhysLinear(struct Thread *t, struct Driver *d)
+void VehStuckProc_PlantEaten_PhysLinear(struct Thread *t, struct Driver *d)
 {
 	VehPhysProc_Driving_PhysLinear(t, d);
 
@@ -19,4 +19,9 @@ void DECOMP_VehStuckProc_PlantEaten_PhysLinear(struct Thread *t, struct Driver *
 	d->actionsFlagSet |= 8;
 
 	d->timeSpentEaten += sdata->gGT->elapsedTimeMS;
+}
+
+void DECOMP_VehStuckProc_PlantEaten_PhysLinear(struct Thread *t, struct Driver *d)
+{
+	VehStuckProc_PlantEaten_PhysLinear(t, d);
 }

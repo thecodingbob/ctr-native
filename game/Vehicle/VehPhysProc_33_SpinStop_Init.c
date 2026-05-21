@@ -1,47 +1,33 @@
 #include <common.h>
 
-void COLL_FIXED_PlayerSearch();
-void VehPhysProc_SpinStop_Animate();
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800644d0-0x80064568
+void VehPhysProc_SpinStop_Init(struct Thread *t, struct Driver *d)
+{
+	d->funcPtrs[0] = NULL;
+	d->funcPtrs[1] = VehPhysProc_SpinStop_Update;
+	d->funcPtrs[2] = VehPhysProc_SpinStop_PhysLinear;
+	d->funcPtrs[3] = DECOMP_VehPhysProc_Driving_Audio;
+	d->funcPtrs[4] = VehPhysProc_SpinStop_PhysAngular;
+	d->funcPtrs[5] = DECOMP_VehPhysForce_OnApplyForces;
 
-void *PlayerStopSpinFuncTable[0xD] = {0,
-                                      0,
-                                      DECOMP_VehPhysProc_SlamWall_PhysLinear, // not a mistake, use Crashing
-                                      DECOMP_VehPhysProc_Driving_Audio,
-                                      DECOMP_VehPhysProc_SlamWall_PhysAngular, // not a mistake, use Crashing
-                                      DECOMP_VehPhysForce_OnApplyForces,
-
-#ifndef REBUILD_PS1
-                                      COLL_MOVED_PlayerSearch,
-                                      VehPhysForce_CollideDrivers,
-                                      COLL_FIXED_PlayerSearch,
-                                      VehPhysGeneral_JumpAndFriction,
-                                      VehPhysForce_TranslateMatrix,
-                                      VehPhysProc_SpinStop_Animate,
-
-                                      VehEmitter_DriverMain
-
+#if !defined(REBUILD_PS1) || defined(CTR_NATIVE)
+	d->funcPtrs[6] = COLL_MOVED_PlayerSearch;
+	d->funcPtrs[7] = VehPhysForce_CollideDrivers;
 #else
-#ifdef CTR_NATIVE
-                                      COLL_MOVED_PlayerSearch,
-                                      VehPhysForce_CollideDrivers,
-#else
-                                      NULL,
-                                      NULL,
+	// TODO(aalhendi): Restore retail collision slots for non-native PS1 rebuild
+	// once these paths are source-backed there.
+	d->funcPtrs[6] = NULL;
+	d->funcPtrs[7] = NULL;
 #endif
-                                      COLL_FIXED_PlayerSearch,
-                                      VehPhysGeneral_JumpAndFriction,
-                                      VehPhysForce_TranslateMatrix,
-                                      VehPhysProc_SpinStop_Animate,
-                                      VehEmitter_DriverMain
-#endif
-};
+
+	d->funcPtrs[8] = COLL_FIXED_PlayerSearch;
+	d->funcPtrs[9] = VehPhysGeneral_JumpAndFriction;
+	d->funcPtrs[10] = VehPhysForce_TranslateMatrix;
+	d->funcPtrs[11] = VehPhysProc_SpinStop_Animate;
+	d->funcPtrs[12] = VehEmitter_DriverMain;
+}
 
 void DECOMP_VehPhysProc_SpinStop_Init(struct Thread *t, struct Driver *d)
 {
-	int i;
-
-	for (i = 0; i < 0xD; i++)
-	{
-		d->funcPtrs[i] = PlayerStopSpinFuncTable[i];
-	}
+	VehPhysProc_SpinStop_Init(t, d);
 }

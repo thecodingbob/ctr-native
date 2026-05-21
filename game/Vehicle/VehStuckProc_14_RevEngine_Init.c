@@ -2,7 +2,7 @@
 
 extern void *PlayerRevEngineFuncTable[13];
 
-void DECOMP_VehStuckProc_RevEngine_Init(struct Thread *t, struct Driver *d)
+void VehStuckProc_RevEngine_Init(struct Thread *t, struct Driver *d)
 {
 	// spawn function that waits for traffic lights
 
@@ -77,3 +77,8 @@ void *PlayerRevEngineFuncTable[13] = {
 #endif
 #endif
 };
+
+void DECOMP_VehStuckProc_RevEngine_Init(struct Thread *t, struct Driver *d)
+{
+	VehStuckProc_RevEngine_Init(t, d);
+}

@@ -1,6 +1,7 @@
 #include <common.h>
 
-void DECOMP_GAMEPROG_GetPtrHighScoreTrack()
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80026e80-0x80026ed8
+void GAMEPROG_GetPtrHighScoreTrack(void)
 {
 	int gameMode1;
 	struct GameTracker *gGT;
@@ -9,4 +10,9 @@ void DECOMP_GAMEPROG_GetPtrHighScoreTrack()
 	gameMode1 = gGT->gameMode1;
 
 	sdata->ptrActiveHighScoreEntry = &sdata->gameProgress.highScoreTracks[gGT->levelID].scoreEntry[6 * ((gameMode1 & RELIC_RACE) != 0)];
+}
+
+void DECOMP_GAMEPROG_GetPtrHighScoreTrack(void)
+{
+	GAMEPROG_GetPtrHighScoreTrack();
 }

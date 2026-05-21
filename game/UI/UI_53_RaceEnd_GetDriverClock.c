@@ -1,9 +1,9 @@
 #include <common.h>
 
-void DECOMP_UI_RaceEnd_GetDriverClock(struct Driver *driver)
-
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005572c-0x80055840
+void UI_RaceEnd_GetDriverClock(struct Driver *driver)
 {
-	char missileLaunched;
+	u8 missileLaunched;
 	int avgSpd;
 	int timeElapsed;
 	int numTimesAttacked;
@@ -62,5 +62,9 @@ void DECOMP_UI_RaceEnd_GetDriverClock(struct Driver *driver)
 			driver->TimeWinningDriverSpentLastPlace = driver->timeSpentInLastPlace;
 		}
 	}
-	return;
+}
+
+void DECOMP_UI_RaceEnd_GetDriverClock(struct Driver *driver)
+{
+	UI_RaceEnd_GetDriverClock(driver);
 }

@@ -37,3 +37,8 @@ void DECOMP_BOTS_ThTick_RevEngine(struct Thread *botThread)
 		ThTick_SetAndExec(botThread, BOTS_ThTick_Drive);
 	}
 }
+
+void BOTS_ThTick_RevEngine(struct Thread *botThread)
+{
+	DECOMP_BOTS_ThTick_RevEngine(botThread);
+}

@@ -47,3 +47,8 @@ void DECOMP_BOTS_LevInstColl(struct Thread *param_1)
 		}
 	}
 }
+
+void BOTS_LevInstColl(struct Thread *param_1)
+{
+	DECOMP_BOTS_LevInstColl(param_1);
+}

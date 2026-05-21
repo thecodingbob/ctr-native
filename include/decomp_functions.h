@@ -63,6 +63,8 @@ void DECOMP_DotLights_Video(struct GameTracker *gGT);
 void DECOMP_DropRain_MakeSound(struct GameTracker *gGT);
 void DECOMP_DropRain_Reset(struct GameTracker *gGT);
 
+void EngineSound_Player(struct Driver *driver);
+
 // ElimBG
 void DECOMP_ElimBG_Activate(struct GameTracker *gGT);
 void DECOMP_ElimBG_Deactivate(struct GameTracker *gGT);
@@ -89,6 +91,7 @@ void DECOMP_GhostReplay_Init1(void);
 void DECOMP_GhostReplay_Init2(void);
 void DECOMP_GhostReplay_ThTick(struct Thread *t);
 void DECOMP_GhostTape_Destroy(void);
+void GhostTape_End(void);
 void DECOMP_GhostTape_End(void);
 void DECOMP_GhostTape_Start(void);
 void DECOMP_GhostTape_WriteBoosts(int addReserve, u8 type, int speedCap);
@@ -96,11 +99,15 @@ void DECOMP_GhostTape_WriteMoves(s16 raceFinished);
 
 // howl
 int DECOMP_CountSounds(void);
+int OtherFX_Play(u32 soundID, int flags);
 int DECOMP_OtherFX_Play(u32 soundID, int flags);
+void OtherFX_Play_Echo(u32 soundID, int flags, int echoFlag);
 void DECOMP_OtherFX_Play_Echo(u32 soundID, int flags, int echoFlag);
 int DECOMP_OtherFX_Play_LowLevel(u32 soundID, char boolAntiSpam, u32 flags);
 u32 DECOMP_OtherFX_Modify(u32 soundId, u32 flags);
 void DECOMP_OtherFX_Stop1(int soundID_count);
+void OtherFX_Stop1(int soundID_count);
+void OtherFX_Stop2(int soundID_count);
 void DECOMP_OtherFX_Stop2(int soundID_count);
 void DECOMP_OtherFX_RecycleNew(u32 *soundID_Count, u32 newSoundID, u32 modifyFlags);
 void DECOMP_OtherFX_RecycleMute(int *soundID_Count);
@@ -337,6 +344,8 @@ void DECOMP_MainRaceTrack_RequestLoad(s16 levelID);
 
 int DECOMP_MATH_Sin(u32 angle);
 int DECOMP_MATH_Cos(u32 angle);
+void MATH_MatrixMul(MATRIX *output, MATRIX *input, VECTOR *rotate);
+void DECOMP_MATH_MatrixMul(MATRIX *output, MATRIX *input, VECTOR *rotate);
 
 void DECOMP_MEMCARD_InitCard(void);
 
@@ -412,6 +421,7 @@ void DECOMP_RaceFlag_DrawSelf(void);
 
 s16 DECOMP_SubmitName_DrawMenu(u16 string);
 void DECOMP_SubmitName_MenuProc(struct RectMenu *menu);
+void SubmitName_RestoreName(s16 param_1);
 void DECOMP_SubmitName_RestoreName(s16 param_1);
 
 void DECOMP_Timer_Init(void);
@@ -445,6 +455,9 @@ void DECOMP_UI_DrawSpeedNeedle(s16 posX, s16 posY, struct Driver *driver);
 void DECOMP_UI_JumpMeter_Draw(s16 posX, s16 posY, struct Driver *driver);
 void DECOMP_UI_JumpMeter_Update(struct Driver *d);
 void DECOMP_UI_DrawSlideMeter(s16 posX, s16 posY, struct Driver *driver);
+u32 DECOMP_UI_VsQuipReadDriver(struct Driver *driver, int offset, int size);
+void DECOMP_UI_VsQuipAssign(struct Driver *driver, struct QuipMeta *meta, struct Driver *bestDriver, int characterID);
+void DECOMP_UI_VsQuipAssignAll(void);
 void DECOMP_UI_DrawRankedDrivers(void);
 void DECOMP_UI_DrawDriverIcon(struct Icon *icon, Point point, u_long *ot, u32 transparency, int scale, Color color);
 void DECOMP_UI_RenderFrame_AdvHub(void);
@@ -493,13 +506,16 @@ void DECOMP_VehPhysProc_Driving_Init(struct Thread *t, struct Driver *d);
 
 void DECOMP_VehPhysProc_FreezeEndEvent_PhysLinear(struct Thread *t, struct Driver *d);
 void DECOMP_VehPhysProc_FreezeEndEvent_Init(struct Thread *t, struct Driver *d);
+void VehStuckProc_PlantEaten_Init(struct Thread *t, struct Driver *d);
 void DECOMP_VehStuckProc_RIP_Init(struct Thread *t, struct Driver *d);
+void VehStuckProc_RIP_Init(struct Thread *t, struct Driver *d);
 
 void VehPhysProc_FreezeVShift_ReverseOneFrame(struct Thread *t, struct Driver *d);
 void DECOMP_VehPhysProc_FreezeVShift_Update(struct Thread *t, struct Driver *d);
 void DECOMP_VehPhysProc_FreezeVShift_ReverseOneFrame(struct Thread *t, struct Driver *d);
 void DECOMP_VehPhysProc_FreezeVShift_Init(struct Thread *t, struct Driver *d);
 
+void VehStuckProc_MaskGrab_FindDestPos(struct Driver *d, struct QuadBlock *quad);
 void DECOMP_VehStuckProc_MaskGrab_FindDestPos(struct Driver *d, struct QuadBlock *quad);
 void DECOMP_VehStuckProc_MaskGrab_Update(struct Thread *t, struct Driver *d);
 void DECOMP_VehStuckProc_MaskGrab_PhysLinear(struct Thread *t, struct Driver *d);
@@ -538,10 +554,20 @@ void DECOMP_VehPhysProc_SpinStop_PhysAngular(struct Thread *t, struct Driver *d)
 void DECOMP_VehPhysProc_SpinStop_Animate(struct Thread *t, struct Driver *d);
 void DECOMP_VehPhysProc_SpinStop_Init(struct Thread *t, struct Driver *d);
 
+void PlayLevel_UpdateLapStats(void);
+void DECOMP_PlayLevel_UpdateLapStats(void);
+void DECOMP_MainGameEnd_SoloRaceGetReward(int subtractTimeCrateBonus);
+void DECOMP_MainGameEnd_SoloRaceSaveHighScore(void);
+void MainGameEnd_Initialize(void);
+void DECOMP_MainGameEnd_Initialize(void);
+void DECOMP_Podium_InitModels(struct GameTracker *gGT);
+void VehLap_UpdateProgress(struct Driver *driver);
+
 void DECOMP_VehStuckProc_RevEngine_Update(struct Thread *t, struct Driver *d);
 void DECOMP_VehStuckProc_RevEngine_PhysLinear(struct Thread *t, struct Driver *d);
 void DECOMP_VehStuckProc_RevEngine_Animate(struct Thread *t, struct Driver *d);
 void DECOMP_VehStuckProc_RevEngine_Init(struct Thread *t, struct Driver *d);
+void VehStuckProc_RevEngine_Init(struct Thread *t, struct Driver *d);
 
 void DECOMP_VehStuckProc_Warp_Init(struct Thread *t, struct Driver *d);
 
@@ -660,6 +686,7 @@ void DECOMP_RB_MovingExplosive_ThTick(struct Thread *t);
 void DECOMP_RB_MovingExplosive_Explode(struct Thread *t, struct Instance *inst, struct TrackerWeapon *tw);
 
 void DECOMP_RB_RainCloud_FadeAway(struct Thread *t);
+void RB_RainCloud_FadeAway(struct Thread *t);
 void DECOMP_RB_RainCloud_ThTick(struct Thread *t);
 void DECOMP_RB_RainCloud_Init(struct Driver *d);
 
@@ -919,7 +946,16 @@ void DECOMP_MainKillGame_StopCTR(void);
 void DECOMP_VehStuckProc_MaskGrab_Particles(struct Driver *d);
 int DECOMP_MainFrame_HaveAllPads(s16 numPlyrNextGame);
 void DECOMP_RB_CtrLetter_ThTick(struct Thread *t);
+void BOTS_ThTick_Drive(struct Thread *botThread);
+void BOTS_ThTick_RevEngine(struct Thread *botThread);
+void BOTS_SetRotation(struct Driver *driver, int param_2);
+u32 BOTS_ChangeState(struct Driver *driverVictim, int damageType, struct Driver *driverAttacker, int reason);
+void BOTS_LevInstColl(struct Thread *param_1);
+void BOTS_Killplane(struct Thread *botThread);
 void DECOMP_BOTS_MaskGrab(struct Thread *botThread);
+void BOTS_MaskGrab(struct Thread *botThread);
+void BOTS_Driver_Convert(struct Driver *driver);
+void UI_RaceEnd_GetDriverClock(struct Driver *d);
 void DECOMP_UI_RaceEnd_GetDriverClock(struct Driver *d);
 void DECOMP_GAMEPAD_JogCon2(struct Driver *d, char val, s16 timeMS);
 void DECOMP_GAMEPAD_JogCon1(struct Driver *d, int val, int timeMS);

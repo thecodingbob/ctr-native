@@ -1,23 +1,32 @@
 #include <common.h>
 
-// Check if ghosts are beaten on all tracks
-// 0 for N Tropy Open
-// 1 for N Tropy Beaten
-// 2 for N Oxide Beaten
-int DECOMP_GAMEPROG_CheckGhostsBeaten(int ghostID)
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80026ae4-0x80026bf0
+int GAMEPROG_CheckGhostsBeaten(int ghostID)
 {
-	int i;
+	struct GameTracker *gGT = sdata->gGT;
+	int result = 1;
+	s16 levelID = gGT->levelID;
+	int flagWordIndex = (s16)ghostID >> 5;
 
-	// check all tracks
-	for (i = 0; i < 18; i++)
+	for (int i = 0; i < 18; i++)
 	{
-		// if a single track has not beaten this ghost
-		if ((sdata->gameProgress.highScoreTracks[i].timeTrialFlags >> ghostID) == 0)
+		gGT->levelID = i;
+		GAMEPROG_GetPtrHighScoreTrack();
+
+		if (result != 0)
 		{
-			return 0;
+			u32 *timeTrialFlags = &sdata->gameProgress.highScoreTracks[gGT->levelID].timeTrialFlags;
+			result = (timeTrialFlags[flagWordIndex] >> (ghostID & 0x1f)) & 1;
 		}
 	}
 
-	// beaten on all tracks
-	return 1;
+	gGT->levelID = levelID;
+	GAMEPROG_GetPtrHighScoreTrack();
+
+	return result;
+}
+
+int DECOMP_GAMEPROG_CheckGhostsBeaten(int ghostID)
+{
+	return GAMEPROG_CheckGhostsBeaten(ghostID);
 }

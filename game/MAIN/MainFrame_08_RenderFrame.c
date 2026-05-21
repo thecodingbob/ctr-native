@@ -215,7 +215,7 @@ void DECOMP_MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem 
 			}
 		}
 
-#ifndef REBUILD_PS1
+#if !defined(REBUILD_PS1)
 		// if game is not loading
 		if (sdata->Loading.stage == -1)
 		{
@@ -225,6 +225,13 @@ void DECOMP_MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem 
 				PickupBots_Update();
 			}
 
+			PlayLevel_UpdateLapStats();
+		}
+#elif defined(CTR_NATIVE)
+		// TODO(aalhendi): Retail also updates PickupBots here. Keep the native
+		// PlayLevel path live first; port PickupBots_Update before enabling it.
+		if (sdata->Loading.stage == -1)
+		{
 			PlayLevel_UpdateLapStats();
 		}
 #endif

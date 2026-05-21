@@ -95,3 +95,8 @@ void DECOMP_BOTS_MaskGrab(struct Thread *botThread)
 
 	return;
 }
+
+void BOTS_MaskGrab(struct Thread *botThread)
+{
+	DECOMP_BOTS_MaskGrab(botThread);
+}

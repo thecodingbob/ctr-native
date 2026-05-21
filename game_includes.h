@@ -36,6 +36,10 @@
 #include "game/CAMERA/CAM_04_Path_GetNumPoints.c"
 #include "game/CAMERA/CAM_05_Path_Move.c"
 #include "game/CAMERA/CAM_06_StartOfRace.c"
+#include "game/CAMERA/CAM_07_EndOfRace_Battle.c"
+#define CAM_EndOfRace_Battle DECOMP_CAM_EndOfRace_Battle
+#include "game/CAMERA/CAM_08_EndOfRace.c"
+#undef CAM_EndOfRace_Battle
 #include "game/CAMERA/CAM_10_ProcessTransition.c"
 #include "game/CAMERA/CAM_03_FindClosestQuadblock.c"
 #include "game/CAMERA/CAM_09_StartLine_FlyIn_FixY.c"
@@ -72,7 +76,45 @@
 #undef CAM_FollowDriver_Normal
 #undef CAM_FollowDriver_AngleAxis
 
+#define CAM_EndOfRace               DECOMP_CAM_EndOfRace
+#define LIST_AddFront               DECOMP_LIST_AddFront
+#define LIST_GetFirstItem           DECOMP_LIST_GetFirstItem
+#define LIST_GetNextItem            DECOMP_LIST_GetNextItem
+#define LIST_RemoveMember           DECOMP_LIST_RemoveMember
+#define MATH_Cos                    DECOMP_MATH_Cos
+#define MATH_Sin                    DECOMP_MATH_Sin
+#define OtherFX_Play_Echo           DECOMP_OtherFX_Play_Echo
+#define OtherFX_Play_LowLevel       DECOMP_OtherFX_Play_LowLevel
+#define PROC_CollidePointWithBucket DECOMP_PROC_CollidePointWithBucket
+#define VehAfterColl_GetTerrain     DECOMP_VehAfterColl_GetTerrain
+#define VehCalc_MapToRange          DECOMP_VehCalc_MapToRange
+#define VehFire_Audio               DECOMP_VehFire_Audio
+#define VehFire_Increment           DECOMP_VehFire_Increment
+#define VehPickupItem_MaskUseWeapon DECOMP_VehPickupItem_MaskUseWeapon
+#include "game/BOTS/BOTS_06_SetRotation.c"
+#include "game/BOTS/BOTS_07_LevInstColl.c"
+#include "game/BOTS/BOTS_08_ThTick_RevEngine.c"
+#include "game/BOTS/BOTS_09_MaskGrab.c"
+#include "game/BOTS/BOTS_10_Killplane.c"
+#include "game/BOTS/BOTS_11_ThTick_Drive.c"
+#include "game/BOTS/BOTS_12_ChangeState.c"
 #include "game/BOTS/BOTS_13_CollideWithOtherAI.c"
+#include "game/BOTS/BOTS_16_Driver_Convert.c"
+#undef VehPickupItem_MaskUseWeapon
+#undef VehFire_Increment
+#undef VehFire_Audio
+#undef VehCalc_MapToRange
+#undef VehAfterColl_GetTerrain
+#undef PROC_CollidePointWithBucket
+#undef OtherFX_Play_LowLevel
+#undef OtherFX_Play_Echo
+#undef MATH_Sin
+#undef MATH_Cos
+#undef LIST_RemoveMember
+#undef LIST_GetNextItem
+#undef LIST_GetFirstItem
+#undef LIST_AddFront
+#undef CAM_EndOfRace
 
 #include "game/CDSYS/CDSYS_00_Init.c"
 #include "game/CDSYS/CDSYS_01_GetFilePosInt.c"
@@ -206,6 +248,7 @@
 #include "game/HOWL/h124_OtherFX_DriverCrashing.c"
 #include "game/HOWL/h08_EngineAudio_InitOnce.c"
 #include "game/HOWL/h09_EngineAudio_Recalculate.c"
+#include "game/HOWL/h134_EngineSound_Player.c"
 #include "game/HOWL/h10_EngineAudio_Stop.c"
 #include "game/HOWL/h11_SetReverbMode.c"
 #include "game/HOWL/h12_CseqMusic_Start.c"
@@ -374,12 +417,16 @@
 #include "game/MAIN/MainFreeze_08_IfPressStart.c"
 
 #include "game/MAIN/MainGameStart_00_Initialize.c"
+#include "game/MAIN/MainGameEnd_00_SoloRaceGetReward.c"
+#include "game/MAIN/MainGameEnd_01_SoloRaceSaveHighScore.c"
+#include "game/MAIN/MainGameEnd_02_Initialize.c"
 
 #include "game/MAIN/MainRaceTrack_00_StartLoad.c"
 #include "game/MAIN/MainRaceTrack_01_RequestLoad.c"
 
 #include "game/MATH/MATH_1_Cos.c"
 #include "game/MATH/MATH_MatrixRotate.c"
+#include "game/MATH/MATH_6_MatrixMul.c"
 
 #include "game/MEMCARD/MEMCARD_06_InitCard.c"
 
@@ -437,6 +484,8 @@
 #include "game/QueueLoadTrack/QueueLoadTrack_0_MenuProc.c"
 #include "game/QueueLoadTrack/QueueLoadTrack_1_GetMenuPtr.c"
 
+#include "game/Podium/Podium_0_InitModels.c"
+
 #include "game/RaceFlag/RaceFlag_00_MoveModels.c"
 #include "game/RaceFlag/RaceFlag_01_IsFullyOnScreen.c"
 #include "game/RaceFlag/RaceFlag_02_IsFullyOffScreen.c"
@@ -488,6 +537,8 @@
 #include "game/prim.c"
 #include "game/math.c"
 #include "game/gte.c"
+#include "game/MATH/MATH_4_VectorLength.c"
+#include "game/MATH/MATH_5_VectorNormalize.c"
 #include "game/UI/UI_00_SaveLapTime.c"
 #include "game/UI/UI_01_ThTick_CountPickup.c"
 #include "game/UI/UI_02_ThTick_Reward.c"
@@ -535,6 +586,9 @@
 #include "game/UI/UI_44_RenderFrame_Racing.c"
 #include "game/UI/UI_45_RenderFrame_AdvHub.c"
 #include "game/UI/UI_46_RenderFrame_CrystChall.c"
+#include "game/UI/UI_48_VsQuipReadDriver.c"
+#include "game/UI/UI_49_VsQuipAssign.c"
+#include "game/UI/UI_50_VsQuipAssignAll.c"
 #include "game/UI/UI_53_RaceEnd_GetDriverClock.c"
 #include "game/UI/UI_55_RaceEnd_MenuProc.c"
 
@@ -569,6 +623,8 @@
 #include "game/Vehicle/VehFrameProc_2_Driving.c"
 #include "game/Vehicle/VehFrameProc_3_Spinning.c"
 #include "game/Vehicle/VehFrameProc_4_LastSpin.c"
+
+#include "game/Vehicle/VehLap_0_UpdateProgress.c"
 
 #include "game/Vehicle/VehPhysCrash_0_ConvertVecToSpeed.c"
 #include "game/Vehicle/VehPhysCrash_1_BounceSelf.c"
@@ -609,6 +665,7 @@
 #include "game/Vehicle/VehPickupItem_1_MaskUseWeapon.c"
 #include "game/Vehicle/VehPickupItem_4_ShootNow.c"
 #include "game/Vehicle/VehPickupItem_5_ShootOnCirclePress.c"
+#include "game/Vehicle/VehPickState_0_NewState.c"
 
 #include "game/Vehicle/VehStuckProc_00_MaskGrab_FindDestPos.c"
 #include "game/Vehicle/VehStuckProc_01_MaskGrab_Particles.c"
@@ -616,6 +673,10 @@
 #include "game/Vehicle/VehStuckProc_03_MaskGrab_PhysLinear.c"
 #include "game/Vehicle/VehStuckProc_04_MaskGrab_Animate.c"
 #include "game/Vehicle/VehStuckProc_05_MaskGrab_Init.c"
+#include "game/Vehicle/VehStuckProc_06_PlantEaten_Update.c"
+#include "game/Vehicle/VehStuckProc_07_PlantEaten_PhysLinear.c"
+#include "game/Vehicle/VehStuckProc_08_PlantEaten_Animate.c"
+#include "game/Vehicle/VehStuckProc_09_PlantEaten_Init.c"
 #include "game/Vehicle/VehStuckProc_10_RIP_Init.c"
 #include "game/Vehicle/VehStuckProc_11_RevEngine_Update.c"
 #include "game/Vehicle/VehStuckProc_12_RevEngine_PhysLinear.c"
@@ -642,6 +703,8 @@
 #include "game/225/225_Full.c"
 
 #include "game/221_225_EndEvent.c"
+
+#include "game/PlayLevel/PlayLevel_0_UpdateLapStats.c"
 
 #include "game/230/R230.c"
 #include "game/230/D230.c"

@@ -1,9 +1,8 @@
 #include <common.h>
 
-void DECOMP_VehPhysProc_SpinFirst_Init();
-void DECOMP_VehStuckProc_Tumble_Init();
-
-int DECOMP_VehPickState_NewState(struct Driver *victimDriver, int damageType, struct Driver *attackDriver, int reason)
+// TODO(aalhendi): Source-backed damage-state dependency; audit NTSC-U 926
+// 0x80064568-0x80064be4 before ASM stamp.
+int VehPickState_NewState(struct Driver *victimDriver, int damageType, struct Driver *attackDriver, int reason)
 {
 	int voice;
 
@@ -54,7 +53,7 @@ int DECOMP_VehPickState_NewState(struct Driver *victimDriver, int damageType, st
 		if (victimState != 3)
 		{
 		SPINOUT:
-			victimDriver->funcPtrs[0] = DECOMP_VehPhysProc_SpinFirst_Init;
+			victimDriver->funcPtrs[0] = VehPhysProc_SpinFirst_Init;
 		}
 	}
 
@@ -66,10 +65,10 @@ int DECOMP_VehPickState_NewState(struct Driver *victimDriver, int damageType, st
 			return 0;
 
 		// quit if already blasted
-		if (victimDriver->funcPtrs[0] == DECOMP_VehStuckProc_Tumble_Init)
+		if (victimDriver->funcPtrs[0] == VehStuckProc_Tumble_Init)
 			return 0;
 
-		victimDriver->funcPtrs[0] = DECOMP_VehStuckProc_Tumble_Init;
+		victimDriver->funcPtrs[0] = VehStuckProc_Tumble_Init;
 
 		// 2.4s
 		victimDriver->NoInputTimer = 0x960;
@@ -218,4 +217,11 @@ int DECOMP_VehPickState_NewState(struct Driver *victimDriver, int damageType, st
 
 	// make driver visible, if invisible
 	victimDriver->instSelf->flags &= ~(0x80);
+
+	return 1;
+}
+
+int DECOMP_VehPickState_NewState(struct Driver *victimDriver, int damageType, struct Driver *attackDriver, int reason)
+{
+	return VehPickState_NewState(victimDriver, damageType, attackDriver, reason);
 }

@@ -1,3 +1,4 @@
+#include "231_001_RB_Player_KillPlayer.c"
 #include "231_002_RB_Player_ModifyWumpa.c"
 #include "231_003_RB_MinePool_Init.c"
 #include "231_004_RB_MinePool_Remove.c"

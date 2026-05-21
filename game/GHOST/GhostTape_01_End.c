@@ -1,6 +1,7 @@
 #include <common.h>
 
-void DECOMP_GhostTape_End(void)
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80027e90-0x80027f20
+void GhostTape_End(void)
 {
 	struct Driver *d;
 	struct GhostHeader *gh;
@@ -23,6 +24,9 @@ void DECOMP_GhostTape_End(void)
 	gh->speedApprox = d->speedApprox;
 	gh->timeElapsedInRace = d->timeElapsedInRace;
 	gh->size = (u32)sdata->GhostRecording.ptrCurrOffset - (u32)sdata->GhostRecording.ptrStartOffset;
+}
 
-	return;
+void DECOMP_GhostTape_End(void)
+{
+	GhostTape_End();
 }

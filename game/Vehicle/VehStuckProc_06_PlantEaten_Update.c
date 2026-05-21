@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_VehStuckProc_PlantEaten_Update(struct Thread *t, struct Driver *d)
+void VehStuckProc_PlantEaten_Update(struct Thread *t, struct Driver *d)
 {
 	d->NoInputTimer -= sdata->gGT->elapsedTimeMS;
 
@@ -9,7 +9,7 @@ void DECOMP_VehStuckProc_PlantEaten_Update(struct Thread *t, struct Driver *d)
 		d->NoInputTimer = 0;
 
 		// respawn driver at last valid quadblock
-		VehStuckProc_MaskGrab_FindDestPos((struct Thread *)d, (struct Driver *)d->lastValid);
+		VehStuckProc_MaskGrab_FindDestPos(d, d->lastValid);
 		DECOMP_VehBirth_TeleportSelf(d, 0, 0x80);
 
 		// enable collision, make visible
@@ -19,4 +19,9 @@ void DECOMP_VehStuckProc_PlantEaten_Update(struct Thread *t, struct Driver *d)
 		// this lets you rev engine while falling
 		VehStuckProc_RevEngine_Init(t, d);
 	}
+}
+
+void DECOMP_VehStuckProc_PlantEaten_Update(struct Thread *t, struct Driver *d)
+{
+	VehStuckProc_PlantEaten_Update(t, d);
 }

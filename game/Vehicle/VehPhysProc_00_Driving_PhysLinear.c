@@ -6,7 +6,7 @@
 // see the bottom of this file
 extern s16 PhysLinear_DriverOffsets[14];
 
-void DECOMP_VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver)
+void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver)
 {
 	struct GameTracker *gGT;
 	int gameMode2;
@@ -1088,6 +1088,11 @@ SkipSetSteer:
 
 	driver->actionsFlagSet = uVar20;
 	return;
+}
+
+void DECOMP_VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver)
+{
+	VehPhysProc_Driving_PhysLinear(thread, driver);
 }
 
 #define DriverPhysLinear_OFFSETOF(TYPE, ELEMENT) (s16)((u32) & (((TYPE *)0)->ELEMENT))

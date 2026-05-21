@@ -1,8 +1,10 @@
 #include <common.h>
 
-#define HANDLE_NULL_DRIVER break
-
-void DECOMP_PlayLevel_UpdateLapStats(void)
+// TODO(aalhendi): Source-backed gameplay progression bridge; audit NTSC-U 926
+// 0x800414f4-0x80041c84 before ASM stamp. Direct finish-flow dependencies are
+// now build-wired, but BOTS_ThTick_Drive and MainGameEnd_Initialize remain
+// suspect until their full ASM passes are complete.
+void PlayLevel_UpdateLapStats(void)
 {
 	u8 bVar1;
 	int iVar2;
@@ -19,7 +21,6 @@ void DECOMP_PlayLevel_UpdateLapStats(void)
 	int currRank;
 	struct GameTracker *gGT = sdata->gGT;
 
-	iVar9 = 0;
 	iVar13 = 0;
 	currRank = 0;
 
@@ -47,7 +48,7 @@ void DECOMP_PlayLevel_UpdateLapStats(void)
 		currDriver = gGT->drivers[iVar10];
 
 		if (currDriver == NULL)
-			HANDLE_NULL_DRIVER;
+			continue;
 
 		// before and after
 		distToFinish_prev = currDriver->distanceToFinish_curr;
@@ -126,8 +127,8 @@ void DECOMP_PlayLevel_UpdateLapStats(void)
 				// if farthest-ahead human
 				if (currDriver == firstRank)
 				{
-					OtherFX_Play(0x66, 1);
-					Voiceline_ClearTimeStamp();
+					DECOMP_OtherFX_Play(0x66, 1);
+					DECOMP_Voiceline_ClearTimeStamp();
 				}
 
 				lapCounter = currDriver->lapIndex;
@@ -184,7 +185,7 @@ void DECOMP_PlayLevel_UpdateLapStats(void)
 						// one person gets confetti
 						gGT->numWinners = 1;
 
-						char driverID = currDriver->driverID;
+						u8 driverID = currDriver->driverID;
 
 						// add driver ID to array of confetti winners
 						gGT->winnerIndex[0] = driverID;
@@ -261,7 +262,7 @@ void DECOMP_PlayLevel_UpdateLapStats(void)
 		}
 
 		// increase your rank in the race, someone passed you
-		char newRank = currDriver->driverRank + 1;
+		int newRank = currDriver->driverRank + 1;
 
 		// get human in last
 		if (currRank < newRank)
@@ -271,11 +272,8 @@ void DECOMP_PlayLevel_UpdateLapStats(void)
 	}
 
 	// sort all drivers that have NOT finished race
-	for (currRank; currRank < 8; currRank++)
+	for (; currRank < 8; currRank++)
 	{
-		if (gGT->drivers[currRank] == 0)
-			HANDLE_NULL_DRIVER;
-
 		// set "min" distance to max
 		minDistance = 0x3fffffff;
 
@@ -293,7 +291,7 @@ void DECOMP_PlayLevel_UpdateLapStats(void)
 			currDriver = gGT->drivers[iVar10];
 
 			if (currDriver == 0)
-				HANDLE_NULL_DRIVER;
+				continue;
 
 			if (currDriver->driverRank != -1)
 				continue;
@@ -356,7 +354,7 @@ void DECOMP_PlayLevel_UpdateLapStats(void)
 		currDriver = gGT->drivers[iVar10];
 
 		if (currDriver == 0)
-			HANDLE_NULL_DRIVER;
+			continue;
 
 		// should be impossible to be -1 here
 		if (currDriver->driverRank > -1)
@@ -371,7 +369,7 @@ void DECOMP_PlayLevel_UpdateLapStats(void)
 		currDriver = gGT->drivers[iVar10];
 
 		if (currDriver == NULL)
-			HANDLE_NULL_DRIVER;
+			continue;
 
 		int currRank = currDriver->driverRank;
 
@@ -413,7 +411,7 @@ void DECOMP_PlayLevel_UpdateLapStats(void)
 			currDriver = gGT->drivers[currRank];
 
 			if (currDriver == NULL)
-				HANDLE_NULL_DRIVER;
+				continue;
 
 			// if driver already finished race
 			if ((currDriver->actionsFlagSet & 0x2000000) != 0)
@@ -441,4 +439,9 @@ void DECOMP_PlayLevel_UpdateLapStats(void)
 
 		MainGameEnd_Initialize();
 	}
+}
+
+void DECOMP_PlayLevel_UpdateLapStats(void)
+{
+	PlayLevel_UpdateLapStats();
 }

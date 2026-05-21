@@ -3,7 +3,7 @@
 extern void *PlayerEatenFuncTable[13];
 
 // when eaten by plant on papu pyramid
-void DECOMP_VehStuckProc_PlantEaten_Init(struct Thread *t, struct Driver *d)
+void VehStuckProc_PlantEaten_Init(struct Thread *t, struct Driver *d)
 {
 	// when this function executes, you are lifted
 	// above the track by the mask, where you respawn
@@ -56,14 +56,10 @@ void DECOMP_VehStuckProc_PlantEaten_Init(struct Thread *t, struct Driver *d)
 		d->funcPtrs[i] = PlayerEatenFuncTable[i];
 }
 
-void DECOMP_VehStuckProc_PlantEaten_Update(struct Thread *t, struct Driver *d);
-void DECOMP_VehStuckProc_PlantEaten_PhysLinear(struct Thread *t, struct Driver *d);
-void DECOMP_VehStuckProc_PlantEaten_Animate(struct Thread *t, struct Driver *d);
-
 void *PlayerEatenFuncTable[13] = {
     NULL,
-    VehStuckProc_PlantEaten_Update, // DECOMP_VehStuckProc_PlantEaten_Update,
-    DECOMP_VehStuckProc_PlantEaten_PhysLinear,
+    VehStuckProc_PlantEaten_Update,
+    VehStuckProc_PlantEaten_PhysLinear,
     DECOMP_VehPhysProc_Driving_Audio,
     NULL,
     NULL,
@@ -72,6 +68,11 @@ void *PlayerEatenFuncTable[13] = {
     NULL,
     NULL,
     VehPhysForce_TranslateMatrix,
-    DECOMP_VehStuckProc_PlantEaten_Animate,
+    VehStuckProc_PlantEaten_Animate,
     NULL,
 };
+
+void DECOMP_VehStuckProc_PlantEaten_Init(struct Thread *t, struct Driver *d)
+{
+	VehStuckProc_PlantEaten_Init(t, d);
+}

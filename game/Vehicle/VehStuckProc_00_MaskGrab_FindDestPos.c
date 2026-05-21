@@ -41,7 +41,7 @@ static void VehStuckProc_MaskGrab_SearchBsp(struct Driver *d, struct ScratchpadS
 	DECOMP_COLL_SearchBSP_CallbackPARAM(sps->ptr_mesh_info->bspRoot, &sps->bbox, COLL_FIXED_BSPLEAF_TestQuadblocks, sps);
 }
 
-void DECOMP_VehStuckProc_MaskGrab_FindDestPos(struct Driver *d, struct QuadBlock *quad)
+void VehStuckProc_MaskGrab_FindDestPos(struct Driver *d, struct QuadBlock *quad)
 {
 	struct GameTracker *gGT = sdata->gGT;
 	struct Level *level = gGT->level1;
@@ -123,4 +123,9 @@ void DECOMP_VehStuckProc_MaskGrab_FindDestPos(struct Driver *d, struct QuadBlock
 	}
 
 	gGT->cameraDC[d->driverID].flags |= 1;
+}
+
+void DECOMP_VehStuckProc_MaskGrab_FindDestPos(struct Driver *d, struct QuadBlock *quad)
+{
+	VehStuckProc_MaskGrab_FindDestPos(d, quad);
 }

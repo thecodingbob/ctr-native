@@ -3,7 +3,7 @@
 // param_3:
 // 0 - normal
 // 1 - echo
-void DECOMP_OtherFX_Play_Echo(u32 soundID, int flags, int echoFlag)
+void OtherFX_Play_Echo(u32 soundID, int flags, int echoFlag)
 {
 	// ff8080:
 	// 0x00 - no echo
@@ -16,4 +16,9 @@ void DECOMP_OtherFX_Play_Echo(u32 soundID, int flags, int echoFlag)
 		otherFlags |= 0x1000000;
 
 	DECOMP_OtherFX_Play_LowLevel(soundID & 0xfff, flags & 0xff, otherFlags);
+}
+
+void DECOMP_OtherFX_Play_Echo(u32 soundID, int flags, int echoFlag)
+{
+	OtherFX_Play_Echo(soundID, flags, echoFlag);
 }

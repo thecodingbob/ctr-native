@@ -99,3 +99,8 @@ void DECOMP_BOTS_Killplane(struct Thread *botThread)
 	DECOMP_BOTS_MaskGrab(botThread);
 	return;
 }
+
+void BOTS_Killplane(struct Thread *botThread)
+{
+	DECOMP_BOTS_Killplane(botThread);
+}

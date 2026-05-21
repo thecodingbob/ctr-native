@@ -1,17 +1,20 @@
 #include <common.h>
 
 // BUG (probably in this file)
-// In vanilla, when you finish a race with high speed, you "keep" that speed as you transition into a bot as you cross the finish line.
-// The same is not true in the decomp. When you finish a race, you "hiccup" your speed and slow down significantly when passing the finish line.
+// In vanilla, when you finish a race with high speed, you "keep" that speed as
+// you transition into a bot as you cross the finish line. The same is not true
+// in the decomp. When you finish a race, you "hiccup" your speed and slow down
+// significantly when passing the finish line.
 
-
-void DECOMP_BOTS_Driver_Convert(struct Driver *d)
+// TODO(aalhendi): Include this in ctr-native after the bot-drive dependency
+// closure covers BOTS_ThTick_Drive.
+void BOTS_Driver_Convert(struct Driver *d)
 {
 	// if already AI, quit
 	if ((d->actionsFlagSet & 0x100000) != 0)
 		return;
 
-	DECOMP_UI_RaceEnd_GetDriverClock(d);
+	UI_RaceEnd_GetDriverClock(d);
 
 	char initialNavPathIndex = sdata->driver_pathIndexIDs[d->driverID];
 	char navPathIndex;
@@ -33,7 +36,7 @@ void DECOMP_BOTS_Driver_Convert(struct Driver *d)
 
 		// If all 3 are checked, quit
 		if (navPathIndex == initialNavPathIndex)
-			return NULL;
+			return;
 	}
 
 	memset(&d->botData, 0, sizeof(struct BotData));
@@ -97,4 +100,9 @@ void DECOMP_BOTS_Driver_Convert(struct Driver *d)
 	}
 
 	BOTS_ChangeState(d, damageType, NULL, 0);
+}
+
+void DECOMP_BOTS_Driver_Convert(struct Driver *d)
+{
+	BOTS_Driver_Convert(d);
 }

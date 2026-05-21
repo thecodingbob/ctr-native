@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_GAMEPAD_ShockForce1(struct Driver *d, int frame, int val)
+void GAMEPAD_ShockForce1(struct Driver *d, int frame, int val)
 {
 	// if AI
 	if ((d->actionsFlagSet & 0x100000) != 0)
@@ -21,4 +21,9 @@ void DECOMP_GAMEPAD_ShockForce1(struct Driver *d, int frame, int val)
 
 	gb->shockFrameForce1 = frame;
 	gb->shockValForce1 = val;
+}
+
+void DECOMP_GAMEPAD_ShockForce1(struct Driver *d, int frame, int val)
+{
+	GAMEPAD_ShockForce1(d, frame, val);
 }

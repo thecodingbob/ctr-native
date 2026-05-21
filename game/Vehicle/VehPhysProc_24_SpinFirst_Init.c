@@ -2,7 +2,7 @@
 
 void COLL_FIXED_PlayerSearch();
 
-void *PlayerSpinningFuncTable[0xD] = {DECOMP_VehPhysProc_SpinFirst_InitSetUpdate,
+void *PlayerSpinningFuncTable[0xD] = {VehPhysProc_SpinFirst_InitSetUpdate,
                                       0,
                                       DECOMP_VehPhysProc_SpinFirst_PhysLinear,
                                       DECOMP_VehPhysProc_Driving_Audio,
@@ -35,7 +35,7 @@ void *PlayerSpinningFuncTable[0xD] = {DECOMP_VehPhysProc_SpinFirst_InitSetUpdate
 #endif
 };
 
-void DECOMP_VehPhysProc_SpinFirst_Init(struct Thread *t, struct Driver *d)
+void VehPhysProc_SpinFirst_Init(struct Thread *t, struct Driver *d)
 {
 	int i;
 
@@ -82,4 +82,9 @@ void DECOMP_VehPhysProc_SpinFirst_Init(struct Thread *t, struct Driver *d)
 #ifndef REBUILD_PS1
 	GAMEPAD_JogCon1(d, i, 0x60);
 #endif
+}
+
+void DECOMP_VehPhysProc_SpinFirst_Init(struct Thread *t, struct Driver *d)
+{
+	VehPhysProc_SpinFirst_Init(t, d);
 }

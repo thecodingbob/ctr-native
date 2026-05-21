@@ -130,5 +130,7 @@ int abs(int value);
 int clamp(int n, int lo, int hi);
 int max(int a, int b);
 int min(int a, int b);
+s32 MATH_VectorLength(SVec3 *vector);
+s32 MATH_VectorNormalize(SVec3 *vector);
 
 #endif
