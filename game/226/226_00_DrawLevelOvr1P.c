@@ -426,16 +426,26 @@ static u32 DrawLevelOvr1P_Select4x1ProjectedFace(const struct DrawLevelOvr1PScra
 static int DrawLevelOvr1P_IsFaceVisible(const int *visFaceList, const struct QuadBlock *block)
 {
 	u32 blockID = (u16)block->blockID;
+	u32 wordIndex;
+	u32 word;
 
 	if (visFaceList == 0)
 		return 1;
 
-	return (visFaceList[blockID >> 5] & (1 << (blockID & 0x1f))) != 0;
+	// NOTE(aalhendi): Retail 0x800a36d4 forms a byte offset with
+	// `(blockID >> 3) & 0x1fc`; scale it back to the native int array index.
+	wordIndex = ((blockID >> 3) & 0x1fc) >> 2;
+	word = (u32)visFaceList[wordIndex];
+	return (s32)(word << (blockID & 0x1f)) < 0;
 }
 
-static struct TextureLayout *DrawLevelOvr1P_ResolveMidTexture(const struct QuadBlock *block, int faceIndex)
+static u32 DrawLevelOvr1P_GetGridFaceSlotWord(const struct DrawLevelOvr1PScratchVertex *projected)
 {
-	uintptr_t texturePtr = (uintptr_t)block->ptr_texture_mid[faceIndex];
+	return *(const u32 *)((const u8 *)projected + 0xb4);
+}
+
+static struct TextureLayout *DrawLevelOvr1P_ResolveTexturePointer(uintptr_t texturePtr)
+{
 	struct TextureLayout *texture;
 
 	if (texturePtr == 0)
@@ -447,6 +457,49 @@ static struct TextureLayout *DrawLevelOvr1P_ResolveMidTexture(const struct QuadB
 		texture = (struct TextureLayout *)texturePtr;
 
 	return texture;
+}
+
+static struct TextureLayout *DrawLevelOvr1P_ResolveMidTexture(const struct QuadBlock *block, int faceIndex)
+{
+	return DrawLevelOvr1P_ResolveTexturePointer((uintptr_t)block->ptr_texture_mid[faceIndex]);
+}
+
+static int DrawLevelOvr1P_IsRepresentableActiveSlotWord(u32 slotWord)
+{
+	return (slotWord & 3) == 0 && slotWord <= 0xc;
+}
+
+static u32 DrawLevelOvr1P_GetProjectedRepresentableSlotWord(const struct DrawLevelOvr1PScratchVertex *projected, int faceIndex)
+{
+	u32 slotWord = projected != NULL ? DrawLevelOvr1P_GetGridFaceSlotWord(projected) : (u32)(faceIndex * 4);
+
+	// TODO(aalhendi): Retail 0x800a850c/0x800aa12c also uses wide active
+	// slots from helpers 0x800a557c/0x800a6480/0x800a745c/0x800a810c/
+	// 0x800a907c/0x800a9d2c for OT bias reads. Native QuadBlock only has
+	// representable texture/draw-order data for slots 0/4/8/0xc right now.
+	if (!DrawLevelOvr1P_IsRepresentableActiveSlotWord(slotWord))
+		return (u32)(faceIndex * 4);
+
+	return slotWord;
+}
+
+static struct TextureLayout *DrawLevelOvr1P_ResolveProjectedMidTexture(const struct QuadBlock *block, const struct DrawLevelOvr1PScratchVertex *projected)
+{
+	u32 slotWord;
+
+	if (projected == NULL)
+		return NULL;
+
+	slotWord = DrawLevelOvr1P_GetGridFaceSlotWord(projected);
+
+	// TODO(aalhendi): Retail selector entries 0x800a8380/0x800a9fa0 pass
+	// representable slots 0/4/8/0xc. Default wide helpers 0x800a745c,
+	// 0x800a810c, 0x800a907c, and 0x800a9d2c can carry 0x30/0x3c into terminal
+	// active-slot reads; keep those bounded until exact data/dispatch is ported.
+	if (!DrawLevelOvr1P_IsRepresentableActiveSlotWord(slotWord))
+		return NULL;
+
+	return DrawLevelOvr1P_ResolveTexturePointer((uintptr_t)*(void *const *)((const u8 *)block + 0x1c + slotWord));
 }
 
 static struct TextureLayout *DrawLevelOvr1P_GetTexture(const struct QuadBlock *block, int faceIndex, int numFaces)
@@ -464,16 +517,25 @@ static struct TextureLayout *DrawLevelOvr1P_GetTexture(const struct QuadBlock *b
 	return texture;
 }
 
-static struct TextureLayout *DrawLevelOvr1P_GetProjectedMidTexture(const struct QuadBlock *block, int faceIndex, u32 maxDepth)
+static struct TextureLayout *DrawLevelOvr1P_GetProjectedMidTexture(const struct QuadBlock *block, const struct DrawLevelOvr1PScratchVertex *projected,
+                                                                   int faceIndex, u32 maxDepth)
 {
-	struct TextureLayout *texture = DrawLevelOvr1P_ResolveMidTexture(block, faceIndex);
+	struct TextureLayout *texture = DrawLevelOvr1P_ResolveProjectedMidTexture(block, projected);
+	int hasWideActiveSlot;
 	u32 mosaicWord;
 	s32 mosaicSentinel;
+
+	hasWideActiveSlot = projected != NULL && !DrawLevelOvr1P_IsRepresentableActiveSlotWord(DrawLevelOvr1P_GetGridFaceSlotWord(projected));
+
+	// NOTE(aalhendi): Retail 0x800a8504/0x800aa124 uses the active slot, not
+	// the caller face index. If the active slot is a still-unported wide slot,
+	// preserve inherited UVs rather than force-mapping it to ptr_texture_mid[0..3].
+	if (texture == NULL && !hasWideActiveSlot)
+		texture = DrawLevelOvr1P_ResolveMidTexture(block, faceIndex);
 
 	if (texture == NULL)
 		return NULL;
 
-	// NOTE(aalhendi): Retail 4x1 handlers choose the mip by selected-face max depth against scratch 0x1c/0x20/0x24.
 	mosaicWord = *(u32 *)((u8 *)texture + 0x24);
 	mosaicSentinel = (s32)mosaicWord;
 
@@ -687,6 +749,7 @@ static u32 DrawLevelOvr1P_GetDefaultGridFaceSlotWord(u32 handlerAddress, int fac
 
 	// NOTE(aalhendi): Retail default composite helpers stride frame+0xb4 by the
 	// copied helper family's deepest UV reload span, not always by faceIndex*4.
+	// The wide4 helpers intentionally use QuadBlock-relative slots 0/0xc/0x30/0x3c.
 	switch (handlerAddress)
 	{
 	case 0x800a557c:
@@ -932,9 +995,24 @@ static int DrawLevelOvr1P_NclipProjected(const struct DrawLevelOvr1PScratchVerte
 	const struct DrawLevelOvr1PScratchVertex *vertex0 = &projected[indices[0]];
 	const struct DrawLevelOvr1PScratchVertex *vertex1 = &projected[indices[1]];
 	const struct DrawLevelOvr1PScratchVertex *vertex2 = &projected[indices[2]];
+	u32 sxy0;
+	u32 sxy1;
+	u32 sxy2;
+	s32 nclip;
 
-	return (vertex0->posScreen[0] * vertex1->posScreen[1]) + (vertex1->posScreen[0] * vertex2->posScreen[1]) + (vertex2->posScreen[0] * vertex0->posScreen[1]) -
-	       (vertex0->posScreen[0] * vertex2->posScreen[1]) - (vertex1->posScreen[0] * vertex0->posScreen[1]) - (vertex2->posScreen[0] * vertex1->posScreen[1]);
+	sxy0 = (u16)vertex0->posScreen[0] | ((u32)(u16)vertex0->posScreen[1] << 16);
+	sxy1 = (u16)vertex1->posScreen[0] | ((u32)(u16)vertex1->posScreen[1] << 16);
+	sxy2 = (u16)vertex2->posScreen[0] | ((u32)(u16)vertex2->posScreen[1] << 16);
+
+	// NOTE(aalhendi): Retail helper paths use GTE NCLIP/MAC0 for this sign
+	// fold; using the GTE also avoids host signed-overflow behavior here.
+	MTC2(sxy0, 12);
+	MTC2(sxy1, 13);
+	MTC2(sxy2, 14);
+	gte_nclip();
+	gte_stopz(&nclip);
+
+	return nclip;
 }
 
 static u32 DrawLevelOvr1P_PackProjectedSxy(const struct DrawLevelOvr1PScratchVertex *projected)
@@ -1090,14 +1168,24 @@ static u32 DrawLevelOvr1P_GetProjectedTriMaxDepth(const struct DrawLevelOvr1PScr
 	return maxDepth;
 }
 
-static int DrawLevelOvr1P_GetProjectedOtIndex(const struct QuadBlock *block, u32 maxDepth, int faceIndex)
+static int DrawLevelOvr1P_GetProjectedOtIndex(const struct QuadBlock *block, const struct DrawLevelOvr1PScratchVertex *projected, u32 maxDepth, int faceIndex)
 {
 	s32 otIndex;
 
 	if (faceIndex < 0)
+	{
 		otIndex = (s32)(maxDepth >> 6) + (s8)(block->draw_order_low & 0xff);
+	}
 	else
-		otIndex = (s32)(maxDepth >> 6) + (s8)((block->draw_order_high >> (faceIndex * 8)) & 0xff);
+	{
+		u32 slotWord = DrawLevelOvr1P_GetProjectedRepresentableSlotWord(projected, faceIndex);
+		const s8 *drawOrder = (const s8 *)&block->draw_order_high;
+
+		// NOTE(aalhendi): Retail projected-grid helpers 0x800a850c/0x800aa12c
+		// read the OT bias byte from `quad + 0x18 + (frame_slot >> 2)` for
+		// slots that the native QuadBlock can currently represent.
+		otIndex = (s32)(maxDepth >> 6) + drawOrder[slotWord >> 2];
+	}
 
 	if (otIndex < 0)
 		return 0;
@@ -1136,9 +1224,6 @@ static u32 DrawLevelOvr1P_SelectRawPrimitiveCode(u32 uv1Word, u32 semiTransCode,
 	return ((uv1Word & 0x00600000) != 0x00600000) ? semiTransCode : opaqueCode;
 }
 
-static int DrawLevelOvr1P_EmitPreparedProjectedQuad(struct PushBuffer *pb, struct PrimMem *primMem, const struct QuadBlock *block,
-                                                    const struct DrawLevelOvr1PScratchVertex *projected, const int *indices, int faceIndex,
-                                                    const struct TextureLayout *texture, u32 maxDepth);
 static int DrawLevelOvr1P_EmitPreparedProjectedQuadRaw(struct PushBuffer *pb, struct PrimMem *primMem, const struct QuadBlock *block,
                                                        const struct DrawLevelOvr1PScratchVertex *projected, const int *indices, int faceIndex,
                                                        const struct TextureLayout *texture, u32 maxDepth)
@@ -1159,7 +1244,7 @@ static int DrawLevelOvr1P_EmitPreparedProjectedQuadRaw(struct PushBuffer *pb, st
 	uv1 = *CTR_SCRATCHPAD_PTR(u32, 0x1a4);
 	uv2 = *CTR_SCRATCHPAD_PTR(u32, 0x1a8);
 
-	otIndex = DrawLevelOvr1P_GetProjectedOtIndex(block, maxDepth, faceIndex);
+	otIndex = DrawLevelOvr1P_GetProjectedOtIndex(block, projected, maxDepth, faceIndex);
 	code = texture != NULL ? DrawLevelOvr1P_SelectRawPrimitiveCode(uv1, 0x3e, 0x3c) : 0x3e;
 
 	prim[1] = DrawLevelOvr1P_GetProjectedColorCode(&projected[indices[0]], code);
@@ -1179,9 +1264,6 @@ static int DrawLevelOvr1P_EmitPreparedProjectedQuadRaw(struct PushBuffer *pb, st
 	return 1;
 }
 
-static int DrawLevelOvr1P_EmitPreparedProjectedTri(struct PushBuffer *pb, struct PrimMem *primMem, const struct QuadBlock *block,
-                                                   const struct DrawLevelOvr1PScratchVertex *projected, const int *indices, int faceIndex,
-                                                   const struct TextureLayout *texture, u32 maxDepth);
 static int DrawLevelOvr1P_EmitPreparedProjectedTriRaw(struct PushBuffer *pb, struct PrimMem *primMem, const struct QuadBlock *block,
                                                       const struct DrawLevelOvr1PScratchVertex *projected, const int *indices, int faceIndex,
                                                       const struct TextureLayout *texture, u32 maxDepth)
@@ -1202,7 +1284,7 @@ static int DrawLevelOvr1P_EmitPreparedProjectedTriRaw(struct PushBuffer *pb, str
 	uv1 = *CTR_SCRATCHPAD_PTR(u32, 0x1a4);
 	uv2 = *CTR_SCRATCHPAD_PTR(u32, 0x1a8);
 
-	otIndex = DrawLevelOvr1P_GetProjectedOtIndex(block, maxDepth, faceIndex);
+	otIndex = DrawLevelOvr1P_GetProjectedOtIndex(block, projected, maxDepth, faceIndex);
 	code = texture != NULL ? DrawLevelOvr1P_SelectRawPrimitiveCode(uv1, 0x36, 0x34) : 0x36;
 
 	prim[1] = DrawLevelOvr1P_GetProjectedColorCode(&projected[indices[0]], code);
@@ -1217,26 +1299,6 @@ static int DrawLevelOvr1P_EmitPreparedProjectedTriRaw(struct PushBuffer *pb, str
 	DrawLevelOvr1P_AddRawPrimToOt(prim, 9, &pb->ptrOT[otIndex]);
 	primMem->curr = nextPrim;
 	return 1;
-}
-
-static int DrawLevelOvr1P_EmitPreparedProjectedQuad(struct PushBuffer *pb, struct PrimMem *primMem, const struct QuadBlock *block,
-                                                    const struct DrawLevelOvr1PScratchVertex *projected, const int *indices, int faceIndex,
-                                                    const struct TextureLayout *texture, u32 maxDepth)
-{
-	if (DrawLevelOvr1P_IsProjectedFaceOffscreen(pb, projected, indices))
-		return 1;
-
-	return DrawLevelOvr1P_EmitPreparedProjectedQuadRaw(pb, primMem, block, projected, indices, faceIndex, texture, maxDepth);
-}
-
-static int DrawLevelOvr1P_EmitPreparedProjectedTri(struct PushBuffer *pb, struct PrimMem *primMem, const struct QuadBlock *block,
-                                                   const struct DrawLevelOvr1PScratchVertex *projected, const int *indices, int faceIndex,
-                                                   const struct TextureLayout *texture, u32 maxDepth)
-{
-	if (DrawLevelOvr1P_IsProjectedTriOffscreen(pb, projected, indices))
-		return 1;
-
-	return DrawLevelOvr1P_EmitPreparedProjectedTriRaw(pb, primMem, block, projected, indices, faceIndex, texture, maxDepth);
 }
 
 static int DrawLevelOvr1P_IsClipByteSet(u8 clipByte)
@@ -1429,16 +1491,21 @@ static void DrawLevelOvr1P_CopyClipRecordVertex(struct DrawLevelOvr1PClipRecordV
 	dst->color_hi[3] |= src->clipHalfNear;
 }
 
+static void DrawLevelOvr1P_StoreRenderedClipRecordHeader(u32 tableWord)
+{
+	// NOTE(aalhendi): Retail rendered helpers 0x800a84dc/0x800aa0fc store
+	// clipped-record polarity at scratch 0x80 before helper-local dispatch.
+	*CTR_SCRATCHPAD_PTR(u32, 0x80) = (DrawLevelOvr1P_GetActiveDrawOrderLow() & 0x80000000u) | ((tableWord & 0x80000000u) >> 1);
+}
+
 static u32 DrawLevelOvr1P_GetRenderedClipRecordHeader(const struct QuadBlock *block, int count)
 {
-	u32 drawOrderLow = DrawLevelOvr1P_GetActiveDrawOrderLow();
-	u32 tableWord = *CTR_SCRATCHPAD_PTR(u32, 0x194);
-	u32 header = (drawOrderLow & 0x80000000u) | ((tableWord & 0x80000000u) >> 1);
+	u32 header = *CTR_SCRATCHPAD_PTR(u32, 0x80);
 
 	(void)block;
 
-	// NOTE(aalhendi): Retail 0x800a494c stores these polarity bits at scratch
-	// 0x80; 0x800a4dcc/0x800a4e70 OR in the GT4 count bit when writing records.
+	// NOTE(aalhendi): Retail 0x800a4dcc/0x800a4e70 ORs the GT4 count bit into
+	// the stored scratch 0x80 polarity word when writing clipped records.
 	if (count == 4)
 		header |= 1;
 
@@ -1461,7 +1528,7 @@ static int DrawLevelOvr1P_WriteRenderedClippedRecord(struct PushBuffer *pb, cons
 		return 1;
 
 	maxDepth = DrawLevelOvr1P_GetPreparedProjectedMaxDepthCount(projected, indices, count);
-	otIndex = DrawLevelOvr1P_GetProjectedOtIndex(block, maxDepth, faceIndex);
+	otIndex = DrawLevelOvr1P_GetProjectedOtIndex(block, projected, maxDepth, faceIndex);
 
 	record = (struct DrawLevelOvr1PClipRecord *)cursor;
 	record->header = DrawLevelOvr1P_GetRenderedClipRecordHeader(block, count);
@@ -1492,7 +1559,7 @@ static int DrawLevelOvr1P_WriteWaterRenderedClippedRecord(struct PushBuffer *pb,
 		return 1;
 
 	maxDepth = DrawLevelOvr1P_GetPreparedProjectedMaxDepthCount(projected, indices, count);
-	otIndex = DrawLevelOvr1P_GetProjectedOtIndex(block, maxDepth, faceIndex);
+	otIndex = DrawLevelOvr1P_GetProjectedOtIndex(block, projected, maxDepth, faceIndex);
 
 	record = (struct DrawLevelOvr1PClipRecord *)cursor;
 	// NOTE(aalhendi): Retail water direct helpers 0x800a34d4/0x800a3578 set
@@ -2419,15 +2486,19 @@ static int DrawLevelOvr1P_EmitPreparedProjectedTriDirect(struct PushBuffer *pb, 
 
 	// NOTE(aalhendi): Retail GT3 direct helpers use `bltz` on clip bytes that
 	// the rendered/list projection paths store as 0/1, so GT3 stays direct here.
+	// Terminal direct handlers write raw packets after the caller-side cull.
 
-	return DrawLevelOvr1P_EmitPreparedProjectedTri(pb, primMem, block, projected, indices, faceIndex, texture,
-	                                               DrawLevelOvr1P_GetProjectedTriMaxDepth(projected, indices));
+	return DrawLevelOvr1P_EmitPreparedProjectedTriRaw(pb, primMem, block, projected, indices, faceIndex, texture,
+	                                                  DrawLevelOvr1P_GetProjectedTriMaxDepth(projected, indices));
 }
 
 static int DrawLevelOvr1P_EmitPreparedProjectedQuadDirect(struct PushBuffer *pb, struct PrimMem *primMem, const struct QuadBlock *block,
                                                           const struct DrawLevelOvr1PScratchVertex *projected, const int *indices, int faceIndex,
                                                           const struct TextureLayout *texture, int writeClipBytes, int waterRenderedDirect)
 {
+	if (writeClipBytes && !waterRenderedDirect)
+		DrawLevelOvr1P_StoreRenderedClipRecordHeader(*CTR_SCRATCHPAD_PTR(u32, 0x194));
+
 	if (writeClipBytes)
 	{
 		if (DrawLevelOvr1P_AreProjectedVerticesHalfNear(projected, indices, 4))
@@ -2442,8 +2513,10 @@ static int DrawLevelOvr1P_EmitPreparedProjectedQuadDirect(struct PushBuffer *pb,
 		}
 	}
 
-	return DrawLevelOvr1P_EmitPreparedProjectedQuad(pb, primMem, block, projected, indices, faceIndex, texture,
-	                                                DrawLevelOvr1P_GetProjectedMaxDepth(projected, indices));
+	// NOTE(aalhendi): Retail GT4 terminal direct handlers have no second
+	// screen-space cull after the caller-side direct-mask reduction.
+	return DrawLevelOvr1P_EmitPreparedProjectedQuadRaw(pb, primMem, block, projected, indices, faceIndex, texture,
+	                                                   DrawLevelOvr1P_GetProjectedMaxDepth(projected, indices));
 }
 
 static int DrawLevelOvr1P_EmitPreparedProjectedDirect(struct PushBuffer *pb, struct PrimMem *primMem, const struct QuadBlock *block,
@@ -2570,17 +2643,39 @@ static int DrawLevelOvr1P_EmitProjectedGridNearClippedBridge(struct PushBuffer *
                                                              const struct DrawLevelOvr1PScratchVertex *projected, const int *indices, int faceIndex,
                                                              const struct TextureLayout *texture, u32 nearMask, int depth, int writeClipBytes, u32 allowedMask);
 
-static int DrawLevelOvr1P_EmitProjectedGridFace(struct PushBuffer *pb, struct PrimMem *primMem, const struct QuadBlock *block,
-                                                const struct DrawLevelOvr1PScratchVertex *projected, const int *indices, int faceIndex,
-                                                const struct TextureLayout *texture, int depth, int writeClipBytes, u32 allowedMask)
+static const struct TextureLayout *DrawLevelOvr1P_RefreshProjectedGridTexture(const struct QuadBlock *block,
+                                                                              const struct DrawLevelOvr1PScratchVertex *projected, const int *indices,
+                                                                              int faceIndex, const struct TextureLayout *texture)
 {
-	struct TextureLayout *activeTexture = (struct TextureLayout *)texture;
-	u32 directMask;
+	struct TextureLayout *activeTexture;
 	u32 maxDepth;
+
+	maxDepth = DrawLevelOvr1P_GetProjectedMaxDepth(projected, indices);
+	activeTexture = DrawLevelOvr1P_GetProjectedMidTexture(block, projected, faceIndex, maxDepth);
+	if (activeTexture == NULL)
+		return texture;
+
+	DrawLevelOvr1P_WriteProjectedUv((struct DrawLevelOvr1PScratchVertex *)projected, indices, activeTexture, *CTR_SCRATCHPAD_PTR(u32, 0x194));
+	return activeTexture;
+}
+
+static int DrawLevelOvr1P_EmitProjectedGridFaceCommon(struct PushBuffer *pb, struct PrimMem *primMem, const struct QuadBlock *block,
+                                                      const struct DrawLevelOvr1PScratchVertex *projected, const int *indices, int faceIndex,
+                                                      const struct TextureLayout *texture, int depth, int writeClipBytes, u32 allowedMask, int refreshTexture)
+{
+	const struct TextureLayout *activeTexture = texture;
+	u32 directMask;
 	u32 nearMask;
 
+	// TODO(aalhendi): Replace shared grid bridge with exact retail
+	// 0x800a825c..0x800a8784 / 0x800a9e7c..0x800aa3a4 side effects.
+	// NOTE(aalhendi): Recursive grid helpers preserve the inherited UVs; only
+	// selector/default entries reselect texture slots before near recursion.
 	if (writeClipBytes && DrawLevelOvr1P_IsProjectedFaceFullyNear(projected, indices))
 		return 1;
+
+	if (writeClipBytes)
+		DrawLevelOvr1P_StoreRenderedClipRecordHeader(*CTR_SCRATCHPAD_PTR(u32, 0x194));
 
 	// NOTE(aalhendi): Rendered helpers branch on clip bytes before direct-mask reduction.
 	if (writeClipBytes && DrawLevelOvr1P_HasProjectedVertexNear(projected, indices, 4))
@@ -2588,12 +2683,8 @@ static int DrawLevelOvr1P_EmitProjectedGridFace(struct PushBuffer *pb, struct Pr
 		directMask = DRAW_LEVEL_OVR1P_DIRECT_QUAD;
 		*CTR_SCRATCHPAD_PTR(u32, 0x70) = directMask;
 
-		maxDepth = DrawLevelOvr1P_GetProjectedMaxDepth(projected, indices);
-		activeTexture = DrawLevelOvr1P_GetProjectedMidTexture(block, faceIndex, maxDepth);
-		if (activeTexture != NULL)
-			DrawLevelOvr1P_WriteProjectedUv((struct DrawLevelOvr1PScratchVertex *)projected, indices, activeTexture, *CTR_SCRATCHPAD_PTR(u32, 0x194));
-		else
-			activeTexture = (struct TextureLayout *)texture;
+		if (refreshTexture)
+			activeTexture = DrawLevelOvr1P_RefreshProjectedGridTexture(block, projected, indices, faceIndex, texture);
 
 		nearMask = DrawLevelOvr1P_GetProjectedNearMaskForDepth(projected, indices, depth);
 		if (nearMask != 0)
@@ -2617,14 +2708,8 @@ static int DrawLevelOvr1P_EmitProjectedGridFace(struct PushBuffer *pb, struct Pr
 	if (directMask == 0)
 		return 1;
 
-	// NOTE(aalhendi): Retail generic-grid helper 0x800a7668 reselects the
-	// selected child face's mip/UVs after cull/direct-mask reduction.
-	maxDepth = DrawLevelOvr1P_GetProjectedMaxDepth(projected, indices);
-	activeTexture = DrawLevelOvr1P_GetProjectedMidTexture(block, faceIndex, maxDepth);
-	if (activeTexture != NULL)
-		DrawLevelOvr1P_WriteProjectedUv((struct DrawLevelOvr1PScratchVertex *)projected, indices, activeTexture, *CTR_SCRATCHPAD_PTR(u32, 0x194));
-	else
-		activeTexture = (struct TextureLayout *)texture;
+	if (refreshTexture)
+		activeTexture = DrawLevelOvr1P_RefreshProjectedGridTexture(block, projected, indices, faceIndex, texture);
 
 	nearMask = DrawLevelOvr1P_GetProjectedNearMaskForDepth(projected, indices, depth);
 	if (nearMask != 0)
@@ -2637,6 +2722,24 @@ static int DrawLevelOvr1P_EmitProjectedGridFace(struct PushBuffer *pb, struct Pr
 	}
 
 	return DrawLevelOvr1P_EmitPreparedProjectedDirectMask(pb, primMem, block, projected, indices, faceIndex, activeTexture, directMask, writeClipBytes, 0);
+}
+
+static int DrawLevelOvr1P_EmitProjectedGridFace(struct PushBuffer *pb, struct PrimMem *primMem, const struct QuadBlock *block,
+                                                const struct DrawLevelOvr1PScratchVertex *projected, const int *indices, int faceIndex,
+                                                const struct TextureLayout *texture, int depth, int writeClipBytes, u32 allowedMask)
+{
+	return DrawLevelOvr1P_EmitProjectedGridFaceCommon(pb, primMem, block, projected, indices, faceIndex, texture, depth, writeClipBytes, allowedMask, 0);
+}
+
+static int DrawLevelOvr1P_EmitProjectedGridFaceWithSlotTexture(struct PushBuffer *pb, struct PrimMem *primMem, const struct QuadBlock *block,
+                                                               const struct DrawLevelOvr1PScratchVertex *projected, const int *indices, int faceIndex,
+                                                               const struct TextureLayout *texture, int depth, int writeClipBytes, u32 allowedMask)
+{
+	// NOTE(aalhendi): Retail selector terminals 0x800a8504..0x800a85b0 and
+	// 0x800aa124..0x800aa1d0 refresh the active-slot texture/UV state before
+	// near recursion. Wide slots remain bounded by the native representable-slot
+	// fallback until the expanded data contract is ported.
+	return DrawLevelOvr1P_EmitProjectedGridFaceCommon(pb, primMem, block, projected, indices, faceIndex, texture, depth, writeClipBytes, allowedMask, 1);
 }
 
 static int DrawLevelOvr1P_IsDeepestSubdivisionFrame(const struct DrawLevelOvr1PScratchVertex *projected)
@@ -2677,6 +2780,8 @@ static int DrawLevelOvr1P_HandlerUsesDeepestCompactGrid(u32 handlerAddress)
 
 static int DrawLevelOvr1P_HandlerUses4x4GridFrame(u32 handlerAddress)
 {
+	// NOTE(aalhendi): Dynamic-rendered 0x800a7fac..0x800a810c keeps the
+	// normal 3x3 builder despite wide slot strides.
 	switch (handlerAddress)
 	{
 	case 0x800a8f1c:
@@ -2855,20 +2960,20 @@ static int DrawLevelOvr1P_DispatchProjectedGridHelper(struct PushBuffer *pb, str
 	}
 
 	DrawLevelOvr1P_SetGridFaceSlotWord(projected, DrawLevelOvr1P_GetDefaultGridFaceSlotWord(handlerAddress, 0));
-	if (!DrawLevelOvr1P_EmitProjectedGridFace(pb, primMem, block, projected, sDrawLevelOvr1PGridFaceIndices[0], faceIndex, texture, depth, writeClipBytes,
-	                                          allowedQuad))
+	if (!DrawLevelOvr1P_EmitProjectedGridFaceWithSlotTexture(pb, primMem, block, projected, sDrawLevelOvr1PGridFaceIndices[0], faceIndex, texture, depth,
+	                                                         writeClipBytes, allowedQuad))
 		return 0;
 	DrawLevelOvr1P_SetGridFaceSlotWord(projected, DrawLevelOvr1P_GetDefaultGridFaceSlotWord(handlerAddress, 1));
-	if (!DrawLevelOvr1P_EmitProjectedGridFace(pb, primMem, block, projected, sDrawLevelOvr1PGridFaceIndices[1], faceIndex, texture, depth, writeClipBytes,
-	                                          allowedQuad))
+	if (!DrawLevelOvr1P_EmitProjectedGridFaceWithSlotTexture(pb, primMem, block, projected, sDrawLevelOvr1PGridFaceIndices[1], faceIndex, texture, depth,
+	                                                         writeClipBytes, allowedQuad))
 		return 0;
 	DrawLevelOvr1P_SetGridFaceSlotWord(projected, DrawLevelOvr1P_GetDefaultGridFaceSlotWord(handlerAddress, 2));
-	if (!DrawLevelOvr1P_EmitProjectedGridFace(pb, primMem, block, projected, sDrawLevelOvr1PGridFaceIndices[2], faceIndex, texture, depth, writeClipBytes,
-	                                          allowedQuad))
+	if (!DrawLevelOvr1P_EmitProjectedGridFaceWithSlotTexture(pb, primMem, block, projected, sDrawLevelOvr1PGridFaceIndices[2], faceIndex, texture, depth,
+	                                                         writeClipBytes, allowedQuad))
 		return 0;
 	DrawLevelOvr1P_SetGridFaceSlotWord(projected, DrawLevelOvr1P_GetDefaultGridFaceSlotWord(handlerAddress, 3));
-	return DrawLevelOvr1P_EmitProjectedGridFace(pb, primMem, block, projected, sDrawLevelOvr1PGridFaceIndices[3], faceIndex, texture, depth, writeClipBytes,
-	                                            allowedQuad);
+	return DrawLevelOvr1P_EmitProjectedGridFaceWithSlotTexture(pb, primMem, block, projected, sDrawLevelOvr1PGridFaceIndices[3], faceIndex, texture, depth,
+	                                                           writeClipBytes, allowedQuad);
 }
 
 static int DrawLevelOvr1P_EmitProjectedGridNearClippedBridge(struct PushBuffer *pb, struct PrimMem *primMem, const struct QuadBlock *block,
@@ -3020,6 +3125,9 @@ static int DrawLevelOvr1P_EmitProjectedGroundQuadAllowed(struct PushBuffer *pb, 
 	if (writeClipBytes && DrawLevelOvr1P_IsProjectedFaceFullyNear(projected, indices))
 		return 1;
 
+	if (writeClipBytes)
+		DrawLevelOvr1P_StoreRenderedClipRecordHeader(tableWord);
+
 	// NOTE(aalhendi): Retail rendered helpers carry mask 0xc into near recursion here.
 	if (writeClipBytes && DrawLevelOvr1P_HasProjectedVertexNear(projected, indices, 4))
 	{
@@ -3027,7 +3135,7 @@ static int DrawLevelOvr1P_EmitProjectedGroundQuadAllowed(struct PushBuffer *pb, 
 		*CTR_SCRATCHPAD_PTR(u32, 0x70) = directMask;
 
 		maxDepth = DrawLevelOvr1P_GetProjectedMaxDepth(projected, indices);
-		texture = DrawLevelOvr1P_GetProjectedMidTexture(block, faceIndex, maxDepth);
+		texture = DrawLevelOvr1P_GetProjectedMidTexture(block, projected, faceIndex, maxDepth);
 
 		if (texture != 0)
 			DrawLevelOvr1P_WriteProjectedUv(projected, indices, texture, tableWord);
@@ -3050,7 +3158,7 @@ static int DrawLevelOvr1P_EmitProjectedGroundQuadAllowed(struct PushBuffer *pb, 
 		return 1;
 
 	maxDepth = DrawLevelOvr1P_GetProjectedMaxDepth(projected, indices);
-	texture = DrawLevelOvr1P_GetProjectedMidTexture(block, faceIndex, maxDepth);
+	texture = DrawLevelOvr1P_GetProjectedMidTexture(block, projected, faceIndex, maxDepth);
 
 	if (texture != 0)
 		DrawLevelOvr1P_WriteProjectedUv(projected, indices, texture, tableWord);
@@ -3126,7 +3234,7 @@ static int DrawLevelOvr1P_EmitProjectedGroundQuad(struct PushBuffer *pb, struct 
 	if (!boolPassCull)
 		return 1;
 
-	otIndex = DrawLevelOvr1P_GetProjectedOtIndex(block, maxDepth, faceIndex);
+	otIndex = DrawLevelOvr1P_GetProjectedOtIndex(block, projected, maxDepth, faceIndex);
 
 	if (DrawLevelOvr1P_ShouldSetSemiTransFromTpage(prim->tpage))
 		setSemiTrans(prim, true);
@@ -3303,7 +3411,7 @@ static int DrawLevelOvr1P_EmitFullDynamicSelectorFace(struct PushBuffer *pb, str
 		return 1;
 
 	maxDepth = DrawLevelOvr1P_GetProjectedMaxDepth(projected, indices);
-	texture = DrawLevelOvr1P_GetProjectedMidTexture(block, faceIndex, maxDepth);
+	texture = DrawLevelOvr1P_GetProjectedMidTexture(block, projected, faceIndex, maxDepth);
 
 	if (texture != NULL)
 		DrawLevelOvr1P_WriteProjectedUv(projected, indices, texture, tableWord);
