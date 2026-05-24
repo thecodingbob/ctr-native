@@ -1,5 +1,7 @@
 #include <common.h>
 
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005abfc-0x8005b0c4.
+
 // param1 - driver
 // param2 - reserves to add
 // param3 - add type
@@ -113,20 +115,11 @@ void DECOMP_VehFire_Increment(struct Driver *driver, int reserves, u32 type, int
 			// get thread, ignore all collisions
 			turboThread = turboInst1->thread;
 			turboThread->flags |= 0x1000;
-			turboThread->funcThDestroy = VehTurbo_ThDestroy;
-
-			// turbo #2
-			turboInst2 = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[STATIC_TURBO_EFFECT], // model
-			                                     &sdata->s_turbo2[0],                // name
-			                                     turboThread                         // parent thread
-			);
 
 			// get object, set essentials
 			turboObj = turboThread->object;
-			turboObj->inst = turboInst2;
 			turboObj->driver = driver;
-			turboObj->fireAnimIndex = 0;
-			turboObj->fireVisibilityCooldown = 0x60;
+			turboObj->fireVisibilityCooldown = 0;
 
 			// make flame disappear after
 			// 	- powerslide: two frames (quick death)
@@ -148,8 +141,19 @@ void DECOMP_VehFire_Increment(struct Driver *driver, int reserves, u32 type, int
 				}
 			}
 
+			turboThread->funcThDestroy = VehTurbo_ThDestroy;
+
+			// turbo #2
+			turboInst2 = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[STATIC_TURBO_EFFECT], // model
+			                                     &sdata->s_turbo2[0],                // name
+			                                     turboThread                         // parent thread
+			);
+
 			// 2P 3P 4P flags
 			addFlags = 0;
+
+			turboObj->inst = turboInst2;
+			turboObj->fireAnimIndex = 0;
 
 			// 1P flags
 			if (gGT->numPlyrCurrGame == 1)
@@ -233,25 +237,7 @@ void DECOMP_VehFire_Increment(struct Driver *driver, int reserves, u32 type, int
 		}
 	}
 
-	newFireSpeedCap =
-
-	    (int)driver->const_SingleTurboSpeed +
-
-	    // fireLevel * 8
-	    (fireLevel *
-
-#if 1
-
-	     8
-
-#else
-
-	         // this can all be simplified to: 8
-	         ((int)driver->const_SacredFireSpeed - (int)driver->const_SingleTurboSpeed) >>
-	     8
-
-#endif
-	    );
+	newFireSpeedCap = ((fireLevel * ((int)driver->const_SacredFireSpeed - (int)driver->const_SingleTurboSpeed)) >> 8) + (int)driver->const_SingleTurboSpeed;
 
 	if (
 	    // any gain in boost,
