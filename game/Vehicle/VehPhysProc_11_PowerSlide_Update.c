@@ -1,5 +1,6 @@
 #include <common.h>
 
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006364c-0x800638d4.
 void DECOMP_VehPhysProc_PowerSlide_Update(struct Thread *t, struct Driver *d)
 {
 	s16 noInputTime;
