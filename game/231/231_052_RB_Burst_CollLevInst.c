@@ -1,5 +1,6 @@
 #include <common.h>
 
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b20a4-0x800b2154.
 void DECOMP_RB_Burst_CollLevInst(struct ScratchpadStruct *sps, struct BSP *bspHitbox)
 {
 	s16 model;
@@ -24,8 +25,13 @@ void DECOMP_RB_Burst_CollLevInst(struct ScratchpadStruct *sps, struct BSP *bspHi
 	// 8: PU_RANDOM_CRATE (weapon box)
 	if (model < PU_TIME_CRATE_1)
 	{
-		// skip nullptr checks, nullptr is not possible
 		meta = DECOMP_COLL_LevModelMeta(model);
+		if (meta == NULL)
+			return;
+
+		if (meta->LInC == NULL)
+			return;
+
 		meta->LInC(inst, sps->Union.ThBuckColl.thread, sps);
 		return;
 	}

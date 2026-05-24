@@ -34,10 +34,12 @@
 #include "231_046_RB_Blowup_ProcessBucket.c"
 #include "231_047_RB_Blowup_ThTick.c"
 
-// TODO(aalhendi): 048 and 053 still need RB_Burst_CollLevInst / Teeth dependency cleanup.
+// TODO(aalhendi): 048 RB_Blowup_Init still needs a retail pass before wiring.
 #include "231_049_RB_Burst_ProcessBucket.c"
 #include "231_050_RB_Burst_ThTick.c"
 #include "231_051_RB_Burst_CollThBucket.c"
+#include "231_052_RB_Burst_CollLevInst.c"
+#include "231_053_RB_Burst_Init.c"
 #include "231_055_RB_GetThread_ClosestTracker.c"
 #include "231_056_RB_Baron_ThTick.c"
 #include "231_057_RB_Baron_LInB.c"
@@ -63,5 +65,5 @@
 #include "231_114_115_RB_Snowball.c"
 #include "231_116_119_RB_Spider.c"
 #include "231_120_RB_StartText_ProcessBucket.c"
-// TODO(aalhendi): 122-126 Teeth still need sound/runtime dependency cleanup.
+#include "231_122_126_RB_Teeth.c"
 #include "231_127_129_RB_Turtle.c"

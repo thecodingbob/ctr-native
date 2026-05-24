@@ -1,5 +1,6 @@
 #include <common.h>
 
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ae478-0x800ae524.
 void DECOMP_RB_MovingExplosive_Explode(struct Thread *t, struct Instance *inst, struct TrackerWeapon *tw)
 {
 	s16 soundId;
@@ -32,12 +33,7 @@ void DECOMP_RB_MovingExplosive_Explode(struct Thread *t, struct Instance *inst, 
 	// stop audio of rolling
 	OtherFX_RecycleMute(&tw->audioPtr);
 
-#ifndef REBUILD_PC
 	DECOMP_RB_Burst_Init(inst);
-#else
-	// TODO(aalhendi): Retail calls RB_Burst_Init here.
-	// Native still needs the burst/Teeth dependency chain wired.
-#endif
 
 	// This thread is now dead
 	t->flags |= 0x800;

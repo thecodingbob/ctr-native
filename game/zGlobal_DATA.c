@@ -97,12 +97,8 @@ void DECOMP_RB_Crystal_LInB()
 int DECOMP_RB_Crystal_LInC()
 {
 }
-void DECOMP_RB_Teeth_LInB()
-{
-}
-int DECOMP_RB_Teeth_LInC()
-{
-}
+// void DECOMP_RB_Teeth_LInB() {}	-- DONE
+// int DECOMP_RB_Teeth_LInC() {}		-- DONE
 
 void AH_Sign_LInB()
 {
