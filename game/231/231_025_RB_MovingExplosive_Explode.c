@@ -26,14 +26,17 @@ void DECOMP_RB_MovingExplosive_Explode(struct Thread *t, struct Instance *inst, 
 		soundId = 0x4c;
 	}
 
-#ifndef REBUILD_PS1
 	// play explosion sound
 	PlaySound3D(soundId, inst);
 
 	// stop audio of rolling
 	OtherFX_RecycleMute(&tw->audioPtr);
 
+#ifndef REBUILD_PC
 	DECOMP_RB_Burst_Init(inst);
+#else
+	// TODO(aalhendi): Retail calls RB_Burst_Init here.
+	// Native still needs the burst/Teeth dependency chain wired.
 #endif
 
 	// This thread is now dead

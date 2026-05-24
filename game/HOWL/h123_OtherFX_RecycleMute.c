@@ -9,3 +9,8 @@ void DECOMP_OtherFX_RecycleMute(int *soundID_Count)
 		*soundID_Count = 0;
 	}
 }
+
+void OtherFX_RecycleMute(int *soundID_Count)
+{
+	DECOMP_OtherFX_RecycleMute(soundID_Count);
+}
