@@ -112,6 +112,7 @@ void DECOMP_MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *g
 					else
 					{
 						uVar3 = gGT->timer;
+						// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80034f84-0x80034fec for frozen-time tick SFX.
 						if (uVar3 == (uVar3 / 6) * 6)
 						{
 							if (uVar3 == (uVar3 / 0xc) * 0xc)
@@ -278,6 +279,7 @@ void DECOMP_MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *g
 					DECOMP_RECTMENU_ClearInput();
 					gGT->gameMode1 &= ~PAUSE_1;
 
+					// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800354dc-0x80035508 for unpause audio side effects.
 					DECOMP_MainFrame_TogglePauseAudio(0);
 					DECOMP_OtherFX_Play(1, 1);
 
