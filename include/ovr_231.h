@@ -427,13 +427,13 @@ struct FlameJet
 
 	// 0xC
 	// adds 0x100 per frame
-	int unk;
+	s16 unk;
 
 	// 0xe
-	int cooldown;
+	s16 cooldown;
 
 	// 0x10
-	void *audioPtr;
+	int audioPtr;
 
 	// 0x14 bytes large
 };

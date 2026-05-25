@@ -306,10 +306,17 @@ void DECOMP_RB_FlameJet_ThTick(struct Thread *t)
 	fjInst = t->inst;
 	fjObj = (struct FlameJet *)t->object;
 
+	// NOTE(aalhendi): ASM-verified audio/lifecycle path for NTSC-U 926 0x800b6728-0x800b6938.
+	if (fjObj->cooldown != 0)
+	{
+		fjObj->cooldown--;
+		return;
+	}
+
 	// in first 45 frames (1.5s)
 	if (fjObj->cycleTimer < 0x2d)
 	{
-		PlaySound3D_Flags((u32 *)fjObj->audioPtr, 0x68, fjInst);
+		PlaySound3D_Flags((u32 *)&fjObj->audioPtr, 0x68, fjInst);
 
 		// [unused variable?]
 		fjObj->unk += 0x100;
@@ -365,7 +372,7 @@ void DECOMP_RB_FlameJet_ThTick(struct Thread *t)
 	else if (fjObj->cycleTimer == 0x2d)
 	{
 		if (fjObj->audioPtr != 0)
-			OtherFX_RecycleMute((int *)fjObj->audioPtr);
+			OtherFX_RecycleMute(&fjObj->audioPtr);
 	}
 
 	// repeat cycle every 105 (3.5s)
@@ -391,12 +398,15 @@ void DECOMP_RB_FlameJet_LInB(struct Instance *inst)
 	// yellow
 	inst->flags |= 0x30000;
 
+	if (inst->thread != 0)
+		return;
+
 	t = DECOMP_PROC_BirthWithObject(
 	    // creation flags
 	    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct FlameJet), NONE, SMALL, STATIC),
 
 	    DECOMP_RB_FlameJet_ThTick, // behavior
-	    0,                         // debug name
+	    "flamejet",                // debug name
 	    0                          // thread relative
 	);
 
@@ -407,12 +417,25 @@ void DECOMP_RB_FlameJet_LInB(struct Instance *inst)
 
 	fjObj = (struct FlameJet *)t->object;
 	fjObj->cycleTimer = 0;
+	fjObj->cooldown = 0;
 	fjObj->dirX = inst->matrix.m[0][2] * -0x4b >> 5;
 	fjObj->dirZ = inst->matrix.m[2][2] * 0x4b >> 5;
 	fjObj->audioPtr = 0;
 
-	// put on separate cycles
-	void **pointers = ST1_GETPOINTERS(sdata->gGT->level1->ptrSpawnType1);
-	metaArray = (s16 *)pointers[ST1_SPAWN];
-	t->cooldownFrameCount = metaArray[inst->name[9] - '0'];
+	fjBoxDesc.bbox.min[0] = -0x40;
+	fjBoxDesc.bbox.min[1] = -0x40;
+	fjBoxDesc.bbox.min[2] = 0;
+	fjBoxDesc.bbox.max[0] = 0x40;
+	fjBoxDesc.bbox.max[1] = 0x80;
+	fjBoxDesc.bbox.max[2] = 0x140;
+
+	if (sdata->gGT->level1->ptrSpawnType1->count > 0)
+	{
+		// put on separate cycles
+		void **pointers = ST1_GETPOINTERS(sdata->gGT->level1->ptrSpawnType1);
+		metaArray = (s16 *)pointers[ST1_SPAWN];
+
+		fjID = inst->name[strlen(inst->name) - 1] - '0';
+		fjObj->cooldown = metaArray[fjID];
+	}
 }
