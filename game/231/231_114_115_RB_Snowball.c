@@ -2,6 +2,8 @@
 
 void RB_Minecart_CheckColl(struct Instance *minecartInst, struct Thread *minecartTh);
 
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b92ac-0x800b95fc.
+
 void DECOMP_RB_Snowball_ThTick(struct Thread *t)
 {
 	struct Instance *snowInst;
@@ -16,69 +18,59 @@ void DECOMP_RB_Snowball_ThTick(struct Thread *t)
 	snowObj = (struct Snowball *)t->object;
 
 	modelID = snowInst->model->id;
-	ptrSpawnType2 = &sdata->gGT->level1->ptrSpawnType2_PosRot[snowObj->snowID];
 
-#if 0
-	// Naughty Dog bug, the boulder has modelID:
-	// TEMP_SNOWBALL (0x22), so the sound never plays,
-	  
-
-	if(modelID == DYNAMIC_SNOWBALL)
+	if (sdata->gGT->level1->numSpawnType2_PosRot != 0)
 	{
-		// snowball roll
-		soundID = 0x73;
-RollSound:
-		PlaySound3D_Flags(&snowObj->audioPtr, soundID, snowInst);
+		ptrSpawnType2 = &sdata->gGT->level1->ptrSpawnType2_PosRot[snowObj->snowID];
+
+		// Retail checks DYNAMIC_SNOWBALL, but Blizzard Bluff uses TEMP_SNOWBALL.
+		if (modelID == DYNAMIC_SNOWBALL)
+		{
+			// snowball roll
+			soundID = 0x73;
+			PlaySound3D_Flags(&snowObj->audioPtr, soundID, snowInst);
+		}
+
+		// sewer speedway barrel
+		else if (modelID == DYNAMIC_BARREL)
+		{
+			// barrel roll
+			soundID = 0x74;
+			PlaySound3D_Flags(&snowObj->audioPtr, soundID, snowInst);
+		}
+
+		baseShort = snowObj->pointIndex;
+		if (baseShort > snowObj->numPoints)
+			baseShort = (snowObj->numPoints * 2) - baseShort;
+
+		baseShort *= 6;
+
+		ConvertRotToMatrix(&snowInst->matrix, &ptrSpawnType2->posCoords[baseShort + 3]);
+
+		snowInst->matrix.t[0] = ptrSpawnType2->posCoords[baseShort + 0];
+		snowInst->matrix.t[1] = ptrSpawnType2->posCoords[baseShort + 1];
+		snowInst->matrix.t[2] = ptrSpawnType2->posCoords[baseShort + 2];
+
+		RB_Minecart_CheckColl(snowInst, t);
 	}
-	
-	// sewer speedway barrel
-	else if(modelID == DYNAMIC_BARREL)
-	{
-		// barrel roll
-		soundID = 0x74;
-		goto RollSound;
-	}
-#endif
 
-	// sewer speedway barrel
-	if (modelID == DYNAMIC_BARREL)
-	{
-#ifndef REBUILD_PS1
-		// barrel roll
-		soundID = 0x74;
-		PlaySound3D_Flags(&snowObj->audioPtr, soundID, snowInst);
-#endif
-	}
-
-	baseShort = snowObj->pointIndex;
-	if (baseShort > snowObj->numPoints)
-		baseShort = (snowObj->numPoints * 2) - baseShort;
-
-	baseShort *= 6;
-
-	// converted to TEST in rebuildPS1
-	ConvertRotToMatrix(&snowInst->matrix, &ptrSpawnType2->posCoords[baseShort + 3]);
-
-	snowInst->matrix.t[0] = ptrSpawnType2->posCoords[baseShort + 0];
-	snowInst->matrix.t[1] = ptrSpawnType2->posCoords[baseShort + 1];
-	snowInst->matrix.t[2] = ptrSpawnType2->posCoords[baseShort + 2];
-
-	// [skip safety checks]
 	snowObj->pointIndex = (snowObj->pointIndex + 1) % (snowObj->numPoints * 2);
-
-	RB_Minecart_CheckColl(snowInst, t);
 }
 
 void DECOMP_RB_Snowball_LInB(struct Instance *inst)
 {
 	struct Snowball *snowObj;
+	struct Thread *t;
 
-	struct Thread *t = DECOMP_PROC_BirthWithObject(
+	if (inst->thread != 0)
+		return;
+
+	t = DECOMP_PROC_BirthWithObject(
 	    // creation flags
 	    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Snowball), NONE, SMALL, STATIC),
 
 	    DECOMP_RB_Snowball_ThTick, // behavior
-	    0,                         // debug name
+	    "snowball",                // debug name
 	    0                          // thread relative
 	);
 
@@ -88,17 +80,17 @@ void DECOMP_RB_Snowball_LInB(struct Instance *inst)
 	t->inst = inst;
 
 	snowObj = ((struct Snowball *)t->object);
+	snowObj->rot_unused[0] = 0;
 
-	// snowball and barrel
-	if (inst->name[0] == 's')
-		snowObj->snowID = 0;
-	else /*barrel*/
-		snowObj->snowID = inst->name[7] - '0';
+	snowObj->snowID = inst->name[strlen(inst->name) - 1] - '0';
 
 	snowObj->numPoints = sdata->gGT->level1->ptrSpawnType2_PosRot[snowObj->snowID].numCoords - 1;
 
-	// must set, it wont default
 	inst->scale[0] = 0x1000;
 	inst->scale[1] = 0x1000;
 	inst->scale[2] = 0x1000;
+
+	snowObj->rot_unused[1] = inst->matrix.m[0][2] >> 2;
+	snowObj->rot_unused[2] = inst->matrix.m[2][2] >> 2;
+	snowObj->audioPtr = 0;
 }
