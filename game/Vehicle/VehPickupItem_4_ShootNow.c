@@ -614,7 +614,7 @@ void DECOMP_VehPickupItem_ShootNow(struct Driver *d, int weaponID, int flags)
 		PlaySound3D(0x4d, weaponInst);
 
 		// if human and not AI (AIs can not use Warpball)
-		// if((d->actionsFlagSet & 0x100000) == 0)
+		if ((d->actionsFlagSet & 0x100000) == 0)
 		{
 			Voiceline_RequestPlay(0xc, data.characterIDs[d->driverID], 0x10);
 		}
