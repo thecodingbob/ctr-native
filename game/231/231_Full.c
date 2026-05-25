@@ -74,6 +74,7 @@
 #include "231_092_094_RB_Follower.c"
 #include "231_095_098_RB_Fruit.c"
 #include "231_099_100_RB_Minecart.c"
+#include "231_101_103_RB_Orca.c"
 #include "231_104_109_RB_Plant.c"
 #include "231_110_113_RB_Seal.c"
 #include "231_114_115_RB_Snowball.c"

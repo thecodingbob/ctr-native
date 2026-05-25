@@ -20,7 +20,7 @@ void DECOMP_RB_FlameJet_LInB();
 // void DECOMP_RB_Armadillo_LInB();	-- DONE
 // void DECOMP_RB_Blade_LInB();		-- DONE
 // void DECOMP_RB_Seal_LInB();		-- DONE
-void RB_Orca_LInB();
+void DECOMP_RB_Orca_LInB();
 // void DECOMP_RB_Baron_LInB();		-- DONE
 // void DECOMP_RB_Turtle_LInB();		-- DONE
 // void DECOMP_RB_Turtle_LInC();		-- DONE
@@ -58,9 +58,7 @@ void AH_Sign_LInB();
 // void DECOMP_RB_Armadillo_LInB() {}-- DONE
 // void DECOMP_RB_Blade_LInB() {}	-- DONE
 // void DECOMP_RB_Seal_LInB() {}		-- DONE
-void RB_Orca_LInB()
-{
-}
+// void DECOMP_RB_Orca_LInB() {}	-- DONE
 // void DECOMP_RB_Baron_LInB() {}	-- DONE
 // void DECOMP_RB_Turtle_LInB() {}	-- DONE
 // void DECOMP_RB_Turtle_LInC() {}	-- DONE
@@ -88,7 +86,7 @@ void AH_Sign_LInB()
 #endif
 
 // Missing from Decomp/General:
-// GenericMine, Orca, Spider, Banner, Sign, CS
+// GenericMine, Banner, Sign, CS
 
 // This inserts debug names if needed
 #if 1
@@ -1424,7 +1422,7 @@ struct Data
                     SET_MDM(NULL, DECOMP_RB_Seal_LInB, NULL),
 
                     // 0x4d - DYNAMIC_ORCA (unused, polar pass)
-                    SET_MDM(NULL, NULL /*RB_Orca_LInB*/, NULL),
+                    SET_MDM(NULL, DECOMP_RB_Orca_LInB, NULL),
 
                     // 0x4e - DYNAMIC_BARREL (sewer speedway)
                     SET_MDM(NULL, DECOMP_RB_Snowball_LInB, NULL),

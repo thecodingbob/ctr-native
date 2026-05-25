@@ -510,6 +510,9 @@ struct Orca
 	// 0x16
 	s16 animIndex;
 
+	// 0x18
+	s16 unused[7];
+
 	// 0x26
 	s16 numFrames;
 
