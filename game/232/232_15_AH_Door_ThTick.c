@@ -46,7 +46,7 @@ void DECOMP_AH_Door_ThTick(struct Thread *t)
 	}
 
 	// Cosine(angle)
-	ratio = DECOMP_MATH_Cos((int)doorInst->instDef->rot[1]);
+	ratio = MATH_Cos((int)doorInst->instDef->rot[1]);
 
 	// X distance of player and door
 	distX = doorInst->matrix.t[0] + (ratio * 0x300 >> 0xc) - driver->instSelf->matrix.t[0];
@@ -55,7 +55,7 @@ void DECOMP_AH_Door_ThTick(struct Thread *t)
 	distY = doorInst->matrix.t[1] - driver->instSelf->matrix.t[1];
 
 	// Sine(angle)
-	ratio = DECOMP_MATH_Sin((int)doorInst->instDef->rot[1]);
+	ratio = MATH_Sin((int)doorInst->instDef->rot[1]);
 
 	// Z distance of player and door
 	distZ = doorInst->matrix.t[2] + (ratio * 0x300 >> 0xc) - driver->instSelf->matrix.t[2];
@@ -294,11 +294,11 @@ void DECOMP_AH_Door_ThTick(struct Thread *t)
 									iVar17 += 0x1f;
 								}
 
-								ratio = DECOMP_MATH_Sin(door->keyOrbit + iVar18);
+								ratio = MATH_Sin(door->keyOrbit + iVar18);
 
 								keyInst->matrix.t[0] = driver->instSelf->matrix.t[0] + ((iVar17 >> 5) * ratio >> 0xc);
 
-								ratio = DECOMP_MATH_Cos(door->keyOrbit + iVar18);
+								ratio = MATH_Cos(door->keyOrbit + iVar18);
 
 								keyInst->matrix.t[2] = driver->instSelf->matrix.t[2] + ((iVar17 >> 5) * ratio >> 0xc);
 							}
@@ -365,18 +365,18 @@ void DECOMP_AH_Door_ThTick(struct Thread *t)
 
 		// == After 4 seconds ==
 
-		ratio = DECOMP_MATH_Cos((int)doorInst->instDef->rot[1]);
+		ratio = MATH_Cos((int)doorInst->instDef->rot[1]);
 
-		i = DECOMP_MATH_Cos((int)doorInst->instDef->rot[1] + 0x400);
+		i = MATH_Cos((int)doorInst->instDef->rot[1] + 0x400);
 
 		// desired posX for transition
 		desiredPos[0] = doorInst->matrix.t[0] + (s16)(ratio * 0x312 >> 0xc) + (s16)(i * 0x600 >> 0xc);
 		// desired posY for transition
 		desiredPos[1] = doorInst->matrix.t[1] + 0x17a;
 
-		ratio = DECOMP_MATH_Sin((int)doorInst->instDef->rot[1]);
+		ratio = MATH_Sin((int)doorInst->instDef->rot[1]);
 
-		i = DECOMP_MATH_Sin((int)doorInst->instDef->rot[1] + 0x400);
+		i = MATH_Sin((int)doorInst->instDef->rot[1] + 0x400);
 
 		// desired posZ for transition
 		desiredPos[2] = doorInst->matrix.t[2] + (s16)(ratio * 0x312 >> 0xc) + (s16)(i * 0x600 >> 0xc);

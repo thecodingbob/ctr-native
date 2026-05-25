@@ -4,13 +4,13 @@
 void VehPhysForce_ConvertSpeedToVec(struct Driver *driver, Vec3 *vel)
 {
 	int yAngle = driver->axisRotationY;
-	int ySine = DECOMP_MATH_Sin(yAngle);
-	int yCos = DECOMP_MATH_Cos(yAngle);
+	int ySine = MATH_Sin(yAngle);
+	int yCos = MATH_Cos(yAngle);
 	int yComponent = FP_MULT(driver->speed, yCos);
 
 	int xAngle = driver->axisRotationX;
-	int xCos = DECOMP_MATH_Cos(xAngle);
-	int xSine = DECOMP_MATH_Sin(xAngle);
+	int xCos = MATH_Cos(xAngle);
+	int xSine = MATH_Sin(xAngle);
 
 	vel->x = FP_MULT(yComponent, xSine);
 	vel->y = FP_MULT(driver->speed, ySine);

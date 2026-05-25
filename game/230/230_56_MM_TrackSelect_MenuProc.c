@@ -382,10 +382,10 @@ void DECOMP_MM_TrackSelect_MenuProc(struct RectMenu *menu)
 		r.h = 0x19;
 
 		// posX of track list
-		iVar11 = (u32)D230.transitionMeta_trackSel[0].currX + (DECOMP_MATH_Cos(uVar15) * 0x19 >> 9) + -0xb4;
+		iVar11 = (u32)D230.transitionMeta_trackSel[0].currX + (MATH_Cos(uVar15) * 0x19 >> 9) + -0xb4;
 
 		// posY of track list
-		iVar9 = (u32)D230.transitionMeta_trackSel[0].currY + (DECOMP_MATH_Sin(uVar15) * 200 >> 0xc);
+		iVar9 = (u32)D230.transitionMeta_trackSel[0].currY + (MATH_Sin(uVar15) * 200 >> 0xc);
 
 		sVar7 = (s16)iVar9 + 0x60;
 		r.x = (s16)iVar11;

@@ -28,7 +28,7 @@ int DECOMP_RaceFlag_MoveModels(int frameIndex, int numFrames)
 		angle = (midpoint - frameIndex) * 0x400;
 
 		// 50% - sin(angle) / 2
-		result = 0x800 - DECOMP_MATH_Sin(angle / midpoint) / 2;
+		result = 0x800 - MATH_Sin(angle / midpoint) / 2;
 	}
 	// if more than half done
 	else
@@ -36,7 +36,7 @@ int DECOMP_RaceFlag_MoveModels(int frameIndex, int numFrames)
 		angle = (frameIndex - midpoint) * 0x400;
 
 		// sin(angle) / 2 + 50%
-		result = DECOMP_MATH_Sin(angle / midpoint) / 2 + 0x800;
+		result = MATH_Sin(angle / midpoint) / 2 + 0x800;
 	}
 	return result;
 }

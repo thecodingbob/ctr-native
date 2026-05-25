@@ -7,7 +7,7 @@ void DECOMP_UI_WeaponBG_AnimateShine(void)
 	u32 local_14;
 	u32 local_10;
 
-	sine = DECOMP_MATH_Sin((int)sdata->wumpaShineTheta);
+	sine = MATH_Sin((int)sdata->wumpaShineTheta);
 	sine = (sine < 0) ? -sine : sine;
 
 	// Calculate wumpaShineColor1

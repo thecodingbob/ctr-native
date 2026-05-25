@@ -7,8 +7,8 @@ CTRL + F and look for "Other 3D rotation matrices can be obtained from these thr
 
 void TEST_ConvertRotToMatrix(MATRIX *m, s16 *rot)
 {
-#define mSIN DECOMP_MATH_Sin
-#define mCOS DECOMP_MATH_Cos
+#define mSIN MATH_Sin
+#define mCOS MATH_Cos
 
 // This is a ZYX
 // gimbal lock on Z axis, bugs Hot Air Skyway's "blade" no good,

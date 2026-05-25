@@ -197,8 +197,8 @@ void DECOMP_AH_WarpPad_ThTick(struct Thread *t)
 
 		angleCamToWarppad = -angleCamToWarppad;
 
-		angleSin = DECOMP_MATH_Sin(angleCamToWarppad);
-		angleCos = DECOMP_MATH_Cos(angleCamToWarppad);
+		angleSin = MATH_Sin(angleCamToWarppad);
+		angleCos = MATH_Cos(angleCamToWarppad);
 
 		// no 10s digit
 		if (instArr[WPIS_CLOSED_10S] == 0)

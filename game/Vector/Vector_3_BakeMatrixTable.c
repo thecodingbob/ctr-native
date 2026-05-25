@@ -21,10 +21,10 @@ static void Vector_BakeMatrixTable_PrepareBlastedFrames(void)
 		char *entry = entries + (i * 0x20);
 		s32 angle2000 = (i << 0xd) / count;
 		s32 angle3000 = (i * 0x3000) / count;
-		s32 sin2000 = DECOMP_MATH_Sin((u32)angle2000);
+		s32 sin2000 = MATH_Sin((u32)angle2000);
 
 		*(s16 *)(void *)(entry + 0xc) = (s16)angle2000;
-		*(s16 *)(void *)(entry + 0x8) = (s16)(-DECOMP_MATH_Sin((u32)angle3000) / 7);
+		*(s16 *)(void *)(entry + 0x8) = (s16)(-MATH_Sin((u32)angle3000) / 7);
 		*(s16 *)(void *)(entry + 0x10) = Vector_BakeMatrixTable_Div4TowardZero(sin2000) + 0x1000;
 		*(s16 *)(void *)(entry + 0x14) = (s16)(((sin2000 * 6) / 0x28) + 0x1000);
 	}

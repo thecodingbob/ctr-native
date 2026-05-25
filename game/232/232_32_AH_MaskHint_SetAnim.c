@@ -43,8 +43,8 @@ void DECOMP_AH_MaskHint_SetAnim(int scale)
 	int angle = (scale << 0xf) >> 0xc;
 	D232.maskAngle = angle;
 
-	int sin = DECOMP_MATH_Sin(angle);
-	int cos = DECOMP_MATH_Cos(angle);
+	int sin = MATH_Sin(angle);
+	int cos = MATH_Cos(angle);
 
 	struct Instance *mhInst = sdata->instMaskHints3D;
 	mhInst->matrix.t[0] = posCurr[0] + (s16)((sin * rot) >> 0xc);
@@ -56,6 +56,6 @@ void DECOMP_AH_MaskHint_SetAnim(int scale)
 	((struct MaskHint *)mhInst->thread->object)->scale = scale * 4 - 1;
 
 	angle = (sdata->frameCounter + gGT->timer) * 0x20;
-	sin = DECOMP_MATH_Sin(angle);
+	sin = MATH_Sin(angle);
 	mhInst->matrix.t[1] = posCurr[1] + (s16)(((sin << 4) >> 0xc) * scale >> 0xc);
 }

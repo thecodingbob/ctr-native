@@ -22,10 +22,10 @@ void DECOMP_CAM_FollowDriver_Spin360(struct CameraDC *cDC, int param_2, struct D
 	}
 
 	int angle = cDC->unk90;
-	ratio = DECOMP_MATH_Sin(angle);
+	ratio = MATH_Sin(angle);
 	desiredPos[0] = (s16)(d->posCurr.x >> 8) + (s16)(CAM_MulLo(ratio, cDC->transitionTo.pos[2]) >> 0xc);
 
-	ratio = DECOMP_MATH_Cos(angle);
+	ratio = MATH_Cos(angle);
 	desiredPos[2] = (s16)(d->posCurr.z >> 8) + (s16)(CAM_MulLo(ratio, cDC->transitionTo.pos[2]) >> 0xc);
 
 	desiredPos[1] = (s16)(d->posCurr.y >> 8) + cDC->transitionTo.pos[1];

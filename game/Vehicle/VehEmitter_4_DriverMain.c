@@ -72,8 +72,8 @@ static void VehEmitter_Skidmarks(struct Thread *thread, struct Driver *d, u32 te
 	MATRIX *m = &inst->matrix;
 	u8 color = ((inst->flags & SPLIT_LINE) == 0) ? inst->unk50 : inst->unk51;
 	u8 flags = ((terrainFlags & 8) == 0) ? 0 : 1;
-	int sin = DECOMP_MATH_Sin(d->axisRotationX);
-	int cos = DECOMP_MATH_Cos(d->axisRotationX);
+	int sin = MATH_Sin(d->axisRotationX);
+	int cos = MATH_Cos(d->axisRotationX);
 	int lateralX = (sin * 15) >> 12;
 	int lateralZ = (cos * 15) >> 12;
 	int widthX = (cos * 10) >> 12;

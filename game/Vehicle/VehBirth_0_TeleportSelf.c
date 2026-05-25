@@ -167,9 +167,9 @@ void DECOMP_VehBirth_TeleportSelf(struct Driver *d, u8 spawnFlag, int spawnPosY)
 			int rotY = doorInst->rot[1];
 
 			gGT->gameMode2 |= VEH_FREEZE_DOOR;
-			posBottom[0] = doorInst->pos[0] + VehBirth_ScaleTrig(DECOMP_MATH_Cos(rotY), 800) + VehBirth_ScaleTrig(DECOMP_MATH_Cos(rotY + 0x400), 0x200);
+			posBottom[0] = doorInst->pos[0] + VehBirth_ScaleTrig(MATH_Cos(rotY), 800) + VehBirth_ScaleTrig(MATH_Cos(rotY + 0x400), 0x200);
 			posBottom[1] = doorInst->pos[1] + 0x17a;
-			posBottom[2] = doorInst->pos[2] + VehBirth_ScaleTrig(DECOMP_MATH_Sin(rotY), 800) + VehBirth_ScaleTrig(DECOMP_MATH_Sin(rotY + 0x400), 0x200);
+			posBottom[2] = doorInst->pos[2] + VehBirth_ScaleTrig(MATH_Sin(rotY), 800) + VehBirth_ScaleTrig(MATH_Sin(rotY + 0x400), 0x200);
 		}
 		else if (spawnOutsideBoss != 0)
 		{

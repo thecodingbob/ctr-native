@@ -58,15 +58,11 @@
 #define CAM_MapRange_PosPoints     DECOMP_CAM_MapRange_PosPoints
 #define CAM_ProcessTransition      DECOMP_CAM_ProcessTransition
 #define CAM_StartLine_FlyIn        DECOMP_CAM_StartLine_FlyIn
-#define MATH_Cos                   DECOMP_MATH_Cos
-#define MATH_Sin                   DECOMP_MATH_Sin
 #define VehCalc_MapToRange         DECOMP_VehCalc_MapToRange
 #include "game/CAMERA/CAM_17_FollowDriver_Normal.c"
 #include "game/CAMERA/CAM_18_MapRange_PosPoints.c"
 #include "game/CAMERA/CAM_19_ThTick.c"
 #undef VehCalc_MapToRange
-#undef MATH_Sin
-#undef MATH_Cos
 #undef CAM_StartLine_FlyIn
 #undef CAM_ProcessTransition
 #undef CAM_MapRange_PosPoints
@@ -77,8 +73,6 @@
 #undef CAM_FollowDriver_AngleAxis
 
 #define CAM_EndOfRace               DECOMP_CAM_EndOfRace
-#define MATH_Cos                    DECOMP_MATH_Cos
-#define MATH_Sin                    DECOMP_MATH_Sin
 #define OtherFX_Play_Echo           DECOMP_OtherFX_Play_Echo
 #define OtherFX_Play_LowLevel       DECOMP_OtherFX_Play_LowLevel
 #define PROC_CollidePointWithBucket DECOMP_PROC_CollidePointWithBucket
@@ -108,8 +102,6 @@
 #undef PROC_CollidePointWithBucket
 #undef OtherFX_Play_LowLevel
 #undef OtherFX_Play_Echo
-#undef MATH_Sin
-#undef MATH_Cos
 #undef CAM_EndOfRace
 
 #include "game/CDSYS/CDSYS_00_Init.c"

@@ -139,8 +139,8 @@ void DECOMP_RB_Warpball_ThTick(struct Thread *t)
 			tw->dir[0] = 0;
 			tw->dir[1] = DECOMP_RB_Hazard_InterpolateValue(tw->dir[1], ratan2(distX, distZ), rotSpeed);
 			tw->dir[2] = 0;
-			tw->vel[0] = (DECOMP_MATH_Sin(tw->dir[1]) * 7) >> 8;
-			tw->vel[2] = (DECOMP_MATH_Cos(tw->dir[1]) * 7) >> 8;
+			tw->vel[0] = (MATH_Sin(tw->dir[1]) * 7) >> 8;
+			tw->vel[2] = (MATH_Cos(tw->dir[1]) * 7) >> 8;
 
 			if (distY > 0)
 			{
@@ -222,8 +222,8 @@ void DECOMP_RB_Warpball_ThTick(struct Thread *t)
 			inst->matrix.t[2] = curr->pos[2] + ((distZ * fraction) >> 12);
 
 			tw->dir[1] = ratan2(distX, distZ);
-			tw->vel[0] = (DECOMP_MATH_Sin(tw->dir[1]) * 7) >> 8;
-			tw->vel[2] = (DECOMP_MATH_Cos(tw->dir[1]) * 7) >> 8;
+			tw->vel[0] = (MATH_Sin(tw->dir[1]) * 7) >> 8;
+			tw->vel[2] = (MATH_Cos(tw->dir[1]) * 7) >> 8;
 			tw->vel[1] = 0;
 		}
 	}

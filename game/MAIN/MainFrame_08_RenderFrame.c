@@ -450,7 +450,7 @@ void MenuHighlight()
 	int trig;
 
 	fc = sdata->frameCounter << 7;
-	trig = DECOMP_MATH_Sin(fc);
+	trig = MATH_Sin(fc);
 
 	trig = (trig << 6) >> 0xc;
 

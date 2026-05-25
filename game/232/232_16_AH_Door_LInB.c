@@ -117,13 +117,13 @@ void DECOMP_AH_Door_LInB(struct Instance *inst)
 	// set scaleX to -0x1000
 	otherDoorInst->scale[0] = 0xf000;
 
-	ratio = DECOMP_MATH_Cos((int)inst->instDef->rot[1]);
+	ratio = MATH_Cos((int)inst->instDef->rot[1]);
 
 	otherDoorInst->matrix.t[0] += (ratio * 0x600 >> 0xc);
 
 	otherDoorInst->matrix.t[1] = inst->matrix.t[1];
 
-	ratio = DECOMP_MATH_Sin((int)(int)inst->instDef->rot[1]);
+	ratio = MATH_Sin((int)(int)inst->instDef->rot[1]);
 
 	otherDoorInst->matrix.t[2] += (ratio * 0x600 >> 0xc);
 

@@ -7,8 +7,8 @@ void DECOMP_AH_Map_HubArrow(int posX, int posY, s16 *vertPos, char *vertCol, int
 
 	struct GameTracker *gGT = sdata->gGT;
 
-	int sin = DECOMP_MATH_Sin(angle);
-	int cos = DECOMP_MATH_Cos(angle);
+	int sin = MATH_Sin(angle);
+	int cos = MATH_Cos(angle);
 
 	for (int i = 0; i < 3; i++)
 	{

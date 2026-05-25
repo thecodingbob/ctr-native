@@ -76,7 +76,7 @@ void DECOMP_RB_Crystal_ThTick(struct Thread *t)
 	RB_Crystal_RotateStep(crystalInst, crystalObj);
 
 	// sine curve for vertical bounce
-	sine = DECOMP_MATH_Sin(crystalObj->rot[1]);
+	sine = MATH_Sin(crystalObj->rot[1]);
 
 	// set posY
 	crystalInst->matrix.t[1] = crystalInst->instDef->pos[1] + // original posY

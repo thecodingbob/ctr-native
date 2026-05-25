@@ -227,12 +227,12 @@ LAB_800aede8:
 	// Open garage door when player gets within radius of door
 	DECOMP_PROC_CollideHitboxWithBucket(gGT->threadBuckets[PLAYER].thread, SPS, 0);
 
-	ratio = DECOMP_MATH_Sin((int)inst->instDef->rot[1]);
+	ratio = MATH_Sin((int)inst->instDef->rot[1]);
 
 	pos[0] = (int)inst->instDef->pos[0] + (ratio * -0x280 >> 0xc);
 	pos[1] = (int)inst->instDef->pos[1];
 
-	ratio = DECOMP_MATH_Cos((int)inst->instDef->rot[1]);
+	ratio = MATH_Cos((int)inst->instDef->rot[1]);
 
 	pos[2] = (int)inst->instDef->pos[2] + (ratio * -0x280 >> 0xc);
 

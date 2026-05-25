@@ -65,8 +65,8 @@ void DECOMP_AH_Map_HubArrowOutter(void *hubPtrs, int arrowIndex, int posX, int p
 
 			int angle = iVar13 + inputAngle;
 
-			int sin = DECOMP_MATH_Sin(angle);
-			int cos = DECOMP_MATH_Cos(angle);
+			int sin = MATH_Sin(angle);
+			int cos = MATH_Cos(angle);
 
 			int iVar4 = (var5 & 1) + 0xc;
 

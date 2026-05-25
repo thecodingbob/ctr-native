@@ -55,8 +55,8 @@ static int CAM_SkyboxGlow_CalcCenterY(struct PushBuffer *pb)
 
 static int CAM_SkyboxGlow_CalcTilt(struct PushBuffer *pb)
 {
-	int sine = DECOMP_MATH_Sin(pb->rot[2]);
-	int cosine = DECOMP_MATH_Cos(pb->rot[2]);
+	int sine = MATH_Sin(pb->rot[2]);
+	int cosine = MATH_Cos(pb->rot[2]);
 	int ratio;
 	int shifted;
 

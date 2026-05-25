@@ -16,11 +16,11 @@ void CS_Podium_Prize_ThTick1(struct Thread *th)
 		prize[0x11] = DECOMP_VehCalc_InterpBySpeed(prize[0x11], 1, 0);
 	}
 
-	trig = DECOMP_MATH_Sin(prize[5]);
+	trig = MATH_Sin(prize[5]);
 	inst->matrix.t[0] = prize[0] + ((prize[0x11] * trig) >> 12);
 	inst->matrix.t[1] = prize[1] + prize[0x12];
 
-	trig = DECOMP_MATH_Cos(prize[5]);
+	trig = MATH_Cos(prize[5]);
 	inst->matrix.t[2] = prize[2] + ((prize[0x11] * trig) >> 12);
 
 	if (OVR_233.isCutsceneOver == 0)

@@ -1,5 +1,5 @@
 .set noreorder
 nop
-j DECOMP_MATH_Sin
+j MATH_Sin
 nop
 ;jr $ra

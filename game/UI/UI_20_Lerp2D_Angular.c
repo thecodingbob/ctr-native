@@ -22,7 +22,7 @@ void DECOMP_UI_Lerp2D_Angular(s16 *ptrPos, s16 drawnPosition, s16 absolutePositi
 	// absolute position
 	absolutePositionInt = (int)absolutePosition;
 
-	angle = DECOMP_MATH_Sin(((int)frameCounter << 0xb) / 5);
+	angle = MATH_Sin(((int)frameCounter << 0xb) / 5);
 
 	// if driver "just" passed another driver
 	if (absolutePositionInt < drawnPositionInt)

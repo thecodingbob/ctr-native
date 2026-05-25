@@ -36,7 +36,7 @@ void DECOMP_VehPhysForce_CounterSteer(struct Driver *driver)
 		angle = -angleLimit;
 	}
 
-	int sine = DECOMP_MATH_Sin(angle);
+	int sine = MATH_Sin(angle);
 	int counterSteerStrength = (driver->terrainMeta1->counterSteerRatio * -8000) >> 8;
 	SVec3 accel = VehPhysForce_CounterSteer_RotateVector(&driver->matrixMovingDir, (s16)((counterSteerStrength * sine) >> 12), 0, 0);
 

@@ -319,8 +319,8 @@ void DECOMP_AH_MaskHint_Update()
 		gGT->pushBuffer[k].rot[2] = 0; // required
 
 		// move backwards a little
-		gGT->pushBuffer[k].pos[2] += (0xc0 * DECOMP_MATH_Cos(gGT->pushBuffer[k].rot[1])) >> 0xC;
-		gGT->pushBuffer[k].pos[0] += (0xc0 * DECOMP_MATH_Sin(gGT->pushBuffer[k].rot[1])) >> 0xC;
+		gGT->pushBuffer[k].pos[2] += (0xc0 * MATH_Cos(gGT->pushBuffer[k].rot[1])) >> 0xC;
+		gGT->pushBuffer[k].pos[0] += (0xc0 * MATH_Sin(gGT->pushBuffer[k].rot[1])) >> 0xC;
 #endif
 
 		break;

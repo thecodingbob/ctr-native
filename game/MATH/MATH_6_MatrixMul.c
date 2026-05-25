@@ -12,8 +12,3 @@ void MATH_MatrixMul(MATRIX *output, MATRIX *input, VECTOR *rotate)
 	output->t[1] += input->t[1];
 	output->t[2] += input->t[2];
 }
-
-void DECOMP_MATH_MatrixMul(MATRIX *output, MATRIX *input, VECTOR *rotate)
-{
-	MATH_MatrixMul(output, input, rotate);
-}

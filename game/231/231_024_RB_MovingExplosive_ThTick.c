@@ -143,8 +143,8 @@ LAB_800adc08:;
 		{
 			tw->rotY = DECOMP_RB_Hazard_InterpolateValue(tw->rotY, (int)sVar3, 4);
 
-			tw->vel[0] = (DECOMP_MATH_Sin(tw->rotY) * 3) >> 7;
-			tw->vel[2] = (DECOMP_MATH_Cos(tw->rotY) * 3) >> 7;
+			tw->vel[0] = (MATH_Sin(tw->rotY) * 3) >> 7;
+			tw->vel[2] = (MATH_Cos(tw->rotY) * 3) >> 7;
 
 			// if bomb is rolled backwards
 			if ((tw->flags & 0x20) != 0)
@@ -162,8 +162,8 @@ LAB_800adc08:;
 			{
 				tw->rotY = DECOMP_RB_Hazard_InterpolateValue(tw->rotY, (int)sVar3, 0x40);
 
-				tw->vel[0] = (DECOMP_MATH_Sin(tw->rotY) * 5) >> 8;
-				tw->vel[2] = (DECOMP_MATH_Cos(tw->rotY) * 5) >> 8;
+				tw->vel[0] = (MATH_Sin(tw->rotY) * 5) >> 8;
+				tw->vel[2] = (MATH_Cos(tw->rotY) * 5) >> 8;
 			}
 
 			// if 10 wumpa were used
@@ -171,8 +171,8 @@ LAB_800adc08:;
 			{
 				tw->rotY = DECOMP_RB_Hazard_InterpolateValue(tw->rotY, (int)sVar3, 0x80);
 
-				tw->vel[0] = (DECOMP_MATH_Sin(tw->rotY) * 3) >> 7;
-				tw->vel[2] = (DECOMP_MATH_Cos(tw->rotY) * 3) >> 7;
+				tw->vel[0] = (MATH_Sin(tw->rotY) * 3) >> 7;
+				tw->vel[2] = (MATH_Cos(tw->rotY) * 3) >> 7;
 			}
 
 			tw->dir[0] = 0;

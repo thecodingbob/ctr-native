@@ -20,11 +20,11 @@ static int Particle_OscillatorValue(struct ParticleOscillator *osc)
 	switch (osc->flags & 7)
 	{
 	case 0:
-		value = DECOMP_MATH_Sin(product >> 5);
+		value = MATH_Sin(product >> 5);
 		break;
 
 	case 1:
-		value = DECOMP_MATH_Sin(product >> 6);
+		value = MATH_Sin(product >> 6);
 		if (value < 0)
 			value = -value;
 		value = (value << 1) - 0x1000;

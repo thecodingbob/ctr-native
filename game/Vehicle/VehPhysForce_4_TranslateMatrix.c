@@ -304,8 +304,8 @@ static void VehPhysForce_TranslateMatrix_SpawnWakeParticle(struct Driver *d)
 
 static void VehPhysForce_TranslateMatrix_SetWakeRotation(struct Instance *wake, struct Driver *d)
 {
-	s32 sin = DECOMP_MATH_Sin(d->angle);
-	s32 cos = DECOMP_MATH_Cos(d->angle);
+	s32 sin = MATH_Sin(d->angle);
+	s32 cos = MATH_Cos(d->angle);
 
 	// Retail writes paired matrix shorts with word stores.
 	*(s32 *)(void *)&wake->matrix.m[0][0] = cos;
