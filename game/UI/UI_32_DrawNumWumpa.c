@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_UI_DrawNumWumpa(s16 posX, s16 posY, struct Driver *d)
+void UI_DrawNumWumpa(s16 posX, s16 posY, struct Driver *d)
 {
 	char currWumpa;
 	int currWumpa10s;
@@ -16,11 +16,11 @@ void DECOMP_UI_DrawNumWumpa(s16 posX, s16 posY, struct Driver *d)
 	if (gGT->numPlyrCurrGame < 3)
 	{
 		// Draw 'x' before drawing number of wumpa
-		DECOMP_DecalFont_DrawLine(&sdata->s_x[0], (int)posX, posY + 4, FONT_SMALL, ORANGE);
+		DecalFont_DrawLine(&sdata->s_x[0], (int)posX, posY + 4, FONT_SMALL, ORANGE);
 
 		// Draw number after the 'x'
 		sprintf(message, &sdata->s_int[0], d->numWumpas);
-		DECOMP_DecalFont_DrawLine(message, posX + 0xd, (int)posY, FONT_BIG, ORANGE);
+		DecalFont_DrawLine(message, posX + 0xd, (int)posY, FONT_BIG, ORANGE);
 	}
 
 	// if numPlyrCurrGame is 3 or 4

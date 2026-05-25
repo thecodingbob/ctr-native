@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80031a50-0x80031a64.
-void DECOMP_LOAD_Callback_MaskHints3D(struct LoadQueueSlot *lqs)
+void LOAD_Callback_MaskHints3D(struct LoadQueueSlot *lqs)
 {
 	sdata->callbackCdReadSuccess = NULL;
 	sdata->modelMaskHints3D = (struct Model *)lqs->ptrDestination;

@@ -11,8 +11,3 @@ void OtherFX_Stop1(int soundID_count)
 
 	Smart_ExitCriticalSection();
 }
-
-void DECOMP_OtherFX_Stop1(int soundID_count)
-{
-	OtherFX_Stop1(soundID_count);
-}

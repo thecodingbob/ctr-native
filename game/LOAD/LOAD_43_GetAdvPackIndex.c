@@ -1,6 +1,6 @@
 #include <common.h>
 
-int DECOMP_LOAD_GetAdvPackIndex()
+int LOAD_GetAdvPackIndex()
 {
 	int levelID = sdata->gGT->levelID;
 

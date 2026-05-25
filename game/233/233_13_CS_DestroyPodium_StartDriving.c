@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac714-0x800ac840
-void DECOMP_CS_DestroyPodium_StartDriving(void)
+void CS_DestroyPodium_StartDriving(void)
 {
 	struct Instance *inst;
 	struct Driver *d;
@@ -14,7 +14,7 @@ void DECOMP_CS_DestroyPodium_StartDriving(void)
 	// loop through all threads
 	while (t != NULL)
 	{
-		if (t->funcThDestroy != DECOMP_CS_Podium_Prize_ThDestroy)
+		if (t->funcThDestroy != CS_Podium_Prize_ThDestroy)
 		{
 			// This thread is now dead
 			t->flags |= 0x800;
@@ -32,15 +32,15 @@ void DECOMP_CS_DestroyPodium_StartDriving(void)
 	inst->flags &= ~(HIDE_MODEL);
 
 	d->kartState = KS_ENGINE_REVVING;
-	d->funcPtrs[0] = DECOMP_VehPhysProc_Driving_Init;
+	d->funcPtrs[0] = VehPhysProc_Driving_Init;
 
 	// if cutscene changed audio, restore backup
 	if (OVR_233.CutsceneManipulatesAudio != 0)
 	{
 		// restore backup of volume variables
-		DECOMP_howl_VolumeSet(0, OVR_233.FXVolumeBackup);
-		DECOMP_howl_VolumeSet(1, OVR_233.MusicVolumeBackup);
-		DECOMP_howl_VolumeSet(2, OVR_233.VoiceVolumeBackup);
+		howl_VolumeSet(0, OVR_233.FXVolumeBackup);
+		howl_VolumeSet(1, OVR_233.MusicVolumeBackup);
+		howl_VolumeSet(2, OVR_233.VoiceVolumeBackup);
 	}
 
 	// cam mode be zero to follow you

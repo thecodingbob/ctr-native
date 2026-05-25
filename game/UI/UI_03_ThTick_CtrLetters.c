@@ -1,7 +1,7 @@
 #include <common.h>
 
 // Handle CTR letters in HUD
-void DECOMP_UI_ThTick_CtrLetters(struct Thread *bucket)
+void UI_ThTick_CtrLetters(struct Thread *bucket)
 
 {
 	int endOfRaceTransition;

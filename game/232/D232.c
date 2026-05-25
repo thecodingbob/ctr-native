@@ -1,7 +1,7 @@
 #include <common.h>
 
-void DECOMP_AH_HintMenu_MenuProc();
-void DECOMP_AH_WarpPad_MenuProc();
+void AH_HintMenu_MenuProc();
+void AH_WarpPad_MenuProc();
 
 struct OverlayDATA_232
     D232 =
@@ -66,7 +66,7 @@ struct OverlayDATA_232
                     .unk1 = 0,
                     .state = 0x100803,
                     .rows = &D232.rowsTokenRelic[0],
-                    .funcPtr = DECOMP_AH_WarpPad_MenuProc,
+                    .funcPtr = AH_WarpPad_MenuProc,
                     .drawStyle = 4,
                 },
 
@@ -236,7 +236,7 @@ struct OverlayDATA_232
 
                     .state = 0x8A3,
                     .rows = 0,
-                    .funcPtr = DECOMP_AH_HintMenu_MenuProc,
+                    .funcPtr = AH_HintMenu_MenuProc,
                     .drawStyle = 4,
 
                     // rest of variables all default zero

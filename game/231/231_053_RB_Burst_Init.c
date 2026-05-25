@@ -14,7 +14,7 @@ void DECOMP_RB_Burst_Init(struct Instance *weaponInst)
 	int *burst;
 
 	// initialize thread for burst
-	currInst = DECOMP_INSTANCE_BirthWithThread(0x2b, 0, SMALL, BURST, DECOMP_RB_Burst_ThTick, 0xc, 0);
+	currInst = INSTANCE_BirthWithThread(0x2b, 0, SMALL, BURST, DECOMP_RB_Burst_ThTick, 0xc, 0);
 
 	// get thread from instance
 	t = currInst->thread;
@@ -40,7 +40,7 @@ void DECOMP_RB_Burst_Init(struct Instance *weaponInst)
 
 	// ======== Next one ===========
 
-	currInst = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[STATIC_WARPEDBURST], 0, t);
+	currInst = INSTANCE_Birth3D(gGT->modelPtr[STATIC_WARPEDBURST], 0, t);
 
 	burst[2] = (int)currInst;
 	currInst->unk50 += -2;
@@ -63,7 +63,7 @@ void DECOMP_RB_Burst_Init(struct Instance *weaponInst)
 
 	// ======= Next One ===========
 
-	currInst = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[STATIC_SHOCKWAVE_RED], 0, t);
+	currInst = INSTANCE_Birth3D(gGT->modelPtr[STATIC_SHOCKWAVE_RED], 0, t);
 
 	burst[0] = (int)currInst;
 	currInst->unk50 += -2;
@@ -163,19 +163,19 @@ void DECOMP_RB_Burst_Init(struct Instance *weaponInst)
 	struct Thread *driverTh = tw->driverParent->instSelf->thread;
 
 	// check collision with all Player thread
-	DECOMP_PROC_CollideHitboxWithBucket(gGT->threadBuckets[PLAYER].thread, sps, driverTh);
+	PROC_CollideHitboxWithBucket(gGT->threadBuckets[PLAYER].thread, sps, driverTh);
 
 	// check collision with all Robotcar thread
-	DECOMP_PROC_CollideHitboxWithBucket(gGT->threadBuckets[ROBOT].thread, sps, driverTh);
+	PROC_CollideHitboxWithBucket(gGT->threadBuckets[ROBOT].thread, sps, driverTh);
 
 	// check collision with all Mine thread
-	DECOMP_PROC_CollideHitboxWithBucket(gGT->threadBuckets[MINE].thread, sps, 0);
+	PROC_CollideHitboxWithBucket(gGT->threadBuckets[MINE].thread, sps, 0);
 
 	// check collision with all Tracking thread
-	DECOMP_PROC_CollideHitboxWithBucket(gGT->threadBuckets[TRACKING].thread, sps, 0);
+	PROC_CollideHitboxWithBucket(gGT->threadBuckets[TRACKING].thread, sps, 0);
 
 	sps->Union.ThBuckColl.funcCallback = DECOMP_RB_Burst_CollLevInst;
 
-	DECOMP_PROC_StartSearch_Self(sps);
+	PROC_StartSearch_Self(sps);
 	return;
 }

@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ae2b8-0x800ae318
-void DECOMP_CS_Thread_AnimateScale(struct Thread *t)
+void CS_Thread_AnimateScale(struct Thread *t)
 {
 	struct Instance *inst = t->inst;
 	struct CutsceneObj *cs = t->object;

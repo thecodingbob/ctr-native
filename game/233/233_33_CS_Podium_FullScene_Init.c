@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b0300-0x800b06ac
-void DECOMP_CS_Podium_FullScene_Init(void)
+void CS_Podium_FullScene_Init(void)
 {
 	struct Instance *driverInstSelf;
 	struct Thread *victoryCamThread;
@@ -22,15 +22,15 @@ void DECOMP_CS_Podium_FullScene_Init(void)
 	OVR_233.CutsceneManipulatesAudio = 0;
 
 	// Make a backup of FX volume, clamp to 0x100
-	OVR_233.FXVolumeBackup = DECOMP_howl_VolumeGet(0);
+	OVR_233.FXVolumeBackup = howl_VolumeGet(0);
 	OVR_233.FXVolumeBackup &= 0xff;
 
 	// Make a backup of Music volume, clamp to 0x100
-	OVR_233.MusicVolumeBackup = DECOMP_howl_VolumeGet(1);
+	OVR_233.MusicVolumeBackup = howl_VolumeGet(1);
 	OVR_233.MusicVolumeBackup &= 0xff;
 
 	// Make a backup of Voice volume, clamp to 0x100
-	OVR_233.VoiceVolumeBackup = DECOMP_howl_VolumeGet(2);
+	OVR_233.VoiceVolumeBackup = howl_VolumeGet(2);
 	OVR_233.VoiceVolumeBackup &= 0xff;
 
 	// Cutscene is now starting
@@ -46,7 +46,7 @@ void DECOMP_CS_Podium_FullScene_Init(void)
 	// Make kart model invisible
 	driverInstSelf->flags |= 0x80;
 
-	DECOMP_VehPhysProc_FreezeEndEvent_Init(driverInstSelf->thread, gGT->drivers[0]);
+	VehPhysProc_FreezeEndEvent_Init(driverInstSelf->thread, gGT->drivers[0]);
 
 	// Number of Winners = 1
 	// this means Draw Confetti on one window
@@ -91,7 +91,7 @@ void DECOMP_CS_Podium_FullScene_Init(void)
 		InitData.characterPos[2] = 0;
 
 		// create thread for "third"
-		DECOMP_CS_Thread_Init(gGT->podium_modelIndex_Third, &OVR_233.s_third[0], (void *)&InitData, 0x600, 0);
+		CS_Thread_Init(gGT->podium_modelIndex_Third, &OVR_233.s_third[0], (void *)&InitData, 0x600, 0);
 	}
 
 	// if someone placed second
@@ -102,7 +102,7 @@ void DECOMP_CS_Podium_FullScene_Init(void)
 		InitData.characterPos[2] = 0;
 
 		// create thread for "second"
-		DECOMP_CS_Thread_Init(gGT->podium_modelIndex_Second, &OVR_233.s_second[0], (void *)&InitData, 0x200, 0);
+		CS_Thread_Init(gGT->podium_modelIndex_Second, &OVR_233.s_second[0], (void *)&InitData, 0x200, 0);
 	}
 
 	InitData.characterPos[0] = 0;
@@ -110,25 +110,25 @@ void DECOMP_CS_Podium_FullScene_Init(void)
 	InitData.characterPos[2] = 0;
 
 	// create thread for "first"
-	DECOMP_CS_Thread_Init(gGT->podium_modelIndex_First, &OVR_233.s_first[0], (void *)&InitData, 0, 0);
+	CS_Thread_Init(gGT->podium_modelIndex_First, &OVR_233.s_first[0], (void *)&InitData, 0, 0);
 
 	InitData.characterPos[0] = 0x1a8;
 	InitData.characterPos[1] = 0xff80;
 	InitData.characterPos[2] = 0x140;
 
 	// create thread for trophy girl (internally called "tawna")
-	DECOMP_CS_Thread_Init(gGT->podium_modelIndex_tawna, &OVR_233.s_tawna[0], (void *)&InitData, -0x2aa, 0);
+	CS_Thread_Init(gGT->podium_modelIndex_tawna, &OVR_233.s_tawna[0], (void *)&InitData, -0x2aa, 0);
 
 	CS_Podium_Prize_Init(gGT->podiumRewardID, &OVR_233.s_prize[0], (void *)&InitData);
 
-	DECOMP_CS_Podium_Stand_Init((void *)&InitData);
+	CS_Podium_Stand_Init((void *)&InitData);
 
 	// PROC_BirthWithObject
 	// 0x4 = size
 	// 0 = no relation to param4
 	// 0x300 flag = SmallStackPool
 	// 0xf = camera thread bucket
-	victoryCamThread = (struct Thread *)DECOMP_PROC_BirthWithObject(0x4030f, (void *)CS_Camera_ThTick_Podium, OVR_233.s_victorycam, NULL);
+	victoryCamThread = (struct Thread *)PROC_BirthWithObject(0x4030f, (void *)CS_Camera_ThTick_Podium, OVR_233.s_victorycam, NULL);
 
 	// if it allocated correctly
 	if (victoryCamThread != 0)

@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_PROC_DestroySelf(struct Thread *t)
+void PROC_DestroySelf(struct Thread *t)
 {
 	// thread must exist
 	if (t == 0)
@@ -15,7 +15,7 @@ void DECOMP_PROC_DestroySelf(struct Thread *t)
 
 	// destroy object attached,
 	// guaranteed all threads have one
-	DECOMP_PROC_DestroyObject(t->object, t->flags);
+	PROC_DestroyObject(t->object, t->flags);
 
 	// recycle thread
 	LIST_AddFront(&sdata->gGT->JitPools.thread.free, (struct Item *)t);

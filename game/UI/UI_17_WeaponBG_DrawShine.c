@@ -1,7 +1,6 @@
 #include <common.h>
 
-void DECOMP_UI_WeaponBG_DrawShine(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, u_long *ot, char param_6, s16 param_7, s16 param_8,
-                                  int param9)
+void UI_WeaponBG_DrawShine(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, u_long *ot, char param_6, s16 param_7, s16 param_8, int param9)
 {
 	s16 sVar1;
 	s16 sVar2;

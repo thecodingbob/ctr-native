@@ -73,7 +73,7 @@ void DECOMP_RB_MaskWeapon_FadeAway(struct Thread *t)
 	}
 
 	// mask is now dead
-	DECOMP_INSTANCE_Death(maskBeamInst);
+	INSTANCE_Death(maskBeamInst);
 	t->flags |= 0x800;
 	return;
 }

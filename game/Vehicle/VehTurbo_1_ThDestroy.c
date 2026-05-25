@@ -9,6 +9,6 @@ void VehTurbo_ThDestroy(struct Thread *t)
 	struct Driver *d = turboObj->driver;
 	d->actionsFlagSet &= 0xfffffdff;
 
-	DECOMP_INSTANCE_Death(t->inst);
-	DECOMP_INSTANCE_Death(turboObj->inst);
+	INSTANCE_Death(t->inst);
+	INSTANCE_Death(turboObj->inst);
 }

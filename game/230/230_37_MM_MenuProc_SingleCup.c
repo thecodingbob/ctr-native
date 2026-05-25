@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_MenuProc_SingleCup(struct RectMenu *menu)
+void MM_MenuProc_SingleCup(struct RectMenu *menu)
 
 {
 	s16 row;

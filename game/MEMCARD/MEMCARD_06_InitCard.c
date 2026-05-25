@@ -2,7 +2,7 @@
 
 //- creates 8 events (4 per card?)
 //- calls InitCARD and StartCARD
-void DECOMP_MEMCARD_InitCard(void)
+void MEMCARD_InitCard(void)
 {
 	// This section was copy/pasted by Naughty Dog,
 	// psx\sample\memcard\CARD\CARD.C lines 84 to 101

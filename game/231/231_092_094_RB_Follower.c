@@ -105,7 +105,7 @@ void DECOMP_RB_Follower_Init(struct Driver *d, struct Thread *mineTh)
 		return;
 
 	// create a thread and an Instance
-	iVar1 = DECOMP_INSTANCE_BirthWithThread(mineTh->modelIndex, "follower", SMALL, FOLLOWER, DECOMP_RB_Follower_ThTick, sizeof(struct Follower), 0);
+	iVar1 = INSTANCE_BirthWithThread(mineTh->modelIndex, "follower", SMALL, FOLLOWER, DECOMP_RB_Follower_ThTick, sizeof(struct Follower), 0);
 
 	if (iVar1 == NULL)
 		return;
@@ -121,7 +121,7 @@ void DECOMP_RB_Follower_Init(struct Driver *d, struct Thread *mineTh)
 	memcpy(&iVar1->matrix, &iVar3->matrix, sizeof(iVar1->matrix));
 
 	t = iVar1->thread;
-	t->funcThDestroy = DECOMP_PROC_DestroyInstance;
+	t->funcThDestroy = PROC_DestroyInstance;
 
 	fObj = t->object;
 	fObj->frameCount = 7;

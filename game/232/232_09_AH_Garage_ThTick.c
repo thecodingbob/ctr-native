@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ae988-0x800af070.
-void DECOMP_AH_Garage_ThTick(struct Thread *t)
+void AH_Garage_ThTick(struct Thread *t)
 {
 	char bossIsOpen, i;
 	int levelID;
@@ -56,7 +56,7 @@ void DECOMP_AH_Garage_ThTick(struct Thread *t)
 			uVar8 = (levelID == GEM_STONE_VALLEY) ? 0x96 : 0x95;
 
 			// Play sound
-			DECOMP_OtherFX_Play(uVar8, 1);
+			OtherFX_Play(uVar8, 1);
 
 			// erase cooldown
 			garage->cooldown = 0;
@@ -173,7 +173,7 @@ LAB_800aec34:
 	if (sdata->AkuAkuHintState == 0)
 	{
 		// draw string, lng_challenge
-		DECOMP_DecalFont_DrawLine(
+		DecalFont_DrawLine(
 
 		    sdata->lngStrings[data.lng_challenge[R232.bossIDs[hubID]]],
 
@@ -222,10 +222,10 @@ LAB_800aede8:
 	SPS->Input1.modelID = STATIC_PINGARAGE;
 
 	SPS->Union.ThBuckColl.thread = t;
-	SPS->Union.ThBuckColl.funcCallback = DECOMP_AH_Garage_Open;
+	SPS->Union.ThBuckColl.funcCallback = AH_Garage_Open;
 
 	// Open garage door when player gets within radius of door
-	DECOMP_PROC_CollideHitboxWithBucket(gGT->threadBuckets[PLAYER].thread, SPS, 0);
+	PROC_CollideHitboxWithBucket(gGT->threadBuckets[PLAYER].thread, SPS, 0);
 
 	ratio = MATH_Sin((int)inst->instDef->rot[1]);
 

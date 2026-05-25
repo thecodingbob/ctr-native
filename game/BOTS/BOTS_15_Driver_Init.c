@@ -29,7 +29,7 @@ struct Driver *BOTS_Driver_Init(int driverID)
 	}
 
 	// path data found
-	t = DECOMP_PROC_BirthWithObject(
+	t = PROC_BirthWithObject(
 	    // creation flags
 	    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Driver), // sizeof (struct Driver) == 1584, and yet original code implies size should be 1580?
 	                              NONE, LARGE, ROBOT),

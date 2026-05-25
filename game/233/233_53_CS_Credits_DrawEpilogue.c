@@ -68,6 +68,6 @@ void CS_Credits_DrawEpilogue(struct CreditsObj *co)
 			strLen = (s16)(co->epilogue_nextString - co->epilogue_topString) - 1;
 		}
 
-		DECOMP_DecalFont_DrawMultiLineStrlen(co->epilogue_topString, strLen, 0x100, 0xaf, 0x1cc, 2, colorSlot | 0x8000);
+		DecalFont_DrawMultiLineStrlen(co->epilogue_topString, strLen, 0x100, 0xaf, 0x1cc, 2, colorSlot | 0x8000);
 	}
 }

@@ -85,7 +85,7 @@ void MainInit_FinalizeInit(struct GameTracker *gGT)
 
 	if ((gGT->hudFlags & 2) != 0)
 	{
-		DECOMP_UI_INSTANCE_InitAll();
+		UI_INSTANCE_InitAll();
 	}
 
 	gGT->unk1cac[4] = 2;
@@ -131,7 +131,7 @@ void MainInit_FinalizeInit(struct GameTracker *gGT)
 	}
 
 	// copy InstDef to InstancePool
-	DECOMP_INSTANCE_LevInitAll(lev1->ptrInstDefs, lev1->numInstances);
+	INSTANCE_LevInitAll(lev1->ptrInstDefs, lev1->numInstances);
 
 	// Debug_ToggleNormalSpawn == normal spawn
 	if (gGT->Debug_ToggleNormalSpawn != 0)
@@ -227,7 +227,7 @@ void MainInit_FinalizeInit(struct GameTracker *gGT)
 		// disable all HUD flags
 		gGT->hudFlags = 0;
 
-		DECOMP_CS_Cutscene_Start();
+		CS_Cutscene_Start();
 	}
 
 #ifndef REBUILD_PS1

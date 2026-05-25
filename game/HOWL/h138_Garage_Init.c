@@ -7,7 +7,7 @@ void Garage_Init(void)
 	char i;
 
 	// erase backup, keep music, stop all fx
-	DECOMP_howl_StopAudio(1, 0, 1);
+	howl_StopAudio(1, 0, 1);
 
 	for (i = 0; i < 8; i++)
 	{

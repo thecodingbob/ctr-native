@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_Characters_BackupIDs(void)
+void MM_Characters_BackupIDs(void)
 {
 	char i;
 

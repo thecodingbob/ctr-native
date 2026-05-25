@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_Video_StartStream(int param_1, int numFrames)
+void MM_Video_StartStream(int param_1, int numFrames)
 {
 	V230.field3_0xc = 0;
 	V230.field8_0x18 = 0;

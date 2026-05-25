@@ -4,7 +4,7 @@
 u32 DecalFont_boolRacingWheel();
 #endif
 
-int DECOMP_DecalFont_GetLineWidthStrlen(char *character, int len, int fontType)
+int DecalFont_GetLineWidthStrlen(char *character, int len, int fontType)
 {
 	s16 font_charPixWidth;
 	s16 font_buttonPixWidth;

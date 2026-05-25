@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80032594-0x8003266c
-int DECOMP_LOAD_HowlSectorChainStart(CdlFILE *cdlFileHWL, void *ptrDestination, int firstSector, int numSector)
+int LOAD_HowlSectorChainStart(CdlFILE *cdlFileHWL, void *ptrDestination, int firstSector, int numSector)
 {
 	CdlLOC loc;
 
@@ -28,6 +28,6 @@ int DECOMP_LOAD_HowlSectorChainStart(CdlFILE *cdlFileHWL, void *ptrDestination, 
 
 	sdata->howlChainState = 1;
 
-	CdReadCallback(DECOMP_LOAD_HowlCallback);
+	CdReadCallback(LOAD_HowlCallback);
 	return (CdRead(numSector, ptrDestination, 0x80) != 0);
 }

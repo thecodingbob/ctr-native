@@ -29,7 +29,7 @@ void UI_RaceEnd_MenuProc(struct RectMenu *menu)
 	if (option != 9)
 	{
 		// make Menu invisible
-		DECOMP_RECTMENU_Hide(menu);
+		RECTMENU_Hide(menu);
 	}
 
 	sdata->framesSinceRaceEnded = 0;
@@ -75,7 +75,7 @@ void UI_RaceEnd_MenuProc(struct RectMenu *menu)
 		// keep music,
 		// destroy "most" fx, let menu fx play to end
 		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80055df0-0x80055e04 for retry stop-audio args.
-		DECOMP_howl_StopAudio(1, 0, 0);
+		howl_StopAudio(1, 0, 0);
 
 		// if did not improve time, then dont
 		// overwrite old ghost with new ghost
@@ -126,7 +126,7 @@ void UI_RaceEnd_MenuProc(struct RectMenu *menu)
 
 #if defined(CTR_NATIVE)
 		// Set Load/Save to Ghost mode
-		DECOMP_SelectProfile_ToggleMode(0x31);
+		SelectProfile_ToggleMode(0x31);
 #elif !defined(REBUILD_PS1)
 		// Set Load/Save to Ghost mode
 		SelectProfile_ToggleMode(0x31);
@@ -174,9 +174,4 @@ void UI_RaceEnd_MenuProc(struct RectMenu *menu)
 		break;
 	}
 	}
-}
-
-void DECOMP_UI_RaceEnd_MenuProc(struct RectMenu *menu)
-{
-	UI_RaceEnd_MenuProc(menu);
 }

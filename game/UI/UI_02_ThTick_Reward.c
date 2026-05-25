@@ -2,7 +2,7 @@
 
 // Draw various objects, like relic,
 // key trophy, token, crystal, etc
-void DECOMP_UI_ThTick_Reward(struct Thread *bucket)
+void UI_ThTick_Reward(struct Thread *bucket)
 
 {
 	u32 flags;

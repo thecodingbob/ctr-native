@@ -1,7 +1,7 @@
 #include <common.h>
 
 // Draw icon on map
-void DECOMP_UI_Map_DrawRawIcon(int ptrMap, int *param_2, int iconID, int colorID, int unused, s16 scale)
+void UI_Map_DrawRawIcon(int ptrMap, int *param_2, int iconID, int colorID, int unused, s16 scale)
 {
 	int posX;
 	int posY;
@@ -11,7 +11,7 @@ void DECOMP_UI_Map_DrawRawIcon(int ptrMap, int *param_2, int iconID, int colorID
 	posX = param_2[0];
 	posY = param_2[2];
 
-	DECOMP_UI_Map_GetIconPos((s16 *)ptrMap, &posX, &posY);
+	UI_Map_GetIconPos((s16 *)ptrMap, &posX, &posY);
 
 	ptrColor = data.ptrColor[colorID];
 

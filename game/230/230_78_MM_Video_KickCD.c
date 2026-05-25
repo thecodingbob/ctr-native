@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_Video_KickCD(CdlLOC *location)
+void MM_Video_KickCD(CdlLOC *location)
 {
 	int iVar1;
 	int CdlMode;

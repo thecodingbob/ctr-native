@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_TrackSelect_Video_Draw(RECT *r, struct MainMenu_LevelRow *selectMenu, int trackIndex, int param_4, u16 param_5)
+void MM_TrackSelect_Video_Draw(RECT *r, struct MainMenu_LevelRow *selectMenu, int trackIndex, int param_4, u16 param_5)
 {
 	u8 u0;
 	u8 v0;
@@ -84,8 +84,8 @@ void DECOMP_MM_TrackSelect_Video_Draw(RECT *r, struct MainMenu_LevelRow *selectM
 	if (D230.trackSel_videoStateCurr != 3)
 	{
 		// Draw Video icon
-		DECOMP_RECTMENU_DrawPolyGT4(gGT->ptrIcons[selectMenu->videoThumbnail], (r->x + 3), (r->y + 2), &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT,
-		                            D230.videoCol, D230.videoCol, D230.videoCol, D230.videoCol, 0, FP(1.0));
+		RECTMENU_DrawPolyGT4(gGT->ptrIcons[selectMenu->videoThumbnail], (r->x + 3), (r->y + 2), &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT,
+		                     D230.videoCol, D230.videoCol, D230.videoCol, D230.videoCol, 0, FP(1.0));
 	}
 
 #ifndef REBUILD_PS1
@@ -120,5 +120,5 @@ void DECOMP_MM_TrackSelect_Video_Draw(RECT *r, struct MainMenu_LevelRow *selectM
 	D230.trackSel_videoStatePrev = D230.trackSel_videoStateCurr;
 
 	// Draw 2D Menu rectangle background
-	DECOMP_RECTMENU_DrawInnerRect(r, (s16)(param_5 | 1), gGT->backBuffer->otMem.startPlusFour);
+	RECTMENU_DrawInnerRect(r, (s16)(param_5 | 1), gGT->backBuffer->otMem.startPlusFour);
 }

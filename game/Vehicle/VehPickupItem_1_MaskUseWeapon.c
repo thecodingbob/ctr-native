@@ -15,7 +15,7 @@ struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, int bo
 
 	gGT = sdata->gGT;
 
-	if ((DECOMP_LOAD_IsOpen_RacingOrBattle() == 0) || ((gGT->gameMode1 & ADVENTURE_ARENA) != 0))
+	if ((LOAD_IsOpen_RacingOrBattle() == 0) || ((gGT->gameMode1 & ADVENTURE_ARENA) != 0))
 	{
 		// no mask object in adv arena
 		maskObj = NULL;
@@ -64,7 +64,7 @@ struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, int bo
 	int modelID = STATIC_UKAUKA - boolGoodGuy;
 
 	// 0x3a: uka head model idx in modelPtr array
-	instance = DECOMP_INSTANCE_BirthWithThread(modelID, sdata->s_doctor1, SMALL, OTHER, DECOMP_RB_MaskWeapon_ThTick, sizeof(struct MaskHeadWeapon), t);
+	instance = INSTANCE_BirthWithThread(modelID, sdata->s_doctor1, SMALL, OTHER, DECOMP_RB_MaskWeapon_ThTick, sizeof(struct MaskHeadWeapon), t);
 
 	soundID = modelID + 0x1A;
 
@@ -103,12 +103,12 @@ struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, int bo
 	maskObj = (struct MaskHeadWeapon *)t->object;
 
 #ifdef REBUILD_PC
-	maskObj->maskBeamInst = DECOMP_INSTANCE_Birth3D(modelPtr, "akubeam1", t);
+	maskObj->maskBeamInst = INSTANCE_Birth3D(modelPtr, "akubeam1", t);
 #else
-	maskObj->maskBeamInst = DECOMP_INSTANCE_Birth3D(modelPtr, rdata.s_akubeam1, t);
+	maskObj->maskBeamInst = INSTANCE_Birth3D(modelPtr, rdata.s_akubeam1, t);
 #endif
 
-	t->funcThDestroy = DECOMP_PROC_DestroyInstance;
+	t->funcThDestroy = PROC_DestroyInstance;
 
 	t->flags |= 0x1000;                   // disable collision
 	instance->flags |= 0x80;              // make mask head invisible

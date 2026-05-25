@@ -47,8 +47,8 @@ void start()
 	void startSP();
 	startSP();
 
-	u32 DECOMP_main();
-	DECOMP_main();
+	u32 main(void);
+	main();
 }
 
 void startSP()

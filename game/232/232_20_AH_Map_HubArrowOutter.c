@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_AH_Map_HubArrowOutter(void *hubPtrs, int arrowIndex, int posX, int posY, int inputAngle, int type)
+void AH_Map_HubArrowOutter(void *hubPtrs, int arrowIndex, int posX, int posY, int inputAngle, int type)
 {
 	struct GameTracker *gGT;
 	gGT = sdata->gGT;

@@ -6,7 +6,7 @@ void VehPhysProc_SpinStop_Init(struct Thread *t, struct Driver *d)
 	d->funcPtrs[0] = NULL;
 	d->funcPtrs[1] = VehPhysProc_SpinStop_Update;
 	d->funcPtrs[2] = VehPhysProc_SpinStop_PhysLinear;
-	d->funcPtrs[3] = DECOMP_VehPhysProc_Driving_Audio;
+	d->funcPtrs[3] = VehPhysProc_Driving_Audio;
 	d->funcPtrs[4] = VehPhysProc_SpinStop_PhysAngular;
 	d->funcPtrs[5] = VehPhysForce_OnApplyForces;
 
@@ -25,9 +25,4 @@ void VehPhysProc_SpinStop_Init(struct Thread *t, struct Driver *d)
 	d->funcPtrs[10] = VehPhysForce_TranslateMatrix;
 	d->funcPtrs[11] = VehPhysProc_SpinStop_Animate;
 	d->funcPtrs[12] = VehEmitter_DriverMain;
-}
-
-void DECOMP_VehPhysProc_SpinStop_Init(struct Thread *t, struct Driver *d)
-{
-	VehPhysProc_SpinStop_Init(t, d);
 }

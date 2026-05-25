@@ -2,7 +2,7 @@
 
 // function that only appears in the japanese retail version
 
-u32 DECOMP_DecalFont_boolRacingWheel()
+u32 DecalFont_boolRacingWheel()
 {
 	struct ControllerPacket *controllerPacketP1 = sdata->gGamepads->gamepad[0].ptrControllerPacket;
 	u32 isRacingWheel = false;

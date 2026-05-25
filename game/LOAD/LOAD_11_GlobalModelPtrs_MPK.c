@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_LOAD_GlobalModelPtrs_MPK()
+void LOAD_GlobalModelPtrs_MPK()
 {
 	struct GameTracker *gGT = sdata->gGT;
 

@@ -62,5 +62,5 @@ void PlaySound3D(u32 soundID, struct Instance *inst)
 
 	GTE_AudioLR_Inst(&gGT->pushBuffer[closestCamera].matrix_Camera, dir[closestCamera]);
 
-	DECOMP_OtherFX_Play_LowLevel(soundID & 0xffff, 1, PlaySound3D_BuildFlags(gGT, closestCamera, closestDistance, PlaySound3D_CalculateLR(dir[closestCamera])));
+	OtherFX_Play_LowLevel(soundID & 0xffff, 1, PlaySound3D_BuildFlags(gGT, closestCamera, closestDistance, PlaySound3D_CalculateLR(dir[closestCamera])));
 }

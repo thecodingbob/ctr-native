@@ -56,8 +56,3 @@ void UI_VsQuipAssign(struct Driver *driver, struct QuipMeta *meta, struct Driver
 
 	sdata->gGT->timerEndOfRaceVS = ((sdata->gGT->gameMode1 & BATTLE_MODE) != 0) ? 150 : 300;
 }
-
-void DECOMP_UI_VsQuipAssign(struct Driver *driver, struct QuipMeta *meta, struct Driver *bestDriver, int characterID)
-{
-	UI_VsQuipAssign(driver, meta, bestDriver, characterID);
-}

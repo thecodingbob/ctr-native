@@ -52,7 +52,7 @@ void DECOMP_RB_Warpball_ThTick(struct Thread *t)
 	((s16 *)&tw->unk4c)[1] = (s16)inst->matrix.t[1];
 	tw->unk50 = (s16)inst->matrix.t[2];
 
-	if ((int)inst->animFrame + 1 < DECOMP_INSTANCE_GetNumAnimFrames(inst, 0))
+	if ((int)inst->animFrame + 1 < INSTANCE_GetNumAnimFrames(inst, 0))
 	{
 		inst->animFrame++;
 	}

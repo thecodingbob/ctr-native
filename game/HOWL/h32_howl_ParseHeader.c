@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029a50-0x80029ab4
-void DECOMP_howl_ParseHeader(struct HowlHeader *hh)
+void howl_ParseHeader(struct HowlHeader *hh)
 {
 	u32 addr = (u32)hh;
 

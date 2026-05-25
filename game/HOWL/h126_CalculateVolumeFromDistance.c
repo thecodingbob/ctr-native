@@ -9,7 +9,7 @@ void CalculateVolumeFromDistance(u32 *soundIDCount, u32 soundID, int distance)
 	{
 		if ((*soundIDCount != 0) && ((*soundIDCount & 0xffff) != soundID))
 		{
-			DECOMP_OtherFX_Stop1(*soundIDCount);
+			OtherFX_Stop1(*soundIDCount);
 			*soundIDCount = 0;
 		}
 
@@ -22,7 +22,7 @@ void CalculateVolumeFromDistance(u32 *soundIDCount, u32 soundID, int distance)
 		{
 			if (*soundIDCount == 0)
 			{
-				*soundIDCount = DECOMP_OtherFX_Play_LowLevel(soundID & 0xffff, 0, ((volume & 0xff) << 0x10) | 0x8080);
+				*soundIDCount = OtherFX_Play_LowLevel(soundID & 0xffff, 0, ((volume & 0xff) << 0x10) | 0x8080);
 			}
 			else
 			{
@@ -39,13 +39,13 @@ void CalculateVolumeFromDistance(u32 *soundIDCount, u32 soundID, int distance)
 					volume = ((volume & 0xff) << 0x10) | 0x8080;
 				}
 
-				DECOMP_OtherFX_Modify(*soundIDCount, volume);
+				OtherFX_Modify(*soundIDCount, volume);
 			}
 		}
 	}
 	else if (*soundIDCount != 0)
 	{
-		DECOMP_OtherFX_Stop1(*soundIDCount);
+		OtherFX_Stop1(*soundIDCount);
 		*soundIDCount = 0;
 	}
 }

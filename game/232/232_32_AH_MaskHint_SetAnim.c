@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_AH_MaskHint_SetAnim(int scale)
+void AH_MaskHint_SetAnim(int scale)
 {
 	MATRIX *m;
 	struct GameTracker *gGT = sdata->gGT;

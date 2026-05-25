@@ -72,9 +72,9 @@ void TT_EndEvent_DrawMenu(void)
 		}
 
 		// draw race clock in top-left corner
-		DECOMP_UI_Lerp2D_Linear(&pos[0], 0x14, 8, endX, 8, elapsedFrames, 0x14);
+		UI_Lerp2D_Linear(&pos[0], 0x14, 8, endX, 8, elapsedFrames, 0x14);
 
-		DECOMP_UI_DrawRaceClock((int)pos[0], (int)pos[1], 0, gGT->drivers[0]);
+		UI_DrawRaceClock((int)pos[0], (int)pos[1], 0, gGT->drivers[0]);
 
 		return;
 	}
@@ -87,7 +87,7 @@ void TT_EndEvent_DrawMenu(void)
 		elapsedFrames -= 90;
 
 		// race time
-		DECOMP_UI_Lerp2D_Linear(&pos[0], -0x64, 90, 0x100, 90, elapsedFrames, 0x14);
+		UI_Lerp2D_Linear(&pos[0], -0x64, 90, 0x100, 90, elapsedFrames, 0x14);
 
 		TT_EndEvent_DisplayTime((int)pos[0], pos[1], sdata->flags_timeTrialEndOfRace);
 
@@ -104,10 +104,10 @@ void TT_EndEvent_DrawMenu(void)
 		    // if there is a new high score
 		    gGT->newHighScoreIndex > -1)
 		{
-			DECOMP_UI_Lerp2D_Linear(&pos[0], 0x264, 122, 0x100, 122, elapsedFrames, 0x14);
+			UI_Lerp2D_Linear(&pos[0], 0x264, 122, 0x100, 122, elapsedFrames, 0x14);
 
 			// "NEW HIGH SCORE!"
-			DECOMP_DecalFont_DrawLine(lngStrings[353], (int)pos[0], (int)pos[1], 1, color);
+			DecalFont_DrawLine(lngStrings[353], (int)pos[0], (int)pos[1], 1, color);
 
 			// Total time should flash
 			sdata->flags_timeTrialEndOfRace |= (1 << 2);
@@ -122,10 +122,10 @@ void TT_EndEvent_DrawMenu(void)
 		    // if got new best lap
 		    ((gameModeEnd & NEW_BEST_LAP) != 0))
 		{
-			DECOMP_UI_Lerp2D_Linear(&pos[0], -0x64, 142, 0x100, 142, elapsedFrames, 0x14);
+			UI_Lerp2D_Linear(&pos[0], -0x64, 142, 0x100, 142, elapsedFrames, 0x14);
 
 			// NEW BEST LAP!
-			DECOMP_DecalFont_DrawLine(lngStrings[370], (int)pos[0], (int)pos[1], 1, color);
+			DecalFont_DrawLine(lngStrings[370], (int)pos[0], (int)pos[1], 1, color);
 
 			// make the best row start flashing
 			sdata->flags_timeTrialEndOfRace |= 1 << (3 + gGT->lapIndexNewBest);
@@ -142,7 +142,7 @@ void TT_EndEvent_DrawMenu(void)
 		    // if just open, or beat, n tropy
 		    ((gameModeEnd & eitherOneTrue) != 0))
 		{
-			DECOMP_UI_Lerp2D_Linear(&pos[0], 0x264, 162, 0x100, 162, elapsedFrames, 0x14);
+			UI_Lerp2D_Linear(&pos[0], 0x264, 162, 0x100, 162, elapsedFrames, 0x14);
 
 			char *nTropyString;
 
@@ -153,11 +153,11 @@ void TT_EndEvent_DrawMenu(void)
 				nTropyString = lngStrings[372];
 
 			// Draw the "N Tropy" related string
-			DECOMP_DecalFont_DrawLine(nTropyString, (int)pos[0], (int)pos[1], 1, color);
+			DecalFont_DrawLine(nTropyString, (int)pos[0], (int)pos[1], 1, color);
 		}
 
 		// PRESS * TO CONTINUE
-		DECOMP_DecalFont_DrawLine(lngStrings[201], 0x100, 0xbe, 1, 0xffff8000);
+		DecalFont_DrawLine(lngStrings[201], 0x100, 0xbe, 1, 0xffff8000);
 
 		// If you press Cross or Circle
 		if ((sdata->AnyPlayerTap & 0x50) != 0)
@@ -199,7 +199,7 @@ void TT_EndEvent_DrawMenu(void)
 			}
 
 
-			DECOMP_UI_Lerp2D_Linear(&pos[0], startX, 10, endX, 10, elapsedFrames, 0x14);
+			UI_Lerp2D_Linear(&pos[0], startX, 10, endX, 10, elapsedFrames, 0x14);
 
 			TT_EndEvent_DrawHighScore(pos[0], (int)pos[1], 0);
 
@@ -222,12 +222,12 @@ void TT_EndEvent_DrawMenu(void)
 				endX = 0x296;
 			}
 
-			DECOMP_UI_Lerp2D_Linear(&pos[0], startX, 0x82, endX, 0x82, elapsedFrames, 0x14);
+			UI_Lerp2D_Linear(&pos[0], startX, 0x82, endX, 0x82, elapsedFrames, 0x14);
 
 			TT_EndEvent_DisplayTime((int)pos[0], pos[1], sdata->flags_timeTrialEndOfRace);
 
 			// PRESS * TO CONTINUE
-			DECOMP_DecalFont_DrawLine(lngStrings[201], 0x100, 0xbe, 1, 0xffff8000);
+			DecalFont_DrawLine(lngStrings[201], 0x100, 0xbe, 1, 0xffff8000);
 
 			// ==== Pause Timer until Press X =======
 			// Cross or Circle, or if timer drags on too long
@@ -252,7 +252,7 @@ void TT_EndEvent_DrawMenu(void)
 
 		sdata->flags_timeTrialEndOfRace = 0;
 
-		DECOMP_RECTMENU_Show(sdata->boolGhostTooBigToSave ? &menu224NoSave : &menu224);
+		RECTMENU_Show(sdata->boolGhostTooBigToSave ? &menu224NoSave : &menu224);
 	}
 
 	return;
@@ -272,27 +272,26 @@ void TT_EndEvent_DisplayTime(int paramX, s16 paramY, u32 UI_DrawRaceClockFlags)
 	d = gGT->drivers[0];
 
 	// "TOTAL"
-	startTextWidth = DECOMP_DecalFont_GetLineWidth(sdata->lngStrings[0xc4], 1);
-	endTextWidth = DECOMP_DecalFont_GetLineWidth(sdata->lngStrings[0xc4], 1);
+	startTextWidth = DecalFont_GetLineWidth(sdata->lngStrings[0xc4], 1);
+	endTextWidth = DecalFont_GetLineWidth(sdata->lngStrings[0xc4], 1);
 
 	// === Naughty Dog Bug ===
 	// Start and End is the same
-	DECOMP_UI_Lerp2D_Linear(&pos[0], (paramX - (0x88 - startTextWidth) / 2), paramY, (paramX - (0x88 - endTextWidth) / 2), paramY, sdata->framesSinceRaceEnded,
-	                        0x14);
+	UI_Lerp2D_Linear(&pos[0], (paramX - (0x88 - startTextWidth) / 2), paramY, (paramX - (0x88 - endTextWidth) / 2), paramY, sdata->framesSinceRaceEnded, 0x14);
 
 	// "YOUR TIME"
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[197], paramX, ((u32)pos[1] - 0x4c), FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+	DecalFont_DrawLine(sdata->lngStrings[197], paramX, ((u32)pos[1] - 0x4c), FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 
-	DECOMP_UI_DrawRaceClock(pos[0], pos[1], UI_DrawRaceClockFlags, d);
+	UI_DrawRaceClock(pos[0], pos[1], UI_DrawRaceClockFlags, d);
 
-	rectangle.x = (pos[0] - DECOMP_DecalFont_GetLineWidth(sdata->lngStrings[0xc4], 1)) - 6;
+	rectangle.x = (pos[0] - DecalFont_GetLineWidth(sdata->lngStrings[0xc4], 1)) - 6;
 	rectangle.y = pos[1] - 0x50;
 
-	rectangle.w = DECOMP_DecalFont_GetLineWidth(sdata->lngStrings[0xc4], 1) + 0x94;
+	rectangle.w = DecalFont_GetLineWidth(sdata->lngStrings[0xc4], 1) + 0x94;
 	rectangle.h = 99;
 
 	// Draw 2D Menu rectangle background
-	DECOMP_RECTMENU_DrawInnerRect(&rectangle, 4, gGT->backBuffer->otMem.startPlusFour);
+	RECTMENU_DrawInnerRect(&rectangle, 4, gGT->backBuffer->otMem.startPlusFour);
 
 	return;
 }
@@ -329,10 +328,10 @@ void TT_EndEvent_DrawHighScore(s16 startX, int startY, s16 scoreMode)
 	// Start and End is the same
 
 	// interpolate fly-in
-	DECOMP_UI_Lerp2D_Linear(&pos[0], startX, startY, startX, startY, sdata->framesSinceRaceEnded, 0x14);
+	UI_Lerp2D_Linear(&pos[0], startX, startY, startX, startY, sdata->framesSinceRaceEnded, 0x14);
 
 	// "BEST TIMES"
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x171], pos[0], pos[1], 1, 0xffff8000);
+	DecalFont_DrawLine(sdata->lngStrings[0x171], pos[0], pos[1], 1, 0xffff8000);
 
 	// Draw icon, name, and time of the
 	// 5 best times in Time Trial
@@ -360,29 +359,29 @@ void TT_EndEvent_DrawHighScore(s16 startX, int startY, s16 scoreMode)
 		str_number224 = (char)i + '1';
 
 		// Draw String for Rank ('1', '2', '3', '4', '5')
-		DECOMP_DecalFont_DrawLine((char *)&str_number224, startX - 0x32, timebox_Y - 1, 2, 4);
+		DecalFont_DrawLine((char *)&str_number224, startX - 0x32, timebox_Y - 1, 2, 4);
 
 		u32 iconColor = 0x808080;
 
 		// Draw Character Icon
-		DECOMP_RECTMENU_DrawPolyGT4(gGT->ptrIcons[data.MetaDataCharacters[scoreEntry[i + 1].characterID].iconID], startX - 0x52, timebox_Y,
+		RECTMENU_DrawPolyGT4(gGT->ptrIcons[data.MetaDataCharacters[scoreEntry[i + 1].characterID].iconID], startX - 0x52, timebox_Y,
 
-		                            // pointer to PrimMem struct
-		                            &gGT->backBuffer->primMem,
+		                     // pointer to PrimMem struct
+		                     &gGT->backBuffer->primMem,
 
-		                            // pointer to OT mem
-		                            gGT->pushBuffer_UI.ptrOT,
+		                     // pointer to OT mem
+		                     gGT->pushBuffer_UI.ptrOT,
 
-		                            // color of each corner
-		                            iconColor, iconColor, iconColor, iconColor,
+		                     // color of each corner
+		                     iconColor, iconColor, iconColor, iconColor,
 
-		                            1, 0x1000);
+		                     1, 0x1000);
 
 		// Draw Name
-		DECOMP_DecalFont_DrawLine(scoreEntry[i + 1].name, timebox_X, timebox_Y, 3, nameColor);
+		DecalFont_DrawLine(scoreEntry[i + 1].name, timebox_X, timebox_Y, 3, nameColor);
 
 		// Draw time
-		DECOMP_DecalFont_DrawLine(DECOMP_RECTMENU_DrawTime(scoreEntry[i + 1].time), timebox_X, timebox_Y + 0x11, 2, timeColor);
+		DecalFont_DrawLine(RECTMENU_DrawTime(scoreEntry[i + 1].time), timebox_X, timebox_Y + 0x11, 2, timeColor);
 
 		// If this loop index is a new high score
 		if (gGT->newHighScoreIndex == i)
@@ -404,7 +403,7 @@ void TT_EndEvent_DrawHighScore(s16 startX, int startY, s16 scoreMode)
 		timeColor = 0xffff8000;
 
 		// "BEST LAP"
-		DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x170], startX, startY + 0x95, 1, timeColor);
+		DecalFont_DrawLine(sdata->lngStrings[0x170], startX, startY + 0x95, 1, timeColor);
 
 		// If you got a new best lap
 		if (((gGT->gameModeEnd & NEW_BEST_LAP) != 0) && ((gGT->timer & 2) != 0))
@@ -412,19 +411,19 @@ void TT_EndEvent_DrawHighScore(s16 startX, int startY, s16 scoreMode)
 			timeColor = 0xffff8004;
 		}
 		// make a string for best lap
-		timeString = DECOMP_RECTMENU_DrawTime(scoreEntry[0].time);
+		timeString = RECTMENU_DrawTime(scoreEntry[0].time);
 	}
 	else
 	{
 		// "YOUR TIME"
-		DECOMP_DecalFont_DrawLine(sdata->lngStrings[0xc5], startX, startY + 0x95, 1, 0xffff8000);
+		DecalFont_DrawLine(sdata->lngStrings[0xc5], startX, startY + 0x95, 1, 0xffff8000);
 
-		timeString = DECOMP_RECTMENU_DrawTime(d->timeElapsedInRace);
+		timeString = RECTMENU_DrawTime(d->timeElapsedInRace);
 		timeColor = 0xffff8000;
 	}
 
 	// Print amount of time, for whichever purpose
-	DECOMP_DecalFont_DrawLine(timeString, startX, startY + 0xa6, 2, timeColor);
+	DecalFont_DrawLine(timeString, startX, startY + 0xa6, 2, timeColor);
 
 	box.x = pos[0] - 0x60;
 	box.y = pos[1] - 4;
@@ -432,7 +431,7 @@ void TT_EndEvent_DrawHighScore(s16 startX, int startY, s16 scoreMode)
 	box.h = 0xb4;
 
 	// Draw 2D Menu rectangle background
-	DECOMP_RECTMENU_DrawInnerRect(&box, 4, gGT->backBuffer->otMem.startPlusFour);
+	RECTMENU_DrawInnerRect(&box, 4, gGT->backBuffer->otMem.startPlusFour);
 }
 
 struct MenuRow rowsWithSave[6] = {
@@ -545,7 +544,7 @@ struct RectMenu menu224 = {
 
     .state = 0xC83,
     .rows = rowsWithSave,
-    .funcPtr = DECOMP_UI_RaceEnd_MenuProc,
+    .funcPtr = UI_RaceEnd_MenuProc,
     .drawStyle = 4,
 
     // rest of variables all default zero
@@ -560,7 +559,7 @@ struct RectMenu menu224NoSave = {
 
     .state = 0xC83,
     .rows = rowsNoSave,
-    .funcPtr = DECOMP_UI_RaceEnd_MenuProc,
+    .funcPtr = UI_RaceEnd_MenuProc,
     .drawStyle = 4,
 
     // rest of variables all default zero

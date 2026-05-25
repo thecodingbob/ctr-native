@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_Battle_MenuProc(struct RectMenu *unused)
+void MM_Battle_MenuProc(struct RectMenu *unused)
 {
 	char numPlyr;
 	u16 uVar4;
@@ -47,7 +47,7 @@ void DECOMP_MM_Battle_MenuProc(struct RectMenu *unused)
 			// if transitioning in
 			if (D230.battle_transitionState == 0)
 			{
-				DECOMP_MM_TransitionInOut(&D230.transitionMeta_battle[0], (int)D230.battle_transitionFrames, 8);
+				MM_TransitionInOut(&D230.transitionMeta_battle[0], (int)D230.battle_transitionFrames, 8);
 
 				// reduce frames
 				sVar6 = D230.battle_transitionFrames - 1;
@@ -66,7 +66,7 @@ void DECOMP_MM_Battle_MenuProc(struct RectMenu *unused)
 			// if transitioning out
 			if (D230.battle_transitionState == 2)
 			{
-				DECOMP_MM_TransitionInOut(&D230.transitionMeta_battle[0], (int)D230.battle_transitionFrames, 8);
+				MM_TransitionInOut(&D230.transitionMeta_battle[0], (int)D230.battle_transitionFrames, 8);
 
 				// count frames
 				D230.battle_transitionFrames++;
@@ -86,7 +86,7 @@ void DECOMP_MM_Battle_MenuProc(struct RectMenu *unused)
 
 					// == else goBack ==
 
-					DECOMP_MM_TrackSelect_Init();
+					MM_TrackSelect_Init();
 					sdata->ptrDesiredMenu = &D230.menuTrackSelect;
 
 					return;
@@ -164,7 +164,7 @@ void DECOMP_MM_Battle_MenuProc(struct RectMenu *unused)
 				{
 					// play sound
 					// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b1b54-0x800b1b6c for battle team-left SFX.
-					DECOMP_OtherFX_Play(0, 1);
+					OtherFX_Play(0, 1);
 
 					// Move your icon to the left
 					gGT->battleSetup.teamOfEachPlayer[i]--;
@@ -184,7 +184,7 @@ void DECOMP_MM_Battle_MenuProc(struct RectMenu *unused)
 				{
 					// play sound
 					// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b1bc0-0x800b1bd8 for battle team-right SFX.
-					DECOMP_OtherFX_Play(0, 1);
+					OtherFX_Play(0, 1);
 
 					// Move your icon to the right
 					gGT->battleSetup.teamOfEachPlayer[i]++;
@@ -230,7 +230,7 @@ void DECOMP_MM_Battle_MenuProc(struct RectMenu *unused)
 								{
 									// Play "Go Back" sound
 									// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b20f8-0x800b2110 for battle setup back SFX.
-									DECOMP_OtherFX_Play(2, 1);
+									OtherFX_Play(2, 1);
 
 									// go back when transition is done, dont start race
 									D230.battle_postTransition_boolStart = 0;
@@ -245,7 +245,7 @@ void DECOMP_MM_Battle_MenuProc(struct RectMenu *unused)
 							{
 								// Play sound
 								// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b1de4-0x800b1df4 for battle setup confirm SFX.
-								DECOMP_OtherFX_Play(1, 1);
+								OtherFX_Play(1, 1);
 
 								switch (sdata->battleSetupRowHighlighted)
 								{
@@ -461,7 +461,7 @@ void DECOMP_MM_Battle_MenuProc(struct RectMenu *unused)
 			{
 				// Play sound
 				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b2178-0x800b2194 for battle row-change SFX.
-				DECOMP_OtherFX_Play(0, 1);
+				OtherFX_Play(0, 1);
 			}
 		}
 
@@ -526,7 +526,7 @@ void DECOMP_MM_Battle_MenuProc(struct RectMenu *unused)
 			}
 			if (box != NULL)
 			{
-				DECOMP_RECTMENU_ProcessInput(box);
+				RECTMENU_ProcessInput(box);
 				if ((box->state & ONLY_DRAW_TITLE) != 0)
 				{
 					box->state &= ~(ONLY_DRAW_TITLE);
@@ -537,16 +537,16 @@ void DECOMP_MM_Battle_MenuProc(struct RectMenu *unused)
 		}
 
 		// clear gamepad input (for menus)
-		DECOMP_RECTMENU_ClearInput();
+		RECTMENU_ClearInput();
 	}
 
 	struct TransitionMeta *tmbattle = &D230.transitionMeta_battle[0];
 
 	// "SETUP BATTLE"
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x90], tmbattle[9].currX + 0x100, tmbattle[9].currY + 10, 1, 0xffff8000);
+	DecalFont_DrawLine(sdata->lngStrings[0x90], tmbattle[9].currX + 0x100, tmbattle[9].currY + 10, 1, 0xffff8000);
 
 	// "TYPE:"
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x91], tmbattle[1].currX + 0x8c + 0, tmbattle[1].currY + 0x24, 1, 0x4000);
+	DecalFont_DrawLine(sdata->lngStrings[0x91], tmbattle[1].currX + 0x8c + 0, tmbattle[1].currY + 0x24, 1, 0x4000);
 
 	D230.menuBattleType.state &= ~(0x100 | SHOW_ONLY_HIGHLIT_ROW);
 
@@ -561,14 +561,14 @@ void DECOMP_MM_Battle_MenuProc(struct RectMenu *unused)
 		D230.menuBattleType.state |= 0x100;
 	}
 
-	DECOMP_RECTMENU_DrawSelf(&D230.menuBattleType, tmbattle[0].currX + 0x9c + 0, tmbattle[0].currY + 0x24, 0x134);
+	RECTMENU_DrawSelf(&D230.menuBattleType, tmbattle[0].currX + 0x9c + 0, tmbattle[0].currY + 0x24, 0x134);
 
 	local_38 = 0xd;
-	DECOMP_RECTMENU_GetHeight(&D230.menuBattleType, &local_38, 0);
+	RECTMENU_GetHeight(&D230.menuBattleType, &local_38, 0);
 	sVar6 = local_38 + 0x20;
 
 	// "LENGTH:"
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x95], tmbattle[3].currX + 0x8c + 0, tmbattle[3].currY + sVar6 + 4, 1, 0x4000);
+	DecalFont_DrawLine(sdata->lngStrings[0x95], tmbattle[3].currX + 0x8c + 0, tmbattle[3].currY + sVar6 + 4, 1, 0x4000);
 
 	if (D230.menuBattleType.rowSelected == 1)
 	{
@@ -592,7 +592,7 @@ void DECOMP_MM_Battle_MenuProc(struct RectMenu *unused)
 					D230.menuBattleLengthLifeTime.state |= 0x100;
 				}
 
-				DECOMP_RECTMENU_DrawSelf(&D230.menuBattleLengthLifeTime, tmbattle[2].currX + 0x9c + 0, tmbattle[2].currY + sVar6 + 4, 0x8e);
+				RECTMENU_DrawSelf(&D230.menuBattleLengthLifeTime, tmbattle[2].currX + 0x9c + 0, tmbattle[2].currY + sVar6 + 4, 0x8e);
 
 				D230.menuBattleLengthLifeLife.state &= ~(0x100 | SHOW_ONLY_HIGHLIT_ROW);
 
@@ -605,12 +605,12 @@ void DECOMP_MM_Battle_MenuProc(struct RectMenu *unused)
 					D230.menuBattleLengthLifeLife.state |= 0x100;
 				}
 
-				DECOMP_RECTMENU_DrawSelf(&D230.menuBattleLengthLifeLife, tmbattle[2].currX + 0x142 - 0, tmbattle[2].currY + sVar6 + 4, 0x8e);
+				RECTMENU_DrawSelf(&D230.menuBattleLengthLifeLife, tmbattle[2].currX + 0x142 - 0, tmbattle[2].currY + sVar6 + 4, 0x8e);
 
 				local_38 = 0xd;
-				DECOMP_RECTMENU_GetHeight(&D230.menuBattleLengthLifeTime, &local_38, 0);
+				RECTMENU_GetHeight(&D230.menuBattleLengthLifeTime, &local_38, 0);
 				local_36 = 0xd;
-				DECOMP_RECTMENU_GetHeight(&D230.menuBattleLengthLifeLife, &local_36, 0);
+				RECTMENU_GetHeight(&D230.menuBattleLengthLifeLife, &local_36, 0);
 				sVar20 = local_36 + sVar6;
 				if (local_36 < local_38)
 				{
@@ -635,10 +635,10 @@ void DECOMP_MM_Battle_MenuProc(struct RectMenu *unused)
 		box->state |= 0x100;
 	}
 
-	DECOMP_RECTMENU_DrawSelf(box, tmbattle[2].currX + 0x9c + 0, tmbattle[2].currY + sVar6 + 4, 0x134);
+	RECTMENU_DrawSelf(box, tmbattle[2].currX + 0x9c + 0, tmbattle[2].currY + sVar6 + 4, 0x134);
 
 	local_38 = 0xd;
-	DECOMP_RECTMENU_GetHeight(box, &local_38, 0);
+	RECTMENU_GetHeight(box, &local_38, 0);
 	sVar20 = local_38 + sVar6;
 
 LAB_800b25f0:
@@ -646,7 +646,7 @@ LAB_800b25f0:
 	iVar8 = 0x9f;
 
 	// "TEAMS:"
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x98], tmbattle[5].currX + 0x8c + 0, tmbattle[5].currY + sVar20 + 10, 1, 0x4000);
+	DecalFont_DrawLine(sdata->lngStrings[0x98], tmbattle[5].currX + 0x8c + 0, tmbattle[5].currY + sVar20 + 10, 1, 0x4000);
 
 	i = 4;
 
@@ -704,10 +704,10 @@ LAB_800b25f0:
 				sVar6 = (s16)iVar13;
 				iVar13 = iVar13 + 0x2a;
 
-				DECOMP_MM_Battle_DrawIcon_Character(gGT->ptrIcons[data.MetaDataCharacters[data.characterIDs[iVar16]].iconID],
-				                                    (int)tmbattle[4].currX + (int)sVar6 + 0, (int)tmbattle[4].currY + (int)sVar20 + 6,
+				MM_Battle_DrawIcon_Character(gGT->ptrIcons[data.MetaDataCharacters[data.characterIDs[iVar16]].iconID], (int)tmbattle[4].currX + (int)sVar6 + 0,
+				                             (int)tmbattle[4].currY + (int)sVar20 + 6,
 
-				                                    &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT, 1, 0x1000);
+				                             &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT, 1, 0x1000);
 			}
 		}
 
@@ -739,10 +739,10 @@ LAB_800b25f0:
 	local_40.y = tmbattle[4].currY + sVar20;
 
 	// Draw 2D Menu rectangle background
-	DECOMP_RECTMENU_DrawInnerRect(&local_40, 0, ot);
+	RECTMENU_DrawInnerRect(&local_40, 0, ot);
 
 	// "WEAPONS:"
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x99], tmbattle[7].currX + 0x8c + 0, tmbattle[7].currY + sVar20 + 0x44, 1, 0x4000);
+	DecalFont_DrawLine(sdata->lngStrings[0x99], tmbattle[7].currX + 0x8c + 0, tmbattle[7].currY + sVar20 + 0x44, 1, 0x4000);
 
 	// make flashing color for error message
 
@@ -799,10 +799,10 @@ LAB_800b25f0:
 		{
 			D230.menuBattleStartGame.state |= 0x100;
 		}
-		DECOMP_RECTMENU_DrawSelf(&D230.menuBattleStartGame, tmbattle[8].currX + 0x9c + 0, tmbattle[8].currY + sVar20 + 0x78, 0x134);
+		RECTMENU_DrawSelf(&D230.menuBattleStartGame, tmbattle[8].currX + 0x9c + 0, tmbattle[8].currY + sVar20 + 0x78, 0x134);
 
 		local_38 = 0xd;
-		DECOMP_RECTMENU_GetHeight(&D230.menuBattleStartGame, &local_38, 0);
+		RECTMENU_GetHeight(&D230.menuBattleStartGame, &local_38, 0);
 	}
 
 	// If you have no errors that prevent
@@ -814,8 +814,8 @@ LAB_800b25f0:
 		// 0x100 for halfway on the X-axis,
 		// flashing sVar6 color
 
-		DECOMP_DecalFont_DrawLine(sdata->lngStrings[j], 0x100, sVar20 + 0x6a, 1, (int)sVar6);
-		DECOMP_DecalFont_DrawLine(sdata->lngStrings[i], 0x100, sVar20 + 0x7a, 1, (int)sVar6);
+		DecalFont_DrawLine(sdata->lngStrings[j], 0x100, sVar20 + 0x6a, 1, (int)sVar6);
+		DecalFont_DrawLine(sdata->lngStrings[i], 0x100, sVar20 + 0x7a, 1, (int)sVar6);
 	}
 	i = 0;
 	local_40.w = 0x140;
@@ -849,11 +849,11 @@ LAB_800b25f0:
 		if ((i - 7U & 0xffff) < 2)
 		{
 			// draw the "3" over the icons
-			DECOMP_DecalFont_DrawLine(&R230.s_3[0], iVar13, j, 2, uVar17);
+			DecalFont_DrawLine(&R230.s_3[0], iVar13, j, 2, uVar17);
 		}
 
-		DECOMP_MM_Battle_DrawIcon_Weapon(gGT->ptrIcons[D230.battleWeaponsEnabled[iVar8 * 2 + 1]], iVar13, j, &gGT->backBuffer->primMem,
-		                                 (u32 *)gGT->pushBuffer_UI.ptrOT, 1, 0x1000, 1, (u32 *)color);
+		MM_Battle_DrawIcon_Weapon(gGT->ptrIcons[D230.battleWeaponsEnabled[iVar8 * 2 + 1]], iVar13, j, &gGT->backBuffer->primMem,
+		                          (u32 *)gGT->pushBuffer_UI.ptrOT, 1, 0x1000, 1, (u32 *)color);
 	}
 
 	if ((u32)sdata->battleSetupRowHighlighted - 3 < 2)
@@ -878,7 +878,7 @@ LAB_800b25f0:
 
 	CTR_Box_DrawClearBox(&local_58, (Color *)&D230.color3, TRANS_50_DECAL, ot);
 
-	DECOMP_RECTMENU_DrawInnerRect(&local_40, 0, ot);
+	RECTMENU_DrawInnerRect(&local_40, 0, ot);
 
 	// save all five battle settings
 	// these are selected rows from all battle options

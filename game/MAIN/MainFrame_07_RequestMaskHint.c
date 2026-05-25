@@ -28,7 +28,7 @@ void MainFrame_RequestMaskHint(s16 hintId, char interruptWarpPad)
 	{
 		sdata->AkuAkuHintState = 1;
 
-		gGT->drivers[0]->funcPtrs[0] = DECOMP_VehPhysProc_FreezeEndEvent_Init;
+		gGT->drivers[0]->funcPtrs[0] = VehPhysProc_FreezeEndEvent_Init;
 
 		sdata->AkuHint_RequestedHint = hintId;
 		sdata->AkuHint_boolInterruptWarppad = interruptWarpPad;

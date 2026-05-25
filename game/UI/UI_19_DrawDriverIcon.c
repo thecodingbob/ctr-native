@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_UI_DrawDriverIcon(struct Icon *icon, Point point, u_long *ot, u32 transparency, int scale, Color color)
+void UI_DrawDriverIcon(struct Icon *icon, Point point, u_long *ot, u32 transparency, int scale, Color color)
 {
 	PolyFT4 *p;
 	GetPrimMem(p);

@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_AH_Map_LoadSave_Prim(s16 *vertPos, char *vertCol, void *ot, struct PrimMem *primMem)
+void AH_Map_LoadSave_Prim(s16 *vertPos, char *vertCol, void *ot, struct PrimMem *primMem)
 {
 	POLY_G4 *p = primMem->curr;
 	primMem->curr = p + 1;

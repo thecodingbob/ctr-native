@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ae834-0x800ae9a8
-void DECOMP_CS_LoadBoss(struct BossCutsceneData *bcd)
+void CS_LoadBoss(struct BossCutsceneData *bcd)
 {
 	struct GameTracker *gGT = sdata->gGT;
 	void (*const loadSentinel)(struct LoadQueueSlot *) = (void (*)(struct LoadQueueSlot *))-2;
@@ -28,15 +28,15 @@ void DECOMP_CS_LoadBoss(struct BossCutsceneData *bcd)
 
 	if (bcd->vrmFile_UNUSED != 0)
 	{
-		DECOMP_LOAD_AppendQueue(0, LT_VRAM, bcd->vrmFile_UNUSED - 1 + index, NULL, NULL);
+		LOAD_AppendQueue(0, LT_VRAM, bcd->vrmFile_UNUSED - 1 + index, NULL, NULL);
 	}
 
 	// CTR Model File (body)
 	if (bcd->bodyFile != 0)
 	{
-		DECOMP_LOAD_AppendQueue(0, LT_DRAM, bcd->bodyFile - 1 + index, &OVR_233.ptrModelBossBody, loadSentinel);
+		LOAD_AppendQueue(0, LT_DRAM, bcd->bodyFile - 1 + index, &OVR_233.ptrModelBossBody, loadSentinel);
 	}
 
 	// CTR Model File (head)
-	DECOMP_LOAD_AppendQueue(0, LT_DRAM, bcd->headFile - 1 + index, NULL, DECOMP_CS_LoadBossCallback);
+	LOAD_AppendQueue(0, LT_DRAM, bcd->headFile - 1 + index, NULL, CS_LoadBossCallback);
 }

@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_AH_WarpPad_SpinRewards(struct Instance *prizeInst, struct WarpPad *warppadObj, int index, int x, int y, int z)
+void AH_WarpPad_SpinRewards(struct Instance *prizeInst, struct WarpPad *warppadObj, int index, int x, int y, int z)
 {
 	s16 *specLight;
 	u32 modelID;

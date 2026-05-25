@@ -8,11 +8,11 @@ void MainKillGame_LaunchSpyro2(void)
 	Music_Stop();
 
 	// clear backup, destroy music, destroy all fx
-	DECOMP_howl_StopAudio(1, 1, 1);
+	howl_StopAudio(1, 1, 1);
 
 	Bank_DestroyAll();
 
-	DECOMP_howl_Disable();
+	howl_Disable();
 
 	VSync(0x1e);
 

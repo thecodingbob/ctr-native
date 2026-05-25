@@ -123,7 +123,7 @@ void PlayLevel_UpdateLapStats(void)
 				// if farthest-ahead human
 				if (currDriver == firstRank)
 				{
-					DECOMP_OtherFX_Play(0x66, 1);
+					OtherFX_Play(0x66, 1);
 					Voiceline_ClearTimeStamp();
 				}
 

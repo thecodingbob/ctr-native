@@ -1,6 +1,6 @@
 #include <common.h>
 
-int DECOMP_MM_Characters_GetNextDriver(s16 dpad, char characterID)
+int MM_Characters_GetNextDriver(s16 dpad, char characterID)
 {
 	char nextDriver;
 	s16 unlocked;

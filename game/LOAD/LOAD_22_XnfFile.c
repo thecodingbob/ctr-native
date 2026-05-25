@@ -2,11 +2,11 @@
 
 // Used for XNF and only the XNF
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80032344-0x80032438
-void *DECOMP_LOAD_XnfFile(char *filename, void *ptrDestination, int *size)
+void *LOAD_XnfFile(char *filename, void *ptrDestination, int *size)
 {
 	CdlFILE cdlFile;
 
-	DECOMP_LOAD_StringToUpper(filename);
+	LOAD_StringToUpper(filename);
 	CDSYS_SetMode_StreamData();
 
 	if (CdSearchFile(&cdlFile, filename) == 0)

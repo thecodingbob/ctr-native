@@ -6,7 +6,7 @@ void FLARE_Init(s16 *pos)
 	// 0 = no relation to param4
 	// 0x300 = SmallStackPool
 	// 0xd = "other" thread bucket
-	struct Thread *th = DECOMP_PROC_BirthWithObject(0xc030d, FLARE_ThTick, NULL, NULL); // 3rd param was "lensflare" in ghidra
+	struct Thread *th = PROC_BirthWithObject(0xc030d, FLARE_ThTick, NULL, NULL); // 3rd param was "lensflare" in ghidra
 	if (th != NULL)
 	{
 		// Get the pointer to flare, attached to the thread

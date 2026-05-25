@@ -15,7 +15,7 @@ void MainFrame_ResetDB(struct GameTracker *gGT)
 #if !defined(REBUILD_PS1) || defined(CTR_NATIVE)
 	// check if new adv hub should be loaded,
 	// this was a random place for ND to put it
-	DECOMP_LOAD_Hub_Main(sdata->ptrBigfile1);
+	LOAD_Hub_Main(sdata->ptrBigfile1);
 #endif
 
 #ifndef REBUILD_PC

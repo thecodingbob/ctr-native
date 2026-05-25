@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_UI_TrackerSelf(struct Driver *d)
+void UI_TrackerSelf(struct Driver *d)
 {
 	s16 y;
 	s16 x;
@@ -162,7 +162,7 @@ LAB_8004fe8c:
 			{
 				// "homing in" sound
 				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80050014-0x8005001c for tracker beep SFX.
-				DECOMP_OtherFX_Play(0x56, 1);
+				OtherFX_Play(0x56, 1);
 			}
 
 			// white
@@ -306,7 +306,7 @@ LAB_8004fe8c:
 		}
 	}
 
-	DECOMP_UI_TrackerBG(
+	UI_TrackerBG(
 
 	    // missile lock-on icon
 	    gGT->ptrIcons[0x2d],

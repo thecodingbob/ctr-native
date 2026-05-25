@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_ResetAllMenus(void)
+void MM_ResetAllMenus(void)
 {
 	for (int i = 0; i < 9; i++)
 	{

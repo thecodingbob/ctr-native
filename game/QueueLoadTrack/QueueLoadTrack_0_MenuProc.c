@@ -27,5 +27,5 @@ void QueueLoadTrack_MenuProc(struct RectMenu *menu)
 
 	MainRaceTrack_RequestLoad(gGT->currLEV);
 
-	DECOMP_RECTMENU_Hide(menu);
+	RECTMENU_Hide(menu);
 }

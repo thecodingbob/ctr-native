@@ -8,7 +8,7 @@ void CAM_Init(struct CameraDC *cDC, int cameraID, struct Driver *d, struct PushB
 	printf("camera init\n");
 #endif
 
-	DECOMP_PROC_BirthWithObject(0x30f, CAM_ThTick, sdata->s_camera, NULL)->inst = (struct Instance *)cDC;
+	PROC_BirthWithObject(0x30f, CAM_ThTick, sdata->s_camera, NULL)->inst = (struct Instance *)cDC;
 
 	memset(cDC, 0, sizeof(struct CameraDC));
 

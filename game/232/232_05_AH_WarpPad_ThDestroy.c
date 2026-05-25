@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_AH_WarpPad_ThDestroy(struct Thread *t)
+void AH_WarpPad_ThDestroy(struct Thread *t)
 {
 	int i;
 	struct Instance **instArr;
@@ -15,7 +15,7 @@ void DECOMP_AH_WarpPad_ThDestroy(struct Thread *t)
 	{
 		if (instArr[i] != 0)
 		{
-			DECOMP_INSTANCE_Death(instArr[i]);
+			INSTANCE_Death(instArr[i]);
 			instArr[i] = 0;
 		}
 	}

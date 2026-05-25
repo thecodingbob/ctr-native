@@ -27,7 +27,7 @@ char EngineAudio_InitOnce(u32 soundID, u32 flags)
 		return 0;
 
 	// make ChannelAttr from howl pointer somehow
-	DECOMP_howl_InitChannelAttr_EngineFX(ptrEngineFX, &channelAttr, volume, LR, distortion);
+	howl_InitChannelAttr_EngineFX(ptrEngineFX, &channelAttr, volume, LR, distortion);
 
 	Smart_EnterCriticalSection();
 

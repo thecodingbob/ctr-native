@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_VehPhysProc_SpinFirst_Update(struct Thread *t, struct Driver *d)
+void VehPhysProc_SpinFirst_Update(struct Thread *t, struct Driver *d)
 {
 	int speedApprox;
 
@@ -19,5 +19,5 @@ void DECOMP_VehPhysProc_SpinFirst_Update(struct Thread *t, struct Driver *d)
 
 	// if speed has slown to near-halt,
 	// or if NoInputTimer ran out
-	DECOMP_VehPhysProc_SpinLast_Init(t, d);
+	VehPhysProc_SpinLast_Init(t, d);
 }

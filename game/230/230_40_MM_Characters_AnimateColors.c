@@ -1,5 +1,5 @@
 #include <common.h>
-void DECOMP_MM_Characters_AnimateColors(u8 *colorData, s16 playerID, s16 flag)
+void MM_Characters_AnimateColors(u8 *colorData, s16 playerID, s16 flag)
 {
 	u8 colorAdjustmentValue;
 	u32 trigApproximationIndex;

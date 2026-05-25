@@ -126,7 +126,7 @@ void DECOMP_RB_MaskWeapon_ThTick(struct Thread *maskTh)
 	// === Animation ===
 
 	// get animFrame
-	sVar1 = DECOMP_INSTANCE_GetNumAnimFrames(maskBeamInst, 0);
+	sVar1 = INSTANCE_GetNumAnimFrames(maskBeamInst, 0);
 
 	// if animation is not finished
 	if ((int)maskBeamInst->animFrame < sVar1 - 1)

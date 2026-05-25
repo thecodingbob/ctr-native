@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_PROC_CheckAllForDead()
+void PROC_CheckAllForDead()
 {
 	int i;
 
@@ -8,6 +8,6 @@ void DECOMP_PROC_CheckAllForDead()
 
 	for (i = 0; i < NUM_BUCKETS; i++)
 	{
-		DECOMP_PROC_CheckBloodlineForDead(&tb[i].thread, tb[i].thread);
+		PROC_CheckBloodlineForDead(&tb[i].thread, tb[i].thread);
 	}
 }

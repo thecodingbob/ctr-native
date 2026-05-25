@@ -1,6 +1,6 @@
 #include <common.h>
 
-char *DECOMP_MEMCARD_StringInit(int slotIndex, char *dstString)
+char *MEMCARD_StringInit(int slotIndex, char *dstString)
 {
 	if (!dstString)
 	{

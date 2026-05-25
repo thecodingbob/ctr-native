@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_Characters_MenuProc(struct RectMenu *unused)
+void MM_Characters_MenuProc(struct RectMenu *unused)
 {
 	u8 numPlyrNextGame;
 	int bVar2;
@@ -65,11 +65,11 @@ void DECOMP_MM_Characters_MenuProc(struct RectMenu *unused)
 	// if menu is not in focus
 	if (D230.isMenuTransitioning != 1)
 	{
-		DECOMP_MM_TransitionInOut(D230.ptrTransitionMeta, (int)D230.transitionFrames, 8);
+		MM_TransitionInOut(D230.ptrTransitionMeta, (int)D230.transitionFrames, 8);
 	}
 
-	DECOMP_MM_Characters_SetMenuLayout();
-	DECOMP_MM_Characters_DrawWindows(1);
+	MM_Characters_SetMenuLayout();
+	MM_Characters_DrawWindows(1);
 
 	// if transitioning in
 	if (D230.isMenuTransitioning == 0)
@@ -97,14 +97,14 @@ void DECOMP_MM_Characters_MenuProc(struct RectMenu *unused)
 		{
 			// Make a backup of the characters
 			// you selected in character selection screen
-			DECOMP_MM_Characters_BackupIDs();
+			MM_Characters_BackupIDs();
 
-			DECOMP_MM_Characters_HideDrivers();
+			MM_Characters_HideDrivers();
 
 			// if returning to main menu
 			if (D230.movingToTrackMenu == 0)
 			{
-				DECOMP_MM_JumpTo_Title_Returning();
+				MM_JumpTo_Title_Returning();
 				return;
 			}
 
@@ -112,13 +112,13 @@ void DECOMP_MM_Characters_MenuProc(struct RectMenu *unused)
 			if ((gGT->gameMode2 & CUP_ANY_KIND) != 0)
 			{
 				sdata->ptrDesiredMenu = &D230.menuCupSelect;
-				DECOMP_MM_CupSelect_Init();
+				MM_CupSelect_Init();
 				return;
 			}
 
 			// if going to track selection
 			sdata->ptrDesiredMenu = &D230.menuTrackSelect;
-			DECOMP_MM_TrackSelect_Init();
+			MM_TrackSelect_Init();
 			return;
 		}
 	}
@@ -137,7 +137,7 @@ void DECOMP_MM_Characters_MenuProc(struct RectMenu *unused)
 			goto dontDrawSelectCharacter;
 
 		// SELECT
-		DECOMP_DecalFont_DrawLine(sdata->lngStrings[96], posX + 0x9c, posY + 0x14, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+		DecalFont_DrawLine(sdata->lngStrings[96], posX + 0x9c, posY + 0x14, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 		characterSelectType = FONT_BIG;
 
 		// CHARACTER
@@ -155,7 +155,7 @@ void DECOMP_MM_Characters_MenuProc(struct RectMenu *unused)
 			goto dontDrawSelectCharacter;
 
 		// SELECT
-		DECOMP_DecalFont_DrawLine(sdata->lngStrings[96], posX + 0xfc, posY + 8, FONT_CREDITS, (JUSTIFY_CENTER | ORANGE));
+		DecalFont_DrawLine(sdata->lngStrings[96], posX + 0xfc, posY + 8, FONT_CREDITS, (JUSTIFY_CENTER | ORANGE));
 		characterSelectType = FONT_CREDITS;
 
 		// CHARACTER
@@ -183,7 +183,7 @@ void DECOMP_MM_Characters_MenuProc(struct RectMenu *unused)
 	}
 
 	// Draw String
-	DECOMP_DecalFont_DrawLine(characterSelectString, posX, posY, characterSelectType, (JUSTIFY_CENTER | ORANGE));
+	DecalFont_DrawLine(characterSelectString, posX, posY, characterSelectType, (JUSTIFY_CENTER | ORANGE));
 
 dontDrawSelectCharacter:
 
@@ -195,7 +195,7 @@ dontDrawSelectCharacter:
 		globalIconPerPlayerCopy = globalIconPerPlayerPtr[i];
 		globalIconPerPlayerCopy2 = globalIconPerPlayerCopy;
 
-		DECOMP_MM_Characters_AnimateColors(auStack120, i, (int)(s16)(sdata->characterSelectFlags & characterSelectFlags5bit));
+		MM_Characters_AnimateColors(auStack120, i, (int)(s16)(sdata->characterSelectFlags & characterSelectFlags5bit));
 
 		puVar26 = (u16 *)&D230.csm_Active[globalIconPerPlayerCopy];
 
@@ -271,53 +271,48 @@ dontDrawSelectCharacter:
 					globalIconPerPlayerCopy3 = globalIconPerPlayerCopy2;
 					do
 					{
-						globalIconPerPlayerCopy2 = DECOMP_MM_Characters_GetNextDriver(direction, globalIconPerPlayerCopy3);
+						globalIconPerPlayerCopy2 = MM_Characters_GetNextDriver(direction, globalIconPerPlayerCopy3);
 						globalIconPerPlayerCopy4 = globalIconPerPlayerCopy2;
 
 						if (globalIconPerPlayerCopy2 == globalIconPerPlayerCopy3)
 						{
 							local_50 = 1;
-							nextDriver = DECOMP_MM_Characters_GetNextDriver(direction, (int)(s16)*globalIconPerPlayerPtr2);
+							nextDriver = MM_Characters_GetNextDriver(direction, (int)(s16)*globalIconPerPlayerPtr2);
 							nextDriverCopy = (int)nextDriver;
-							globalIconPerPlayerCopy2 = DECOMP_MM_Characters_GetNextDriver((u32)(u8)D230.getNextDriver1[direction], nextDriverCopy);
+							globalIconPerPlayerCopy2 = MM_Characters_GetNextDriver((u32)(u8)D230.getNextDriver1[direction], nextDriverCopy);
 							globalIconPerPlayerCopy5 = (int)(s16)globalIconPerPlayerCopy2;
 
 							if ((((globalIconPerPlayerCopy5 == globalIconPerPlayerCopy4) || (nextDriverCopy == globalIconPerPlayerCopy4)) ||
 							     (nextDriverCopy == globalIconPerPlayerCopy5)) ||
-							    (button = DECOMP_MM_Characters_boolIsInvalid(globalIconPerPlayerPtr, globalIconPerPlayerCopy5, j), (button & 0xffff) != 0))
+							    (button = MM_Characters_boolIsInvalid(globalIconPerPlayerPtr, globalIconPerPlayerCopy5, j), (button & 0xffff) != 0))
 							{
-								nextDriver = DECOMP_MM_Characters_GetNextDriver((u32)(u8)D230.getNextDriver1[direction], (int)(s16)*globalIconPerPlayerPtr2);
+								nextDriver = MM_Characters_GetNextDriver((u32)(u8)D230.getNextDriver1[direction], (int)(s16)*globalIconPerPlayerPtr2);
 								globalIconPerPlayerCopy5 = (int)nextDriver;
-								globalIconPerPlayerCopy2 = DECOMP_MM_Characters_GetNextDriver(direction, globalIconPerPlayerCopy5);
+								globalIconPerPlayerCopy2 = MM_Characters_GetNextDriver(direction, globalIconPerPlayerCopy5);
 								globalIconPerPlayerCopy4 = (int)(s16)globalIconPerPlayerCopy2;
 
 								if (((globalIconPerPlayerCopy4 == globalIconPerPlayerCopy3) || (globalIconPerPlayerCopy5 == globalIconPerPlayerCopy3)) ||
 								    ((globalIconPerPlayerCopy5 == globalIconPerPlayerCopy4 ||
-								      (button = DECOMP_MM_Characters_boolIsInvalid(globalIconPerPlayerPtr, globalIconPerPlayerCopy4, j),
-								       (button & 0xffff) != 0))))
+								      (button = MM_Characters_boolIsInvalid(globalIconPerPlayerPtr, globalIconPerPlayerCopy4, j), (button & 0xffff) != 0))))
 								{
-									nextDriver = DECOMP_MM_Characters_GetNextDriver(direction, (int)(s16)*globalIconPerPlayerPtr2);
+									nextDriver = MM_Characters_GetNextDriver(direction, (int)(s16)*globalIconPerPlayerPtr2);
 									globalIconPerPlayerCopy5 = (int)nextDriver;
-									globalIconPerPlayerCopy2 =
-									    DECOMP_MM_Characters_GetNextDriver((u32)(u8)D230.getNextDriver2[direction], globalIconPerPlayerCopy5);
+									globalIconPerPlayerCopy2 = MM_Characters_GetNextDriver((u32)(u8)D230.getNextDriver2[direction], globalIconPerPlayerCopy5);
 									globalIconPerPlayerCopy4 = (int)(s16)globalIconPerPlayerCopy2;
 
 									if (((globalIconPerPlayerCopy4 == globalIconPerPlayerCopy3) || (globalIconPerPlayerCopy5 == globalIconPerPlayerCopy3)) ||
 									    ((globalIconPerPlayerCopy5 == globalIconPerPlayerCopy4 ||
-									      (button = DECOMP_MM_Characters_boolIsInvalid(globalIconPerPlayerPtr, globalIconPerPlayerCopy4, j),
-									       (button & 0xffff) != 0))))
+									      (button = MM_Characters_boolIsInvalid(globalIconPerPlayerPtr, globalIconPerPlayerCopy4, j), (button & 0xffff) != 0))))
 									{
-										nextDriver =
-										    DECOMP_MM_Characters_GetNextDriver((u32)(u8)D230.getNextDriver2[direction], (int)(s16)*globalIconPerPlayerPtr2);
+										nextDriver = MM_Characters_GetNextDriver((u32)(u8)D230.getNextDriver2[direction], (int)(s16)*globalIconPerPlayerPtr2);
 										globalIconPerPlayerCopy5 = (int)nextDriver;
-										globalIconPerPlayerCopy2 = DECOMP_MM_Characters_GetNextDriver(direction, globalIconPerPlayerCopy5);
+										globalIconPerPlayerCopy2 = MM_Characters_GetNextDriver(direction, globalIconPerPlayerCopy5);
 										globalIconPerPlayerCopy4 = (int)(s16)globalIconPerPlayerCopy2;
 
 										if ((((globalIconPerPlayerCopy4 == globalIconPerPlayerCopy3) ||
 										      (globalIconPerPlayerCopy5 == globalIconPerPlayerCopy3)) ||
 										     (globalIconPerPlayerCopy5 == globalIconPerPlayerCopy4)) ||
-										    (button = DECOMP_MM_Characters_boolIsInvalid(globalIconPerPlayerPtr, globalIconPerPlayerCopy4, j),
-										     (button & 0xffff) != 0))
+										    (button = MM_Characters_boolIsInvalid(globalIconPerPlayerPtr, globalIconPerPlayerCopy4, j), (button & 0xffff) != 0))
 										{
 											globalIconPerPlayerCopy2 = (u32)*globalIconPerPlayerPtr2;
 										}
@@ -340,7 +335,7 @@ dontDrawSelectCharacter:
 						{
 							// Play sound
 							// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800aeeb8-0x800aeecc for character cursor-change SFX.
-							DECOMP_OtherFX_Play(0, 1);
+							OtherFX_Play(0, 1);
 						}
 						if (local_50 != 0)
 						{
@@ -374,7 +369,7 @@ dontDrawSelectCharacter:
 
 					// Play sound
 					// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800aefa4-0x800aefe4 for character confirm SFX.
-					DECOMP_OtherFX_Play(1, 1);
+					OtherFX_Play(1, 1);
 
 					// if all players have selected their characters
 					if ((int)(s16)sdata->characterSelectFlags == (1 << numPlyrNextGame) - 1)
@@ -398,7 +393,7 @@ dontDrawSelectCharacter:
 
 					// Play sound
 					// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800af01c-0x800af054 for character-select back SFX.
-					DECOMP_OtherFX_Play(2, 1);
+					OtherFX_Play(2, 1);
 				}
 			}
 			else
@@ -408,7 +403,7 @@ dontDrawSelectCharacter:
 				{
 					// Play sound
 					// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800af060-0x800af074 for character deselect SFX.
-					DECOMP_OtherFX_Play(2, 1);
+					OtherFX_Play(2, 1);
 
 					// this player has de-selected their character
 					sdata->characterSelectFlags = sdata->characterSelectFlags & ~characterSelectFlags5bit;
@@ -429,8 +424,8 @@ dontDrawSelectCharacter:
 		{
 			// draw string
 			// "1", "2", "3", "4", above the character icon
-			DECOMP_DecalFont_DrawLine(D230.PlayerNumberStrings[i], ((struct TransitionMeta *)iVar24)->currX + (u32)*puVar26 + -6,
-			                          ((struct TransitionMeta *)iVar24)->currY + (u32)puVar26[1] + -3, FONT_BIG, WHITE);
+			DecalFont_DrawLine(D230.PlayerNumberStrings[i], ((struct TransitionMeta *)iVar24)->currX + (u32)*puVar26 + -6,
+			                   ((struct TransitionMeta *)iVar24)->currY + (u32)puVar26[1] + -3, FONT_BIG, WHITE);
 			puVar12 = auStack120;
 		}
 		else
@@ -444,10 +439,10 @@ dontDrawSelectCharacter:
 		r->h = 0x21;
 
 		color = *(Color *)puVar12;
-		DECOMP_RECTMENU_DrawOuterRect_HighLevel(r, color, 0, ot);
+		RECTMENU_DrawOuterRect_HighLevel(r, color, 0, ot);
 	}
 
-	DECOMP_MM_Characters_PreventOverlap();
+	MM_Characters_PreventOverlap();
 
 	csm_Active = D230.csm_Active;
 
@@ -482,13 +477,12 @@ dontDrawSelectCharacter:
 
 			iVar8 = (int)&D230.ptrTransitionMeta[i];
 
-			DECOMP_RECTMENU_DrawPolyGT4(gGT->ptrIcons[data.MetaDataCharacters[csm_Active->characterID].iconID],
-			                            ((struct TransitionMeta *)iVar8)->currX + csm_Active->posX + 6,
-			                            ((struct TransitionMeta *)iVar8)->currY + csm_Active->posY + 4,
+			RECTMENU_DrawPolyGT4(gGT->ptrIcons[data.MetaDataCharacters[csm_Active->characterID].iconID],
+			                     ((struct TransitionMeta *)iVar8)->currX + csm_Active->posX + 6, ((struct TransitionMeta *)iVar8)->currY + csm_Active->posY + 4,
 
-			                            &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT,
+			                     &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT,
 
-			                            iconColor, iconColor, iconColor, iconColor, TRANS_50_DECAL, FP(1.0));
+			                     iconColor, iconColor, iconColor, iconColor, TRANS_50_DECAL, FP(1.0));
 		}
 
 		csm_Active++;
@@ -511,10 +505,10 @@ dontDrawSelectCharacter:
 		// if player has not selected a character
 		if (((int)(s16)sdata->characterSelectFlags >> j & 1U) == 0)
 		{
-			DECOMP_MM_Characters_AnimateColors((u8 *)&colorRGBA, j,
+			MM_Characters_AnimateColors((u8 *)&colorRGBA, j,
 
-			                                   // flags of which characters are selected
-			                                   (int)(s16)(sdata->characterSelectFlags & (u16)(1 << j)));
+			                            // flags of which characters are selected
+			                            (int)(s16)(sdata->characterSelectFlags & (u16)(1 << j)));
 
 			colorRGBA[0] = (u8)((int)((u32)colorRGBA[0] << 2) / 5);
 			colorRGBA[1] = (u8)((int)((u32)colorRGBA[1] << 2) / 5);
@@ -553,10 +547,10 @@ dontDrawSelectCharacter:
 				sVar6 = sVar10 + D230.textPos + sVar6;
 
 			// draw string
-			DECOMP_DecalFont_DrawLine(sdata->lngStrings[data.MetaDataCharacters[csm_Active->characterID].name_LNG_long],
-			                          (int)((struct TransitionMeta *)iVar8)->currX + D230.characterSelect_ptrWindowXY[j * 2] +
-			                              (int)((u32)D230.characterSelect_sizeX >> 1),
-			                          (int)sVar6, fontType, (JUSTIFY_CENTER | ORANGE));
+			DecalFont_DrawLine(sdata->lngStrings[data.MetaDataCharacters[csm_Active->characterID].name_LNG_long],
+			                   (int)((struct TransitionMeta *)iVar8)->currX + D230.characterSelect_ptrWindowXY[j * 2] +
+			                       (int)((u32)D230.characterSelect_sizeX >> 1),
+			                   (int)sVar6, fontType, (JUSTIFY_CENTER | ORANGE));
 		}
 
 		// spin the character
@@ -588,7 +582,7 @@ dontDrawSelectCharacter:
 			r->h = 0x21;
 
 			// Draw 2D Menu rectangle background
-			DECOMP_RECTMENU_DrawInnerRect(r, 0, ot);
+			RECTMENU_DrawInnerRect(r, 0, ot);
 		}
 	}
 
@@ -605,13 +599,13 @@ dontDrawSelectCharacter:
 		r->w = D230.characterSelect_sizeX;
 		r->h = D230.characterSelect_sizeY;
 
-		DECOMP_MM_Characters_AnimateColors((u8 *)&colorRGBA, j,
+		MM_Characters_AnimateColors((u8 *)&colorRGBA, j,
 
-		                                   // flags of which characters are selected
-		                                   ((int)(s16)sdata->characterSelectFlags >> j ^ 1U) & 1);
+		                            // flags of which characters are selected
+		                            ((int)(s16)sdata->characterSelectFlags >> j ^ 1U) & 1);
 
 		color = *(Color *)&colorRGBA;
-		DECOMP_RECTMENU_DrawOuterRect_HighLevel(r, color, 0, ot);
+		RECTMENU_DrawOuterRect_HighLevel(r, color, 0, ot);
 
 		// if player selected a character
 		if (((int)(s16)sdata->characterSelectFlags >> j & 1U) != 0)
@@ -633,20 +627,20 @@ dontDrawSelectCharacter:
 				colorRGBA[2] = (u8)((int)((u32)colorRGBA[2] << 2) / 5);
 
 				color = *(Color *)&colorRGBA;
-				DECOMP_RECTMENU_DrawOuterRect_HighLevel(&r58, color, 0, ot);
+				RECTMENU_DrawOuterRect_HighLevel(&r58, color, 0, ot);
 			}
 		}
 		psVar22 = psVar22 + 2;
 
 		// Draw 2D Menu rectangle background
-		DECOMP_RECTMENU_DrawInnerRect(r, 9, &ot[3]);
+		RECTMENU_DrawInnerRect(r, 9, &ot[3]);
 
 		// not screen-space anymore,
 		// this is viewport-space
 		r->x = 0;
 		r->y = 0;
 
-		DECOMP_RECTMENU_DrawRwdBlueRect(r, &D230.characterSelect_BlueRectColors[0], &gGT->pushBuffer[i].ptrOT[0x3ff], &gGT->backBuffer->primMem);
+		RECTMENU_DrawRwdBlueRect(r, &D230.characterSelect_BlueRectColors[0], &gGT->pushBuffer[i].ptrOT[0x3ff], &gGT->backBuffer->primMem);
 	}
 	return;
 }

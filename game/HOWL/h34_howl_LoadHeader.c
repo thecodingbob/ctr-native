@@ -1,14 +1,14 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029b2c-0x80029c40
-int DECOMP_howl_LoadHeader(char *filename)
+int howl_LoadHeader(char *filename)
 {
 	struct HowlHeader *alloc;
 	int howlHeaderSize;
 	int numSector;
 	int ret;
 
-	if (DECOMP_LOAD_FindFile(filename, &sdata->KartHWL_CdFile) == 0)
+	if (LOAD_FindFile(filename, &sdata->KartHWL_CdFile) == 0)
 		return 0;
 
 	MEMPACK_PushState();
@@ -19,7 +19,7 @@ int DECOMP_howl_LoadHeader(char *filename)
 	if (alloc != 0)
 	{
 		// read sector #1 of HOWL, just for header
-		ret = DECOMP_LOAD_HowlHeaderSectors(&sdata->KartHWL_CdFile, alloc, 0, 1);
+		ret = LOAD_HowlHeaderSectors(&sdata->KartHWL_CdFile, alloc, 0, 1);
 
 		if (
 		    // confirm first sector loaded properly
@@ -34,10 +34,10 @@ int DECOMP_howl_LoadHeader(char *filename)
 			MEMPACK_ReallocMem(numSector << 0xb);
 
 			// if header needs more sectors loaded, like CTR-U which needs 3 sectors
-			if (numSector < 2 || DECOMP_LOAD_HowlHeaderSectors(&sdata->KartHWL_CdFile, (void *)((int)alloc + 0x800), 1, numSector - 1) != 0)
+			if (numSector < 2 || LOAD_HowlHeaderSectors(&sdata->KartHWL_CdFile, (void *)((int)alloc + 0x800), 1, numSector - 1) != 0)
 			{
 				// initilaize header and pointer table
-				DECOMP_howl_ParseHeader(alloc);
+				howl_ParseHeader(alloc);
 
 				// reallocate room just howlHeader + pointerTable,
 				// deallocate sector-alignment padding

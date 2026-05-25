@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_AH_SaveObj_ThTick(struct Thread *t)
+void AH_SaveObj_ThTick(struct Thread *t)
 {
 	s16 sVar1;
 	u16 uVar2;
@@ -64,7 +64,7 @@ void DECOMP_AH_SaveObj_ThTick(struct Thread *t)
 		        // 0 - speaking,
 		        // 1 - gone
 
-		        uVar6 = DECOMP_AH_MaskHint_boolCanSpawn(),
+		        uVar6 = AH_MaskHint_boolCanSpawn(),
 
 		        // if aku is gone
 		        (uVar6 & 0xffff) != 0))
@@ -141,7 +141,7 @@ void DECOMP_AH_SaveObj_ThTick(struct Thread *t)
 #endif
 
 						// enable menu for green load/save screen
-						DECOMP_RECTMENU_Show(&data.menuGreenLoadSave);
+						RECTMENU_Show(&data.menuGreenLoadSave);
 					}
 
 					// if it is time to return to player
@@ -177,7 +177,7 @@ LAB_800af72c:
 	{
 		sVar1 = saveInst->animFrame;
 
-		iVar7 = DECOMP_INSTANCE_GetNumAnimFrames(saveInst, 0);
+		iVar7 = INSTANCE_GetNumAnimFrames(saveInst, 0);
 
 		// if animation is not finished
 		if ((int)sVar1 < iVar7 - 1)
@@ -213,7 +213,7 @@ LAB_800af72c:
 
 			// Play save/load screen sound
 			// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800af7a8-0x800af7c0 for save/load screen loop SFX.
-			DECOMP_OtherFX_Play_LowLevel(0x99, 1, (uVar6 & 0xff) << 0x10 | 0x8080);
+			OtherFX_Play_LowLevel(0x99, 1, (uVar6 & 0xff) << 0x10 | 0x8080);
 
 			// reset animation
 			saveInst->animFrame = 0;

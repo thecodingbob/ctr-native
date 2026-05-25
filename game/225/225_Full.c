@@ -119,15 +119,15 @@ void VB_EndEvent_DrawMenu(void)
 	}
 
 	// fly-in interpolation
-	DECOMP_UI_Lerp2D_Linear(&pos[0], 0x296, yCoord, uVar7, yCoord, iVar11, 5);
+	UI_Lerp2D_Linear(&pos[0], 0x296, yCoord, uVar7, yCoord, iVar11, 5);
 
 	iVar14 = yCoord + 0x28;
 
 	// "Versus" or "Battle"
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[iVar10], pos[0], pos[1], 1, 0xffff8000);
+	DecalFont_DrawLine(sdata->lngStrings[iVar10], pos[0], pos[1], 1, 0xffff8000);
 
 	// STANDINGS
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[0xCA], pos[0], (pos[1] + 0x11), 1, 0xffff8000);
+	DecalFont_DrawLine(sdata->lngStrings[0xCA], pos[0], (pos[1] + 0x11), 1, 0xffff8000);
 
 	iVar10 = uStack96;
 	iVar11 = 0;
@@ -158,7 +158,7 @@ void VB_EndEvent_DrawMenu(void)
 			}
 
 			// fly-in interpolation
-			DECOMP_UI_Lerp2D_Linear(&pos[0], 0x296, sVar5, uVar7, sVar5, iVar10, 5);
+			UI_Lerp2D_Linear(&pos[0], 0x296, sVar5, uVar7, sVar5, iVar10, 5);
 
 			sVar9 = 0;
 
@@ -253,7 +253,7 @@ void VB_EndEvent_DrawMenu(void)
 
 					// Draw string
 					// todo: replace 0x1f800000 with reference to scratchpad
-					DECOMP_DecalFont_DrawLine((char *)0x1f800000, (pos[0] + 0x79), ((uStack112 - (iVar6 * 4 + -0xd)) + iVar10 * 8), 2, uVar7);
+					DecalFont_DrawLine((char *)0x1f800000, (pos[0] + 0x79), ((uStack112 - (iVar6 * 4 + -0xd)) + iVar10 * 8), 2, uVar7);
 				}
 			}
 
@@ -280,7 +280,7 @@ void VB_EndEvent_DrawMenu(void)
 
 			// Draw String
 			// todo: replace 0x1f800000 with reference to scratchpad
-			DECOMP_DecalFont_DrawLine((char *)0x1f800000, (pos[0] - 0x24), (uStack112 + 5), 1, 0xffff8000);
+			DecalFont_DrawLine((char *)0x1f800000, (pos[0] - 0x24), (uStack112 + 5), 1, 0xffff8000);
 		}
 	}
 
@@ -323,7 +323,7 @@ void VB_EndEvent_DrawMenu(void)
 			}
 
 			// fly-in interpolation
-			DECOMP_UI_Lerp2D_Linear(&pos[0], view->rect.x, view->rect.y, 0x14, 0xc, sdata->framesSinceRaceEnded, 25);
+			UI_Lerp2D_Linear(&pos[0], view->rect.x, view->rect.y, 0x14, 0xc, sdata->framesSinceRaceEnded, 25);
 
 			box.x = pos[0] - 3;
 			box.y = pos[1] - 2;
@@ -332,7 +332,7 @@ void VB_EndEvent_DrawMenu(void)
 
 			Color color;
 			color.self = sdata->battleSetup_Color_UI_1;
-			DECOMP_RECTMENU_DrawOuterRect_HighLevel(&box, color, 0, gGT->backBuffer->otMem.startPlusFour);
+			RECTMENU_DrawOuterRect_HighLevel(&box, color, 0, gGT->backBuffer->otMem.startPlusFour);
 
 			view->rect.x = pos[0];
 			view->rect.y = pos[1];
@@ -360,7 +360,7 @@ void VB_EndEvent_DrawMenu(void)
 		endMenu = ((gGT->gameMode1 & 0x20) == 0) ? &menuVS : &menuBattle;
 
 		// Make Menu Box appear based on the game mode
-		DECOMP_RECTMENU_Show(endMenu);
+		RECTMENU_Show(endMenu);
 
 		sdata->menuReadyToPass |= 1;
 	}
@@ -415,7 +415,7 @@ struct RectMenu menuVS = {
     .unk1 = 0,
     .state = (0x800 | EXECUTE_FUNCPTR | USE_SMALL_FONT | CENTER_ON_COORDS), // 0xC83
     .rows = rowsVS,
-    .funcPtr = DECOMP_UI_RaceEnd_MenuProc,
+    .funcPtr = UI_RaceEnd_MenuProc,
     .drawStyle = 4,
     // rest of variables all default zero
 };
@@ -477,7 +477,7 @@ struct RectMenu menuBattle = {
     .unk1 = 0,
     .state = (0x800 | EXECUTE_FUNCPTR | USE_SMALL_FONT | CENTER_ON_COORDS), // 0xC83
     .rows = rowsBattle,
-    .funcPtr = DECOMP_UI_RaceEnd_MenuProc,
+    .funcPtr = UI_RaceEnd_MenuProc,
     .drawStyle = 4,
     // rest of variables all default zero
 };

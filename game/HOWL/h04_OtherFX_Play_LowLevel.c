@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800284d0-0x80028690
-int DECOMP_OtherFX_Play_LowLevel(u32 soundID, char boolAntiSpam, u32 flags)
+int OtherFX_Play_LowLevel(u32 soundID, u8 boolAntiSpam, u32 flags)
 {
 	struct GameTracker *gGT = sdata->gGT;
 	struct ChannelStats *channel;
@@ -30,7 +30,7 @@ int DECOMP_OtherFX_Play_LowLevel(u32 soundID, char boolAntiSpam, u32 flags)
 	if (sdata->howl_spuAddrs[ptrOtherFX->spuIndex].spuAddr == 0)
 		return 0;
 
-	DECOMP_howl_InitChannelAttr_OtherFX(ptrOtherFX, &channelAttr, volume, LR, distortion);
+	howl_InitChannelAttr_OtherFX(ptrOtherFX, &channelAttr, volume, LR, distortion);
 
 	channelAttr.reverb = echo;
 
@@ -83,9 +83,4 @@ int DECOMP_OtherFX_Play_LowLevel(u32 soundID, char boolAntiSpam, u32 flags)
 
 	Smart_ExitCriticalSection();
 	return channel->soundID;
-}
-
-int OtherFX_Play_LowLevel(u32 soundID, u8 boolAntiSpam, u32 flags)
-{
-	return DECOMP_OtherFX_Play_LowLevel(soundID, boolAntiSpam, flags);
 }

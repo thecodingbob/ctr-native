@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ae318-0x800ae54c
-void DECOMP_CS_Thread_InterpolateFramesMS(struct Thread *t)
+void CS_Thread_InterpolateFramesMS(struct Thread *t)
 {
 	struct GameTracker *gGT = sdata->gGT;
 	struct Instance *inst = t->inst;
@@ -12,8 +12,8 @@ void DECOMP_CS_Thread_InterpolateFramesMS(struct Thread *t)
 	u16 next[3];
 	int depth;
 
-	DECOMP_CS_Instance_GetFrameData(inst, inst->animIndex, inst->animFrame, curr, NULL, 0);
-	DECOMP_CS_Instance_GetFrameData(inst, inst->animIndex, inst->animFrame, next, NULL, 1);
+	CS_Instance_GetFrameData(inst, inst->animIndex, inst->animFrame, curr, NULL, 0);
+	CS_Instance_GetFrameData(inst, inst->animIndex, inst->animFrame, next, NULL, 1);
 
 	curr[0] = (u16)(curr[0] + (u16)inst->matrix.t[0]);
 	curr[1] = (u16)(curr[1] + (u16)inst->matrix.t[1]);

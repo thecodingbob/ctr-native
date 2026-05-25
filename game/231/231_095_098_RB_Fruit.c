@@ -93,7 +93,7 @@ int DECOMP_RB_Fruit_LInC(struct Instance *fruitInst, struct Thread *driverTh, st
 	fruitTh = fruitInst->thread;
 	if (fruitTh == NULL)
 	{
-		fruitTh = DECOMP_PROC_BirthWithObject(
+		fruitTh = PROC_BirthWithObject(
 		    // creation flags
 		    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Fruit), NONE, SMALL, STATIC),
 

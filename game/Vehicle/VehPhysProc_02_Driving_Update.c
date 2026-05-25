@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_VehPhysProc_Driving_Update(struct Thread *t, struct Driver *d)
+void VehPhysProc_Driving_Update(struct Thread *t, struct Driver *d)
 {
 	// if racer touched the ground in this frame
 	if ((d->actionsFlagSet & 2) != 0)
@@ -22,7 +22,7 @@ void DECOMP_VehPhysProc_Driving_Update(struct Thread *t, struct Driver *d)
 		    // player is not in accel prevention or braking and
 		    ((d->actionsFlagSet & 8) == 0) && (d->const_Speed_ClassStat >> 1 <= d->speedApprox))
 		{
-			DECOMP_VehPhysProc_PowerSlide_Init(t, d);
+			VehPhysProc_PowerSlide_Init(t, d);
 
 			// exit the function
 			return;
@@ -39,7 +39,7 @@ void DECOMP_VehPhysProc_Driving_Update(struct Thread *t, struct Driver *d)
 	    (4 < d->unknownTraction))
 	{
 		// Stop driving, until you press X, prevents jitters
-		DECOMP_VehPhysProc_FreezeVShift_Init(t, d);
+		VehPhysProc_FreezeVShift_Init(t, d);
 	}
 
 	else

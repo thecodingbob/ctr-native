@@ -9,7 +9,7 @@ void DECOMP_RB_Explosion_InitGeneric(struct Instance *inst)
 	u32 color;
 
 	// create thread for explosion
-	explosion = DECOMP_INSTANCE_BirthWithThread(0x26, 0, SMALL, OTHER, DECOMP_RB_Explosion_ThTick, 0, 0);
+	explosion = INSTANCE_BirthWithThread(0x26, 0, SMALL, OTHER, DECOMP_RB_Explosion_ThTick, 0, 0);
 
 	// copy position and rotation from one instance to the other
 	*(int *)&explosion->matrix.m[0][0] = *(int *)&inst->matrix.m[0][0];
@@ -39,7 +39,7 @@ void DECOMP_RB_Explosion_InitGeneric(struct Instance *inst)
 	explosion->alphaScale = 0x1000;
 
 	// set funcThDestroy to remove instance from instance pool
-	explosion->thread->funcThDestroy = DECOMP_PROC_DestroyInstance;
+	explosion->thread->funcThDestroy = PROC_DestroyInstance;
 	return;
 }
 

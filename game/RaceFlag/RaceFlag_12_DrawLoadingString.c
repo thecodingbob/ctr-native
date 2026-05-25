@@ -28,7 +28,7 @@ void RaceFlag_DrawLoadingString(void)
 	// get length of "LOADING..." string
 	iVar2 = 10;
 
-	iVar3 = DECOMP_DecalFont_GetLineWidth(pbVar7, 1);
+	iVar3 = DecalFont_GetLineWidth(pbVar7, 1);
 
 	// loop counter
 	iVar6 = 0;
@@ -102,10 +102,10 @@ void RaceFlag_DrawLoadingString(void)
 			}
 			if ((s16)iVar4 != 0x23c)
 			{
-				DECOMP_DecalFont_DrawLineStrlen(&local_30, uVar5, (iVar10 + iVar4), 0x6c, 1, 0);
+				DecalFont_DrawLineStrlen(&local_30, uVar5, (iVar10 + iVar4), 0x6c, 1, 0);
 			}
 
-			iVar4 = DECOMP_DecalFont_GetLineWidthStrlen(&local_30, uVar5, 1);
+			iVar4 = DecalFont_GetLineWidthStrlen(&local_30, uVar5, 1);
 
 			iVar10 = iVar10 + iVar4;
 			iVar9 = iVar9 + 0xf0;

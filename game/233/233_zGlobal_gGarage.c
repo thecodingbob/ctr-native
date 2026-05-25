@@ -16,7 +16,7 @@ struct OVR233_Garage gGarage = {
 
             .state = 0x823,
             .rows = 0,
-            .funcPtr = DECOMP_CS_Garage_MenuProc,
+            .funcPtr = CS_Garage_MenuProc,
             .drawStyle = 0,
         },
 

@@ -2,7 +2,7 @@
 
 // param1 - pointer to Instance Descriptions
 // param2 - number of instances
-void DECOMP_INSTANCE_LevInitAll(struct InstDef *levInstDef, int numInst)
+void INSTANCE_LevInitAll(struct InstDef *levInstDef, int numInst)
 {
 	s16 sVar5;
 	u16 modelID;

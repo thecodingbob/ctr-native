@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_TrackSelect_MenuProc(struct RectMenu *menu)
+void MM_TrackSelect_MenuProc(struct RectMenu *menu)
 {
 	char bVar1;
 	char bVar2;
@@ -48,7 +48,7 @@ void DECOMP_MM_TrackSelect_MenuProc(struct RectMenu *menu)
 				sdata->errorMessagePosIndex = 2;
 			}
 
-			DECOMP_MM_TransitionInOut(&D230.transitionMeta_trackSel[0], elapsedFrames, 8);
+			MM_TransitionInOut(&D230.transitionMeta_trackSel[0], elapsedFrames, 8);
 
 			// ran out of frames
 			if (elapsedFrames == 0)
@@ -64,7 +64,7 @@ void DECOMP_MM_TrackSelect_MenuProc(struct RectMenu *menu)
 		// transitioning out
 		else if (D230.trackSel_transitionState == EXITING_MENU)
 		{
-			DECOMP_MM_TransitionInOut(&D230.transitionMeta_trackSel[0], elapsedFrames, 8);
+			MM_TransitionInOut(&D230.transitionMeta_trackSel[0], elapsedFrames, 8);
 			elapsedFrames++;
 
 			if (elapsedFrames > 12)
@@ -76,7 +76,7 @@ void DECOMP_MM_TrackSelect_MenuProc(struct RectMenu *menu)
 				{
 					// return to character selection
 					sdata->ptrDesiredMenu = &D230.menuCharacterSelect;
-					DECOMP_MM_Characters_RestoreIDs();
+					MM_Characters_RestoreIDs();
 					return;
 				}
 
@@ -87,7 +87,7 @@ void DECOMP_MM_TrackSelect_MenuProc(struct RectMenu *menu)
 				{
 					// open weapon selection menu
 					sdata->ptrDesiredMenu = &D230.menuBattleWeapons;
-					DECOMP_MM_Battle_Init();
+					MM_Battle_Init();
 					return;
 				}
 
@@ -170,14 +170,14 @@ void DECOMP_MM_TrackSelect_MenuProc(struct RectMenu *menu)
 						// set to the last track
 						currTrack = numTracks - 1;
 
-				} while (!DECOMP_MM_TrackSelect_boolTrackOpen(&selectMenu[currTrack]));
+				} while (!MM_TrackSelect_boolTrackOpen(&selectMenu[currTrack]));
 
 				D230.trackSel_currTrack = currTrack;
 				D230.trackSel_changeTrack_frameCount = 3;
 				D230.trackSel_direction = 1;
 
 				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b034c-0x800b035c for track-select previous SFX.
-				DECOMP_OtherFX_Play(0, 1);
+				OtherFX_Play(0, 1);
 				break;
 
 			case BTN_DOWN:
@@ -192,14 +192,14 @@ void DECOMP_MM_TrackSelect_MenuProc(struct RectMenu *menu)
 						// set to the first trrack
 						currTrack = 0;
 
-				} while (!DECOMP_MM_TrackSelect_boolTrackOpen(&selectMenu[currTrack]));
+				} while (!MM_TrackSelect_boolTrackOpen(&selectMenu[currTrack]));
 
 				D230.trackSel_currTrack = currTrack;
 				D230.trackSel_changeTrack_frameCount = 3;
 				D230.trackSel_direction = -1;
 
 				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b03bc-0x800b03cc for track-select next SFX.
-				DECOMP_OtherFX_Play(0, 1);
+				OtherFX_Play(0, 1);
 				break;
 
 			case BTN_CROSS_one:
@@ -207,7 +207,7 @@ void DECOMP_MM_TrackSelect_MenuProc(struct RectMenu *menu)
 
 				// "enter/confirm" sound
 				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b0434-0x800b0444 for track-select confirm SFX.
-				DECOMP_OtherFX_Play(1, 1);
+				OtherFX_Play(1, 1);
 
 				// if not Battle or Time Trial, open LapSelectMenu
 				if ((gGT->gameMode1 & (BATTLE_MODE | TIME_TRIAL)) == 0)
@@ -227,7 +227,7 @@ void DECOMP_MM_TrackSelect_MenuProc(struct RectMenu *menu)
 
 				// "go back" sound
 				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b0490-0x800b04a4 for track-select back SFX.
-				DECOMP_OtherFX_Play(2, 1);
+				OtherFX_Play(2, 1);
 
 				D230.trackSel_StartRaceAfterFadeOut = 0;
 				D230.trackSel_transitionState = EXITING_MENU;
@@ -237,7 +237,7 @@ void DECOMP_MM_TrackSelect_MenuProc(struct RectMenu *menu)
 			}
 
 			// clear gamepad input (for menus)
-			DECOMP_RECTMENU_ClearInput();
+			RECTMENU_ClearInput();
 		}
 	}
 
@@ -252,10 +252,10 @@ void DECOMP_MM_TrackSelect_MenuProc(struct RectMenu *menu)
 		// If you're in track selection menu
 		if (D230.trackSel_transitionState == IN_MENU)
 		{
-			lapSelTransitionState = DECOMP_RECTMENU_ProcessInput(&D230.menuLapSel);
+			lapSelTransitionState = RECTMENU_ProcessInput(&D230.menuLapSel);
 		}
 
-		DECOMP_RECTMENU_DrawSelf(&D230.menuLapSel, D230.transitionMeta_trackSel[2].currX, D230.transitionMeta_trackSel[2].currY, 0xa4);
+		RECTMENU_DrawSelf(&D230.menuLapSel, D230.transitionMeta_trackSel[2].currX, D230.transitionMeta_trackSel[2].currY, 0xa4);
 
 		// put LapRow back into 8d920
 		sdata->uselessLapRowCopy = D230.menuLapSel.rowSelected;
@@ -311,7 +311,7 @@ void DECOMP_MM_TrackSelect_MenuProc(struct RectMenu *menu)
 		uVar14 = 1;
 	}
 
-	DECOMP_MM_TrackSelect_Video_State(uVar14);
+	MM_TrackSelect_Video_State(uVar14);
 
 	gGT->currLEV = selectMenu[menu->rowSelected].levID;
 	iVar9 = (int)menu->rowSelected + -1;
@@ -326,7 +326,7 @@ void DECOMP_MM_TrackSelect_MenuProc(struct RectMenu *menu)
 				iVar10 = numTracks - 1;
 			}
 
-			uVar8 = DECOMP_MM_TrackSelect_boolTrackOpen(&selectMenu[iVar10]);
+			uVar8 = MM_TrackSelect_boolTrackOpen(&selectMenu[iVar10]);
 
 			iVar9 = iVar10 - 1;
 		} while ((uVar8 & 0xffff) == 0);
@@ -446,7 +446,7 @@ void DECOMP_MM_TrackSelect_MenuProc(struct RectMenu *menu)
 		// and so on
 
 		// Draw string
-		DECOMP_DecalFont_DrawLine(sdata->lngStrings[data.metaDataLEV[selectMenu[iVar10].levID].name_LNG], (iVar11 + 8), (iVar9 + 0x65), FONT_BIG, ORANGE);
+		DecalFont_DrawLine(sdata->lngStrings[data.metaDataLEV[selectMenu[iVar10].levID].name_LNG], (iVar11 + 8), (iVar9 + 0x65), FONT_BIG, ORANGE);
 
 		if ((D230.trackSel_changeTrack_frameCount == 0) && ((s16)iVar18 == 4))
 		{
@@ -474,7 +474,7 @@ void DECOMP_MM_TrackSelect_MenuProc(struct RectMenu *menu)
 					}
 
 					// "GHOST DATA EXISTS"
-					DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x6B], (iVar11 + 8 + 0x78), (iVar9 + 0x76), FONT_SMALL, uVar14);
+					DecalFont_DrawLine(sdata->lngStrings[0x6B], (iVar11 + 8 + 0x78), (iVar9 + 0x76), FONT_SMALL, uVar14);
 				}
 			}
 			q.x = r.x + 6;
@@ -486,7 +486,7 @@ void DECOMP_MM_TrackSelect_MenuProc(struct RectMenu *menu)
 		}
 
 		// Draw 2D Menu rectangle background
-		DECOMP_RECTMENU_DrawInnerRect(&r, 0, gGT->backBuffer->otMem.startPlusFour);
+		RECTMENU_DrawInnerRect(&r, 0, gGT->backBuffer->otMem.startPlusFour);
 
 		do
 		{
@@ -496,7 +496,7 @@ void DECOMP_MM_TrackSelect_MenuProc(struct RectMenu *menu)
 			{
 				iVar10 = 0;
 			}
-			uVar8 = DECOMP_MM_TrackSelect_boolTrackOpen(&selectMenu[iVar10]);
+			uVar8 = MM_TrackSelect_boolTrackOpen(&selectMenu[iVar10]);
 
 		} while ((uVar8 & 0xffff) == 0);
 
@@ -525,12 +525,12 @@ void DECOMP_MM_TrackSelect_MenuProc(struct RectMenu *menu)
 			if (D230.trackSel_boolOpenLapBox == 0)
 			{
 				// "SELECT"
-				DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x69], (D230.transitionMeta_trackSel[3].currX + 0x18c),
-				                          (D230.transitionMeta_trackSel[3].currY + (u32)p.y), FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+				DecalFont_DrawLine(sdata->lngStrings[0x69], (D230.transitionMeta_trackSel[3].currX + 0x18c), (D230.transitionMeta_trackSel[3].currY + (u32)p.y),
+				                   FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 
 				// "LEVEL"
-				DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x6a], (D230.transitionMeta_trackSel[3].currX + 0x18c),
-				                          (D230.transitionMeta_trackSel[3].currY + (u32)p.y + 0x10), FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+				DecalFont_DrawLine(sdata->lngStrings[0x6a], (D230.transitionMeta_trackSel[3].currX + 0x18c),
+				                   (D230.transitionMeta_trackSel[3].currY + (u32)p.y + 0x10), FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 			}
 
 			// next, draw the map icon, below "SELECT LEVEL",
@@ -565,7 +565,7 @@ void DECOMP_MM_TrackSelect_MenuProc(struct RectMenu *menu)
 				{
 					iVar10 = ((((u32)bVar1 - (u32)bVar2) + (u32)bVar3) - (u32)bVar4);
 
-					DECOMP_UI_Map_DrawMap(
+					UI_Map_DrawMap(
 					    // top half
 					    iconMap0,
 
@@ -594,7 +594,7 @@ void DECOMP_MM_TrackSelect_MenuProc(struct RectMenu *menu)
 				}
 			}
 
-			DECOMP_MM_TrackSelect_Video_Draw(&p, selectMenu, (int)(s16)D230.trackSel_currTrack, (u32)(D230.trackSel_transitionState == EXITING_MENU), 0);
+			MM_TrackSelect_Video_Draw(&p, selectMenu, (int)(s16)D230.trackSel_currTrack, (u32)(D230.trackSel_transitionState == EXITING_MENU), 0);
 
 			return;
 		}

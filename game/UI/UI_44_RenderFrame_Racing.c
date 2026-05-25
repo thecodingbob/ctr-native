@@ -3,7 +3,7 @@
 // To do: add a header
 void AA_EndEvent_DisplayTime(s16, s16);
 
-void DECOMP_UI_RenderFrame_Racing()
+void UI_RenderFrame_Racing()
 {
 	s16 sVar1;
 	s16 sVar2;
@@ -60,7 +60,7 @@ void DECOMP_UI_RenderFrame_Racing()
 	turboCount_Pos[0] = 0;
 	turboCount_Pos[1] = 0;
 
-	DECOMP_UI_WeaponBG_AnimateShine();
+	UI_WeaponBG_AnimateShine();
 
 	// if time on clock is zero
 	if (gGT->elapsedEventTime == 0)
@@ -118,7 +118,7 @@ void DECOMP_UI_RenderFrame_Racing()
 	{
 // cant run on PC yet, drivers dont initialize
 #ifndef REBUILD_PC
-		DECOMP_UI_DrawRankedDrivers();
+		UI_DrawRankedDrivers();
 #endif
 	}
 
@@ -148,7 +148,7 @@ void DECOMP_UI_RenderFrame_Racing()
 				if ((gameMode1 & PAUSE_ALL) == 0)
 				{
 					// execute Jump meter and landing boost processes
-					DECOMP_UI_JumpMeter_Update(playerStruct);
+					UI_JumpMeter_Update(playerStruct);
 				}
 			}
 
@@ -164,7 +164,7 @@ void DECOMP_UI_RenderFrame_Racing()
 					// if "Time on clock" last 0xXX u8 is greater than 0x80 and less than 0xFF
 					if ((gGT->elapsedEventTime & 0x80) != 0)
 					{
-						DECOMP_DecalFont_DrawLine(
+						DecalFont_DrawLine(
 						    // "WRONG WAY!"
 						    sdata->lngStrings[0x1D],
 
@@ -191,10 +191,10 @@ void DECOMP_UI_RenderFrame_Racing()
 			    // if want to draw speedometer
 			    ((sdata->HudAndDebugFlags & 8) != 0))
 			{
-				DECOMP_UI_DrawSpeedNeedle(hudStructPtr[9].x + offset, hudStructPtr[9].y, playerStruct);
-				DECOMP_UI_JumpMeter_Draw(hudStructPtr[6].x, hudStructPtr[6].y, playerStruct);
-				DECOMP_UI_DrawSlideMeter(hudStructPtr[8].x + offset, hudStructPtr[8].y, playerStruct);
-				DECOMP_UI_DrawSpeedBG();
+				UI_DrawSpeedNeedle(hudStructPtr[9].x + offset, hudStructPtr[9].y, playerStruct);
+				UI_JumpMeter_Draw(hudStructPtr[6].x, hudStructPtr[6].y, playerStruct);
+				UI_DrawSlideMeter(hudStructPtr[8].x + offset, hudStructPtr[8].y, playerStruct);
+				UI_DrawSpeedBG();
 			}
 
 			// if racer hasn't finished the race
@@ -204,20 +204,20 @@ void DECOMP_UI_RenderFrame_Racing()
 				if ((gameMode1 & BATTLE_MODE) == 0)
 				{
 					// Draw powerslide meter
-					DECOMP_UI_DrawSlideMeter(hudStructPtr[8].x + offset, hudStructPtr[8].y, playerStruct);
+					UI_DrawSlideMeter(hudStructPtr[8].x + offset, hudStructPtr[8].y, playerStruct);
 				}
 
 				// If you are not in Time Trial or Relic Race
 				if ((gameMode1 & (TIME_TRIAL | RELIC_RACE)) == 0)
 				{
-					DECOMP_UI_DrawNumWumpa(hudStructPtr[4].x, hudStructPtr[4].y, playerStruct);
+					UI_DrawNumWumpa(hudStructPtr[4].x, hudStructPtr[4].y, playerStruct);
 				}
 			}
 
 			// If you're in a Relic Race
 			if ((gameMode1 & RELIC_RACE) != 0)
 			{
-				DECOMP_UI_DrawNumTimebox(hudStructPtr[0x13].x, hudStructPtr[0x13].y, playerStruct);
+				UI_DrawNumTimebox(hudStructPtr[0x13].x, hudStructPtr[0x13].y, playerStruct);
 			}
 
 			// If game is not paused
@@ -234,7 +234,7 @@ void DECOMP_UI_RenderFrame_Racing()
 						// deduct from number of queued items to pick up
 						playerStruct->PickupWumpaHUD.numCollected--;
 
-						if ((DECOMP_LOAD_IsOpen_RacingOrBattle() != 0) &&
+						if ((LOAD_IsOpen_RacingOrBattle() != 0) &&
 
 						    // If you're not in Adventure Arena
 						    ((gameMode1 & ADVENTURE_ARENA) == 0))
@@ -245,7 +245,7 @@ void DECOMP_UI_RenderFrame_Racing()
 
 						// OtherFX_Play to get wumpa fruit
 						// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005347c-0x80053484 for wumpa pickup SFX.
-						DECOMP_OtherFX_Play(0x42, 1);
+						OtherFX_Play(0x42, 1);
 
 						// initial timer value
 						partTimeVariable1 = 5;
@@ -256,8 +256,8 @@ void DECOMP_UI_RenderFrame_Racing()
 					}
 					else
 					{
-						DECOMP_UI_Lerp2D_HUD(&wumpaModel_Pos[0], (int)playerStruct->PickupWumpaHUD.startX, (int)playerStruct->PickupWumpaHUD.startY,
-						                     hudStructPtr[3].x, hudStructPtr[3].y, playerStruct->PickupWumpaHUD.cooldown, 5);
+						UI_Lerp2D_HUD(&wumpaModel_Pos[0], (int)playerStruct->PickupWumpaHUD.startX, (int)playerStruct->PickupWumpaHUD.startY, hudStructPtr[3].x,
+						              hudStructPtr[3].y, playerStruct->PickupWumpaHUD.cooldown, 5);
 
 						// subtract one from timer
 						partTimeVariable1 = playerStruct->PickupWumpaHUD.cooldown - 1;
@@ -318,11 +318,11 @@ void DECOMP_UI_RenderFrame_Racing()
 					// PickupLetterHUD.startX and PickupLetterHUD.startY are start position of animation
 
 					// Interpolate from start pos to end pos
-					DECOMP_UI_Lerp2D_HUD(&LetterCTR_Pos[0], playerStruct->PickupLetterHUD.startX, playerStruct->PickupLetterHUD.startY, (int)LetterCTR_Pos[0],
-					                     (int)LetterCTR_Pos[1], (int)playerStruct->PickupLetterHUD.cooldown, 10);
+					UI_Lerp2D_HUD(&LetterCTR_Pos[0], playerStruct->PickupLetterHUD.startX, playerStruct->PickupLetterHUD.startY, (int)LetterCTR_Pos[0],
+					              (int)LetterCTR_Pos[1], (int)playerStruct->PickupLetterHUD.cooldown, 10);
 
-					curr->matrix.t[0] = DECOMP_UI_ConvertX_2((int)LetterCTR_Pos[0], 0x200);
-					curr->matrix.t[1] = DECOMP_UI_ConvertY_2((int)LetterCTR_Pos[1], 0x200);
+					curr->matrix.t[0] = UI_ConvertX_2((int)LetterCTR_Pos[0], 0x200);
+					curr->matrix.t[1] = UI_ConvertY_2((int)LetterCTR_Pos[1], 0x200);
 					curr->matrix.t[2] = 0x200;
 				}
 			}
@@ -334,7 +334,7 @@ void DECOMP_UI_RenderFrame_Racing()
 				if ((playerStruct->actionsFlagSet & 0x2000000) == 0)
 				{
 					// Draw weapon and number of wumpa fruit in HUD
-					DECOMP_UI_Weapon_DrawSelf(hudStructPtr[0].x, hudStructPtr[0].y, hudStructPtr[0].scale, playerStruct);
+					UI_Weapon_DrawSelf(hudStructPtr[0].x, hudStructPtr[0].y, hudStructPtr[0].scale, playerStruct);
 				}
 			}
 
@@ -352,15 +352,15 @@ void DECOMP_UI_RenderFrame_Racing()
 					sprintf(&string[0], &sdata->s_subtractLongInt[0], gGT->timeCrateTypeSmashed);
 
 					// 4b4 and 4b6 are WindowStartPos(x,y) from PushBuffer, inside Driver
-					DECOMP_UI_Lerp2D_HUD(&wumpaModel_Pos[0], playerStruct->PickupTimeboxHUD.startX, playerStruct->PickupTimeboxHUD.startY, 0x14, 8,
-					                     playerStruct->PickupTimeboxHUD.cooldown, 10);
+					UI_Lerp2D_HUD(&wumpaModel_Pos[0], playerStruct->PickupTimeboxHUD.startX, playerStruct->PickupTimeboxHUD.startY, 0x14, 8,
+					              playerStruct->PickupTimeboxHUD.cooldown, 10);
 
 					// Decrease remaining number of frames for this to be on screen
 					playerStruct->PickupTimeboxHUD.cooldown--;
 
 					// Put string on the screen
 					// This happens for 10 frames
-					DECOMP_DecalFont_DrawLine(&string[0], (int)wumpaModel_Pos[0], (int)wumpaModel_Pos[1], FONT_BIG, PERIWINKLE);
+					DecalFont_DrawLine(&string[0], (int)wumpaModel_Pos[0], (int)wumpaModel_Pos[1], FONT_BIG, PERIWINKLE);
 				}
 			}
 
@@ -395,14 +395,14 @@ void DECOMP_UI_RenderFrame_Racing()
 					string[1] = '0' + partTimeVariable1;
 					string[2] = 0;
 
-					DECOMP_UI_Lerp2D_HUD(&wumpaModel_Pos[0], (int)playerStruct->BattleHUD.startX, (int)playerStruct->BattleHUD.startY,
-					                     (int)(hudStructPtr[0xD].x + 0x20), (int)(hudStructPtr[0xD].y + 8), playerStruct->BattleHUD.cooldown, 5);
+					UI_Lerp2D_HUD(&wumpaModel_Pos[0], (int)playerStruct->BattleHUD.startX, (int)playerStruct->BattleHUD.startY,
+					              (int)(hudStructPtr[0xD].x + 0x20), (int)(hudStructPtr[0xD].y + 8), playerStruct->BattleHUD.cooldown, 5);
 
 					// subtract one from the number of frames that the animation lasts
 					playerStruct->BattleHUD.cooldown--;
 
 					// print the string that shows the change in your score
-					DECOMP_DecalFont_DrawLine((char *)&string[0], (int)wumpaModel_Pos[0], (int)wumpaModel_Pos[1], FONT_SMALL, RED);
+					DecalFont_DrawLine((char *)&string[0], (int)wumpaModel_Pos[0], (int)wumpaModel_Pos[1], FONT_SMALL, RED);
 				}
 			}
 
@@ -412,7 +412,7 @@ void DECOMP_UI_RenderFrame_Racing()
 				// if racer hasn't finished the race
 				if ((playerStruct->actionsFlagSet & 0x2000000) == 0)
 				{
-					DECOMP_UI_DrawLapCount(hudStructPtr[1].x, hudStructPtr[1].y, (u32)hudStructPtr[1].scale, playerStruct);
+					UI_DrawLapCount(hudStructPtr[1].x, hudStructPtr[1].y, (u32)hudStructPtr[1].scale, playerStruct);
 				}
 			}
 
@@ -420,7 +420,7 @@ void DECOMP_UI_RenderFrame_Racing()
 			else
 			{
 				// Draw how many points or lifes the player has
-				DECOMP_UI_DrawBattleScores((int)hudStructPtr[0xD].x, (int)hudStructPtr[0xD].y, playerStruct);
+				UI_DrawBattleScores((int)hudStructPtr[0xD].x, (int)hudStructPtr[0xD].y, playerStruct);
 			}
 
 // not rewritten yet
@@ -469,7 +469,7 @@ void DECOMP_UI_RenderFrame_Racing()
 
 				sVar1 = hudStructPtr[5].x;
 				sVar2 = hudStructPtr[5].y;
-				DECOMP_UI_DrawPosSuffix(sVar1, sVar2, playerStruct, (s16)partTimeVariable5);
+				UI_DrawPosSuffix(sVar1, sVar2, playerStruct, (s16)partTimeVariable5);
 
 				if (numPlyr > 2)
 				{
@@ -503,7 +503,7 @@ void DECOMP_UI_RenderFrame_Racing()
 				partTimeVariable5 = (u32)((gGT->timer & 1) == 0);
 
 				// Draw the "st", "nd", "rd" suffix after "1st, 2nd, 3rd, etc"
-				DECOMP_UI_DrawPosSuffix(hudStructPtr[5].x, hudStructPtr[5].y, playerStruct, (s16)(partTimeVariable5 << 2));
+				UI_DrawPosSuffix(hudStructPtr[5].x, hudStructPtr[5].y, playerStruct, (s16)(partTimeVariable5 << 2));
 
 				// Get Color Data
 				ptrColor = data.ptrColor[partTimeVariable5];
@@ -519,13 +519,13 @@ void DECOMP_UI_RenderFrame_Racing()
 
 			// draw lock-on target for driver, if
 			// a missile or warpball is chasing them
-			DECOMP_UI_TrackerSelf(playerStruct);
+			UI_TrackerSelf(playerStruct);
 
 			// If you're in Battle
 			if ((gameMode1 & BATTLE_MODE) != 0)
 			{
 				// Draw arrows over the heads of other players (not AIs)
-				DECOMP_UI_BattleDrawHeadArrows(playerStruct);
+				UI_BattleDrawHeadArrows(playerStruct);
 			}
 
 			if ((playerStruct->numWumpas >= 10) &&
@@ -534,13 +534,13 @@ void DECOMP_UI_RenderFrame_Racing()
 			    ((playerStruct->actionsFlagSet & 0x2000000) == 0))
 			{
 				// draw shining background behind wumpa fruit
-				DECOMP_UI_Weapon_DrawBG(hudStructPtr[0xC].x, hudStructPtr[0xC].y, hudStructPtr[0xC].scale, playerStruct);
+				UI_Weapon_DrawBG(hudStructPtr[0xC].x, hudStructPtr[0xC].y, hudStructPtr[0xC].scale, playerStruct);
 
 				// If your weapon is not "no weapon"
 				if (playerStruct->heldItemID != 0xF)
 				{
 					// draw shining background behind weapon
-					DECOMP_UI_Weapon_DrawBG(hudStructPtr[0xB].x, hudStructPtr[0xB].y, hudStructPtr[0xB].scale, playerStruct);
+					UI_Weapon_DrawBG(hudStructPtr[0xB].x, hudStructPtr[0xB].y, hudStructPtr[0xB].scale, playerStruct);
 				}
 			}
 
@@ -566,7 +566,7 @@ void DECOMP_UI_RenderFrame_Racing()
 	{
 		playerStruct = gGT->drivers[0];
 
-		DECOMP_UI_DrawRaceClock(0x14, 8, 0, playerStruct);
+		UI_DrawRaceClock(0x14, 8, 0, playerStruct);
 
 		turboThread = 0;
 		turboThreadObject = 0;
@@ -663,7 +663,7 @@ void DECOMP_UI_RenderFrame_Racing()
 			if (sdata->TurboDisplayPos_Only1P != 0)
 			{
 				// Interpolate the turbo counter slide in from the right
-				DECOMP_UI_Lerp2D_Linear(&turboCount_Pos[0], 0x2c8, 0x20, 500, 0x20, sdata->TurboDisplayPos_Only1P, 10);
+				UI_Lerp2D_Linear(&turboCount_Pos[0], 0x2c8, 0x20, 500, 0x20, sdata->TurboDisplayPos_Only1P, 10);
 
 				// The actual counter number will continue to
 				// increase past 1000, but the on-screen text
@@ -690,15 +690,15 @@ void DECOMP_UI_RenderFrame_Racing()
 				}
 
 				// "Turbos"
-				i = DECOMP_DecalFont_GetLineWidth(sdata->lngStrings[0x24B], 1);
+				i = DecalFont_GetLineWidth(sdata->lngStrings[0x24B], 1);
 
 				// Draw the string
-				DECOMP_DecalFont_DrawLine((char *)&string[0], (int)(((u32)turboCount_Pos[0] - i) * 0x10000) >> 0x10, (int)turboCount_Pos[1], FONT_BIG,
-				                          (JUSTIFY_RIGHT | ORANGE_RED));
+				DecalFont_DrawLine((char *)&string[0], (int)(((u32)turboCount_Pos[0] - i) * 0x10000) >> 0x10, (int)turboCount_Pos[1], FONT_BIG,
+				                   (JUSTIFY_RIGHT | ORANGE_RED));
 
 
 				// Draw the string
-				DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x24B], (int)(s16)turboCount_Pos[0], (int)turboCount_Pos[1], FONT_BIG, (JUSTIFY_RIGHT | ORANGE));
+				DecalFont_DrawLine(sdata->lngStrings[0x24B], (int)(s16)turboCount_Pos[0], (int)turboCount_Pos[1], FONT_BIG, (JUSTIFY_RIGHT | ORANGE));
 
 				backBuffer = gGT->backBuffer;
 				primMemCurr = backBuffer->primMem.curr;
@@ -744,7 +744,7 @@ void DECOMP_UI_RenderFrame_Racing()
 		if ((gameMode1 & TIME_LIMIT) != 0)
 		{
 			// draw countdown clock
-			DECOMP_UI_DrawLimitClock(0xd7, 0x68, 2);
+			UI_DrawLimitClock(0xd7, 0x68, 2);
 		}
 	}
 
@@ -759,12 +759,12 @@ void DECOMP_UI_RenderFrame_Racing()
 		{
 			local_30[0] = 0;
 
-			DECOMP_UI_Map_DrawDrivers((int)levPtrMap, gGT->threadBuckets[PLAYER].thread, local_30);
-			DECOMP_UI_Map_DrawDrivers((int)levPtrMap, gGT->threadBuckets[ROBOT].thread, local_30);
+			UI_Map_DrawDrivers((int)levPtrMap, gGT->threadBuckets[PLAYER].thread, local_30);
+			UI_Map_DrawDrivers((int)levPtrMap, gGT->threadBuckets[ROBOT].thread, local_30);
 
-			DECOMP_UI_Map_DrawGhosts((int)levPtrMap, gGT->threadBuckets[GHOST].thread);
+			UI_Map_DrawGhosts((int)levPtrMap, gGT->threadBuckets[GHOST].thread);
 
-			DECOMP_UI_Map_DrawTracking((int)levPtrMap, gGT->threadBuckets[TRACKING].thread);
+			UI_Map_DrawTracking((int)levPtrMap, gGT->threadBuckets[TRACKING].thread);
 
 			mapPosX = 500;
 			mapPosY = 195;
@@ -776,7 +776,7 @@ void DECOMP_UI_RenderFrame_Racing()
 			}
 
 			// Draw the map
-			DECOMP_UI_Map_DrawMap(
+			UI_Map_DrawMap(
 			    // top half and bottom half
 			    gGT->ptrIcons[3], gGT->ptrIcons[4],
 
@@ -844,10 +844,10 @@ void DECOMP_UI_RenderFrame_Racing()
 					pbVar6 = sdata->lngStrings[0x143];
 				}
 
-				DECOMP_DecalFont_DrawLine(pbVar6,
-				                          pb->rect.x + (pb->rect.w >> 1),        // midpointX
-				                          pb->rect.y + (pb->rect.h >> 1) - 0x1e, // midpointY
-				                          FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+				DecalFont_DrawLine(pbVar6,
+				                   pb->rect.x + (pb->rect.w >> 1),        // midpointX
+				                   pb->rect.y + (pb->rect.h >> 1) - 0x1e, // midpointY
+				                   FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 
 				if (
 				    // If you press Cross or Start
@@ -886,7 +886,7 @@ void DECOMP_UI_RenderFrame_Racing()
 	{
 		// stop weapon shuffle sound
 		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005423c-0x8005424c for roulette SFX stop.
-		DECOMP_OtherFX_Stop2(0x5d);
+		OtherFX_Stop2(0x5d);
 
 		// disable the randomizing effect in the HUD
 		gGT->gameMode1 &= ~ROLLING_ITEM;

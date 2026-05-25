@@ -1,7 +1,7 @@
 #include <common.h>
 
 // byte budget 580/632
-void DECOMP_UI_TrackerBG(struct Icon *targetIcon, s16 centerX, s16 centerY, struct PrimMem *primMem, u_long *ot, s16 angleX, s16 angleY, int color)
+void UI_TrackerBG(struct Icon *targetIcon, s16 centerX, s16 centerY, struct PrimMem *primMem, u_long *ot, s16 angleX, s16 angleY, int color)
 {
 	s16 rightX;
 	s16 bottomY;

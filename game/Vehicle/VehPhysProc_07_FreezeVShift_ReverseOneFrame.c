@@ -29,10 +29,5 @@ void VehPhysProc_FreezeVShift_ReverseOneFrame(struct Thread *t, struct Driver *d
 		return;
 	}
 
-	DECOMP_VehPhysProc_Driving_Init(t, d);
-}
-
-void DECOMP_VehPhysProc_FreezeVShift_ReverseOneFrame(struct Thread *t, struct Driver *d)
-{
-	VehPhysProc_FreezeVShift_ReverseOneFrame(t, d);
+	VehPhysProc_Driving_Init(t, d);
 }

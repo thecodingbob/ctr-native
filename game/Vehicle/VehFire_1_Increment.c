@@ -106,7 +106,7 @@ void VehFire_Increment(struct Driver *driver, int reserves, u32 type, int fireLe
 #endif
 
 #if !defined(REBUILD_PS1) || defined(CTR_NATIVE)
-		turboInst1 = DECOMP_INSTANCE_BirthWithThread(0x2c, 0, SMALL, TURBO, VehTurbo_ThTick, sizeof(struct Turbo), 0);
+		turboInst1 = INSTANCE_BirthWithThread(0x2c, 0, SMALL, TURBO, VehTurbo_ThTick, sizeof(struct Turbo), 0);
 
 		turboObj = 0;
 
@@ -144,9 +144,9 @@ void VehFire_Increment(struct Driver *driver, int reserves, u32 type, int fireLe
 			turboThread->funcThDestroy = VehTurbo_ThDestroy;
 
 			// turbo #2
-			turboInst2 = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[STATIC_TURBO_EFFECT], // model
-			                                     &sdata->s_turbo2[0],                // name
-			                                     turboThread                         // parent thread
+			turboInst2 = INSTANCE_Birth3D(gGT->modelPtr[STATIC_TURBO_EFFECT], // model
+			                              &sdata->s_turbo2[0],                // name
+			                              turboThread                         // parent thread
 			);
 
 			// 2P 3P 4P flags

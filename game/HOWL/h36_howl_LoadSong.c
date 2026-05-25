@@ -2,7 +2,7 @@
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029ca4-0x80029dc0
 // similar to h23_Bank_AssignSpuAddrs, and h34_howl_LoadHeader
-int DECOMP_howl_LoadSong()
+int howl_LoadSong()
 {
 	int ret;
 
@@ -15,10 +15,10 @@ int DECOMP_howl_LoadSong()
 	// Stage 0: Load 1/2
 	if (sdata->songLoadStage == 0)
 	{
-		ret = DECOMP_LOAD_HowlSectorChainStart(&sdata->KartHWL_CdFile,  // CdLoc of HOWL
-		                                       sdata->sampleBlock1,     // destination in RAM for songs
-		                                       sdata->songSectorOffset, // song offset on disc, from CdLoc
-		                                       1                        // one sector
+		ret = LOAD_HowlSectorChainStart(&sdata->KartHWL_CdFile,  // CdLoc of HOWL
+		                                sdata->sampleBlock1,     // destination in RAM for songs
+		                                sdata->songSectorOffset, // song offset on disc, from CdLoc
+		                                1                        // one sector
 		);
 
 		if (ret != 0)
@@ -33,16 +33,16 @@ int DECOMP_howl_LoadSong()
 	// Stage 1: Load 2/2
 	if (sdata->songLoadStage == 1)
 	{
-		if (DECOMP_LOAD_HowlSectorChainEnd() == 0)
+		if (LOAD_HowlSectorChainEnd() == 0)
 			return 0;
 
 		// CseqHeader->songSize, aligned up to sector size
 		int numSector = (*(int *)&sdata->sampleBlock1[0] + 0x7ff) >> 0xb;
 
-		ret = DECOMP_LOAD_HowlSectorChainStart(&sdata->KartHWL_CdFile,      // CdLoc of HOWL
-		                                       sdata->tenSampleBlocks,      // (sampleBlock1+0x800) RAM destination
-		                                       sdata->songSectorOffset + 1, // song offset on disc, from CdLoc
-		                                       numSector - 1);
+		ret = LOAD_HowlSectorChainStart(&sdata->KartHWL_CdFile,      // CdLoc of HOWL
+		                                sdata->tenSampleBlocks,      // (sampleBlock1+0x800) RAM destination
+		                                sdata->songSectorOffset + 1, // song offset on disc, from CdLoc
+		                                numSector - 1);
 
 		if (ret != 0)
 		{
@@ -56,10 +56,10 @@ int DECOMP_howl_LoadSong()
 	// Stage 2: Parsing Song
 	if (sdata->songLoadStage == 2)
 	{
-		if (DECOMP_LOAD_HowlSectorChainEnd() == 0)
+		if (LOAD_HowlSectorChainEnd() == 0)
 			return 0;
 
-		DECOMP_howl_ParseCseqHeader((struct CseqHeader *)sdata->sampleBlock1);
+		howl_ParseCseqHeader((struct CseqHeader *)sdata->sampleBlock1);
 
 		// go to next stage
 		sdata->songLoadStage++;

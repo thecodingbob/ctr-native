@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80048f0c-0x800490c4
-u32 DECOMP_SelectProfile_InputLogic(struct RectMenu *menu, s16 numRows, u32 confirmFlags)
+u32 SelectProfile_InputLogic(struct RectMenu *menu, s16 numRows, u32 confirmFlags)
 {
 	u32 handled = 0;
 	u32 tap = sdata->buttonTapPerPlayer[0];
@@ -48,20 +48,20 @@ u32 DECOMP_SelectProfile_InputLogic(struct RectMenu *menu, s16 numRows, u32 conf
 			menu->rowSelected = numRows - 1;
 
 		if ((u16)menu->rowSelected != oldRow)
-			DECOMP_OtherFX_Play(0, 1);
+			OtherFX_Play(0, 1);
 
 		if (((tap & (BTN_CROSS | BTN_CIRCLE)) == 0) || ((numRows == 0) && (sdata->memcardAction != 1)))
 		{
 			if ((tap & (BTN_TRIANGLE | BTN_SQUARE)) != 0)
 			{
-				DECOMP_OtherFX_Play(2, 1);
+				OtherFX_Play(2, 1);
 				handled = 1;
 				menu->rowSelected = -1;
 			}
 		}
 		else
 		{
-			DECOMP_OtherFX_Play(1, 1);
+			OtherFX_Play(1, 1);
 			handled = 1;
 
 			if (sdata->mcScreenText == MC_SCREEN_WARNING_UNFORMATTED)
@@ -74,7 +74,7 @@ u32 DECOMP_SelectProfile_InputLogic(struct RectMenu *menu, s16 numRows, u32 conf
 
 		if (cancel)
 		{
-			DECOMP_OtherFX_Play(2, 1);
+			OtherFX_Play(2, 1);
 			menu->rowSelected = -1;
 		}
 
@@ -82,11 +82,11 @@ u32 DECOMP_SelectProfile_InputLogic(struct RectMenu *menu, s16 numRows, u32 conf
 
 		if (((confirmFlags & 2) != 0) && ((tap & (BTN_CROSS | BTN_CIRCLE)) != 0))
 		{
-			DECOMP_OtherFX_Play(1, 1);
+			OtherFX_Play(1, 1);
 			handled = 1;
 		}
 	}
 
-	DECOMP_RECTMENU_ClearInput();
+	RECTMENU_ClearInput();
 	return handled;
 }

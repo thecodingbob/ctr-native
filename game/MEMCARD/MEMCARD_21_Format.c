@@ -1,6 +1,6 @@
 #include <common.h>
 
-u8 DECOMP_MEMCARD_Format(int slotIdx)
+u8 MEMCARD_Format(int slotIdx)
 {
 	if (sdata->memcard_stage != MC_STAGE_IDLE)
 		return MC_RETURN_TIMEOUT;

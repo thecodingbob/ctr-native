@@ -221,7 +221,7 @@ void DECOMP_RB_Fireball_ThTick(struct Thread *t)
 	fireObj->cycleTimer -= elapsedTimeMS;
 
 	// if animation is not over
-	if ((fireInst->animFrame + 1) < DECOMP_INSTANCE_GetNumAnimFrames(fireInst, 0))
+	if ((fireInst->animFrame + 1) < INSTANCE_GetNumAnimFrames(fireInst, 0))
 	{
 		// increment frame
 		fireInst->animFrame = fireInst->animFrame + 1;
@@ -269,7 +269,7 @@ void DECOMP_RB_Fireball_LInB(struct Instance *inst)
 	if (inst->thread != 0)
 		return;
 
-	t = DECOMP_PROC_BirthWithObject(
+	t = PROC_BirthWithObject(
 	    // creation flags
 	    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Fireball), NONE, SMALL, STATIC),
 

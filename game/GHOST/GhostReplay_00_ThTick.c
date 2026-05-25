@@ -38,8 +38,8 @@ void GhostReplay_ThTick(struct Thread *t)
 
 		// GHOST DATA OVERFLOW
 		// CAN NOT SAVE GHOST DATA
-		DECOMP_DecalFont_DrawLine(sdata->lngStrings[361], 0x100, 0x28, 2, color);
-		DECOMP_DecalFont_DrawLine(sdata->lngStrings[362], 0x100, 0x32, 2, color);
+		DecalFont_DrawLine(sdata->lngStrings[361], 0x100, 0x28, 2, color);
+		DecalFont_DrawLine(sdata->lngStrings[362], 0x100, 0x32, 2, color);
 
 		sdata->ghostOverflowTextTimer--;
 	}
@@ -341,7 +341,7 @@ void GhostReplay_ThTick(struct Thread *t)
 
 				// Ghosts always have the same animation index as Human drivers
 				// But for some reason an invalid index is here anyway?
-				int numAnimFrames = DECOMP_INSTANCE_GetNumAnimFrames(inst, buffer[1]);
+				int numAnimFrames = INSTANCE_GetNumAnimFrames(inst, buffer[1]);
 				inst->animIndex = (numAnimFrames < 1) ? 0 : buffer[1];
 
 				// LEV ntropy/oxide ghost can use frame[0x11 or 0x14], doesnt

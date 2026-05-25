@@ -58,7 +58,7 @@ void Garage_LerpFX(void)
 		audioPtrRef = (u32 *)&garageSounds->audioPtr;
 		if (sdata->garageSoundIDs[i] != 0)
 		{
-			DECOMP_OtherFX_RecycleNew(audioPtrRef, sdata->garageSoundIDs[i], ((int)garageSounds->volume << 0x10) | (int)garageSounds->LR | 0x8000U);
+			OtherFX_RecycleNew(audioPtrRef, sdata->garageSoundIDs[i], ((int)garageSounds->volume << 0x10) | (int)garageSounds->LR | 0x8000U);
 		}
 
 		if (targetLR == garageSounds->LR && targetVolume == garageSounds->volume)
@@ -66,7 +66,7 @@ void Garage_LerpFX(void)
 			garageSounds->gsp_prev = garageSounds->gsp_curr;
 
 			if (garageSounds->gsp_curr == GSP_GONE)
-				DECOMP_OtherFX_RecycleMute((int *)audioPtrRef);
+				OtherFX_RecycleMute((int *)audioPtrRef);
 		}
 	}
 }

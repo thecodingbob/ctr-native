@@ -10,7 +10,7 @@ struct LngFile
 // param_1 - Pointer to "cd position of bigfile"
 // param_2 - language index - 0 ja, 1 en, 2 en2, 3 fr, 4 de, 5 it, 6 es, 7 ne
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80032b50-0x80032c24
-void DECOMP_LOAD_LangFile(int bigfilePtr, int lang)
+void LOAD_LangFile(int bigfilePtr, int lang)
 {
 	struct LngFile *lngFile;
 	int size;
@@ -32,7 +32,7 @@ void DECOMP_LOAD_LangFile(int bigfilePtr, int lang)
 
 	lngFile = sdata->lngFile;
 
-	lngFile = DECOMP_LOAD_ReadFile(bigfilePtr, LT_SETADDR | LT_SYNC, BI_LANGUAGEFILE + lang, (void *)lngFile);
+	lngFile = LOAD_ReadFile(bigfilePtr, LT_SETADDR | LT_SYNC, BI_LANGUAGEFILE + lang, (void *)lngFile);
 	if (lngFile == NULL)
 		return;
 

@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002b130-0x8002b1f0
-void DECOMP_howl_VolumeSet(int type, u8 vol)
+void howl_VolumeSet(int type, u8 vol)
 {
 	if (type == 1)
 	{

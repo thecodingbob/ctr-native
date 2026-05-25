@@ -4,7 +4,11 @@ void StateZero();
 
 // #define FastBoot
 
-u32 DECOMP_main()
+#ifdef CTR_NATIVE
+u32 CTR_Main(void)
+#else
+u32 main(void)
+#endif
 {
 	u32 AddBitsConfig0;
 	u32 RemBitsConfig0;
@@ -36,7 +40,7 @@ u32 DECOMP_main()
 		}
 #endif
 
-		DECOMP_LOAD_NextQueuedFile();
+		LOAD_NextQueuedFile();
 		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003c5d0-0x8003c5dc for per-frame XA pause handling.
 		CDSYS_XAPauseAtEnd();
 
@@ -206,7 +210,7 @@ u32 DECOMP_main()
 				// if something is being loaded
 				else
 				{
-					sdata->Loading.stage = DECOMP_LOAD_TenStages(gGT, iVar8, sdata->ptrBigfile1);
+					sdata->Loading.stage = LOAD_TenStages(gGT, iVar8, sdata->ptrBigfile1);
 
 					// If just finished loading stage 9
 					if (sdata->Loading.stage == -2)
@@ -370,7 +374,7 @@ u32 DECOMP_main()
 				}
 
 				// "DEMO MODE\rPRESS ANY BUTTON TO EXIT"
-				DECOMP_DecalFont_DrawMultiLine(sdata->lngStrings[0x8c0 / 4], 0x100, uVar12, 0x200, 2, 0xffff8000);
+				DecalFont_DrawMultiLine(sdata->lngStrings[0x8c0 / 4], 0x100, uVar12, 0x200, 2, 0xffff8000);
 			}
 
 			if ((gGT->gameMode1 & LOADING) == 0)
@@ -419,7 +423,7 @@ u32 DECOMP_main()
 			// if mask is talking in Adventure Hub
 			if (sdata->boolDraw3D_AdvMask != 0)
 			{
-				DECOMP_AH_MaskHint_Update();
+				AH_MaskHint_Update();
 			}
 			break;
 
@@ -487,7 +491,7 @@ void StateZero()
 #define MEMPACK_SIZE 0x200000 // 2mb
 
 	MEMPACK_Init(MEMPACK_SIZE);
-	DECOMP_LOAD_InitCD();
+	LOAD_InitCD();
 	RaceFlag_SetFullyOffScreen();
 
 	ResetGraph(0);
@@ -545,7 +549,7 @@ void StateZero()
 	Timer_Init();
 	DrawSyncCallback(&MainDrawCb_DrawSync);
 
-	DECOMP_MEMCARD_InitCard();
+	MEMCARD_InitCard();
 	VSync(0);
 	GAMEPAD_Init(gGS);
 	VSync(0);
@@ -558,7 +562,7 @@ void StateZero()
 #endif
 
 	// Get CD Position fo BIGFILE
-	sdata->ptrBigfile1 = DECOMP_LOAD_ReadDirectory(BIGPATH);
+	sdata->ptrBigfile1 = LOAD_ReadDirectory(BIGPATH);
 
 // Defrag to save heap space,
 // required because MEMPACK_Init moves heap
@@ -582,7 +586,7 @@ void StateZero()
 #ifndef FastBoot
 	// English=1
 	// PAL SCES02105 calls it multiple times
-	DECOMP_LOAD_LangFile((int)sdata->ptrBigfile1, 1);
+	LOAD_LangFile((int)sdata->ptrBigfile1, 1);
 	GAMEPROG_NewGame_OnBoot();
 	gGT->overlayIndex_null_notUsed = 0;
 #endif
@@ -624,13 +628,13 @@ void StateZero()
 
 #ifndef FastBoot
 	// Load Intro TIM for "SCEA Presents" from VRAM file
-	DECOMP_LOAD_VramFile(sdata->ptrBigfile1, 0x1fd, NULL, &vramSize, -1);
+	LOAD_VramFile(sdata->ptrBigfile1, 0x1fd, NULL, &vramSize, -1);
 	MainInit_VRAMDisplay();
 #endif
 
 	// \SOUNDS\KART.HWL;1
 	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003c8e0-0x8003c928 for startup HOWL/music/XA setup.
-	DECOMP_howl_InitGlobals(data.kartHwlPath);
+	howl_InitGlobals(data.kartHwlPath);
 
 	VSyncCallback(MainDrawCb_Vsync);
 
@@ -655,7 +659,7 @@ void StateZero()
 
 	// This loads UI textures (shared.vrm)
 	// This includes traffic lights, font, and more
-	DECOMP_LOAD_VramFile(sdata->ptrBigfile1, 0x102, NULL, &vramSize, -1);
+	LOAD_VramFile(sdata->ptrBigfile1, 0x102, NULL, &vramSize, -1);
 
 	sdata->mainGameState = 3;
 

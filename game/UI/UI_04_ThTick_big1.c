@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_UI_ThTick_big1(struct Thread *bucket)
+void UI_ThTick_big1(struct Thread *bucket)
 
 {
 	s16 uVar1;

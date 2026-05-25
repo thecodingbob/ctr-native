@@ -3,7 +3,7 @@
 void *PlayerBlastedFuncTable[0xD] = {(void *)0x0,
                                      VehStuckProc_Tumble_Update,
                                      VehStuckProc_Tumble_PhysLinear,
-                                     DECOMP_VehPhysProc_Driving_Audio,
+                                     VehPhysProc_Driving_Audio,
                                      VehStuckProc_Tumble_PhysAngular,
                                      VehPhysForce_OnApplyForces,
 
@@ -37,7 +37,7 @@ void VehStuckProc_Tumble_Init(struct Thread *thread, struct Driver *driver)
 	driver->kartState = KS_BLASTED;
 	driver->turbo_MeterRoomLeft = 0;
 
-	if ((DECOMP_LOAD_IsOpen_RacingOrBattle() != 0) && ((sdata->gGT->gameMode1 & ADVENTURE_ARENA) == 0))
+	if ((LOAD_IsOpen_RacingOrBattle() != 0) && ((sdata->gGT->gameMode1 & ADVENTURE_ARENA) == 0))
 	{
 		DECOMP_RB_Player_ModifyWumpa(driver, -3);
 	}

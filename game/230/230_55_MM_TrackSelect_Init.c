@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_TrackSelect_Init()
+void MM_TrackSelect_Init()
 {
 	struct MainMenu_LevelRow *selectMenu;
 	s16 numTracks;
@@ -34,7 +34,7 @@ void DECOMP_MM_TrackSelect_Init()
 	}
 
 	// Loop through all tracks until an unlocked track is found
-	while (!DECOMP_MM_TrackSelect_boolTrackOpen(&selectMenu[D230.menuTrackSelect.rowSelected]))
+	while (!MM_TrackSelect_boolTrackOpen(&selectMenu[D230.menuTrackSelect.rowSelected]))
 	{
 		D230.menuTrackSelect.rowSelected++;
 
@@ -47,5 +47,5 @@ void DECOMP_MM_TrackSelect_Init()
 
 	D230.trackSel_currTrack = D230.menuTrackSelect.rowSelected;
 
-	DECOMP_MM_TrackSelect_Video_SetDefaults();
+	MM_TrackSelect_Video_SetDefaults();
 }

@@ -3,7 +3,7 @@
 void OVR_Region2();
 
 // param_1 = numPlyrCurrGame {1,2,3,4}
-void DECOMP_LOAD_OvrLOD(u32 param_1)
+void LOAD_OvrLOD(u32 param_1)
 {
 	// change {1-4} -> {0-3}
 	param_1 -= 1;
@@ -15,7 +15,7 @@ void DECOMP_LOAD_OvrLOD(u32 param_1)
 	{
 #ifndef REBUILD_PC
 		// LOD overlay 226-229
-		DECOMP_LOAD_AppendQueue(0, LT_SETADDR, BI_OVERLAYSECT2 + param_1, &OVR_Region2, NULL);
+		LOAD_AppendQueue(0, LT_SETADDR, BI_OVERLAYSECT2 + param_1, &OVR_Region2, NULL);
 #endif
 
 		// save ID, and reload next overlay (sector read invalidation)

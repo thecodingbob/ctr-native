@@ -17,7 +17,7 @@ void cseq_opcode05_noteon(struct SongSeq *seq)
 
 	currNote = seq->currNote;
 
-	DECOMP_howl_InitChannelAttr_Music(seq, &attr, currNote[1], currNote[2]);
+	howl_InitChannelAttr_Music(seq, &attr, currNote[1], currNote[2]);
 
 	stats = Channel_AllocSlot(0x7c, &attr);
 

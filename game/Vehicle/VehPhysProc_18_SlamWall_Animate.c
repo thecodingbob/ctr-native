@@ -25,10 +25,5 @@ void VehPhysProc_SlamWall_Animate(struct Thread *t, struct Driver *d)
 		d->matrixIndex = 0;
 	}
 
-	d->funcPtrs[0] = DECOMP_VehPhysProc_Driving_Init;
-}
-
-void DECOMP_VehPhysProc_SlamWall_Animate(struct Thread *t, struct Driver *d)
-{
-	VehPhysProc_SlamWall_Animate(t, d);
+	d->funcPtrs[0] = VehPhysProc_Driving_Init;
 }

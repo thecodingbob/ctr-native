@@ -1,8 +1,8 @@
 #include <common.h>
 
-void DECOMP_VehPhysProc_SlamWall_PhysAngular(struct Thread *t, struct Driver *d);
+void VehPhysProc_SlamWall_PhysAngular(struct Thread *t, struct Driver *d);
 
-void DECOMP_VehPhysProc_SpinLast_PhysAngular(struct Thread *t, struct Driver *d)
+void VehPhysProc_SpinLast_PhysAngular(struct Thread *t, struct Driver *d)
 {
 	int driftAngleCurr;
 	driftAngleCurr = d->turnAngleCurr;
@@ -56,5 +56,5 @@ void DECOMP_VehPhysProc_SpinLast_PhysAngular(struct Thread *t, struct Driver *d)
 		}
 	}
 
-	DECOMP_VehPhysProc_SlamWall_PhysAngular(t, d);
+	VehPhysProc_SlamWall_PhysAngular(t, d);
 }

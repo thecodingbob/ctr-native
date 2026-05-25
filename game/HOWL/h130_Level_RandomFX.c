@@ -21,7 +21,7 @@ void Level_RandomFX(int *cooldown, u32 soundID, int baseCooldown, u32 randomRang
 	{
 		u32 rng = Level_RandomFX_NextAudioRNG();
 
-		DECOMP_OtherFX_Play_LowLevel(soundID & 0xffff, 0, ((((rng % 100 + 100) * volumeScale >> 8) & 0xff) << 0x10) | 0x1008080);
+		OtherFX_Play_LowLevel(soundID & 0xffff, 0, ((((rng % 100 + 100) * volumeScale >> 8) & 0xff) << 0x10) | 0x1008080);
 
 		rng = Level_RandomFX_NextAudioRNG();
 		*cooldown = rng % randomRange + baseCooldown;

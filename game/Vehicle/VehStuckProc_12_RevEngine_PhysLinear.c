@@ -19,7 +19,7 @@ void VehStuckProc_RevEngine_PhysLinear(struct Thread *t, struct Driver *d)
 		unkTimer = 0;
 	d->KartStates.RevEngine.unk590 = (s16)unkTimer;
 
-	DECOMP_VehPhysProc_Driving_PhysLinear(t, d);
+	VehPhysProc_Driving_PhysLinear(t, d);
 
 	if (d->KartStates.RevEngine.boolMaskGrab == 0)
 		return;

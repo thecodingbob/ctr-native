@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_Video_AllocMem(u32 width, u16 height, u32 flags, int size, int param_5)
+void MM_Video_AllocMem(u32 width, u16 height, u32 flags, int size, int param_5)
 {
 	char isRGB24;
 	u32 uVar2;

@@ -35,7 +35,7 @@ void MEMPACK_Init(int ramSize)
 
 	// Defragmentation requires a lower overlay size in bigfile,
 	// which we dont have for 231, so we cheat by setting size
-	// manually in MainMain after call to DECOMP_LOAD_ReadDirectory
+	// manually in MainMain after call to LOAD_ReadDirectory
 
 	// RB_EndOfFile		800ba548	30 sectors (original game, deprecated by decomp)
 	// Defragged 231	800b8c78	28 sectors

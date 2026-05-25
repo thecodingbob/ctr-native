@@ -44,10 +44,5 @@ void VehPhysProc_SpinStop_Animate(struct Thread *t, struct Driver *d)
 			return;
 	}
 
-	d->funcPtrs[0] = DECOMP_VehPhysProc_Driving_Init;
-}
-
-void DECOMP_VehPhysProc_SpinStop_Animate(struct Thread *t, struct Driver *d)
-{
-	VehPhysProc_SpinStop_Animate(t, d);
+	d->funcPtrs[0] = VehPhysProc_Driving_Init;
 }

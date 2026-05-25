@@ -5,7 +5,7 @@
 int last = -1;
 #endif
 
-void DECOMP_LOAD_ReadFileASyncCallback(CdlIntrResult result, u8 *unk)
+void LOAD_ReadFileASyncCallback(CdlIntrResult result, u8 *unk)
 {
 	CdReadCallback(0);
 
@@ -31,7 +31,7 @@ void DECOMP_LOAD_ReadFileASyncCallback(CdlIntrResult result, u8 *unk)
 
 		if ((lqs->flags & LT_GETADDR) != 0)
 		{
-			DECOMP_LOAD_DramFileCallback(lqs);
+			LOAD_DramFileCallback(lqs);
 		}
 		else if (lqs->callbackFuncPtr != 0)
 		{

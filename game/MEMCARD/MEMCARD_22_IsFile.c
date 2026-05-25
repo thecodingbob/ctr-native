@@ -1,6 +1,6 @@
 #include <common.h>
 
-int DECOMP_MEMCARD_IsFile(int slotIdx, char *save_name)
+int MEMCARD_IsFile(int slotIdx, char *save_name)
 {
 	char name[64];
 

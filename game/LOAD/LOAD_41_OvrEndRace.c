@@ -3,7 +3,7 @@
 void OVR_Region1();
 
 // DLL loaded = param_1 + 221
-void DECOMP_LOAD_OvrEndRace(u32 param_1)
+void LOAD_OvrEndRace(u32 param_1)
 {
 	struct GameTracker *gGT = sdata->gGT;
 
@@ -12,7 +12,7 @@ void DECOMP_LOAD_OvrEndRace(u32 param_1)
 	{
 #ifndef REBUILD_PC
 		// EndOfRace overlay 221-225
-		DECOMP_LOAD_AppendQueue(0, LT_SETADDR, BI_OVERLAYSECT1 + param_1, &OVR_Region1, NULL);
+		LOAD_AppendQueue(0, LT_SETADDR, BI_OVERLAYSECT1 + param_1, &OVR_Region1, NULL);
 #endif
 
 		gGT->overlayIndex_EndOfRace = param_1;

@@ -7,10 +7,10 @@ void VehPhysProc_SlamWall_Animate();
 
 void *PlayerCrashingFuncTable[13] = {
     0,
-    DECOMP_VehPhysProc_SlamWall_Update,
-    DECOMP_VehPhysProc_SlamWall_PhysLinear,
-    DECOMP_VehPhysProc_Driving_Audio,
-    DECOMP_VehPhysProc_SlamWall_PhysAngular,
+    VehPhysProc_SlamWall_Update,
+    VehPhysProc_SlamWall_PhysLinear,
+    VehPhysProc_Driving_Audio,
+    VehPhysProc_SlamWall_PhysAngular,
     VehPhysForce_OnApplyForces,
 
 #ifndef REBUILD_PS1
@@ -38,7 +38,7 @@ void *PlayerCrashingFuncTable[13] = {
 };
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80063bd4-0x80063cf4.
-void DECOMP_VehPhysProc_SlamWall_Init(struct Thread *t, struct Driver *d)
+void VehPhysProc_SlamWall_Init(struct Thread *t, struct Driver *d)
 {
 	int i;
 	struct Instance *inst;

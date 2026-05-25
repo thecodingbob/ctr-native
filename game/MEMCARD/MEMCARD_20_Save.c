@@ -1,6 +1,6 @@
 #include <common.h>
 
-u8 DECOMP_MEMCARD_Save(int slotIdx, char *name, char *param_3, u8 *ptrMemcard, int memcardFileSize, u32 param6)
+u8 MEMCARD_Save(int slotIdx, char *name, char *param_3, u8 *ptrMemcard, int memcardFileSize, u32 param6)
 
 {
 #ifdef CTR_NATIVE
@@ -23,7 +23,7 @@ u8 DECOMP_MEMCARD_Save(int slotIdx, char *name, char *param_3, u8 *ptrMemcard, i
 	sdata->crc16_checkpoint_status = 0;
 	do
 	{
-		crcResult = DECOMP_MEMCARD_ChecksumSave(ptrMemcard, memcardFileSize);
+		crcResult = MEMCARD_ChecksumSave(ptrMemcard, memcardFileSize);
 	} while (crcResult == MC_RETURN_PENDING);
 
 	if (crcResult != MC_RETURN_IOE)

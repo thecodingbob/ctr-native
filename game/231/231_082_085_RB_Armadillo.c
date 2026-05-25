@@ -27,7 +27,7 @@ void DECOMP_RB_Armadillo_ThTick_TurnAround(struct Thread *t)
 	if (armObj->rotCurr[1] == armObj->rotDesired[1])
 	{
 		// if animation is not over
-		if ((armInst->animFrame + 1) < DECOMP_INSTANCE_GetNumAnimFrames(armInst, 0))
+		if ((armInst->animFrame + 1) < INSTANCE_GetNumAnimFrames(armInst, 0))
 		{
 			armInst->animFrame = armInst->animFrame + 1;
 		}
@@ -97,7 +97,7 @@ void DECOMP_RB_Armadillo_ThTick_Rolling(struct Thread *t)
 		armInst->matrix.t[2] += armObj->velZ;
 
 		// if animation is not over
-		if ((armInst->animFrame + 1) < DECOMP_INSTANCE_GetNumAnimFrames(armInst, 1))
+		if ((armInst->animFrame + 1) < INSTANCE_GetNumAnimFrames(armInst, 1))
 		{
 			// increment frame
 			armInst->animFrame = armInst->animFrame + 1;
@@ -145,7 +145,7 @@ void DECOMP_RB_Armadillo_LInB(struct Instance *inst)
 	if (inst->thread != 0)
 		return;
 
-	t = DECOMP_PROC_BirthWithObject(
+	t = PROC_BirthWithObject(
 	    // creation flags
 	    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Armadillo), NONE, SMALL, STATIC),
 

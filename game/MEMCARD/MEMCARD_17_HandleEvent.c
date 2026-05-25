@@ -11,7 +11,7 @@ enum MC_EXTRA
 	MC_EXTRA_READ_FILE
 };
 
-int DECOMP_MEMCARD_HandleEvent(void)
+int MEMCARD_HandleEvent(void)
 {
 	int readResult;
 	int event;
@@ -160,8 +160,8 @@ int DECOMP_MEMCARD_HandleEvent(void)
 
 	case MC_STAGE_SAVE_PART0_START:
 
-		int DECOMP_MEMCARD_ChecksumSave(u8 * saveBytes, int len);
-		event = DECOMP_MEMCARD_ChecksumSave(sdata->memcard_ptrStart, sdata->memcardFileSize);
+		int MEMCARD_ChecksumSave(u8 * saveBytes, int len);
+		event = MEMCARD_ChecksumSave(sdata->memcard_ptrStart, sdata->memcardFileSize);
 
 		if (event == MC_RETURN_PENDING)
 			return MC_RETURN_PENDING;

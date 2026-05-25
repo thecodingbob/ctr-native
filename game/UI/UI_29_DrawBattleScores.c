@@ -1,7 +1,7 @@
 #include <common.h>
 
 // Draw how many points or lifes the player has in battle
-void DECOMP_UI_DrawBattleScores(int posX, int posY, struct Driver *d)
+void UI_DrawBattleScores(int posX, int posY, struct Driver *d)
 {
 	struct Icon *icon;
 	int value;
@@ -30,7 +30,7 @@ void DECOMP_UI_DrawBattleScores(int posX, int posY, struct Driver *d)
 	// add value to string
 	sprintf(string, (char *)&sdata->s_longInt, value);
 
-	DECOMP_DecalFont_DrawLine(string, (s16)(posX + 37), (s16)(posY + 4), FONT_SMALL, data.battleScoreColor[gGT->numPlyrCurrGame - 1][d->driverID]);
+	DecalFont_DrawLine(string, (s16)(posX + 37), (s16)(posY + 4), FONT_SMALL, data.battleScoreColor[gGT->numPlyrCurrGame - 1][d->driverID]);
 
 	DecalHUD_DrawPolyFT4(icon, posX, posY, &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT, 1, 0x1000);
 }

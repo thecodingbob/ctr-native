@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029c40-0x80029ca4
-int DECOMP_howl_SetSong(int songID)
+int howl_SetSong(int songID)
 {
 	if (sdata->boolAudioEnabled == 0)
 	{
@@ -13,7 +13,7 @@ int DECOMP_howl_SetSong(int songID)
 
 	// === Reset Song ===
 
-	DECOMP_howl_ErasePtrCseqHeader();
+	howl_ErasePtrCseqHeader();
 
 	// Stage 0: Start Loading
 	sdata->songLoadStage = 0;

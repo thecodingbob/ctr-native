@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_PROC_DestroyObject(void *object, int threadFlags)
+void PROC_DestroyObject(void *object, int threadFlags)
 {
 	struct JitPool *allPools;
 	struct JitPool *myPool;

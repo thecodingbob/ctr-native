@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_AH_Pause_Update()
+void AH_Pause_Update()
 {
 	struct GameTracker *gGT;
 	gGT = sdata->gGT;
@@ -19,13 +19,13 @@ void DECOMP_AH_Pause_Update()
 		// 0 = no relation to param4
 		// 0x300 = SmallStackPool
 		// 0xd = "other" thread bucket
-		struct Thread *t = DECOMP_PROC_BirthWithObject(0x30d, 0, 0, 0);
+		struct Thread *t = PROC_BirthWithObject(0x30d, 0, 0, 0);
 
 		ptrPauseObject->t = t;
 
 		for (int i = 0; i < 0xe; i++)
 		{
-			struct Instance *inst = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[STATIC_GEM], 0, t);
+			struct Instance *inst = INSTANCE_Birth3D(gGT->modelPtr[STATIC_GEM], 0, t);
 
 			ptrPauseObject->PauseMember[i].inst = inst;
 			ptrPauseObject->PauseMember[i].rot[0] = 0;
@@ -76,7 +76,7 @@ void DECOMP_AH_Pause_Update()
 		}
 
 		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b3340-0x800b3350 for adventure pause page-turn SFX.
-		DECOMP_OtherFX_Play(0, 1);
+		OtherFX_Play(0, 1);
 	}
 
 	// page is flipping
@@ -111,5 +111,5 @@ void DECOMP_AH_Pause_Update()
 		posX = (8 - D232.pausePageTimer) * D232.pausePageDir * 0x80;
 	}
 
-	DECOMP_AH_Pause_Draw(pageID, posX);
+	AH_Pause_Draw(pageID, posX);
 }

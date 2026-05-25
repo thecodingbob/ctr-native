@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_CupSelect_MenuProc(struct RectMenu *menu)
+void MM_CupSelect_MenuProc(struct RectMenu *menu)
 {
 	char i;
 	u8 cupIndex;
@@ -31,7 +31,7 @@ void DECOMP_MM_CupSelect_MenuProc(struct RectMenu *menu)
 		// if transitioning in
 		if (D230.cupSel_transitionState == 0)
 		{
-			DECOMP_MM_TransitionInOut(&D230.transitionMeta_cupSel[0], elapsedFrames, 8);
+			MM_TransitionInOut(&D230.transitionMeta_cupSel[0], elapsedFrames, 8);
 
 			// if no more frames
 			if (elapsedFrames == 0)
@@ -50,7 +50,7 @@ void DECOMP_MM_CupSelect_MenuProc(struct RectMenu *menu)
 		// if transitioning out
 		else if (D230.cupSel_transitionState == 2)
 		{
-			DECOMP_MM_TransitionInOut(&D230.transitionMeta_cupSel[0], elapsedFrames, 8);
+			MM_TransitionInOut(&D230.transitionMeta_cupSel[0], elapsedFrames, 8);
 
 			// increase frame count
 			elapsedFrames++;
@@ -85,7 +85,7 @@ void DECOMP_MM_CupSelect_MenuProc(struct RectMenu *menu)
 				// return to character selection
 				sdata->ptrDesiredMenu = &D230.menuCharacterSelect;
 
-				DECOMP_MM_Characters_RestoreIDs();
+				MM_Characters_RestoreIDs();
 				return;
 			}
 		}
@@ -94,8 +94,7 @@ void DECOMP_MM_CupSelect_MenuProc(struct RectMenu *menu)
 	D230.cupSel_transitionFrames = elapsedFrames;
 
 	// "SELECT CUP RACE"
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[0xBF], (D230.transitionMeta_cupSel[4].currX + 0x100), (D230.transitionMeta_cupSel[4].currY + 0x10), 1,
-	                          0xffff8000);
+	DecalFont_DrawLine(sdata->lngStrings[0xBF], (D230.transitionMeta_cupSel[4].currX + 0x100), (D230.transitionMeta_cupSel[4].currY + 0x10), 1, 0xffff8000);
 
 	// Loop through all four cups
 	for (cupIndex = 0; cupIndex < 4; cupIndex++)
@@ -115,7 +114,7 @@ void DECOMP_MM_CupSelect_MenuProc(struct RectMenu *menu)
 		startY = (s16)D230.transitionMeta_cupSel[cupIndex].currY + (cupIndex >> 1) * 0x54;
 
 		// draw the name of the cup
-		DECOMP_DecalFont_DrawLine(sdata->lngStrings[data.ArcadeCups[cupIndex].lngIndex_CupName], startX + 0xa2, startY + 0x44, 3, txtColor);
+		DecalFont_DrawLine(sdata->lngStrings[data.ArcadeCups[cupIndex].lngIndex_CupName], startX + 0xa2, startY + 0x44, 3, txtColor);
 
 		startX = startX + 0x4e;
 		startY = startY + 0x29;
@@ -149,8 +148,8 @@ void DECOMP_MM_CupSelect_MenuProc(struct RectMenu *menu)
 			int posY = (startY + (trackIndex >> 1) * 0x23);
 
 			// Draw Icon of each track
-			DECOMP_RECTMENU_DrawPolyGT4(gGT->ptrIcons[data.ArcadeCups[cupIndex].CupTrack[trackIndex].iconID], posX, posY, &gGT->backBuffer->primMem,
-			                            gGT->pushBuffer_UI.ptrOT, D230.cupSel_Color, D230.cupSel_Color, D230.cupSel_Color, D230.cupSel_Color, 0, FP(0.5));
+			RECTMENU_DrawPolyGT4(gGT->ptrIcons[data.ArcadeCups[cupIndex].CupTrack[trackIndex].iconID], posX, posY, &gGT->backBuffer->primMem,
+			                     gGT->pushBuffer_UI.ptrOT, D230.cupSel_Color, D230.cupSel_Color, D230.cupSel_Color, D230.cupSel_Color, 0, FP(0.5));
 		}
 
 		if (cupIndex == menu->rowSelected)
@@ -170,6 +169,6 @@ void DECOMP_MM_CupSelect_MenuProc(struct RectMenu *menu)
 		cupBox.w = 180;
 		cupBox.h = 78;
 
-		DECOMP_RECTMENU_DrawInnerRect(&cupBox, 0, gGT->backBuffer->otMem.startPlusFour);
+		RECTMENU_DrawInnerRect(&cupBox, 0, gGT->backBuffer->otMem.startPlusFour);
 	}
 }

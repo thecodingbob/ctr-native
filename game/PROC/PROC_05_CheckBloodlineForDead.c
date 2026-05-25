@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_PROC_CheckBloodlineForDead(struct Thread **replaceSelf, struct Thread *th)
+void PROC_CheckBloodlineForDead(struct Thread **replaceSelf, struct Thread *th)
 {
 	while (th != 0)
 	{
@@ -14,7 +14,7 @@ void DECOMP_PROC_CheckBloodlineForDead(struct Thread **replaceSelf, struct Threa
 
 			// recursively find all children
 			if (th->childThread != 0)
-				DECOMP_PROC_CheckBloodlineForDead(&th->childThread, th->childThread);
+				PROC_CheckBloodlineForDead(&th->childThread, th->childThread);
 
 			// current thread is alive, doesn't need to be overwritten,
 			// next check sibling, so sibling will be replaced by the
@@ -27,9 +27,9 @@ void DECOMP_PROC_CheckBloodlineForDead(struct Thread **replaceSelf, struct Threa
 		{
 			// recursively find all children
 			if (th->childThread != 0)
-				DECOMP_PROC_DestroyBloodline(th->childThread);
+				PROC_DestroyBloodline(th->childThread);
 
-			DECOMP_PROC_DestroySelf(th);
+			PROC_DestroySelf(th);
 
 			// replace thread with pointer to it's own sibling
 			*replaceSelf = th->siblingThread;

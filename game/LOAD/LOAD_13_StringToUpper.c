@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_LOAD_StringToUpper(char *path)
+void LOAD_StringToUpper(char *path)
 {
 	for (char *letter = &path[0]; letter[0] != 0; letter++)
 	{

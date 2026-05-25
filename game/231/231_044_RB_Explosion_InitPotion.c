@@ -28,12 +28,12 @@ void DECOMP_RB_Explosion_InitPotion(struct Instance *inst)
 		shatterColor = STATIC_SHOCKWAVE_RED;
 
 	// create thread for shatter
-	shatterInst = DECOMP_INSTANCE_BirthWithThread(shatterColor, 0, SMALL, OTHER, DECOMP_RB_Explosion_ThTick, 0, 0);
+	shatterInst = INSTANCE_BirthWithThread(shatterColor, 0, SMALL, OTHER, DECOMP_RB_Explosion_ThTick, 0, 0);
 
 	shatterInst->flags |= 0xa00;
 
 	// set funcThDestroy to remove instance from instance pool
-	shatterInst->thread->funcThDestroy = DECOMP_PROC_DestroyInstance;
+	shatterInst->thread->funcThDestroy = PROC_DestroyInstance;
 
 	// copy position and rotation from one instance to the other
 	*(int *)&shatterInst->matrix.m[0][0] = *(int *)&inst->matrix.m[0][0];

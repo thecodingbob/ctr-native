@@ -185,7 +185,7 @@ LAB_800adc08:;
 	}
 
 	sVar3 = inst->animFrame;
-	iVar8 = DECOMP_INSTANCE_GetNumAnimFrames(inst, 0);
+	iVar8 = INSTANCE_GetNumAnimFrames(inst, 0);
 
 	// if instance is not at end of animation
 	if ((int)sVar3 + 1 < iVar8)

@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac214-0x800ac320
-void DECOMP_CS_Instance_InitMatrix(void)
+void CS_Instance_InitMatrix(void)
 {
 	if (OVR_233.cs_initMatrixBool != 0)
 		return;

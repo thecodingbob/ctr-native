@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_UI_VsQuipDrawAll(void)
+void UI_VsQuipDrawAll(void)
 {
 	char *print;
 	s16 *printArr;

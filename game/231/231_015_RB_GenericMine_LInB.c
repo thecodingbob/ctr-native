@@ -22,7 +22,7 @@ void DECOMP_RB_GenericMine_LInB(struct Instance *inst)
 	if ((gGT->gameMode1 & CRYSTAL_CHALLENGE) == 0)
 		return;
 
-	t = DECOMP_PROC_BirthWithObject(
+	t = PROC_BirthWithObject(
 	    // creation flags
 	    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct MineWeapon), NONE, SMALL, MINE),
 

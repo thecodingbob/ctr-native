@@ -19,5 +19,5 @@ void OtherFX_DriverCrashing(u32 boolEcho, u32 volume)
 		crashID = 0xa;
 	}
 
-	DECOMP_OtherFX_Play_LowLevel(crashID, 0, (boolEcho << 0x18) | ((volume & 0xff) << 0x10) | 0x8080);
+	OtherFX_Play_LowLevel(crashID, 0, (boolEcho << 0x18) | ((volume & 0xff) << 0x10) | 0x8080);
 }

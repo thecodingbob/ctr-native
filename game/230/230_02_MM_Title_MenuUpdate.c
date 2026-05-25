@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_Title_MenuUpdate(void)
+void MM_Title_MenuUpdate(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
 	u16 seenDemo;
@@ -48,7 +48,7 @@ void DECOMP_MM_Title_MenuUpdate(void)
 		D230.menuMainMenu.state &= ~(DISABLE_INPUT_ALLOW_FUNCPTRS);
 		D230.menuMainMenu.state |= EXECUTE_FUNCPTR;
 
-		DECOMP_MM_TransitionInOut(&D230.transitionMeta_Menu[0], D230.countMeta0xD, D230.title_numTransition);
+		MM_TransitionInOut(&D230.transitionMeta_Menu[0], D230.countMeta0xD, D230.title_numTransition);
 
 		// If the animation ends
 		if (D230.countMeta0xD == 0)
@@ -81,7 +81,7 @@ void DECOMP_MM_Title_MenuUpdate(void)
 
 		// assume D230.MM_State = 3
 		// if you are returning from another menu
-		DECOMP_MM_TransitionInOut(&D230.transitionMeta_Menu[0], D230.countMeta0xD, D230.title_numTransition);
+		MM_TransitionInOut(&D230.transitionMeta_Menu[0], D230.countMeta0xD, D230.title_numTransition);
 
 		// If "fade-in" animation from other menu is done
 		if (D230.countMeta0xD == 0)
@@ -102,7 +102,7 @@ void DECOMP_MM_Title_MenuUpdate(void)
 	// assume D230.MM_State = 2
 	// If you are transitioning out
 
-	DECOMP_MM_TransitionInOut(&D230.transitionMeta_Menu[0], D230.countMeta0xD, D230.title_numTransition);
+	MM_TransitionInOut(&D230.transitionMeta_Menu[0], D230.countMeta0xD, D230.title_numTransition);
 
 	// Increment frame timer, increase time left in "fade-in"
 	// animation, which plays it in reverse, as "fade-out"
@@ -115,14 +115,14 @@ void DECOMP_MM_Title_MenuUpdate(void)
 	// If you are transitioning out of the menu,
 	// and if the "fade-out" animation is done,
 	// time to figure out where you're going next
-	DECOMP_MM_Title_CameraReset();
+	MM_Title_CameraReset();
 
 	switch (D230.desiredMenuIndex)
 	{
 	// adventure character selection
 	case 0:
 
-		DECOMP_MM_Title_KillThread();
+		MM_Title_KillThread();
 		GAMEPROG_NewProfile_InsideAdv(&sdata->advProgress);
 
 		sdata->advProfileIndex = 0xffff;
@@ -147,18 +147,18 @@ void DECOMP_MM_Title_MenuUpdate(void)
 	// regular character selection screen
 	case 2:
 
-		DECOMP_MM_Title_KillThread();
+		MM_Title_KillThread();
 
 		// return to character selection
 		sdata->ptrDesiredMenu = &D230.menuCharacterSelect;
 
-		DECOMP_MM_Characters_RestoreIDs();
+		MM_Characters_RestoreIDs();
 		break;
 
 	// high score menu
 	case 3:
 
-		DECOMP_MM_HighScore_Init();
+		MM_HighScore_Init();
 
 		// Go to high score menu
 		sdata->ptrDesiredMenu = &D230.menuHighScores;
@@ -167,7 +167,7 @@ void DECOMP_MM_Title_MenuUpdate(void)
 	// demo mode
 	case 4:
 
-		DECOMP_MM_Title_KillThread();
+		MM_Title_KillThread();
 
 		gGT->gameMode1 &= ~(BATTLE_MODE | ADVENTURE_MODE | TIME_TRIAL | ADVENTURE_ARENA | ARCADE_MODE | ADVENTURE_CUP);
 		gGT->gameMode2 &= ~(CUP_ANY_KIND);
@@ -212,7 +212,7 @@ void DECOMP_MM_Title_MenuUpdate(void)
 	// scrapbook
 	case 5:
 
-		DECOMP_MM_Title_KillThread();
+		MM_Title_KillThread();
 
 		// go to scrapbook
 		sdata->mainMenuState = 5;
@@ -224,7 +224,7 @@ void DECOMP_MM_Title_MenuUpdate(void)
 		MainRaceTrack_RequestLoad(cutsceneLev);
 
 		// make main menu disappear
-		DECOMP_RECTMENU_Hide(&D230.menuMainMenu);
+		RECTMENU_Hide(&D230.menuMainMenu);
 	}
 
 END_FUNCTION:
@@ -258,7 +258,7 @@ END_FUNCTION:
 	D230.menuDifficulty.posY_curr = D230.title_diffPosY + D230.transitionMeta_Menu[4].currY;
 }
 
-void DECOMP_MM_Title_KillThread(void)
+void MM_Title_KillThread(void)
 {
 	char n;
 	struct GameTracker *gGT = sdata->gGT;
@@ -271,7 +271,7 @@ void DECOMP_MM_Title_KillThread(void)
 		// destroy six instances
 		for (n = 0; n < 6; n++)
 		{
-			DECOMP_INSTANCE_Death(title->i[n]);
+			INSTANCE_Death(title->i[n]);
 			title->i[n] = NULL;
 		}
 

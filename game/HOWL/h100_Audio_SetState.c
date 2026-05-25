@@ -24,7 +24,7 @@ void Audio_SetState(u32 state)
 		Music_Restart();
 
 		// erase backup, keep music, stop all fx
-		DECOMP_howl_StopAudio(1, 0, 1);
+		howl_StopAudio(1, 0, 1);
 		break;
 	case 2:
 	case 7:

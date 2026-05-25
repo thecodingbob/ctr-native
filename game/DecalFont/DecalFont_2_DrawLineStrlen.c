@@ -1,13 +1,13 @@
 #include <common.h>
 
-void DECOMP_DecalFont_DrawLineStrlen(u8 *str, s16 len, int posX, s16 posY, s16 fontType, int flags)
+void DecalFont_DrawLineStrlen(u8 *str, s16 len, int posX, s16 posY, s16 fontType, int flags)
 {
 	struct GameTracker *gGT = sdata->gGT;
 
 	// text is justified left by default
 	if (flags & (JUSTIFY_CENTER | JUSTIFY_RIGHT))
 	{
-		int alignX = DECOMP_DecalFont_GetLineWidthStrlen(str, len, fontType);
+		int alignX = DecalFont_GetLineWidthStrlen(str, len, fontType);
 
 		if (flags & JUSTIFY_CENTER)
 			alignX /= 2;
@@ -84,7 +84,7 @@ void DECOMP_DecalFont_DrawLineStrlen(u8 *str, s16 len, int posX, s16 posY, s16 f
 			// japan retail adds support for the Mad Catz MC2 Racing Wheel (probably the best thing Naughty Dog added to this version to be honest)
 			// this replaces the regular face button characters with ones that match the buttons on the steering wheel and recolors them accordingly
 
-			s16 isRacingWheel = DECOMP_DecalFont_boolRacingWheel();
+			s16 isRacingWheel = DecalFont_boolRacingWheel();
 
 			if (!(isRacingWheel))
 			{

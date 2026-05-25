@@ -223,7 +223,7 @@ void DECOMP_RB_Spider_ThTick(struct Thread *t)
 		}
 
 		sVar2 = spiderInst->animFrame;
-		iVar3 = DECOMP_INSTANCE_GetNumAnimFrames(spiderInst, spiderInst->animIndex);
+		iVar3 = INSTANCE_GetNumAnimFrames(spiderInst, spiderInst->animIndex);
 
 		if (iVar3 <= sVar2 + 1)
 		{
@@ -234,7 +234,7 @@ void DECOMP_RB_Spider_ThTick(struct Thread *t)
 			if ((s16)(sVar2 + 1) == 5)
 			{
 				spiderInst->animIndex = 0;
-				spiderInst->animFrame = DECOMP_INSTANCE_GetNumAnimFrames(spiderInst, 0) - 1;
+				spiderInst->animFrame = INSTANCE_GetNumAnimFrames(spiderInst, 0) - 1;
 			}
 
 			goto checkCollision;
@@ -247,7 +247,7 @@ void DECOMP_RB_Spider_ThTick(struct Thread *t)
 		if (4 < spider->animLoopCount)
 		{
 			sVar2 = spiderInst->animFrame;
-			iVar3 = DECOMP_INSTANCE_GetNumAnimFrames(spiderInst, 0);
+			iVar3 = INSTANCE_GetNumAnimFrames(spiderInst, 0);
 
 			if (sVar2 + 1 < iVar3)
 			{
@@ -274,7 +274,7 @@ void DECOMP_RB_Spider_ThTick(struct Thread *t)
 		}
 
 		sVar2 = spiderInst->animFrame;
-		iVar3 = DECOMP_INSTANCE_GetNumAnimFrames(spiderInst, spiderInst->animIndex);
+		iVar3 = INSTANCE_GetNumAnimFrames(spiderInst, spiderInst->animIndex);
 
 		if (iVar3 <= sVar2 + 1)
 		{
@@ -351,7 +351,7 @@ void DECOMP_RB_Spider_LInB(struct Instance *inst)
 	if (inst->thread != NULL)
 		return;
 
-	t = DECOMP_PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Spider), NONE, SMALL, SPIDER), DECOMP_RB_Spider_ThTick, "spider", 0);
+	t = PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Spider), NONE, SMALL, SPIDER), DECOMP_RB_Spider_ThTick, "spider", 0);
 	inst->thread = t;
 	if (t == NULL)
 		return;
@@ -383,7 +383,7 @@ void DECOMP_RB_Spider_LInB(struct Instance *inst)
 		spider->delay = 0;
 	}
 
-	shadowInst = DECOMP_INSTANCE_Birth3D(sdata->gGT->modelPtr[DYNAMIC_SPIDERSHADOW], 0, t);
+	shadowInst = INSTANCE_Birth3D(sdata->gGT->modelPtr[DYNAMIC_SPIDERSHADOW], 0, t);
 
 	spider->shadowInst = shadowInst;
 

@@ -43,7 +43,7 @@ int DriverIndex_GetDamageColor(int iVar14)
 	return local_30;
 }
 
-void DECOMP_UI_DrawRankedDrivers(void)
+void UI_DrawRankedDrivers(void)
 {
 	u16 uVar1;
 	char bVar2;
@@ -136,7 +136,7 @@ void DECOMP_UI_DrawRankedDrivers(void)
 
 			// draw rank number: '1', '2', '3', '4'
 			sdata->s_spacebar[0] = (char)iVar15 + '1';
-			DECOMP_DecalFont_DrawLine(&sdata->s_spacebar[0], 0x34, iVar12 >> 0x10, 2, txtColor);
+			DecalFont_DrawLine(&sdata->s_spacebar[0], 0x34, iVar12 >> 0x10, 2, txtColor);
 
 			// add to Y, which mekes it lower on screen
 			iVar12 = iVar12 + 0x1b0000;
@@ -189,7 +189,7 @@ void DECOMP_UI_DrawRankedDrivers(void)
 				// === Icon Transitioning ===
 				if (pos.x == -100)
 				{
-					DECOMP_UI_Lerp2D_Angular((s16 *)&pos, *curr, *des, *psVar13);
+					UI_Lerp2D_Angular((s16 *)&pos, *curr, *des, *psVar13);
 
 					psVar13[0]++;
 
@@ -202,7 +202,7 @@ void DECOMP_UI_DrawRankedDrivers(void)
 
 				Color color;
 				color.self = local_30;
-				DECOMP_UI_DrawDriverIcon(
+				UI_DrawDriverIcon(
 
 				    gGT->ptrIcons[data.MetaDataCharacters[data.characterIDs[iVar14]].iconID],
 

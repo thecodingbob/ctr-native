@@ -1,6 +1,6 @@
 #include <common.h>
 
-struct Instance *DECOMP_UI_INSTANCE_BirthWithThread(int param_1, int param_2, int param_3, int param_4, int param_5, int param_6)
+struct Instance *UI_INSTANCE_BirthWithThread(int param_1, int param_2, int param_3, int param_4, int param_5, int param_6)
 
 {
 	s16 modelID;
@@ -41,13 +41,13 @@ struct Instance *DECOMP_UI_INSTANCE_BirthWithThread(int param_1, int param_2, in
 		// 0 = no relation to param4
 		// 0x300 = SmallStackPool
 		// 0x10 = hud thread bucket
-		hudThread = DECOMP_PROC_BirthWithObject(0x380310, (void *)param_2, (char *)param_6, NULL);
+		hudThread = PROC_BirthWithObject(0x380310, (void *)param_2, (char *)param_6, NULL);
 
 		// Get the object attached to the thread
 		ui3D = hudThread->object;
 
 		// Big Number HUD element
-		inst = DECOMP_INSTANCE_Birth2D(model, 0, hudThread);
+		inst = INSTANCE_Birth2D(model, 0, hudThread);
 
 		// give the Instance to the thread
 		hudThread->inst = inst;
@@ -146,8 +146,8 @@ struct Instance *DECOMP_UI_INSTANCE_BirthWithThread(int param_1, int param_2, in
 			struct UiElement2D *currUI2D;
 			currUI2D = &hudStruct[param_3];
 
-			inst->matrix.t[0] = DECOMP_UI_ConvertX_2(currUI2D->x, currUI2D->z);
-			inst->matrix.t[1] = DECOMP_UI_ConvertY_2(currUI2D->y, currUI2D->z);
+			inst->matrix.t[0] = UI_ConvertX_2(currUI2D->x, currUI2D->z);
+			inst->matrix.t[1] = UI_ConvertY_2(currUI2D->y, currUI2D->z);
 			inst->matrix.t[2] = currUI2D->z;
 		}
 

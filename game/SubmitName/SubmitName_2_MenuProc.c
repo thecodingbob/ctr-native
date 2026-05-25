@@ -29,7 +29,7 @@ void SubmitName_MenuProc(struct RectMenu *menu)
 		else
 		{
 			// GhostMode
-			DECOMP_SelectProfile_ToggleMode(0x31);
+			SelectProfile_ToggleMode(0x31);
 			sdata->ptrDesiredMenu = &data.menuGhostSelection;
 		}
 #elif !defined(REBUILD_PS1)
@@ -58,8 +58,8 @@ void SubmitName_MenuProc(struct RectMenu *menu)
 		if (selection < 0)
 		{
 			// Change active Menu back to Adv char select
-			sdata->ptrDesiredMenu = DECOMP_CS_Garage_GetMenuPtr();
-			DECOMP_CS_Garage_ZoomOut(1);
+			sdata->ptrDesiredMenu = CS_Garage_GetMenuPtr();
+			CS_Garage_ZoomOut(1);
 		}
 		else
 		{

@@ -59,9 +59,9 @@ static void SelectProfile_DrawGhostRows(struct RectMenu *menu, int rowCount)
 	box.y = 0x32;
 	box.w = 0x160;
 	box.h = 0x84;
-	DECOMP_RECTMENU_DrawInnerRect(&box, 4, gGT->backBuffer->otMem.startPlusFour);
+	RECTMENU_DrawInnerRect(&box, 4, gGT->backBuffer->otMem.startPlusFour);
 
-	DECOMP_DecalFont_DrawLine("SAVE GHOST", 0x100, 0x3d, FONT_BIG, JUSTIFY_CENTER | ORANGE);
+	DecalFont_DrawLine("SAVE GHOST", 0x100, 0x3d, FONT_BIG, JUSTIFY_CENTER | ORANGE);
 
 	rowHeight = (rowCount > 6) ? 0x2c : 0x30;
 
@@ -81,17 +81,17 @@ static void SelectProfile_DrawGhostRows(struct RectMenu *menu, int rowCount)
 
 		if (i < sdata->numGhostProfilesSaved)
 		{
-			sprintf(rowText, "%s  %s", sdata->ghostProfile_memcard[i].SubmitName_name, DECOMP_RECTMENU_DrawTime(sdata->ghostProfile_memcard[i].trackTime));
+			sprintf(rowText, "%s  %s", sdata->ghostProfile_memcard[i].SubmitName_name, RECTMENU_DrawTime(sdata->ghostProfile_memcard[i].trackTime));
 		}
 		else
 		{
-			sprintf(rowText, "EMPTY SLOT  %s", DECOMP_RECTMENU_DrawTime(sdata->gGT->drivers[0]->timeElapsedInRace));
+			sprintf(rowText, "EMPTY SLOT  %s", RECTMENU_DrawTime(sdata->gGT->drivers[0]->timeElapsedInRace));
 		}
 
-		DECOMP_DecalFont_DrawLine(rowText, x + 0x64, y, FONT_SMALL, color);
+		DecalFont_DrawLine(rowText, x + 0x64, y, FONT_SMALL, color);
 	}
 
-	DECOMP_DecalFont_DrawLine("X: SAVE   TRIANGLE: BACK", 0x100, 0xa8, FONT_SMALL, JUSTIFY_CENTER | ORANGE);
+	DecalFont_DrawLine("X: SAVE   TRIANGLE: BACK", 0x100, 0xa8, FONT_SMALL, JUSTIFY_CENTER | ORANGE);
 }
 
 static void SelectProfile_SaveGhostFromRow(struct RectMenu *menu)
@@ -103,14 +103,14 @@ static void SelectProfile_SaveGhostFromRow(struct RectMenu *menu)
 	if (driver != NULL)
 		time = driver->timeElapsedInRace;
 
-	DECOMP_RefreshCard_GhostEncodeProfile(menu->rowSelected, data.characterIDs[0], gGT->levelID, time, gGT->prevNameEntered);
+	RefreshCard_GhostEncodeProfile(menu->rowSelected, data.characterIDs[0], gGT->levelID, time, gGT->prevNameEntered);
 
 	sdata->ghostProfile_indexSave = menu->rowSelected;
 	sdata->ghostProfile_rowSelect = -1;
 	if (menu->rowSelected < sdata->numGhostProfilesSaved)
 		sdata->ghostProfile_rowSelect = menu->rowSelected;
 
-	DECOMP_RefreshCard_StartMemcardAction(6);
+	RefreshCard_StartMemcardAction(6);
 	*SelectProfile_AllProfiles_MemcardBusy() = 1;
 }
 
@@ -120,8 +120,8 @@ static void SelectProfile_DrawOverwriteGhost(struct RectMenu *menu)
 	u32 tap;
 
 	SelectProfile_DrawGhostRows(menu, sdata->numGhostProfilesSaved);
-	DECOMP_RECTMENU_GetWidth(&data.menuOverwriteGhost, &width, 1);
-	DECOMP_RECTMENU_DrawSelf(&data.menuOverwriteGhost, 0, 0, width);
+	RECTMENU_GetWidth(&data.menuOverwriteGhost, &width, 1);
+	RECTMENU_DrawSelf(&data.menuOverwriteGhost, 0, 0, width);
 
 	tap = sdata->buttonTapPerPlayer[0];
 	if ((tap & 0x4007f) == 0)
@@ -132,7 +132,7 @@ static void SelectProfile_DrawOverwriteGhost(struct RectMenu *menu)
 		if (data.menuOverwriteGhost.rowSelected > 0)
 		{
 			// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800491c8-0x800491d4 for overwrite prompt cursor-up SFX.
-			DECOMP_OtherFX_Play(0, 1);
+			OtherFX_Play(0, 1);
 			data.menuOverwriteGhost.rowSelected--;
 		}
 	}
@@ -141,31 +141,31 @@ static void SelectProfile_DrawOverwriteGhost(struct RectMenu *menu)
 		if (data.menuOverwriteGhost.rowSelected < 1)
 		{
 			// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80049204-0x80049210 for overwrite prompt cursor-down SFX.
-			DECOMP_OtherFX_Play(0, 1);
+			OtherFX_Play(0, 1);
 			data.menuOverwriteGhost.rowSelected++;
 		}
 	}
 	else if ((tap & (BTN_TRIANGLE | BTN_SQUARE)) != 0)
 	{
 		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80049268-0x80049270 for overwrite prompt back SFX.
-		DECOMP_OtherFX_Play(2, 1);
+		OtherFX_Play(2, 1);
 		*SelectProfile_AllProfiles_OverwritePrompt() = 0;
 	}
 	else if ((tap & (BTN_CROSS | BTN_CIRCLE)) != 0)
 	{
 		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80049240-0x80049248 for overwrite prompt confirm SFX.
-		DECOMP_OtherFX_Play(1, 1);
+		OtherFX_Play(1, 1);
 		if (data.menuOverwriteGhost.rowSelected == 0)
 			SelectProfile_SaveGhostFromRow(menu);
 		*SelectProfile_AllProfiles_OverwritePrompt() = 0;
 	}
 
-	DECOMP_RECTMENU_ClearInput();
+	RECTMENU_ClearInput();
 }
 
 static void SelectProfile_ExitGhostMenu(struct RectMenu *menu)
 {
-	DECOMP_RECTMENU_Hide(menu);
+	RECTMENU_Hide(menu);
 
 	if (sdata->memcardAction == 1)
 	{
@@ -175,8 +175,8 @@ static void SelectProfile_ExitGhostMenu(struct RectMenu *menu)
 	}
 
 	GhostTape_Destroy();
-	sdata->ptrDesiredMenu = DECOMP_MM_TrackSelect_GetMenuPtr();
-	DECOMP_MM_TrackSelect_Init();
+	sdata->ptrDesiredMenu = MM_TrackSelect_GetMenuPtr();
+	MM_TrackSelect_Init();
 }
 
 static void SelectProfile_HandleGhostSelection(struct RectMenu *menu, int rowCount)
@@ -212,29 +212,29 @@ static void SelectProfile_HandleGhostSelection(struct RectMenu *menu, int rowCou
 	if (sdata->ghostProfile_memcard[menu->rowSelected].trackID == sdata->gGT->levelID)
 	{
 		sdata->ghostProfile_indexLoad = menu->rowSelected;
-		DECOMP_RefreshCard_StartMemcardAction(5);
+		RefreshCard_StartMemcardAction(5);
 		*SelectProfile_AllProfiles_MemcardBusy() = 1;
 		return;
 	}
 
 	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800498a8-0x800498b0 for invalid ghost-track SFX.
-	DECOMP_OtherFX_Play(5, 1);
+	OtherFX_Play(5, 1);
 }
 
-void DECOMP_SelectProfile_AllProfiles_MenuProc(struct RectMenu *menu)
+void SelectProfile_AllProfiles_MenuProc(struct RectMenu *menu)
 {
 	int rowCount;
 
 	if (*SelectProfile_AllProfiles_Mode() != 0x30)
 		return;
 
-	DECOMP_SelectProfile_UnMuteCursors();
+	SelectProfile_UnMuteCursors();
 	if ((*SelectProfile_AllProfiles_MemcardBusy() != 0) || (*SelectProfile_AllProfiles_OverwritePrompt() != 0))
-		DECOMP_SelectProfile_MuteCursors();
+		SelectProfile_MuteCursors();
 
 	if (sdata->mcStart == 6)
 	{
-		DECOMP_DecalFont_DrawLine("SAVING GHOST...", 0x100, 0x80, FONT_BIG, JUSTIFY_CENTER | ORANGE);
+		DecalFont_DrawLine("SAVING GHOST...", 0x100, 0x80, FONT_BIG, JUSTIFY_CENTER | ORANGE);
 		return;
 	}
 
@@ -257,6 +257,6 @@ void DECOMP_SelectProfile_AllProfiles_MenuProc(struct RectMenu *menu)
 	if (*SelectProfile_AllProfiles_MemcardBusy() != 0)
 		return;
 
-	if (DECOMP_SelectProfile_InputLogic(menu, rowCount, 0) != 0)
+	if (SelectProfile_InputLogic(menu, rowCount, 0) != 0)
 		SelectProfile_HandleGhostSelection(menu, rowCount);
 }

@@ -72,7 +72,7 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 		if ((gGT->gameMode2 & CUP_NEW_WIN) != 0)
 			goto check_skip_button;
 
-		DECOMP_DecalFont_DrawLine(sdata->lngStrings[0xc9], 0x100, 0xbe, FONT_BIG, JUSTIFY_CENTER | ORANGE);
+		DecalFont_DrawLine(sdata->lngStrings[0xc9], 0x100, 0xbe, FONT_BIG, JUSTIFY_CENTER | ORANGE);
 	}
 
 	if (((gGT->gameMode2 & CUP_NEW_WIN) == 0) && sdata->ptrActiveMenu == NULL)
@@ -105,14 +105,14 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 
 		if (rewardId != STATIC_BIG1)
 		{
-			if (DECOMP_CS_Camera_BoolGotoBoss() == 0)
+			if (CS_Camera_BoolGotoBoss() == 0)
 			{
 				s16 hintID;
 
 				OVR_233.isCutsceneOver = 1;
 				th->flags |= 0x800;
 
-				DECOMP_CS_DestroyPodium_StartDriving();
+				CS_DestroyPodium_StartDriving();
 
 				switch (rewardId)
 				{

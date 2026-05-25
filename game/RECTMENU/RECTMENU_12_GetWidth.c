@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_RECTMENU_GetWidth(struct RectMenu *m, s16 *width, int boolCheckSubmenu)
+void RECTMENU_GetWidth(struct RectMenu *m, s16 *width, int boolCheckSubmenu)
 {
 	int fontType;
 	struct MenuRow *row;
@@ -18,7 +18,7 @@ void DECOMP_RECTMENU_GetWidth(struct RectMenu *m, s16 *width, int boolCheckSubme
 	for (row = m->rows; row->stringIndex != -1; row++)
 	{
 		// width of string in each row
-		lineWidth = DECOMP_DecalFont_GetLineWidth(sdata->lngStrings[row->stringIndex & 0x7fff], fontType);
+		lineWidth = DecalFont_GetLineWidth(sdata->lngStrings[row->stringIndex & 0x7fff], fontType);
 
 		// set new width if new max is found
 		if (*width < (lineWidth + 1))
@@ -38,7 +38,7 @@ void DECOMP_RECTMENU_GetWidth(struct RectMenu *m, s16 *width, int boolCheckSubme
 		}
 
 		// width of string in each row
-		lineWidth = DECOMP_DecalFont_GetLineWidth(sdata->lngStrings[m->stringIndexTitle & 0x7fff], fontType);
+		lineWidth = DecalFont_GetLineWidth(sdata->lngStrings[m->stringIndexTitle & 0x7fff], fontType);
 
 		// set new width if new max is found
 		if (*width < (lineWidth + 1))
@@ -53,7 +53,7 @@ void DECOMP_RECTMENU_GetWidth(struct RectMenu *m, s16 *width, int boolCheckSubme
 		if (boolCheckSubmenu != 0)
 		{
 			// recursively check height for more submenus
-			DECOMP_RECTMENU_GetWidth(m->ptrNextBox_InHierarchy, width, 1);
+			RECTMENU_GetWidth(m->ptrNextBox_InHierarchy, width, 1);
 		}
 	}
 }

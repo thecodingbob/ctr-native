@@ -1,6 +1,6 @@
 #include <common.h>
 
-int DECOMP_LOAD_Robots2P(int p1, int p2)
+int LOAD_Robots2P(int p1, int p2)
 {
 	int i;
 	char *robotSet;

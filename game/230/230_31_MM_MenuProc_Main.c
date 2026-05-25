@@ -3,7 +3,7 @@
 // byte budget
 // 840/1108
 
-void DECOMP_MM_MenuProc_Main(struct RectMenu *mainMenu)
+void MM_MenuProc_Main(struct RectMenu *mainMenu)
 {
 	s16 choose;
 	struct GameTracker *gGT = sdata->gGT;
@@ -12,21 +12,21 @@ void DECOMP_MM_MenuProc_Main(struct RectMenu *mainMenu)
 	if ((sdata->gameProgress.unlocks[1] & 0x10) != 0)
 		mainMenu->rows = &D230.rowsMainMenuWithScrapbook[0];
 
-	DECOMP_MM_ParseCheatCodes();
-	DECOMP_MM_ToggleRows_Difficulty();
-	DECOMP_MM_ToggleRows_PlayerCount();
+	MM_ParseCheatCodes();
+	MM_ToggleRows_Difficulty();
+	MM_ToggleRows_PlayerCount();
 
 	// If you are at the highest hierarchy level of main menu
 	if (mainMenu->unk1e == 1)
 	{
-		DECOMP_MM_Title_MenuUpdate();
+		MM_Title_MenuUpdate();
 
 		if (
 		    // main menu, "title" exists, and timer >= 230
 		    (D230.MM_State == 1) && (D230.titleObj != NULL) && (229 < D230.timerInTitle))
 		{
 			// "TM" trademark string
-			DECOMP_DecalFont_DrawLineOT(sdata->lngStrings[0x244], 0x10e, 0x9c, FONT_SMALL, ORANGE, &gGT->backBuffer->otMem.startPlusFour[3]);
+			DecalFont_DrawLineOT(sdata->lngStrings[0x244], 0x10e, 0x9c, FONT_SMALL, ORANGE, &gGT->backBuffer->otMem.startPlusFour[3]);
 		}
 
 		if ((D230.menuMainMenu.state & DRAW_NEXT_MENU_IN_HIERARCHY) == 0)
@@ -59,7 +59,7 @@ void DECOMP_MM_MenuProc_Main(struct RectMenu *mainMenu)
 		}
 	}
 
-	DECOMP_MM_Title_Init();
+	MM_Title_Init();
 
 	// if drawing ptrNextBox_InHierarchy
 	if ((mainMenu->state & DRAW_NEXT_MENU_IN_HIERARCHY) != 0)

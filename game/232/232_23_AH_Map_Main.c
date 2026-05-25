@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_AH_Map_Main(void)
+void AH_Map_Main(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
 	struct Driver *advDriver;
@@ -57,7 +57,7 @@ void DECOMP_AH_Map_Main(void)
 	if ((gGT->gameMode1 & PAUSE_ALL) == 0)
 	{
 		// Jump meter and landing boost
-		DECOMP_UI_JumpMeter_Update(advDriver);
+		UI_JumpMeter_Update(advDriver);
 	}
 
 	// Check a HUD flag
@@ -67,25 +67,25 @@ void DECOMP_AH_Map_Main(void)
 
 		D232.unkModeHubItems = 0;
 
-		DECOMP_UI_Map_DrawDrivers(hubPtrs, gGT->threadBuckets[0].thread, &local_20);
+		UI_Map_DrawDrivers(hubPtrs, gGT->threadBuckets[0].thread, &local_20);
 
-		DECOMP_AH_Map_Warppads((s16 *)hubPtrs, gGT->threadBuckets[5].thread,
-		                       (s16 *)&local_1e[0]); // local_1e index 1 and 2 are never assigned to, so garbage data?
+		AH_Map_Warppads((s16 *)hubPtrs, gGT->threadBuckets[5].thread,
+		                (s16 *)&local_1e[0]); // local_1e index 1 and 2 are never assigned to, so garbage data?
 
-		DECOMP_AH_Map_HubItems((void *)hubPtrs, &local_1e[0]);
+		AH_Map_HubItems((void *)hubPtrs, &local_1e[0]);
 
-		DECOMP_UI_Map_DrawMap(gGT->ptrIcons[3], gGT->ptrIcons[4],
+		UI_Map_DrawMap(gGT->ptrIcons[3], gGT->ptrIcons[4],
 
-		                      500, 195,
+		               500, 195,
 
-		                      &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT, 1);
+		               &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT, 1);
 
-		DECOMP_UI_DrawSlideMeter(ptrHudData[8].x, ptrHudData[8].y, advDriver);
+		UI_DrawSlideMeter(ptrHudData[8].x, ptrHudData[8].y, advDriver);
 	}
 
-	DECOMP_UI_DrawNumRelic(ptrHudData[0xE].x + 0x10, ptrHudData[0xE].y - 10);
-	DECOMP_UI_DrawNumKey(ptrHudData[0xF].x + 0x10, ptrHudData[0xF].y - 10);
-	DECOMP_UI_DrawNumTrophy(ptrHudData[0x10].x + 0x10, ptrHudData[0x10].y - 10);
+	UI_DrawNumRelic(ptrHudData[0xE].x + 0x10, ptrHudData[0xE].y - 10);
+	UI_DrawNumKey(ptrHudData[0xF].x + 0x10, ptrHudData[0xF].y - 10);
+	UI_DrawNumTrophy(ptrHudData[0x10].x + 0x10, ptrHudData[0x10].y - 10);
 
 	return;
 }

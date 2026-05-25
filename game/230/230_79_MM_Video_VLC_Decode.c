@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_Video_VLC_Decode(void)
+void MM_Video_VLC_Decode(void)
 {
 	s16 sVar1;
 	int iVar2;

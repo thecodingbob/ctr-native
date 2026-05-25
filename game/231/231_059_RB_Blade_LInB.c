@@ -7,7 +7,7 @@ void DECOMP_RB_Blade_LInB(struct Instance *inst)
 
 	struct Blade *bladeObj;
 
-	struct Thread *t = DECOMP_PROC_BirthWithObject(
+	struct Thread *t = PROC_BirthWithObject(
 	    // creation flags
 	    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Blade), NONE, SMALL, STATIC),
 

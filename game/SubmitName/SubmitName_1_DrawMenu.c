@@ -128,36 +128,36 @@ s16 SubmitName_DrawMenu(u16 string)
 				strColorBlink = blinkWhite;
 
 			// LETTER button draw
-			DECOMP_DecalFont_DrawLine(keyboardString,
+			DecalFont_DrawLine(keyboardString,
 
-			                          // j*22 + 116,
-			                          j * 22 + 116,
+			                   // j*22 + 116,
+			                   j * 22 + 116,
 
-			                          i * 18 + 88, FONT_BIG, strColorBlink);
+			                   i * 18 + 88, FONT_BIG, strColorBlink);
 
 			letterID++;
 		}
 	}
 
 	// PLEASE ENTER YOUR NAME
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[318], 256, 44, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+	DecalFont_DrawLine(sdata->lngStrings[318], 256, 44, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 
 	// player name
-	DECOMP_DecalFont_DrawLine(gGT->currNameEntered,
+	DecalFont_DrawLine(gGT->currNameEntered,
 
-	                          // original name max len = 8,
-	                          // 192 = 256 - iconW(16) * halfMaxLen(4)
-	                          192,
+	                   // original name max len = 8,
+	                   // 192 = 256 - iconW(16) * halfMaxLen(4)
+	                   192,
 
-	                          68, FONT_BIG, WHITE);
+	                   68, FONT_BIG, WHITE);
 
 	if (((sdata->typeTimer & 2) != 0) && (currNameLength < 16))
 	{
-		currNameWidth = DECOMP_DecalFont_GetLineWidth(gGT->currNameEntered, FONT_BIG);
+		currNameWidth = DecalFont_GetLineWidth(gGT->currNameEntered, FONT_BIG);
 
-		DECOMP_DecalFont_DrawLine(sdata->str_underscore, currNameWidth + 192,
+		DecalFont_DrawLine(sdata->str_underscore, currNameWidth + 192,
 
-		                          68, FONT_BIG, ORANGE);
+		                   68, FONT_BIG, ORANGE);
 	}
 
 	// SAVE button blink
@@ -166,24 +166,24 @@ s16 SubmitName_DrawMenu(u16 string)
 		strColorBlink = blinkWhite;
 
 	// SAVE button draw
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[stringCopy],
+	DecalFont_DrawLine(sdata->lngStrings[stringCopy],
 
-	                          // 472 is (r.x + r.w - 8)
-	                          472,
+	                   // 472 is (r.x + r.w - 8)
+	                   472,
 
-	                          150, FONT_BIG, (JUSTIFY_RIGHT | strColorBlink));
+	                   150, FONT_BIG, (JUSTIFY_RIGHT | strColorBlink));
 
 	// CANCEL button blink
 	strColorBlink = 0;
 	if (cursorPosition == 1000)
 		strColorBlink = blinkWhite;
 
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[321],
+	DecalFont_DrawLine(sdata->lngStrings[321],
 
-	                          // 40 is (r.x + 8)
-	                          40,
+	                   // 40 is (r.x + 8)
+	                   40,
 
-	                          150, 1, strColorBlink);
+	                   150, 1, strColorBlink);
 
 	// leftX = 32 (256-224)
 	// rightX = 480 (256+224)
@@ -200,11 +200,11 @@ s16 SubmitName_DrawMenu(u16 string)
 	r.h = 2;
 	Color color;
 	color.self = sdata->battleSetup_Color_UI_1;
-	DECOMP_RECTMENU_DrawOuterRect_Edge(&r, color, 0x20, gGT->backBuffer->otMem.startPlusFour);
+	RECTMENU_DrawOuterRect_Edge(&r, color, 0x20, gGT->backBuffer->otMem.startPlusFour);
 
 	r.y = 39;
 	r.h = 130;
-	DECOMP_RECTMENU_DrawInnerRect(&r, 0, gGT->backBuffer->otMem.startPlusFour);
+	RECTMENU_DrawInnerRect(&r, 0, gGT->backBuffer->otMem.startPlusFour);
 
 	int tap = sdata->buttonTapPerPlayer[0];
 
@@ -346,7 +346,7 @@ s16 SubmitName_DrawMenu(u16 string)
 							local_38 = -1;
 						}
 
-						DECOMP_RECTMENU_ClearInput();
+						RECTMENU_ClearInput();
 					}
 				}
 			}
@@ -433,7 +433,7 @@ LAB_8004b0dc:
 	if (soundID != 0)
 	{
 		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004b0dc-0x8004b0f8 for keyboard SFX lookup/play.
-		DECOMP_OtherFX_Play(data.soundIndexArray[soundID], 1);
+		OtherFX_Play(data.soundIndexArray[soundID], 1);
 	}
 	gGT->typeCursorPosition = cursorPosition;
 	return local_38;

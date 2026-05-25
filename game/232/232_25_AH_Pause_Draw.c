@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_AH_Pause_Draw(int pageID, int posX)
+void AH_Pause_Draw(int pageID, int posX)
 {
 	RECT r;
 	int levelID = D232.advPausePages[pageID].hubID;
@@ -15,9 +15,9 @@ void DECOMP_AH_Pause_Draw(int pageID, int posX)
 
 	char *str = sdata->lngStrings[lngIndex];
 
-	DECOMP_DecalFont_DrawLine(str, posX + 0x100, 0xf, FONT_BIG, 0xffff8000);
+	DecalFont_DrawLine(str, posX + 0x100, 0xf, FONT_BIG, 0xffff8000);
 
-	int len = DECOMP_DecalFont_GetLineWidth(str, FONT_BIG);
+	int len = DecalFont_GetLineWidth(str, FONT_BIG);
 
 	int half = len >> 1;
 
@@ -81,14 +81,14 @@ void DECOMP_AH_Pause_Draw(int pageID, int posX)
 
 				struct MetaDataLEV *mdLev = &data.metaDataLEV[SLIDE_COLISEUM + i];
 
-				DECOMP_DecalFont_DrawLine(sdata->lngStrings[mdLev->name_LNG], posX + 0x6e, i * 0x10 + 4 + 0x26, FONT_BIG, 0);
+				DecalFont_DrawLine(sdata->lngStrings[mdLev->name_LNG], posX + 0x6e, i * 0x10 + 4 + 0x26, FONT_BIG, 0);
 
 				struct Instance *inst = ptrPauseObject->PauseMember[i].inst;
 
 				// Remove SelectProfile with regular UI variant
-				inst->matrix.t[0] = DECOMP_UI_ConvertX_2(posX + 0x16d + 1 * 0x1e, 0x100);
+				inst->matrix.t[0] = UI_ConvertX_2(posX + 0x16d + 1 * 0x1e, 0x100);
 
-				inst->matrix.t[1] = DECOMP_UI_ConvertY_2(i * 0x10 + 4 + 0x2f, 0x100);
+				inst->matrix.t[1] = UI_ConvertY_2(i * 0x10 + 4 + 0x2f, 0x100);
 
 				// 6, 7, 8,
 				// sapphire, gold, platinum
@@ -108,7 +108,7 @@ void DECOMP_AH_Pause_Draw(int pageID, int posX)
 
 			char bossID = 0xf;
 
-			DECOMP_DecalFont_DrawLine(sdata->lngStrings[data.MetaDataCharacters[bossID].name_LNG_long], posX + 0x6e, 2 * 0x10 + 4 + 0x26, FONT_BIG, 4);
+			DecalFont_DrawLine(sdata->lngStrings[data.MetaDataCharacters[bossID].name_LNG_long], posX + 0x6e, 2 * 0x10 + 4 + 0x26, FONT_BIG, 4);
 
 			// === Draw Star ===
 
@@ -140,9 +140,9 @@ void DECOMP_AH_Pause_Draw(int pageID, int posX)
 				struct Instance *inst = ptrPauseObject->PauseMember[2 + i].inst;
 
 				// Remove SelectProfile with regular UI variant
-				inst->matrix.t[0] = DECOMP_UI_ConvertX_2(posX + 0x100 + (i - 2) * 60, 0x100);
+				inst->matrix.t[0] = UI_ConvertX_2(posX + 0x100 + (i - 2) * 60, 0x100);
 
-				inst->matrix.t[1] = DECOMP_UI_ConvertY_2(((i & 1) << 4) | 0x6a, 0x100);
+				inst->matrix.t[1] = UI_ConvertY_2(((i & 1) << 4) | 0x6a, 0x100);
 
 				// gem color
 				ptrPauseObject->PauseMember[2 + i].indexAdvPauseInst = i;
@@ -162,7 +162,7 @@ void DECOMP_AH_Pause_Draw(int pageID, int posX)
 			{
 				struct MetaDataLEV *mdLev = &data.metaDataLEV[check[i]];
 
-				DECOMP_DecalFont_DrawLine(sdata->lngStrings[mdLev->name_LNG], posX + 0x50, i * 0x10 + 0 + 0x26, FONT_BIG, 0);
+				DecalFont_DrawLine(sdata->lngStrings[mdLev->name_LNG], posX + 0x50, i * 0x10 + 0 + 0x26, FONT_BIG, 0);
 
 				// 3 instances per track
 				for (int j = 0; j < 3; j++)
@@ -170,9 +170,9 @@ void DECOMP_AH_Pause_Draw(int pageID, int posX)
 					struct Instance *inst = ptrPauseObject->PauseMember[3 * i + j].inst;
 
 					// Remove SelectProfile with regular UI variant
-					inst->matrix.t[0] = DECOMP_UI_ConvertX_2(posX + 0x15e + j * 0x1e, 0x100);
+					inst->matrix.t[0] = UI_ConvertX_2(posX + 0x15e + j * 0x1e, 0x100);
 
-					inst->matrix.t[1] = DECOMP_UI_ConvertY_2(i * 0x10 + 0 + 0x2f, 0x100);
+					inst->matrix.t[1] = UI_ConvertY_2(i * 0x10 + 0 + 0x2f, 0x100);
 				}
 
 				// trophy
@@ -204,14 +204,14 @@ void DECOMP_AH_Pause_Draw(int pageID, int posX)
 			int bossArr = 0x080b090a;
 			char bossID = bossArr >> (8 * (hubID - 1));
 
-			DECOMP_DecalFont_DrawLine(sdata->lngStrings[data.MetaDataCharacters[bossID].name_LNG_long], posX + 0x50, 4 * 0x10 + 0 + 0x26, FONT_BIG, 4);
+			DecalFont_DrawLine(sdata->lngStrings[data.MetaDataCharacters[bossID].name_LNG_long], posX + 0x50, 4 * 0x10 + 0 + 0x26, FONT_BIG, 4);
 
 			struct Instance *inst = ptrPauseObject->PauseMember[12].inst;
 
 			// Remove SelectProfile with regular UI variant
-			inst->matrix.t[0] = DECOMP_UI_ConvertX_2(posX + 0x15e + 1 * 0x1e, 0x100);
+			inst->matrix.t[0] = UI_ConvertX_2(posX + 0x15e + 1 * 0x1e, 0x100);
 
-			inst->matrix.t[1] = DECOMP_UI_ConvertY_2(4 * 0x10 + 0 + 0x2f, 0x100);
+			inst->matrix.t[1] = UI_ConvertY_2(4 * 0x10 + 0 + 0x2f, 0x100);
 
 			ptrPauseObject->PauseMember[12].indexAdvPauseInst = 5;
 			ptrPauseObject->PauseMember[12].unlockFlag |= CHECK_ADV_BIT(adv->rewards, ((hubID - 1) + 0x5e));
@@ -222,14 +222,14 @@ void DECOMP_AH_Pause_Draw(int pageID, int posX)
 			int crystalArr = 0x12171315;
 			char crystalID = crystalArr >> (8 * (hubID - 1));
 
-			DECOMP_DecalFont_DrawLine(sdata->lngStrings[data.metaDataLEV[crystalID].name_LNG], posX + 0x50, 5 * 0x10 + 0 + 0x26, FONT_BIG, 1);
+			DecalFont_DrawLine(sdata->lngStrings[data.metaDataLEV[crystalID].name_LNG], posX + 0x50, 5 * 0x10 + 0 + 0x26, FONT_BIG, 1);
 
 			inst = ptrPauseObject->PauseMember[13].inst;
 
 			// Remove SelectProfile with regular UI variant
-			inst->matrix.t[0] = DECOMP_UI_ConvertX_2(posX + 0x15e + 1 * 0x1e, 0x100);
+			inst->matrix.t[0] = UI_ConvertX_2(posX + 0x15e + 1 * 0x1e, 0x100);
 
-			inst->matrix.t[1] = DECOMP_UI_ConvertY_2(5 * 0x10 + 0 + 0x2f, 0x100);
+			inst->matrix.t[1] = UI_ConvertY_2(5 * 0x10 + 0 + 0x2f, 0x100);
 
 			ptrPauseObject->PauseMember[13].indexAdvPauseInst = 13;
 			ptrPauseObject->PauseMember[13].unlockFlag |= CHECK_ADV_BIT(adv->rewards, ((hubID - 1) + 0x6f));
@@ -251,16 +251,16 @@ void DECOMP_AH_Pause_Draw(int pageID, int posX)
 			struct Instance *inst = ptrPauseObject->PauseMember[i].inst;
 
 			// Remove SelectProfile with regular UI variant
-			inst->matrix.t[0] = DECOMP_UI_ConvertX_2(instPosX, 0x100);
+			inst->matrix.t[0] = UI_ConvertX_2(instPosX, 0x100);
 
-			inst->matrix.t[1] = DECOMP_UI_ConvertY_2(instPosY + 0x41, 0x100);
+			inst->matrix.t[1] = UI_ConvertY_2(instPosY + 0x41, 0x100);
 
 #ifndef REBUILD_PS1
 			SelectProfile_PrintInteger(ptrTokenCount[i], instPosX + 0x36, instPosY + 0x3a, 0, 0);
 #endif
 
 			int strX = 'X'; //"X\0\0" + nullterm
-			DECOMP_DecalFont_DrawLine((char *)&strX, instPosX + 0x24, instPosY + 0x3e, FONT_SMALL, 0);
+			DecalFont_DrawLine((char *)&strX, instPosX + 0x24, instPosY + 0x3e, FONT_SMALL, 0);
 		}
 	}
 
@@ -296,16 +296,16 @@ void DECOMP_AH_Pause_Draw(int pageID, int posX)
 			struct Instance *inst = ptrPauseObject->PauseMember[i].inst;
 
 			// Remove SelectProfile with regular UI variant
-			inst->matrix.t[0] = DECOMP_UI_ConvertX_2(instPosX, 0x100);
+			inst->matrix.t[0] = UI_ConvertX_2(instPosX, 0x100);
 
-			inst->matrix.t[1] = DECOMP_UI_ConvertY_2(0x49, 0x100);
+			inst->matrix.t[1] = UI_ConvertY_2(0x49, 0x100);
 
 #ifndef REBUILD_PS1
 			SelectProfile_PrintInteger(count[i], instPosX + 0x19, 0x49, 0, 0);
 #endif
 
 			int strX = 'X'; //"X\0\0" + nullterm
-			DECOMP_DecalFont_DrawLine((char *)&strX, instPosX + 10, 0x4e, FONT_SMALL, 0);
+			DecalFont_DrawLine((char *)&strX, instPosX + 10, 0x4e, FONT_SMALL, 0);
 		}
 
 		// variable reuse
@@ -315,7 +315,7 @@ void DECOMP_AH_Pause_Draw(int pageID, int posX)
 		// other than english, where "TOTAL" is longer
 		sprintf((char *)&count[0], "%s %d", sdata->lngStrings[0xc4], bitIndex);
 
-		DECOMP_DecalFont_DrawLine((char *)count, posX + 0x100, 0x6e, FONT_BIG, 0xffff8000);
+		DecalFont_DrawLine((char *)count, posX + 0x100, 0x6e, FONT_BIG, 0xffff8000);
 	}
 
 	int iVar7 = len;
@@ -336,7 +336,7 @@ void DECOMP_AH_Pause_Draw(int pageID, int posX)
 	Color color;
 	color.self = sdata->battleSetup_Color_UI_1;
 	u_long *ot = gGT->backBuffer->otMem.startPlusFour;
-	DECOMP_RECTMENU_DrawOuterRect_Edge(&r, color, 0x20, ot);
+	RECTMENU_DrawOuterRect_Edge(&r, color, 0x20, ot);
 
 	r.x = 0x100 - half;
 	r.y = 10;
@@ -344,7 +344,7 @@ void DECOMP_AH_Pause_Draw(int pageID, int posX)
 	r.h = 0x82;
 
 	// Draw 2D Menu rectangle background
-	DECOMP_RECTMENU_DrawInnerRect(&r, 4, &ot[3]);
+	RECTMENU_DrawInnerRect(&r, 4, &ot[3]);
 
 	for (int i = 0; i < 0xe; i++)
 	{

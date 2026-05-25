@@ -3,10 +3,10 @@
 void COLL_FIXED_PlayerSearch();
 
 void *PlayerLastSpinFuncTable[0xD] = {0,
-                                      DECOMP_VehPhysProc_SpinLast_Update,
-                                      DECOMP_VehPhysProc_SpinLast_PhysLinear,
-                                      DECOMP_VehPhysProc_Driving_Audio,
-                                      DECOMP_VehPhysProc_SpinLast_PhysAngular,
+                                      VehPhysProc_SpinLast_Update,
+                                      VehPhysProc_SpinLast_PhysLinear,
+                                      VehPhysProc_Driving_Audio,
+                                      VehPhysProc_SpinLast_PhysAngular,
                                       VehPhysForce_OnApplyForces,
 
 #ifndef REBUILD_PS1
@@ -35,7 +35,7 @@ void *PlayerLastSpinFuncTable[0xD] = {0,
 #endif
 };
 
-void DECOMP_VehPhysProc_SpinLast_Init(struct Thread *t, struct Driver *d)
+void VehPhysProc_SpinLast_Init(struct Thread *t, struct Driver *d)
 {
 	int i;
 

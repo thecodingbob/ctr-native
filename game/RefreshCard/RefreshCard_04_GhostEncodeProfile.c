@@ -29,7 +29,7 @@ static void RefreshCard_CopyBounded(char *dst, char *src, int len)
 }
 
 // TODO(aalhendi): Port the CTR_ScrambleGhostString side effect for the memcard icon header.
-void DECOMP_RefreshCard_GhostEncodeProfile(u32 slotIndex, u16 characterID, u16 levelID, int time, char *name)
+void RefreshCard_GhostEncodeProfile(u32 slotIndex, u16 characterID, u16 levelID, int time, char *name)
 {
 	struct GhostProfile *profile;
 	char candidateName[0x15];
@@ -51,12 +51,12 @@ void DECOMP_RefreshCard_GhostEncodeProfile(u32 slotIndex, u16 characterID, u16 l
 		packedHigh = packedMid | ((u32)slotIndex << 29);
 
 		RefreshCard_CopyBounded(candidateName, data.s_BASCUS_94426G_Question, sizeof(candidateName));
-		candidateName[13] = DECOMP_RefreshCard_GhostEncodeByte(packedLow & 0x3f);
-		candidateName[14] = DECOMP_RefreshCard_GhostEncodeByte((packedMid & 0xfc0) >> 6);
-		candidateName[15] = DECOMP_RefreshCard_GhostEncodeByte((packedMid & 0x3f000) >> 0xc);
-		candidateName[16] = DECOMP_RefreshCard_GhostEncodeByte((packedMid & 0xfc0000) >> 0x12);
-		candidateName[17] = DECOMP_RefreshCard_GhostEncodeByte((packedHigh >> 0x18) & 0x3f);
-		candidateName[18] = DECOMP_RefreshCard_GhostEncodeByte(packedHigh >> 0x1e);
+		candidateName[13] = RefreshCard_GhostEncodeByte(packedLow & 0x3f);
+		candidateName[14] = RefreshCard_GhostEncodeByte((packedMid & 0xfc0) >> 6);
+		candidateName[15] = RefreshCard_GhostEncodeByte((packedMid & 0x3f000) >> 0xc);
+		candidateName[16] = RefreshCard_GhostEncodeByte((packedMid & 0xfc0000) >> 0x12);
+		candidateName[17] = RefreshCard_GhostEncodeByte((packedHigh >> 0x18) & 0x3f);
+		candidateName[18] = RefreshCard_GhostEncodeByte(packedHigh >> 0x1e);
 		candidateName[19] = '\0';
 
 		if (RefreshCard_GhostProfileNameExists(candidateName) == 0)

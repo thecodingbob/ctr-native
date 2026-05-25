@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified against retail 230 0x800abaf0-0x800abcac.
-u8 DECOMP_MM_TransitionInOut(struct TransitionMeta *meta, int framesPassed, int numFrames)
+u8 MM_TransitionInOut(struct TransitionMeta *meta, int framesPassed, int numFrames)
 {
 	u8 bool_Transitioning;
 	int transitionIndex;
@@ -20,7 +20,7 @@ u8 DECOMP_MM_TransitionInOut(struct TransitionMeta *meta, int framesPassed, int 
 		if ((framesLeft == 4) && (transitionIndex == 0))
 		{
 			// Play "swoosh" sound for menu transition
-			DECOMP_OtherFX_Play(0x65, 0);
+			OtherFX_Play(0x65, 0);
 		}
 
 		if (framesLeft < 1)

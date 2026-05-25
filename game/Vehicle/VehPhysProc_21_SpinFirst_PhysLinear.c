@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_VehPhysProc_SpinFirst_PhysLinear(struct Thread *t, struct Driver *d)
+void VehPhysProc_SpinFirst_PhysLinear(struct Thread *t, struct Driver *d)
 {
 	int elapsedTimeMS = sdata->gGT->elapsedTimeMS;
 
@@ -8,7 +8,7 @@ void DECOMP_VehPhysProc_SpinFirst_PhysLinear(struct Thread *t, struct Driver *d)
 	if (d->NoInputTimer < 0)
 		d->NoInputTimer = 0;
 
-	DECOMP_VehPhysProc_Driving_PhysLinear(t, d);
+	VehPhysProc_Driving_PhysLinear(t, d);
 
 	// baseSpeed and fireSpeed
 	// set both "shorts" in one "int"

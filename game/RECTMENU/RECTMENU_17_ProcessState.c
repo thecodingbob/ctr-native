@@ -6,7 +6,7 @@ Top half is checking for a new menu, bottom half is updating menu logic,
 just reverse the order of the function, and it's fixed
 */
 
-void DECOMP_RECTMENU_ProcessState()
+void RECTMENU_ProcessState()
 {
 	struct RectMenu *currMenu;
 	int currState;
@@ -57,7 +57,7 @@ void DECOMP_RECTMENU_ProcessState()
 	if ((state & DISABLE_INPUT_ALLOW_FUNCPTRS) == 0)
 	{
 		// process button input for menu
-		DECOMP_RECTMENU_ProcessInput(currMenu);
+		RECTMENU_ProcessInput(currMenu);
 
 		// check if ProcessInput changed "state"
 		state = currMenu->state;
@@ -67,10 +67,10 @@ void DECOMP_RECTMENU_ProcessState()
 		{
 			// clear width, then get width
 			width = 0;
-			DECOMP_RECTMENU_GetWidth(currMenu, &width, 1);
+			RECTMENU_GetWidth(currMenu, &width, 1);
 
 			// draw
-			DECOMP_RECTMENU_DrawSelf(currMenu, 0, 0, (int)width);
+			RECTMENU_DrawSelf(currMenu, 0, 0, (int)width);
 		}
 	}
 

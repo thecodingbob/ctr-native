@@ -44,7 +44,7 @@ void PlaySound3D_Flags(u32 *flags, u32 soundID, struct Instance *inst)
 
 	if ((*flags != 0) && ((*flags & 0xffff) != soundID))
 	{
-		DECOMP_OtherFX_Stop1(*flags);
+		OtherFX_Stop1(*flags);
 		*flags = 0;
 	}
 
@@ -74,7 +74,7 @@ void PlaySound3D_Flags(u32 *flags, u32 soundID, struct Instance *inst)
 
 	modifyFlags = PlaySound3D_Flags_BuildFlags(gGT, closestCamera, closestDistance, PlaySound3D_Flags_CalculateLR(dir[closestCamera]));
 	if (*flags == 0)
-		*flags = DECOMP_OtherFX_Play_LowLevel(soundID & 0xffff, 0, modifyFlags);
+		*flags = OtherFX_Play_LowLevel(soundID & 0xffff, 0, modifyFlags);
 	else
-		DECOMP_OtherFX_Modify(*flags, modifyFlags);
+		OtherFX_Modify(*flags, modifyFlags);
 }

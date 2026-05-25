@@ -43,7 +43,7 @@ void MainGameStart_Initialize(struct GameTracker *gGT, char boolStopAudio)
 		// keep backup,
 		// keep music (no music to stop),
 		// stop all fx
-		DECOMP_howl_StopAudio(0, 0, 1);
+		howl_StopAudio(0, 0, 1);
 	}
 
 	VehBirth_TeleportAll(gGT, 2);

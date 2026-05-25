@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_Title_ThTick(struct Thread *title)
+void MM_Title_ThTick(struct Thread *title)
 {
 	s16 animFram;
 	struct GameTracker *gGT;
@@ -22,7 +22,7 @@ void DECOMP_MM_Title_ThTick(struct Thread *title)
 	if ((sdata->buttonTapPerPlayer[0] & 0x40070) != 0)
 	{
 		// clear gamepad input (for menus)
-		DECOMP_RECTMENU_ClearInput();
+		RECTMENU_ClearInput();
 
 		// set frame to 1000, skip the animation
 		D230.timerInTitle = 1000;
@@ -38,7 +38,7 @@ void DECOMP_MM_Title_ThTick(struct Thread *title)
 		if (D230.titleSounds[i].frameToPlay == timer)
 		{
 			// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac3e8-0x800ac400 for title queued SFX.
-			DECOMP_OtherFX_Play(D230.titleSounds[i].soundID, 1);
+			OtherFX_Play(D230.titleSounds[i].soundID, 1);
 		}
 	}
 
@@ -101,7 +101,7 @@ void DECOMP_MM_Title_ThTick(struct Thread *title)
 		}
 	}
 
-	DECOMP_MM_Title_CameraMove(ptrTitle, timer);
+	MM_Title_CameraMove(ptrTitle, timer);
 
 	// increment frame counter
 	timer = D230.timerInTitle + 1;

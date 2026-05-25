@@ -1,7 +1,7 @@
 #include <common.h>
 
 // called by MC_ACTION_Erase
-u8 DECOMP_MEMCARD_EraseFile(int slotIdx, char *srcString)
+u8 MEMCARD_EraseFile(int slotIdx, char *srcString)
 {
 	if (sdata->memcard_stage != 0)
 		return MC_RETURN_TIMEOUT;

@@ -17,7 +17,7 @@ static char warppadColor[8] = {
     [4] = 0,
 };
 
-void DECOMP_AH_Map_Warppads(s16 *ptrMap, struct Thread *warppadThread, s16 *param_3)
+void AH_Map_Warppads(s16 *ptrMap, struct Thread *warppadThread, s16 *param_3)
 {
 	struct GameTracker *gGT = sdata->gGT;
 	struct Instance *warppadInst;
@@ -64,14 +64,14 @@ void DECOMP_AH_Map_Warppads(s16 *ptrMap, struct Thread *warppadThread, s16 *para
 			D232.unkModeHubItems = 1;
 
 			// Get Icon Dimensions
-			DECOMP_UI_Map_GetIconPos(ptrMap, &posX, &posY);
+			UI_Map_GetIconPos(ptrMap, &posX, &posY);
 
-			DECOMP_AH_Map_HubArrowOutter(ptrMap, (int)*param_3, posX, posY, 0, 0);
+			AH_Map_HubArrowOutter(ptrMap, (int)*param_3, posX, posY, 0, 0);
 
 			*param_3 = *param_3 + 1;
 		}
 
-		DECOMP_UI_Map_DrawRawIcon((int)ptrMap, (int *)&warppadInst->matrix.t[0], 0x31, color, 0, 0x1000);
+		UI_Map_DrawRawIcon((int)ptrMap, (int *)&warppadInst->matrix.t[0], 0x31, color, 0, 0x1000);
 
 		// if locked
 		if (index == 0)

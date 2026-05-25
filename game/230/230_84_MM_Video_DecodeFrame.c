@@ -1,6 +1,6 @@
 #include <common.h>
 
-u32 DECOMP_MM_Video_DecodeFrame(s16 offsetX, s16 offsetY)
+u32 MM_Video_DecodeFrame(s16 offsetX, s16 offsetY)
 
 {
 	int iVar1;

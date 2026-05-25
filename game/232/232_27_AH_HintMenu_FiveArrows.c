@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_AH_HintMenu_FiveArrows(int param_1, s16 rotation)
+void AH_HintMenu_FiveArrows(int param_1, s16 rotation)
 {
 	int *ptrColor;
 	char i;
@@ -11,7 +11,7 @@ void DECOMP_AH_HintMenu_FiveArrows(int param_1, s16 rotation)
 
 	for (i = 0; i < 5; i++)
 	{
-		DECOMP_AH_Map_HubArrow(
+		AH_Map_HubArrow(
 		    // posX
 		    (i * 0x32 + 0x95),
 

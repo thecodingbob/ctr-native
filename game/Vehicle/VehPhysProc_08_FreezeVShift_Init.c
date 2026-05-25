@@ -2,7 +2,7 @@
 
 extern void *PlayerAntiVShiftFuncTable[13];
 
-void DECOMP_VehPhysProc_FreezeVShift_Init(struct Thread *t, struct Driver *d)
+void VehPhysProc_FreezeVShift_Init(struct Thread *t, struct Driver *d)
 {
 	d->kartState = KS_ANTIVSHIFT;
 
@@ -18,13 +18,13 @@ void DECOMP_VehPhysProc_FreezeVShift_Init(struct Thread *t, struct Driver *d)
 	}
 }
 
-void DECOMP_VehPhysProc_FreezeVShift_Update(struct Thread *t, struct Driver *d);
+void VehPhysProc_FreezeVShift_Update(struct Thread *t, struct Driver *d);
 void VehPhysProc_FreezeVShift_ReverseOneFrame(struct Thread *t, struct Driver *d);
 
 void *PlayerAntiVShiftFuncTable[13] = {NULL,
-                                       DECOMP_VehPhysProc_FreezeVShift_Update,
-                                       DECOMP_VehPhysProc_Driving_PhysLinear,
-                                       DECOMP_VehPhysProc_Driving_Audio,
+                                       VehPhysProc_FreezeVShift_Update,
+                                       VehPhysProc_Driving_PhysLinear,
+                                       VehPhysProc_Driving_Audio,
                                        VehPhysGeneral_PhysAngular,
                                        VehPhysForce_OnApplyForces,
 

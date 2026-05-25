@@ -29,7 +29,7 @@ void cseq_opcode0a(struct SongSeq *seq)
 		{
 			struct SampleInstrument *longSample = &sdata->ptrCseqLongSamples[seq->instrumentID];
 
-			pitch = DECOMP_howl_InstrumentPitch(longSample->basePitch, index, seq->distort);
+			pitch = howl_InstrumentPitch(longSample->basePitch, index, seq->distort);
 		}
 
 		// drums

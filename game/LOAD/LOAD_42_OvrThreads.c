@@ -3,7 +3,7 @@
 void OVR_Region3();
 
 // DLL loaded = param_1 + 230
-void DECOMP_LOAD_OvrThreads(u32 param_1)
+void LOAD_OvrThreads(u32 param_1)
 {
 	struct GameTracker *gGT = sdata->gGT;
 
@@ -18,7 +18,7 @@ void DECOMP_LOAD_OvrThreads(u32 param_1)
 		// gGT->overlayIndex_Threads = 0xff;
 
 		// Threads overlay 230-233
-		DECOMP_LOAD_AppendQueue(0, LT_SETADDR, (param_1 + 0xe6), &OVR_Region3, data.overlayCallbackFuncs[param_1]);
+		LOAD_AppendQueue(0, LT_SETADDR, (param_1 + 0xe6), &OVR_Region3, data.overlayCallbackFuncs[param_1]);
 #else
 		gGT->overlayIndex_Threads = param_1;
 		((void (*)())data.overlayCallbackFuncs[param_1])();

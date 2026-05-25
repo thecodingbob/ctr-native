@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_UI_Weapon_DrawBG(s16 param_1, s16 param_2, s16 param_3, struct Driver *d)
+void UI_Weapon_DrawBG(s16 param_1, s16 param_2, s16 param_3, struct Driver *d)
 {
 	int iVar1;
 	int iVar2;
@@ -22,7 +22,7 @@ void DECOMP_UI_Weapon_DrawBG(s16 param_1, s16 param_2, s16 param_3, struct Drive
 
 	for (i = 0; i < 2; i++)
 	{
-		DECOMP_UI_WeaponBG_DrawShine(
+		UI_WeaponBG_DrawShine(
 
 		    // Weapon Roulette background (shine)
 		    gGT->ptrIcons[0xc4 / 4],

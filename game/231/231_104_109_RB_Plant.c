@@ -40,7 +40,7 @@ void DECOMP_RB_Plant_ThTick_Eat(struct Thread *t)
 	if (plantInst->animIndex == PlantAnim_StartEat)
 	{
 		// if animation is not over
-		if ((plantInst->animFrame + 1) < DECOMP_INSTANCE_GetNumAnimFrames(plantInst, PlantAnim_StartEat))
+		if ((plantInst->animFrame + 1) < INSTANCE_GetNumAnimFrames(plantInst, PlantAnim_StartEat))
 		{
 			// increment frame
 			plantInst->animFrame = plantInst->animFrame + 1;
@@ -56,7 +56,7 @@ void DECOMP_RB_Plant_ThTick_Eat(struct Thread *t)
 
 			if (plantObj->boolEatingPlayer != 0)
 			{
-				DECOMP_OtherFX_Play(0x6e, 0);
+				OtherFX_Play(0x6e, 0);
 			}
 		}
 	}
@@ -64,7 +64,7 @@ void DECOMP_RB_Plant_ThTick_Eat(struct Thread *t)
 	else if (plantInst->animIndex == PlantAnim_Chew)
 	{
 		// if animation is not over
-		if ((plantInst->animFrame + 1) < DECOMP_INSTANCE_GetNumAnimFrames(plantInst, PlantAnim_Chew))
+		if ((plantInst->animFrame + 1) < INSTANCE_GetNumAnimFrames(plantInst, PlantAnim_Chew))
 		{
 			// increment frame
 			plantInst->animFrame = plantInst->animFrame + 1;
@@ -97,7 +97,7 @@ void DECOMP_RB_Plant_ThTick_Eat(struct Thread *t)
 	else if (plantInst->animIndex == PlantAnim_Spit)
 	{
 		// if animation is not over
-		if ((plantInst->animFrame + 1) < DECOMP_INSTANCE_GetNumAnimFrames(plantInst, PlantAnim_Spit))
+		if ((plantInst->animFrame + 1) < INSTANCE_GetNumAnimFrames(plantInst, PlantAnim_Spit))
 		{
 			// increment frame
 			plantInst->animFrame = plantInst->animFrame + 1;
@@ -108,7 +108,7 @@ void DECOMP_RB_Plant_ThTick_Eat(struct Thread *t)
 				if (plantObj->boolEatingPlayer != 0)
 				{
 					// play PlantSpit sound
-					DECOMP_OtherFX_Play(0x6f, 0);
+					OtherFX_Play(0x6f, 0);
 				}
 
 				for (i = 0; i < 4; i++)
@@ -174,7 +174,7 @@ void DECOMP_RB_Plant_ThTick_Grab(struct Thread *t)
 	if (plantInst->animIndex == PlantAnim_GrabDriver)
 	{
 		// if animation is not over
-		if ((plantInst->animFrame + 1) < DECOMP_INSTANCE_GetNumAnimFrames(plantInst, PlantAnim_GrabDriver))
+		if ((plantInst->animFrame + 1) < INSTANCE_GetNumAnimFrames(plantInst, PlantAnim_GrabDriver))
 		{
 			// increment frame
 			plantInst->animFrame = plantInst->animFrame + 1;
@@ -203,7 +203,7 @@ void DECOMP_RB_Plant_ThTick_Grab(struct Thread *t)
 
 	else if (plantInst->animIndex == PlantAnim_GrabMine)
 	{
-		if ((plantInst->animFrame + 1) < DECOMP_INSTANCE_GetNumAnimFrames(plantInst, PlantAnim_GrabMine))
+		if ((plantInst->animFrame + 1) < INSTANCE_GetNumAnimFrames(plantInst, PlantAnim_GrabMine))
 		{
 			plantInst->animFrame = plantInst->animFrame + 1;
 		}
@@ -258,7 +258,7 @@ void DECOMP_RB_Plant_ThTick_Hungry(struct Thread *t)
 	// if animIndex == PlantAnim_Hungry
 
 	// if animation is not over
-	if ((plantInst->animFrame + 1) < DECOMP_INSTANCE_GetNumAnimFrames(plantInst, PlantAnim_Hungry))
+	if ((plantInst->animFrame + 1) < INSTANCE_GetNumAnimFrames(plantInst, PlantAnim_Hungry))
 	{
 		// increment frame
 		plantInst->animFrame = plantInst->animFrame + 1;
@@ -277,7 +277,7 @@ void DECOMP_RB_Plant_ThTick_Hungry(struct Thread *t)
 			plantObj->cycleCount = 0;
 
 			// end of animation
-			plantInst->animFrame = DECOMP_INSTANCE_GetNumAnimFrames(plantInst, PlantAnim_TransitionRestHungry);
+			plantInst->animFrame = INSTANCE_GetNumAnimFrames(plantInst, PlantAnim_TransitionRestHungry);
 
 			plantInst->animIndex = PlantAnim_TransitionRestHungry;
 			ThTick_SetAndExec(t, DECOMP_RB_Plant_ThTick_Transition_HungryToRest);
@@ -304,7 +304,7 @@ void DECOMP_RB_Plant_ThTick_Hungry(struct Thread *t)
 		if (didHit != 0)
 		{
 			// play PlantGrab sound
-			DECOMP_OtherFX_Play(0x6d, 0);
+			OtherFX_Play(0x6d, 0);
 			plantObj->boolEatingPlayer = 1;
 
 		EatDriver:
@@ -361,7 +361,7 @@ void DECOMP_RB_Plant_ThTick_Rest(struct Thread *t)
 	if (plantInst->animIndex == PlantAnim_Rest)
 	{
 		// if animation is not over
-		if ((plantInst->animFrame + 1) < DECOMP_INSTANCE_GetNumAnimFrames(plantInst, PlantAnim_Rest))
+		if ((plantInst->animFrame + 1) < INSTANCE_GetNumAnimFrames(plantInst, PlantAnim_Rest))
 		{
 			// increment frame
 			plantInst->animFrame = plantInst->animFrame + 1;
@@ -386,7 +386,7 @@ void DECOMP_RB_Plant_ThTick_Rest(struct Thread *t)
 	else if (plantInst->animIndex == PlantAnim_TransitionRestHungry)
 	{
 		// if animation is not over
-		if ((plantInst->animFrame + 1) < DECOMP_INSTANCE_GetNumAnimFrames(plantInst, PlantAnim_TransitionRestHungry))
+		if ((plantInst->animFrame + 1) < INSTANCE_GetNumAnimFrames(plantInst, PlantAnim_TransitionRestHungry))
 		{
 			// increment frame
 			plantInst->animFrame = plantInst->animFrame + 1;
@@ -414,7 +414,7 @@ void DECOMP_RB_Plant_LInB(struct Instance *inst)
 	if (inst->thread != NULL)
 		return;
 
-	t = DECOMP_PROC_BirthWithObject(
+	t = PROC_BirthWithObject(
 	    // creation flags
 	    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Plant), NONE, SMALL, STATIC),
 	    DECOMP_RB_Plant_ThTick_Rest, // behavior

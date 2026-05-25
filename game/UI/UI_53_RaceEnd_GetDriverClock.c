@@ -63,8 +63,3 @@ void UI_RaceEnd_GetDriverClock(struct Driver *driver)
 		}
 	}
 }
-
-void DECOMP_UI_RaceEnd_GetDriverClock(struct Driver *driver)
-{
-	UI_RaceEnd_GetDriverClock(driver);
-}

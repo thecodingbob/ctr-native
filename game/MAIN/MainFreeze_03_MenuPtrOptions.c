@@ -236,7 +236,7 @@ force_inline void DISPLAYRECTMENU_MainFreeze_MenuPtrOptions(struct RectMenu *men
 	for (int i = 0; i < 3; i++)
 	{
 		//"FX:", "MUSIC:", "VOICE:"
-		int lineWidth = DECOMP_DecalFont_GetLineWidth(sdata->lngStrings[data.Options_StringIDs_Audio[i]], FONT_SMALL);
+		int lineWidth = DecalFont_GetLineWidth(sdata->lngStrings[data.Options_StringIDs_Audio[i]], FONT_SMALL);
 		if (volumeSliderTriangleLeftMargin < lineWidth)
 			volumeSliderTriangleLeftMargin = lineWidth;
 	}
@@ -305,11 +305,11 @@ force_inline void DISPLAYRECTMENU_MainFreeze_MenuPtrOptions(struct RectMenu *men
 		// "DUAL SHOCK:"
 		DecalFont_DrawLine(sdata->lngStrings[330], 76, 90 + (menuRowsNegativePadding / 2), FONT_SMALL, ORANGE);
 
-		int lineWidth_controller1A = DECOMP_DecalFont_GetLineWidth(sdata->lngStrings[data.Options_StringIDs_Gamepads[2]], FONT_SMALL);
+		int lineWidth_controller1A = DecalFont_GetLineWidth(sdata->lngStrings[data.Options_StringIDs_Gamepads[2]], FONT_SMALL);
 
 		// width can change depending on language
-		int lineWidth_vibrateOff = DECOMP_DecalFont_GetLineWidth(sdata->lngStrings[326], FONT_SMALL);
-		int lineWidth_vibrateOn = DECOMP_DecalFont_GetLineWidth(sdata->lngStrings[325], FONT_SMALL);
+		int lineWidth_vibrateOff = DecalFont_GetLineWidth(sdata->lngStrings[326], FONT_SMALL);
+		int lineWidth_vibrateOn = DecalFont_GetLineWidth(sdata->lngStrings[325], FONT_SMALL);
 		if (lineWidth_vibrateOn < lineWidth_vibrateOff)
 			lineWidth_vibrateOn = lineWidth_vibrateOff;
 
@@ -379,7 +379,7 @@ force_inline void DISPLAYRECTMENU_MainFreeze_MenuPtrOptions(struct RectMenu *men
 	RECT titleSeparatorLine = {.x = 66, .y = (menuRowsNegativePadding / 2) + 43, .w = 380, .h = 2};
 
 	color.self = sdata->battleSetup_Color_UI_1;
-	DECOMP_RECTMENU_DrawOuterRect_Edge(&titleSeparatorLine, color, 0x20, ot);
+	RECTMENU_DrawOuterRect_Edge(&titleSeparatorLine, color, 0x20, ot);
 
 	RECT menuBG = {.x = 56, .y = (menuRowsNegativePadding / 2) + 20, .w = 400, .h = 135 - menuRowsNegativePadding};
 

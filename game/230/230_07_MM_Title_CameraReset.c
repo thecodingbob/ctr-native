@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_Title_CameraReset(void)
+void MM_Title_CameraReset(void)
 {
 	struct Title *title = D230.titleObj;
 

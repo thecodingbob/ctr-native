@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_AH_WarpPad_LInB(struct Instance *inst)
+void AH_WarpPad_LInB(struct Instance *inst)
 {
 	int i;
 	int levelID;
@@ -21,11 +21,11 @@ void DECOMP_AH_WarpPad_LInB(struct Instance *inst)
 
 	gGT = sdata->gGT;
 
-	t = DECOMP_PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(sizeof(struct WarpPad), NONE, MEDIUM, WARPPAD),
+	t = PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(sizeof(struct WarpPad), NONE, MEDIUM, WARPPAD),
 
-	                                DECOMP_AH_WarpPad_ThTick, // behavior
-	                                0,                        // debug name
-	                                0                         // thread relative
+	                         AH_WarpPad_ThTick, // behavior
+	                         0,                 // debug name
+	                         0                  // thread relative
 	);
 
 	if (t == 0)
@@ -33,7 +33,7 @@ void DECOMP_AH_WarpPad_LInB(struct Instance *inst)
 	inst->thread = t;
 	t->inst = inst;
 
-	t->funcThDestroy = DECOMP_AH_WarpPad_ThDestroy;
+	t->funcThDestroy = AH_WarpPad_ThDestroy;
 
 	// 0 - locked
 	// 1 - open for trophy
@@ -150,7 +150,7 @@ void DECOMP_AH_WarpPad_LInB(struct Instance *inst)
 		// if beam model exists
 		if (gGT->modelPtr[STATIC_BEAM] != 0)
 		{
-			newInst = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[STATIC_BEAM], 0, t);
+			newInst = INSTANCE_Birth3D(gGT->modelPtr[STATIC_BEAM], 0, t);
 
 			// copy matrix
 			*(int *)((int)&newInst->matrix + 0x0) = *(int *)((int)&inst->matrix + 0x0);
@@ -172,7 +172,7 @@ void DECOMP_AH_WarpPad_LInB(struct Instance *inst)
 		{
 			for (i = 0; i < 2; i++)
 			{
-				newInst = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[STATIC_BOTTOMRING], 0, t);
+				newInst = INSTANCE_Birth3D(gGT->modelPtr[STATIC_BOTTOMRING], 0, t);
 
 				// copy matrix
 				*(int *)((int)&newInst->matrix + 0x0) = *(int *)((int)&inst->matrix + 0x0);
@@ -219,7 +219,7 @@ void DECOMP_AH_WarpPad_LInB(struct Instance *inst)
 				// open for trophy
 				t->modelIndex = 1;
 
-				newInst = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[STATIC_TROPHY], 0, t);
+				newInst = INSTANCE_Birth3D(gGT->modelPtr[STATIC_TROPHY], 0, t);
 
 				newInst->scale[0] = 0x2800;
 				newInst->scale[1] = 0x2800;
@@ -238,7 +238,7 @@ void DECOMP_AH_WarpPad_LInB(struct Instance *inst)
 					t->modelIndex = 3;
 				}
 			BattleTrack:
-				newInst = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[STATIC_TOKEN], 0, t);
+				newInst = INSTANCE_Birth3D(gGT->modelPtr[STATIC_TOKEN], 0, t);
 
 				// specular lighting
 				newInst->flags |= 0x30000;
@@ -283,7 +283,7 @@ void DECOMP_AH_WarpPad_LInB(struct Instance *inst)
 					else if (t->modelIndex != 1)
 						t->modelIndex = 3;
 
-					newInst = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[STATIC_RELIC], 0, t);
+					newInst = INSTANCE_Birth3D(gGT->modelPtr[STATIC_RELIC], 0, t);
 
 					// relic blue
 					newInst->colorRGBA = 0x20a5ff0;
@@ -361,7 +361,7 @@ void DECOMP_AH_WarpPad_LInB(struct Instance *inst)
 			// rainbow color
 			t->modelIndex = 4;
 
-			newInst = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[STATIC_GEM], 0, t);
+			newInst = INSTANCE_Birth3D(gGT->modelPtr[STATIC_GEM], 0, t);
 
 			// specular lighting
 			newInst->flags |= 0x20000;
@@ -404,7 +404,7 @@ void DECOMP_AH_WarpPad_LInB(struct Instance *inst)
 	// ====== Item ========
 
 	// WPIS_CLOSED_ITEM
-	newInst = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[unlockItem_modelID], 0, t);
+	newInst = INSTANCE_Birth3D(gGT->modelPtr[unlockItem_modelID], 0, t);
 
 	// copy matrix
 	*(int *)((int)&newInst->matrix + 0x0) = *(int *)((int)&inst->matrix + 0x0);
@@ -492,7 +492,7 @@ void DECOMP_AH_WarpPad_LInB(struct Instance *inst)
 	// ====== "X" ========
 
 	// WPIS_CLOSED_X
-	newInst = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[STATIC_BIGX], 0, t);
+	newInst = INSTANCE_Birth3D(gGT->modelPtr[STATIC_BIGX], 0, t);
 
 	// copy matrix
 	*(int *)((int)&newInst->matrix + 0x0) = 0x1000;
@@ -518,7 +518,7 @@ void DECOMP_AH_WarpPad_LInB(struct Instance *inst)
 	if (warppadObj->digit10s != 0)
 	{
 		// WPIS_CLOSED_10S
-		newInst = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[STATIC_BIG1], 0, t);
+		newInst = INSTANCE_Birth3D(gGT->modelPtr[STATIC_BIG1], 0, t);
 
 		// copy matrix
 		*(int *)((int)&newInst->matrix + 0x0) = 0x1000;
@@ -551,7 +551,7 @@ void DECOMP_AH_WarpPad_LInB(struct Instance *inst)
 		i = 0x6e; // '9'
 
 	// WPIS_CLOSED_1S
-	newInst = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[i], 0, t);
+	newInst = INSTANCE_Birth3D(gGT->modelPtr[i], 0, t);
 
 	// copy matrix
 	*(int *)((int)&newInst->matrix + 0x0) = 0x1000;

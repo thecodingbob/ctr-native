@@ -2,7 +2,7 @@
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80051c64-0x80051e24.
 
-void DECOMP_UI_JumpMeter_Update(struct Driver *d)
+void UI_JumpMeter_Update(struct Driver *d)
 {
 	// if player is not in the air
 	if ((d->actionsFlagSet & 0x80000) == 0)

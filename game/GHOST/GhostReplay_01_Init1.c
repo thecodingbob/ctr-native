@@ -153,11 +153,11 @@ void GhostReplay_Init1(void)
 		struct Model *model = NULL;
 #endif
 
-		inst = DECOMP_INSTANCE_Birth3D(model, NULL, NULL);
+		inst = INSTANCE_Birth3D(model, NULL, NULL);
 		inst->unk51 = 0xc;
 		inst->flags = 7;
 
-		t = DECOMP_PROC_BirthWithObject(
+		t = PROC_BirthWithObject(
 
 		    // creation flags
 		    SIZE_RELATIVE_POOL_BUCKET(4, NONE, LARGE, GHOST),
@@ -187,7 +187,7 @@ void GhostReplay_Init1(void)
 		// if "Wake" model exists
 		if (wake)
 		{
-			wakeInst = DECOMP_INSTANCE_Birth3D(wake, 0, 0);
+			wakeInst = INSTANCE_Birth3D(wake, 0, 0);
 			ghostDriver->wakeInst = wakeInst;
 
 			if (wakeInst != 0)

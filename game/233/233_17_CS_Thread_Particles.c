@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800abdd4-0x800abf70
-void DECOMP_CS_Thread_Particles(struct Thread *t)
+void CS_Thread_Particles(struct Thread *t)
 {
 	struct CutsceneObj *cs = t->object;
 	struct Instance *inst = t->inst;
@@ -37,7 +37,7 @@ void DECOMP_CS_Thread_Particles(struct Thread *t)
 			{
 				s16 pos[3];
 
-				DECOMP_CS_Instance_GetFrameData(inst, inst->animIndex, inst->animFrame, (u16 *)pos, NULL, frameOffset);
+				CS_Instance_GetFrameData(inst, inst->animIndex, inst->animFrame, (u16 *)pos, NULL, frameOffset);
 
 				p->axis[0].startVal += (pos[0] + inst->matrix.t[0]) << 8;
 				p->axis[1].startVal += (pos[1] + inst->matrix.t[1]) << 8;

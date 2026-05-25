@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_ToggleRows_PlayerCount()
+void MM_ToggleRows_PlayerCount()
 {
 	int i;
 	struct MenuRow *row;

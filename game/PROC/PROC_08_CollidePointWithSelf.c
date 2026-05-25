@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_PROC_CollidePointWithSelf(struct Thread *th, struct BucketSearchParams *buf)
+void PROC_CollidePointWithSelf(struct Thread *th, struct BucketSearchParams *buf)
 {
 	struct Instance *inst;
 	int distX;

@@ -34,10 +34,10 @@ void MainFreeze_MenuPtrDefault(struct RectMenu *menu)
 		}
 
 		// quit adv hub if it's not loaded
-		if (DECOMP_LOAD_IsOpen_AdvHub() == 0)
+		if (LOAD_IsOpen_AdvHub() == 0)
 			return;
 
-		DECOMP_AH_Pause_Update();
+		AH_Pause_Update();
 		return;
 	}
 
@@ -79,7 +79,7 @@ void MainFreeze_MenuPtrDefault(struct RectMenu *menu)
 	gGT->cooldownFromUnpauseUntilPause = 5;
 
 	// hide Menu
-	DECOMP_RECTMENU_Hide(menu);
+	RECTMENU_Hide(menu);
 
 	// get rid of pause flag
 	gGT->gameMode1 &= ~PAUSE_1;
@@ -127,7 +127,7 @@ void MainFreeze_MenuPtrDefault(struct RectMenu *menu)
 		MainFrame_TogglePauseAudio(0);
 
 		// play pause/unpause sound
-		DECOMP_OtherFX_Play(1, 1);
+		OtherFX_Play(1, 1);
 		return;
 
 	// stringID 5: "CHANGE CHARACTER"

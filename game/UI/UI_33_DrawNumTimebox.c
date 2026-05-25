@@ -2,14 +2,14 @@
 
 // 172 byte budget
 
-void DECOMP_UI_DrawNumTimebox(s16 posX, s16 posY, struct Driver *d)
+void UI_DrawNumTimebox(s16 posX, s16 posY, struct Driver *d)
 {
 	int numCratesOwned;
 	int numCratesTotal;
 	struct GameTracker *gGT;
 	char string[8];
 
-	DECOMP_DecalFont_DrawLine(&sdata->s_x[0], posX + 0x14, posY - 10, FONT_SMALL, ORANGE);
+	DecalFont_DrawLine(&sdata->s_x[0], posX + 0x14, posY - 10, FONT_SMALL, ORANGE);
 
 	gGT = sdata->gGT;
 	numCratesOwned = d->numTimeCrates;
@@ -23,5 +23,5 @@ void DECOMP_UI_DrawNumTimebox(s16 posX, s16 posY, struct Driver *d)
 #endif
 	        numCratesOwned, numCratesTotal);
 
-	DECOMP_DecalFont_DrawLine(&string[0], posX + 0x21, posY - 0xe, FONT_BIG, ORANGE);
+	DecalFont_DrawLine(&string[0], posX + 0x21, posY - 0xe, FONT_BIG, ORANGE);
 }

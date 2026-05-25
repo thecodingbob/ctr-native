@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_TrackSelect_Video_SetDefaults(void)
+void MM_TrackSelect_Video_SetDefaults(void)
 {
 	// clear RECT
 	sdata->videoSTR_src_vramRect.x = 0;

@@ -1,6 +1,6 @@
 #include <common.h>
 
-char DECOMP_MM_TrackSelect_boolTrackOpen(struct MainMenu_LevelRow *menuSelect)
+char MM_TrackSelect_boolTrackOpen(struct MainMenu_LevelRow *menuSelect)
 {
 	s16 flag = menuSelect->unlock;
 	char unlocked = false;

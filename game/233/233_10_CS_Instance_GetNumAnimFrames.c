@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac5a4-0x800ac638
-int DECOMP_CS_Instance_GetNumAnimFrames(struct Instance *modelInst, int animIndex, int LOD)
+int CS_Instance_GetNumAnimFrames(struct Instance *modelInst, int animIndex, int LOD)
 {
 	struct Model *model;
 	struct ModelHeader *header;

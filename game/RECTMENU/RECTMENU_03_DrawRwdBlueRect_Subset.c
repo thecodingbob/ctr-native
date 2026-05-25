@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_RECTMENU_DrawRwdBlueRect_Subset(s16 *pos, int *color, u_long *ot, struct PrimMem *primMem)
+void RECTMENU_DrawRwdBlueRect_Subset(s16 *pos, int *color, u_long *ot, struct PrimMem *primMem)
 {
 	POLY_G4 *p = (POLY_G4 *)primMem->curr;
 

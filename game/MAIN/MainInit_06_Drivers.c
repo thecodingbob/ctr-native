@@ -23,7 +23,7 @@ void MainInit_Drivers(struct GameTracker *gGT)
 
 	GhostReplay_Init1();
 
-	if (DECOMP_LOAD_IsOpen_RacingOrBattle())
+	if (LOAD_IsOpen_RacingOrBattle())
 	{
 		DECOMP_RB_MinePool_Init();
 	}

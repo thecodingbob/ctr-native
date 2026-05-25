@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80028690-0x80028808
-u32 DECOMP_OtherFX_Modify(u32 soundId, u32 flags)
+u32 OtherFX_Modify(u32 soundId, u32 flags)
 {
 	struct ChannelStats *channel;
 	struct ChannelAttr channelAttr;

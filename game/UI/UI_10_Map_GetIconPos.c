@@ -18,7 +18,7 @@ struct Map
 	s16 mode;
 };
 
-void DECOMP_UI_Map_GetIconPos(s16 *m, int *posX, int *posY)
+void UI_Map_GetIconPos(s16 *m, int *posX, int *posY)
 
 {
 	s16 mode;

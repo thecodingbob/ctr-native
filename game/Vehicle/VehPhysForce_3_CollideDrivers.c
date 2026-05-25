@@ -61,8 +61,8 @@ void VehPhysForce_CollideDrivers(struct Thread *thread, struct Driver *driver)
 		search.th = NULL;
 		search.radius = 0x7fffffff;
 
-		DECOMP_PROC_CollidePointWithBucket(thread->siblingThread, &search.pos[0]);
-		DECOMP_PROC_CollidePointWithBucket(sdata->gGT->threadBuckets[ROBOT].thread, &search.pos[0]);
+		PROC_CollidePointWithBucket(thread->siblingThread, &search.pos[0]);
+		PROC_CollidePointWithBucket(sdata->gGT->threadBuckets[ROBOT].thread, &search.pos[0]);
 
 		if (search.th != NULL)
 		{

@@ -3,7 +3,7 @@
 // current 2208
 // budget 3276
 
-void DECOMP_AH_Door_ThTick(struct Thread *t)
+void AH_Door_ThTick(struct Thread *t)
 {
 	char doorIsOpen;
 	s16 doorID;
@@ -194,7 +194,7 @@ void DECOMP_AH_Door_ThTick(struct Thread *t)
 
 		// If you are here, game must not be paused
 
-		driver->funcPtrs[0] = DECOMP_VehPhysProc_FreezeEndEvent_Init;
+		driver->funcPtrs[0] = VehPhysProc_FreezeEndEvent_Init;
 
 		door->camFlags |= WdCam_CutscenePlaying;
 
@@ -220,7 +220,7 @@ void DECOMP_AH_Door_ThTick(struct Thread *t)
 						for (i = 0; i < numKeys; i++)
 						{
 							// name = "key"
-							keyInst = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[STATIC_KEY], 0, t);
+							keyInst = INSTANCE_Birth3D(gGT->modelPtr[STATIC_KEY], 0, t);
 
 							// Set Key Color
 							keyInst->colorRGBA = 0xdca6000;
@@ -331,29 +331,29 @@ void DECOMP_AH_Door_ThTick(struct Thread *t)
 				{
 				case 0x0A:
 					// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b0208-0x800b0218 for first floating-key SFX.
-					DECOMP_OtherFX_Play_LowLevel(0x67, 1, 0xff7680);
+					OtherFX_Play_LowLevel(0x67, 1, 0xff7680);
 					break;
 				case 0x0F:
 					// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b022c-0x800b023c for second floating-key SFX.
-					DECOMP_OtherFX_Play_LowLevel(0x67, 1, 0xeb8080);
+					OtherFX_Play_LowLevel(0x67, 1, 0xeb8080);
 					break;
 				case 0x14:
 					// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b0250-0x800b0260 for third floating-key SFX.
-					DECOMP_OtherFX_Play_LowLevel(0x67, 1, 0xd78a80);
+					OtherFX_Play_LowLevel(0x67, 1, 0xd78a80);
 					break;
 				case 0x19:
 					// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b0274-0x800b0284 for fourth floating-key SFX.
-					DECOMP_OtherFX_Play_LowLevel(0x67, 1, 0xc39480);
+					OtherFX_Play_LowLevel(0x67, 1, 0xc39480);
 					break;
 				case 0x50:
 					// unlock door sound
 					// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b0298-0x800b02ac for door unlock SFX.
-					DECOMP_OtherFX_Play(0x93, 1);
+					OtherFX_Play(0x93, 1);
 					break;
 				case 0x78:
 					// on last frame, doors "creek" open
 					// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b02a0-0x800b02ac for door creak SFX.
-					DECOMP_OtherFX_Play(0x94, 1);
+					OtherFX_Play(0x94, 1);
 					break;
 
 				default:
@@ -447,7 +447,7 @@ void DECOMP_AH_Door_ThTick(struct Thread *t)
 	{
 		if (door->keyInst[i] != NULL)
 		{
-			DECOMP_INSTANCE_Death(door->keyInst[i]);
+			INSTANCE_Death(door->keyInst[i]);
 			door->keyInst[i] = NULL;
 		}
 	}
@@ -500,7 +500,7 @@ void DECOMP_AH_Door_ThTick(struct Thread *t)
 
 	cDC->flags |= 0x400;
 
-	driver->funcPtrs[0] = DECOMP_VehPhysProc_Driving_Init;
+	driver->funcPtrs[0] = VehPhysProc_Driving_Init;
 
 	// cutscene over
 	door->camFlags &= ~(0x10);

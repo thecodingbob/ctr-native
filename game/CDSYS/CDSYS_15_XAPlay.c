@@ -40,7 +40,7 @@ int CDSYS_XAPlay(int categoryID, int xaID)
 
 	if (sdata->load_inProgress != 0)
 	{
-		DECOMP_OtherFX_Play(5, 1);
+		OtherFX_Play(5, 1);
 		return 0;
 	}
 

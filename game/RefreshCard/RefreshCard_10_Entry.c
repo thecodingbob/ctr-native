@@ -33,7 +33,7 @@ static void RefreshCard_FinishGhostSave(int result)
 		sdata->ptrDesiredMenu = &menu224NoSave;
 
 		if (sdata->ptrActiveMenu == &data.menuGhostSelection)
-			DECOMP_RECTMENU_Hide(sdata->ptrActiveMenu);
+			RECTMENU_Hide(sdata->ptrActiveMenu);
 	}
 	else
 	{
@@ -46,7 +46,7 @@ static void RefreshCard_FinishGhostSave(int result)
 }
 
 // TODO(aalhendi): Replace this ghost-save-only bridge with the full retail RefreshCard_Entry state machine.
-void DECOMP_RefreshCard_Entry(void)
+void RefreshCard_Entry(void)
 {
 	int result;
 
@@ -62,8 +62,8 @@ void DECOMP_RefreshCard_Entry(void)
 		}
 
 		sdata->mcScreenText = MC_SCREEN_SAVING;
-		result = DECOMP_MEMCARD_Save(0, sdata->ghostProfile_current.profile_name, (char *)&sdata->memcardIcon_HeaderGHOST[0],
-		                             (u8 *)sdata->GhostRecording.ptrGhost, 0x3e00, 0);
+		result = MEMCARD_Save(0, sdata->ghostProfile_current.profile_name, (char *)&sdata->memcardIcon_HeaderGHOST[0], (u8 *)sdata->GhostRecording.ptrGhost,
+		                      0x3e00, 0);
 
 		if (result != MC_RETURN_PENDING)
 		{
@@ -72,7 +72,7 @@ void DECOMP_RefreshCard_Entry(void)
 		}
 	}
 
-	result = DECOMP_MEMCARD_HandleEvent();
+	result = MEMCARD_HandleEvent();
 	if (result != MC_RETURN_PENDING)
 		RefreshCard_FinishGhostSave(result);
 }

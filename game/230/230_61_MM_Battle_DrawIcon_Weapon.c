@@ -1,7 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_Battle_DrawIcon_Weapon(struct Icon *icon, u32 posX, int posY, struct PrimMem *primMem, u32 *ot, char transparency, s16 param_7, u16 param_8,
-                                      u32 *color)
+void MM_Battle_DrawIcon_Weapon(struct Icon *icon, u32 posX, int posY, struct PrimMem *primMem, u32 *ot, char transparency, s16 param_7, u16 param_8, u32 *color)
 {
 	if (!icon)
 		return;

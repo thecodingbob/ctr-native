@@ -2,7 +2,7 @@
 
 // Sets icon dimension data for every Japanese character in the game's fonts, which is then used for DecalFont_DrawLineStrlen
 
-void DECOMP_DecalFont_SetJfontDimensions()
+void DecalFont_SetJfontDimensions()
 {
 	struct Icon *jfontBig;
 	struct Icon *jfontSmall;

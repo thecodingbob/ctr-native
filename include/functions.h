@@ -128,7 +128,7 @@ u32 DecalFont_boolRacingWheel();
 #endif
 int DecalFont_GetLineWidthStrlen(char *str, s16 len, s16 fontType);
 int DecalFont_GetLineWidth(char *str, s16 fontType);
-void DecalFont_DrawLineStrlen(char *str, s16 len, int posX, int posY, s16 fontType, int flags);
+void DecalFont_DrawLineStrlen(u8 *str, s16 len, int posX, int posY, s16 fontType, int flags);
 void DecalFont_DrawLine(char *str, int posX, int posY, s16 fontType, int flags);
 void DecalFont_DrawLineOT(char *str, int posX, int posY, s16 fontType, int flags, u_long *ot);
 int DecalFont_DrawMultiLineStrlen(char *str, s16 len, s16 posX, s16 posY, s16 maxPixLen, s16 fontType, s16 flags);
@@ -459,7 +459,7 @@ struct Instance *INSTANCE_BirthWithThread(int modelID, char *name, int poolType,
 struct Instance *INSTANCE_BirthWithThread_Stack(int *spArr);
 void INSTANCE_Death(struct Instance *inst);
 void INSTANCE_LevInitAll(struct InstDef *instDef, int num);
-void INSTANCE_LevDelayedLInBs(void *instDefs, u32 numInstances);
+void INSTANCE_LevDelayedLInBs(struct Instance *instDefs, u32 numInstances);
 
 // not really part of "INSTANCE" namespace
 u32 VehFrameInst_GetNumAnimFrames(struct Instance *inst, int animIndex);
@@ -506,7 +506,7 @@ void LIST_Init(struct LinkedList *L, struct Item *item, int itemSize, int numIte
 
 // LOAD
 
-void LOAD_Callback_Overlay_Generic();
+void LOAD_Callback_Overlay_Generic(struct LoadQueueSlot *lqs);
 void LOAD_Callback_Overlay_230();
 void LOAD_Callback_Overlay_231();
 void LOAD_Callback_Overlay_232();
@@ -514,46 +514,46 @@ void LOAD_Callback_Overlay_233();
 void LOAD_Callback_MaskHints3D(struct LoadQueueSlot *lqs);
 void LOAD_Callback_Podiums(struct LoadQueueSlot *lqs);
 void LOAD_Callback_LEV(struct LoadQueueSlot *lqs);
-void LOAD_Callback_PatchMem(struct LoadQueueSlot *lqs);
+void LOAD_Callback_PatchMem();
 void LOAD_Callback_DriverModels(struct LoadQueueSlot *lqs);
-// LOAD_HubCallback()
+void LOAD_HubCallback(struct LoadQueueSlot *lqs);
 void LOAD_GlobalModelPtrs_MPK();
 void LOAD_HubSwapPtrs(struct GameTracker *gGT);
-void LOAD_StringToUpper(u8 *param_1);
+void LOAD_StringToUpper(char *path);
 void LOAD_InitCD();
 void *LOAD_ReadDirectory(char *filepath);
-// LOAD_DramFileCallback()
+void LOAD_DramFileCallback(struct LoadQueueSlot *lqs);
 // LOAD_DramFile()
 void LOAD_VramFileCallback(struct LoadQueueSlot *lqs);
-u32 LOAD_VramFile(struct BigHeader *bigfile, u32 fileIndex, u32 *destination, u32 *sizePtr, int callback);
-void LOAD_ReadFileASyncCallback();
-u_long *LOAD_ReadFile(struct BigHeader *bigfile, u32 loadType, u32 fileIndex, u32 *destination, u32 *sizePtr, int callback);
+void *LOAD_VramFile(void *bigfilePtr, int subfileIndex, void *ptrDestination, int *sizePtr, int callbackOrFlags);
+void LOAD_ReadFileASyncCallback(CdlIntrResult result, u8 *unk);
+void *LOAD_ReadFile_ex(u32 loadType, int subfileIndex, void *ptrDst);
 void *LOAD_XnfFile(char *file, void *addr, int *size);
-// LOAD_FindFile()
+int LOAD_FindFile(char *filename, CdlFILE *cdlFile);
 
 // these are the last howl functions ever
 
-// LOAD_HowlHeaderSectors()
-// LOAD_HowlCallback()
-// LOAD_HowlSectorChainStart()
-// LOAD_HowlSectorChainEnd()
+int LOAD_HowlHeaderSectors(CdlFILE *cdlFileHWL, void *ptrDestination, int firstSector, int numSector);
+void LOAD_HowlCallback(CdlIntrResult result, u8 *unk);
+int LOAD_HowlSectorChainStart(CdlFILE *cdlFileHWL, void *ptrDestination, int firstSector, int numSector);
+int LOAD_HowlSectorChainEnd(void);
 
 // more LOAD
 
-void LOAD_RunPtrMap(char *file, void *map, int size);
-void LOAD_Robots2P(int bigfile, int p1, int p2, int callback);
+void LOAD_RunPtrMap(char *file, int *map, int size);
+int LOAD_Robots2P(int p1, int p2);
 void LOAD_Robots1P(int characterID);
-void LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void *callback);
+void LOAD_DriverMPK(u32 bigfile, int levelLOD);
 void LOAD_LangFile(int bigfilePtr, int lang);
-int LOAD_GetBigfileIndex(u32 levelID, int lod, int fileType);
-void LOAD_AppendQueue(int bigfile, int type, int fileIndex, void *destinationPtr, void *callback);
+int LOAD_GetBigfileIndex(u32 levelID, int lod);
+void LOAD_AppendQueue_ex(int type, int fileIndex, void *destinationPtr, void (*callback)(struct LoadQueueSlot *));
 void LOAD_CDRequestCallback(struct LoadQueueSlot *lqs);
 void LOAD_NextQueuedFile();
-// LOAD_Hub_ReadFile()
+void LOAD_Hub_ReadFile(int bigfilePtr, int levID, int packID);
 void LOAD_Hub_SwapNow();
-void LOAD_Hub_Main(struct BigHeader *bigfile);
-void LOAD_OvrLOD(int param_1);
-void LOAD_OvrEndRace(u32 *param_1);
+void LOAD_Hub_Main(int bigfilePtr);
+void LOAD_OvrLOD(u32 param_1);
+void LOAD_OvrEndRace(u32 param_1);
 void LOAD_OvrThreads(u32 param_1);
 int LOAD_GetAdvPackIndex();
 int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *bigfile);
@@ -634,7 +634,11 @@ void MainLoadVLC();
 
 // main
 
-u32 main();
+#ifdef CTR_NATIVE
+u32 CTR_Main(void);
+#else
+u32 main(void);
+#endif
 
 // MainRaceTrack
 
@@ -661,7 +665,7 @@ void MATH_MatrixMul(MATRIX *output, MATRIX *input, VECTOR *rotate);
 void MEMCARD_SetIcon(int iconID);
 u32 MEMCARD_CRC16(u32 crc, int nextByte);
 int MEMCARD_ChecksumSave(u8 *saveBytes, int len);
-u32 MEMCARD_ChecksumLoad(u8 *saveBytes, int len);
+int MEMCARD_ChecksumLoad(u8 *saveBytes, int len);
 char *MEMCARD_StringInit(int slotIndex, char *dstString);
 void MEMCARD_StringSet(char *dstString, int slotIdx, char *srcString);
 void MEMCARD_InitCard();
@@ -738,15 +742,15 @@ void PROC_DestroyObject(void *object, int threadFlags);
 void PROC_DestroySelf(struct Thread *t);
 void PROC_DestroyBloodline(struct Thread *t);
 void PROC_CheckBloodlineForDead(struct Thread **replaceSelf, struct Thread *th);
-void PROC_CheckAllForDead();
-struct Thread *PROC_BirthWithObject(u32 creationFlags, void *behaviorFuncPtr, char *debugName,
+void PROC_CheckAllForDead(void);
+struct Thread *PROC_BirthWithObject(int creationFlags, void *behaviorFuncPtr, char *debugName,
                                     struct Thread *threadRelative); // 2nd param function ptr, maybe (void (*)(int))?
-void PROC_CollidePointWithSelf(struct Thread *th, void *buf);
+void PROC_CollidePointWithSelf(struct Thread *th, struct BucketSearchParams *buf);
 void PROC_CollidePointWithBucket(struct Thread *th, s16 *vec3_pos);
-struct Thread *PROC_SearchForModel(struct Thread *th, int modelID);
-void PROC_PerBspLeaf_CheckInstances(struct BSP *bspLeaf, struct ScratchpadStruct *param_2);
-void PROC_StartSearch_Self(struct ScratchpadStruct *SPS);
-void PROC_CollideHitboxWithBucket(struct Thread *param_1, struct ScratchpadStruct *param_2, struct Thread *param_3);
+struct Thread *PROC_SearchForModel(struct Thread *th, s16 modelID);
+void PROC_PerBspLeaf_CheckInstances(struct BSP *bspLeaf, struct ScratchpadStruct *sps);
+void PROC_StartSearch_Self(struct ScratchpadStruct *sps);
+void PROC_CollideHitboxWithBucket(struct Thread *collThread, struct ScratchpadStruct *sps, struct Thread *ignoredThread);
 
 // PushBuffer
 
@@ -789,22 +793,22 @@ void RaceFlag_DrawLoadingString(void);
 void RaceFlag_DrawSelf(void);
 
 // RECTMENU
-void RECTMENU_DrawOuterRect_Edge(RECT *r, u32 rgb, u32 param_3, u_long *otMem);
+void RECTMENU_DrawOuterRect_Edge(RECT *r, Color color, u32 param_3, u_long *otMem);
 u8 *RECTMENU_DrawTime(int milliseconds);
 void RECTMENU_DrawRwdBlueRect_Subset(s16 *pos, int *color, u_long *ot, struct PrimMem *primMem);
 void RECTMENU_DrawRwdBlueRect(RECT *rect, char *metas, u_long *ot, struct PrimMem *primMem);
 void RECTMENU_DrawRwdTriangle(s16 *position, char *color, u_long *otMem, struct PrimMem *primMem);
-void RECTMENU_DrawOuterRect_LowLevel(RECT *r, s16 x, u16 y, u32 *rgb, s16 param_5, u_long *otMem);
-void RECTMENU_DrawOuterRect_HighLevel(RECT *r, u32 *rgb, u32 param_3, u_long *otMem);
-void RECTMENU_DrawQuip(char *, s16, s16, s16, s16, int, s16);
-void RECTMENU_DrawInnerRect(RECT *r, int flag, u_long *ot);
+void RECTMENU_DrawOuterRect_LowLevel(RECT *r, s16 x, u16 y, Color color, s16 param_5, u_long *otMem);
+void RECTMENU_DrawOuterRect_HighLevel(RECT *r, Color color, s16 param_3, u_long *otMem);
+void RECTMENU_DrawQuip(char *comment, s16 startX, int startY, u32 sizeX, s16 fontType, int textFlag, s16 boxFlag);
+void RECTMENU_DrawInnerRect(RECT *r, int flag, void *ot);
 void RECTMENU_DrawFullRect(struct RectMenu *menu, RECT *r);
-// RECTMENU_GetHeight()
-void RECTMENU_GetWidth(struct RectMenu *m, RECT *r, int);
-void RECTMENU_DrawSelf(struct RectMenu *m, int, int, int);
+void RECTMENU_GetHeight(struct RectMenu *m, s16 *height, int boolCheckSubmenu);
+void RECTMENU_GetWidth(struct RectMenu *m, s16 *width, int boolCheckSubmenu);
+void RECTMENU_DrawSelf(struct RectMenu *m, int posX, s16 posY, s16 menuWidth);
 void RECTMENU_ClearInput();
 void RECTMENU_CollectInput();
-// void RECTMENU_ProcessInput(struct RectMenu* m);
+int RECTMENU_ProcessInput(struct RectMenu *m);
 void RECTMENU_ProcessState();
 void RECTMENU_Show(struct RectMenu *m);
 void RECTMENU_Hide(struct RectMenu *m);

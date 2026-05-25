@@ -21,8 +21,3 @@ u32 UI_VsQuipReadDriver(struct Driver *d, int offset, int size)
 
 	return 0;
 }
-
-u32 DECOMP_UI_VsQuipReadDriver(struct Driver *d, int offset, int size)
-{
-	return UI_VsQuipReadDriver(d, offset, size);
-}

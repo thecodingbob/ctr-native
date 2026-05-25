@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_AH_MaskHint_Start(s16 hintId, u16 bool_interruptWarppad)
+void AH_MaskHint_Start(s16 hintId, u16 bool_interruptWarppad)
 {
 	int iVar3;
 	int bitIndex;
@@ -25,12 +25,12 @@ void DECOMP_AH_MaskHint_Start(s16 hintId, u16 bool_interruptWarppad)
 	}
 
 	d = sdata->gGT->drivers[0];
-	d->funcPtrs[0] = DECOMP_VehPhysProc_FreezeEndEvent_Init;
+	d->funcPtrs[0] = VehPhysProc_FreezeEndEvent_Init;
 
 	// If Aku / Uka model pointer is nullptr
 	if (sdata->modelMaskHints3D == NULL)
 	{
-		DECOMP_LOAD_TalkingMask(DECOMP_LOAD_GetAdvPackIndex(), !VehPickupItem_MaskBoolGoodGuy(d));
+		LOAD_TalkingMask(LOAD_GetAdvPackIndex(), !VehPickupItem_MaskBoolGoodGuy(d));
 
 		// 3.0s to spawn mask
 		D232.maskSpawnFrame = 90;
@@ -59,7 +59,7 @@ void DECOMP_AH_MaskHint_Start(s16 hintId, u16 bool_interruptWarppad)
 	{
 		// 4 bytes for 4 volumes
 		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b3f3c-0x800b3f54 for mask-hint volume backup.
-		D232.audioBackup[i] = DECOMP_howl_VolumeGet(i);
+		D232.audioBackup[i] = howl_VolumeGet(i);
 	}
 
 	return;

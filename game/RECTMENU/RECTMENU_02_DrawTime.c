@@ -35,8 +35,3 @@ u8 *RECTMENU_DrawTime(int milliseconds)
 
 	return str;
 }
-
-u8 *DECOMP_RECTMENU_DrawTime(int milliseconds)
-{
-	return RECTMENU_DrawTime(milliseconds);
-}

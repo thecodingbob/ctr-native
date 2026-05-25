@@ -399,7 +399,7 @@ void COLL_FIXED_PlayerSearch(struct Thread *t, struct Driver *d)
 					volume |= 0x1008080;
 				}
 
-				DECOMP_OtherFX_Play_LowLevel(7, 1, volume);
+				OtherFX_Play_LowLevel(7, 1, volume);
 			}
 		}
 	}
@@ -498,7 +498,7 @@ BlendNormal:
 
 			if ((d->kartState != 3) && ((s8)d->Screen_OffsetY > 0))
 			{
-				DECOMP_OtherFX_Play(0x10, 1);
+				OtherFX_Play(0x10, 1);
 			}
 		}
 	}
@@ -525,7 +525,7 @@ UpdateGroundOffset:
 				{
 					u32 soundFlags = ((d->actionsFlagSet & 0x10000) != 0) ? 0x1808080 : 0x808080;
 
-					DECOMP_OtherFX_Play_LowLevel(d->terrainMeta1->sound, 0, soundFlags);
+					OtherFX_Play_LowLevel(d->terrainMeta1->sound, 0, soundFlags);
 				}
 			}
 		}

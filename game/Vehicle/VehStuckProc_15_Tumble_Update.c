@@ -8,5 +8,5 @@ void VehStuckProc_Tumble_Update(struct Thread *thread, struct Driver *driver)
 
 	driver->matrixArray = 0;
 	driver->matrixIndex = 0;
-	DECOMP_VehPhysProc_Driving_Init(thread, driver);
+	VehPhysProc_Driving_Init(thread, driver);
 }

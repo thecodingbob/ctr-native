@@ -14,7 +14,7 @@ static void CS_Credits_ThDestroy_NoOp(struct Thread *self)
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b8f8c-0x800b92a0
-void DECOMP_CS_Credits_Init(void)
+void CS_Credits_Init(void)
 {
 	int i;
 	int bitIndex;
@@ -68,7 +68,7 @@ void DECOMP_CS_Credits_Init(void)
 	// 0 = no relation to param4
 	// 0x300 = SmallStackPool
 	// 0xd = "other" thread bucket
-	creditThread = DECOMP_PROC_BirthWithObject(0x30d, CS_Credits_ThTick, cs_creditsThreadName, NULL);
+	creditThread = PROC_BirthWithObject(0x30d, CS_Credits_ThTick, cs_creditsThreadName, NULL);
 	creditThread->funcThDestroy = CS_Credits_ThDestroy_NoOp;
 	creditsBSS.CreditThread = creditThread;
 
@@ -79,7 +79,7 @@ void DECOMP_CS_Credits_Init(void)
 	for (i = 0; i < 5; i++)
 	{
 		// STATIC_AKUAKU for some reason?
-		inst = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[STATIC_AKUAKU], cs_creditGhostName, creditThread);
+		inst = INSTANCE_Birth3D(gGT->modelPtr[STATIC_AKUAKU], cs_creditGhostName, creditThread);
 
 		// save instance
 		creditsObj->creditGhostInst[4 - i] = inst;

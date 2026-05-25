@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_LOAD_Callback_PatchMem()
+void LOAD_Callback_PatchMem()
 {
 	char *patchPtr;
 	char *patchStart;
@@ -17,7 +17,7 @@ void DECOMP_LOAD_Callback_PatchMem()
 	patchSize = *(int *)&patchPtr[0];
 	patchNum = patchSize >> 2;
 
-	DECOMP_LOAD_RunPtrMap((int)sdata->ptrLevelFile, (int *)patchStart, patchNum);
+	LOAD_RunPtrMap((int)sdata->ptrLevelFile, (int *)patchStart, patchNum);
 
 	return;
 }

@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_LOAD_Hub_SwapNow()
+void LOAD_Hub_SwapNow()
 {
 	struct Level *level1;
 	struct VisMem *visMem;
@@ -10,7 +10,7 @@ void DECOMP_LOAD_Hub_SwapNow()
 	// stall until load is done
 	while (gGT->level2 == 0)
 	{
-		DECOMP_LOAD_NextQueuedFile();
+		LOAD_NextQueuedFile();
 		VSync(0);
 	}
 
@@ -23,7 +23,7 @@ void DECOMP_LOAD_Hub_SwapNow()
 	// Aug 5
 	// ptrintf("SWAPPING 2...\n");
 
-	DECOMP_LOAD_HubSwapPtrs(gGT);
+	LOAD_HubSwapPtrs(gGT);
 
 	// 0,1,2
 	gGT->activeMempackIndex = 3 - gGT->activeMempackIndex;
@@ -50,7 +50,7 @@ void DECOMP_LOAD_Hub_SwapNow()
 
 	if (sdata->PLYROBJECTLIST != 0)
 	{
-		DECOMP_LOAD_GlobalModelPtrs_MPK();
+		LOAD_GlobalModelPtrs_MPK();
 	}
 
 	level1 = gGT->level1;
@@ -67,7 +67,7 @@ void DECOMP_LOAD_Hub_SwapNow()
 	{
 		LibraryOfModels_Store(gGT, level1->numModels, (int *)level1->ptrModelsPtrArray);
 
-		DECOMP_INSTANCE_LevInitAll(level1->ptrInstDefs, level1->numInstances);
+		INSTANCE_LevInitAll(level1->ptrInstDefs, level1->numInstances);
 
 		LevInstDef_UnPack(level1->ptr_mesh_info);
 

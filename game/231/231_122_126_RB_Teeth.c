@@ -188,9 +188,9 @@ void DECOMP_RB_Teeth_ThTick(struct Thread *t)
 	// If door wants to close, but Player or Mine
 	// is in the way, then do not force the doors to close
 
-	DECOMP_PROC_CollideHitboxWithBucket(gGT->threadBuckets[PLAYER].thread, SPS, 0);
+	PROC_CollideHitboxWithBucket(gGT->threadBuckets[PLAYER].thread, SPS, 0);
 
-	DECOMP_PROC_CollideHitboxWithBucket(gGT->threadBuckets[MINE].thread, SPS, 0);
+	PROC_CollideHitboxWithBucket(gGT->threadBuckets[MINE].thread, SPS, 0);
 
 LAB_800ba084:
 
@@ -238,7 +238,7 @@ int DECOMP_RB_Teeth_LInC(struct Instance *teethInst, struct Thread *t, struct Sc
 		// 0 = no relation to param4
 		// 0x300 = SmallStackPool
 		// 0x3 = "static" thread bucket
-		teethTh = DECOMP_PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Teeth), NONE, SMALL, STATIC), DECOMP_RB_Teeth_ThTick, s_teeth, NULL);
+		teethTh = PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Teeth), NONE, SMALL, STATIC), DECOMP_RB_Teeth_ThTick, s_teeth, NULL);
 
 		teethInst->thread = teethTh;
 
@@ -299,7 +299,7 @@ void DECOMP_RB_Teeth_OpenDoor(struct Instance *inst)
 	struct Thread *teethTh = inst->thread;
 	if (teethTh == NULL)
 	{
-		teethTh = DECOMP_PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Teeth), NONE, SMALL, STATIC), DECOMP_RB_Teeth_ThTick, s_teeth, NULL);
+		teethTh = PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Teeth), NONE, SMALL, STATIC), DECOMP_RB_Teeth_ThTick, s_teeth, NULL);
 		inst->thread = teethTh;
 		if (teethTh == NULL)
 			return;

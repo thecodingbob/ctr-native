@@ -8,7 +8,7 @@
 	}
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac320-0x800ac5a4
-void DECOMP_CS_Instance_GetFrameData(struct Instance *inst, int animIndex, u32 animFrame, u16 *pos, u16 *param_5, int offset)
+void CS_Instance_GetFrameData(struct Instance *inst, int animIndex, u32 animFrame, u16 *pos, u16 *param_5, int offset)
 {
 	int isOdd;
 	int numFrames;

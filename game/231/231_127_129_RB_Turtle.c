@@ -104,7 +104,7 @@ void DECOMP_RB_Turtle_ThTick(struct Thread *t)
 			currTimer = turtleInst->animFrame + 1;
 
 			// playing animation
-			if (currTimer < DECOMP_INSTANCE_GetNumAnimFrames(turtleInst, 0))
+			if (currTimer < INSTANCE_GetNumAnimFrames(turtleInst, 0))
 			{
 				// increment frame (make turtle fall)
 				turtleInst->animFrame = currTimer;
@@ -172,7 +172,7 @@ void DECOMP_RB_Turtle_LInB(struct Instance *inst)
 	if (inst->thread != 0)
 		return;
 
-	t = DECOMP_PROC_BirthWithObject(
+	t = PROC_BirthWithObject(
 	    // creation flags
 	    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Turtle), NONE, SMALL, STATIC),
 
@@ -211,5 +211,5 @@ void DECOMP_RB_Turtle_LInB(struct Instance *inst)
 	// fully down
 	turtleObj->direction = 0;
 	turtleObj->state = 0;
-	inst->animFrame = DECOMP_INSTANCE_GetNumAnimFrames(inst, 0);
+	inst->animFrame = INSTANCE_GetNumAnimFrames(inst, 0);
 }

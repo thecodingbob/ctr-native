@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_Characters_DrawWindows(int boolShowDrivers)
+void MM_Characters_DrawWindows(int boolShowDrivers)
 {
 	struct GameTracker *gGT;
 	s16 uVar2;
@@ -135,7 +135,7 @@ void DECOMP_MM_Characters_DrawWindows(int boolShowDrivers)
 		iVar10->vertSplit = 0;
 
 #if 0
-    uVar4 = DECOMP_MM_Characters_GetModelByName(data.MetaDataCharacters[(int)*ptrCurr].name_Debug);
+    uVar4 = MM_Characters_GetModelByName(data.MetaDataCharacters[(int)*ptrCurr].name_Debug);
 #else
 		struct Model *MM_Characters_GetModelByID(int id);
 		uVar4 = MM_Characters_GetModelByID(*ptrCurr);

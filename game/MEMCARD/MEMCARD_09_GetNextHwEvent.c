@@ -1,6 +1,6 @@
 #include <common.h>
 
-u8 DECOMP_MEMCARD_GetNextHwEvent(void)
+u8 MEMCARD_GetNextHwEvent(void)
 {
 	// IOE = IO End, meaning "finished without error"
 	if (TestEvent(sdata->HwCARD_EvSpIOE))

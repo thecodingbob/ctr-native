@@ -29,7 +29,7 @@ int CDSYS_SetXAToLang(int lang)
 	ptrDst = RelocMemory_DefragUI_Mods1_XNF;
 #endif
 
-	xnf = DECOMP_LOAD_XnfFile(data.s_XA_ENG_XNF, ptrDst, &fileSize);
+	xnf = LOAD_XnfFile(data.s_XA_ENG_XNF, ptrDst, &fileSize);
 
 	// read error
 	if (xnf == 0)

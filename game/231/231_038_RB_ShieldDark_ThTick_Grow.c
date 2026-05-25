@@ -259,11 +259,10 @@ void DECOMP_RB_ShieldDark_ThTick_Grow(struct Thread *th)
 	}
 
 	// create a thread, get an instance
-	struct Instance *bombInst =
-	    DECOMP_INSTANCE_BirthWithThread(model, 0, MEDIUM, OTHER, DECOMP_RB_MovingExplosive_ThTick, sizeof(struct TrackerWeapon), playerTh);
+	struct Instance *bombInst = INSTANCE_BirthWithThread(model, 0, MEDIUM, OTHER, DECOMP_RB_MovingExplosive_ThTick, sizeof(struct TrackerWeapon), playerTh);
 
 	struct Thread *bombTh = bombInst->thread;
-	bombTh->funcThDestroy = DECOMP_PROC_DestroyInstance;
+	bombTh->funcThDestroy = PROC_DestroyInstance;
 
 	// if driver is not an AI (human)
 	if ((player->actionsFlagSet & 0x100000) == 0)
@@ -315,8 +314,8 @@ LAB_800b0d6c:
 	PlaySound3D(0x58, shieldInst);
 
 	// shield and highlight
-	DECOMP_INSTANCE_Death(colorInst);
-	DECOMP_INSTANCE_Death(highlightInst);
+	INSTANCE_Death(colorInst);
+	INSTANCE_Death(highlightInst);
 
 	// This thread is now dead
 	th->flags |= 0x800;

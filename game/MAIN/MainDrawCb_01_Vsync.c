@@ -26,7 +26,7 @@ void MainDrawCb_Vsync()
 	if (sdata->criticalSectionCount == 0)
 #endif
 	{
-		DECOMP_howl_PlayAudio_Update();
+		howl_PlayAudio_Update();
 	}
 
 #ifdef REBUILD_PC

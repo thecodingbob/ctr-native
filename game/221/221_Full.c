@@ -70,21 +70,21 @@ void CC_EndEvent_DrawMenu()
 	// YouWin/TryAgain, and Crystal Count
 	{
 		// fly in from right
-		DECOMP_UI_Lerp2D_Linear(&posXY[0], 0x264, 0x56, // startX, startY,
-		                        0xcd, 0x56,             // endX, endY
-		                        elapsedFrames, 0x14);
+		UI_Lerp2D_Linear(&posXY[0], 0x264, 0x56, // startX, startY,
+		                 0xcd, 0x56,             // endX, endY
+		                 elapsedFrames, 0x14);
 
-		sdata->ptrMenuCrystal->matrix.t[0] = DECOMP_UI_ConvertX_2(posXY[0], 0x200);
-		sdata->ptrMenuCrystal->matrix.t[1] = DECOMP_UI_ConvertY_2(posXY[1], 0x200);
+		sdata->ptrMenuCrystal->matrix.t[0] = UI_ConvertX_2(posXY[0], 0x200);
+		sdata->ptrMenuCrystal->matrix.t[1] = UI_ConvertY_2(posXY[1], 0x200);
 
-		DECOMP_UI_DrawNumCrystal(posXY[0] + 0xf, posXY[1] - 0x10, driver);
+		UI_DrawNumCrystal(posXY[0] + 0xf, posXY[1] - 0x10, driver);
 
 		lngIndex = 0x16b; // YOU WIN
 		if (boolLose != 0)
 			lngIndex = 0x16c; // TRY AGAIN
 
 		// YOU WIN, or TRY AGAIN
-		DECOMP_DecalFont_DrawLine(sdata->lngStrings[lngIndex], posXY[0] + 0x33, posXY[1] + 8, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+		DecalFont_DrawLine(sdata->lngStrings[lngIndex], posXY[0] + 0x33, posXY[1] + 8, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 	}
 
 	// Fly from Left,
@@ -92,14 +92,14 @@ void CC_EndEvent_DrawMenu()
 	// this must happen after "Fly from Right" for variable re-use
 	{
 		// fly in from left
-		DECOMP_UI_Lerp2D_Linear(&posXY[0], -0x63, 0x18, // startX, startY,
-		                        0x100, 0x18,            // endX, endY
-		                        elapsedFrames, 0x14);
+		UI_Lerp2D_Linear(&posXY[0], -0x63, 0x18, // startX, startY,
+		                 0x100, 0x18,            // endX, endY
+		                 elapsedFrames, 0x14);
 
 		// TIME REMAINING
-		DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x16D], posXY[0], posXY[1], FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+		DecalFont_DrawLine(sdata->lngStrings[0x16D], posXY[0], posXY[1], FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 
-		DECOMP_UI_DrawLimitClock(posXY[0] - 0x33, posXY[1] + 0x11, FONT_BIG);
+		UI_DrawLimitClock(posXY[0] - 0x33, posXY[1] + 0x11, FONT_BIG);
 	}
 
 
@@ -113,7 +113,7 @@ void CC_EndEvent_DrawMenu()
 			return;
 
 		// PRESS * TO CONTINUE
-		DECOMP_DecalFont_DrawLine(sdata->lngStrings[0xC9], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+		DecalFont_DrawLine(sdata->lngStrings[0xC9], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 
 		// if still waiting to press X/O, quit function
 		if ((sdata->AnyPlayerTap & (BTN_CROSS | BTN_CIRCLE)) == 0)
@@ -121,8 +121,8 @@ void CC_EndEvent_DrawMenu()
 
 		// if first frame of pressing X/O,
 		// open the Retry/ExitToMap menu
-		DECOMP_RECTMENU_ClearInput();
-		DECOMP_RECTMENU_Show(&menu221);
+		RECTMENU_ClearInput();
+		RECTMENU_Show(&menu221);
 		sdata->menuReadyToPass = 1;
 		return;
 	}
@@ -141,13 +141,13 @@ void CC_EndEvent_DrawMenu()
 	// variable re-use posXY[0]
 
 	// CTR TOKEN AWARDED
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x16F], posXY[0], 0xA2, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+	DecalFont_DrawLine(sdata->lngStrings[0x16F], posXY[0], 0xA2, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 
 	// make token visible
 	tokenInst->flags &= ~(HIDE_MODEL);
 
-	tokenInst->matrix.t[0] = DECOMP_UI_ConvertX_2(posXY[0], 0x200);
-	tokenInst->matrix.t[1] = DECOMP_UI_ConvertY_2(0xA2 - 0x18, 0x200);
+	tokenInst->matrix.t[0] = UI_ConvertX_2(posXY[0], 0x200);
+	tokenInst->matrix.t[1] = UI_ConvertY_2(0xA2 - 0x18, 0x200);
 
 	// grow token after first second
 	if (elapsedFrames > 30)
@@ -165,11 +165,11 @@ void CC_EndEvent_DrawMenu()
 	else if (elapsedFrames == 30)
 	{
 		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8009fa24-0x8009fa2c for crystal token unlock SFX.
-		DECOMP_OtherFX_Play(0x67, 1);
+		OtherFX_Play(0x67, 1);
 	}
 
 	// PRESS * TO CONTINUE
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[0xC9], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+	DecalFont_DrawLine(sdata->lngStrings[0xC9], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 
 	// if still waiting to press X/O, quit function
 	if ((sdata->AnyPlayerTap & (BTN_CROSS | BTN_CIRCLE)) == 0)
@@ -179,7 +179,7 @@ void CC_EndEvent_DrawMenu()
 	// unlock token and leave level
 
 	// reset
-	DECOMP_RECTMENU_ClearInput();
+	RECTMENU_ClearInput();
 	sdata->framesSinceRaceEnded = 0;
 
 	// loading flags
@@ -232,7 +232,7 @@ struct RectMenu menu221 = {
 
     .state = 0x803,
     .rows = rows221,
-    .funcPtr = DECOMP_UI_RaceEnd_MenuProc,
+    .funcPtr = UI_RaceEnd_MenuProc,
     .drawStyle = 4,
 
     // rest of variables all default zero

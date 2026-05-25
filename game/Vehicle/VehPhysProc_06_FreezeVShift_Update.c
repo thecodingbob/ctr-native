@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_VehPhysProc_FreezeVShift_Update(struct Thread *t, struct Driver *d)
+void VehPhysProc_FreezeVShift_Update(struct Thread *t, struct Driver *d)
 {
 	// if firespeed = 0 and
 	// player is not in accel prevention (4),
@@ -16,5 +16,5 @@ void DECOMP_VehPhysProc_FreezeVShift_Update(struct Thread *t, struct Driver *d)
 		return;
 	}
 
-	DECOMP_VehPhysProc_Driving_Init(t, d);
+	VehPhysProc_Driving_Init(t, d);
 }

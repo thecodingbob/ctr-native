@@ -9,7 +9,7 @@ void DECOMP_RB_CtrLetter_LInB(struct Instance *inst)
 
 	if (inst->thread == NULL)
 	{
-		t = DECOMP_PROC_BirthWithObject(
+		t = PROC_BirthWithObject(
 		    // creation flags
 		    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct CtrLetter), NONE, SMALL, STATIC),
 

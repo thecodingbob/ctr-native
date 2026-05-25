@@ -117,11 +117,11 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 						{
 							if (uVar3 == (uVar3 / 0xc) * 0xc)
 							{
-								DECOMP_OtherFX_Play_LowLevel(0x40, '\0', 0x8c9080);
+								OtherFX_Play_LowLevel(0x40, '\0', 0x8c9080);
 							}
 							else
 							{
-								DECOMP_OtherFX_Play_LowLevel(0x40, '\0', 0x8c8880);
+								OtherFX_Play_LowLevel(0x40, '\0', 0x8c8880);
 							}
 						}
 					}
@@ -240,7 +240,7 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 		}
 	}
 
-	uVar5 = DECOMP_LOAD_IsOpen_RacingOrBattle();
+	uVar5 = LOAD_IsOpen_RacingOrBattle();
 	if (uVar5 != 0)
 	{
 #ifndef REBUILD_PS1
@@ -255,7 +255,7 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 #endif
 	}
 
-	DECOMP_PROC_CheckAllForDead();
+	PROC_CheckAllForDead();
 
 	if ((gGT->gameMode1 & PAUSE_ALL) == 0)
 	{
@@ -276,17 +276,17 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 				     ) &&
 				    ((sdata->AnyPlayerTap & BTN_START) != 0))
 				{
-					DECOMP_RECTMENU_ClearInput();
+					RECTMENU_ClearInput();
 					gGT->gameMode1 &= ~PAUSE_1;
 
 					// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800354dc-0x80035508 for unpause audio side effects.
 					MainFrame_TogglePauseAudio(0);
-					DECOMP_OtherFX_Play(1, 1);
+					OtherFX_Play(1, 1);
 
 					MainFreeze_SafeAdvDestroy();
 					ElimBG_Deactivate(gGT);
 
-					DECOMP_RECTMENU_Hide(sdata->ptrActiveMenu);
+					RECTMENU_Hide(sdata->ptrActiveMenu);
 					gGT->cooldownFromUnpauseUntilPause = 5;
 				}
 			}
@@ -367,7 +367,7 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 
 					SelectProfile_ToggleMode(0x41);
 
-					DECOMP_RECTMENU_Show(&data.menuWarning2);
+					RECTMENU_Show(&data.menuWarning2);
 					gGT->gameModeEnd |= NEW_NAME;
 
 					return;

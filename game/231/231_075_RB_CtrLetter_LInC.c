@@ -10,7 +10,7 @@ int DECOMP_RB_CtrLetter_LInC(struct Instance *letterInst, struct Thread *driverT
 	letterTh = letterInst->thread;
 	if (letterTh == NULL)
 	{
-		letterTh = DECOMP_PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(4, NONE, SMALL, STATIC), DECOMP_RB_CtrLetter_ThTick, "ctr", NULL);
+		letterTh = PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(4, NONE, SMALL, STATIC), DECOMP_RB_CtrLetter_ThTick, "ctr", NULL);
 
 		letterInst->thread = letterTh;
 		if (letterTh == NULL)

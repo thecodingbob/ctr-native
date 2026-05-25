@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_AH_Door_ThDestroy(struct Thread *t)
+void AH_Door_ThDestroy(struct Thread *t)
 {
 	int i;
 	struct WoodDoor *woodDoor = t->object;
@@ -11,7 +11,7 @@ void DECOMP_AH_Door_ThDestroy(struct Thread *t)
 	{
 		if (instPtrArr[i] != NULL)
 		{
-			DECOMP_INSTANCE_Death(instPtrArr[i]);
+			INSTANCE_Death(instPtrArr[i]);
 			instPtrArr[i] = NULL;
 		}
 	}

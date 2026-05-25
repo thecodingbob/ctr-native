@@ -2,7 +2,7 @@
 
 // NOTE(aalhendi): ASM-audited NTSC-U 926 0x80031fdc-0x80032110; this preserves
 // the retail -1 startup VRAM slot path over native LOAD_ReadFile.
-void *DECOMP_LOAD_VramFile(void *bigfilePtr, int subfileIndex, void *ptrDestination, int *sizePtr, int callbackOrFlags)
+void *LOAD_VramFile(void *bigfilePtr, int subfileIndex, void *ptrDestination, int *sizePtr, int callbackOrFlags)
 {
 	struct LoadQueueSlot lqs;
 	void *loadedFile;
@@ -15,13 +15,13 @@ void *DECOMP_LOAD_VramFile(void *bigfilePtr, int subfileIndex, void *ptrDestinat
 
 	if (callbackOrFlags == -2)
 	{
-		loadedFile = DECOMP_LOAD_ReadFile(bigfilePtr, LT_SETVRAM | LT_SYNC, subfileIndex, NULL);
+		loadedFile = LOAD_ReadFile(bigfilePtr, LT_SETVRAM | LT_SYNC, subfileIndex, NULL);
 		if (ptrDestination != NULL)
 			*(void **)ptrDestination = loadedFile;
 		return loadedFile;
 	}
 
-	loadedFile = DECOMP_LOAD_ReadFile(bigfilePtr, LT_SETVRAM | LT_SYNC, subfileIndex, ptrDestination);
+	loadedFile = LOAD_ReadFile(bigfilePtr, LT_SETVRAM | LT_SYNC, subfileIndex, ptrDestination);
 
 	if (callbackOrFlags == -1)
 	{
@@ -33,7 +33,7 @@ void *DECOMP_LOAD_VramFile(void *bigfilePtr, int subfileIndex, void *ptrDestinat
 		lqs.size_UNUSED = sizePtr != NULL ? *sizePtr : 0;
 		lqs.callbackFuncPtr = NULL;
 
-		DECOMP_LOAD_VramFileCallback(&lqs);
+		LOAD_VramFileCallback(&lqs);
 
 		VSync(2);
 		sdata->frameFinishedVRAM = 0;

@@ -72,12 +72,12 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 
 	if ((sdata->ptrActiveMenu != 0) || ((gGT->gameMode1 & END_OF_RACE) != 0))
 	{
-		DECOMP_RECTMENU_CollectInput();
+		RECTMENU_CollectInput();
 	}
 
 	if (sdata->ptrActiveMenu != 0)
 		if (sdata->Loading.stage == -1)
-			DECOMP_RECTMENU_ProcessState();
+			RECTMENU_ProcessState();
 
 	RainLogic(gGT);
 	DropRain_MakeSound(gGT);
@@ -243,7 +243,7 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 	if ((gGT->gameMode1 & (ADVENTURE_ARENA | END_OF_RACE | MAIN_MENU)) != 0)
 	{
 #ifdef CTR_NATIVE
-		DECOMP_RefreshCard_Entry();
+		RefreshCard_Entry();
 #else
 		RefreshCard_Entry();
 #endif
@@ -328,15 +328,14 @@ void DrawUnpluggedMsg(struct GameTracker *gGT, struct GamepadSystem *gGamepads)
 
 		// if controller is unplugged
 
-		DECOMP_DecalFont_DrawLine(sdata->lngStrings[data.lngIndex_gamepadUnplugged[lngArrStart + i]], 0x100, posY + window.h, FONT_SMALL,
-		                          (JUSTIFY_CENTER | ORANGE));
+		DecalFont_DrawLine(sdata->lngStrings[data.lngIndex_gamepadUnplugged[lngArrStart + i]], 0x100, posY + window.h, FONT_SMALL, (JUSTIFY_CENTER | ORANGE));
 
 		// add for each line
 		window.h += 8;
 	}
 
 	// PLEASE CONNECT A CONTROLLER
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[0xac / 4], 0x100, posY + window.h, FONT_SMALL, (JUSTIFY_CENTER | ORANGE));
+	DecalFont_DrawLine(sdata->lngStrings[0xac / 4], 0x100, posY + window.h, FONT_SMALL, (JUSTIFY_CENTER | ORANGE));
 
 	// add for each line
 	window.h += 8;
@@ -344,7 +343,7 @@ void DrawUnpluggedMsg(struct GameTracker *gGT, struct GamepadSystem *gGamepads)
 	// add 3 pixels above, 3 pixels bellow
 	window.h += 6;
 
-	DECOMP_RECTMENU_DrawInnerRect(&window, 1, gGT->backBuffer->otMem.startPlusFour);
+	RECTMENU_DrawInnerRect(&window, 1, gGT->backBuffer->otMem.startPlusFour);
 }
 
 void DrawFinalLap(struct GameTracker *gGT)
@@ -407,11 +406,11 @@ void DrawFinalLap(struct GameTracker *gGT)
 
 	DrawFinalLapString:
 
-		DECOMP_UI_Lerp2D_Linear(&resultPos[0], (s16)startX, (s16)posY, (s16)endX, (s16)posY, textTimer, 10);
+		UI_Lerp2D_Linear(&resultPos[0], (s16)startX, (s16)posY, (s16)endX, (s16)posY, textTimer, 10);
 
 		// need to specify OT, or else "FINAL LAP" will draw on top of character icons,
 		// and by doing this, "FINAL LAP" draws under the character icons instead
-		DECOMP_DecalFont_DrawLineOT(sdata->lngStrings[0x8cc / 4], resultPos[0], resultPos[1], FONT_BIG, (JUSTIFY_CENTER | ORANGE), pb->ptrOT);
+		DecalFont_DrawLineOT(sdata->lngStrings[0x8cc / 4], resultPos[0], resultPos[1], FONT_BIG, (JUSTIFY_CENTER | ORANGE), pb->ptrOT);
 
 		sdata->finalLapTextTimer[i]--;
 	}
@@ -558,13 +557,13 @@ void RenderAllHUD(struct GameTracker *gGT)
 					// not crystal challenge
 					if ((gameMode1 & CRYSTAL_CHALLENGE) == 0)
 					{
-						DECOMP_UI_RenderFrame_Racing();
+						UI_RenderFrame_Racing();
 					}
 
 					// if crystal challenge
 					else
 					{
-						DECOMP_UI_RenderFrame_CrystChall();
+						UI_RenderFrame_CrystChall();
 					}
 				}
 
@@ -617,17 +616,17 @@ void RenderAllHUD(struct GameTracker *gGT)
 #ifndef REBUILD_PS1
 					gGT->overlayTransition--;
 					if (gGT->overlayTransition == 1)
-						DECOMP_LOAD_OvrThreads(2);
+						LOAD_OvrThreads(2);
 #endif
 				}
 
 				// if 233 is still loaded
-				if (DECOMP_LOAD_IsOpen_AdvHub() == 0)
+				if (LOAD_IsOpen_AdvHub() == 0)
 				{
 					// if any transition is over
 					if (gGT->pushBuffer_UI.fadeFromBlack_currentValue > 0xfff)
 					{
-						DECOMP_UI_RenderFrame_AdvHub();
+						UI_RenderFrame_AdvHub();
 					}
 				}
 
@@ -637,11 +636,11 @@ void RenderAllHUD(struct GameTracker *gGT)
 					// if any transition is over
 					if (gGT->pushBuffer_UI.fadeFromBlack_currentValue > 0xfff)
 					{
-						DECOMP_AH_Map_Main();
+						AH_Map_Main();
 
 						if (sdata->AkuHint_RequestedHint != -1)
 						{
-							DECOMP_AH_MaskHint_Start(sdata->AkuHint_RequestedHint, sdata->AkuHint_boolInterruptWarppad);
+							AH_MaskHint_Start(sdata->AkuHint_RequestedHint, sdata->AkuHint_boolInterruptWarppad);
 
 							// erase submitted request
 							sdata->AkuHint_RequestedHint = -1;
@@ -695,7 +694,7 @@ void RenderAllBoxSceneSplitLines(struct GameTracker* gGT)
 {
 	// check 233 overlay, cause levelID is set
 	// and MainFrame_RenderFrame runs, before 233 loads
-	if(DECOMP_LOAD_IsOpen_Podiums() != 0)
+	if(LOAD_IsOpen_Podiums() != 0)
 	{
 		// ND Box Scene
 		if(gGT->levelID == NAUGHTY_DOG_CRATE)
@@ -777,7 +776,7 @@ void RenderAllFlag0x40(struct GameTracker *gGT)
 	if ((gGT->renderFlags & 0x40) == 0)
 		return;
 
-	if (DECOMP_LOAD_IsOpen_RacingOrBattle() != 0)
+	if (LOAD_IsOpen_RacingOrBattle() != 0)
 	{
 		RB_Player_ToggleInvisible();
 		RB_Player_ToggleFlicker();
@@ -789,11 +788,11 @@ void RenderAllFlag0x40(struct GameTracker *gGT)
 		RB_StartText_ProcessBucket(gGT->threadBuckets[STARTTEXT].thread);
 	}
 
-	if (DECOMP_LOAD_IsOpen_AdvHub() != 0)
+	if (LOAD_IsOpen_AdvHub() != 0)
 	{
 		if ((gGT->gameMode1 & ADVENTURE_ARENA) != 0)
 		{
-			DECOMP_AH_WarpPad_AllWarppadNum();
+			AH_WarpPad_AllWarppadNum();
 		}
 	}
 
@@ -813,9 +812,9 @@ void RenderAllTitleDPP(struct GameTracker *gGT)
 {
 	if ((gGT->gameMode1 & MAIN_MENU) == 0)
 		return;
-	if (DECOMP_LOAD_IsOpen_MainMenu() == 0)
+	if (LOAD_IsOpen_MainMenu() == 0)
 		return;
-	DECOMP_MM_Title_SetTrophyDPP();
+	MM_Title_SetTrophyDPP();
 }
 #endif
 
@@ -1115,7 +1114,7 @@ void WindowBoxLines(struct GameTracker *gGT)
 	{
 		Color color;
 		color.self = *data.ptrColor[gGT->drivers[i]->BattleHUD.teamID + PLAYER_BLUE];
-		DECOMP_RECTMENU_DrawOuterRect_LowLevel(
+		RECTMENU_DrawOuterRect_LowLevel(
 
 		    // dimensions, thickness
 		    &gGT->pushBuffer[i].rect, 4, 2,

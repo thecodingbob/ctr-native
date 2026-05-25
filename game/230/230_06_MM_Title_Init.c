@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_Title_Init(void)
+void MM_Title_Init(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
 	struct Thread *t;
@@ -34,9 +34,9 @@ void DECOMP_MM_Title_Init(void)
 		// pointer to Intro Cam, to view Crash holding Trophy in main menu
 		D230.ptrIntroCam = pointers[ST1_CAMERA_PATH];
 
-		t = DECOMP_PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Title), // 0x24
-		                                                          NONE, MEDIUM, OTHER),
-		                                DECOMP_MM_Title_ThTick, 0, 0);
+		t = PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Title), // 0x24
+		                                                   NONE, MEDIUM, OTHER),
+		                         MM_Title_ThTick, 0, 0);
 
 		title = t->object;
 
@@ -49,7 +49,7 @@ void DECOMP_MM_Title_Init(void)
 		// create 6 instances
 		for (n = 0; n < 6; n++)
 		{
-			inst = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[D230.titleInstances[n].modelID], 0, t);
+			inst = INSTANCE_Birth3D(gGT->modelPtr[D230.titleInstances[n].modelID], 0, t);
 
 			// store instance
 			title->i[n] = inst;
@@ -79,6 +79,6 @@ void DECOMP_MM_Title_Init(void)
 			}
 		}
 
-		DECOMP_MM_Title_CameraMove(title, 0);
+		MM_Title_CameraMove(title, 0);
 	}
 }

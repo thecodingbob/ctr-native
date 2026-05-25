@@ -1,6 +1,6 @@
 #include <common.h>
 
-char *DECOMP_MEMCARD_FindNextGhost(void)
+char *MEMCARD_FindNextGhost(void)
 {
 	if (sdata->memcard_stage != MC_STAGE_GHOST_FOUND)
 	{

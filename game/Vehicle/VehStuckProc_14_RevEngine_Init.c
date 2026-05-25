@@ -52,7 +52,7 @@ void *PlayerRevEngineFuncTable[13] = {
     NULL,
     VehStuckProc_RevEngine_Update,
     VehStuckProc_RevEngine_PhysLinear,
-    DECOMP_VehPhysProc_Driving_Audio,
+    VehPhysProc_Driving_Audio,
     NULL,
     NULL,
     NULL,

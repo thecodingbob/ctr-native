@@ -63,7 +63,7 @@ void CS_Camera_ThTick_Boss(struct Thread *t)
 		if (gGT->threadBuckets[OTHER].thread != 0)
 			break;
 
-		DECOMP_CS_LoadBoss(bcd);
+		CS_LoadBoss(bcd);
 		OVR_233.cutsceneState = 3;
 		break;
 
@@ -112,7 +112,7 @@ void CS_Camera_ThTick_Boss(struct Thread *t)
 			if (mArr[i] == NULL)
 				continue;
 
-			t = DECOMP_CS_Thread_Init(mArr[i]->id, mArr[i], &initData, 0, t);
+			t = CS_Thread_Init(mArr[i]->id, mArr[i], &initData, 0, t);
 			if (t == NULL)
 				continue;
 
@@ -122,7 +122,7 @@ void CS_Camera_ThTick_Boss(struct Thread *t)
 			// head
 			if (i == 0)
 			{
-				DECOMP_CS_ScriptCmd_OpcodeAt(cs, bcd->opcode);
+				CS_ScriptCmd_OpcodeAt(cs, bcd->opcode);
 				cs->unk14 = 0;
 				continue;
 			}

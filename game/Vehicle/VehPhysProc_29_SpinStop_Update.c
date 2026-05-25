@@ -4,8 +4,3 @@
 void VehPhysProc_SpinStop_Update(struct Thread *t, struct Driver *d)
 {
 }
-
-void DECOMP_VehPhysProc_SpinStop_Update(struct Thread *t, struct Driver *d)
-{
-	VehPhysProc_SpinStop_Update(t, d);
-}

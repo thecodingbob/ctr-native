@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_UI_CupStandings_InputAndDraw(void)
+void UI_CupStandings_InputAndDraw(void)
 {
 	// Too many variables, many reused registers
 	// same variable names used for different purposes
@@ -67,7 +67,7 @@ void DECOMP_UI_CupStandings_InputAndDraw(void)
 	{
 		sdata->framesSinceRaceEnded = 60;
 		sdata->numIconsEOR = numDrivers;
-		DECOMP_RECTMENU_ClearInput();
+		RECTMENU_ClearInput();
 	}
 
 	if ((sdata->menuReadyToPass & 4) == 0)
@@ -100,7 +100,7 @@ void DECOMP_UI_CupStandings_InputAndDraw(void)
 		framesPassed = sdata->framesSinceRaceEnded - 0xf0;
 	}
 
-	DECOMP_UI_Lerp2D_Linear(&local_58[0], uVar9, iVar12, uVar14, local_90, framesPassed, 0x14);
+	UI_Lerp2D_Linear(&local_58[0], uVar9, iVar12, uVar14, local_90, framesPassed, 0x14);
 
 	// "FINAL"
 	int index = 0x22E;
@@ -128,10 +128,10 @@ void DECOMP_UI_CupStandings_InputAndDraw(void)
 	}
 
 	// title text
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[index], local_58[0], local_58[1] - 0x11, 1, 0xffff8000);
+	DecalFont_DrawLine(sdata->lngStrings[index], local_58[0], local_58[1] - 0x11, 1, 0xffff8000);
 
 	// STANDINGS
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[0xCA], local_58[0], local_58[1], 1, 0xffff8000);
+	DecalFont_DrawLine(sdata->lngStrings[0xCA], local_58[0], local_58[1], 1, 0xffff8000);
 
 	// 24 characters, in case of other
 	// languages with longer text
@@ -146,7 +146,7 @@ void DECOMP_UI_CupStandings_InputAndDraw(void)
 	        // Track Index (0, 1, 2, 3) + 1
 	        gGT->cup.trackIndex + 1);
 
-	DECOMP_DecalFont_DrawLine(text, local_58[0], local_58[1] + 0x11, 2, 0xffff8000);
+	DecalFont_DrawLine(text, local_58[0], local_58[1] + 0x11, 2, 0xffff8000);
 
 	if ((sdata->framesSinceRaceEnded == (sdata->framesSinceRaceEnded / 10) * 10) && (sdata->numIconsEOR < numDrivers))
 	{
@@ -259,7 +259,7 @@ void DECOMP_UI_CupStandings_InputAndDraw(void)
 		}
 
 		// Interpolate fly-in variables over 0x14 frames
-		DECOMP_UI_Lerp2D_Linear(&local_58[0], iVar10, uVar9, iVar15, uVar9, framesPassed, 0x14);
+		UI_Lerp2D_Linear(&local_58[0], iVar10, uVar9, iVar15, uVar9, framesPassed, 0x14);
 
 		// %d
 		sprintf(text, (char *)&sdata->s_int, i + 1);
@@ -285,11 +285,11 @@ void DECOMP_UI_CupStandings_InputAndDraw(void)
 		}
 
 		// Draw character icon
-		DECOMP_UI_DrawDriverIcon(gGT->ptrIcons[data.MetaDataCharacters[data.characterIDs[d->driverID]].iconID],
+		UI_DrawDriverIcon(gGT->ptrIcons[data.MetaDataCharacters[data.characterIDs[d->driverID]].iconID],
 
-		                         MakePoint(local_58[0], local_58[1]),
+		                  MakePoint(local_58[0], local_58[1]),
 
-		                         gGT->pushBuffer_UI.ptrOT, 1, 0x1000, MakeColor(0x80, 0x80, 0x80));
+		                  gGT->pushBuffer_UI.ptrOT, 1, 0x1000, MakeColor(0x80, 0x80, 0x80));
 
 		// If this is the first screen of cup standings,
 		// where you see just amount of points added
@@ -322,7 +322,7 @@ void DECOMP_UI_CupStandings_InputAndDraw(void)
 	if ((sdata->menuReadyToPass & 4) == 0)
 	{
 		// fly-in interpolation
-		DECOMP_UI_Lerp2D_Linear(&local_58[0], -10, (int)local_38, -10, 9, sdata->framesSinceRaceEnded, 0x14);
+		UI_Lerp2D_Linear(&local_58[0], -10, (int)local_38, -10, 9, sdata->framesSinceRaceEnded, 0x14);
 	}
 
 	// if it's not...
@@ -337,7 +337,7 @@ void DECOMP_UI_CupStandings_InputAndDraw(void)
 		else
 		{
 			// fly-in interpolation
-			DECOMP_UI_Lerp2D_Linear(&local_58[0], -10, 9, -10, (int)local_30, sdata->framesSinceRaceEnded + -0xf0, 0x14);
+			UI_Lerp2D_Linear(&local_58[0], -10, 9, -10, (int)local_30, sdata->framesSinceRaceEnded + -0xf0, 0x14);
 		}
 	}
 

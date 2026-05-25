@@ -41,7 +41,7 @@ void DECOMP_RB_Baron_ThTick(struct Thread *t)
 	gGT = sdata->gGT;
 	level = gGT->level1;
 
-	if ((baronInst->animFrame + 1) < DECOMP_INSTANCE_GetNumAnimFrames(baronInst, 0))
+	if ((baronInst->animFrame + 1) < INSTANCE_GetNumAnimFrames(baronInst, 0))
 		baronInst->animFrame++;
 	else
 		baronInst->animFrame = 0;

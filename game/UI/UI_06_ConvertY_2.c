@@ -1,6 +1,6 @@
 #include <common.h>
 
-int DECOMP_UI_ConvertY_2(int oldPosY, int newPosY)
+int UI_ConvertY_2(int oldPosY, int newPosY)
 {
 #define midpointY 0x6c
 	newPosY = (oldPosY - midpointY) * newPosY;

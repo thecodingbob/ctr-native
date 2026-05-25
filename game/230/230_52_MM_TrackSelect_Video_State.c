@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_TrackSelect_Video_State(int state)
+void MM_TrackSelect_Video_State(int state)
 {
 	// if viewing new icon this frame
 	if (state == 1)

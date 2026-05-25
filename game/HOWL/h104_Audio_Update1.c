@@ -209,7 +209,7 @@ void Audio_Update1(void)
 
 					if ((raceOrderIndex == 0) || ((gGT->gameMode1 & ADVENTURE_CUP) != 0) || ((gGT->gameMode2 & CUP_ANY_KIND) != 0))
 					{
-						DECOMP_OtherFX_Play(0x5f, 0);
+						OtherFX_Play(0x5f, 0);
 
 						// victory (fanfare) music
 						uVar1 = 4;
@@ -226,7 +226,7 @@ void Audio_Update1(void)
 					if ((uVar2 & 0xffff) == 0)
 					{
 						// OtherFX_Play
-						DECOMP_OtherFX_Play(0x5f, 0);
+						OtherFX_Play(0x5f, 0);
 
 						// count how many times N Tropy has been beaten
 						// during this playthrough
@@ -247,7 +247,7 @@ void Audio_Update1(void)
 					// If N Tropy has been beaten on all tracks
 					else
 					{
-						DECOMP_OtherFX_Play(0x5f, 0);
+						OtherFX_Play(0x5f, 0);
 
 						// N Tropy Unlocked XA
 						// "you've earned the right to choose me in character selection"
@@ -260,7 +260,7 @@ void Audio_Update1(void)
 			else
 			{
 				// OtherFX_Play
-				DECOMP_OtherFX_Play(0x5f, 0);
+				OtherFX_Play(0x5f, 0);
 
 				// N Tropy opened
 				// "Think your fast eh, well, lets see if you can beat my fastest time"

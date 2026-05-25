@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_UI_DrawSlideMeter(s16 posX, s16 posY, struct Driver *driver)
+void UI_DrawSlideMeter(s16 posX, s16 posY, struct Driver *driver)
 {
 	const struct GameTracker *gGT = sdata->gGT;
 	const int barWidth = 49;

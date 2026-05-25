@@ -28,7 +28,7 @@ void VehBirth_NonGhost(struct Thread *t, int index)
 #ifndef REBUILD_PS1
 #define JAL(dest) (((unsigned long)dest & 0x3FFFFFF) >> 2 | 0xC000000)
 	if (*(int *)0x800214bc == 0xC018EF5)
-		*(int *)0x800214bc = JAL(DECOMP_VehPhysProc_SlamWall_Init);
+		*(int *)0x800214bc = JAL(VehPhysProc_SlamWall_Init);
 #endif
 
 #ifndef REBUILD_PS1
@@ -37,7 +37,7 @@ void VehBirth_NonGhost(struct Thread *t, int index)
 	struct Model *m = 0;
 #endif
 
-	struct Instance *inst = DECOMP_INSTANCE_Birth3D(m, 0, t);
+	struct Instance *inst = INSTANCE_Birth3D(m, 0, t);
 
 	t->inst = inst;
 
@@ -45,7 +45,7 @@ void VehBirth_NonGhost(struct Thread *t, int index)
 	m = gGT->modelPtr[STATIC_WAKE];
 	if (m != 0)
 	{
-		inst = DECOMP_INSTANCE_Birth3D(m, 0, 0);
+		inst = INSTANCE_Birth3D(m, 0, 0);
 		d->wakeInst = inst;
 
 		if (inst != 0)

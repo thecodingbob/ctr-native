@@ -23,7 +23,7 @@ const Color DrawSpeedBG_Colors[7] = {
 #endif
 
 // speedometer background
-void DECOMP_UI_DrawSpeedBG(void)
+void UI_DrawSpeedBG(void)
 {
 	Point *vertexes = (Point *)&data.speedometerBG_vertData[0];
 	Point *vertexesExtLine = (Point *)&data.speedometerBG_vertData[1];

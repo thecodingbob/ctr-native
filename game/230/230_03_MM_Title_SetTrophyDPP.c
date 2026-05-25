@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_Title_SetTrophyDPP(void)
+void MM_Title_SetTrophyDPP(void)
 {
 	u32 idpp2_b8;
 	struct InstDrawPerPlayer *idpp1;

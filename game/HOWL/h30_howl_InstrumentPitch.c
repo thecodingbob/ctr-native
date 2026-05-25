@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002991c-0x80029988
-u32 DECOMP_howl_InstrumentPitch(int basePitch, int pitchIndex, u32 distort)
+u32 howl_InstrumentPitch(int basePitch, int pitchIndex, u32 distort)
 {
 	// param_3
 	// (>> 0) & 0x40 - distortion

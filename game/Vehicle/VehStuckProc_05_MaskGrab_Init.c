@@ -27,7 +27,7 @@ void VehStuckProc_MaskGrab_Init(struct Thread *t, struct Driver *d)
 
 	d->actionsFlagSet &= 0xfff7ffbf;
 
-	if ((DECOMP_LOAD_IsOpen_RacingOrBattle() != 0) && ((gGT->gameMode1 & ADVENTURE_ARENA) == 0))
+	if ((LOAD_IsOpen_RacingOrBattle() != 0) && ((gGT->gameMode1 & ADVENTURE_ARENA) == 0))
 	{
 		DECOMP_RB_Player_ModifyWumpa(d, -2);
 	}
@@ -96,7 +96,7 @@ void VehStuckProc_MaskGrab_Animate(struct Thread *t, struct Driver *d);
 void *PlayerMaskGrabFuncTable[13] = {NULL,
                                      VehStuckProc_MaskGrab_Update,
                                      VehStuckProc_MaskGrab_PhysLinear,
-                                     DECOMP_VehPhysProc_Driving_Audio,
+                                     VehPhysProc_Driving_Audio,
                                      VehPhysGeneral_PhysAngular,
                                      VehPhysForce_OnApplyForces,
 

@@ -1,8 +1,8 @@
 #include <common.h>
 
-static int cbDRAM = DECOMP_LOAD_DramFileCallback;
+static int cbDRAM = LOAD_DramFileCallback;
 
-void DECOMP_LOAD_DriverMPK(u32 param_1, int levelLOD)
+void LOAD_DriverMPK(u32 param_1, int levelLOD)
 {
 	int i;
 	int gameMode1;
@@ -18,7 +18,7 @@ void DECOMP_LOAD_DriverMPK(u32 param_1, int levelLOD)
 		for (i = 0; i < levelLOD - 1; i++)
 		{
 			// low lod CTR model
-			DECOMP_LOAD_AppendQueue(0, LT_GETADDR, BI_RACERMODELLOW + data.characterIDs[i], &data.driverModelExtras[i], cbDRAM);
+			LOAD_AppendQueue(0, LT_GETADDR, BI_RACERMODELLOW + data.characterIDs[i], &data.driverModelExtras[i], cbDRAM);
 		}
 
 		// load 4P MPK of fourth player
@@ -43,7 +43,7 @@ void DECOMP_LOAD_DriverMPK(u32 param_1, int levelLOD)
 		// on Hot Air Skyway (except Crash Bandicoot)
 
 		// Load Player 1 [0]
-		DECOMP_LOAD_AppendQueue(0, LT_GETADDR, BI_RACERMODELHI + data.characterIDs[0], &data.driverModelExtras[0], cbDRAM);
+		LOAD_AppendQueue(0, LT_GETADDR, BI_RACERMODELHI + data.characterIDs[0], &data.driverModelExtras[0], cbDRAM);
 
 		// Load boss or ghost [1]
 		lastFileIndexMPK = BI_TIMETRIALPACK + data.characterIDs[1];
@@ -62,7 +62,7 @@ void DECOMP_LOAD_DriverMPK(u32 param_1, int levelLOD)
 		data.characterIDs[4] = PINSTRIPE;
 
 		// high lod model
-		DECOMP_LOAD_AppendQueue(0, LT_GETADDR, BI_RACERMODELHI + data.characterIDs[0], &data.driverModelExtras[0], cbDRAM);
+		LOAD_AppendQueue(0, LT_GETADDR, BI_RACERMODELHI + data.characterIDs[0], &data.driverModelExtras[0], cbDRAM);
 
 		// pack of four AIs with bosses
 		lastFileIndexMPK = BI_2PARCADEPACK + 7;
@@ -73,7 +73,7 @@ void DECOMP_LOAD_DriverMPK(u32 param_1, int levelLOD)
 	else if (levelLOD == 1)
 	{
 	ForceOnlineLoad8:
-		DECOMP_LOAD_Robots1P(data.characterIDs[0]);
+		LOAD_Robots1P(data.characterIDs[0]);
 
 		// arcade mpk
 		lastFileIndexMPK = BI_1PARCADEPACK + data.characterIDs[0];
@@ -86,16 +86,16 @@ void DECOMP_LOAD_DriverMPK(u32 param_1, int levelLOD)
 		for (i = 0; i < 2; i++)
 		{
 			// med lod CTR model
-			DECOMP_LOAD_AppendQueue(0, LT_GETADDR, BI_RACERMODELMED + data.characterIDs[i], &data.driverModelExtras[i], cbDRAM);
+			LOAD_AppendQueue(0, LT_GETADDR, BI_RACERMODELMED + data.characterIDs[i], &data.driverModelExtras[i], cbDRAM);
 		}
 
-		i = DECOMP_LOAD_Robots2P(data.characterIDs[0], data.characterIDs[1]);
+		i = LOAD_Robots2P(data.characterIDs[0], data.characterIDs[1]);
 
 		// 2p arcade mpk
 		lastFileIndexMPK = BI_2PARCADEPACK + i;
 	}
 
-	DECOMP_LOAD_AppendQueue(0, LT_GETADDR, lastFileIndexMPK, &sdata->ptrMPK, cbDRAM);
+	LOAD_AppendQueue(0, LT_GETADDR, lastFileIndexMPK, &sdata->ptrMPK, cbDRAM);
 
 	return;
 }

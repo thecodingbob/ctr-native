@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_RECTMENU_DrawSelf(struct RectMenu *menu, int posX, s16 posY, s16 menuWidth)
+void RECTMENU_DrawSelf(struct RectMenu *menu, int posX, s16 posY, s16 menuWidth)
 {
 	u16 textFlags;
 	u32 state;
@@ -68,7 +68,7 @@ LAB_80045e94:
 	local_60 = 0;
 	menu->posX_prev = menu->posX_curr;
 	menu->posY_prev = menu->posY_curr;
-	DECOMP_RECTMENU_GetHeight(menu, &local_60, 0);
+	RECTMENU_GetHeight(menu, &local_60, 0);
 
 	state = menu->state;
 
@@ -79,7 +79,7 @@ LAB_80045e94:
 	if ((state & 2) != 0)
 	{
 		menuHeight = 0;
-		DECOMP_RECTMENU_GetHeight(menu, &menuHeight, 1);
+		RECTMENU_GetHeight(menu, &menuHeight, 1);
 		local_38 = (s16)(-menuHeight / 2);
 	}
 	if ((state & 1) != 0)
@@ -113,7 +113,7 @@ LAB_80045e94:
 			titleString = sdata->lngStrings[index];
 			offsetX = (s16)(posX + menu->posX_prev + (menuWidth / 2));
 		}
-		DECOMP_DecalFont_DrawLine(titleString, offsetX, posY_prev, sVar4, uVar5);
+		DecalFont_DrawLine(titleString, offsetX, posY_prev, sVar4, uVar5);
 		posY_prev = local_48 + posY_prev + 6;
 	}
 
@@ -151,7 +151,7 @@ LAB_80045e94:
 						sVar4 = (s16)(posX + menu->posX_prev + local_30);
 						index = posX_prev;
 					}
-					DECOMP_DecalFont_DrawLine(titleString, sVar4, posY_prev, index, textFlags);
+					DecalFont_DrawLine(titleString, sVar4, posY_prev, index, textFlags);
 				}
 				posY_prev += sVar7;
 			}
@@ -195,7 +195,7 @@ LAB_80045e94:
 	}
 	if ((menu->state & 0x10) != 0)
 	{
-		DECOMP_RECTMENU_DrawSelf(menu->ptrNextBox_InHierarchy, posX + menu->posX_prev, local_38 + offsetY + menu->posY_prev + sVar7 + 0xc, menuWidth);
+		RECTMENU_DrawSelf(menu->ptrNextBox_InHierarchy, posX + menu->posX_prev, local_38 + offsetY + menu->posY_prev + sVar7 + 0xc, menuWidth);
 	}
 	posX_prev = menu->posX_prev;
 	posY_prev = menu->posY_prev;
@@ -210,5 +210,5 @@ LAB_80045e94:
 	borders.w = menuWidth + 0xc;
 	borders.y = local_38 + offsetY + posY_prev - 4;
 	borders.x = local_40 + posX + posX_prev - 6;
-	DECOMP_RECTMENU_DrawFullRect(menu, &borders);
+	RECTMENU_DrawFullRect(menu, &borders);
 }

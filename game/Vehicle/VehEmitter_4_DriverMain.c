@@ -331,7 +331,7 @@ static int VehEmitter_ShouldSkipExhaust(struct Thread *thread, struct Driver *d)
 
 			if ((meterLeft < 0x81) || (((d->const_turboLowRoomWarning + 2) * 0x20) < meterLeft))
 			{
-				if (DECOMP_PROC_SearchForModel(thread->childThread, STATIC_TURBO_EFFECT) != NULL)
+				if (PROC_SearchForModel(thread->childThread, STATIC_TURBO_EFFECT) != NULL)
 					return 1;
 			}
 		}

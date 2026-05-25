@@ -203,9 +203,9 @@ void RR_EndEvent_DrawMenu(void)
 
 
 		// interpolate fly-in
-		DECOMP_UI_Lerp2D_Linear(&pos[0], startX, 0x32, 0x100, endY, elapsedFrames, 0x14);
+		UI_Lerp2D_Linear(&pos[0], startX, 0x32, 0x100, endY, elapsedFrames, 0x14);
 
-		DECOMP_UI_DrawRaceClock(pos[0], pos[1] - 8, 1, d);
+		UI_DrawRaceClock(pos[0], pos[1] - 8, 1, d);
 	}
 
 
@@ -222,7 +222,7 @@ void RR_EndEvent_DrawMenu(void)
 		{
 			elapsedFrames -= 490;
 
-			DECOMP_UI_Lerp2D_Linear(&pos[0], 0x100, 0, -0x64, 0, elapsedFrames, 0x14);
+			UI_Lerp2D_Linear(&pos[0], 0x100, 0, -0x64, 0, elapsedFrames, 0x14);
 		}
 
 		else if (elapsedFrames >= 250)
@@ -232,7 +232,7 @@ void RR_EndEvent_DrawMenu(void)
 			{
 				// play sound of unlocking relic
 				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800a04cc-0x800a04d4 for relic unlock SFX.
-				DECOMP_OtherFX_Play(0x67, 1);
+				OtherFX_Play(0x67, 1);
 			}
 
 			// if relic has not fully grown
@@ -245,8 +245,8 @@ void RR_EndEvent_DrawMenu(void)
 			}
 		}
 
-		relic->matrix.t[0] = DECOMP_UI_ConvertX_2(pos[0], 0x100);
-		relic->matrix.t[1] = DECOMP_UI_ConvertY_2(0xa2, 0x100);
+		relic->matrix.t[0] = UI_ConvertX_2(pos[0], 0x100);
+		relic->matrix.t[1] = UI_ConvertY_2(0xa2, 0x100);
 	}
 
 
@@ -259,7 +259,7 @@ void RR_EndEvent_DrawMenu(void)
 			elapsedFrames -= 490;
 
 			// interpolate fly-in
-			DECOMP_UI_Lerp2D_Linear(&pos[0], 200, 0x79, 0x264, 0x79, elapsedFrames, 0x14);
+			UI_Lerp2D_Linear(&pos[0], 200, 0x79, 0x264, 0x79, elapsedFrames, 0x14);
 		}
 
 		else
@@ -269,17 +269,17 @@ void RR_EndEvent_DrawMenu(void)
 
 		pos[1] = 0x79;
 
-		sdata->ptrTimebox1->matrix.t[0] = DECOMP_UI_ConvertX_2(pos[0], 0x100);
-		sdata->ptrTimebox1->matrix.t[1] = DECOMP_UI_ConvertY_2(pos[1], 0x100);
+		sdata->ptrTimebox1->matrix.t[0] = UI_ConvertX_2(pos[0], 0x100);
+		sdata->ptrTimebox1->matrix.t[1] = UI_ConvertY_2(pos[1], 0x100);
 
 		// Draw 'x' before number of crates
-		DECOMP_DecalFont_DrawLine("x", pos[0] + 0x14, pos[1] - 10, 2, 0);
+		DecalFont_DrawLine("x", pos[0] + 0x14, pos[1] - 10, 2, 0);
 
 		// %2.02d/%ld: Amount of crates you collected / Total number of crates
 		sprintf(auStack72, "%2.02d/%ld", d->numTimeCrates, gGT->timeCratesInLEV);
 
 		// Draw amount of crates collected
-		DECOMP_DecalFont_DrawLine(auStack72, pos[0] + 0x21, pos[1] - 0xe, 1, 0);
+		DecalFont_DrawLine(auStack72, pos[0] + 0x21, pos[1] - 0xe, 1, 0);
 	}
 
 
@@ -312,14 +312,14 @@ void RR_EndEvent_DrawMenu(void)
 				if (elapsedFrames == 0)
 				{
 					// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800a07e8-0x800a07f0 for PERFECT fly-in SFX.
-					DECOMP_OtherFX_Play(0x65, 1);
+					OtherFX_Play(0x65, 1);
 				}
 			}
 
-			DECOMP_UI_Lerp2D_Linear(&pos[0], startX, 0, endX, 0, elapsedFrames, 0x14);
+			UI_Lerp2D_Linear(&pos[0], startX, 0, endX, 0, elapsedFrames, 0x14);
 
 			// "PERFECT"
-			DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x162], pos[0], 0x8a, 1, txtColor);
+			DecalFont_DrawLine(sdata->lngStrings[0x162], pos[0], 0x8a, 1, txtColor);
 		}
 
 		// copy to local frame counter
@@ -338,7 +338,7 @@ void RR_EndEvent_DrawMenu(void)
 			str[3] = 0;
 
 			// interpolate fly-in
-			DECOMP_UI_Lerp2D_Linear(&pos[0], 0x296, 0, 0x199, 0, elapsedFrames, 0x14);
+			UI_Lerp2D_Linear(&pos[0], 0x296, 0, 0x199, 0, elapsedFrames, 0x14);
 
 			// 20 frames after fly-in starts, do the countdown
 			if (elapsedFrames >= 20)
@@ -363,7 +363,7 @@ void RR_EndEvent_DrawMenu(void)
 						// subtract a second
 						d->timeElapsedInRace -= 960;
 						// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800a08e0-0x800a08f4 for relic countdown tick SFX.
-						DECOMP_OtherFX_Play(99, 1);
+						OtherFX_Play(99, 1);
 					}
 
 					// change string to match new -X
@@ -373,7 +373,7 @@ void RR_EndEvent_DrawMenu(void)
 			}
 
 			// Draw String
-			DECOMP_DecalFont_DrawLine(str, pos[0], 0x2a, 1, txtColor);
+			DecalFont_DrawLine(str, pos[0], 0x2a, 1, txtColor);
 		}
 	}
 
@@ -403,10 +403,10 @@ void RR_EndEvent_DrawMenu(void)
 		}
 
 		// interpolate fly-in
-		DECOMP_UI_Lerp2D_Linear(&pos[0], startX, 0x50, endX, 0x50, elapsedFrames, 0x14);
+		UI_Lerp2D_Linear(&pos[0], startX, 0x50, endX, 0x50, elapsedFrames, 0x14);
 
 		// "RELIC AWARDED!"
-		DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x160], pos[0], pos[1], 1, txtColor);
+		DecalFont_DrawLine(sdata->lngStrings[0x160], pos[0], pos[1], 1, txtColor);
 	}
 
 
@@ -433,10 +433,10 @@ void RR_EndEvent_DrawMenu(void)
 		}
 
 		// Interpolate fly-in
-		DECOMP_UI_Lerp2D_Linear(&pos[0], startX, 0x50, endX, 0x50, elapsedFrames, 0x14);
+		UI_Lerp2D_Linear(&pos[0], startX, 0x50, endX, 0x50, elapsedFrames, 0x14);
 
 		// "NEW HIGH SCORE!"
-		DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x161], pos[0], pos[1], 1, txtColor);
+		DecalFont_DrawLine(sdata->lngStrings[0x161], pos[0], pos[1], 1, txtColor);
 	}
 
 
@@ -451,7 +451,7 @@ void RR_EndEvent_DrawMenu(void)
 		elapsedFrames -= 490;
 
 		// Interpolate, vertical fly-out
-		DECOMP_UI_Lerp2D_Linear(&pos[0], -0xa, 0xc, -0xa, -0x58, elapsedFrames, 0x14);
+		UI_Lerp2D_Linear(&pos[0], -0xa, 0xc, -0xa, -0x58, elapsedFrames, 0x14);
 	}
 
 
@@ -462,7 +462,7 @@ void RR_EndEvent_DrawMenu(void)
 	box.h = 0x3b;
 
 	// Draw 2D Menu rectangle background
-	DECOMP_RECTMENU_DrawInnerRect(&box, 0, gGT->backBuffer->otMem.startPlusFour);
+	RECTMENU_DrawInnerRect(&box, 0, gGT->backBuffer->otMem.startPlusFour);
 
 
 	if ( // If you have not pressed X to continue
@@ -475,12 +475,12 @@ void RR_EndEvent_DrawMenu(void)
 		RR_EndEvent_DrawHighScore(0x100, 10);
 
 		// PRESS * TO CONTINUE
-		DECOMP_DecalFont_DrawLine(sdata->lngStrings[0xc9], 0x100, 0xbe, 1, 0xffff8000);
+		DecalFont_DrawLine(sdata->lngStrings[0xc9], 0x100, 0xbe, 1, 0xffff8000);
 
 		if ((sdata->AnyPlayerTap & (BTN_CROSS | BTN_CIRCLE)) != 0)
 		{
-			DECOMP_RECTMENU_ClearInput();
-			DECOMP_RECTMENU_Show(&data.menuRetryExit);
+			RECTMENU_ClearInput();
+			RECTMENU_Show(&data.menuRetryExit);
 
 			// record that you have pressed X to continue
 			sdata->menuReadyToPass |= 1;
@@ -517,10 +517,10 @@ void RR_EndEvent_DrawHighScore(s16 startX, int startY)
 	// Start and End are the same
 
 	// interpolate fly-in
-	DECOMP_UI_Lerp2D_Linear(&pos[0], startX, startY, startX, startY, sdata->framesSinceRaceEnded, 0x14);
+	UI_Lerp2D_Linear(&pos[0], startX, startY, startX, startY, sdata->framesSinceRaceEnded, 0x14);
 
 	// "BEST TIMES"
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x171], pos[0], pos[1], 1, 0xffff8000);
+	DecalFont_DrawLine(sdata->lngStrings[0x171], pos[0], pos[1], 1, 0xffff8000);
 
 	// Draw icon, name, and time of the
 	// 5 best times in Time Trial
@@ -548,29 +548,29 @@ void RR_EndEvent_DrawHighScore(s16 startX, int startY)
 		str_number223 = (char)i + '1';
 
 		// Draw String for Rank ('1', '2', '3', '4', '5')
-		DECOMP_DecalFont_DrawLine((char *)&str_number223, startX - 0x32, timebox_Y - 1, 2, 4);
+		DecalFont_DrawLine((char *)&str_number223, startX - 0x32, timebox_Y - 1, 2, 4);
 
 		u32 iconColor = 0x808080;
 
 		// Draw Character Icon
-		DECOMP_RECTMENU_DrawPolyGT4(gGT->ptrIcons[data.MetaDataCharacters[scoreEntry[i + 1].characterID].iconID], startX - 0x52, timebox_Y,
+		RECTMENU_DrawPolyGT4(gGT->ptrIcons[data.MetaDataCharacters[scoreEntry[i + 1].characterID].iconID], startX - 0x52, timebox_Y,
 
-		                            // pointer to PrimMem struct
-		                            &gGT->backBuffer->primMem,
+		                     // pointer to PrimMem struct
+		                     &gGT->backBuffer->primMem,
 
-		                            // pointer to OT mem
-		                            gGT->pushBuffer_UI.ptrOT,
+		                     // pointer to OT mem
+		                     gGT->pushBuffer_UI.ptrOT,
 
-		                            // color of each corner
-		                            iconColor, iconColor, iconColor, iconColor,
+		                     // color of each corner
+		                     iconColor, iconColor, iconColor, iconColor,
 
-		                            1, 0x1000);
+		                     1, 0x1000);
 
 		// Draw Name
-		DECOMP_DecalFont_DrawLine(scoreEntry[i + 1].name, timebox_X, timebox_Y, 3, nameColor);
+		DecalFont_DrawLine(scoreEntry[i + 1].name, timebox_X, timebox_Y, 3, nameColor);
 
 		// Draw time
-		DECOMP_DecalFont_DrawLine(DECOMP_RECTMENU_DrawTime(scoreEntry[i + 1].time), timebox_X, timebox_Y + 0x11, 2, timeColor);
+		DecalFont_DrawLine(RECTMENU_DrawTime(scoreEntry[i + 1].time), timebox_X, timebox_Y + 0x11, 2, timeColor);
 
 		// If this loop index is a new high score
 		if (gGT->newHighScoreIndex == i)
@@ -589,17 +589,17 @@ void RR_EndEvent_DrawHighScore(s16 startX, int startY)
 	// IF RR
 	{
 		// "YOUR TIME"
-		DECOMP_DecalFont_DrawLine(sdata->lngStrings[0xC5], startX, startY + 0x95, 1, 0xffff8000);
+		DecalFont_DrawLine(sdata->lngStrings[0xC5], startX, startY + 0x95, 1, 0xffff8000);
 
 		// make a string for your current track time
-		timeString = DECOMP_RECTMENU_DrawTime(gGT->drivers[0]->timeElapsedInRace);
+		timeString = RECTMENU_DrawTime(gGT->drivers[0]->timeElapsedInRace);
 
 		// color
 		timeColor = 0xffff8000;
 	}
 
 	// Print amount of time, for whichever purpose
-	DECOMP_DecalFont_DrawLine(timeString, startX, startY + 0xa6, 2, timeColor);
+	DecalFont_DrawLine(timeString, startX, startY + 0xa6, 2, timeColor);
 
 	box.x = pos[0] - 0x60;
 	box.y = pos[1] - 4;
@@ -607,5 +607,5 @@ void RR_EndEvent_DrawHighScore(s16 startX, int startY)
 	box.h = 0xb4;
 
 	// Draw 2D Menu rectangle background
-	DECOMP_RECTMENU_DrawInnerRect(&box, 4, gGT->backBuffer->otMem.startPlusFour);
+	RECTMENU_DrawInnerRect(&box, 4, gGT->backBuffer->otMem.startPlusFour);
 }

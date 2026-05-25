@@ -323,8 +323,3 @@ void UI_VsQuipAssignAll(void)
 		UI_VsQuipAssign(selectedDriver, &meta, bestDriver, characterID);
 	}
 }
-
-void DECOMP_UI_VsQuipAssignAll(void)
-{
-	UI_VsQuipAssignAll();
-}

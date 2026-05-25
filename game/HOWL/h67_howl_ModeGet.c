@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002b1f0-0x8002b1fc
-int DECOMP_howl_ModeGet(void)
+int howl_ModeGet(void)
 {
 	return sdata->boolStereoEnabled;
 }

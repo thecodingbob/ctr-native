@@ -3,7 +3,7 @@
 #if 0
 // Search for character model by string,
 // specific to main menu lev, altered in oxide mod
-struct Model* DECOMP_MM_Characters_GetModelByName(int *name) 
+struct Model* MM_Characters_GetModelByName(int *name)
 {
   struct Model** models;
   struct Model* model;

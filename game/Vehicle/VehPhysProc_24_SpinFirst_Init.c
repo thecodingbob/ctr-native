@@ -4,9 +4,9 @@ void COLL_FIXED_PlayerSearch();
 
 void *PlayerSpinningFuncTable[0xD] = {VehPhysProc_SpinFirst_InitSetUpdate,
                                       0,
-                                      DECOMP_VehPhysProc_SpinFirst_PhysLinear,
-                                      DECOMP_VehPhysProc_Driving_Audio,
-                                      DECOMP_VehPhysProc_SpinFirst_PhysAngular,
+                                      VehPhysProc_SpinFirst_PhysLinear,
+                                      VehPhysProc_Driving_Audio,
+                                      VehPhysProc_SpinFirst_PhysAngular,
                                       VehPhysForce_OnApplyForces,
                                       COLL_MOVED_PlayerSearch,
                                       VehPhysForce_CollideDrivers,
@@ -27,7 +27,7 @@ void VehPhysProc_SpinFirst_Init(struct Thread *t, struct Driver *d)
 	d->unk_LerpToForwards = 0;
 	d->turbo_MeterRoomLeft = 0;
 
-	if (DECOMP_LOAD_IsOpen_RacingOrBattle())
+	if (LOAD_IsOpen_RacingOrBattle())
 	{
 		DECOMP_RB_Player_ModifyWumpa(d, -1);
 	}
@@ -61,9 +61,4 @@ void VehPhysProc_SpinFirst_Init(struct Thread *t, struct Driver *d)
 	}
 
 	GAMEPAD_JogCon1(d, feedback, 0x60);
-}
-
-void DECOMP_VehPhysProc_SpinFirst_Init(struct Thread *t, struct Driver *d)
-{
-	VehPhysProc_SpinFirst_Init(t, d);
 }

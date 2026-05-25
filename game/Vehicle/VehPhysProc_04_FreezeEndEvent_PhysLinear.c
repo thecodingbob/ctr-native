@@ -1,8 +1,8 @@
 #include <common.h>
 
-void DECOMP_VehPhysProc_FreezeEndEvent_PhysLinear(struct Thread *t, struct Driver *d)
+void VehPhysProc_FreezeEndEvent_PhysLinear(struct Thread *t, struct Driver *d)
 {
-	DECOMP_VehPhysProc_Driving_PhysLinear(t, d);
+	VehPhysProc_Driving_PhysLinear(t, d);
 
 	d->simpTurnState = 0;
 	d->wheelRotation = 0;

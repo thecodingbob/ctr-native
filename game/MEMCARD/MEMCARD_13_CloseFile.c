@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MEMCARD_CloseFile(void)
+void MEMCARD_CloseFile(void)
 {
 	int fd = sdata->memcard_fd;
 	sdata->memcard_fd = -1;

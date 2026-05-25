@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ade8c-0x800ae2b8
-void DECOMP_CS_Thread_MoveOnPath(struct Thread *t)
+void CS_Thread_MoveOnPath(struct Thread *t)
 {
 	struct CutsceneObj *cs = t->object;
 	struct Instance *inst = t->inst;

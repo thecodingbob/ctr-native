@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800aed48-0x800aedf8
-u8 DECOMP_CS_Camera_BoolGotoBoss(void)
+u8 CS_Camera_BoolGotoBoss(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
 

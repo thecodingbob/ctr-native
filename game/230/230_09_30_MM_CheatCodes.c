@@ -248,153 +248,153 @@ struct Cheat
 char inputButtons[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac9fc-0x800aca34.
-void DECOMP_MM_Cheat_MaxWumpa(void)
+void MM_Cheat_MaxWumpa(void)
 {
 	sdata->gGT->gameMode2 |= CHEAT_WUMPA;
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800aca34-0x800aca6c.
-void DECOMP_MM_Cheat_UnlockRoo(void)
+void MM_Cheat_UnlockRoo(void)
 {
 	sdata->gameProgress.unlocks[0] |= 0x80;
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800aca6c-0x800acaa4.
-void DECOMP_MM_Cheat_UnlockPapu(void)
+void MM_Cheat_UnlockPapu(void)
 {
 	sdata->gameProgress.unlocks[0] |= 0x100;
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800acaa4-0x800acadc.
-void DECOMP_MM_Cheat_UnlockJoe(void)
+void MM_Cheat_UnlockJoe(void)
 {
 	sdata->gameProgress.unlocks[0] |= 0x200;
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800acadc-0x800acb14.
-void DECOMP_MM_Cheat_UnlockPinstripe(void)
+void MM_Cheat_UnlockPinstripe(void)
 {
 	sdata->gameProgress.unlocks[0] |= 0x400;
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800acb14-0x800acb4c.
-void DECOMP_MM_Cheat_UnlockFakeCrash(void)
+void MM_Cheat_UnlockFakeCrash(void)
 {
 	sdata->gameProgress.unlocks[0] |= 0x800;
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800acb4c-0x800acb84.
-void DECOMP_MM_Cheat_UnlockPenta(void)
+void MM_Cheat_UnlockPenta(void)
 {
 	sdata->gameProgress.unlocks[0] |= 0x40;
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800acb84-0x800acbbc.
-void DECOMP_MM_Cheat_UnlockTropy(void)
+void MM_Cheat_UnlockTropy(void)
 {
 	sdata->gameProgress.unlocks[0] |= 0x20;
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800acbbc-0x800acbf4.
-void DECOMP_MM_Cheat_UnlockScrapbook(void)
+void MM_Cheat_UnlockScrapbook(void)
 {
 	sdata->gameProgress.unlocks[1] |= 0x10;
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800acbf4-0x800acc2c.
-void DECOMP_MM_Cheat_UnlockTracks(void)
+void MM_Cheat_UnlockTracks(void)
 {
 	sdata->gameProgress.unlocks[0] |= 0x1e;
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800acc2c-0x800acc64.
-void DECOMP_MM_Cheat_InfiniteMasks(void)
+void MM_Cheat_InfiniteMasks(void)
 {
 	sdata->gGT->gameMode2 |= CHEAT_MASK;
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800acc64-0x800acc9c.
-void DECOMP_MM_Cheat_MaxTurbos(void)
+void MM_Cheat_MaxTurbos(void)
 {
 	sdata->gGT->gameMode2 |= CHEAT_TURBO;
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800acc9c-0x800accd4.
-void DECOMP_MM_Cheat_MaxInvisibility(void)
+void MM_Cheat_MaxInvisibility(void)
 {
 	sdata->gGT->gameMode2 |= CHEAT_INVISIBLE;
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800accd4-0x800acd10.
-void DECOMP_MM_Cheat_MaxEngine(void)
+void MM_Cheat_MaxEngine(void)
 {
 	sdata->gGT->gameMode2 |= CHEAT_ENGINE;
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800acd10-0x800acd4c.
-void DECOMP_MM_Cheat_MaxBombs(void)
+void MM_Cheat_MaxBombs(void)
 {
 	sdata->gGT->gameMode2 |= CHEAT_BOMBS;
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800acd4c-0x800acd88.
-void DECOMP_MM_Cheat_AdvDifficulty(void)
+void MM_Cheat_AdvDifficulty(void)
 {
 	sdata->gGT->gameMode2 |= CHEAT_ADV;
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800acd88-0x800acdc4.
-void DECOMP_MM_Cheat_SuperHard(void)
+void MM_Cheat_SuperHard(void)
 {
 	sdata->gGT->gameMode2 |= CHEAT_SUPERHARD;
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800acdc4-0x800ace00.
-void DECOMP_MM_Cheat_IcyTracks(void)
+void MM_Cheat_IcyTracks(void)
 {
 	sdata->gGT->gameMode2 |= CHEAT_ICY;
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ace00-0x800ace3c.
-void DECOMP_MM_Cheat_SuperTurboPads(void)
+void MM_Cheat_SuperTurboPads(void)
 {
 	sdata->gGT->gameMode2 |= CHEAT_TURBOPAD;
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ace3c-0x800ace78.
-void DECOMP_MM_Cheat_OneLap(void)
+void MM_Cheat_OneLap(void)
 {
 	sdata->gGT->gameMode2 |= CHEAT_ONELAP;
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ace78-0x800aceb4.
-void DECOMP_MM_Cheat_TurboCounter(void)
+void MM_Cheat_TurboCounter(void)
 {
 	sdata->gGT->gameMode2 |= CHEAT_TURBOCOUNT;
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 }
 
-void DECOMP_MM_ParseCheatCodes()
+void MM_ParseCheatCodes()
 {
 	int i;
 	int j;
@@ -407,10 +407,10 @@ void DECOMP_MM_ParseCheatCodes()
 // so store this code here
 #if 1
 	char *info = "Date/Time in CheatCodes.c";
-	DECOMP_DecalFont_DrawLine(info, 5, 197, FONT_SMALL, ORANGE);
-	DECOMP_DecalFont_DrawLine(__DATE__, 5, 206, FONT_SMALL, ORANGE);
-	DECOMP_DecalFont_DrawLine(__TIME__, 170, 206, FONT_SMALL, ORANGE);
-	DECOMP_DecalFont_DrawLine("75%", 285, 206, FONT_SMALL, ORANGE);
+	DecalFont_DrawLine(info, 5, 197, FONT_SMALL, ORANGE);
+	DecalFont_DrawLine(__DATE__, 5, 206, FONT_SMALL, ORANGE);
+	DecalFont_DrawLine(__TIME__, 170, 206, FONT_SMALL, ORANGE);
+	DecalFont_DrawLine("75%", 285, 206, FONT_SMALL, ORANGE);
 #endif
 
 	gpad = &sdata->gGamepads->gamepad[0];
@@ -476,7 +476,7 @@ void DECOMP_MM_ParseCheatCodes()
 		// if not spyro 2 cheat...
 
 		// play cheat sound
-		DECOMP_OtherFX_Play(0x67, 1);
+		OtherFX_Play(0x67, 1);
 
 		// apply cheat
 		*cheat->writeAddr |= cheat->addBits;

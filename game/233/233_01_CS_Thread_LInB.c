@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b06ac-0x800b087c
-void DECOMP_CS_Thread_LInB(struct Instance *inst)
+void CS_Thread_LInB(struct Instance *inst)
 {
 	struct Thread *t;
 	struct CutsceneObj *cs;
@@ -13,7 +13,7 @@ void DECOMP_CS_Thread_LInB(struct Instance *inst)
 	if (inst->thread != 0)
 		goto check_polar;
 
-	t = DECOMP_PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(0x60, NONE, MEDIUM, STATIC), DECOMP_CS_Thread_ThTick, OVR_233.s_introguy, 0);
+	t = PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(0x60, NONE, MEDIUM, STATIC), CS_Thread_ThTick, OVR_233.s_introguy, 0);
 
 	inst->thread = t;
 
@@ -46,7 +46,7 @@ void DECOMP_CS_Thread_LInB(struct Instance *inst)
 		scriptPtr = OVR_233.boxModelScripts[modelID - NDI_BOX_BOX_01];
 	}
 
-	DECOMP_CS_ScriptCmd_OpcodeAt(cs, scriptPtr);
+	CS_ScriptCmd_OpcodeAt(cs, scriptPtr);
 
 	cs->unk18 = *(int *)(cs->metadata + 2);
 
@@ -88,5 +88,3 @@ check_polar:
 		inst->flags |= REFLECTIVE;
 	}
 }
-
-#define CS_Thread_LInB DECOMP_CS_Thread_LInB

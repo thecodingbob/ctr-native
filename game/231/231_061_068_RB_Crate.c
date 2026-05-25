@@ -77,7 +77,7 @@ void DECOMP_RB_CrateAny_ThTick_Explode(struct Thread *t)
 	struct Instance *crateExplodeInst = t->inst;
 
 	// if explosion is not over
-	if ((crateExplodeInst->animFrame + 1) < DECOMP_INSTANCE_GetNumAnimFrames(crateExplodeInst, 0))
+	if ((crateExplodeInst->animFrame + 1) < INSTANCE_GetNumAnimFrames(crateExplodeInst, 0))
 	{
 		// increment frame
 		crateExplodeInst->animFrame = crateExplodeInst->animFrame + 1;
@@ -86,7 +86,7 @@ void DECOMP_RB_CrateAny_ThTick_Explode(struct Thread *t)
 
 	// if explosion is over
 	t->flags |= 0x800;
-	DECOMP_INSTANCE_Death(crateExplodeInst);
+	INSTANCE_Death(crateExplodeInst);
 }
 
 void RB_CrateAny_ExplodeInit(struct Instance *crateInst, int color)
@@ -102,7 +102,7 @@ void RB_CrateAny_ExplodeInit(struct Instance *crateInst, int color)
 	crateInst->scale[2] = 0;
 
 	// birth explosion thread
-	explosionInst = DECOMP_INSTANCE_BirthWithThread(
+	explosionInst = INSTANCE_BirthWithThread(
 	    // 0x26 - box explosion model
 	    // 0x0 - debug name
 	    0x26, 0,
@@ -194,7 +194,7 @@ static struct Thread *RB_CrateAny_LInC_Birth(struct Instance *crateInst, void *f
 	struct Thread *crateThread;
 	struct Crate *crateObj;
 
-	crateThread = DECOMP_PROC_BirthWithObject(
+	crateThread = PROC_BirthWithObject(
 	    // creation flags
 	    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Crate), NONE, SMALL, STATIC),
 

@@ -1,9 +1,9 @@
 #include <common.h>
 
-void (*mainMenuInit[6])() = {DECOMP_MM_JumpTo_Title_FirstTime, DECOMP_MM_JumpTo_Characters, DECOMP_MM_JumpTo_TrackSelect,
-                             DECOMP_MM_JumpTo_BattleSetup,     DECOMP_CS_Garage_Init,       DECOMP_MM_JumpTo_Scrapbook};
+void (*mainMenuInit[6])() = {MM_JumpTo_Title_FirstTime, MM_JumpTo_Characters, MM_JumpTo_TrackSelect,
+                             MM_JumpTo_BattleSetup,     CS_Garage_Init,       MM_JumpTo_Scrapbook};
 
-int DECOMP_LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *bigfile)
+int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *bigfile)
 {
 	s16 sVar4;
 	int iVar5;
@@ -48,7 +48,7 @@ int DECOMP_LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigH
 			sdata->boolFirstBoot = 0;
 
 			// Load Intro TIM for Copyright Page from VRAM file
-			DECOMP_LOAD_VramFile(bigfile, 0x1fe, NULL, &vramSize, -1);
+			LOAD_VramFile(bigfile, 0x1fe, NULL, &vramSize, -1);
 			MainInit_VRAMDisplay();
 
 			gGT->db[0].drawEnv.isbg = 0;
@@ -229,7 +229,7 @@ int DECOMP_LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigH
 		else
 			ovrRegion1 = 4;
 
-		DECOMP_LOAD_OvrEndRace(ovrRegion1);
+		LOAD_OvrEndRace(ovrRegion1);
 		break;
 	}
 	case 2:
@@ -244,7 +244,7 @@ int DECOMP_LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigH
 		if (levelID == ADVENTURE_GARAGE)
 			gGT->overlayIndex_LOD = 0xFF;
 
-		DECOMP_LOAD_OvrLOD(gGT->numPlyrCurrGame);
+		LOAD_OvrLOD(gGT->numPlyrCurrGame);
 		break;
 	}
 	case 3:
@@ -274,7 +274,7 @@ int DECOMP_LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigH
 			ovrRegion3 = 3;
 		}
 
-		DECOMP_LOAD_OvrThreads(ovrRegion3);
+		LOAD_OvrThreads(ovrRegion3);
 		break;
 	}
 	case 4:
@@ -310,7 +310,7 @@ int DECOMP_LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigH
 			ptrArray[i] = 0;
 		}
 
-		DECOMP_LOAD_DriverMPK((u32)bigfile, sdata->levelLOD);
+		LOAD_DriverMPK((u32)bigfile, sdata->levelLOD);
 		break;
 	}
 	case 5:
@@ -321,7 +321,7 @@ int DECOMP_LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigH
 
 		// clear and reset
 		LibraryOfModels_Clear(gGT);
-		DECOMP_LOAD_GlobalModelPtrs_MPK();
+		LOAD_GlobalModelPtrs_MPK();
 		DecalGlobal_Clear(gGT);
 
 		gGT->mpkIcons = 0;
@@ -408,7 +408,7 @@ int DECOMP_LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigH
 			else
 			{
 				// Get 1 or 2, depending on map
-				sVar4 = DECOMP_LOAD_GetAdvPackIndex();
+				sVar4 = LOAD_GetAdvPackIndex();
 
 				// Then swap:
 				// Turn 1 into 2
@@ -444,19 +444,19 @@ int DECOMP_LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigH
 		}
 
 		// base index of the group
-		uVar16 = DECOMP_LOAD_GetBigfileIndex(gGT->levelID, sdata->levelLOD);
+		uVar16 = LOAD_GetBigfileIndex(gGT->levelID, sdata->levelLOD);
 
 		// add VRAM to loading queue
-		DECOMP_LOAD_AppendQueue(0, LT_SETVRAM, uVar16 + LVI_VRAM, NULL, DECOMP_LOAD_VramFileCallback);
+		LOAD_AppendQueue(0, LT_SETVRAM, uVar16 + LVI_VRAM, NULL, LOAD_VramFileCallback);
 
 		// add LEV to loading queue
-		DECOMP_LOAD_AppendQueue(0, LT_GETADDR, uVar16 + LVI_LEV, &sdata->ptrLevelFile, DECOMP_LOAD_DramFileCallback);
+		LOAD_AppendQueue(0, LT_GETADDR, uVar16 + LVI_LEV, &sdata->ptrLevelFile, LOAD_DramFileCallback);
 
 		// if world is made of multiple LEVs
 		if ((gGT->gameMode2 & LEV_SWAP) != 0)
 		{
 			// add PTR file to loading queue
-			DECOMP_LOAD_AppendQueue(0, LT_SETADDR, uVar16 + LVI_PTR, (void *)sdata->PatchMem_Ptr, DECOMP_LOAD_Callback_PatchMem);
+			LOAD_AppendQueue(0, LT_SETADDR, uVar16 + LVI_PTR, (void *)sdata->PatchMem_Ptr, LOAD_Callback_PatchMem);
 		}
 		break;
 	}
@@ -545,10 +545,10 @@ int DECOMP_LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigH
 
 		// Load model+vrm files on the VRAM page
 		// that does NOT overwrite the hub VRAM
-		iVar9 = DECOMP_LOAD_GetAdvPackIndex() - 1;
+		iVar9 = LOAD_GetAdvPackIndex() - 1;
 
 		// VRAM for podium and all related models
-		DECOMP_LOAD_AppendQueue(0, LT_SETVRAM, BI_PODIUMVRMS + iVar9, NULL, DECOMP_LOAD_VramFileCallback);
+		LOAD_AppendQueue(0, LT_SETVRAM, BI_PODIUMVRMS + iVar9, NULL, LOAD_VramFileCallback);
 
 		// podium first place
 		u8 *ptrIndexArr = &gGT->podium_modelIndex_First;
@@ -561,7 +561,7 @@ int DECOMP_LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigH
 			baseIndexPM = BI_DANCEMODELLOSE;
 
 		int fileIndex;
-		int drmCb = DECOMP_LOAD_DramFileCallback;
+		int drmCb = LOAD_DramFileCallback;
 
 		// Loop through 3 podium models
 		for (int i = 0; i < 3; i++)
@@ -570,7 +570,7 @@ int DECOMP_LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigH
 			{
 				fileIndex = baseIndexPM + iVar9 + (ptrIndexArr[i] - 0x7e) * 2;
 
-				DECOMP_LOAD_AppendQueue(0, LT_GETADDR, fileIndex, &ptrModelPtrArr[i], drmCb);
+				LOAD_AppendQueue(0, LT_GETADDR, fileIndex, &ptrModelPtrArr[i], drmCb);
 			}
 
 			baseIndexPM = BI_DANCEMODELLOSE;
@@ -580,17 +580,17 @@ int DECOMP_LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigH
 		fileIndex = BI_DANCETAWNAGIRL + iVar9 + (gGT->podium_modelIndex_tawna - STATIC_TAWNA1) * 2;
 
 		// add TAWNA to loading queue
-		DECOMP_LOAD_AppendQueue(0, LT_GETADDR, fileIndex, (void *)&data.podiumModel_tawna, drmCb);
+		LOAD_AppendQueue(0, LT_GETADDR, fileIndex, (void *)&data.podiumModel_tawna, drmCb);
 
 		// if 0x7e+5 (dingo)
 		if (gGT->podium_modelIndex_First == STATIC_DINGODANCE)
 		{
 			// add "DingoFire" to loading queue
-			DECOMP_LOAD_AppendQueue(0, LT_GETADDR, BI_DINGOFIRE + iVar9, (void *)&data.podiumModel_dingoFire, drmCb);
+			LOAD_AppendQueue(0, LT_GETADDR, BI_DINGOFIRE + iVar9, (void *)&data.podiumModel_dingoFire, drmCb);
 		}
 
 		// add Podium
-		DECOMP_LOAD_AppendQueue(0, LT_GETADDR, BI_PODIUM + iVar9, &data.podiumModel_podiumStands, drmCb);
+		LOAD_AppendQueue(0, LT_GETADDR, BI_PODIUM + iVar9, &data.podiumModel_podiumStands, drmCb);
 
 		// Disable LEV instances on Adv Hub, for podium scene
 		gGT->gameMode2 = gGT->gameMode2 | 0x100;

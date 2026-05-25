@@ -1,3 +1,3 @@
 .set noreorder
-j DECOMP_PROC_SearchForModel
+j PROC_SearchForModel
 nop

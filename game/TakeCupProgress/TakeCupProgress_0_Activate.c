@@ -9,5 +9,5 @@ void TakeCupProgress_Activate(s16 stringIndex)
 
 	// Draw the menu
 	// for "Save Game", "yes / no"
-	DECOMP_RECTMENU_Show(&data.menuSaveGame);
+	RECTMENU_Show(&data.menuSaveGame);
 }

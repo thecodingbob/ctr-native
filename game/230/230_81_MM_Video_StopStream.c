@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_Video_StopStream(void)
+void MM_Video_StopStream(void)
 {
 	int iVar1;
 

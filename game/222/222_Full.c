@@ -134,7 +134,7 @@ void AA_EndEvent_DrawMenu(void)
 
 					// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8009fc48-0x8009fc50 for CTR token unlock SFX.
 					if (hudC->scale[0] == 0x800)
-						DECOMP_OtherFX_Play(0x67, 1);
+						OtherFX_Play(0x67, 1);
 
 					// original code said < 0x2200, but the
 					// actual desired value is 0x2400, needs
@@ -160,18 +160,18 @@ void AA_EndEvent_DrawMenu(void)
 					txtStartX = 0x264;
 					txtEndX = 0x100;
 
-					DECOMP_UI_Lerp2D_Linear(&txtPos[0], txtStartX, 0xA6, txtEndX, 0xA6, elapsedFrames, 8);
+					UI_Lerp2D_Linear(&txtPos[0], txtStartX, 0xA6, txtEndX, 0xA6, elapsedFrames, 8);
 
 					txtColor = (gGT->timer & 1) ? 0xFFFF8003 : 0xFFFF8004;
 
-					DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x16F], txtPos[0], txtPos[1], 1, txtColor);
+					DecalFont_DrawLine(sdata->lngStrings[0x16F], txtPos[0], txtPos[1], 1, txtColor);
 				}
 
-				DECOMP_UI_Lerp2D_Linear(&letterPos[0], lerpStartX, lerpStartY, lerpEndX, lerpEndY, elapsedFrames, 8);
+				UI_Lerp2D_Linear(&letterPos[0], lerpStartX, lerpStartY, lerpEndX, lerpEndY, elapsedFrames, 8);
 
 				hudToken->flags &= ~HIDE_MODEL;
 				hudToken->matrix.t[0] = hudT->matrix.t[0];
-				hudToken->matrix.t[1] = DECOMP_UI_ConvertY_2(letterPos[1] + 0x18, 0x200);
+				hudToken->matrix.t[1] = UI_ConvertY_2(letterPos[1] + 0x18, 0x200);
 
 				// variable reuse, frame timers
 				lerpStartY = 120;
@@ -192,7 +192,7 @@ void AA_EndEvent_DrawMenu(void)
 					lerpFrames = 10;
 				}
 
-				DECOMP_UI_Lerp2D_Linear(&letterPos[0], lerpStartX, lerpStartY, lerpEndX, lerpEndY, elapsedFrames, lerpFrames);
+				UI_Lerp2D_Linear(&letterPos[0], lerpStartX, lerpStartY, lerpEndX, lerpEndY, elapsedFrames, lerpFrames);
 
 				// variable reuse, frame timers
 				lerpStartY = 0;
@@ -203,8 +203,8 @@ void AA_EndEvent_DrawMenu(void)
 
 			for (i = 0; i < 3; i++)
 			{
-				hudLetters[i]->matrix.t[0] = DECOMP_UI_ConvertX_2(letterPos[0] + (scaleDown * (i * 12)) + (i * 29), 0x200);
-				hudLetters[i]->matrix.t[1] = DECOMP_UI_ConvertY_2(letterPos[1] - (i & 1), 0x200);
+				hudLetters[i]->matrix.t[0] = UI_ConvertX_2(letterPos[0] + (scaleDown * (i * 12)) + (i * 29), 0x200);
+				hudLetters[i]->matrix.t[1] = UI_ConvertY_2(letterPos[1] - (i & 1), 0x200);
 			}
 		}
 
@@ -296,15 +296,15 @@ void AA_EndEvent_DrawMenu(void)
 			t -= 10;
 
 			// interpolate fly-in
-			DECOMP_UI_Lerp2D_Linear(&letterPos[0], lerpStartX, 0x60, lerpEndX, 0x60, currFrame, 10);
+			UI_Lerp2D_Linear(&letterPos[0], lerpStartX, 0x60, lerpEndX, 0x60, currFrame, 10);
 
 			str_number222 = (char)i + '1';
 
 			// print a single character, a number 1-8,
-			DECOMP_DecalFont_DrawLine((char *)&str_number222, letterPos[0] + 0x20, 0x5f, 2, 4);
+			DecalFont_DrawLine((char *)&str_number222, letterPos[0] + 0x20, 0x5f, 2, 4);
 
 			// Draw the driver's character icon
-			DECOMP_UI_DrawDriverIcon(
+			UI_DrawDriverIcon(
 
 			    gGT->ptrIcons[data.MetaDataCharacters[data.characterIDs[gGT->driversInRaceOrder[i]->driverID]].iconID],
 
@@ -331,7 +331,7 @@ void AA_EndEvent_DrawMenu(void)
 		s16 posX = (numPlyr < 2) ? 0xbe : 100;
 
 		// PRESS * TO CONTINUE
-		DECOMP_DecalFont_DrawLine(sdata->lngStrings[0xC9], 0x100, posX, 1, 0xffff8000);
+		DecalFont_DrawLine(sdata->lngStrings[0xC9], 0x100, posX, 1, 0xffff8000);
 
 		// If you do not "Press X to continue"
 		if ((sdata->AnyPlayerTap & 0x50) == 0)
@@ -340,7 +340,7 @@ void AA_EndEvent_DrawMenu(void)
 		// If you are here, it means you pressed X to continue
 
 		// clear gamepad input
-		DECOMP_RECTMENU_ClearInput();
+		RECTMENU_ClearInput();
 
 		sdata->menuReadyToPass = 0;
 		sdata->framesSinceRaceEnded = 0;
@@ -364,7 +364,7 @@ void AA_EndEvent_DrawMenu(void)
 		// End of Race based on number of players (1 or more)
 		menu222.posY_curr = (numPlyr == 1) ? 170 : 108;
 
-		DECOMP_RECTMENU_Show(&menu222);
+		RECTMENU_Show(&menu222);
 
 		// record that the menu is drawing
 		sdata->menuReadyToPass |= 1;
@@ -376,7 +376,7 @@ void AA_EndEvent_DrawMenu(void)
 		return;
 
 	// PRESS * TO CONTINUE
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[0xc9], 0x100, 0xbe, 1, 0xffff8000);
+	DecalFont_DrawLine(sdata->lngStrings[0xc9], 0x100, 0xbe, 1, 0xffff8000);
 
 	// If you have not pressed X
 	if ((sdata->AnyPlayerTap & 0x50) == 0)
@@ -384,7 +384,7 @@ void AA_EndEvent_DrawMenu(void)
 
 	// === If Pressed X ===
 
-	DECOMP_RECTMENU_ClearInput();
+	RECTMENU_ClearInput();
 
 	sdata->Loading.OnBegin.AddBitsConfig0 |= ADVENTURE_ARENA;
 	sdata->Loading.OnBegin.RemBitsConfig0 |= ADVENTURE_BOSS;
@@ -398,7 +398,7 @@ void AA_EndEvent_DrawMenu(void)
 
 	if (!boolWin)
 	{
-		DECOMP_RECTMENU_Show(&data.menuRetryExit);
+		RECTMENU_Show(&data.menuRetryExit);
 		sdata->menuReadyToPass |= 1;
 		return;
 	}
@@ -546,7 +546,7 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 param_2)
 		sdata->numIconsEOR = numPlyr + gGT->numBotsNextGame;
 
 		// clear gamepad input (for menus)
-		DECOMP_RECTMENU_ClearInput();
+		RECTMENU_ClearInput();
 	}
 
 	tenseconds = (framesElapsed + param_2 > 300);
@@ -566,7 +566,7 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 param_2)
 		endFrame = 0xf;
 
 		lerpStartX = -0xae;
-		lerpEndX = DECOMP_UI_ConvertX_2(-100, hud[2].z);
+		lerpEndX = UI_ConvertX_2(-100, hud[2].z);
 		lerpStartY = lerpEndY;
 	}
 
@@ -576,19 +576,19 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 param_2)
 		currFrame = framesElapsed;
 		endFrame = 0x1e;
 
-		lerpStartX = DECOMP_UI_ConvertX_2(hud[2].x, hud[2].z);
-		lerpStartY = DECOMP_UI_ConvertY_2(hud[2].y, hud[2].z);
+		lerpStartX = UI_ConvertX_2(hud[2].x, hud[2].z);
+		lerpStartY = UI_ConvertY_2(hud[2].y, hud[2].z);
 		lerpEndX = -0xae;
 	}
 
 	// interpolate fly-in positionXY
-	DECOMP_UI_Lerp2D_Linear(&posXY[0], lerpStartX, lerpStartY, lerpEndX, lerpEndY, currFrame, endFrame);
+	UI_Lerp2D_Linear(&posXY[0], lerpStartX, lerpStartY, lerpEndX, lerpEndY, currFrame, endFrame);
 
 	bigNum->matrix.t[0] = posXY[0];
 	bigNum->matrix.t[1] = posXY[1];
 
 	// interpolate scale to 0x1e00
-	DECOMP_UI_Lerp2D_Linear(&posXY[0], hud[2].scale, 0, 0x1e00, 0, framesElapsed, 30);
+	UI_Lerp2D_Linear(&posXY[0], hud[2].scale, 0, 0x1e00, 0, framesElapsed, 30);
 
 	bigNum->scale[0] = posXY[0];
 	bigNum->scale[1] = posXY[0];
@@ -615,9 +615,9 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 param_2)
 		lerpEndX = 0x78;
 	}
 
-	DECOMP_UI_Lerp2D_Linear(&posXY[0], lerpStartX, lerpStartY, lerpEndX, lerpEndY, currFrame, endFrame);
+	UI_Lerp2D_Linear(&posXY[0], lerpStartX, lerpStartY, lerpEndX, lerpEndY, currFrame, endFrame);
 
-	DECOMP_UI_DrawPosSuffix(posXY[0], posXY[1], driver, 0);
+	UI_DrawPosSuffix(posXY[0], posXY[1], driver, 0);
 
 	// === DrawRaceClock ===
 
@@ -637,12 +637,12 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 param_2)
 		lerpEndX = 0x150;
 	}
 
-	DECOMP_UI_Lerp2D_Linear(&posXY[0], lerpStartX, lerpEndY, lerpEndX, lerpEndY, currFrame, endFrame);
+	UI_Lerp2D_Linear(&posXY[0], lerpStartX, lerpEndY, lerpEndX, lerpEndY, currFrame, endFrame);
 
-	DECOMP_UI_DrawRaceClock(posXY[0], posXY[1], 1, driver);
+	UI_DrawRaceClock(posXY[0], posXY[1], 1, driver);
 
 	// "TOTAL"
-	width = DECOMP_DecalFont_GetLineWidth(sdata->lngStrings[0xc4], 1);
+	width = DecalFont_GetLineWidth(sdata->lngStrings[0xc4], 1);
 
 	r.x = (posXY[0] - width) + -6;
 	r.y = (posXY[1] - r.h) + 0xd;
@@ -650,7 +650,7 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 param_2)
 	r.h += 6;
 
 	// Draw 2D Menu rectangle background
-	DECOMP_RECTMENU_DrawInnerRect(&r, 4, gGT->backBuffer->otMem.startPlusFour);
+	RECTMENU_DrawInnerRect(&r, 4, gGT->backBuffer->otMem.startPlusFour);
 	return;
 }
 
@@ -703,7 +703,7 @@ struct RectMenu menu222 = {
     .unk1 = 0,
     .state = (0x800 | USE_SMALL_FONT | CENTER_ON_COORDS), // 0x883
     .rows = rows222,
-    .funcPtr = DECOMP_UI_RaceEnd_MenuProc,
+    .funcPtr = UI_RaceEnd_MenuProc,
     .drawStyle = 4,
     // rest of variables all default zero
 };

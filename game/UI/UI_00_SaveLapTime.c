@@ -36,8 +36,3 @@ void UI_SaveLapTime(int numLaps, int lapTime, s16 driverID)
 	sdata->LapTimes.p1_Ms1s[PlayerLapIndex] = ((lapTime * 100) / 0x3c0) % 10;
 	return;
 }
-
-void DECOMP_UI_SaveLapTime(int numLaps, int lapTime, s16 driverID)
-{
-	UI_SaveLapTime(numLaps, lapTime, driverID);
-}

@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_AH_WarpPad_ThTick(struct Thread *t)
+void AH_WarpPad_ThTick(struct Thread *t)
 {
 	int i;
 	int j;
@@ -132,8 +132,8 @@ void DECOMP_AH_WarpPad_ThTick(struct Thread *t)
 
 				// midpoing X,
 				// 30 pixels above botttom Y
-				DECOMP_DecalFont_DrawLine(warppadLNG, gGT->pushBuffer[0].rect.x + gGT->pushBuffer[0].rect.w / 2,
-				                          gGT->pushBuffer[0].rect.x + gGT->pushBuffer[0].rect.h - 30, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+				DecalFont_DrawLine(warppadLNG, gGT->pushBuffer[0].rect.x + gGT->pushBuffer[0].rect.w / 2,
+				                   gGT->pushBuffer[0].rect.x + gGT->pushBuffer[0].rect.h - 30, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 			}
 
 			// if track is unlocked, ignore all other ELSE-IFs
@@ -378,8 +378,7 @@ void DECOMP_AH_WarpPad_ThTick(struct Thread *t)
 
 		if (instArr[WPIS_OPEN_PRIZE1 + i] != 0)
 		{
-			DECOMP_AH_WarpPad_SpinRewards(instArr[WPIS_OPEN_PRIZE1 + i], warppadObj, i, warppadInst->matrix.t[0], warppadInst->matrix.t[1],
-			                              warppadInst->matrix.t[2]);
+			AH_WarpPad_SpinRewards(instArr[WPIS_OPEN_PRIZE1 + i], warppadObj, i, warppadInst->matrix.t[0], warppadInst->matrix.t[1], warppadInst->matrix.t[2]);
 
 			modelID = instArr[WPIS_OPEN_PRIZE1 + i]->model->id;
 
@@ -467,7 +466,7 @@ void DECOMP_AH_WarpPad_ThTick(struct Thread *t)
 		if ((levelID < SLIDE_COLISEUM) || (levelID >= ADV_CUP))
 		{
 			// assign characterIDs, not actually "load"
-			DECOMP_LOAD_Robots1P(data.characterIDs[0]);
+			LOAD_Robots1P(data.characterIDs[0]);
 
 			// spawn P1 in the back
 			sdata->kartSpawnOrderArray[0] = 7;
@@ -547,14 +546,14 @@ void DECOMP_AH_WarpPad_ThTick(struct Thread *t)
 				// now opened
 				sdata->boolOpenTokenRelicMenu = 1;
 
-				DECOMP_RECTMENU_Show(&D232.menuTokenRelic);
+				RECTMENU_Show(&D232.menuTokenRelic);
 
 				// dont load level
 				return;
 			}
 
 			// if opened, but not closed yet
-			if ((DECOMP_RECTMENU_BoolHidden(&D232.menuTokenRelic) & 0xffff) == 0)
+			if ((RECTMENU_BoolHidden(&D232.menuTokenRelic) & 0xffff) == 0)
 			{
 				// dont load level
 				return;
@@ -576,7 +575,7 @@ void DECOMP_AH_WarpPad_ThTick(struct Thread *t)
 
 				// if can't spawn aku cause he's already here,
 				// quit function, wait till he's done to start race
-				i = DECOMP_AH_MaskHint_boolCanSpawn();
+				i = AH_MaskHint_boolCanSpawn();
 				if ((i & 0xffff) == 0)
 					return;
 
@@ -605,7 +604,7 @@ void DECOMP_AH_WarpPad_ThTick(struct Thread *t)
 
 		// if can't spawn aku cause he's already here,
 		// quit function, wait till he's done to start race
-		i = DECOMP_AH_MaskHint_boolCanSpawn();
+		i = AH_MaskHint_boolCanSpawn();
 		if ((i & 0xffff) == 0)
 			return;
 

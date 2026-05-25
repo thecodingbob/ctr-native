@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80048da0-0x80048de4
-void DECOMP_SelectProfile_MuteCursors(void)
+void SelectProfile_MuteCursors(void)
 {
 	data.menuFourAdvProfiles.state |= MUTE_SOUND_OF_MOVING_CURSOR;
 	data.menuGhostSelection.state |= MUTE_SOUND_OF_MOVING_CURSOR;
@@ -9,7 +9,7 @@ void DECOMP_SelectProfile_MuteCursors(void)
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80048de4-0x80048e2c
-void DECOMP_SelectProfile_UnMuteCursors(void)
+void SelectProfile_UnMuteCursors(void)
 {
 	data.menuFourAdvProfiles.state &= ~MUTE_SOUND_OF_MOVING_CURSOR;
 	data.menuGhostSelection.state &= ~MUTE_SOUND_OF_MOVING_CURSOR;

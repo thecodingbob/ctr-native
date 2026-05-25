@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_SelectProfile_QueueLoadHub_MenuProc(struct RectMenu *menu)
+void SelectProfile_QueueLoadHub_MenuProc(struct RectMenu *menu)
 {
 	struct GameTracker *gGT = sdata->gGT;
 
@@ -14,6 +14,6 @@ void DECOMP_SelectProfile_QueueLoadHub_MenuProc(struct RectMenu *menu)
 
 	data.characterIDs[0] = sdata->advProgress.characterID;
 	MainRaceTrack_RequestLoad(gGT->currLEV);
-	DECOMP_RECTMENU_Hide(menu);
+	RECTMENU_Hide(menu);
 	return;
 }

@@ -1,6 +1,6 @@
 #include <common.h>
 
-struct Instance *DECOMP_INSTANCE_BirthWithThread(int modelID, char *name, int poolType, int bucket, void *funcThTick, int objSize, struct Thread *parent)
+struct Instance *INSTANCE_BirthWithThread(int modelID, char *name, int poolType, int bucket, void *funcThTick, int objSize, struct Thread *parent)
 {
 	struct GameTracker *gGT;
 	struct Model *m;
@@ -27,7 +27,7 @@ struct Instance *DECOMP_INSTANCE_BirthWithThread(int modelID, char *name, int po
 		objSize = (objSize & 0xffc) + 4;
 	}
 
-	t = DECOMP_PROC_BirthWithObject(
+	t = PROC_BirthWithObject(
 	    // creation flags
 	    SIZE_RELATIVE_POOL_BUCKET(objSize,
 
@@ -55,7 +55,7 @@ struct Instance *DECOMP_INSTANCE_BirthWithThread(int modelID, char *name, int po
 	*/
 
 	t->modelIndex = modelID;
-	inst = DECOMP_INSTANCE_Birth3D(m, name, t);
+	inst = INSTANCE_Birth3D(m, name, t);
 
 	/*
 

@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_AH_SaveObj_LInB(struct Instance *savInst)
+void AH_SaveObj_LInB(struct Instance *savInst)
 {
 	s16 rot[3];
 
@@ -12,9 +12,9 @@ void DECOMP_AH_SaveObj_LInB(struct Instance *savInst)
 	// if this Instance's thread is not valid
 	if (savInst->thread == NULL)
 	{
-		t = DECOMP_PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(sizeof(struct SaveObj), NONE, SMALL, STATIC),
+		t = PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(sizeof(struct SaveObj), NONE, SMALL, STATIC),
 
-		                                DECOMP_AH_SaveObj_ThTick, 0, 0);
+		                         AH_SaveObj_ThTick, 0, 0);
 
 		savInst->thread = t;
 
@@ -25,7 +25,7 @@ void DECOMP_AH_SaveObj_LInB(struct Instance *savInst)
 
 			t->inst = savInst;
 
-			t->funcThDestroy = DECOMP_AH_SaveObj_ThDestroy;
+			t->funcThDestroy = AH_SaveObj_ThDestroy;
 
 			// initialize object
 			save->flags = 0;
@@ -45,7 +45,7 @@ void DECOMP_AH_SaveObj_LInB(struct Instance *savInst)
 				// DAT_800aba80
 				// "scan"
 
-				inst = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[STATIC_SCAN], 0, 0);
+				inst = INSTANCE_Birth3D(gGT->modelPtr[STATIC_SCAN], 0, 0);
 
 				inst->matrix.m[0][0] = savInst->matrix.m[0][0];
 				inst->matrix.m[0][2] = savInst->matrix.m[0][2];

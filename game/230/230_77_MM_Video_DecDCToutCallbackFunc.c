@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_Video_DecDCToutCallbackFunc(void)
+void MM_Video_DecDCToutCallbackFunc(void)
 {
 // part of PSYQ BSS
 #define StCdIntrFlag *(u32 *)0x8009ebf8

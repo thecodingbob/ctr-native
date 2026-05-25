@@ -16,7 +16,7 @@
  *                     0 for transparent (like main menu), 1 for solid black (like "gamepad unplugged"), etc.
  * @param ot Pointer to a rendering structure or object, used internally in the drawing functions.
  */
-void DECOMP_RECTMENU_DrawInnerRect(RECT *r, int type, void *ot)
+void RECTMENU_DrawInnerRect(RECT *r, int type, void *ot)
 {
 	int *colorDataNormal;  // TODO(aalhendi): colorData1?
 	int *colorDataSpecial; // TODO(aalhendi): colorData2?
@@ -33,7 +33,7 @@ void DECOMP_RECTMENU_DrawInnerRect(RECT *r, int type, void *ot)
 	{
 		Color color;
 		color.self = *colorDataNormal;
-		DECOMP_RECTMENU_DrawOuterRect_HighLevel(r, color, (int)(s16)(type | 0x20), ot);
+		RECTMENU_DrawOuterRect_HighLevel(r, color, (int)(s16)(type | 0x20), ot);
 	}
 
 	adjustedRect.x = r->x;

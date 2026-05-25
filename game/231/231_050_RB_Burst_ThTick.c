@@ -10,13 +10,13 @@ static void RB_Burst_UpdateSlot(int *slot)
 		return;
 
 	nextFrame = inst->animFrame + 1;
-	if (nextFrame < DECOMP_INSTANCE_GetNumAnimFrames(inst, 0))
+	if (nextFrame < INSTANCE_GetNumAnimFrames(inst, 0))
 	{
 		inst->animFrame++;
 		return;
 	}
 
-	DECOMP_INSTANCE_Death(inst);
+	INSTANCE_Death(inst);
 	*slot = 0;
 }
 

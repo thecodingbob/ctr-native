@@ -1,6 +1,6 @@
 #include <common.h>
 
-s16 *DECOMP_AH_WarpPad_GetSpawnPosRot(s16 *posData)
+s16 *AH_WarpPad_GetSpawnPosRot(s16 *posData)
 {
 	struct Thread *t;
 	struct GameTracker *gGT;

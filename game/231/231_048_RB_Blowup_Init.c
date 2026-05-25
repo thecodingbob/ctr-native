@@ -16,7 +16,7 @@ void DECOMP_RB_Blowup_Init(struct Instance *weaponInst)
 	int *blowup;
 
 	// initialize thread for blowup
-	explosionInst = DECOMP_INSTANCE_BirthWithThread(0x26, 0, SMALL, BLOWUP, DECOMP_RB_Blowup_ThTick, 0xc, 0);
+	explosionInst = INSTANCE_BirthWithThread(0x26, 0, SMALL, BLOWUP, DECOMP_RB_Blowup_ThTick, 0xc, 0);
 
 	explosionInst->flags |= 0x2040000;
 
@@ -60,7 +60,7 @@ void DECOMP_RB_Blowup_Init(struct Instance *weaponInst)
 
 	// ======== Next Instance ==========
 
-	shockwaveInst = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[modelID], 0, explosionTh);
+	shockwaveInst = INSTANCE_Birth3D(gGT->modelPtr[modelID], 0, explosionTh);
 
 	// set shockwave instance
 	blowup[0] = shockwaveInst;
@@ -113,10 +113,10 @@ void DECOMP_RB_Blowup_Init(struct Instance *weaponInst)
 	sps->Union.ThBuckColl.thread = weaponInst->thread;
 	sps->Union.ThBuckColl.funcCallback = DECOMP_RB_Burst_CollThBucket;
 
-	DECOMP_PROC_StartSearch_Self(sps);
+	PROC_StartSearch_Self(sps);
 
-	DECOMP_PROC_CollideHitboxWithBucket(gGT->threadBuckets[ROBOT].thread, sps, 0);
-	DECOMP_PROC_CollideHitboxWithBucket(gGT->threadBuckets[MINE].thread, sps, 0);
+	PROC_CollideHitboxWithBucket(gGT->threadBuckets[ROBOT].thread, sps, 0);
+	PROC_CollideHitboxWithBucket(gGT->threadBuckets[MINE].thread, sps, 0);
 
 	// Nitro explosion has smaller radius than TNT explosion
 	if (weaponInst->model->id != STATIC_CRATE_TNT)
@@ -127,7 +127,7 @@ void DECOMP_RB_Blowup_Init(struct Instance *weaponInst)
 	}
 
 	// check collision with player threads
-	DECOMP_PROC_CollideHitboxWithBucket(gGT->threadBuckets[PLAYER].thread, sps, 0);
+	PROC_CollideHitboxWithBucket(gGT->threadBuckets[PLAYER].thread, sps, 0);
 
 	sps->Union.ThBuckColl.funcCallback = DECOMP_RB_Burst_CollLevInst;
 	return;

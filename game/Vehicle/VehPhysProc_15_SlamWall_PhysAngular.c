@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_VehPhysProc_SlamWall_PhysAngular(struct Thread *t, struct Driver *d)
+void VehPhysProc_SlamWall_PhysAngular(struct Thread *t, struct Driver *d)
 {
 	int elapsedTimeMS = sdata->gGT->elapsedTimeMS;
 

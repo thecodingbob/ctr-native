@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_AH_Pause_Destroy(void)
+void AH_Pause_Destroy(void)
 {
 	int i;
 	struct Instance *inst;
@@ -20,7 +20,7 @@ void DECOMP_AH_Pause_Destroy(void)
 	// loop through 14 instances, destroy them
 	for (i = 0; i < 0xe; i++)
 	{
-		DECOMP_INSTANCE_Death(ptrPauseObject->PauseMember[i].inst);
+		INSTANCE_Death(ptrPauseObject->PauseMember[i].inst);
 	}
 
 	// kill thread

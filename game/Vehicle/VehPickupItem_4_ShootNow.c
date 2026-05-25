@@ -126,8 +126,7 @@ void VehPickupItem_ShootNow(struct Driver *d, int weaponID, int flags)
 		}
 
 		// medium stack pool
-		weaponInst =
-		    DECOMP_INSTANCE_BirthWithThread(modelID, weaponName, MEDIUM, bucket, DECOMP_RB_MovingExplosive_ThTick, sizeof(struct TrackerWeapon), parentTh);
+		weaponInst = INSTANCE_BirthWithThread(modelID, weaponName, MEDIUM, bucket, DECOMP_RB_MovingExplosive_ThTick, sizeof(struct TrackerWeapon), parentTh);
 
 		// copy matrix
 		*(int *)&weaponInst->matrix.m[0][0] = *(int *)&dInst->matrix.m[0][0];
@@ -142,7 +141,7 @@ void VehPickupItem_ShootNow(struct Driver *d, int weaponID, int flags)
 		VehPhysForce_RotAxisAngle(&weaponInst->matrix, (s16 *)&d->AxisAngle1_normalVec, d->rotCurr.y);
 
 		weaponTh = weaponInst->thread;
-		weaponTh->funcThDestroy = DECOMP_PROC_DestroyTracker;
+		weaponTh->funcThDestroy = PROC_DestroyTracker;
 		weaponTh->funcThCollide = DECOMP_RB_Hazard_ThCollide_Missile;
 
 		tw = weaponTh->object;
@@ -252,7 +251,7 @@ void VehPickupItem_ShootNow(struct Driver *d, int weaponID, int flags)
 			mineName = sdata->s_nitro1;
 		}
 
-		weaponInst = DECOMP_INSTANCE_BirthWithThread(modelID, mineName, SMALL, MINE, DECOMP_RB_GenericMine_ThTick, sizeof(struct MineWeapon), 0);
+		weaponInst = INSTANCE_BirthWithThread(modelID, mineName, SMALL, MINE, DECOMP_RB_GenericMine_ThTick, sizeof(struct MineWeapon), 0);
 
 		dInst = d->instSelf;
 
@@ -271,7 +270,7 @@ void VehPickupItem_ShootNow(struct Driver *d, int weaponID, int flags)
 		weaponInst->scale[2] = 0;
 
 		weaponTh = weaponInst->thread;
-		weaponTh->funcThDestroy = DECOMP_PROC_DestroyInstance;
+		weaponTh->funcThDestroy = PROC_DestroyInstance;
 		weaponTh->funcThCollide = DECOMP_RB_Hazard_ThCollide_Generic;
 
 		PlaySound3D(0x52, weaponInst);
@@ -388,7 +387,7 @@ void VehPickupItem_ShootNow(struct Driver *d, int weaponID, int flags)
 		{
 			modelID = STATIC_BEAKER_GREEN;
 
-			weaponInst = DECOMP_INSTANCE_BirthWithThread(modelID, sdata->s_beaker1, SMALL, MINE, DECOMP_RB_GenericMine_ThTick, sizeof(struct MineWeapon), 0);
+			weaponInst = INSTANCE_BirthWithThread(modelID, sdata->s_beaker1, SMALL, MINE, DECOMP_RB_GenericMine_ThTick, sizeof(struct MineWeapon), 0);
 			if (weaponInst == 0)
 				return;
 		}
@@ -396,7 +395,7 @@ void VehPickupItem_ShootNow(struct Driver *d, int weaponID, int flags)
 		{
 			modelID = STATIC_BEAKER_RED;
 
-			weaponInst = DECOMP_INSTANCE_BirthWithThread(modelID, sdata->s_beaker1, SMALL, MINE, DECOMP_RB_GenericMine_ThTick, sizeof(struct MineWeapon), 0);
+			weaponInst = INSTANCE_BirthWithThread(modelID, sdata->s_beaker1, SMALL, MINE, DECOMP_RB_GenericMine_ThTick, sizeof(struct MineWeapon), 0);
 		}
 
 		dInst = d->instSelf;
@@ -415,7 +414,7 @@ void VehPickupItem_ShootNow(struct Driver *d, int weaponID, int flags)
 		weaponInst->model->headers[0].flags |= 2;
 
 		weaponTh = weaponInst->thread;
-		weaponTh->funcThDestroy = DECOMP_PROC_DestroyInstance;
+		weaponTh->funcThDestroy = PROC_DestroyInstance;
 		weaponTh->funcThCollide = DECOMP_RB_Hazard_ThCollide_Generic;
 
 		PlaySound3D(0x52, weaponInst);
@@ -475,23 +474,22 @@ void VehPickupItem_ShootNow(struct Driver *d, int weaponID, int flags)
 		char *highlightName = rdata.s_highlight;
 #endif
 
-		weaponInst =
-		    DECOMP_INSTANCE_BirthWithThread(0x5a, shieldDarkName, MEDIUM, OTHER, RB_ShieldDark_ThTick_Grow, sizeof(struct Shield), d->instSelf->thread);
+		weaponInst = INSTANCE_BirthWithThread(0x5a, shieldDarkName, MEDIUM, OTHER, RB_ShieldDark_ThTick_Grow, sizeof(struct Shield), d->instSelf->thread);
 
 		weaponTh = weaponInst->thread;
 		weaponInst->scale[0] = 0x700;
 		weaponInst->scale[1] = 0x700;
 		weaponInst->scale[2] = 0x700;
-		weaponTh->funcThDestroy = DECOMP_PROC_DestroyInstance;
+		weaponTh->funcThDestroy = PROC_DestroyInstance;
 		OtherFX_Play(0x57, 1);
 
 		modelID = DYNAMIC_SHIELD_GREEN;
 		if (d->numWumpas >= 10)
 			modelID = DYNAMIC_SHIELD;
 
-		struct Instance *instColor = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[modelID], sdata->s_shield, 0);
+		struct Instance *instColor = INSTANCE_Birth3D(gGT->modelPtr[modelID], sdata->s_shield, 0);
 
-		struct Instance *instHighlight = DECOMP_INSTANCE_Birth3D(gGT->modelPtr[DYNAMIC_HIGHLIGHT], highlightName, weaponTh);
+		struct Instance *instHighlight = INSTANCE_Birth3D(gGT->modelPtr[DYNAMIC_HIGHLIGHT], highlightName, weaponTh);
 
 		instColor->scale[0] = 0x700;
 		instColor->scale[1] = 0x700;
@@ -584,7 +582,7 @@ void VehPickupItem_ShootNow(struct Driver *d, int weaponID, int flags)
 		char *warpballName = rdata.s_warpball;
 #endif
 
-		weaponInst = DECOMP_INSTANCE_BirthWithThread(0x36, warpballName, MEDIUM, TRACKING, RB_Warpball_ThTick, sizeof(struct TrackerWeapon), 0);
+		weaponInst = INSTANCE_BirthWithThread(0x36, warpballName, MEDIUM, TRACKING, RB_Warpball_ThTick, sizeof(struct TrackerWeapon), 0);
 
 		*(int *)&weaponInst->matrix.m[0][0] = 0x1000;
 		*(int *)&weaponInst->matrix.m[0][2] = 0;
@@ -597,7 +595,7 @@ void VehPickupItem_ShootNow(struct Driver *d, int weaponID, int flags)
 		weaponInst->matrix.t[2] = d->posCurr.z >> 8;
 
 		weaponTh = weaponInst->thread;
-		weaponTh->funcThDestroy = DECOMP_PROC_DestroyInstance;
+		weaponTh->funcThDestroy = PROC_DestroyInstance;
 
 		PlaySound3D(0x4d, weaponInst);
 

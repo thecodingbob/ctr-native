@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_LOAD_LevelFile(int levelID)
+void LOAD_LevelFile(int levelID)
 {
 	struct GameTracker *gGT = sdata->gGT;
 

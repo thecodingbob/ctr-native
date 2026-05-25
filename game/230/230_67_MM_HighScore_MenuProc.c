@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_HighScore_MenuProc(struct RectMenu *menu_unused)
+void MM_HighScore_MenuProc(struct RectMenu *menu_unused)
 {
 	u8 bVar1;
 	s16 sVar2;
@@ -19,7 +19,7 @@ void DECOMP_MM_HighScore_MenuProc(struct RectMenu *menu_unused)
 		{
 			if (D230.highScore_transitionState == ENTERING_MENU)
 			{
-				DECOMP_MM_TransitionInOut(D230.transitionMeta_HighScores, (int)D230.highScore_transitionFrames[0], 8);
+				MM_TransitionInOut(D230.transitionMeta_HighScores, (int)D230.highScore_transitionFrames[0], 8);
 				sVar2 = D230.highScore_transitionFrames[0] + -1;
 				if (D230.highScore_transitionFrames[0] == 0)
 				{
@@ -30,12 +30,12 @@ void DECOMP_MM_HighScore_MenuProc(struct RectMenu *menu_unused)
 		}
 		else if (((D230.highScore_transitionState == EXITING_MENU) && (D230.highScore_transitionFrames[1] == 0)) && (D230.highScore_transitionFrames[2] == 0))
 		{
-			DECOMP_MM_TransitionInOut(D230.transitionMeta_HighScores, (int)D230.highScore_transitionFrames[0], 8);
+			MM_TransitionInOut(D230.transitionMeta_HighScores, (int)D230.highScore_transitionFrames[0], 8);
 			D230.highScore_transitionFrames[0] = D230.highScore_transitionFrames[0] + 1;
 			sVar2 = D230.highScore_transitionFrames[0];
 			if (0xc < D230.highScore_transitionFrames[0])
 			{
-				DECOMP_MM_JumpTo_Title_Returning();
+				MM_JumpTo_Title_Returning();
 				return;
 			}
 		}
@@ -61,7 +61,7 @@ void DECOMP_MM_HighScore_MenuProc(struct RectMenu *menu_unused)
 		{
 			if ((sdata->buttonTapPerPlayer[0] & BTN_RIGHT) == 0)
 			{
-				iVar4 = DECOMP_RECTMENU_ProcessInput(&D230.menuHighScore);
+				iVar4 = RECTMENU_ProcessInput(&D230.menuHighScore);
 				if ((s16)iVar4 == -1)
 				{
 					D230.highScore_transitionState = EXITING_MENU;
@@ -91,7 +91,7 @@ void DECOMP_MM_HighScore_MenuProc(struct RectMenu *menu_unused)
 					{
 						D230.highScore_trackDesired = 0;
 					}
-					uVar3 = DECOMP_MM_TrackSelect_boolTrackOpen(D230.arcadeTracks + D230.highScore_trackDesired);
+					uVar3 = MM_TrackSelect_boolTrackOpen(D230.arcadeTracks + D230.highScore_trackDesired);
 				} while ((uVar3 & 0xffff) == 0);
 			}
 		}
@@ -106,7 +106,7 @@ void DECOMP_MM_HighScore_MenuProc(struct RectMenu *menu_unused)
 				{
 					D230.highScore_trackDesired = 0x11;
 				}
-				uVar3 = DECOMP_MM_TrackSelect_boolTrackOpen(D230.arcadeTracks + D230.highScore_trackDesired);
+				uVar3 = MM_TrackSelect_boolTrackOpen(D230.arcadeTracks + D230.highScore_trackDesired);
 			} while ((uVar3 & 0xffff) == 0);
 		}
 	}
@@ -114,7 +114,7 @@ void DECOMP_MM_HighScore_MenuProc(struct RectMenu *menu_unused)
 	{
 		bVar1 = true;
 		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b3ad8-0x800b3ae4 for high-score back SFX.
-		DECOMP_OtherFX_Play(2, 1);
+		OtherFX_Play(2, 1);
 		D230.highScore_transitionState = EXITING_MENU;
 	}
 
@@ -126,7 +126,7 @@ LAB_OVR_230__800b3c78:
 		iVar4 = 1;
 	}
 
-	DECOMP_MM_TrackSelect_Video_State(iVar4);
+	MM_TrackSelect_Video_State(iVar4);
 	sVar2 = D230.highScore_transitionFrames[1] + -1;
 	if (D230.highScore_transitionFrames[1] == 0)
 	{
@@ -167,7 +167,7 @@ LAB_OVR_230__800b3c78:
 		}
 	}
 
-	DECOMP_RECTMENU_DrawSelf(&D230.menuHighScore, D230.transitionMeta_HighScores[10].currX, D230.transitionMeta_HighScores[10].currY, 0xa4);
+	RECTMENU_DrawSelf(&D230.menuHighScore, D230.transitionMeta_HighScores[10].currX, D230.transitionMeta_HighScores[10].currY, 0xa4);
 
 	iVar4 = 0;
 	iVar7 = 0;
@@ -186,7 +186,7 @@ LAB_OVR_230__800b3c78:
 
 	if (((iVar7 != -0x200) && (iVar7 != 0x200)) && ((iVar4 != -0xd8 && (iVar4 != 0xd8))))
 	{
-		DECOMP_MM_HighScore_Draw(D230.highScore_trackCurr, (int)D230.highScore_rowCurr, (int)(s16)iVar7, (int)(s16)iVar4);
+		MM_HighScore_Draw(D230.highScore_trackCurr, (int)D230.highScore_rowCurr, (int)(s16)iVar7, (int)(s16)iVar4);
 		if (D230.highScore_transitionFrames[2] != 0)
 		{
 			// draw rectangle
@@ -194,7 +194,7 @@ LAB_OVR_230__800b3c78:
 			local_20.h = 0x19;
 			local_20.x = D230.transitionMeta_HighScores[0].currX + -0x14;
 			local_20.y = D230.transitionMeta_HighScores[0].currY + (s16)iVar4 + 9;
-			DECOMP_RECTMENU_DrawInnerRect(&local_20, 0, ot);
+			RECTMENU_DrawInnerRect(&local_20, 0, ot);
 		}
 	}
 	iVar5 = 0;
@@ -209,7 +209,7 @@ LAB_OVR_230__800b3c78:
 	}
 	if (((iVar7 != iVar5) || (iVar4 != iVar6)) && ((iVar5 != -0x200 && (((iVar5 != 0x200 && (iVar6 != -0xd8)) && (iVar6 != 0xd8))))))
 	{
-		DECOMP_MM_HighScore_Draw(D230.highScore_trackDesired, (int)D230.highScore_rowDesired, (int)(s16)iVar5, (int)(s16)iVar6);
+		MM_HighScore_Draw(D230.highScore_trackDesired, (int)D230.highScore_rowDesired, (int)(s16)iVar5, (int)(s16)iVar6);
 	}
 
 	// draw rectangle
@@ -217,7 +217,7 @@ LAB_OVR_230__800b3c78:
 	local_20.h = 0x19;
 	local_20.x = D230.transitionMeta_HighScores[0].currX + -0x14;
 	local_20.y = D230.transitionMeta_HighScores[0].currY + (s16)iVar6 + 9;
-	DECOMP_RECTMENU_DrawInnerRect(&local_20, 0, ot);
+	RECTMENU_DrawInnerRect(&local_20, 0, ot);
 
 	return;
 }

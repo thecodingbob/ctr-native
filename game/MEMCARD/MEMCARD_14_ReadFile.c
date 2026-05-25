@@ -1,6 +1,6 @@
 #include <common.h>
 
-int DECOMP_MEMCARD_ReadFile(int start_offset, int size)
+int MEMCARD_ReadFile(int start_offset, int size)
 {
 	if ((lseek(sdata->memcard_fd, start_offset, 0) >= 0) && (read(sdata->memcard_fd, sdata->memcard_ptrStart, size) >= 0))
 	{

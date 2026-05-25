@@ -61,5 +61,5 @@ void VehStuckProc_RevEngine_Update(struct Thread *t, struct Driver *d)
 	d->turbo_MeterRoomLeft = 0;
 	d->revEngineState = 0;
 
-	DECOMP_VehPhysProc_Driving_Init(t, d);
+	VehPhysProc_Driving_Init(t, d);
 }

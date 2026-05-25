@@ -16,7 +16,7 @@ void MainFreeze_ConfigDrawArrows(s16 offsetX, s16 offsetY, char *str)
 		color = 3;
 	}
 
-	lineWidth = DECOMP_DecalFont_GetLineWidth(str, 1) >> 1;
+	lineWidth = DecalFont_GetLineWidth(str, 1) >> 1;
 
 	// get color data
 	colorPtr = (u8 **)&data.ptrColor[color];

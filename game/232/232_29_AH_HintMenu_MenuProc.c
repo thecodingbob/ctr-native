@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_AH_HintMenu_MenuProc(struct RectMenu *menu)
+void AH_HintMenu_MenuProc(struct RectMenu *menu)
 {
 	struct GameTracker *gGT;
 	struct Instance *inst;
@@ -60,7 +60,7 @@ void DECOMP_AH_HintMenu_MenuProc(struct RectMenu *menu)
 	// if viewing a hint
 	if (D232.hintMenu_boolViewHint != 0)
 	{
-		DECOMP_AH_HintMenu_MaskPosRot();
+		AH_HintMenu_MaskPosRot();
 
 		if (D232.maskCooldown > 0)
 			D232.maskCooldown--;
@@ -77,22 +77,22 @@ void DECOMP_AH_HintMenu_MenuProc(struct RectMenu *menu)
 		{
 			D232.hintMenu_boolViewHint = 0;
 
-			DECOMP_RECTMENU_ClearInput();
+			RECTMENU_ClearInput();
 
 			VehTalkMask_End();
 		}
 
-		DECOMP_DecalFont_DrawLine(sdata->lngStrings[lngIndex + 0], 0x100, 0x2c, 1, 0xffff8000);
+		DecalFont_DrawLine(sdata->lngStrings[lngIndex + 0], 0x100, 0x2c, 1, 0xffff8000);
 
 		// height of multiLine
-		iVar11 = DECOMP_DecalFont_DrawMultiLine(sdata->lngStrings[lngIndex + 1], 0x96, 0x3f, 0x14e, 2, 0);
+		iVar11 = DecalFont_DrawMultiLine(sdata->lngStrings[lngIndex + 1], 0x96, 0x3f, 0x14e, 2, 0);
 
 		// "EXIT"
 		char *strExit = sdata->lngStrings[0x17a];
 
-		DECOMP_DecalFont_DrawLine(strExit, 0x100, iVar11 + 0x4f, 1, 0xffff8000);
+		DecalFont_DrawLine(strExit, 0x100, iVar11 + 0x4f, 1, 0xffff8000);
 
-		iVar10 = DECOMP_DecalFont_GetLineWidth(strExit, 1);
+		iVar10 = DecalFont_GetLineWidth(strExit, 1);
 
 		iVar7 = (iVar10 + 6);
 		box.x = 0xff - (iVar7 >> 1);
@@ -109,14 +109,14 @@ void DECOMP_AH_HintMenu_MenuProc(struct RectMenu *menu)
 		box.h = 2;
 
 		color.self = sdata->battleSetup_Color_UI_1;
-		DECOMP_RECTMENU_DrawOuterRect_Edge(&box, color, 0x20, ot);
+		RECTMENU_DrawOuterRect_Edge(&box, color, 0x20, ot);
 
 		box.y = 0x28;
 		box.h = (s16)iVar11 + 0x3b;
 		box.x = -0xe;
 		box.w = 0x21c;
 
-		DECOMP_RECTMENU_DrawInnerRect(&box, 4, &ot[3]);
+		RECTMENU_DrawInnerRect(&box, 4, &ot[3]);
 
 		return;
 	}
@@ -143,7 +143,7 @@ void DECOMP_AH_HintMenu_MenuProc(struct RectMenu *menu)
 				{
 					// Play sound
 					// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b38b4-0x800b38bc for hint-menu back SFX.
-					DECOMP_OtherFX_Play(2, 1);
+					OtherFX_Play(2, 1);
 					goto LAB_800b38c0;
 				}
 			}
@@ -153,7 +153,7 @@ void DECOMP_AH_HintMenu_MenuProc(struct RectMenu *menu)
 			{
 				// Play Sound
 				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b3788-0x800b3790 for hint-menu confirm SFX.
-				DECOMP_OtherFX_Play(1, 1);
+				OtherFX_Play(1, 1);
 
 				if (menu->rowSelected == numHintsFound)
 				{
@@ -177,7 +177,7 @@ void DECOMP_AH_HintMenu_MenuProc(struct RectMenu *menu)
 
 						VehTalkMask_PlayXA(sdata->instMaskHints3D, (lngIndex + -0x17b) / 2);
 
-						DECOMP_AH_HintMenu_MaskPosRot();
+						AH_HintMenu_MaskPosRot();
 
 						// talking mask instance
 						inst = sdata->instMaskHints3D;
@@ -204,7 +204,7 @@ void DECOMP_AH_HintMenu_MenuProc(struct RectMenu *menu)
 			{
 				// Play Sound
 				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b375c-0x800b3764 for hint-menu down SFX.
-				DECOMP_OtherFX_Play(0, 1);
+				OtherFX_Play(0, 1);
 
 				// change which row is selected
 				menu->rowSelected = menu->rowSelected + 1;
@@ -220,7 +220,7 @@ void DECOMP_AH_HintMenu_MenuProc(struct RectMenu *menu)
 		{
 			// Play Sound
 			// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b3724-0x800b372c for hint-menu up SFX.
-			DECOMP_OtherFX_Play(0, 1);
+			OtherFX_Play(0, 1);
 
 			// change the row selected
 			menu->rowSelected--;
@@ -228,14 +228,14 @@ void DECOMP_AH_HintMenu_MenuProc(struct RectMenu *menu)
 	}
 
 	// clear gamepad input (for menus)
-	DECOMP_RECTMENU_ClearInput();
+	RECTMENU_ClearInput();
 
 LAB_800b38cc:
 
 	uVar6 = VehPickupItem_MaskBoolGoodGuy(gGT->drivers[0]);
 
 	// Draw the "Hints" string
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x178 + (uVar6 == 0)], 0x100, 0x2c, 1, 0xffff8000);
+	DecalFont_DrawLine(sdata->lngStrings[0x178 + (uVar6 == 0)], 0x100, 0x2c, 1, 0xffff8000);
 
 	if (D232.hintMenu_scrollIndex + 5 <= menu->rowSelected)
 	{
@@ -254,7 +254,7 @@ LAB_800b38cc:
 	// if scroll bar is not on top
 	if (0 < D232.hintMenu_scrollIndex)
 	{
-		DECOMP_AH_HintMenu_FiveArrows(0x3f, 0);
+		AH_HintMenu_FiveArrows(0x3f, 0);
 	}
 
 	iVar10 = 0x10;
@@ -277,7 +277,7 @@ LAB_800b38cc:
 			iVar10 = iVar10 + 0x10;
 
 			// "EXIT"
-			DECOMP_DecalFont_DrawLine(sdata->lngStrings[uVar6], 0x100, iVar7, 1, 0xffff8000);
+			DecalFont_DrawLine(sdata->lngStrings[uVar6], 0x100, iVar7, 1, 0xffff8000);
 
 			iVar11 = iVar11 + 1;
 		} while (iVar11 < sVar12);
@@ -286,7 +286,7 @@ LAB_800b38cc:
 	// if scroll bar is not on bottom
 	if (D232.hintMenu_scrollIndex + (int)sVar12 < (int)sVar9)
 	{
-		DECOMP_AH_HintMenu_FiveArrows((iVar10 + 0x40), 0x800);
+		AH_HintMenu_FiveArrows((iVar10 + 0x40), 0x800);
 	}
 	box.x = -0xe;
 	box.w = 0x21c;
@@ -302,21 +302,21 @@ LAB_800b38cc:
 	box.w = 0x228;
 
 	color.self = sdata->battleSetup_Color_UI_1;
-	DECOMP_RECTMENU_DrawOuterRect_Edge(&box, color, 0x20, ot);
+	RECTMENU_DrawOuterRect_Edge(&box, color, 0x20, ot);
 
 	box.y = 0x28;
 	box.h = (s16)iVar10 + 0x2b;
 	box.x = -0x14;
 	box.w = 0x228;
 
-	DECOMP_RECTMENU_DrawInnerRect(&box, 4, ot);
+	RECTMENU_DrawInnerRect(&box, 4, ot);
 
 	if ((bVar3) ||
 
 	    // If you dont press Start, Square, or Triangle
 	    ((sdata->buttonTapPerPlayer[0] & 0x41020) != 0))
 	{
-		DECOMP_RECTMENU_ClearInput();
+		RECTMENU_ClearInput();
 		sdata->ptrDesiredMenu = MainFreeze_GetMenuPtr();
 	}
 	return;

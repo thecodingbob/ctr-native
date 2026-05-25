@@ -21,7 +21,7 @@ static void CS_RestoreDecodedOpcode(struct CutsceneObj *cs, const int in[5])
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac840-0x800ade8c
-int DECOMP_CS_Thread_UseOpcode(struct Instance *instance, struct CutsceneObj *cs)
+int CS_Thread_UseOpcode(struct Instance *instance, struct CutsceneObj *cs)
 {
 	u8 numPlayers;
 	int frameBoundaryHit;
@@ -108,7 +108,7 @@ int DECOMP_CS_Thread_UseOpcode(struct Instance *instance, struct CutsceneObj *cs
 					gGT->pushBuffer[0].fadeFromBlack_desiredResult = 0x1000;
 					gGT->pushBuffer[0].fade_step = 0xfd56;
 					cs->flags |= 0x100;
-					DECOMP_CS_ScriptCmd_OpcodeAt(cs, OVR_233.advCharSelectSelectOpcodes[(int)instance->model->id - STATIC_CRASHSELECT]);
+					CS_ScriptCmd_OpcodeAt(cs, OVR_233.advCharSelectSelectOpcodes[(int)instance->model->id - STATIC_CRASHSELECT]);
 					CS_SaveDecodedOpcode(cs, metadataBackup);
 				reloadAdvCharSelectOpcodeState:
 					cs->unk18 = ((int *)&cs->decodedOpcode)[2];
@@ -124,7 +124,7 @@ int DECOMP_CS_Thread_UseOpcode(struct Instance *instance, struct CutsceneObj *cs
 				if ((cs->flags & 0x100) != 0)
 				{
 					cs->flags &= 0xfeff;
-					DECOMP_CS_ScriptCmd_OpcodeAt(cs, OVR_233.advCharSelectDeselectOpcodes[(int)instance->model->id - STATIC_CRASHSELECT]);
+					CS_ScriptCmd_OpcodeAt(cs, OVR_233.advCharSelectDeselectOpcodes[(int)instance->model->id - STATIC_CRASHSELECT]);
 					CS_SaveDecodedOpcode(cs, metadataBackup);
 					goto reloadAdvCharSelectOpcodeState;
 				}
@@ -159,7 +159,7 @@ int DECOMP_CS_Thread_UseOpcode(struct Instance *instance, struct CutsceneObj *cs
 			else
 			{
 				if (opcodeMeta->opcode == 0x14)
-					DECOMP_CS_ScriptCmd_OpcodeNext(cs);
+					CS_ScriptCmd_OpcodeNext(cs);
 				CAM_Path_Move((int)(s16)(numCamPathPoints + -1), gGT->pushBuffer[0].pos, gGT->pushBuffer[0].rot, camPathFlags);
 			}
 
@@ -259,7 +259,7 @@ afterCameraAndSkipChecks:
 		{
 			ConvertRotToMatrix(&instance->matrix, &cs->unk20);
 		}
-		iVar8 = DECOMP_CS_Instance_SafeCheckAnimFrame(instance, animIndex, iVar8, iVar12);
+		iVar8 = CS_Instance_SafeCheckAnimFrame(instance, animIndex, iVar8, iVar12);
 		if (iVar12 != iVar8)
 		{
 			animIndex &= ~0xff;
@@ -304,7 +304,7 @@ processOpcode:
 						iVar12 = 0;
 					else
 					{
-						iVar12 = DECOMP_CS_Instance_SafeCheckAnimFrame(instance, animIndex, iVar8, (sdata->XA_CurrOffset * 0x1e00) / 0xac44);
+						iVar12 = CS_Instance_SafeCheckAnimFrame(instance, animIndex, iVar8, (sdata->XA_CurrOffset * 0x1e00) / 0xac44);
 						iVar12 = iVar12 << 5;
 					}
 					if (opcodeMeta->arg1.i << 5 < iVar12)
@@ -317,7 +317,7 @@ processOpcode:
 		if (opcodeChanged != 0)
 		{
 			animIndex = (int)opcodeMeta->animIndex;
-			iVar12 = DECOMP_CS_Instance_SafeCheckAnimFrame(instance, animIndex, iVar8, opcodeMeta->arg0.i);
+			iVar12 = CS_Instance_SafeCheckAnimFrame(instance, animIndex, iVar8, opcodeMeta->arg0.i);
 			iVar12 = iVar12 << 5;
 			iVar10 = MixRNG_Scramble();
 			opcodeChanged = 0;
@@ -338,7 +338,7 @@ processOpcode:
 		}
 		else
 		{
-			iVar10 = DECOMP_CS_Instance_SafeCheckAnimFrame(instance, animIndex, iVar8, opcodeMeta->arg1.i);
+			iVar10 = CS_Instance_SafeCheckAnimFrame(instance, animIndex, iVar8, opcodeMeta->arg1.i);
 			nextFrameTime = (iVar10 + 1) * 0x20;
 			iVar12 = iVar12 + elapsedTimeRemaining;
 			if (nextFrameTime <= iVar12)
@@ -357,12 +357,12 @@ processOpcode:
 			opcodeDuration = opcodeDuration + -1;
 			if (opcodeDuration < 1)
 			{
-				DECOMP_CS_ScriptCmd_OpcodeNext(cs);
+				CS_ScriptCmd_OpcodeNext(cs);
 				opcodeChanged = 1;
 			}
 			else
 			{
-				iVar12 = DECOMP_CS_Instance_SafeCheckAnimFrame(instance, animIndex, iVar8, opcodeMeta->arg0.i);
+				iVar12 = CS_Instance_SafeCheckAnimFrame(instance, animIndex, iVar8, opcodeMeta->arg0.i);
 				iVar12 = iVar12 << 5;
 			}
 		}
@@ -374,7 +374,7 @@ processOpcode:
 
 	case 1:
 		opcodeChanged = 1;
-		DECOMP_CS_ScriptCmd_OpcodeAt(cs, opcodeMeta->arg1.ptr);
+		CS_ScriptCmd_OpcodeAt(cs, opcodeMeta->arg1.ptr);
 		goto finishOpcodeStep;
 
 	case 2:
@@ -390,7 +390,7 @@ processOpcode:
 			struct CsThreadInitData *initData = CTR_SCRATCHPAD_PTR(struct CsThreadInitData, 0x108);
 			int spawnModelID = opcodeMeta->arg1.i;
 
-			DECOMP_CS_Instance_GetFrameData(instance, (int)opcodeMeta->animIndex, opcodeMeta->arg0.i, (u16 *)initData->podiumPos, (u16 *)initData->rot, 0);
+			CS_Instance_GetFrameData(instance, (int)opcodeMeta->animIndex, opcodeMeta->arg0.i, (u16 *)initData->podiumPos, (u16 *)initData->rot, 0);
 
 			initData->podiumPos[0] += (s16)instance->matrix.t[0];
 			initData->podiumPos[1] += (s16)instance->matrix.t[1];
@@ -406,16 +406,16 @@ processOpcode:
 				initData->rot[2] = 0;
 			}
 
-			DECOMP_CS_Thread_Init(spawnModelID, OVR_233.s_spawn, (s16 *)initData, 0, instance->thread);
+			CS_Thread_Init(spawnModelID, OVR_233.s_spawn, (s16 *)initData, 0, instance->thread);
 		}
 		break;
 
 	case 4:
 		iVar10 = MixRNG_Scramble();
 		if (opcodeMeta->arg0.i < (int)(iVar10 >> 2 & 0xff))
-			DECOMP_CS_ScriptCmd_OpcodeNext(cs);
+			CS_ScriptCmd_OpcodeNext(cs);
 		else
-			DECOMP_CS_ScriptCmd_OpcodeAt(cs, opcodeMeta->arg1.ptr);
+			CS_ScriptCmd_OpcodeAt(cs, opcodeMeta->arg1.ptr);
 		opcodeChanged = 1;
 		goto finishOpcodeStep;
 
@@ -427,14 +427,14 @@ processOpcode:
 		}
 		else
 		{
-			iVar10 = DECOMP_CS_Instance_BoolPlaySound(cs, instance);
+			iVar10 = CS_Instance_BoolPlaySound(cs, instance);
 			if (iVar10 != 0)
-				DECOMP_OtherFX_Play((u32)(u16)opcodeMetaShorts[6], 1);
+				OtherFX_Play((u32)(u16)opcodeMetaShorts[6], 1);
 		}
 		break;
 
 	case 6:
-		DECOMP_OtherFX_Stop2((u32)(u16)opcodeMetaShorts[6]);
+		OtherFX_Stop2((u32)(u16)opcodeMetaShorts[6]);
 		break;
 
 	case 7:
@@ -483,14 +483,14 @@ processOpcode:
 	case 0xb:
 		cs->desiredScale = opcodeMetaShorts[4];
 		cs->scaleSpeed = opcodeMetaShorts[6];
-		DECOMP_CS_ScriptCmd_OpcodeNext(cs);
+		CS_ScriptCmd_OpcodeNext(cs);
 		goto finishOpcodeStep;
 
 	case 0xc:
 		gGT->pushBuffer[0].fadeFromBlack_currentValue = 0x1fff;
 		gGT->pushBuffer[0].fadeFromBlack_desiredResult = 0x1000;
 		gGT->pushBuffer[0].fade_step = 0xfd56;
-		DECOMP_CS_ScriptCmd_OpcodeNext(cs);
+		CS_ScriptCmd_OpcodeNext(cs);
 		goto finishOpcodeStep;
 
 	case 0xd:
@@ -499,7 +499,7 @@ processOpcode:
 
 	case 0xe:
 		cs->flags &= ~opcodeMetaShorts[6];
-		DECOMP_CS_ScriptCmd_OpcodeNext(cs);
+		CS_ScriptCmd_OpcodeNext(cs);
 		goto finishOpcodeStep;
 
 	case 0xf:
@@ -514,7 +514,7 @@ processOpcode:
 			cutsceneOpcodes = OVR_233.creditsCutsceneOpcodes;
 			iVar10 = gGT->levelID + -0x2c;
 		}
-		DECOMP_CS_ScriptCmd_OpcodeAt(cs, cutsceneOpcodes[iVar10]);
+		CS_ScriptCmd_OpcodeAt(cs, cutsceneOpcodes[iVar10]);
 		goto updateInstanceAndReturn;
 
 	case 0x10:
@@ -552,7 +552,7 @@ processOpcode:
 					goto requestDirectLevelLoad;
 			}
 			OVR_233.boolLoadNextSwap = 1;
-			DECOMP_LOAD_Hub_ReadFile(sdata->ptrBigfileCdPos_2, iVar10, 3 - (int)gGT->activeMempackIndex);
+			LOAD_Hub_ReadFile(sdata->ptrBigfileCdPos_2, iVar10, 3 - (int)gGT->activeMempackIndex);
 		}
 		break;
 
@@ -584,7 +584,7 @@ processOpcode:
 		gGT->stars.seed = gGT->level1->stars.seed;
 		gGT->stars.distance = gGT->level1->stars.distance;
 		OVR_233.boolLoadNextSwap = 0;
-		DECOMP_CS_ScriptCmd_OpcodeNext(cs);
+		CS_ScriptCmd_OpcodeNext(cs);
 		goto finishOpcodeStep;
 
 	case 0x16:
@@ -608,7 +608,7 @@ processOpcode:
 
 	case 0x19:
 		cs->particleID = opcodeMetaShorts[6];
-		DECOMP_CS_ScriptCmd_OpcodeNext(cs);
+		CS_ScriptCmd_OpcodeNext(cs);
 		goto finishOpcodeStep;
 
 	case 0x1a:
@@ -645,11 +645,11 @@ processOpcode:
 
 	case 0x20:
 		OVR_233.isCutsceneOver = 1;
-		DECOMP_CS_DestroyPodium_StartDriving();
+		CS_DestroyPodium_StartDriving();
 		OVR_233.bossCutsceneIndex = -1;
 		gGT->overlayTransition = 3;
 		gGT->gameMode2 &= ~VEH_FREEZE_PODIUM;
-		DECOMP_CS_ScriptCmd_OpcodeNext(cs);
+		CS_ScriptCmd_OpcodeNext(cs);
 		goto finishOpcodeStep;
 
 	case 0x21:
@@ -666,7 +666,7 @@ processOpcode:
 		cutsceneFlags = cs->flags | 0x20;
 	setFlagsAndAdvanceOpcode:
 		cs->flags = cutsceneFlags;
-		DECOMP_CS_ScriptCmd_OpcodeNext(cs);
+		CS_ScriptCmd_OpcodeNext(cs);
 		goto finishOpcodeStep;
 
 	case 0x23:
@@ -705,7 +705,7 @@ processOpcode:
 		initData->rot[1] += OVR_233.creditsDancerRotOffset[1];
 		initData->rot[2] += OVR_233.creditsDancerRotOffset[2];
 
-		dancerThread = (struct Thread *)DECOMP_CS_Thread_Init(dancerModelID, OVR_233.s_g_dancer, (s16 *)initData, 0, 0);
+		dancerThread = (struct Thread *)CS_Thread_Init(dancerModelID, OVR_233.s_g_dancer, (s16 *)initData, 0, 0);
 		CS_Credits_NewDancer(dancerThread, (int)opcodeMetaShorts[6]);
 	}
 	break;
@@ -726,7 +726,7 @@ processOpcode:
 				opcodeAt = opcodeMeta->arg1.ptr;
 			branchToGarageOpcode:
 				opcodeChanged = 1;
-				DECOMP_CS_ScriptCmd_OpcodeAt(cs, opcodeAt);
+				CS_ScriptCmd_OpcodeAt(cs, opcodeAt);
 			}
 		}
 		else
@@ -745,7 +745,7 @@ processOpcode:
 		break;
 
 	case 0x28:
-		iVar12 = DECOMP_CS_Instance_SafeCheckAnimFrame(instance, animIndex, iVar8, iVar12 >> 5);
+		iVar12 = CS_Instance_SafeCheckAnimFrame(instance, animIndex, iVar8, iVar12 >> 5);
 		iVar12 = iVar12 << 5;
 		goto updateInstanceAndReturn;
 
@@ -784,13 +784,13 @@ processOpcode:
 		cs->Subtitles.lngIndex = opcodeMeta->frameEnd;
 		cs->Subtitles.font = opcodeMeta->rotStart;
 		cs->Subtitles.colors = opcodeMeta->rotEnd;
-		DECOMP_CS_ScriptCmd_OpcodeNext(cs);
+		CS_ScriptCmd_OpcodeNext(cs);
 		goto finishOpcodeStep;
 
 	case 0x2e:
 		gGT->pushBuffer_UI.fadeFromBlack_desiredResult = 0;
 		gGT->pushBuffer_UI.fade_step = 0xfd56;
-		DECOMP_CS_ScriptCmd_OpcodeNext(cs);
+		CS_ScriptCmd_OpcodeNext(cs);
 		goto finishOpcodeStep;
 
 	case 0x2f:
@@ -800,9 +800,9 @@ processOpcode:
 
 	case 0x30:
 		OVR_233.CutsceneManipulatesAudio = 1;
-		DECOMP_howl_VolumeSet(0, (u32) * ((u8 *)opcodeMeta + 2));
-		DECOMP_howl_VolumeSet(1, (u32) * ((u8 *)opcodeMeta + 4));
-		DECOMP_howl_VolumeSet(2, (u32) * ((u8 *)opcodeMeta + 6));
+		howl_VolumeSet(0, (u32) * ((u8 *)opcodeMeta + 2));
+		howl_VolumeSet(1, (u32) * ((u8 *)opcodeMeta + 4));
+		howl_VolumeSet(2, (u32) * ((u8 *)opcodeMeta + 6));
 		break;
 
 	default:
@@ -810,7 +810,7 @@ processOpcode:
 		return 0;
 	}
 
-	DECOMP_CS_ScriptCmd_OpcodeNext(cs);
+	CS_ScriptCmd_OpcodeNext(cs);
 
 finishOpcodeStep:
 	if ((elapsedTimeRemaining != 0) || (opcodeChanged != 0))

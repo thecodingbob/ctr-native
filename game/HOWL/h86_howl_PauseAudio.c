@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002c510-0x8002c64c
-void DECOMP_howl_PauseAudio()
+void howl_PauseAudio()
 {
 	u32 *ptrFlag;
 	struct ChannelStats *curr, *backupNext;

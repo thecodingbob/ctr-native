@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_INSTANCE_Birth(struct Instance *inst, struct Model *model, char *name, struct Thread *th, int flags)
+void INSTANCE_Birth(struct Instance *inst, struct Model *model, char *name, struct Thread *th, int flags)
 {
 	int i;
 	struct GameTracker *gGT;

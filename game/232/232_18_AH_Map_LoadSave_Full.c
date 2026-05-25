@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_AH_Map_LoadSave_Full(int posX, int posY, s16 *vertPos, char *vertCol, int unk800, int angle)
+void AH_Map_LoadSave_Full(int posX, int posY, s16 *vertPos, char *vertCol, int unk800, int angle)
 {
 	s16 local_30[8];
 	s16 local_20[8];
@@ -36,7 +36,7 @@ void DECOMP_AH_Map_LoadSave_Full(int posX, int posY, s16 *vertPos, char *vertCol
 			local_20[j * 2 + 1] = local_30[j * 2 + 1] + offset[i * 2 + 1];
 		}
 
-		DECOMP_AH_Map_LoadSave_Prim(&local_20[0], vertCol, gGT->pushBuffer_UI.ptrOT, &gGT->backBuffer->primMem);
+		AH_Map_LoadSave_Prim(&local_20[0], vertCol, gGT->pushBuffer_UI.ptrOT, &gGT->backBuffer->primMem);
 
 		vertCol = (char *)&D232.colorQuad[0];
 	}

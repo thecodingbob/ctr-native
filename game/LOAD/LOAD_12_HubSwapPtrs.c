@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_LOAD_HubSwapPtrs(struct GameTracker *gGT)
+void LOAD_HubSwapPtrs(struct GameTracker *gGT)
 {
 	struct Level *oldLev1;
 	struct VisMem *oldVisMem1;

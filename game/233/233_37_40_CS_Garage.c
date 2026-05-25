@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b7784-0x800b7834
-void DECOMP_CS_Garage_ZoomOut(char zoomState)
+void CS_Garage_ZoomOut(char zoomState)
 {
 	if (zoomState != 0)
 	{
@@ -33,7 +33,7 @@ void DECOMP_CS_Garage_ZoomOut(char zoomState)
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b7834-0x800b854c
-void DECOMP_CS_Garage_MenuProc(struct RectMenu *param_1)
+void CS_Garage_MenuProc(struct RectMenu *param_1)
 {
 	s16 garageFrames;
 	s16 *barLen;
@@ -103,13 +103,13 @@ void DECOMP_CS_Garage_MenuProc(struct RectMenu *param_1)
 	}
 
 	// "Speed"
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x245], statNamePosX, 30, FONT_BIG, JUSTIFY_RIGHT | ORANGE_RED);
+	DecalFont_DrawLine(sdata->lngStrings[0x245], statNamePosX, 30, FONT_BIG, JUSTIFY_RIGHT | ORANGE_RED);
 
 	// "Accel"
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x246], statNamePosX, 0x2d, 1, 0x4021);
+	DecalFont_DrawLine(sdata->lngStrings[0x246], statNamePosX, 0x2d, 1, 0x4021);
 
 	// "Turn"
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x247], statNamePosX, 60, FONT_BIG, JUSTIFY_RIGHT | BLUE);
+	DecalFont_DrawLine(sdata->lngStrings[0x247], statNamePosX, 60, FONT_BIG, JUSTIFY_RIGHT | BLUE);
 
 	int engineID = MDC->engineID;
 
@@ -132,7 +132,7 @@ void DECOMP_CS_Garage_MenuProc(struct RectMenu *param_1)
 	u16 statBarShadows_Y = 34;
 
 	// Draw class name
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[gGarage.unusedArr_lngIndex[i]], classNamePosX, 15, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+	DecalFont_DrawLine(sdata->lngStrings[gGarage.unusedArr_lngIndex[i]], classNamePosX, 15, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 
 	// bar length (animated)
 
@@ -231,7 +231,7 @@ void DECOMP_CS_Garage_MenuProc(struct RectMenu *param_1)
 	}
 
 	// "Intermediate" (longest class name)
-	s16 classMaxLen = DECOMP_DecalFont_GetLineWidth(sdata->lngStrings[0x249], 1);
+	s16 classMaxLen = DecalFont_GetLineWidth(sdata->lngStrings[0x249], 1);
 
 	// Stats box
 	r.x = (classNamePosX - (classMaxLen >> 1)) - 6;
@@ -240,12 +240,12 @@ void DECOMP_CS_Garage_MenuProc(struct RectMenu *param_1)
 	r.h = 68;
 
 	// Draw 2D Menu rectangle background
-	DECOMP_RECTMENU_DrawInnerRect(&r, 4, gGT->backBuffer->otMem.startPlusFour);
+	RECTMENU_DrawInnerRect(&r, 4, gGT->backBuffer->otMem.startPlusFour);
 
 	char *name = sdata->lngStrings[nameIndex];
 
 	// Draw character name
-	DECOMP_DecalFont_DrawLine(name, 0x100, 0xb4, 1, 0xffff8000);
+	DecalFont_DrawLine(name, 0x100, 0xb4, 1, 0xffff8000);
 
 	char arrowColor = ORANGE;
 
@@ -258,7 +258,7 @@ void DECOMP_CS_Garage_MenuProc(struct RectMenu *param_1)
 	// Color data
 	int *arrowColors = data.ptrColor[arrowColor];
 
-	int nameLen = DECOMP_DecalFont_GetLineWidth(name, 1) >> 1;
+	int nameLen = DecalFont_GetLineWidth(name, 1) >> 1;
 
 	int arrowPos[2] = {236 - nameLen, nameLen + 274};
 	int arrowRot[2] = {0x800, 0};
@@ -299,7 +299,7 @@ void DECOMP_CS_Garage_MenuProc(struct RectMenu *param_1)
 			if ((sdata->AnyPlayerTap & 0x40020) != 0)
 			{
 				// Play Sound
-				DECOMP_OtherFX_Play(2, 1);
+				OtherFX_Play(2, 1);
 
 				garageFrames = gGarage.numFramesCurr_ZoomIn;
 				if (gGarage.boolSelected == 1)
@@ -353,7 +353,7 @@ void DECOMP_CS_Garage_MenuProc(struct RectMenu *param_1)
 					sdata->advProgress.characterID = data.characterIDs[0];
 
 					SubmitName_RestoreName(0);
-					DECOMP_OtherFX_Play(1, 1);
+					OtherFX_Play(1, 1);
 				}
 			}
 		}
@@ -369,7 +369,7 @@ void DECOMP_CS_Garage_MenuProc(struct RectMenu *param_1)
 			*barLen = 0;
 		}
 		// Play Sound
-		DECOMP_OtherFX_Play(0, 1);
+		OtherFX_Play(0, 1);
 
 		// If you dont press Left
 		if ((sdata->AnyPlayerHold & 4) == 0)
@@ -412,7 +412,7 @@ void DECOMP_CS_Garage_MenuProc(struct RectMenu *param_1)
 	}
 
 	// clear gamepad input (for menus)
-	DECOMP_RECTMENU_ClearInput();
+	RECTMENU_ClearInput();
 
 	garageFrames = gGarage.numFramesCurr_GarageMove;
 SKIP_CONTROLS:
@@ -439,7 +439,7 @@ SKIP_CONTROLS:
 			sdata->advProgress.characterID = data.characterIDs[0];
 
 			SubmitName_RestoreName(0);
-			DECOMP_OtherFX_Play(1, 1);
+			OtherFX_Play(1, 1);
 		}
 		else
 		{
@@ -520,13 +520,13 @@ SKIP_CONTROLS:
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b854c-0x800b8558
-struct RectMenu *DECOMP_CS_Garage_GetMenuPtr(void)
+struct RectMenu *CS_Garage_GetMenuPtr(void)
 {
 	return &gGarage.menuGarage;
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b8558-0x800b8598
-void DECOMP_CS_Garage_Init(void)
+void CS_Garage_Init(void)
 {
 	// go to 3D character selection
 	sdata->ptrActiveMenu = &gGarage.menuGarage;
@@ -534,5 +534,5 @@ void DECOMP_CS_Garage_Init(void)
 	gGarage.menuGarage.state &= ~(ONLY_DRAW_TITLE);
 
 	// 0 = just entered garage
-	DECOMP_CS_Garage_ZoomOut(0);
+	CS_Garage_ZoomOut(0);
 }

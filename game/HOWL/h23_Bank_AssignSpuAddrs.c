@@ -15,10 +15,10 @@ int Bank_AssignSpuAddrs()
 	// Stage 0: Load to RAM (1/2)
 	if (sdata->bankLoadStage == 0)
 	{
-		ret = DECOMP_LOAD_HowlSectorChainStart(&sdata->KartHWL_CdFile,         // CdLoc of HOWL
-		                                       (void *)sdata->ptrSampleBlock2, // destination in RAM for banks
-		                                       sdata->bankSectorOffset,        // bank offset on disc, from CdLoc
-		                                       1                               // one sector
+		ret = LOAD_HowlSectorChainStart(&sdata->KartHWL_CdFile,         // CdLoc of HOWL
+		                                (void *)sdata->ptrSampleBlock2, // destination in RAM for banks
+		                                sdata->bankSectorOffset,        // bank offset on disc, from CdLoc
+		                                1                               // one sector
 		);
 
 		if (ret != 0)
@@ -33,7 +33,7 @@ int Bank_AssignSpuAddrs()
 	// Stage 1: Load to RAM (2/2) and assign SPU Addrs
 	if (sdata->bankLoadStage == 1)
 	{
-		if (DECOMP_LOAD_HowlSectorChainEnd() == 0)
+		if (LOAD_HowlSectorChainEnd() == 0)
 			return 0;
 
 		sdata->audioAllocSize = 0;
@@ -72,10 +72,10 @@ int Bank_AssignSpuAddrs()
 
 		MEMPACK_ReallocMem((sdata->audioAllocSize + 0x7ff & 0xfffff800) + 0x800);
 
-		ret = DECOMP_LOAD_HowlSectorChainStart(&sdata->KartHWL_CdFile,                        // CdLoc of HOWL
-		                                       (void *)((int)sdata->ptrSampleBlock2 + 0x800), // destination
-		                                       sdata->bankSectorOffset + 1,                   // offset of howl
-		                                       sdata->numAudioSectors                         // number of sectors
+		ret = LOAD_HowlSectorChainStart(&sdata->KartHWL_CdFile,                        // CdLoc of HOWL
+		                                (void *)((int)sdata->ptrSampleBlock2 + 0x800), // destination
+		                                sdata->bankSectorOffset + 1,                   // offset of howl
+		                                sdata->numAudioSectors                         // number of sectors
 		);
 
 		if (ret == 0)
@@ -122,7 +122,7 @@ int Bank_AssignSpuAddrs()
 	// Stage 2: Spu Transfer Start
 	if (sdata->bankLoadStage == 2)
 	{
-		if (DECOMP_LOAD_HowlSectorChainEnd() == 0)
+		if (LOAD_HowlSectorChainEnd() == 0)
 			return 0;
 
 		int spuAddrStart = (u32)sdata->ptrLastBank->min * 8;

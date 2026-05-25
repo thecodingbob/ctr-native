@@ -197,7 +197,7 @@ void DECOMP_RB_Orca_LInB(struct Instance *inst)
 	if (inst->thread != 0)
 		return;
 
-	t = DECOMP_PROC_BirthWithObject(
+	t = PROC_BirthWithObject(
 	    // creation flags
 	    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Orca), NONE, SMALL, STATIC),
 
@@ -243,7 +243,7 @@ void DECOMP_RB_Orca_LInB(struct Instance *inst)
 	orcaObj->midpoint[1] = orcaObj->startPos[1] - orcaObj->endPos[1];
 	orcaObj->midpoint[2] = orcaObj->startPos[2] - orcaObj->endPos[2];
 
-	orcaObj->numFrames = DECOMP_INSTANCE_GetNumAnimFrames(inst, 0);
+	orcaObj->numFrames = INSTANCE_GetNumAnimFrames(inst, 0);
 
 	if (sdata->gGT->level1->ptrSpawnType1->count <= 0)
 		return;

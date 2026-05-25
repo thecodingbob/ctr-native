@@ -12,6 +12,6 @@ void Garage_PlayFX(u32 soundId, char charId)
 			soundId = (sdata->audioRNG % 3) + 0xf3;
 		}
 
-		DECOMP_OtherFX_Play_LowLevel(soundId & 0xffff, 1, sdata->garageSoundPool[charId].volume << 0x10 | sdata->garageSoundPool[charId].LR | 0x8000);
+		OtherFX_Play_LowLevel(soundId & 0xffff, 1, sdata->garageSoundPool[charId].volume << 0x10 | sdata->garageSoundPool[charId].LR | 0x8000);
 	}
 }

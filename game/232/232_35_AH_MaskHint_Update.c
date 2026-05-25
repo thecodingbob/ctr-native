@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_AH_MaskHint_Update()
+void AH_MaskHint_Update()
 {
 	struct GameTracker *gGT = sdata->gGT;
 	struct Driver *d = gGT->drivers[0];
@@ -104,7 +104,7 @@ void DECOMP_AH_MaskHint_Update()
 		struct Instance *mhInst = sdata->instMaskHints3D;
 		((struct MaskHint *)mhInst->thread->object)->scale = 0;
 
-		DECOMP_AH_MaskHint_SetAnim(0);
+		AH_MaskHint_SetAnim(0);
 
 		D232.maskFrameCurr = 0;
 
@@ -116,33 +116,33 @@ void DECOMP_AH_MaskHint_Update()
 		// first frame "whoosh" sound
 		if (D232.maskFrameCurr == 0)
 			// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b46d4-0x800b46e4 for mask spawn-start SFX.
-			DECOMP_OtherFX_Play_LowLevel(0x100, 1, 0xff8080);
+			OtherFX_Play_LowLevel(0x100, 1, 0xff8080);
 
 		// if 3-second spawn, play more sounds
 		if (D232.maskSpawnFrame == 0x5a)
 		{
 			if (D232.maskFrameCurr == 10)
 				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b470c-0x800b4774 for mask spawn pulse 10 SFX.
-				DECOMP_OtherFX_Play_LowLevel(0x100, 0, 0xd78a80);
+				OtherFX_Play_LowLevel(0x100, 0, 0xd78a80);
 
 			else if (D232.maskFrameCurr == 20)
 				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b4728-0x800b4774 for mask spawn pulse 20 SFX.
-				DECOMP_OtherFX_Play_LowLevel(0x100, 1, 0xaf9480);
+				OtherFX_Play_LowLevel(0x100, 1, 0xaf9480);
 
 			else if (D232.maskFrameCurr == 25)
 				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b4744-0x800b4774 for mask spawn pulse 25 SFX.
-				DECOMP_OtherFX_Play_LowLevel(0x100, 0, 0x879e80);
+				OtherFX_Play_LowLevel(0x100, 0, 0x879e80);
 
 			else if (D232.maskFrameCurr == 30)
 				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b4760-0x800b4774 for mask spawn pulse 30 SFX.
-				DECOMP_OtherFX_Play_LowLevel(0x100, 1, 0x5fa880);
+				OtherFX_Play_LowLevel(0x100, 1, 0x5fa880);
 		}
 
 		int timer4096 = (D232.maskFrameCurr << 0xc) / D232.maskSpawnFrame;
 
-		DECOMP_AH_MaskHint_SetAnim(timer4096);
+		AH_MaskHint_SetAnim(timer4096);
 
-		DECOMP_AH_MaskHint_SpawnParticles(3, &D232.emSet_maskSpawn[0], timer4096);
+		AH_MaskHint_SpawnParticles(3, &D232.emSet_maskSpawn[0], timer4096);
 
 		// if not finished spawning
 		if (D232.maskFrameCurr < D232.maskSpawnFrame)
@@ -151,7 +151,7 @@ void DECOMP_AH_MaskHint_Update()
 
 			timer4096 = (D232.maskFrameCurr << 0xc) / D232.maskSpawnFrame;
 
-			DECOMP_AH_MaskHint_LerpVol(timer4096);
+			AH_MaskHint_LerpVol(timer4096);
 			break;
 		}
 
@@ -167,9 +167,9 @@ void DECOMP_AH_MaskHint_Update()
 
 		if (((D232.maskWarppadBoolInterrupt & 1) != 0) || ((gGT->cameraDC[0].flags & 0x800) != 0))
 		{
-			DECOMP_AH_MaskHint_LerpVol(0x1000);
+			AH_MaskHint_LerpVol(0x1000);
 
-			DECOMP_AH_MaskHint_SpawnParticles(0x18, &D232.emSet_maskLeave[0], 0x1000);
+			AH_MaskHint_SpawnParticles(0x18, &D232.emSet_maskLeave[0], 0x1000);
 
 			VehTalkMask_PlayXA((struct Instance *)sdata->modelMaskHints3D, D232.maskHintID);
 
@@ -230,12 +230,12 @@ void DECOMP_AH_MaskHint_Update()
 			r.y = 0xb0;
 			r.w = 0x214;
 			r.h = 8 + /* not a typo */
-			      DECOMP_DecalFont_DrawMultiLine(sdata->lngStrings[lngIndex], 0x100, 0xb4, 400, 2, 0xffff8000);
+			      DecalFont_DrawMultiLine(sdata->lngStrings[lngIndex], 0x100, 0xb4, 400, 2, 0xffff8000);
 
-			DECOMP_RECTMENU_DrawInnerRect(&r, 4, gGT->backBuffer->otMem.startPlusFour);
+			RECTMENU_DrawInnerRect(&r, 4, gGT->backBuffer->otMem.startPlusFour);
 		}
 
-		DECOMP_AH_MaskHint_SetAnim(0x1000);
+		AH_MaskHint_SetAnim(0x1000);
 
 		int bVar8;
 		int uVar3 = D232.maskWarppadDelayFrames - 1;
@@ -254,11 +254,11 @@ void DECOMP_AH_MaskHint_Update()
 
 	case 5:
 
-		DECOMP_AH_MaskHint_SpawnParticles(20, &D232.emSet_maskLeave[0], 0x1000);
+		AH_MaskHint_SpawnParticles(20, &D232.emSet_maskLeave[0], 0x1000);
 
 		// vanish sound
 		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b4b24-0x800b4b2c for mask vanish SFX.
-		DECOMP_OtherFX_Play(0x101, 1);
+		OtherFX_Play(0x101, 1);
 
 		VehTalkMask_End();
 
@@ -273,12 +273,12 @@ void DECOMP_AH_MaskHint_Update()
 
 	case 6:
 
-		DECOMP_AH_MaskHint_LerpVol(0x1000 - gGT->cameraDC[0].unk8C);
+		AH_MaskHint_LerpVol(0x1000 - gGT->cameraDC[0].unk8C);
 
 		if (((gGT->cameraDC[0].flags & 0x200) == 0) || ((D232.maskWarppadBoolInterrupt & 1) != 0))
 		{
-			DECOMP_AH_MaskHint_SetAnim(0);
-			DECOMP_AH_MaskHint_LerpVol(0);
+			AH_MaskHint_SetAnim(0);
+			AH_MaskHint_LerpVol(0);
 
 			D232.maskWarppadDelayFrames = 0;
 			if ((D232.maskWarppadBoolInterrupt & 1) != 0)
@@ -290,19 +290,19 @@ void DECOMP_AH_MaskHint_Update()
 
 	case 7:
 
-		DECOMP_AH_MaskHint_LerpVol(0);
+		AH_MaskHint_LerpVol(0);
 
 		D232.maskWarppadDelayFrames--;
 
 		if (D232.maskWarppadDelayFrames < 1)
 		{
-			DECOMP_RECTMENU_ClearInput();
+			RECTMENU_ClearInput();
 
 			sdata->AkuAkuHintState = 0;
 			sdata->boolDraw3D_AdvMask = 0;
 
 			gGT->gameMode2 &= ~(VEH_FREEZE_DOOR);
-			d->funcPtrs[0] = DECOMP_VehPhysProc_Driving_Init;
+			d->funcPtrs[0] = VehPhysProc_Driving_Init;
 		}
 
 #ifdef REBUILD_PS1

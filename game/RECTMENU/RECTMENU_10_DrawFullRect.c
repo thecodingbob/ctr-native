@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_RECTMENU_DrawFullRect(struct RectMenu *menu, RECT *inner)
+void RECTMENU_DrawFullRect(struct RectMenu *menu, RECT *inner)
 {
 	u32 *rgb;
 	RECT outer;
@@ -33,7 +33,7 @@ void DECOMP_RECTMENU_DrawFullRect(struct RectMenu *menu, RECT *inner)
 
 		Color color;
 		color.self = *rgb;
-		DECOMP_RECTMENU_DrawOuterRect_Edge(&outer, color, (menu->drawStyle | 0x20), gGT->backBuffer->otMem.startPlusFour);
+		RECTMENU_DrawOuterRect_Edge(&outer, color, (menu->drawStyle | 0x20), gGT->backBuffer->otMem.startPlusFour);
 	}
-	DECOMP_RECTMENU_DrawInnerRect(inner, menu->drawStyle, gGT->backBuffer->otMem.startPlusFour);
+	RECTMENU_DrawInnerRect(inner, menu->drawStyle, gGT->backBuffer->otMem.startPlusFour);
 }

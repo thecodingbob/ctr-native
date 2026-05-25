@@ -2,7 +2,7 @@
 
 // search starts with driver thread's child
 // searches for turbo model
-struct Thread *DECOMP_PROC_SearchForModel(struct Thread *th, s16 modelID)
+struct Thread *PROC_SearchForModel(struct Thread *th, s16 modelID)
 {
 	while (th != 0)
 	{
@@ -11,7 +11,7 @@ struct Thread *DECOMP_PROC_SearchForModel(struct Thread *th, s16 modelID)
 			return th;
 
 		// check children recursively, quit if found
-		struct Thread *other = DECOMP_PROC_SearchForModel(th->childThread, modelID);
+		struct Thread *other = PROC_SearchForModel(th->childThread, modelID);
 		if (other != 0)
 			return other;
 

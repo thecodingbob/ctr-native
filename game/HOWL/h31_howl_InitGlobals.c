@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029988-0x80029a50
-int DECOMP_howl_InitGlobals(char *filename)
+int howl_InitGlobals(char *filename)
 {
 	if (sdata->boolAudioEnabled == 1)
 		return 0;
@@ -32,5 +32,5 @@ int DECOMP_howl_InitGlobals(char *filename)
 	Voiceline_PoolInit();
 	Voiceline_SetDefaults();
 
-	return DECOMP_howl_LoadHeader(filename) != 0;
+	return howl_LoadHeader(filename) != 0;
 }

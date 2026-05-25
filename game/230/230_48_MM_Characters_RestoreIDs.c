@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_Characters_RestoreIDs(void)
+void MM_Characters_RestoreIDs(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
 	s16 *currID;
@@ -23,7 +23,7 @@ void DECOMP_MM_Characters_RestoreIDs(void)
 		data.characterIDs[i] = sdata->characterIDs_backup[i];
 	}
 
-	DECOMP_MM_Characters_SetMenuLayout();
+	MM_Characters_SetMenuLayout();
 
 #define NUM_ICONS 0xF
 
@@ -60,7 +60,7 @@ void DECOMP_MM_Characters_RestoreIDs(void)
 		}
 	}
 
-	DECOMP_MM_Characters_PreventOverlap();
+	MM_Characters_PreventOverlap();
 
 	for (i = 0; i < gGT->numPlyrNextGame; i++)
 	{
@@ -76,6 +76,6 @@ void DECOMP_MM_Characters_RestoreIDs(void)
 		D230.characterSelect_angle[i] = (i * 0x400) + 400;
 	}
 
-	DECOMP_MM_Characters_DrawWindows(0);
+	MM_Characters_DrawWindows(0);
 	return;
 }

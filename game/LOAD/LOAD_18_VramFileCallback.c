@@ -2,7 +2,7 @@
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80031ee4-0x80031fdc; native keeps
 // frameFinishedVRAM as the queued VRAM upload countdown.
-void DECOMP_LOAD_VramFileCallback(struct LoadQueueSlot *lqs)
+void LOAD_VramFileCallback(struct LoadQueueSlot *lqs)
 {
 	int *vramBuf = lqs->ptrDestination;
 

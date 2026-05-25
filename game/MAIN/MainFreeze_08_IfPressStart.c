@@ -22,12 +22,12 @@ void MainFreeze_IfPressStart(void)
 		struct RectMenu *menu = MainFreeze_GetMenuPtr();
 		menu->rowSelected = 0;
 
-		DECOMP_RECTMENU_Show(menu);
+		RECTMENU_Show(menu);
 
 		// pause audio
 		MainFrame_TogglePauseAudio(1);
 
-		DECOMP_OtherFX_Play(1, 1);
+		OtherFX_Play(1, 1);
 
 		ElimBG_Activate(gGT);
 	}

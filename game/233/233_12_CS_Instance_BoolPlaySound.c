@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac694-0x800ac714
-char DECOMP_CS_Instance_BoolPlaySound(struct CutsceneObj *cs, struct Instance *desiredInst)
+char CS_Instance_BoolPlaySound(struct CutsceneObj *cs, struct Instance *desiredInst)
 {
 	struct Instance *inst;
 	struct Instance **visInstSrc;

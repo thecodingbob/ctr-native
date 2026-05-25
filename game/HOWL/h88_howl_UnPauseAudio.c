@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002c784-0x8002c8a8
-void DECOMP_howl_UnPauseAudio()
+void howl_UnPauseAudio()
 {
 	int i;
 	char backupID;
@@ -42,7 +42,7 @@ void DECOMP_howl_UnPauseAudio()
 		LIST_RemoveMember(&sdata->channelFree, (struct Item *)curr);
 		LIST_AddBack(&sdata->channelTaken, (struct Item *)curr);
 
-		DECOMP_howl_UnPauseChannel(curr);
+		howl_UnPauseChannel(curr);
 	}
 	Smart_ExitCriticalSection();
 

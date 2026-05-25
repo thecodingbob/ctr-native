@@ -5,7 +5,7 @@
 extern void *PlayerDriftingFuncTable[13];
 
 // seems to handle start of drifts
-void DECOMP_VehPhysProc_PowerSlide_Init(struct Thread *t, struct Driver *d)
+void VehPhysProc_PowerSlide_Init(struct Thread *t, struct Driver *d)
 {
 	d->kartState = KS_DRIFTING;
 
@@ -41,11 +41,11 @@ void DECOMP_VehPhysProc_PowerSlide_Init(struct Thread *t, struct Driver *d)
 	}
 }
 
-void *PlayerDriftingFuncTable[13] = {DECOMP_VehPhysProc_PowerSlide_InitSetUpdate,
+void *PlayerDriftingFuncTable[13] = {VehPhysProc_PowerSlide_InitSetUpdate,
                                      NULL,
-                                     DECOMP_VehPhysProc_PowerSlide_PhysLinear,
-                                     DECOMP_VehPhysProc_Driving_Audio,
-                                     DECOMP_VehPhysProc_PowerSlide_PhysAngular,
+                                     VehPhysProc_PowerSlide_PhysLinear,
+                                     VehPhysProc_Driving_Audio,
+                                     VehPhysProc_PowerSlide_PhysAngular,
                                      VehPhysForce_OnApplyForces,
 
 #ifndef REBUILD_PS1

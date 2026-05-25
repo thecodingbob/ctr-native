@@ -6,7 +6,7 @@
 // param2 = drawn position
 // param3 = absolute position
 // param4 = frame counter
-void DECOMP_UI_Lerp2D_Angular(s16 *ptrPos, s16 drawnPosition, s16 absolutePosition, s16 frameCounter)
+void UI_Lerp2D_Angular(s16 *ptrPos, s16 drawnPosition, s16 absolutePosition, s16 frameCounter)
 {
 	int angle;
 	int drawnPositionInt;

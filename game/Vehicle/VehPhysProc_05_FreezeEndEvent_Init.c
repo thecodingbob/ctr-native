@@ -2,7 +2,7 @@
 
 extern void *PlayerFreezeFuncTable[13];
 
-void DECOMP_VehPhysProc_FreezeEndEvent_Init(struct Thread *t, struct Driver *d)
+void VehPhysProc_FreezeEndEvent_Init(struct Thread *t, struct Driver *d)
 {
 	if (d->kartState == KS_FREEZE)
 		return;
@@ -19,8 +19,8 @@ void DECOMP_VehPhysProc_FreezeEndEvent_Init(struct Thread *t, struct Driver *d)
 
 void *PlayerFreezeFuncTable[13] = {NULL,
                                    NULL,
-                                   DECOMP_VehPhysProc_FreezeEndEvent_PhysLinear,
-                                   DECOMP_VehPhysProc_Driving_Audio,
+                                   VehPhysProc_FreezeEndEvent_PhysLinear,
+                                   VehPhysProc_Driving_Audio,
                                    VehPhysGeneral_PhysAngular,
                                    VehPhysForce_OnApplyForces,
 

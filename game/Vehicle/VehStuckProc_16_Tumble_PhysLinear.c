@@ -8,7 +8,7 @@ void VehStuckProc_Tumble_PhysLinear(struct Thread *thread, struct Driver *driver
 	if (driver->NoInputTimer < 0)
 		driver->NoInputTimer = 0;
 
-	DECOMP_VehPhysProc_Driving_PhysLinear(thread, driver);
+	VehPhysProc_Driving_PhysLinear(thread, driver);
 
 	driver->jump_ForcedMS = 0x60;
 	driver->baseSpeed = 0;

@@ -2,7 +2,7 @@
 
 extern void *PlayerDrivingFuncTable[13];
 
-void DECOMP_VehPhysProc_Driving_Init(struct Thread *t, struct Driver *d)
+void VehPhysProc_Driving_Init(struct Thread *t, struct Driver *d)
 {
 	struct GameTracker *gGT = sdata->gGT;
 
@@ -14,7 +14,7 @@ void DECOMP_VehPhysProc_Driving_Init(struct Thread *t, struct Driver *d)
 
 
 	    // AdvHub + 232, so 233 podium wont work
-	    || DECOMP_LOAD_IsOpen_AdvHub())
+	    || LOAD_IsOpen_AdvHub())
 	{
 		// Turbo meter = full
 		d->turbo_MeterRoomLeft = 0;
@@ -41,9 +41,9 @@ void DECOMP_VehPhysProc_Driving_Init(struct Thread *t, struct Driver *d)
 }
 
 void *PlayerDrivingFuncTable[13] = {NULL,
-                                    DECOMP_VehPhysProc_Driving_Update,
-                                    DECOMP_VehPhysProc_Driving_PhysLinear,
-                                    DECOMP_VehPhysProc_Driving_Audio,
+                                    VehPhysProc_Driving_Update,
+                                    VehPhysProc_Driving_PhysLinear,
+                                    VehPhysProc_Driving_Audio,
                                     VehPhysGeneral_PhysAngular,
                                     VehPhysForce_OnApplyForces,
 

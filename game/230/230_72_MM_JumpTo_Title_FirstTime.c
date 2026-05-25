@@ -1,10 +1,10 @@
 #include <common.h>
 
-void DECOMP_MM_JumpTo_Title_FirstTime(void)
+void MM_JumpTo_Title_FirstTime(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
 
-	DECOMP_MM_ResetAllMenus();
+	MM_ResetAllMenus();
 
 #ifndef REBUILD_PS1
 	MainStats_ClearBattleVS();

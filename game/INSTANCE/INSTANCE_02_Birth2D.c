@@ -1,10 +1,10 @@
 #include <common.h>
 
-struct Instance *DECOMP_INSTANCE_Birth2D(struct Model *model, char *name, struct Thread *th)
+struct Instance *INSTANCE_Birth2D(struct Model *model, char *name, struct Thread *th)
 {
 	struct GameTracker *gGT = sdata->gGT;
 
-	struct Instance *inst = DECOMP_INSTANCE_Birth3D(model, name, th);
+	struct Instance *inst = INSTANCE_Birth3D(model, name, th);
 
 	inst->flags |= 0x400;
 
@@ -28,7 +28,7 @@ struct Instance *DECOMP_INSTANCE_Birth2D(struct Model *model, char *name, struct
 	// struct Instance* inst = (struct Instance*)JitPool_Add(gGT->JitPools.instance);
 	// if (inst != NULL)
 	//{
-	//	DECOMP_INSTANCE_Birth(inst, model, name, th, 0x40f);
+	//	INSTANCE_Birth(inst, model, name, th, 0x40f);
 	// }
 	// struct InstDrawPerPlayer* idpp = INST_GETIDPP(inst);
 	// #ifndef REBUILD_PS1

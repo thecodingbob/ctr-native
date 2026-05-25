@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_DecalFont_DrawLineOT(char *str, int posX, int posY, s16 fontType, int flags, u_long *ot)
+void DecalFont_DrawLineOT(char *str, int posX, int posY, s16 fontType, int flags, u_long *ot)
 {
 	struct GameTracker *gGT;
 	u_long *backupOT;
@@ -14,7 +14,7 @@ void DECOMP_DecalFont_DrawLineOT(char *str, int posX, int posY, s16 fontType, in
 	gGT->pushBuffer_UI.ptrOT = ot;
 
 	// draw
-	DECOMP_DecalFont_DrawLine(str, posX, posY, fontType, flags);
+	DecalFont_DrawLine(str, posX, posY, fontType, flags);
 
 	// reset
 	gGT->pushBuffer_UI.ptrOT = backupOT;

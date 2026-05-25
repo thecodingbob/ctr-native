@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b351c-0x800b3594.
-void DECOMP_AH_HintMenu_MaskPosRot(void)
+void AH_HintMenu_MaskPosRot(void)
 {
 	struct Instance *mask = sdata->instMaskHints3D;
 

@@ -93,11 +93,11 @@ void Voiceline_RequestPlay(u32 voiceID, u32 characterID, u32 characterID2)
 playImmediate:
 	if (voiceType == 0)
 	{
-		DECOMP_OtherFX_Play((characterID + 0x1c) & 0xffff, 2);
+		OtherFX_Play((characterID + 0x1c) & 0xffff, 2);
 	}
 	else if (voiceType == 1)
 	{
-		DECOMP_OtherFX_Play((characterID + 0x2c) & 0xffff, 2);
+		OtherFX_Play((characterID + 0x2c) & 0xffff, 2);
 	}
 
 	sdata->timeSet2[characterID] = sdata->gGT->frameTimer_MainFrame_ResetDB;

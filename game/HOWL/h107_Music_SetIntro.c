@@ -13,9 +13,9 @@ void Music_SetIntro(void)
 	{
 	}
 
-	DECOMP_howl_SetSong(28);
+	howl_SetSong(28);
 
-	while (DECOMP_howl_LoadSong() == 0)
+	while (howl_LoadSong() == 0)
 	{
 	}
 }

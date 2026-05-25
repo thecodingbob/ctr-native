@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b43cc-0x800b4470.
-void DECOMP_AH_MaskHint_LerpVol(int param_1)
+void AH_MaskHint_LerpVol(int param_1)
 {
 	int diff;
 	int volume;
@@ -16,6 +16,6 @@ void DECOMP_AH_MaskHint_LerpVol(int param_1)
 
 		// restore backups of Volume settings,
 		// that were originally saved in AH_MaskHint_Start
-		DECOMP_howl_VolumeSet(i, volume & 0xFF);
+		howl_VolumeSet(i, volume & 0xFF);
 	}
 }

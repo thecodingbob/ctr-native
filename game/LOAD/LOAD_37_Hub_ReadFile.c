@@ -1,7 +1,7 @@
 #include <common.h>
 
 // packID will always be 3-gGT->activeMempackIndex
-void DECOMP_LOAD_Hub_ReadFile(int bigfile, int levID, int packID)
+void LOAD_Hub_ReadFile(int bigfile, int levID, int packID)
 {
 	int iVar2;
 	struct GameTracker *gGT = sdata->gGT;
@@ -21,9 +21,9 @@ void DECOMP_LOAD_Hub_ReadFile(int bigfile, int levID, int packID)
 	MEMPACK_ClearLowMem();
 
 	// base index for group
-	iVar2 = DECOMP_LOAD_GetBigfileIndex(levID, 1);
+	iVar2 = LOAD_GetBigfileIndex(levID, 1);
 
-	DECOMP_LOAD_AppendQueue(0, LT_SETVRAM, iVar2 + LVI_VRAM, 0, DECOMP_LOAD_VramFileCallback);
-	DECOMP_LOAD_AppendQueue(0, LT_GETADDR, iVar2 + LVI_LEV, &sdata->ptrLevelFile, DECOMP_LOAD_DramFileCallback);
-	DECOMP_LOAD_AppendQueue(0, LT_SETADDR, iVar2 + LVI_PTR, (void *)sdata->PatchMem_Ptr, DECOMP_LOAD_HubCallback);
+	LOAD_AppendQueue(0, LT_SETVRAM, iVar2 + LVI_VRAM, 0, LOAD_VramFileCallback);
+	LOAD_AppendQueue(0, LT_GETADDR, iVar2 + LVI_LEV, &sdata->ptrLevelFile, LOAD_DramFileCallback);
+	LOAD_AppendQueue(0, LT_SETADDR, iVar2 + LVI_PTR, (void *)sdata->PatchMem_Ptr, LOAD_HubCallback);
 }

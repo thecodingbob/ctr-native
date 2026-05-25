@@ -223,7 +223,7 @@ u32 COLL_MOVED_ScrubImpact(struct Driver *d, struct Thread *t, struct Scratchpad
 						soundFlags = 0x1ff8080;
 					}
 
-					DECOMP_OtherFX_Play_LowLevel(6, 1, soundFlags);
+					OtherFX_Play_LowLevel(6, 1, soundFlags);
 					Voiceline_RequestPlay(6, data.characterIDs[d->driverID], 0x10);
 					GAMEPAD_ShockFreq(d, 8, 0);
 					GAMEPAD_ShockForce1(d, 8, 0x7f);
@@ -242,7 +242,7 @@ u32 COLL_MOVED_ScrubImpact(struct Driver *d, struct Thread *t, struct Scratchpad
 					d->matrixArray = 4;
 					d->matrixIndex = 0;
 
-					DECOMP_VehPhysProc_SlamWall_Init(t, d);
+					VehPhysProc_SlamWall_Init(t, d);
 					return 2;
 				}
 			}

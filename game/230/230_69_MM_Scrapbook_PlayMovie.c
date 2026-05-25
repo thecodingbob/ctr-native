@@ -10,7 +10,7 @@ __attribute__((optimize("O0"))) int ScrapBookPlayMovie_DecodeFrame()
 }
 #endif
 
-void DECOMP_MM_Scrapbook_PlayMovie(struct RectMenu *menu)
+void MM_Scrapbook_PlayMovie(struct RectMenu *menu)
 {
 	s16 lev;
 	int cdPos;
@@ -154,7 +154,7 @@ void DECOMP_MM_Scrapbook_PlayMovie(struct RectMenu *menu)
 			{
 				lev = MAIN_MENU_LEVEL;
 
-				DECOMP_MM_JumpTo_Title_Returning();
+				MM_JumpTo_Title_Returning();
 
 				// return to main menu (adv, tt, arcade, vs, battle)
 				sdata->mainMenuState = 0;
@@ -162,7 +162,7 @@ void DECOMP_MM_Scrapbook_PlayMovie(struct RectMenu *menu)
 
 			MainRaceTrack_RequestLoad(lev);
 
-			DECOMP_RECTMENU_Hide(menu);
+			RECTMENU_Hide(menu);
 		}
 		break;
 	default:

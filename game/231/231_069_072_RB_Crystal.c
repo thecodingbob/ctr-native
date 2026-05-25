@@ -95,7 +95,7 @@ int DECOMP_RB_Crystal_LInC(struct Instance *crystalInst, struct Thread *driverTh
 	crystalTh = crystalInst->thread;
 	if (crystalTh == NULL)
 	{
-		crystalTh = DECOMP_PROC_BirthWithObject(
+		crystalTh = PROC_BirthWithObject(
 		    // creation flags
 		    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Crystal), NONE, SMALL, STATIC),
 
@@ -130,7 +130,7 @@ void DECOMP_RB_Crystal_LInB(struct Instance *inst)
 
 	if (inst->thread == NULL)
 	{
-		t = DECOMP_PROC_BirthWithObject(
+		t = PROC_BirthWithObject(
 		    // creation flags
 		    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Crystal), NONE, SMALL, STATIC),
 

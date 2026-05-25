@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_JumpTo_Title_Returning(void)
+void MM_JumpTo_Title_Returning(void)
 {
 	// return to main menu
 	sdata->ptrDesiredMenu = &D230.menuMainMenu;

@@ -1052,8 +1052,3 @@ SkipSetSteer:
 	driver->actionsFlagSet = uVar20;
 	return;
 }
-
-void DECOMP_VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver)
-{
-	VehPhysProc_Driving_PhysLinear(thread, driver);
-}

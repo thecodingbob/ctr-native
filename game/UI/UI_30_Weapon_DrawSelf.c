@@ -1,7 +1,7 @@
 #include <common.h>
 
 // Draw weapon and wumpa fruit in HUD
-void DECOMP_UI_Weapon_DrawSelf(s16 posX, s16 posY, s16 scale, struct Driver *d)
+void UI_Weapon_DrawSelf(s16 posX, s16 posY, s16 scale, struct Driver *d)
 
 {
 	u32 currChar;
@@ -60,7 +60,7 @@ void DECOMP_UI_Weapon_DrawSelf(s16 posX, s16 posY, s16 scale, struct Driver *d)
 			sdata->s_spacebar[0] = d->numHeldItems + '0';
 
 			// Draw the number near the weapon icon to show how many
-			DECOMP_DecalFont_DrawLine(sdata->s_spacebar, (int)posX, (int)posY, 2, 4);
+			DecalFont_DrawLine(sdata->s_spacebar, (int)posX, (int)posY, 2, 4);
 		}
 	}
 
@@ -119,7 +119,7 @@ void DECOMP_UI_Weapon_DrawSelf(s16 posX, s16 posY, s16 scale, struct Driver *d)
 		// if timer is not finished
 		if (d->PickupTimeboxHUD.cooldown != 0)
 		{
-			DECOMP_UI_Lerp2D_HUD(&posXY[0], d->PickupTimeboxHUD.startX, d->PickupTimeboxHUD.startY, (int)posX, (int)posY, d->PickupTimeboxHUD.cooldown, 5);
+			UI_Lerp2D_HUD(&posXY[0], d->PickupTimeboxHUD.startX, d->PickupTimeboxHUD.startY, (int)posX, (int)posY, d->PickupTimeboxHUD.cooldown, 5);
 
 			// subtract one from timer
 			d->PickupTimeboxHUD.cooldown--;

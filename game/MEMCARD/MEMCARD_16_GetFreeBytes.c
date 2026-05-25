@@ -4,7 +4,7 @@
 // People reported "Out of room" error screens
 // even though the memory card was not full
 
-void DECOMP_MEMCARD_GetFreeBytes(int slotIdx)
+void MEMCARD_GetFreeBytes(int slotIdx)
 {
 	struct DIRENTRY *firstEntry;
 	struct DIRENTRY entry;

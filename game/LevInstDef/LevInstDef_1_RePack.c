@@ -52,5 +52,5 @@ void LevInstDef_RePack(struct mesh_info *ptr_mesh_info, int boolAdvHub)
 		}
 	}
 
-	DECOMP_PROC_CheckAllForDead();
+	PROC_CheckAllForDead();
 }

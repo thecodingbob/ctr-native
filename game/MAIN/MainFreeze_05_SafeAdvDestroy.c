@@ -9,9 +9,9 @@ void MainFreeze_SafeAdvDestroy(void)
 #endif
 
 	// check if Adv Hub is loaded
-	if (DECOMP_LOAD_IsOpen_AdvHub() == 0)
+	if (LOAD_IsOpen_AdvHub() == 0)
 		return;
 
-	DECOMP_AH_Pause_Destroy();
+	AH_Pause_Destroy();
 	return;
 }

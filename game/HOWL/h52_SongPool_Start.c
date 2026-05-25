@@ -128,7 +128,7 @@ void SongPool_Start(struct Song *song, u16 songID, s16 deltaBPM, int boolLoopAtE
 
 		seqCurr->firstNote = (char *)NOTEHEADER_GETNOTES(cnhCurr);
 
-		seqCurr->currNote = DECOMP_howl_GetNextNote(seqCurr->firstNote, &seqCurr->NoteLength);
+		seqCurr->currNote = howl_GetNextNote(seqCurr->firstNote, &seqCurr->NoteLength);
 
 		song->CseqSequences[song->numSequences++] = seqCurr;
 	}

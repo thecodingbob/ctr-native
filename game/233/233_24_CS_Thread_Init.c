@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ae54c-0x800ae81c
-void DECOMP_CS_Thread_ThTick(struct Thread *t)
+void CS_Thread_ThTick(struct Thread *t)
 {
 	// Retail uses scratchpad 0x1f800108/0x1f800118 for parent frame-data temporaries.
 	s16 *parentPos = CTR_SCRATCHPAD_PTR(s16, 0x108);
@@ -12,7 +12,7 @@ void DECOMP_CS_Thread_ThTick(struct Thread *t)
 	struct Instance *parentInst;
 	struct Thread *parentThread;
 
-	if (DECOMP_CS_Thread_UseOpcode(inst, cs))
+	if (CS_Thread_UseOpcode(inst, cs))
 	{
 		t->flags |= 0x800;
 
@@ -20,12 +20,12 @@ void DECOMP_CS_Thread_ThTick(struct Thread *t)
 			return;
 	}
 
-	DECOMP_CS_Thread_MoveOnPath(t);
-	DECOMP_CS_Thread_AnimateScale(t);
-	DECOMP_CS_Thread_Particles(t);
+	CS_Thread_MoveOnPath(t);
+	CS_Thread_AnimateScale(t);
+	CS_Thread_Particles(t);
 
 	if ((cs->flags & 0x40) != 0)
-		DECOMP_CS_Thread_InterpolateFramesMS(t);
+		CS_Thread_InterpolateFramesMS(t);
 
 	// ASM: 0x800ae5dc - parent-thread frameOverrideRoot processing
 	if (inst != 0)
@@ -38,7 +38,7 @@ void DECOMP_CS_Thread_ThTick(struct Thread *t)
 			{
 				parentInst = parentThread->inst;
 
-				DECOMP_CS_Instance_GetFrameData(parentInst, parentInst->animIndex, parentInst->animFrame, (u16 *)parentPos, (u16 *)parentRot, 0);
+				CS_Instance_GetFrameData(parentInst, parentInst->animIndex, parentInst->animFrame, (u16 *)parentPos, (u16 *)parentRot, 0);
 
 				inst->matrix.t[0] = parentInst->matrix.t[0] + parentPos[0];
 				inst->matrix.t[1] = parentInst->matrix.t[1] + parentPos[1];
@@ -58,7 +58,7 @@ void DECOMP_CS_Thread_ThTick(struct Thread *t)
 		// ASM: 0x800ae6b4 - flag 0x8: write bone Y to OVR_233 global
 		if ((cs->flags & 0x8) != 0)
 		{
-			DECOMP_CS_Instance_GetFrameData(inst, inst->animIndex, inst->animFrame, (u16 *)bonePos, 0, 0);
+			CS_Instance_GetFrameData(inst, inst->animIndex, inst->animFrame, (u16 *)bonePos, 0, 0);
 
 			OVR_233.VertSplitLine = bonePos[1];
 
@@ -87,15 +87,15 @@ thTick_subtitles:
 		int textWidth;
 		u16 textRect[4];
 
-		textWidth = DECOMP_DecalFont_DrawMultiLine(sdata->lngStrings[cs->Subtitles.lngIndex], cs->Subtitles.textPos[0], cs->Subtitles.textPos[1], 460,
-		                                           cs->Subtitles.font, cs->Subtitles.colors);
+		textWidth = DecalFont_DrawMultiLine(sdata->lngStrings[cs->Subtitles.lngIndex], cs->Subtitles.textPos[0], cs->Subtitles.textPos[1], 460,
+		                                    cs->Subtitles.font, cs->Subtitles.colors);
 
 		textRect[0] = (u16)((u16)cs->Subtitles.textPos[0] - 236);
 		textRect[1] = (u16)((u16)cs->Subtitles.textPos[1] - 4);
 		textRect[2] = 472;
 		textRect[3] = (u16)((s16)textWidth + 8);
 
-		DECOMP_RECTMENU_DrawInnerRect((RECT *)textRect, 4, gGT->backBuffer->otMem.startPlusFour);
+		RECTMENU_DrawInnerRect((RECT *)textRect, 4, gGT->backBuffer->otMem.startPlusFour);
 	}
 
 thTick_epilogue:
@@ -107,7 +107,7 @@ thTick_epilogue:
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800af328-0x800af7c0
-struct Thread *DECOMP_CS_Thread_Init(s16 modelID, char *name, s16 *param_3, s16 param_4, struct Thread *parent)
+struct Thread *CS_Thread_Init(s16 modelID, char *name, s16 *param_3, s16 param_4, struct Thread *parent)
 {
 	struct GameTracker *gGT = sdata->gGT;
 	struct CutsceneObj *cs;
@@ -121,7 +121,7 @@ struct Thread *DECOMP_CS_Thread_Init(s16 modelID, char *name, s16 *param_3, s16 
 	{
 		inst = NULL;
 
-		t = DECOMP_PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(0x60, NONE, MEDIUM, CAMERA), DECOMP_CS_Thread_ThTick, name, parent);
+		t = PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(0x60, NONE, MEDIUM, CAMERA), CS_Thread_ThTick, name, parent);
 
 		if (t == NULL)
 			return NULL;
@@ -136,13 +136,13 @@ struct Thread *DECOMP_CS_Thread_Init(s16 modelID, char *name, s16 *param_3, s16 
 		if ((u32)(modelID - NDI_KART0) < 4)
 			bucket = GHOST;
 
-		inst = DECOMP_INSTANCE_BirthWithThread(modelID, name, MEDIUM, bucket, DECOMP_CS_Thread_ThTick, 0x60, parent);
+		inst = INSTANCE_BirthWithThread(modelID, name, MEDIUM, bucket, CS_Thread_ThTick, 0x60, parent);
 
 		if (inst == NULL)
 			return NULL;
 
 		t = inst->thread;
-		t->funcThDestroy = DECOMP_PROC_DestroyInstance;
+		t->funcThDestroy = PROC_DestroyInstance;
 	}
 
 	cs = t->object;
@@ -190,7 +190,7 @@ struct Thread *DECOMP_CS_Thread_Init(s16 modelID, char *name, s16 *param_3, s16 
 				scriptPtr = OVR_233.script_default;
 			}
 
-			DECOMP_CS_ScriptCmd_OpcodeAt(cs, scriptPtr);
+			CS_ScriptCmd_OpcodeAt(cs, scriptPtr);
 
 			if ((u32)(modelID - NDI_KART0) < 4)
 			{
@@ -233,7 +233,7 @@ struct Thread *DECOMP_CS_Thread_Init(s16 modelID, char *name, s16 *param_3, s16 
 		}
 	}
 
-	DECOMP_CS_ScriptCmd_OpcodeAt(cs, scriptPtr);
+	CS_ScriptCmd_OpcodeAt(cs, scriptPtr);
 
 after_opcode:
 

@@ -12,7 +12,7 @@ static s16 *SelectProfile_TimerSaveComplete(void)
 
 // NOTE(aalhendi): Retail-mapped NTSC-U 926 0x80048e2c-0x80048edc.
 // TODO(aalhendi): Port SelectProfile_Init before this receives an ASM-verified stamp.
-void DECOMP_SelectProfile_ToggleMode(u32 mode)
+void SelectProfile_ToggleMode(u32 mode)
 {
 	sdata->memcardAction = mode & 0xf;
 
@@ -25,7 +25,7 @@ void DECOMP_SelectProfile_ToggleMode(u32 mode)
 	*(s16 *)&sdata->data10_bbb[10] = 0;
 	*SelectProfile_TimerSaveComplete() = 0;
 
-	DECOMP_SelectProfile_UnMuteCursors();
+	SelectProfile_UnMuteCursors();
 
 	data.menuFourAdvProfiles.drawStyle &= ~0x10;
 	data.menuOverwriteAdv.drawStyle &= ~0x10;

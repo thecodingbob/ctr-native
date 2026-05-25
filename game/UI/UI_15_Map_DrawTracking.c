@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_UI_Map_DrawTracking(int ptrMap, struct Thread *bucket)
+void UI_Map_DrawTracking(int ptrMap, struct Thread *bucket)
 
 {
 	int uVar1;
@@ -19,7 +19,7 @@ void DECOMP_UI_Map_DrawTracking(int ptrMap, struct Thread *bucket)
 		// == only draw warpball ==
 
 		// draw warpball
-		DECOMP_UI_Map_DrawRawIcon(ptrMap, (int *)&inst->matrix.t[0], 0x20, 0, 0, 0x1000);
+		UI_Map_DrawRawIcon(ptrMap, (int *)&inst->matrix.t[0], 0x20, 0, 0, 0x1000);
 
 		// driver target
 		d = ((struct TrackerWeapon *)bucket->object)->driverTarget;
@@ -35,7 +35,7 @@ void DECOMP_UI_Map_DrawTracking(int ptrMap, struct Thread *bucket)
 		if ((sdata->gGT->timer & 1) != 0)
 			uVar1 = 3;
 
-		DECOMP_UI_Map_DrawRawIcon(ptrMap, (int *)&d->instSelf->matrix.t[0], 0x21, uVar1, 0, 0x1000);
+		UI_Map_DrawRawIcon(ptrMap, (int *)&d->instSelf->matrix.t[0], 0x21, uVar1, 0, 0x1000);
 	}
 	return;
 }

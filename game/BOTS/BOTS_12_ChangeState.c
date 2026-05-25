@@ -57,7 +57,7 @@ u32 BOTS_ChangeState(struct Driver *driverVictim, int damageType, struct Driver 
 		{
 			if (driverVictim->instSelf->thread->modelIndex == DYNAMIC_PLAYER && driverVictim->burnTimer == 0)
 			{
-				DECOMP_OtherFX_Play(0x69, 1);
+				OtherFX_Play(0x69, 1);
 			}
 
 			driverVictim->burnTimer = 0xf00;
@@ -97,7 +97,7 @@ u32 BOTS_ChangeState(struct Driver *driverVictim, int damageType, struct Driver 
 
 		if (driverVictim->instSelf->thread->modelIndex == DYNAMIC_PLAYER && driverVictim->botData.unk5bc.ai_squishCooldown == 0)
 		{
-			DECOMP_OtherFX_Play(0x5a, 1);
+			OtherFX_Play(0x5a, 1);
 		}
 
 		driverVictim->botData.unk5ba = 3;

@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_Characters_PreventOverlap(void)
+void MM_Characters_PreventOverlap(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
 	char cVar1;

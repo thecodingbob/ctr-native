@@ -287,13 +287,13 @@ u32 Music_AsyncParseBanks(void)
 		else
 			break;
 
-		DECOMP_howl_SetSong(index);
+		howl_SetSong(index);
 		break;
 
 	// Finish Level Song Bank
 	case 4:
 
-		if (DECOMP_howl_LoadSong() == 0)
+		if (howl_LoadSong() == 0)
 			goto PARSE_FINISH;
 
 		// go to next stage

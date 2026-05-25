@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_VehPhysProc_SpinFirst_PhysAngular(struct Thread *t, struct Driver *d)
+void VehPhysProc_SpinFirst_PhysAngular(struct Thread *t, struct Driver *d)
 {
 	int elapsedTimeMS = sdata->gGT->elapsedTimeMS;
 

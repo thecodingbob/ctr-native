@@ -60,7 +60,7 @@ void DECOMP_RB_GenericMine_ThTick(struct Thread *t)
 	if (mw->cooldown < 0)
 		mw->cooldown = 0;
 
-	numFrames = (int)DECOMP_INSTANCE_GetNumAnimFrames(inst, 0);
+	numFrames = (int)INSTANCE_GetNumAnimFrames(inst, 0);
 
 	// if animation is not over
 	if (inst->animFrame < numFrames - 1)
@@ -287,11 +287,11 @@ void DECOMP_RB_GenericMine_ThTick(struct Thread *t)
 				// "tnt1"
 
 				// create thread for TNT, get an Instance
-				instCrate = DECOMP_INSTANCE_BirthWithThread(0x27, sdata->s_tnt1, SMALL, MINE, DECOMP_RB_GenericMine_ThTick, sizeof(struct MineWeapon), 0);
+				instCrate = INSTANCE_BirthWithThread(0x27, sdata->s_tnt1, SMALL, MINE, DECOMP_RB_GenericMine_ThTick, sizeof(struct MineWeapon), 0);
 
 				instCrate->matrix = inst->matrix;
 
-				instCrate->thread->funcThDestroy = DECOMP_PROC_DestroyInstance;
+				instCrate->thread->funcThDestroy = PROC_DestroyInstance;
 
 				instCrate->thread->funcThCollide = DECOMP_RB_Hazard_ThCollide_Generic;
 

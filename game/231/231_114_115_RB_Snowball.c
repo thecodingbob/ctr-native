@@ -65,7 +65,7 @@ void DECOMP_RB_Snowball_LInB(struct Instance *inst)
 	if (inst->thread != 0)
 		return;
 
-	t = DECOMP_PROC_BirthWithObject(
+	t = PROC_BirthWithObject(
 	    // creation flags
 	    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Snowball), NONE, SMALL, STATIC),
 

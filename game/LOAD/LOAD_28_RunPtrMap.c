@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_LOAD_RunPtrMap(char *origin, int *patchArr, int numPtrs)
+void LOAD_RunPtrMap(char *origin, int *patchArr, int numPtrs)
 {
 	int *ptrCurrOffset = patchArr;
 

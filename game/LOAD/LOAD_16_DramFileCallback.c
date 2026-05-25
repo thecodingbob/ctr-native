@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_LOAD_DramFileCallback(struct LoadQueueSlot *lqs)
+void LOAD_DramFileCallback(struct LoadQueueSlot *lqs)
 {
 	char *fileBuf = lqs->ptrDestination;
 	void (*callback)(struct LoadQueueSlot *) = lqs->callbackFuncPtr;
@@ -20,7 +20,7 @@ void DECOMP_LOAD_DramFileCallback(struct LoadQueueSlot *lqs)
 	{
 		struct DramPointerMap *dpm = (struct DramPointerMap *)&realFileBuf[ptrMapOffset];
 
-		DECOMP_LOAD_RunPtrMap((int)realFileBuf, (int *)DRAM_GETOFFSETS(dpm), dpm->numBytes >> 2);
+		LOAD_RunPtrMap((int)realFileBuf, (int *)DRAM_GETOFFSETS(dpm), dpm->numBytes >> 2);
 
 		DRAM_SET_PATCHED(fileBuf);
 
@@ -31,7 +31,7 @@ void DECOMP_LOAD_DramFileCallback(struct LoadQueueSlot *lqs)
 
 	lqs->ptrDestination = &fileBuf[4];
 
-	if ((callback != NULL) && (callback != DECOMP_LOAD_DramFileCallback) && (callback != (void (*)(struct LoadQueueSlot *))-1) &&
+	if ((callback != NULL) && (callback != LOAD_DramFileCallback) && (callback != (void (*)(struct LoadQueueSlot *))-1) &&
 	    (callback != (void (*)(struct LoadQueueSlot *))-2))
 	{
 		callback(lqs);

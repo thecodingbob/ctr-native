@@ -11,7 +11,7 @@ void OptionsMenu_TestSound(int newRow, int newBoolPlay)
 		// FX row
 		if (oldRow == 0)
 		{
-			DECOMP_OtherFX_Stop2(0x48);
+			OtherFX_Stop2(0x48);
 		}
 
 		// Music row
@@ -36,7 +36,7 @@ void OptionsMenu_TestSound(int newRow, int newBoolPlay)
 		{
 			if (sdata->OptionSlider_soundID != 0)
 			{
-				DECOMP_OtherFX_Stop1(sdata->OptionSlider_soundID);
+				OtherFX_Stop1(sdata->OptionSlider_soundID);
 				sdata->OptionSlider_soundID = 0;
 			}
 		}
@@ -49,7 +49,7 @@ void OptionsMenu_TestSound(int newRow, int newBoolPlay)
 			// FX row
 			if (newRow == 0)
 			{
-				DECOMP_OtherFX_Play(0x48, 0);
+				OtherFX_Play(0x48, 0);
 			}
 
 			// Music row
@@ -70,7 +70,7 @@ void OptionsMenu_TestSound(int newRow, int newBoolPlay)
 			// FX row
 			if (oldRow == 0)
 			{
-				DECOMP_OtherFX_Stop2(0x48);
+				OtherFX_Stop2(0x48);
 			}
 
 			// Music row
@@ -95,7 +95,7 @@ void OptionsMenu_TestSound(int newRow, int newBoolPlay)
 			{
 				if (sdata->OptionSlider_soundID != 0)
 				{
-					DECOMP_OtherFX_Stop1(sdata->OptionSlider_soundID);
+					OtherFX_Stop1(sdata->OptionSlider_soundID);
 					sdata->OptionSlider_soundID = 0;
 				}
 			}
@@ -132,7 +132,7 @@ void OptionsMenu_TestSound(int newRow, int newBoolPlay)
 				sampleVoiceID = characterID + 0x2c;
 			}
 
-			sdata->OptionSlider_soundID = DECOMP_OtherFX_Play(sampleVoiceID, 0);
+			sdata->OptionSlider_soundID = OtherFX_Play(sampleVoiceID, 0);
 		}
 	}
 }

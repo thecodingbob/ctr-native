@@ -109,7 +109,7 @@ static void CS_ScriptCmd_ReadOpcode_Main(struct CutsceneObj *cs)
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac1c0-0x800ac1ec
-void DECOMP_CS_ScriptCmd_OpcodeNext(struct CutsceneObj *cs)
+void CS_ScriptCmd_OpcodeNext(struct CutsceneObj *cs)
 {
 	char *prev = cs->prevOpcode;
 	cs->prevOpcode = (char *)-1;
@@ -118,7 +118,7 @@ void DECOMP_CS_ScriptCmd_OpcodeNext(struct CutsceneObj *cs)
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac1ec-0x800ac214
-void DECOMP_CS_ScriptCmd_OpcodeAt(struct CutsceneObj *cs, char *opCodeAt)
+void CS_ScriptCmd_OpcodeAt(struct CutsceneObj *cs, char *opCodeAt)
 {
 	cs->currOpcode[0] = opCodeAt;
 	cs->prevOpcode = (char *)-1;

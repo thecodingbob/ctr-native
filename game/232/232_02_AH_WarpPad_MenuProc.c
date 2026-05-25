@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_AH_WarpPad_MenuProc(struct RectMenu *menu)
+void AH_WarpPad_MenuProc(struct RectMenu *menu)
 {
 	struct GameTracker *gGT = sdata->gGT;
 
@@ -15,6 +15,6 @@ void DECOMP_AH_WarpPad_MenuProc(struct RectMenu *menu)
 	}
 
 	// optimizes to JMP
-	DECOMP_RECTMENU_Hide(menu);
+	RECTMENU_Hide(menu);
 	return;
 }

@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_VehPhysProc_PowerSlide_PhysAngular(struct Thread *th, struct Driver *driver)
+void VehPhysProc_PowerSlide_PhysAngular(struct Thread *th, struct Driver *driver)
 {
 	char cVar1;
 	char bVar2;

@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_LOAD_NextQueuedFile()
+void LOAD_NextQueuedFile()
 {
 	// Under 3 conditions, delay the load:
 	//		During XA play
@@ -46,7 +46,7 @@ void DECOMP_LOAD_NextQueuedFile()
 	if ((curr->flags & LT_SETADDR) != 0)
 		forceSetAddr = prevValue;
 
-	void *rawDestination = DECOMP_LOAD_ReadFile(0, curr->flags | LT_ASYNC, curr->subfileIndex, forceSetAddr);
+	void *rawDestination = LOAD_ReadFile(0, curr->flags | LT_ASYNC, curr->subfileIndex, forceSetAddr);
 
 	if (((curr->flags & LT_GETADDR) != 0) && (prevValue != NULL))
 	{

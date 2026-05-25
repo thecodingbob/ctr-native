@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029f80-0x8002a170
-void DECOMP_howl_InitChannelAttr_Music(struct SongSeq *seq, struct ChannelAttr *attr, int index, int channelVol)
+void howl_InitChannelAttr_Music(struct SongSeq *seq, struct ChannelAttr *attr, int index, int channelVol)
 {
 	int pitch;
 	u32 sampleVol;
@@ -14,7 +14,7 @@ void DECOMP_howl_InitChannelAttr_Music(struct SongSeq *seq, struct ChannelAttr *
 	{
 		struct SampleInstrument *longSample = &sdata->ptrCseqLongSamples[seq->instrumentID];
 
-		pitch = DECOMP_howl_InstrumentPitch(longSample->basePitch, index, seq->distort);
+		pitch = howl_InstrumentPitch(longSample->basePitch, index, seq->distort);
 
 		attr->spuStartAddr = (void *)(sdata->howl_spuAddrs[longSample->spuIndex].spuAddr << 3);
 

@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_Title_CameraMove(struct Title *title, int frameIndex)
+void MM_Title_CameraMove(struct Title *title, int frameIndex)
 {
 	int result;
 	s16 *posRot;

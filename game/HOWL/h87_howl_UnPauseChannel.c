@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002c64c-0x8002c784
-void DECOMP_howl_UnPauseChannel(struct ChannelStats *stats)
+void howl_UnPauseChannel(struct ChannelStats *stats)
 {
 	int type;
 	int soundID;
@@ -13,19 +13,19 @@ void DECOMP_howl_UnPauseChannel(struct ChannelStats *stats)
 	// engineFX
 	if (type == 0)
 	{
-		DECOMP_howl_InitChannelAttr_EngineFX(&sdata->howl_metaEngineFX[soundID], &attr, stats->vol, stats->LR, stats->distort);
+		howl_InitChannelAttr_EngineFX(&sdata->howl_metaEngineFX[soundID], &attr, stats->vol, stats->LR, stats->distort);
 	}
 
 	// otherFX
 	else if (type == 1)
 	{
-		DECOMP_howl_InitChannelAttr_OtherFX(&sdata->howl_metaOtherFX[soundID], &attr, stats->vol, stats->LR, stats->distort);
+		howl_InitChannelAttr_OtherFX(&sdata->howl_metaOtherFX[soundID], &attr, stats->vol, stats->LR, stats->distort);
 	}
 
 	// music
 	else if (type == 2)
 	{
-		DECOMP_howl_InitChannelAttr_Music(&sdata->songSeq[soundID], &attr, stats->drumIndex_pitchIndex, stats->vol);
+		howl_InitChannelAttr_Music(&sdata->songSeq[soundID], &attr, stats->drumIndex_pitchIndex, stats->vol);
 	}
 	else
 	{

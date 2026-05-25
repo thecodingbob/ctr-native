@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_UI_DrawPosSuffix(s16 posX, s16 posY, struct Driver *d, s16 flags)
+void UI_DrawPosSuffix(s16 posX, s16 posY, struct Driver *d, s16 flags)
 {
 	int currRank;
 	struct GameTracker *gGT = sdata->gGT;
@@ -14,7 +14,7 @@ void DECOMP_UI_DrawPosSuffix(s16 posX, s16 posY, struct Driver *d, s16 flags)
 		currRank = gGT->battleSetup.finishedRankOfEachTeam[d->BattleHUD.teamID];
 
 	// Draw the suffix of your current position
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[data.stringIndexSuffix[currRank]], posX, posY, FONT_BIG, flags);
+	DecalFont_DrawLine(sdata->lngStrings[data.stringIndexSuffix[currRank]], posX, posY, FONT_BIG, flags);
 
 	// setting posZ changes which number draws
 	if (d->instBigNum != 0)

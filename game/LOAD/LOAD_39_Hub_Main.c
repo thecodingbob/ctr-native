@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_LOAD_Hub_Main(int bigfilePtr)
+void LOAD_Hub_Main(int bigfilePtr)
 {
 	struct GameTracker *gGT;
 
@@ -20,7 +20,7 @@ void DECOMP_LOAD_Hub_Main(int bigfilePtr)
 		if ((needSwapNow != 0) || (gGT->bool_AdvHub_NeedToSwapLEV != 0))
 		{
 			gGT->bool_AdvHub_NeedToSwapLEV = 0;
-			DECOMP_LOAD_Hub_SwapNow();
+			LOAD_Hub_SwapNow();
 		}
 	}
 
@@ -36,7 +36,7 @@ void DECOMP_LOAD_Hub_Main(int bigfilePtr)
 			return;
 
 #ifndef REBUILD_PS1
-		DECOMP_LOAD_Hub_ReadFile(bigfilePtr, rdata.MetaDataHubs[currLevelID].connectedHub_LevID[nextLevelID - 1], 3 - gGT->activeMempackIndex);
+		LOAD_Hub_ReadFile(bigfilePtr, rdata.MetaDataHubs[currLevelID].connectedHub_LevID[nextLevelID - 1], 3 - gGT->activeMempackIndex);
 #endif
 	}
 }

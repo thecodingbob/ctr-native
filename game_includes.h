@@ -52,9 +52,6 @@
 #include "game/CAMERA/CAM_18_MapRange_PosPoints.c"
 #include "game/CAMERA/CAM_19_ThTick.c"
 
-#define OtherFX_Play_Echo           DECOMP_OtherFX_Play_Echo
-#define OtherFX_Play_LowLevel       DECOMP_OtherFX_Play_LowLevel
-#define PROC_CollidePointWithBucket DECOMP_PROC_CollidePointWithBucket
 #include "game/BOTS/BOTS_03_Adv_NumTimesLostEvent.c"
 #include "game/BOTS/BOTS_00_SetGlobalNavData.c"
 #include "game/BOTS/BOTS_01_InitNavPath.c"
@@ -68,10 +65,6 @@
 #include "game/BOTS/BOTS_12_ChangeState.c"
 #include "game/BOTS/BOTS_13_CollideWithOtherAI.c"
 #include "game/BOTS/BOTS_16_Driver_Convert.c"
-#undef PROC_CollidePointWithBucket
-#undef OtherFX_Play_LowLevel
-#undef OtherFX_Play_Echo
-
 #include "game/CDSYS/CDSYS_00_Init.c"
 #include "game/CDSYS/CDSYS_01_GetFilePosInt.c"
 #include "game/CDSYS/CDSYS_02_SetMode_StreamData.c"

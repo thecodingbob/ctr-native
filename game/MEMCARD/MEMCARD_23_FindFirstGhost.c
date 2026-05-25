@@ -1,6 +1,6 @@
 #include <common.h>
 
-char *DECOMP_MEMCARD_FindFirstGhost(int slotIdx, char *srcString)
+char *MEMCARD_FindFirstGhost(int slotIdx, char *srcString)
 {
 	if (sdata->memcard_stage != MC_STAGE_IDLE)
 	{

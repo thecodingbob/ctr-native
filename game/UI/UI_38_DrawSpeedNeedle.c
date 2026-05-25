@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_UI_DrawSpeedNeedle(s16 posX, s16 posY, struct Driver *driver)
+void UI_DrawSpeedNeedle(s16 posX, s16 posY, struct Driver *driver)
 {
 	int minScale = 0;
 	int maxScale = FP8_INT(driver->const_AccelSpeed_ClassStat) + FP8_INT(driver->const_SacredFireSpeed);

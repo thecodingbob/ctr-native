@@ -1,7 +1,7 @@
 #include <common.h>
 
 // ASM: 8004205c-80042288
-struct Thread *DECOMP_PROC_BirthWithObject(int flags, void *funcThTick, char *name, struct Thread *relativeTh)
+struct Thread *PROC_BirthWithObject(int flags, void *funcThTick, char *name, struct Thread *relativeTh)
 {
 	int bucketID;
 	struct JitPool *stackPool;
@@ -38,7 +38,7 @@ struct Thread *DECOMP_PROC_BirthWithObject(int flags, void *funcThTick, char *na
 	if (bucketID >= NUM_BUCKETS)
 	{
 		if (stackObj != 0)
-			DECOMP_PROC_DestroyObject((void *)((u32)stackObj + 8), flags);
+			PROC_DestroyObject((void *)((u32)stackObj + 8), flags);
 		return 0;
 	}
 
@@ -46,7 +46,7 @@ struct Thread *DECOMP_PROC_BirthWithObject(int flags, void *funcThTick, char *na
 	if ((u32)(flags >> 0x10) >= (stackPool->itemSize - 8))
 	{
 		if (stackObj != 0)
-			DECOMP_PROC_DestroyObject((void *)((u32)stackObj + 8), flags);
+			PROC_DestroyObject((void *)((u32)stackObj + 8), flags);
 		return 0;
 	}
 
@@ -60,7 +60,7 @@ struct Thread *DECOMP_PROC_BirthWithObject(int flags, void *funcThTick, char *na
 	// check thread allocated
 	if (th == 0)
 	{
-		DECOMP_PROC_DestroyObject((void *)((u32)stackObj + 8), flags);
+		PROC_DestroyObject((void *)((u32)stackObj + 8), flags);
 		return 0;
 	}
 

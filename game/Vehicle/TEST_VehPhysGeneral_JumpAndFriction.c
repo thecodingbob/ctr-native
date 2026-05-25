@@ -110,7 +110,7 @@ void FUN_80060630(struct Thread *t, struct Driver *d)
           iVar9 = iVar9 + 3;
         }
         *(s16 *)(uVar12 + 0x3f8) = (s16)(iVar9 >> 2);
-        DECOMP_OtherFX_Play_Echo(9,1,*(u16 *)(uVar12 + 0x2ca) & 1);
+        OtherFX_Play_Echo(9,1,*(u16 *)(uVar12 + 0x2ca) & 1);
         *(u16 *)(uVar12 + 0x3fa) = 0x180;
         goto LAB_80060c30;
       }
@@ -153,13 +153,13 @@ void FUN_80060630(struct Thread *t, struct Driver *d)
 			*(u16 *)(uVar12 + 0x3f6) = 0xa0;
 			*(s16 *)(uVar12 + 0x554) = *(s16 *)(uVar12 + 0x554) + 1;
 			*(u16 *)(uVar12 + 0x3f8) = *(u16 *)(uVar12 + 0x418);
-			DECOMP_OtherFX_Play_Echo(8, 1, *(u16 *)(uVar12 + 0x2ca) & 1);
+			OtherFX_Play_Echo(8, 1, *(u16 *)(uVar12 + 0x2ca) & 1);
 		}
 		else
 		{
 			if ((*(s16 *)(uVar12 + 0x3f6) == 0) || (*(s16 *)(uVar12 + 0x3f8) == *(s16 *)(uVar12 + 0x418)))
 			{
-				DECOMP_OtherFX_Play(0x7e, 1);
+				OtherFX_Play(0x7e, 1);
 			}
 			*(u16 *)(uVar12 + 0x3f6) = 0xa0;
 			if (*(char *)(uVar12 + 0x366) == '\x02')

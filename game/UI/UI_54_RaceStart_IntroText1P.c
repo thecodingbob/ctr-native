@@ -1,7 +1,7 @@
 #include <common.h>
 
 // You see this in 1P mode, right before traffic lights count down
-void DECOMP_UI_RaceStart_IntroText1P(void)
+void UI_RaceStart_IntroText1P(void)
 {
 	s16 windowHeight;
 	struct GameTracker *gGT;
@@ -152,15 +152,15 @@ LAB_80055930:
 			// Name of Cup
 
 			// uVar9 * 4
-			DECOMP_DecalFont_DrawLine(sdata->lngStrings[textID],
+			DecalFont_DrawLine(sdata->lngStrings[textID],
 
 #if 0
             gGT->pushBuffer[0].rect.x + ((gGT->pushBuffer[0].rect.w << 0x10) >> 0x11),
 #else
-			                          0x100, // screw it
+			                   0x100, // screw it
 #endif
 
-			                          ((gGT->pushBuffer[0].rect.y - (transition + -7)) + -6), FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+			                   ((gGT->pushBuffer[0].rect.y - (transition + -7)) + -6), FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 
 			// Track 1/4, 2/4, 3/4, 4/4 in cup
 			sprintf(trackText, "%s %ld/4",
@@ -185,11 +185,11 @@ LAB_80055930:
 		}
 
 		// Print top title text "Arcade, Time Trial, etc"
-		DECOMP_DecalFont_DrawLine(pcVar6, posX, sVar7, font, (JUSTIFY_CENTER | ORANGE));
+		DecalFont_DrawLine(pcVar6, posX, sVar7, font, (JUSTIFY_CENTER | ORANGE));
 
 		// Print the name of the level
 		// Crash Cove, Roos Tubes, etc
-		DECOMP_DecalFont_DrawLine(
+		DecalFont_DrawLine(
 
 		    // 83a88 = 110
 		    // 8d878 + 110*4 -> Dingo Canyon

@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_VehPhysProc_SpinLast_Update(struct Thread *t, struct Driver *d)
+void VehPhysProc_SpinLast_Update(struct Thread *t, struct Driver *d)
 {
 	int driftAngle = d->turnAngleCurr;
 
@@ -8,6 +8,6 @@ void DECOMP_VehPhysProc_SpinLast_Update(struct Thread *t, struct Driver *d)
 	if ((driftAngle < 16) && (driftAngle > -16))
 	{
 		// stop spin
-		DECOMP_VehPhysProc_SpinStop_Init(t, d);
+		VehPhysProc_SpinStop_Init(t, d);
 	}
 }

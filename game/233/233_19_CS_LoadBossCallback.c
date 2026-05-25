@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ae81c-0x800ae834
-void DECOMP_CS_LoadBossCallback(struct LoadQueueSlot *lqs)
+void CS_LoadBossCallback(struct LoadQueueSlot *lqs)
 {
 	void *ptr = lqs->ptrDestination;
 	sdata->load_inProgress = 0;

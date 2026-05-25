@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac638-0x800ac694
-int DECOMP_CS_Instance_SafeCheckAnimFrame(struct Instance *inst, int animIndex, int LOD, int desiredFrame)
+int CS_Instance_SafeCheckAnimFrame(struct Instance *inst, int animIndex, int LOD, int desiredFrame)
 {
 	// Default return value
 	int animFrame = desiredFrame;
@@ -12,7 +12,7 @@ int DECOMP_CS_Instance_SafeCheckAnimFrame(struct Instance *inst, int animIndex, 
 	if (desiredFrame <= 0)
 		return 0;
 
-	int numFrames = DECOMP_CS_Instance_GetNumAnimFrames(inst, animIndex, LOD);
+	int numFrames = CS_Instance_GetNumAnimFrames(inst, animIndex, LOD);
 
 	// if negative
 	if (numFrames < 1)

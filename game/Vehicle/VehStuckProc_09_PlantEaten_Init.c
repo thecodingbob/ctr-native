@@ -35,7 +35,7 @@ void VehStuckProc_PlantEaten_Init(struct Thread *t, struct Driver *d)
 		d->thCloud = NULL;
 	}
 
-	if ((DECOMP_LOAD_IsOpen_RacingOrBattle() != 0) && ((sdata->gGT->gameMode1 & ADVENTURE_ARENA) == 0))
+	if ((LOAD_IsOpen_RacingOrBattle() != 0) && ((sdata->gGT->gameMode1 & ADVENTURE_ARENA) == 0))
 	{
 		DECOMP_RB_Player_ModifyWumpa(d, -2);
 	}
@@ -61,7 +61,7 @@ void *PlayerEatenFuncTable[13] = {
     NULL,
     VehStuckProc_PlantEaten_Update,
     VehStuckProc_PlantEaten_PhysLinear,
-    DECOMP_VehPhysProc_Driving_Audio,
+    VehPhysProc_Driving_Audio,
     NULL,
     NULL,
     NULL,

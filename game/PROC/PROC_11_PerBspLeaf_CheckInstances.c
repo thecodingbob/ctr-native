@@ -1,12 +1,12 @@
 #include <common.h>
 
-static s32 DECOMP_PROC_PerBspLeaf_MipsSquare(s32 value)
+static s32 PROC_PerBspLeaf_MipsSquare(s32 value)
 {
 	return (s32)(u32)((s64)value * (s64)value);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800423fc-0x80042544
-void DECOMP_PROC_PerBspLeaf_CheckInstances(struct BSP *bspLeaf, struct ScratchpadStruct *sps)
+void PROC_PerBspLeaf_CheckInstances(struct BSP *bspLeaf, struct ScratchpadStruct *sps)
 {
 	s32 distX;
 	s32 distY;
@@ -36,16 +36,16 @@ void DECOMP_PROC_PerBspLeaf_CheckInstances(struct BSP *bspLeaf, struct Scratchpa
 		distY = (int)sps->Input1.pos[1] - (int)bspHitbox->data.hitbox.unkShort[1];
 		distZ = (int)sps->Input1.pos[2] - (int)bspHitbox->data.hitbox.unkShort[2];
 
-		dist = DECOMP_PROC_PerBspLeaf_MipsSquare(distX);
+		dist = PROC_PerBspLeaf_MipsSquare(distX);
 		if (dist > 0x0fffffff)
 			continue;
 
-		s32 distYSquared = DECOMP_PROC_PerBspLeaf_MipsSquare(distY);
+		s32 distYSquared = PROC_PerBspLeaf_MipsSquare(distY);
 		dist += distYSquared;
 		if (distYSquared > 0x0fffffff)
 			continue;
 
-		s32 distZSquared = DECOMP_PROC_PerBspLeaf_MipsSquare(distZ);
+		s32 distZSquared = PROC_PerBspLeaf_MipsSquare(distZ);
 		dist += distZSquared;
 		if (distZSquared > 0x0fffffff)
 			continue;

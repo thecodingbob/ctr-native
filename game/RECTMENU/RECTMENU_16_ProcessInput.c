@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80046534-0x8004680c
-int DECOMP_RECTMENU_ProcessInput(struct RectMenu *m)
+int RECTMENU_ProcessInput(struct RectMenu *m)
 {
 	struct MenuRow *currMenuRow;
 	int i;
@@ -50,7 +50,7 @@ int DECOMP_RECTMENU_ProcessInput(struct RectMenu *m)
 			// if input should clear upon opening
 			if ((m->state & KEEP_INPUTS_IN_SUBMENU) == 0)
 			{
-				DECOMP_RECTMENU_ClearInput();
+				RECTMENU_ClearInput();
 			}
 		}
 
@@ -71,7 +71,7 @@ int DECOMP_RECTMENU_ProcessInput(struct RectMenu *m)
 			// if cursor moving sound is not muted
 			if ((m->state & MUTE_SOUND_OF_MOVING_CURSOR) == 0)
 			{
-				DECOMP_OtherFX_Play(0, 1);
+				OtherFX_Play(0, 1);
 			}
 		}
 
@@ -89,7 +89,7 @@ int DECOMP_RECTMENU_ProcessInput(struct RectMenu *m)
 				// if menu is not muted
 				if ((m->state & MUTE_SOUND_OF_MOVING_CURSOR) == 0)
 				{
-					DECOMP_OtherFX_Play(2, 1);
+					OtherFX_Play(2, 1);
 				}
 
 				returnVal = -1;
@@ -100,7 +100,7 @@ int DECOMP_RECTMENU_ProcessInput(struct RectMenu *m)
 
 				if (m->funcPtr != 0)
 				{
-					DECOMP_RECTMENU_ClearInput();
+					RECTMENU_ClearInput();
 					m->funcPtr(m);
 				}
 
@@ -117,7 +117,7 @@ int DECOMP_RECTMENU_ProcessInput(struct RectMenu *m)
 			{
 				if ((m->state & MUTE_SOUND_OF_MOVING_CURSOR) == 0)
 				{
-					DECOMP_OtherFX_Play(1, 1);
+					OtherFX_Play(1, 1);
 				}
 
 				m->unk1e = 0;
@@ -131,18 +131,18 @@ int DECOMP_RECTMENU_ProcessInput(struct RectMenu *m)
 
 				if (m->funcPtr != 0)
 				{
-					DECOMP_RECTMENU_ClearInput();
+					RECTMENU_ClearInput();
 					m->funcPtr(m);
 				}
 			}
 			else if ((m->state & MUTE_SOUND_OF_MOVING_CURSOR) == 0)
 			{
 				// "womp" sound for LOCKED row
-				DECOMP_OtherFX_Play(5, 1);
+				OtherFX_Play(5, 1);
 			}
 		}
 
-		DECOMP_RECTMENU_ClearInput();
+		RECTMENU_ClearInput();
 
 		m->rowSelected = newRow;
 	}
@@ -155,7 +155,7 @@ int DECOMP_RECTMENU_ProcessInput(struct RectMenu *m)
 
 		// keep going till the bottom hierarchy level is hit,
 		// where m->state&4==0, cause not drawing "only title"
-		returnVal = DECOMP_RECTMENU_ProcessInput(m->ptrNextBox_InHierarchy);
+		returnVal = RECTMENU_ProcessInput(m->ptrNextBox_InHierarchy);
 	}
 
 	return returnVal;

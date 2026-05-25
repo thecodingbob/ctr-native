@@ -229,7 +229,7 @@ int main(int argc, char *argv[])
 
 	g_dbg_gameDebugKeys = PsyXKeyboardHandler;
 
-	int result = DECOMP_main();
+	int result = CTR_Main();
 
 	Platform_Shutdown();
 	return result;

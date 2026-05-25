@@ -21,7 +21,7 @@ void DotLights_AudioAndVideo(struct GameTracker *gGT)
 		if (timer < 1)
 		{
 			if (sdata->trafficLightsTimer_prevFrame > 0)
-				DECOMP_OtherFX_Play(0x46, 0);
+				OtherFX_Play(0x46, 0);
 
 			red1 = 1;
 			red2 = 1;
@@ -32,7 +32,7 @@ void DotLights_AudioAndVideo(struct GameTracker *gGT)
 		else if (timer < 0x3c1)
 		{
 			if (sdata->trafficLightsTimer_prevFrame > 0x3c0)
-				DECOMP_OtherFX_Play(0x45, 0);
+				OtherFX_Play(0x45, 0);
 
 			red1 = 1;
 			red2 = 1;
@@ -43,7 +43,7 @@ void DotLights_AudioAndVideo(struct GameTracker *gGT)
 		else if (timer < 0x781)
 		{
 			if (sdata->trafficLightsTimer_prevFrame > 0x780)
-				DECOMP_OtherFX_Play(0x45, 0);
+				OtherFX_Play(0x45, 0);
 
 			red1 = 1;
 			red2 = 1;
@@ -54,7 +54,7 @@ void DotLights_AudioAndVideo(struct GameTracker *gGT)
 		else if (timer < 0xb41)
 		{
 			if (sdata->trafficLightsTimer_prevFrame > 0xb40)
-				DECOMP_OtherFX_Play(0x45, 0);
+				OtherFX_Play(0x45, 0);
 
 			red1 = 1;
 			red2 = 0;

@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80042544-0x800425d4
-void DECOMP_PROC_StartSearch_Self(struct ScratchpadStruct *sps)
+void PROC_StartSearch_Self(struct ScratchpadStruct *sps)
 {
 	s16 hitRadius;
 	struct GameTracker *gGT;
@@ -18,6 +18,5 @@ void DECOMP_PROC_StartSearch_Self(struct ScratchpadStruct *sps)
 
 	gGT = sdata->gGT;
 
-	COLL_SearchBSP_CallbackPARAM(gGT->level1->ptr_mesh_info->bspRoot, (struct BoundingBox *)&sps->Union.ThBuckColl.min[0],
-	                             DECOMP_PROC_PerBspLeaf_CheckInstances, sps);
+	COLL_SearchBSP_CallbackPARAM(gGT->level1->ptr_mesh_info->bspRoot, (struct BoundingBox *)&sps->Union.ThBuckColl.min[0], PROC_PerBspLeaf_CheckInstances, sps);
 }

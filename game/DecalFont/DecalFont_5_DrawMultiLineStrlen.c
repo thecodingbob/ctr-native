@@ -1,6 +1,6 @@
 #include <common.h>
 
-int DECOMP_DecalFont_DrawMultiLineStrlen(char *str, s16 len, s16 posX, s16 posY, s16 maxPixLen, s16 fontType, s16 flags)
+int DecalFont_DrawMultiLineStrlen(char *str, s16 len, s16 posX, s16 posY, s16 maxPixLen, s16 fontType, s16 flags)
 {
 	char strCharacter;
 	s16 lineLen;
@@ -73,7 +73,7 @@ int DECOMP_DecalFont_DrawMultiLineStrlen(char *str, s16 len, s16 posX, s16 posY,
 					}
 				}
 
-				lineLen = DECOMP_DecalFont_GetLineWidthStrlen(str, (u32)currPointer - (u32)str, (int)fontType);
+				lineLen = DecalFont_GetLineWidthStrlen(str, (u32)currPointer - (u32)str, (int)fontType);
 
 				if (
 				    // if parameter line length is longer than string line length
@@ -96,7 +96,7 @@ int DECOMP_DecalFont_DrawMultiLineStrlen(char *str, s16 len, s16 posX, s16 posY,
 #if BUILD > UsaRetail
 		if (!(flags & 0x800))
 #endif
-			DECOMP_DecalFont_DrawLineStrlen(str, (u32)strPointer - (u32)str, (int)posX, posY + totalPassageHeight, (int)fontType, (int)flags);
+			DecalFont_DrawLineStrlen(str, (u32)strPointer - (u32)str, (int)posX, posY + totalPassageHeight, (int)fontType, (int)flags);
 
 #if BUILD > SepReview
 

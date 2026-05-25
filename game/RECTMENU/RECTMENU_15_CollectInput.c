@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80046458-0x80046534.
-void DECOMP_RECTMENU_CollectInput()
+void RECTMENU_CollectInput()
 {
 	int i;
 	int numListen;

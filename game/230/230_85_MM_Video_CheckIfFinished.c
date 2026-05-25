@@ -1,6 +1,6 @@
 #include <common.h>
 
-u32 DECOMP_MM_Video_CheckIfFinished(int param_1)
+u32 MM_Video_CheckIfFinished(int param_1)
 {
 	char bVar1;
 	u32 uVar2;

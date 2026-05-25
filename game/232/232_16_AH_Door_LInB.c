@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_AH_Door_LInB(struct Instance *inst)
+void AH_Door_LInB(struct Instance *inst)
 {
 	char i;
 	char doorID;
@@ -25,10 +25,10 @@ void DECOMP_AH_Door_LInB(struct Instance *inst)
 	if (inst->thread != NULL)
 		return;
 
-	t = DECOMP_PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(0x38, NONE, SMALL, STATIC),
-	                                DECOMP_AH_Door_ThTick, // behavior
-	                                0,                     // debug name
-	                                0                      // thread relative
+	t = PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(0x38, NONE, SMALL, STATIC),
+	                         AH_Door_ThTick, // behavior
+	                         0,              // debug name
+	                         0               // thread relative
 	);
 
 	inst->thread = t;
@@ -41,7 +41,7 @@ void DECOMP_AH_Door_LInB(struct Instance *inst)
 
 	t->inst = inst;
 
-	t->funcThDestroy = DECOMP_AH_Door_ThDestroy;
+	t->funcThDestroy = AH_Door_ThDestroy;
 
 	// this instance is always the left-hand door,
 	// and every left-hand door has one key hole
@@ -94,7 +94,7 @@ void DECOMP_AH_Door_LInB(struct Instance *inst)
 	// "door"
 
 	// INSTANCE_Birth3D -- ptrModel, name, thread
-	otherDoorInst = DECOMP_INSTANCE_Birth3D(m, 0, 0);
+	otherDoorInst = INSTANCE_Birth3D(m, 0, 0);
 
 	// spawn instance of right-hand door,
 	// which is not in LEV file, only built in thread

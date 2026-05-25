@@ -145,7 +145,7 @@ void Channel_ParseSongToChannels()
 							seq->currNote += data.opcodeOffset[opcode];
 						}
 
-						seq->currNote = DECOMP_howl_GetNextNote(seq->currNote, &seq->NoteLength);
+						seq->currNote = howl_GetNextNote(seq->currNote, &seq->NoteLength);
 					}
 				}
 			}

@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80031c78-0x80031d30
-void *DECOMP_LOAD_ReadDirectory(char *filename)
+void *LOAD_ReadDirectory(char *filename)
 {
 	CdlFILE cdlFile;
 	char buf[8];

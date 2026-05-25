@@ -44,7 +44,7 @@ void Seal_CheckColl(struct Instance *sealInst, struct Thread *sealTh, int damage
 			return;
 
 		// play seal sound, with echo if driver is on an echo quadblock
-		DECOMP_OtherFX_Play_Echo(sound, 1, hitDriver->actionsFlagSet & 0x00010000);
+		OtherFX_Play_Echo(sound, 1, hitDriver->actionsFlagSet & 0x00010000);
 
 		// dont check other buckets
 		return;
@@ -99,7 +99,7 @@ void DECOMP_RB_Seal_ThTick_TurnAround(struct Thread *t)
 	sealObj = (struct Seal *)t->object;
 
 	// if animation is not over
-	if ((sealInst->animFrame + 2) < DECOMP_INSTANCE_GetNumAnimFrames(sealInst, 0))
+	if ((sealInst->animFrame + 2) < INSTANCE_GetNumAnimFrames(sealInst, 0))
 	{
 		// increment frame
 		sealInst->animFrame = sealInst->animFrame + 2;
@@ -160,7 +160,7 @@ void DECOMP_RB_Seal_ThTick_Move(struct Thread *t)
 	sealObj = (struct Seal *)t->object;
 
 	// if animation is not over
-	if ((sealInst->animFrame + 2) < DECOMP_INSTANCE_GetNumAnimFrames(sealInst, 0))
+	if ((sealInst->animFrame + 2) < INSTANCE_GetNumAnimFrames(sealInst, 0))
 	{
 		// increment frame
 		sealInst->animFrame = sealInst->animFrame + 2;
@@ -240,7 +240,7 @@ void DECOMP_RB_Seal_LInB(struct Instance *inst)
 	if (inst->thread != 0)
 		return;
 
-	t = DECOMP_PROC_BirthWithObject(
+	t = PROC_BirthWithObject(
 	    // creation flags
 	    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Seal), NONE, SMALL, STATIC),
 

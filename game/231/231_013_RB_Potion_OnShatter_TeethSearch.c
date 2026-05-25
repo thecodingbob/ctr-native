@@ -17,5 +17,5 @@ void DECOMP_RB_Potion_OnShatter_TeethSearch(struct Instance *inst)
 	SPS->Union.ThBuckColl.thread = inst->thread;
 	SPS->Union.ThBuckColl.funcCallback = RB_Potion_OnShatter_TeethCallback;
 
-	DECOMP_PROC_StartSearch_Self(SPS);
+	PROC_StartSearch_Self(SPS);
 }

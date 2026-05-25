@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_HighScore_Draw(u16 trackIndex, u32 rowIndex, u32 posX, u32 posY)
+void MM_HighScore_Draw(u16 trackIndex, u32 rowIndex, u32 posX, u32 posY)
 {
 	char i;
 	s16 numColor;
@@ -24,7 +24,7 @@ void DECOMP_MM_HighScore_Draw(u16 trackIndex, u32 rowIndex, u32 posX, u32 posY)
 
 	levelID = D230.arcadeTracks[trackIndex].levID;
 
-	lineWidth = DECOMP_DecalFont_GetLineWidth(sdata->lngStrings[data.metaDataLEV[levelID].name_LNG], 1);
+	lineWidth = DecalFont_GetLineWidth(sdata->lngStrings[data.metaDataLEV[levelID].name_LNG], 1);
 	lineWidth = lineWidth >> 1;
 
 	// get color data
@@ -44,14 +44,14 @@ void DECOMP_MM_HighScore_Draw(u16 trackIndex, u32 rowIndex, u32 posX, u32 posY)
 	                 colorPtr[2], colorPtr[3], 0, 0x1000, 0);
 
 	// draw track name
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[data.metaDataLEV[levelID].name_LNG], D230.transitionMeta_HighScores[0].currX + (s16)(posX + 0x100),
-	                          D230.transitionMeta_HighScores[0].currY + (s16)(posY + 0xe), FONT_BIG, JUSTIFY_CENTER);
+	DecalFont_DrawLine(sdata->lngStrings[data.metaDataLEV[levelID].name_LNG], D230.transitionMeta_HighScores[0].currX + (s16)(posX + 0x100),
+	                   D230.transitionMeta_HighScores[0].currY + (s16)(posY + 0xe), FONT_BIG, JUSTIFY_CENTER);
 
 	u32 iconColor = D230.highscore_iconColor;
 
 	// "BEST TRACK TIMES"
-	DECOMP_MM_HighScore_Text3D(sdata->lngStrings[0xb3], D230.transitionMeta_HighScores[1].currX + (uVar10 + 0x20),
-	                           D230.transitionMeta_HighScores[1].currY + (uVar9 + 0x2b), FONT_SMALL, 0);
+	MM_HighScore_Text3D(sdata->lngStrings[0xb3], D230.transitionMeta_HighScores[1].currX + (uVar10 + 0x20),
+	                    D230.transitionMeta_HighScores[1].currY + (uVar9 + 0x2b), FONT_SMALL, 0);
 
 	// first entry: Time Trial or Relic
 	entry = &sdata->gameProgress.highScoreTracks[levelID].scoreEntry[rowIndex * 6];
@@ -80,21 +80,21 @@ void DECOMP_MM_HighScore_Draw(u16 trackIndex, u32 rowIndex, u32 posX, u32 posY)
 		}
 
 		// "BEST LAP TIME:"
-		DECOMP_MM_HighScore_Text3D(sdata->lngStrings[0xb4], D230.transitionMeta_HighScores[7].currX + (uVar10 + 0x124),
-		                           D230.transitionMeta_HighScores[7].currY + (uVar9 + 0x2b), FONT_SMALL, 0);
+		MM_HighScore_Text3D(sdata->lngStrings[0xb4], D230.transitionMeta_HighScores[7].currX + (uVar10 + 0x124),
+		                    D230.transitionMeta_HighScores[7].currY + (uVar9 + 0x2b), FONT_SMALL, 0);
 
 		// Character Name
-		DECOMP_MM_HighScore_Text3D(entry[0].name, D230.transitionMeta_HighScores[7].currX + (uVar10 + 0x160),
-		                           D230.transitionMeta_HighScores[7].currY + (uVar9 + 0x39), FONT_BIG, entry[0].characterID + 5);
+		MM_HighScore_Text3D(entry[0].name, D230.transitionMeta_HighScores[7].currX + (uVar10 + 0x160), D230.transitionMeta_HighScores[7].currY + (uVar9 + 0x39),
+		                    FONT_BIG, entry[0].characterID + 5);
 
 		// Draw time string
-		DECOMP_MM_HighScore_Text3D(DECOMP_RECTMENU_DrawTime(entry[0].time), D230.transitionMeta_HighScores[7].currX + (uVar10 + 0x160),
-		                           D230.transitionMeta_HighScores[7].currY + (uVar9 + 0x4a), FONT_SMALL, 0);
+		MM_HighScore_Text3D(RECTMENU_DrawTime(entry[0].time), D230.transitionMeta_HighScores[7].currX + (uVar10 + 0x160),
+		                    D230.transitionMeta_HighScores[7].currY + (uVar9 + 0x4a), FONT_SMALL, 0);
 
 		// Character Icon
-		DECOMP_RECTMENU_DrawPolyGT4(gGT->ptrIcons[data.MetaDataCharacters[entry[0].characterID].iconID],
-		                            D230.transitionMeta_HighScores[7].currX + (offsetX + 0x124), D230.transitionMeta_HighScores[7].currY + (offsetY + 0x38),
-		                            &gGT->backBuffer->primMem, (gGT->pushBuffer_UI).ptrOT, iconColor, iconColor, iconColor, iconColor, 1, 0x1000);
+		RECTMENU_DrawPolyGT4(gGT->ptrIcons[data.MetaDataCharacters[entry[0].characterID].iconID], D230.transitionMeta_HighScores[7].currX + (offsetX + 0x124),
+		                     D230.transitionMeta_HighScores[7].currY + (offsetY + 0x38), &gGT->backBuffer->primMem, (gGT->pushBuffer_UI).ptrOT, iconColor,
+		                     iconColor, iconColor, iconColor, 1, 0x1000);
 	}
 
 	// Draw five "best track times"
@@ -104,18 +104,17 @@ void DECOMP_MM_HighScore_Draw(u16 trackIndex, u32 rowIndex, u32 posX, u32 posY)
 		char j = i + 2;
 
 		// Character Icon
-		DECOMP_RECTMENU_DrawPolyGT4(gGT->ptrIcons[data.MetaDataCharacters[entry[i + 1].characterID].iconID],
-		                            D230.transitionMeta_HighScores[j].currX + offsetX + 0x20,
-		                            D230.transitionMeta_HighScores[j].currY + offsetY + (i * 0x1f) + 0x39, &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT,
-		                            iconColor, iconColor, iconColor, iconColor, 1, 0x1000);
+		RECTMENU_DrawPolyGT4(gGT->ptrIcons[data.MetaDataCharacters[entry[i + 1].characterID].iconID], D230.transitionMeta_HighScores[j].currX + offsetX + 0x20,
+		                     D230.transitionMeta_HighScores[j].currY + offsetY + (i * 0x1f) + 0x39, &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT,
+		                     iconColor, iconColor, iconColor, iconColor, 1, 0x1000);
 
 		// draw the name string
-		DECOMP_MM_HighScore_Text3D(entry[i + 1].name, D230.transitionMeta_HighScores[j].currX + uVar10 + 0x5c,
-		                           D230.transitionMeta_HighScores[j].currY + uVar9 + (i * 0x1f) + 0x39, FONT_BIG, entry[i + 1].characterID + 5);
+		MM_HighScore_Text3D(entry[i + 1].name, D230.transitionMeta_HighScores[j].currX + uVar10 + 0x5c,
+		                    D230.transitionMeta_HighScores[j].currY + uVar9 + (i * 0x1f) + 0x39, FONT_BIG, entry[i + 1].characterID + 5);
 
 		// draw the Time string
-		DECOMP_MM_HighScore_Text3D(DECOMP_RECTMENU_DrawTime(entry[i + 1].time), D230.transitionMeta_HighScores[j].currX + uVar10 + 0x5c,
-		                           D230.transitionMeta_HighScores[j].currY + uVar9 + (i * 0x1f) + 0x4a, FONT_SMALL, 0);
+		MM_HighScore_Text3D(RECTMENU_DrawTime(entry[i + 1].time), D230.transitionMeta_HighScores[j].currX + uVar10 + 0x5c,
+		                    D230.transitionMeta_HighScores[j].currY + uVar9 + (i * 0x1f) + 0x4a, FONT_SMALL, 0);
 	}
 
 	videoBox.w = 0xb0;
@@ -123,5 +122,5 @@ void DECOMP_MM_HighScore_Draw(u16 trackIndex, u32 rowIndex, u32 posX, u32 posY)
 	videoBox.x = D230.transitionMeta_HighScores[9].currX + offsetX + 0x124;
 	videoBox.y = D230.transitionMeta_HighScores[9].currY + offsetY + 0x5a;
 
-	DECOMP_MM_TrackSelect_Video_Draw(&videoBox, &D230.arcadeTracks[0], trackIndex, (D230.highScore_transitionState == EXITING_MENU), 0);
+	MM_TrackSelect_Video_Draw(&videoBox, &D230.arcadeTracks[0], trackIndex, (D230.highScore_transitionState == EXITING_MENU), 0);
 }

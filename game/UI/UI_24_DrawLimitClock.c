@@ -20,7 +20,7 @@ void UI_DrawLimitClock(s16 posX, s16 posY, s16 fontType)
 	if (timeRemaining < 0)
 	{
 		// Make a time string with zero milliseconds on the clock
-		str = DECOMP_RECTMENU_DrawTime(0);
+		str = RECTMENU_DrawTime(0);
 
 		// If you're not in End-Of-Race menu
 		if ((gGT->gameMode1 & END_OF_RACE) == 0)
@@ -46,7 +46,7 @@ void UI_DrawLimitClock(s16 posX, s16 posY, s16 fontType)
 	else
 	{
 		// make a string with the remaining time
-		str = DECOMP_RECTMENU_DrawTime(timeRemaining);
+		str = RECTMENU_DrawTime(timeRemaining);
 	}
 
 	// default color is dark red
@@ -64,11 +64,6 @@ void UI_DrawLimitClock(s16 posX, s16 posY, s16 fontType)
 	}
 
 	// put the time string on the screen
-	DECOMP_DecalFont_DrawLine(str, (int)posX, (int)posY, (int)fontType, flags);
+	DecalFont_DrawLine(str, (int)posX, (int)posY, (int)fontType, flags);
 	return;
-}
-
-void DECOMP_UI_DrawLimitClock(s16 posX, s16 posY, s16 fontType)
-{
-	UI_DrawLimitClock(posX, posY, fontType);
 }

@@ -2,7 +2,7 @@
 
 // 692 by default, budget 768
 
-void DECOMP_UI_RenderFrame_CrystChall(void)
+void UI_RenderFrame_CrystChall(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
 	struct Driver *player;
@@ -17,24 +17,24 @@ void DECOMP_UI_RenderFrame_CrystChall(void)
 	if ((gGT->gameMode1 & PAUSE_ALL) == 0)
 	{
 		// execute Jump meter and landing boost processes
-		DECOMP_UI_JumpMeter_Update(player);
+		UI_JumpMeter_Update(player);
 	}
 
-	DECOMP_UI_DrawSpeedNeedle(hudStructPtr[9].x, hudStructPtr[9].y, player);
+	UI_DrawSpeedNeedle(hudStructPtr[9].x, hudStructPtr[9].y, player);
 
-	DECOMP_UI_JumpMeter_Draw(hudStructPtr[6].x, hudStructPtr[6].y, player);
+	UI_JumpMeter_Draw(hudStructPtr[6].x, hudStructPtr[6].y, player);
 
-	DECOMP_UI_DrawSlideMeter(hudStructPtr[8].x, hudStructPtr[8].y, player);
+	UI_DrawSlideMeter(hudStructPtr[8].x, hudStructPtr[8].y, player);
 
-	DECOMP_UI_DrawSpeedBG();
+	UI_DrawSpeedBG();
 
-	DECOMP_UI_DrawNumCrystal(hudStructPtr[0x11].x + 0x10, hudStructPtr[0x11].y - 0x10, player);
+	UI_DrawNumCrystal(hudStructPtr[0x11].x + 0x10, hudStructPtr[0x11].y - 0x10, player);
 
 	// Draw weapon and number of wumpa fruit in HUD
-	DECOMP_UI_Weapon_DrawSelf(hudStructPtr[0].x, hudStructPtr[0].y, hudStructPtr[0].scale, player);
+	UI_Weapon_DrawSelf(hudStructPtr[0].x, hudStructPtr[0].y, hudStructPtr[0].scale, player);
 
 	// TIME
-	DECOMP_DecalFont_DrawLine(sdata->lngStrings[0x12], 0x14, 8, FONT_SMALL, ORANGE);
+	DecalFont_DrawLine(sdata->lngStrings[0x12], 0x14, 8, FONT_SMALL, ORANGE);
 
 	// "TIME" and the actual time are printed at the same
 	// X-coordinate, so we know 0x14 is the X, which only
@@ -42,7 +42,7 @@ void DECOMP_UI_RenderFrame_CrystChall(void)
 	// the Y-coordinate.
 
 	// draw countdown clock
-	DECOMP_UI_DrawLimitClock(0x14, 0x10, 1);
+	UI_DrawLimitClock(0x14, 0x10, 1);
 
 
 	// If game is paused
@@ -76,7 +76,7 @@ void DECOMP_UI_RenderFrame_CrystChall(void)
 		// if you have enough crystals to win the race
 		if (gGT->numCrystalsInLEV <= player->numCrystals)
 		{
-			player->funcPtrs[0] = DECOMP_VehPhysProc_FreezeEndEvent_Init;
+			player->funcPtrs[0] = VehPhysProc_FreezeEndEvent_Init;
 
 			// turn on 26th bit of Actions Flag set (means racer finished the race)
 			player->actionsFlagSet |= 0x2000000;
@@ -87,7 +87,7 @@ void DECOMP_UI_RenderFrame_CrystChall(void)
 		}
 
 		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80054550-0x80054558 for crystal pickup SFX.
-		DECOMP_OtherFX_Play(0x42, 1);
+		OtherFX_Play(0x42, 1);
 
 		if (player->PickupWumpaHUD.numCollected != 0)
 			player->PickupWumpaHUD.cooldown = 5;
@@ -97,14 +97,14 @@ void DECOMP_UI_RenderFrame_CrystChall(void)
 	else
 	{
 		// interpolate position over course of 5 frames
-		DECOMP_UI_Lerp2D_HUD(&local_18[0], (int)player->PickupWumpaHUD.startX, (int)player->PickupWumpaHUD.startY, (int)hudStructPtr[0x11].x,
-		                     (int)hudStructPtr[0x11].y,
+		UI_Lerp2D_HUD(&local_18[0], (int)player->PickupWumpaHUD.startX, (int)player->PickupWumpaHUD.startY, (int)hudStructPtr[0x11].x,
+		              (int)hudStructPtr[0x11].y,
 
-		                     // cooldown (0-5)
-		                     player->PickupWumpaHUD.cooldown,
+		              // cooldown (0-5)
+		              player->PickupWumpaHUD.cooldown,
 
-		                     // 5 frames total
-		                     5);
+		              // 5 frames total
+		              5);
 
 		// reduce cooldown between getting each wumpa (or crystal)
 		player->PickupWumpaHUD.cooldown--;
@@ -112,7 +112,7 @@ void DECOMP_UI_RenderFrame_CrystChall(void)
 
 	struct Instance *hudCrystal = sdata->ptrHudCrystal;
 
-	// ======= This is DECOMP_UI_ConvertX_2 and Y_2, but inlined =======
+	// ======= This is UI_ConvertX_2 and Y_2, but inlined =======
 
 	// posX
 	iVar5 = (local_18[0] + -0x100) * hudStructPtr[0x11].z;
@@ -148,7 +148,7 @@ LAB_800545e8:
 	// weapon roulette sound is playing, then
 	// stop the sound and remove flag
 	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80054618-0x80054628 for roulette SFX stop.
-	DECOMP_OtherFX_Stop2(0x5d);
+	OtherFX_Stop2(0x5d);
 	gGT->gameMode1 &= ~(ROLLING_ITEM);
 
 	return;

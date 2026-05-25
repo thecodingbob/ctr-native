@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_UI_WeaponBG_AnimateShine(void)
+void UI_WeaponBG_AnimateShine(void)
 {
 	int sine;
 	u32 local_18;

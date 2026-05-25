@@ -189,7 +189,7 @@ void VehBirth_TeleportSelf(struct Driver *d, u8 spawnFlag, int spawnPosY)
 			}
 			else
 			{
-				warppadRot = DECOMP_AH_WarpPad_GetSpawnPosRot(warppadPos);
+				warppadRot = AH_WarpPad_GetSpawnPosRot(warppadPos);
 				VehBirth_SetBottomFromPos(posBottom, warppadPos);
 			}
 		}
@@ -367,7 +367,7 @@ void VehBirth_TeleportSelf(struct Driver *d, u8 spawnFlag, int spawnPosY)
 		dInst->thread->funcThTick = ((gGT->gameMode1 & (GAME_CUTSCENE | MAIN_MENU)) == 0) ? NULL : VehBirth_NullThread;
 
 		// set OnInit function
-		d->funcPtrs[0] = ((gGT->gameMode1 & ADVENTURE_ARENA) == 0) ? VehStuckProc_RevEngine_Init : DECOMP_VehPhysProc_Driving_Init;
+		d->funcPtrs[0] = ((gGT->gameMode1 & ADVENTURE_ARENA) == 0) ? VehStuckProc_RevEngine_Init : VehPhysProc_Driving_Init;
 	}
 
 	d->lapIndex = 0;

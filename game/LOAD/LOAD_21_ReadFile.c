@@ -1,9 +1,9 @@
 #include <common.h>
 
 // same hack as AppendQueue, see notes there
-#define DECOMP_LOAD_ReadFile(a, b, c, d) DECOMP_LOAD_ReadFile_ex(b, c, d)
+#define LOAD_ReadFile(a, b, c, d) LOAD_ReadFile_ex(b, c, d)
 
-void *DECOMP_LOAD_ReadFile_ex(/*struct BigHeader* bigfile,*/ u32 loadType, int subfileIndex, void *ptrDst)
+void *LOAD_ReadFile_ex(/*struct BigHeader* bigfile,*/ u32 loadType, int subfileIndex, void *ptrDst)
 {
 	// param1 is the Pointer to CD position of BIGFILE
 
@@ -52,7 +52,7 @@ void *DECOMP_LOAD_ReadFile_ex(/*struct BigHeader* bigfile,*/ u32 loadType, int s
 
 	if ((loadType & LT_ASYNC) != 0)
 	{
-		CdReadCallback(DECOMP_LOAD_ReadFileASyncCallback);
+		CdReadCallback(LOAD_ReadFileASyncCallback);
 	}
 
 	while (1)

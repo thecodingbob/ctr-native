@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80046b60-0x80046bc0.
-u32 DECOMP_RefreshCard_GhostEncodeByte(int currByte)
+u32 RefreshCard_GhostEncodeByte(int currByte)
 {
 	s16 byte = currByte;
 

@@ -13,10 +13,5 @@ int OtherFX_Play(u32 soundID, int flags)
 	// 0xff - volume
 	// 0x80 - distortion (none)
 	// 0x80 - LR (center of left and right)
-	return DECOMP_OtherFX_Play_LowLevel(soundID & 0xffff, flags & 0xff, 0xff8080);
-}
-
-int DECOMP_OtherFX_Play(u32 soundID, int flags)
-{
-	return OtherFX_Play(soundID, flags);
+	return OtherFX_Play_LowLevel(soundID & 0xffff, flags & 0xff, 0xff8080);
 }

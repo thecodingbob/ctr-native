@@ -1,7 +1,7 @@
 #include <common.h>
 
 // Draw arrows over the heads of players
-void DECOMP_UI_BattleDrawHeadArrows(struct Driver *player)
+void UI_BattleDrawHeadArrows(struct Driver *player)
 {
 	typedef struct
 	{

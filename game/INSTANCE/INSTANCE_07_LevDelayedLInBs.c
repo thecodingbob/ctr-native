@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_INSTANCE_LevDelayedLInBs(struct Instance *instDefs, u32 numInstances)
+void INSTANCE_LevDelayedLInBs(struct Instance *instDefs, u32 numInstances)
 {
 	struct InstDef *id = instDefs->instDef;
 	for (u32 i = 0; i < numInstances; i++)

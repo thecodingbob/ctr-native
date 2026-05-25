@@ -35,10 +35,10 @@ void DECOMP_RB_Teeth_LInB();
 int DECOMP_RB_Teeth_LInC();
 
 void AH_Sign_LInB();
-// void DECOMP_AH_Door_LInB();		-- DONE
-// void DECOMP_AH_Garage_LInB();		-- DONE
-// void DECOMP_AH_SaveObj_LInB();	-- DONE
-// void DECOMP_AH_WarpPad_LInB();	-- DONE
+// void AH_Door_LInB();		-- DONE
+// void AH_Garage_LInB();		-- DONE
+// void AH_SaveObj_LInB();	-- DONE
+// void AH_WarpPad_LInB();	-- DONE
 
 // CS_Thread_LInB moved to game/233/233_01_CS_Thread_LInB.c
 
@@ -77,10 +77,10 @@ void RB_Banner_LInB()
 void AH_Sign_LInB()
 {
 }
-// void DECOMP_AH_Door_LInB() {}		-- DONE
-// void DECOMP_AH_Garage_LInB() {}	-- DONE
-// void DECOMP_AH_SaveObj_LInB() {}	-- DONE
-// void DECOMP_AH_WarpPad_LInB() {}	-- DONE
+// void AH_Door_LInB() {}		-- DONE
+// void AH_Garage_LInB() {}	-- DONE
+// void AH_SaveObj_LInB() {}	-- DONE
+// void AH_WarpPad_LInB() {}	-- DONE
 
 // CS_Thread_LInB moved to game/233/233_01_CS_Thread_LInB.c
 #endif
@@ -1518,7 +1518,7 @@ struct Data
                     SET_MDM(NULL, NULL, NULL),
 
                     // 0x6C - STATIC_WARPPAD
-                    SET_MDM(NULL, DECOMP_AH_WarpPad_LInB, NULL),
+                    SET_MDM(NULL, AH_WarpPad_LInB, NULL),
 
                     // 0x6D - STATIC_BIG0
                     SET_MDM(NULL, NULL, NULL),
@@ -1536,22 +1536,22 @@ struct Data
                     SET_MDM(NULL, NULL /*RB_StartText_LInB*/, NULL),
 
                     // 0x72 - STATIC_SAVEOBJ
-                    SET_MDM(NULL, DECOMP_AH_SaveObj_LInB, NULL),
+                    SET_MDM(NULL, AH_SaveObj_LInB, NULL),
 
                     // 0x73 - STATIC_PINGARAGE
-                    SET_MDM(NULL, DECOMP_AH_Garage_LInB, NULL),
+                    SET_MDM(NULL, AH_Garage_LInB, NULL),
 
                     // 0x74 - STATIC_PAPUGARAGE
-                    SET_MDM(NULL, DECOMP_AH_Garage_LInB, NULL),
+                    SET_MDM(NULL, AH_Garage_LInB, NULL),
 
                     // 0x75 - STATIC_ROOGARAGE
-                    SET_MDM(NULL, DECOMP_AH_Garage_LInB, NULL),
+                    SET_MDM(NULL, AH_Garage_LInB, NULL),
 
                     // 0x76 - STATIC_JOEGARAGE
-                    SET_MDM(NULL, DECOMP_AH_Garage_LInB, NULL),
+                    SET_MDM(NULL, AH_Garage_LInB, NULL),
 
                     // 0x77 - STATIC_OXIDEGARAGE
-                    SET_MDM(NULL, DECOMP_AH_Garage_LInB, NULL),
+                    SET_MDM(NULL, AH_Garage_LInB, NULL),
 
                     // 0x78 - STATIC_SCAN (load/save screen)
                     SET_MDM(NULL, NULL, NULL),
@@ -1560,7 +1560,7 @@ struct Data
                     SET_MDM(NULL, NULL, NULL),
 
                     // 0x7a - STATIC_DOOR
-                    SET_MDM(NULL, DECOMP_AH_Door_LInB, NULL),
+                    SET_MDM(NULL, AH_Door_LInB, NULL),
 
                     // 0x7b - STATIC_BEAM (warppad vortex)
                     SET_MDM(NULL, NULL, NULL),
@@ -3726,8 +3726,7 @@ struct Data
                     2,
                 },
 
-            .overlayCallbackFuncs = {DECOMP_LOAD_Callback_Overlay_230, DECOMP_LOAD_Callback_Overlay_231, DECOMP_LOAD_Callback_Overlay_232,
-                                     DECOMP_LOAD_Callback_Overlay_233},
+            .overlayCallbackFuncs = {LOAD_Callback_Overlay_230, LOAD_Callback_Overlay_231, LOAD_Callback_Overlay_232, LOAD_Callback_Overlay_233},
 
             // leave name_Debug out, dont need it
             .metaDataLEV =
@@ -4993,7 +4992,7 @@ struct Data
                     .stringIndexTitle = -1,
                     .state = 0x2820,
 #ifdef CTR_NATIVE
-                    .funcPtr = DECOMP_SelectProfile_AllProfiles_MenuProc,
+                    .funcPtr = SelectProfile_AllProfiles_MenuProc,
 #else
                     .funcPtr = (void (*)(struct RectMenu *))0x800490c4,
 #endif

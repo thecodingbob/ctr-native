@@ -2,7 +2,7 @@
 
 // real Naughty Dog name
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002b0e0-0x8002b130
-int DECOMP_howl_VolumeGet(int type)
+int howl_VolumeGet(int type)
 {
 	if (type == 1)
 		return sdata->vol_Music;

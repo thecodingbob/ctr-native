@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_UI_ThTick_CountPickup(struct Thread *bucket)
+void UI_ThTick_CountPickup(struct Thread *bucket)
 {
 	struct GameTracker *gGT;
 	s16 rotSpd;

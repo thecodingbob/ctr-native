@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_MM_CupSelect_Init(void)
+void MM_CupSelect_Init(void)
 {
 	// disable 0x400 (dont exec funcptr)
 	// enable 0x20 (allow exec funcptr, and block input

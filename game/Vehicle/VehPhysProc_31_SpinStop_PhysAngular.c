@@ -13,8 +13,3 @@ void VehPhysProc_SpinStop_PhysAngular(struct Thread *t, struct Driver *d)
 
 	VehPhysForce_RotAxisAngle(&d->matrixMovingDir, &d->AxisAngle1_normalVec.x, d->angle);
 }
-
-void DECOMP_VehPhysProc_SpinStop_PhysAngular(struct Thread *t, struct Driver *d)
-{
-	VehPhysProc_SpinStop_PhysAngular(t, d);
-}

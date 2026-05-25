@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006364c-0x800638d4.
-void DECOMP_VehPhysProc_PowerSlide_Update(struct Thread *t, struct Driver *d)
+void VehPhysProc_PowerSlide_Update(struct Thread *t, struct Driver *d)
 {
 	s16 noInputTime;
 	int incrementReserves;
@@ -137,7 +137,7 @@ void DECOMP_VehPhysProc_PowerSlide_Update(struct Thread *t, struct Driver *d)
 		// Set amount of NoInput
 		d->NoInputTimer = noInputTime;
 
-		DECOMP_VehPhysProc_SpinFirst_Init(t, d);
+		VehPhysProc_SpinFirst_Init(t, d);
 	}
 
 	// if you aren't spinning out
@@ -158,8 +158,8 @@ void DECOMP_VehPhysProc_PowerSlide_Update(struct Thread *t, struct Driver *d)
 		        d->buttonUsedToStartDrift) == 0))))
 		{
 			// Stop drifting, just drive
-			DECOMP_VehPhysProc_PowerSlide_Finalize(t, d);
-			DECOMP_VehPhysProc_Driving_Init(t, d);
+			VehPhysProc_PowerSlide_Finalize(t, d);
+			VehPhysProc_Driving_Init(t, d);
 		}
 	}
 }

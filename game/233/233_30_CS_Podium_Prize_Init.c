@@ -10,7 +10,7 @@ void CS_Podium_Prize_Init(u32 prizeModel, char *prizeName, s16 *posOnScreen)
 	int ty;
 	int tz;
 
-	inst = DECOMP_INSTANCE_BirthWithThread(prizeModel, prizeName, MEDIUM, OTHER, CS_Podium_Prize_ThTick1, 0x2c, NULL);
+	inst = INSTANCE_BirthWithThread(prizeModel, prizeName, MEDIUM, OTHER, CS_Podium_Prize_ThTick1, 0x2c, NULL);
 
 	if (inst == NULL)
 	{
@@ -27,7 +27,7 @@ void CS_Podium_Prize_Init(u32 prizeModel, char *prizeName, s16 *posOnScreen)
 	inst->flags |= HIDE_MODEL;
 
 	prize = inst->thread->object;
-	inst->thread->funcThDestroy = DECOMP_CS_Podium_Prize_ThDestroy;
+	inst->thread->funcThDestroy = CS_Podium_Prize_ThDestroy;
 
 	prize[0x11] = 0x40;
 	prize[0x12] = 0x200;

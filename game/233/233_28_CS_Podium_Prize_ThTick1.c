@@ -49,9 +49,9 @@ void CS_Podium_Prize_ThTick1(struct Thread *th)
 		idpp[0].pushBuffer = &sdata->gGT->pushBuffer_UI;
 	}
 
-	DECOMP_OtherFX_Stop2(0xaf);
-	DECOMP_OtherFX_Stop2(0xae);
-	DECOMP_OtherFX_Play(0x9a, 1);
+	OtherFX_Stop2(0xaf);
+	OtherFX_Stop2(0xae);
+	OtherFX_Play(0x9a, 1);
 
 	ThTick_SetAndExec(th, CS_Podium_Prize_ThTick2);
 }

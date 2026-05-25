@@ -2,7 +2,7 @@
 
 int MEMCARD_NewFunc_AsyncCRC(u8 *saveBytes, int len);
 
-int DECOMP_MEMCARD_ChecksumSave(u8 *saveBytes, int len)
+int MEMCARD_ChecksumSave(u8 *saveBytes, int len)
 {
 	int ret = MEMCARD_NewFunc_AsyncCRC(saveBytes, len);
 	if (ret == MC_RETURN_PENDING)

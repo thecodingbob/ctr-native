@@ -44,7 +44,7 @@ void CS_Podium_Prize_ThTick3(struct Thread *th)
 		return;
 	}
 
-	if (DECOMP_CS_Camera_BoolGotoBoss() == 0)
+	if (CS_Camera_BoolGotoBoss() == 0)
 	{
 		u32 rewards = sdata->advProgress.rewards[4];
 		s16 hintID = 0;
@@ -72,7 +72,7 @@ void CS_Podium_Prize_ThTick3(struct Thread *th)
 	gGT->overlayTransition = 2;
 	gGT->gameMode2 &= ~VEH_FREEZE_PODIUM;
 
-	DECOMP_OtherFX_Play(0x67, 1);
+	OtherFX_Play(0x67, 1);
 
 	th->flags |= 0x800;
 }

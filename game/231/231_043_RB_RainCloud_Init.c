@@ -11,9 +11,9 @@ void DECOMP_RB_RainCloud_Init(struct Driver *d)
 	// if driver -> cloudTh is invalid
 	if (d->thCloud == NULL)
 	{
-		cloudInst = DECOMP_INSTANCE_BirthWithThread(0x42, 0, SMALL, OTHER, DECOMP_RB_RainCloud_ThTick, sizeof(struct RainCloud), d->instSelf->thread);
+		cloudInst = INSTANCE_BirthWithThread(0x42, 0, SMALL, OTHER, DECOMP_RB_RainCloud_ThTick, sizeof(struct RainCloud), d->instSelf->thread);
 
-		cloudInst->thread->funcThDestroy = DECOMP_PROC_DestroyInstance;
+		cloudInst->thread->funcThDestroy = PROC_DestroyInstance;
 
 		*(int *)&cloudInst->matrix.m[0][0] = 0x1000;
 		*(int *)&cloudInst->matrix.m[0][2] = 0;

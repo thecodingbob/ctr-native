@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029ab4-0x80029b2c
-void DECOMP_howl_ParseCseqHeader(struct CseqHeader *ch)
+void howl_ParseCseqHeader(struct CseqHeader *ch)
 {
 	u32 addr = (u32)ch;
 

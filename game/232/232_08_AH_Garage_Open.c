@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ae8e0-0x800ae988.
-void DECOMP_AH_Garage_Open(struct ScratchpadStruct *sps, struct Thread *otherTh)
+void AH_Garage_Open(struct ScratchpadStruct *sps, struct Thread *otherTh)
 {
 	s16 sound;
 	struct Instance *garageInst;
@@ -37,7 +37,7 @@ void DECOMP_AH_Garage_Open(struct ScratchpadStruct *sps, struct Thread *otherTh)
 		}
 
 		// Play sound
-		DECOMP_OtherFX_Play(sound, 1);
+		OtherFX_Play(sound, 1);
 	}
 
 	// door is now opening

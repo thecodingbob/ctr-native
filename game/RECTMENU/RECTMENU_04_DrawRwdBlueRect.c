@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_RECTMENU_DrawRwdBlueRect(RECT *rect, char *metas, u_long *ot, struct PrimMem *primMem)
+void RECTMENU_DrawRwdBlueRect(RECT *rect, char *metas, u_long *ot, struct PrimMem *primMem)
 {
 	s16 pos[4];
 	int gradient[2];
@@ -21,6 +21,6 @@ void DECOMP_RECTMENU_DrawRwdBlueRect(RECT *rect, char *metas, u_long *ot, struct
 		pos[1] = rect->y + (s16)(meta[3] * rect->h / 100);
 		pos[3] = rect->y + (s16)(meta[7] * rect->h / 100) - pos[1] + 1;
 
-		DECOMP_RECTMENU_DrawRwdBlueRect_Subset(pos, colors, ot, primMem);
+		RECTMENU_DrawRwdBlueRect_Subset(pos, colors, ot, primMem);
 	}
 }

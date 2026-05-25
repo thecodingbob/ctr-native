@@ -9,7 +9,7 @@
 #define PSX_OVR233_BASE  0x800AB9F0U
 #define OVR233_DATA_SIZE 48528
 
-void DECOMP_CS_OVR233_LoadData(void)
+void CS_OVR233_LoadData(void)
 {
 	FILE *f = fopen("assets/bigfile/overlays/233_Threads_Cutscene.bin", "rb");
 	if (!f)

@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_UI_VsWaitForPressX(void)
+void UI_VsWaitForPressX(void)
 {
 	char i, j;
 	char numAttacked;

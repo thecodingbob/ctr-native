@@ -1,6 +1,6 @@
 #include <common.h>
 
-void DECOMP_UI_JumpMeter_Draw(s16 posX, s16 posY, struct Driver *driver)
+void UI_JumpMeter_Draw(s16 posX, s16 posY, struct Driver *driver)
 {
 	struct GameTracker *gGT;
 	u32 colorAndCode;
