@@ -251,10 +251,8 @@ void DECOMP_RB_Fireball_ThTick(struct Thread *t)
 		// reset animation
 		fireInst->animFrame = 0;
 
-#ifndef REBUILD_PS1
 		// fwooooossssssssshhhh
 		PlaySound3D(0x81, fireInst);
-#endif
 	}
 }
 

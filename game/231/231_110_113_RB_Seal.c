@@ -9,7 +9,6 @@ void DECOMP_RB_Seal_ThTick_Move(struct Thread *t);
 // but one seal likely-wont collide with two threads at the same time
 void Seal_CheckColl(struct Instance *sealInst, struct Thread *sealTh, int damage, int radius, int sound)
 {
-#ifndef REBUILD_PS1
 	struct GameTracker *gGT;
 	struct Instance *hitInst;
 	struct Driver *hitDriver;
@@ -19,7 +18,7 @@ void Seal_CheckColl(struct Instance *sealInst, struct Thread *sealTh, int damage
 	gGT = sdata->gGT;
 
 	// check players
-	hitInst = (struct Instance *)LinkedCollide_Radius(sealInst, sealTh, gGT->threadBuckets[PLAYER].thread, radius);
+	hitInst = (struct Instance *)DECOMP_LinkedCollide_Radius(sealInst, sealTh, gGT->threadBuckets[PLAYER].thread, radius);
 
 	// if hit a player
 	if (hitInst != 0)
@@ -52,7 +51,7 @@ void Seal_CheckColl(struct Instance *sealInst, struct Thread *sealTh, int damage
 	}
 
 	// check robots
-	hitInst = (struct Instance *)LinkedCollide_Radius(sealInst, sealTh, gGT->threadBuckets[ROBOT].thread, radius);
+	hitInst = (struct Instance *)DECOMP_LinkedCollide_Radius(sealInst, sealTh, gGT->threadBuckets[ROBOT].thread, radius);
 
 	// if hit a robot
 	if (hitInst != 0)
@@ -68,7 +67,7 @@ void Seal_CheckColl(struct Instance *sealInst, struct Thread *sealTh, int damage
 	}
 
 	// check mines
-	hitInst = (struct Instance *)LinkedCollide_Radius(sealInst, sealTh, gGT->threadBuckets[MINE].thread, radius);
+	hitInst = (struct Instance *)DECOMP_LinkedCollide_Radius(sealInst, sealTh, gGT->threadBuckets[MINE].thread, radius);
 
 	// if hit a mine
 	if (hitInst != 0)
@@ -80,7 +79,6 @@ void Seal_CheckColl(struct Instance *sealInst, struct Thread *sealTh, int damage
 		// dont check other bucket
 		return;
 	}
-#endif
 }
 
 int DECOMP_RB_Seal_ThCollide(struct Thread *thread)
@@ -109,10 +107,8 @@ void DECOMP_RB_Seal_ThTick_TurnAround(struct Thread *t)
 		// reset animation
 		sealInst->animFrame = 0;
 
-#ifndef REBUILD_PS1
 		// only play sound in TurnAround
 		PlaySound3D(0x77, sealInst);
-#endif
 	}
 
 	// if rotation is finished

@@ -7,20 +7,17 @@ extern s16 minecartArr[50];
 
 void RB_Minecart_CheckColl(struct Instance *minecartInst, struct Thread *minecartTh)
 {
-// PC port has no  player movement yet
-#ifndef REBUILD_PS1
-
 	struct Driver *hitDriver;
 	struct Instance *hitInst;
 	struct GameTracker *gGT = sdata->gGT;
 
 	// check players
-	hitInst = (struct Instance *)LinkedCollide_Radius(minecartInst, minecartTh, gGT->threadBuckets[PLAYER].thread, 0x10000);
+	hitInst = (struct Instance *)DECOMP_LinkedCollide_Radius(minecartInst, minecartTh, gGT->threadBuckets[PLAYER].thread, 0x10000);
 
 	if (hitInst == 0)
 	{
 		// check robots
-		hitInst = (struct Instance *)LinkedCollide_Radius(minecartInst, minecartTh, gGT->threadBuckets[ROBOT].thread, 0x10000);
+		hitInst = (struct Instance *)DECOMP_LinkedCollide_Radius(minecartInst, minecartTh, gGT->threadBuckets[ROBOT].thread, 0x10000);
 	}
 
 	if (hitInst != 0)
@@ -31,7 +28,6 @@ void RB_Minecart_CheckColl(struct Instance *minecartInst, struct Thread *minecar
 		// attempt to harm driver (squish or spin-out)
 		DECOMP_RB_Hazard_HurtDriver(hitDriver, (minecartInst->model->id == DYNAMIC_SKUNK) ? 1 : 3, 0, 0);
 	}
-#endif
 }
 
 void RB_Minecart_NewPoint(struct Instance *minecartInst, struct Minecart *minecartObj, struct SpawnType2 *spawnType2)
@@ -142,11 +138,9 @@ void DECOMP_RB_Minecart_ThTick(struct Thread *t)
 	// converted to TEST in rebuildPS1
 	ConvertRotToMatrix(&minecartInst->matrix, &minecartObj->rotCurr[0]);
 
-#ifndef REBUILD_PS1
 	PlaySound3D_Flags(&minecartObj->audioPtr,
 	                  0x72, // minecart sound
 	                  minecartInst);
-#endif
 
 	RB_Minecart_CheckColl(minecartInst, t);
 }

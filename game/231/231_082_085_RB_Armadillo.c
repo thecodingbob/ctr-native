@@ -37,10 +37,8 @@ void DECOMP_RB_Armadillo_ThTick_TurnAround(struct Thread *t)
 
 			armObj->direction = (armObj->direction == 0) ? 1 : 0;
 
-#ifndef REBUILD_PS1
 			// play roll sound
 			PlaySound3D(0x70, armInst);
-#endif
 
 			// rolling animation
 			armInst->animIndex = 1;
