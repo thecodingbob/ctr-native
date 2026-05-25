@@ -63,6 +63,7 @@ force_inline void IDENTIFYGAMEPADS_MainFreeze_MenuPtrOptions(struct RectMenu *me
 	gamepad->menuRowsToRemove = (4 - areBothControllerLabelsNecessary) - gGT->numPlyrCurrGame;
 }
 
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80038f98-0x80039024 for volume-slider audio/input side effects.
 force_inline void PROCESSINPUTS_MainFreeze_MenuPtrOptions(struct RectMenu *menu, GAMEPAD_MainFreeze_MenuPtrOptions *gamepad)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -102,9 +103,13 @@ force_inline void PROCESSINPUTS_MainFreeze_MenuPtrOptions(struct RectMenu *menu,
 			int volume = howl_VolumeGet(menu->rowSelected);
 
 			if (sdata->AnyPlayerHold & BTN_LEFT)
+			{
 				volume -= 4;
-			if (sdata->AnyPlayerHold & BTN_RIGHT)
+			}
+			else if (sdata->AnyPlayerHold & BTN_RIGHT)
+			{
 				volume += 4;
+			}
 
 			if (volume < 0)
 				volume = 0;
