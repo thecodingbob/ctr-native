@@ -1,5 +1,6 @@
 #include <common.h>
 
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800440a0-0x80044290.
 u32 *RaceFlag_GetOT(void)
 {
 	s16 sVar1;

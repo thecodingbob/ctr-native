@@ -1,5 +1,6 @@
 #include <common.h>
 
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80043e34-0x80043f1c.
 int RaceFlag_MoveModels(int frameIndex, int numFrames)
 {
 	// need a better prefix than TitleFlag,

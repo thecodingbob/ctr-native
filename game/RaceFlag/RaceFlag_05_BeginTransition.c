@@ -1,5 +1,6 @@
 #include <common.h>
 
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80043fb0-0x8004402c.
 void RaceFlag_BeginTransition(int direction)
 {
 	// Begin Transition on-screen

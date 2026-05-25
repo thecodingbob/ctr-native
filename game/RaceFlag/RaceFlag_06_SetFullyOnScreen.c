@@ -1,5 +1,6 @@
 #include <common.h>
 
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004402c-0x80044058.
 void RaceFlag_SetFullyOnScreen()
 {
 	sdata->RaceFlag_AnimationType = 0;
