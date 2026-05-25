@@ -273,8 +273,11 @@ static void GetSpuVoiceDirectMix(SPUALVoice *voice, float *leftScale, float *rig
 
 	if (peak <= 0.0f)
 	{
-		*leftScale = 0.0f;
-		*rightScale = 0.0f;
+		// NOTE(aalhendi): Keep decoded PCM intact for voices keyed at zero
+		// volume, like CTR's engine/turbo loops; later gain updates must be
+		// able to fade them in.
+		*leftScale = 1.0f;
+		*rightScale = 1.0f;
 		*sourceGain = 0.0f;
 		return;
 	}
