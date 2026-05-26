@@ -1,5 +1,6 @@
 #include <common.h>
 
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800511c0-0x800516ac.
 void UI_DrawSpeedNeedle(s16 posX, s16 posY, struct Driver *driver)
 {
 	int minScale = 0;
@@ -38,8 +39,8 @@ void UI_DrawSpeedNeedle(s16 posX, s16 posY, struct Driver *driver)
 	const PrimCode primCode = {.poly = {.gouraud = 1, .renderCode = RenderCode_Polygon}};
 
 	p->v[0].color = MakeColorCode(91, 91, 0, primCode);
-	p->v[1].color = MakeColor(50, 43, 1);
-	p->v[2].color = MakeColor(255, 187, 0);
+	p->v[1].color = MakeColorCode(50, 43, 1, primCode);
+	p->v[2].color = MakeColorCode(255, 187, 0, primCode);
 
 	/* Needle is distorted in the y axis by a factor of 0.625 */
 	const int needleHeight = 60;
@@ -82,8 +83,8 @@ void UI_DrawSpeedNeedle(s16 posX, s16 posY, struct Driver *driver)
 	}
 
 	p->v[0].color = MakeColorCode(255, 255, 255, primCode);
-	p->v[1].color = MakeColor(156, 105, 0);
-	p->v[2].color = MakeColor(255, 255, 0);
+	p->v[1].color = MakeColorCode(156, 105, 0, primCode);
+	p->v[2].color = MakeColorCode(255, 255, 0, primCode);
 
 	yLen = FP_INT(cos[1] * (needleWidth + 2)) * FP8(1.25);
 	if (yLen < 0)
