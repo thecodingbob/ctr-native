@@ -1,7 +1,6 @@
 #include <common.h>
 
-// 692 by default, budget 768
-
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005435c-0x8005465c.
 void UI_RenderFrame_CrystChall(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -81,9 +80,7 @@ void UI_RenderFrame_CrystChall(void)
 			// turn on 26th bit of Actions Flag set (means racer finished the race)
 			player->actionsFlagSet |= 0x2000000;
 
-#ifndef REBUILD_PS1
 			MainGameEnd_Initialize();
-#endif
 		}
 
 		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80054550-0x80054558 for crystal pickup SFX.
