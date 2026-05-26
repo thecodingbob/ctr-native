@@ -542,7 +542,7 @@ int LOAD_HowlSectorChainEnd(void);
 void LOAD_RunPtrMap(char *file, int *map, int size);
 void LOAD_Robots2P(struct BigHeader *bigfile, int p1, int p2, void (*callback)(struct LoadQueueSlot *));
 void LOAD_Robots1P(int characterID);
-void LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(struct LoadQueueSlot *));
+int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(struct LoadQueueSlot *));
 void LOAD_LangFile(int bigfilePtr, int lang);
 int LOAD_GetBigfileIndex(u32 levelID, int lod);
 void LOAD_AppendQueue(struct BigHeader *bigfile, int type, int fileIndex, void *destinationPtr, void (*callback)(struct LoadQueueSlot *));

@@ -973,7 +973,7 @@ void LOAD_GlobalModelPtrs_MPK(void);
 void LOAD_OvrEndRace(u32 param_1);
 void LOAD_OvrLOD(u32 param_1);
 void LOAD_OvrThreads(u32 param_1);
-void LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(struct LoadQueueSlot *));
+int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(struct LoadQueueSlot *));
 void LibraryOfModels_Clear(struct GameTracker *gGT);
 void DecalGlobal_Store(struct GameTracker *gGT, struct LevTexLookup *LTL);
 void DebugFont_Init(struct GameTracker *gGT);
