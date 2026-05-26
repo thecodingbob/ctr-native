@@ -854,7 +854,7 @@ void SubmitName_MenuProc(struct RectMenu *menu);
 
 // PrixSaveBox (?)
 
-// TakeCupProgress_Activate()
+void TakeCupProgress_Activate(s16 stringIndex);
 void TakeCupProgress_MenuProc(struct RectMenu *menu);
 
 // RCNT

@@ -4921,7 +4921,7 @@ struct Data
                     .unk1 = 0,
                     .state = 0xC81,
                     .rows = &data.rowsSaveGame[0],
-                    .funcPtr = (void (*)(struct RectMenu *))0x8004B258,
+                    .funcPtr = TakeCupProgress_MenuProc,
                     .drawStyle = 4,
                 },
 

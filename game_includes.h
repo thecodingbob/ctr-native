@@ -545,6 +545,7 @@
 #include "game/SelectProfile/SelectProfile_17_InitAndDestroy.c"
 
 #include "game/TakeCupProgress/TakeCupProgress_0_Activate.c"
+#include "game/TakeCupProgress/TakeCupProgress_1_MenuProc.c"
 
 #include "game/SubmitName/SubmitName_0_RestoreName.c"
 #include "game/SubmitName/SubmitName_1_DrawMenu.c"

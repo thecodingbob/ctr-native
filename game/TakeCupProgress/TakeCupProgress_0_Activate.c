@@ -1,7 +1,6 @@
 #include <common.h>
 
-// Only called from 233, when you are at the cup
-// podium and you need to save progress
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004b230-0x8004b258.
 void TakeCupProgress_Activate(s16 stringIndex)
 {
 	// string index to print
