@@ -1,5 +1,6 @@
 #include <common.h>
 
+// NOTE(aalhendi): ASM-verified NTSC-U 926 overlay 230 0x800adc0c-0x800ae0bc.
 void MM_Characters_DrawWindows(int boolShowDrivers)
 {
 	struct GameTracker *gGT;
@@ -67,7 +68,7 @@ void MM_Characters_DrawWindows(int boolShowDrivers)
 			pb->rect.w = 0;
 
 #ifdef CTR_NATIVE
-			// PsyCross can't handle w==0
+			// NOTE(aalhendi): Native renderer guard; retail leaves w at zero.
 			pb->rect.w = 1;
 #endif
 		}
@@ -79,7 +80,7 @@ void MM_Characters_DrawWindows(int boolShowDrivers)
 			pb->rect.h = 0;
 
 #ifdef CTR_NATIVE
-			// PsyCross can't handle h==0
+			// NOTE(aalhendi): Native renderer guard; retail leaves h at zero.
 			pb->rect.h = 1;
 #endif
 		}
@@ -198,7 +199,6 @@ void MM_Characters_DrawWindows(int boolShowDrivers)
 		rot[1] = D230.csm_instRot[1] + D230.characterSelect_angle[iVar14];
 		rot[2] = D230.csm_instRot[2];
 
-		// converted to TEST in rebuildPS1
 		ConvertRotToMatrix(&iVar10->matrix, &rot[0]);
 	}
 	return;
