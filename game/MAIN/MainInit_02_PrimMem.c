@@ -1,54 +1,62 @@
 #include <common.h>
 
-void MainInit_PrimMem(struct GameTracker *gGT)
-
+static int MainInit_GetPrimMemSize(struct GameTracker *gGT)
 {
-	int GetOriginalSize(struct GameTracker * gGT);
-	int size = GetOriginalSize(gGT);
-
-	MainDB_PrimMem(&gGT->db[0].primMem, size);
-	MainDB_PrimMem(&gGT->db[1].primMem, size);
-}
-
-int GetOriginalSize(struct GameTracker *gGT)
-{
-	int levelID = gGT->levelID;
+	int levelID;
 
 	// adv garage
-	if (levelID == ADVENTURE_GARAGE)
+	if (gGT->levelID == ADVENTURE_GARAGE)
 		return 0x1b800;
 
 	// main menu
-	if (levelID == MAIN_MENU_LEVEL)
+	if ((gGT->gameMode1 & MAIN_MENU) != 0)
 		return 0x17c00;
 
-	if (gGT->numPlyrCurrGame == 1)
+	levelID = gGT->levelID;
+
+	switch (gGT->numPlyrCurrGame)
 	{
-		// any% end, 101% end, credits
-		if (levelID >= OXIDE_ENDING)
-			return 0x17c00;
+	case 0:
+		return 0x25800;
 
-		// intro cutscene
-		if (levelID >= INTRO_RACE_TODAY)
-			return 0x1e000;
-
-		// adv hub
-		if (levelID >= GEM_STONE_VALLEY)
+	case 1:
+		if ((gGT->gameMode1 & ADVENTURE_ARENA) != 0)
 			return 0x1c000;
 
-		// ordinary tracks
+		if ((u32)(levelID - INTRO_RACE_TODAY) < 9)
+			return 0x1e000;
 
-		// all are 0x67 or 0x5F, adv hub was 0x5F too
-		return data.primMem_SizePerLEV_1P[levelID] << 10;
+		if (levelID < GEM_STONE_VALLEY)
+			return data.primMem_SizePerLEV_1P[levelID] << 10;
+
+		return 0x17c00;
+
+	case 2:
+		if (levelID < GEM_STONE_VALLEY)
+			return data.primMem_SizePerLEV_2P[levelID] << 10;
+
+		return 0x1e000;
+
+	case 3:
+	case 4:
+		if (levelID < GEM_STONE_VALLEY)
+			return data.primMem_SizePerLEV_4P[levelID] << 10;
+
+		return 0x25800;
+
+	default:
+		return 0;
 	}
+}
 
-	if (gGT->numPlyrCurrGame == 2)
-	{
-		// assume only levID 0-24
-		return data.primMem_SizePerLEV_2P[levelID] << 10;
-	}
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003b0f0-0x8003b2d4.
+void MainInit_PrimMem(struct GameTracker *gGT)
+{
+	int size = MainInit_GetPrimMemSize(gGT);
 
-	// 3P 4P
-	// assume only levID 0-24
-	return data.primMem_SizePerLEV_4P[levelID] << 10;
+	if (size == 0)
+		return;
+
+	MainDB_PrimMem(&gGT->db[0].primMem, size);
+	MainDB_PrimMem(&gGT->db[1].primMem, size);
 }
