@@ -1,6 +1,6 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005cd1c-0x8005cf64
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005cd1c-0x8005cf64.
 void VehPhysCrash_ConvertVecToSpeed(struct Driver *d, Vec3 *vel)
 {
 	int speed2D = VehCalc_FastSqrt((u32)(vel->x * vel->x + vel->z * vel->z), 0x10);
