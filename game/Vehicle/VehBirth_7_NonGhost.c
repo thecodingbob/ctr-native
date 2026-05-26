@@ -1,6 +1,6 @@
 #include <common.h>
 
-
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80058d2c-0x80058ec0.
 void VehBirth_NonGhost(struct Thread *t, int index)
 {
 	// model index = DYNAMIC_PLAYER,
@@ -23,19 +23,15 @@ void VehBirth_NonGhost(struct Thread *t, int index)
 		id = data.characterIDs[index];
 	}
 
-// My bad, this wasn't safe to relocate -- Niko
-// Patch call to VehPhysProc_SlamWall_Init from COLL
-#ifndef REBUILD_PS1
+// NOTE(aalhendi): Native patches the PC call target; retail already has the
+// correct fixed address in code.
+#ifdef CTR_NATIVE
 #define JAL(dest) (((unsigned long)dest & 0x3FFFFFF) >> 2 | 0xC000000)
 	if (*(int *)0x800214bc == 0xC018EF5)
 		*(int *)0x800214bc = JAL(VehPhysProc_SlamWall_Init);
 #endif
 
-#ifndef REBUILD_PS1
 	struct Model *m = VehBirth_GetModelByName(data.MetaDataCharacters[id].name_Debug);
-#else
-	struct Model *m = 0;
-#endif
 
 	struct Instance *inst = INSTANCE_Birth3D(m, 0, t);
 

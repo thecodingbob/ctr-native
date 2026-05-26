@@ -952,7 +952,7 @@ struct Model *VehBirth_GetModelByName(char *searchName);
 void VehBirth_SetConsts(struct Driver *driver);
 // VehBirth_EngineAudio_AllPlayers()
 // VehBirth_TireSprites()
-// VehBirth_NonGhost()
+void VehBirth_NonGhost(struct Thread *t, int index);
 struct Driver *VehBirth_Player(int index);
 
 // uncategorized

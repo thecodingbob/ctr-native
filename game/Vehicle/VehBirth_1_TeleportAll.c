@@ -1,5 +1,6 @@
 #include <common.h>
 
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80058898-0x80058948.
 void VehBirth_TeleportAll(struct GameTracker *gGT, u32 spawnFlags)
 {
 	struct Driver *d;
@@ -11,13 +12,9 @@ void VehBirth_TeleportAll(struct GameTracker *gGT, u32 spawnFlags)
 		if (d == NULL)
 			continue;
 
-		// desperate for byte budget here
-		// if (d->instSelf->thread->modelIndex == DYNAMIC_ROBOT_CAR)
-		if ((d->actionsFlagSet & 0x00100000) != 0)
+		if (d->instSelf->thread->modelIndex == DYNAMIC_ROBOT_CAR)
 		{
-#ifndef REBUILD_PS1
 			BOTS_GotoStartingLine(d);
-#endif
 		}
 
 		else
