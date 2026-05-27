@@ -75,6 +75,24 @@ typedef enum
 #include "ctr_native.h"
 #include "platform.h"
 
+#ifndef CTR_NATIVE_MEMPACK_RETAIL_PRESSURE
+#define CTR_NATIVE_MEMPACK_RETAIL_PRESSURE 1
+#endif
+
+#if CTR_NATIVE_MEMPACK_RETAIL_PRESSURE
+// NOTE(aalhendi): Retail pressure mode exposes the NTSC-U 926 mempack window inside a 2 MiB backing store.
+#define CTR_NATIVE_MEMPACK_BUFFER_SIZE  0x200000u
+#define CTR_NATIVE_MEMPACK_START_OFFSET 0xba9f0u
+#define CTR_NATIVE_MEMPACK_SIZE         0x144e10u
+#else
+#define CTR_NATIVE_MEMPACK_BUFFER_SIZE  (32u * 1024u * 1024u)
+#define CTR_NATIVE_MEMPACK_START_OFFSET 0u
+#define CTR_NATIVE_MEMPACK_SIZE         CTR_NATIVE_MEMPACK_BUFFER_SIZE
+#endif
+
+static char s_mempackMemory[CTR_NATIVE_MEMPACK_BUFFER_SIZE];
+static struct PlatformMempackArena s_mempackArena;
+
 #include "game_includes.h"
 
 #include "game/zGlobal_RDATA.c"
@@ -123,6 +141,23 @@ void Platform_InitScratchpad(void)
 
 	memset(mapped, 0, scratchpadSize);
 #endif
+}
+
+const struct PlatformMempackArena *Platform_InitMempackArena(void)
+{
+	memset(s_mempackMemory, 0, sizeof(s_mempackMemory));
+
+	s_mempackArena.base = &s_mempackMemory[0];
+	s_mempackArena.start = &s_mempackMemory[CTR_NATIVE_MEMPACK_START_OFFSET];
+	s_mempackArena.endOfMemory = &s_mempackMemory[CTR_NATIVE_MEMPACK_BUFFER_SIZE];
+	s_mempackArena.size = CTR_NATIVE_MEMPACK_SIZE;
+	s_mempackArena.backingSize = CTR_NATIVE_MEMPACK_BUFFER_SIZE;
+
+	// NOTE(aalhendi): PS1 OT links can pack these host pointers into 24-bit addresses.
+	s_mempackArena.lowAddressValid =
+	    ((u32)s_mempackArena.base < 0x01000000) && ((u32)s_mempackArena.start < 0x01000000) && ((u32)s_mempackArena.endOfMemory <= 0x01000000);
+
+	return &s_mempackArena;
 }
 
 static void CalcFPS(void)

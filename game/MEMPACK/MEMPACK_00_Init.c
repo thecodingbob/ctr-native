@@ -1,24 +1,5 @@
 #include <common.h>
 
-#if defined(CTR_NATIVE)
-#ifndef CTR_NATIVE_MEMPACK_RETAIL_PRESSURE
-#define CTR_NATIVE_MEMPACK_RETAIL_PRESSURE 1
-#endif
-
-#if CTR_NATIVE_MEMPACK_RETAIL_PRESSURE
-// NOTE(aalhendi): Native pressure mode exposes the retail mempack window 0x800ba9f0-0x801ff800 inside a 2 MiB backing store.
-#define CTR_NATIVE_MEMPACK_BUFFER_SIZE   0x200000u
-#define CTR_NATIVE_MEMPACK_START_OFFSET  0xba9f0u
-#define CTR_NATIVE_MEMPACK_RETAIL_SIZE   0x144e10u
-#else
-#define CTR_NATIVE_MEMPACK_BUFFER_SIZE   (32u * 1024u * 1024u)
-#define CTR_NATIVE_MEMPACK_START_OFFSET  0u
-#define CTR_NATIVE_MEMPACK_RETAIL_SIZE   CTR_NATIVE_MEMPACK_BUFFER_SIZE
-#endif
-
-char memory[CTR_NATIVE_MEMPACK_BUFFER_SIZE];
-#endif
-
 void CS_EndOfFile();
 void RB_EndOfFile();
 void AH_EndOfFile();
@@ -35,25 +16,17 @@ void MEMPACK_Init(int ramSize)
 
 #if defined(CTR_NATIVE)
 
-	// must be a 24-bit address
-	// Visual Studio -> Properties -> Linker -> Advanced ->
-	// Base Address, Randomized Base Address, Fixed Base Address
-	startPtr = (u32)&memory[CTR_NATIVE_MEMPACK_START_OFFSET];
+	const struct PlatformMempackArena *arena = Platform_InitMempackArena();
 
-	int boolValid = ((u32)&memory[0] < 0x01000000) && (startPtr < 0x01000000);
+	startPtr = (u32)arena->start;
+	packSize = arena->size;
 
-	printf("[CTR] Where does memory starts? (%s) %08x\n", boolValid ? "GOOD" : "BAD", (u32)&memory[0]);
-
-	packSize = CTR_NATIVE_MEMPACK_RETAIL_SIZE;
-	memset(memory, 0, sizeof(memory));
+	printf("[CTR] Where does memory starts? (%s) %08x\n", arena->lowAddressValid ? "GOOD" : "BAD", (u32)arena->base);
 
 	MEMPACK_NewPack((void *)startPtr, packSize);
-	sdata->PtrMempack->endOfMemory = &memory[CTR_NATIVE_MEMPACK_BUFFER_SIZE];
+	sdata->PtrMempack->endOfMemory = arena->endOfMemory;
 
-	printf("[CTR] MEMPACK native pressure: start=%08x size=%08x end=%08x\n",
-	       startPtr,
-	       packSize,
-	       (u32)sdata->PtrMempack->endOfAllocator);
+	printf("[CTR] MEMPACK native arena: start=%08x size=%08x end=%08x\n", startPtr, packSize, (u32)sdata->PtrMempack->endOfAllocator);
 
 #else
 
