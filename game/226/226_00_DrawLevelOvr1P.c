@@ -4134,9 +4134,11 @@ static int DrawLevelOvr1P_EmitWaterListNearBridge(struct PushBuffer *pb, struct 
 
 	if (depth >= DRAW_LEVEL_OVR1P_MAX_NEAR_SUBDIV_DEPTH)
 	{
-		u32 directMask = DrawLevelOvr1P_SelectAndStoreWaterDirectMask(projected, indices, allowedMask);
-
-		return DrawLevelOvr1P_EmitPreparedProjectedDirectMask(pb, primMem, block, projected, indices, faceIndex, NULL, directMask,
+		// NOTE(aalhendi): Retail 0x800a265c preserves the current t2 mask,
+		// and 0x800a2668 jumps directly to the direct table at 0x800a27b8
+		// when the recursion frame reaches scratch 0x324.
+		*CTR_SCRATCHPAD_PTR(u32, 0x70) = allowedMask;
+		return DrawLevelOvr1P_EmitPreparedProjectedDirectMask(pb, primMem, block, projected, indices, faceIndex, NULL, allowedMask,
 		                                                      DRAW_LEVEL_OVR1P_CLIP_BYTES_LIST, 0);
 	}
 
@@ -4317,9 +4319,11 @@ static int DrawLevelOvr1P_EmitWaterRenderedNearBridge(struct PushBuffer *pb, str
 
 	if (depth >= DRAW_LEVEL_OVR1P_MAX_NEAR_SUBDIV_DEPTH)
 	{
-		u32 directMask = DrawLevelOvr1P_SelectAndStoreWaterDirectMask(projected, indices, allowedMask);
-
-		return DrawLevelOvr1P_EmitPreparedProjectedDirectMask(pb, primMem, block, projected, indices, faceIndex, NULL, directMask,
+		// NOTE(aalhendi): Retail 0x800a31bc stores the current t2 mask, then
+		// 0x800a31c8 jumps directly to the direct table at 0x800a3318 when the
+		// recursion frame reaches scratch 0x324.
+		*CTR_SCRATCHPAD_PTR(u32, 0x70) = allowedMask;
+		return DrawLevelOvr1P_EmitPreparedProjectedDirectMask(pb, primMem, block, projected, indices, faceIndex, NULL, allowedMask,
 		                                                      DRAW_LEVEL_OVR1P_CLIP_BYTES_RENDERED, 1);
 	}
 
