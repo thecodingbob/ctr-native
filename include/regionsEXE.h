@@ -3716,19 +3716,8 @@ struct sData
 	// All these are related drawing debug strings
 	struct
 	{
-#if 0 // original game
-
-		u32 pixelX;
-		u32 pixelY;
-
-#else // had to, we were desperate
-
-		u8 u;
-		u8 v;
-		s16 padding[3];
-
-#endif
-
+		u32 u;
+		u32 v;
 		u16 clut;
 		u16 tpage;
 	} debugFont;

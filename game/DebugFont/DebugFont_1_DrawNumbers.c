@@ -3,57 +3,15 @@
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80022318-0x800223f4.
 void DebugFont_DrawNumbers(int index, int screenPosX, int screenPosY)
 {
-// Deperate for byte budget
-#if 0
-  PolyFT4 * p;
-  GetPrimMem(p);
-  if (p == nullptr) { return; }
-
-  const int fontWidth = 7;
-  const int fontHeight = 7;
-
-  const PrimCode primCode = { .poly = { .renderCode = RenderCode_Polygon, .quad = 1, .textured = 1, .semiTransparency = 1 } };
-  p->colorCode = MakeColorCode(0, 0, 0, primCode);
-
-  s16 topX = screenPosX;
-  s16 bottomX = topX + fontWidth;
-  s16 topY = screenPosY;
-  s16 bottomY = topY + fontHeight;
-  p->v[0].pos.x = topX;
-  p->v[0].pos.y = topY;
-  p->v[1].pos.x = bottomX;
-  p->v[1].pos.y = topY;
-  p->v[2].pos.x = topX;
-  p->v[2].pos.y = bottomY;
-  p->v[3].pos.x = bottomX;
-  p->v[3].pos.y = bottomY;
-
-  /* Each character is 7x7 pixels,
-     '0' is 6th character on 2nd row */
-  u8 topU = sdata->debugFont.u + 7 * 5 + index * 7;
-  u8 bottomU = topU + 7;
-  u8 topV = sdata->debugFont.v + 7;
-  u8 bottomV = topV + 7;
-  p->v[0].texCoords.u = topU;
-  p->v[0].texCoords.v = topV;
-  p->v[1].texCoords.u = bottomU;
-  p->v[1].texCoords.v = topV;
-  p->v[2].texCoords.u = topU;
-  p->v[2].texCoords.v = bottomV;
-  p->v[3].texCoords.u = bottomU;
-  p->v[3].texCoords.v = bottomV;
-  p->polyClut.self = sdata->debugFont.clut;
-  p->polyTpage.self = sdata->debugFont.tpage;
-
-  AddPrimitive(p, sdata->gGT->pushBuffer_UI.ptrOT);
-#endif
-
-	u16 uVar1;
 	POLY_FT4 *p;
 	u32 *ot;
 	u32 uVar4;
 	u32 uVar5;
 	u32 uVar6;
+	u32 topU;
+	u32 bottomU;
+	u32 topV;
+	u32 bottomV;
 	struct GameTracker *gGT = sdata->gGT;
 
 	uVar6 = screenPosX + 7;
@@ -72,12 +30,15 @@ void DebugFont_DrawNumbers(int index, int screenPosX, int screenPosY)
 
 	// Each character is 7x7 pixels,
 	// '0' is 6th character on 2nd row
-	uVar4 = (s16)(*(s16 *)&sdata->debugFont.u) + 5 * 7 + 0x700;
+	topU = sdata->debugFont.u + (index + 5) * 7;
+	bottomU = topU + 7;
+	topV = sdata->debugFont.v + 7;
+	bottomV = topV + 7;
 
-	*(int *)&p->u0 = uVar4 + (index + 0) * 7;
-	*(int *)&p->u1 = uVar4 + (index + 1) * 7;
-	*(int *)&p->u2 = uVar4 + (index + 0) * 7 + 0x700;
-	*(int *)&p->u3 = uVar4 + (index + 1) * 7 + 0x700;
+	*(int *)&p->u0 = topU | (topV << 8);
+	*(int *)&p->u1 = bottomU | (topV << 8);
+	*(int *)&p->u2 = topU | (bottomV << 8);
+	*(int *)&p->u3 = bottomU | (bottomV << 8);
 
 	p->clut = sdata->debugFont.clut;
 	p->tpage = sdata->debugFont.tpage;

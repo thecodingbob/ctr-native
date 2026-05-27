@@ -478,6 +478,7 @@ typedef struct
 	GLint projection3DLoc;
 	GLint bilinearFilterLoc;
 	GLint texelSizeLoc;
+	GLint psxSemiTransPassLoc;
 #endif
 } GTEShader;
 
@@ -492,6 +493,7 @@ GLint u_projectionLoc;
 GLint u_projection3DLoc;
 GLint u_bilinearFilterLoc;
 GLint u_texelSizeLoc;
+GLint u_psxSemiTransPassLoc;
 
 #define GPU_PACK_RG\
 	"		float color_16 = (color_rg.y * 256.0 + color_rg.x) * 255.0;\n"
@@ -512,6 +514,14 @@ GLint u_texelSizeLoc;
 	" 	return vec4(value.xyz, rg == 0.0 ? rg : (1.0 - value.w * 16.0));\n"\
 	" }\n"
 	//"	vec4 decodeRG(float rg) { return fract(floor(rg / vec4(1.0, 32.0, 1024.0, 32768.0)) / 32.0); }\n"
+
+#define GPU_STP_PASS_FUNC\
+	"	bool discardForSemiTransPass(float color_16, float stpWeight) {\n"\
+	"		if(color_16 == 0.0) { return true; }\n"\
+	"		if(psxSemiTransPass == 1 && stpWeight >= 0.5) { return true; }\n"\
+	"		if(psxSemiTransPass == 2 && stpWeight < 0.5) { return true; }\n"\
+	"		return false;\n"\
+	"	}\n"
 
 #if defined(RENDERER_OGL) || (OGLES_VERSION == 3)
 
@@ -585,6 +595,10 @@ GLint u_texelSizeLoc;
 	"		float ax1 = mix(float(C11 > 0.0), float(C21 > 0.0), frac.x);\n"\
 	"		float ax2 = mix(float(C12 > 0.0), float(C22 > 0.0), frac.x);\n"\
 	"		if(mix(ax1, ax2, frac.y) < 0.5) { discard; }\n"\
+	"		float sx1 = mix(float(C11 >= 32768.0), float(C21 >= 32768.0), frac.x);\n"\
+	"		float sx2 = mix(float(C12 >= 32768.0), float(C22 >= 32768.0), frac.x);\n"\
+	"		float stpWeight = mix(sx1, sx2, frac.y);\n"\
+	"		if(discardForSemiTransPass(mix(mix(C11, C21, frac.x), mix(C12, C22, frac.x), frac.y), stpWeight)) { discard; }\n"\
 	"		vec4 x1 = mix(decodeRG(C11), decodeRG(C21), frac.x);\n"\
 	"		vec4 x2 = mix(decodeRG(C12), decodeRG(C22), frac.x);\n"\
 	"		return mix(x1, x2, frac.y);\n"\
@@ -593,7 +607,7 @@ GLint u_texelSizeLoc;
 #define GPU_NEAREST_SAMPLE_FUNC \
 	"vec4 NearestTextureSample(vec2 P) {\n"\
 	"	float color_16 = samplePSX(P);\n"\
-	"	if(color_16 == 0.0) {discard;}\n"\
+	"	if(discardForSemiTransPass(color_16, float(color_16 >= 32768.0))) {discard;}\n"\
 	"	return decodeRG(color_16);\n"\
 	"}\n"
 
@@ -649,6 +663,8 @@ GLint u_texelSizeLoc;
 #define GPU_FRAGMENT_SAMPLE_SHADER(bit) \
 	GPU_PACK_RG_FUNC\
 	GPU_DECODE_RG_FUNC\
+	"	uniform int psxSemiTransPass;\n"\
+	GPU_STP_PASS_FUNC\
 	GPU_FETCH_VRAM_FUNC\
 	"	const vec2 c_VRAMTexel = vec2(1.0 / 1024.0, 1.0 / 512.0);\n"\
 	GPU_ARRAY_FUNC\
@@ -914,6 +930,7 @@ void GR_CompilePSXShader(GTEShader* sh, const char* source)
 	sh->bilinearFilterLoc = glGetUniformLocation(sh->shader, "bilinearFilter");
 	sh->projectionLoc = glGetUniformLocation(sh->shader, "Projection");
 	sh->texelSizeLoc = glGetUniformLocation(sh->shader, "texelSize");
+	sh->psxSemiTransPassLoc = glGetUniformLocation(sh->shader, "psxSemiTransPass");
 #if USE_PGXP
 	sh->projection3DLoc = glGetUniformLocation(sh->shader, "Projection3D");
 #endif
@@ -1214,6 +1231,7 @@ void GR_SetTexture(TextureID texture, TexFormat texFormat)
 		u_projectionLoc = g_gte_shader_4.projectionLoc;
 		u_projection3DLoc = g_gte_shader_4.projection3DLoc;
 		u_texelSizeLoc = -1;
+		u_psxSemiTransPassLoc = g_gte_shader_4.psxSemiTransPassLoc;
 		break;
 	case TF_8_BIT:
 		GR_SetShader(g_gte_shader_8.shader);
@@ -1221,6 +1239,7 @@ void GR_SetTexture(TextureID texture, TexFormat texFormat)
 		u_projectionLoc = g_gte_shader_8.projectionLoc;
 		u_projection3DLoc = g_gte_shader_8.projection3DLoc;
 		u_texelSizeLoc = -1;
+		u_psxSemiTransPassLoc = g_gte_shader_8.psxSemiTransPassLoc;
 		break;
 	case TF_16_BIT:
 		GR_SetShader(g_gte_shader_16.shader);
@@ -1228,6 +1247,7 @@ void GR_SetTexture(TextureID texture, TexFormat texFormat)
 		u_projectionLoc = g_gte_shader_16.projectionLoc;
 		u_projection3DLoc = g_gte_shader_16.projection3DLoc;
 		u_texelSizeLoc = -1;
+		u_psxSemiTransPassLoc = g_gte_shader_16.psxSemiTransPassLoc;
 		break;
 	case TF_32_BIT_RGBA:
 		GR_SetShader(g_gte_shader_32_rgba.shader);
@@ -1235,6 +1255,7 @@ void GR_SetTexture(TextureID texture, TexFormat texFormat)
 		u_projectionLoc = g_gte_shader_32_rgba.projectionLoc;
 		u_projection3DLoc = g_gte_shader_32_rgba.projection3DLoc;
 		u_texelSizeLoc = g_gte_shader_32_rgba.texelSizeLoc;
+		u_psxSemiTransPassLoc = g_gte_shader_32_rgba.psxSemiTransPassLoc;
 		break;
 	}
 
@@ -1249,6 +1270,7 @@ void GR_SetTexture(TextureID texture, TexFormat texFormat)
 #if USE_OPENGL
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glUniform1i(u_bilinearFilterLoc, g_cfg_bilinearFiltering);
+	GR_SetPSXTextureSemiTransPass(0);
 #endif
 
 	g_lastBoundTexture = texture;
@@ -1257,6 +1279,14 @@ void GR_SetTexture(TextureID texture, TexFormat texFormat)
 void GR_SetOverrideTextureSize(int width, int height)
 {
 	glUniform2f(u_texelSizeLoc, 1.0f / (float)width, 1.0f / (float)height);
+}
+
+void GR_SetPSXTextureSemiTransPass(int pass)
+{
+#if USE_OPENGL
+	if (u_psxSemiTransPassLoc >= 0)
+		glUniform1i(u_psxSemiTransPassLoc, pass);
+#endif
 }
 
 void GR_DestroyTexture(TextureID texture)

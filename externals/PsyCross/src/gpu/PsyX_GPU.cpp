@@ -62,6 +62,7 @@ struct GPUDrawSplit
 	TextureID		textureId;
 
 	int				drawPrimMode;
+	bool			psxTexturedSemiTrans;
 
 	u_short			startVertex;
 	u_short			numVerts;
@@ -83,6 +84,7 @@ void ClearSplits()
 	g_vertexIndex = 0;
 	g_splitIndex = 0;
 	g_splits[0].texFormat = (TexFormat)0xFFFF;
+	g_splits[0].psxTexturedSemiTrans = false;
 }
 
 template<class T>
@@ -703,19 +705,23 @@ static void AddSplit(bool semiTrans, bool textured)
 	BlendMode blendMode = semiTrans ? GET_TPAGE_BLEND(tpage) : BM_NONE;
 	TexFormat texFormat = GetTPageFormat(tpage);
 	TextureID textureId = textured ? g_vramTexture : g_whiteTexture;
+	bool psxTexturedSemiTrans = semiTrans && textured && overrideTexture == 0;
 
 	if (textured && overrideTexture != 0)
 	{
 		// override texture format, zero tpage
 		texFormat = TF_32_BIT_RGBA;
 		textureId = overrideTexture;
+		psxTexturedSemiTrans = false;
 	}
 
 	// FIXME: compare drawing environment too?
-	if (curSplit.blendMode == blendMode &&
+	if (!psxTexturedSemiTrans &&
+		curSplit.blendMode == blendMode &&
 		curSplit.texFormat == texFormat &&
 		curSplit.textureId == textureId &&
 		curSplit.drawPrimMode == g_DrawPrimMode &&
+		curSplit.psxTexturedSemiTrans == psxTexturedSemiTrans &&
 		curSplit.drawenv.clip.x == activeDrawEnv.clip.x &&
 		curSplit.drawenv.clip.y == activeDrawEnv.clip.y &&
 		curSplit.drawenv.clip.w == activeDrawEnv.clip.w &&
@@ -739,6 +745,7 @@ static void AddSplit(bool semiTrans, bool textured)
 	split.texFormat = texFormat;
 	split.textureId = textureId;
 	split.drawPrimMode = g_DrawPrimMode;
+	split.psxTexturedSemiTrans = psxTexturedSemiTrans;
 	split.drawenv = activeDrawEnv;
 	split.dispenv = activeDispEnv;
 	split.debugText = currentSplitDebugText;
@@ -766,9 +773,28 @@ void DrawSplit(const GPUDrawSplit& split)
 	GR_SetupClipMode(&split.drawenv.clip, drawOnScreen);
 	GR_SetOffscreenState(&split.drawenv.clip, !drawOnScreen);
 
-	GR_SetBlendMode(split.blendMode);
+	if (split.psxTexturedSemiTrans)
+	{
+		// NOTE(aalhendi): CTR native renderer divergence from upstream PsyCross.
+		// PS1 textured ABE only blends texels whose sampled 16-bit color has STP
+		// set; non-STP texels remain opaque. PsyCross split state is per draw,
+		// so draw this primitive-sized split twice with shader-side STP masks.
+		GR_SetBlendMode(BM_NONE);
+		GR_SetPSXTextureSemiTransPass(1);
+		GR_DrawTriangles(split.startVertex, split.numVerts / 3);
 
-	GR_DrawTriangles(split.startVertex, split.numVerts / 3);
+		GR_SetBlendMode(split.blendMode);
+		GR_SetPSXTextureSemiTransPass(2);
+		GR_DrawTriangles(split.startVertex, split.numVerts / 3);
+
+		GR_SetPSXTextureSemiTransPass(0);
+	}
+	else
+	{
+		GR_SetBlendMode(split.blendMode);
+		GR_SetPSXTextureSemiTransPass(0);
+		GR_DrawTriangles(split.startVertex, split.numVerts / 3);
+	}
 
 	if (split.debugText)
 		GR_PopDebugLabel();
