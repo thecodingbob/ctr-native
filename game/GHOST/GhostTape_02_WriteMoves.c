@@ -1,5 +1,6 @@
 #include <common.h>
 
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80027f20-0x8002838c.
 void GhostTape_WriteMoves(s16 raceFinished)
 {
 	char *pbVar1;
@@ -103,10 +104,6 @@ void GhostTape_WriteMoves(s16 raceFinished)
 			pbVar1[1] = (char)(iVar7->flags >> 0xd) & 1;
 			pbVar1 += 2;
 		}
-
-		// This if-statment was rewritten from the original Ghidra output,
-		// be aware that it may not be accurate, go back to original output
-		// if there are any problems
 
 		// If velocity is small enough for a compressed 5-char message
 		if (

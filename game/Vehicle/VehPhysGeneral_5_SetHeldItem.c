@@ -21,6 +21,7 @@ extern char numWeapons[7];
 
 // Itemset infographic (outdated):
 // https://discord.com/channels/330945093416779787/550106151887568906/734368526294450267
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80060f0c-0x80061488.
 void VehPhysGeneral_SetHeldItem(struct Driver *driver)
 {
 	u32 rng;
@@ -147,9 +148,6 @@ void VehPhysGeneral_SetHeldItem(struct Driver *driver)
 	// Decide item for Driver
 	rng = (MixRNG_Scramble() >> 0x3) % 0xc8;
 
-	// number of weapons for RNG
-	numWeapons[ITEMSET_BattleCustom] = gGT->battleSetup.numWeapons;
-
 	switch (itemSet)
 	{
 	case ITEMSET_Race1:
@@ -164,7 +162,7 @@ void VehPhysGeneral_SetHeldItem(struct Driver *driver)
 	// uses int array instead of char,
 	// should fix that later, requires 230 rewrite
 	case ITEMSET_BattleCustom:
-		driver->heldItemID = ((int *)charPtr[itemSet])[(rng * numWeapons[itemSet]) / 0xc8];
+		driver->heldItemID = gGT->battleSetup.RNG_itemSetCustom[(rng * gGT->battleSetup.numWeapons) / 0xc8];
 		break;
 
 	case ITEMSET_CrystalChallenge:
@@ -214,14 +212,9 @@ void VehPhysGeneral_SetHeldItem(struct Driver *driver)
 			driver->heldItemID = 0x2;
 	}
 
-#if 0
-	// === Removed ND Code ===
-	// Spring is not in the RNG anyway
-
 	// Replace unused Spring item with Turbo
 	if (driver->heldItemID == 0x5)
 		driver->heldItemID = 0x0;
-#endif
 
 	// Make sure only 1 Warpball is instanced at once
 	if (driver->heldItemID == 0x9)
