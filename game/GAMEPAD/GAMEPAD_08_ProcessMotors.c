@@ -1,5 +1,6 @@
 #include <common.h>
 
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80025e18-0x800262d0.
 void GAMEPAD_ProcessMotors(struct GamepadSystem *gGS)
 {
 	int totalPower = 0;
@@ -142,33 +143,26 @@ void GAMEPAD_ProcessMotors(struct GamepadSystem *gGS)
 		int numPads = gGS->numGamepadsConnected;
 		int skipIndex = gGT->timer % numPads;
 
-		// === Naughty Dog Bug ===
-		// OG code decreases Motor1 until power drops to 60,
-		// then shuts off Motor2 for all controllers without
-		// Motor1. Dont do that, decrease Motor1 and Motor2,
-		// take both motors into consideration until 60
-
-		while (totalPower > 60)
+		for (int i = skipIndex; i < skipIndex + numPads && totalPower > 60; i++)
 		{
-			// cycle back around
-			if (skipIndex >= numPads)
-				skipIndex = 0;
-
-			struct GamepadBuffer *pad = &gGS->gamepad[skipIndex];
-
-			if (pad->motorDesired[0] != 0)
-			{
-				pad->motorDesired[0] = 0;
-				totalPower -= pad->motorPower[0];
-			}
+			struct GamepadBuffer *pad = &gGS->gamepad[i % numPads];
 
 			if (pad->motorDesired[1] != 0)
 			{
 				pad->motorDesired[1] = 0;
 				totalPower -= pad->motorPower[1];
 			}
+		}
 
-			skipIndex++;
+		for (int i = skipIndex; i < skipIndex + numPads && totalPower > 60; i++)
+		{
+			struct GamepadBuffer *pad = &gGS->gamepad[i % numPads];
+
+			if (pad->motorDesired[0] != 0)
+			{
+				pad->motorDesired[0] = 0;
+				totalPower -= pad->motorPower[0];
+			}
 		}
 	}
 
