@@ -87,10 +87,10 @@ static void VehBirth_SetStartlinePosition(struct Driver *d, struct Level *level,
 
 	d->actionsFlagSet |= 0x1000000;
 #ifdef CTR_NATIVE
-	if ((level->ptr_restart_points == NULL) && ((sdata->gGT->gameMode1 & (GAME_CUTSCENE | MAIN_MENU)) != 0))
+	if (level->ptr_restart_points == NULL)
 	{
 		// NOTE(aalhendi): Retail does an unguarded low-address read here;
-		// native cannot dereference PS1 null-space for ND/menu-style scenes.
+		// native cannot dereference PS1 null-space for menu/hub-style LEVs.
 		d->distanceToFinish_checkpoint = 0;
 	}
 	else
@@ -113,7 +113,7 @@ static int VehBirth_ScaleTrig(int trig, int scale)
 	return (trig * scale) >> 0xc;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80057c8c-0x80058898
+// NOTE(aalhendi): PSX path ASM-verified NTSC-U 926 0x80057c8c-0x80058898.
 void VehBirth_TeleportSelf(struct Driver *d, u8 spawnFlag, int spawnPosY)
 {
 	s16 posTop[3];
