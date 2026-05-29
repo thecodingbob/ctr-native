@@ -202,14 +202,13 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 		if (((gGT->renderFlags & 0x100) != 0) && (gGT->numPlyrCurrGame > 1))
 			DecalMP_03(gGT);
 
+		int dotLightsLoadReady = sdata->Loading.stage != -4;
+
 		if (
 		    // if not cutscene
 		    // if not in adventure arena
 		    // if not in main menu
-		    ((gGT->gameMode1 & (GAME_CUTSCENE | ADVENTURE_ARENA | MAIN_MENU)) == 0) &&
-
-		    // if loading is 100% finished
-		    (sdata->Loading.stage != -4))
+		    ((gGT->gameMode1 & (GAME_CUTSCENE | ADVENTURE_ARENA | MAIN_MENU)) == 0) && dotLightsLoadReady)
 		{
 			DotLights_AudioAndVideo(gGT);
 		}

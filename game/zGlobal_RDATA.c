@@ -2,6 +2,8 @@
 
 #ifdef REBUILD_PC
 struct rData rdata = {
+    .s_asphalt2_thisAppearsTwice = "asphalt2",
+
     .s_crystal1 = "crystal1",
     .s_fruitdisp = "fruitdisp",
     .s_timebox1 = "timebox1",
@@ -41,5 +43,15 @@ struct rData rdata = {
     .s_screen15 = "screen15",
     .s_asphalt2 = "asphalt2",
     .s_asphalt1 = "asphalt1",
+
+    .s_circle = "circle",
+    .s_clod = "clod",
+    .s_dustpuff = "dustpuff",
+    .s_smokering = "smokering",
+    .s_sparkle = "sparkle",
+    .s_lightredoff = "lightredoff",
+    .s_lightredon = "lightredon",
+    .s_lightgreenoff = "lightgreenoff",
+    .s_lightgreenon = "lightgreenon",
 };
 #endif

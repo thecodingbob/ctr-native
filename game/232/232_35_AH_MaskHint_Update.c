@@ -125,9 +125,8 @@ void AH_MaskHint_Update()
 			break;
 		}
 
-		// NULLPTR checks if load started,
-		// DRAM_IS_PATCHED checks if load finished.
-		if ((sdata->modelMaskHints3D == 0) || !DRAM_IS_PATCHED(sdata->modelMaskHints3D))
+		// NOTE(aalhendi): Retail only waits for the mask model pointer.
+		if (sdata->modelMaskHints3D == 0)
 		{
 			AH_MaskHint_LerpVol(0x1000);
 			break;
