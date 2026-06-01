@@ -12,15 +12,18 @@ enum Ovr229DrawLevelConstants
 	OVR229_SPLIT_GROUND_RENDERED_A_HANDLER = 0x800a386c,
 	OVR229_SPLIT_GROUND_LIST_B_HANDLER = 0x800a481c,
 	OVR229_SPLIT_GROUND_RENDERED_B_HANDLER = 0x800a56ac,
+	OVR229_WIDE_DYNAMIC_HANDLER = 0x800a665c,
 	OVR229_WATER_RENDERED_DEFAULT_WRAPPER = 0x800a22d8,
 	OVR229_WATER_BSP_LIST_PRIM_RESERVE_BIAS = 0x1d40,
 	OVR229_SPLIT_GROUND_LIST_B_PRIM_RESERVE_BIAS = 0x23c0,
 	OVR229_SPLIT_GROUND_RENDERED_A_SETUP_INDEX = 3,
 	OVR229_SPLIT_GROUND_LIST_B_SETUP_INDEX = 4,
 	OVR229_SPLIT_GROUND_RENDERED_B_SETUP_INDEX = 5,
+	OVR229_WIDE_DYNAMIC_SETUP_INDEX = 6,
 	OVR229_CANONICAL_GROUND_4X2_LIST_SETUP_INDEX = 5,
 	OVR229_CANONICAL_GROUND_4X2_RENDERED_SETUP_INDEX = 6,
 	OVR229_CANONICAL_DYNAMIC_RENDERED_SETUP_INDEX = 8,
+	OVR229_CANONICAL_WIDE_DYNAMIC_SETUP_INDEX = 9,
 };
 
 static const struct OverlayRDATA_229_BucketSetupRecord *Ovr229_800a106c_FindBucketSetupRecord(u32 setupAddress, int *setupIndex)
@@ -67,6 +70,8 @@ static u32 Ovr229_800a106c_TranslateCopiedWord(int setupIndex, const struct Over
 		canonicalSetupIndex = OVR229_CANONICAL_GROUND_4X2_LIST_SETUP_INDEX;
 	else if (setupIndex == OVR229_SPLIT_GROUND_RENDERED_B_SETUP_INDEX)
 		canonicalSetupIndex = OVR229_CANONICAL_GROUND_4X2_RENDERED_SETUP_INDEX;
+	else if (setupIndex == OVR229_WIDE_DYNAMIC_SETUP_INDEX)
+		canonicalSetupIndex = OVR229_CANONICAL_WIDE_DYNAMIC_SETUP_INDEX;
 	else
 		return value;
 
@@ -275,7 +280,15 @@ static int Ovr229_800a56ac_DrawSplitGroundRenderedB(void *bucketValue, struct Pu
 	return result;
 }
 
-static int Ovr229_800a1178_800a665c_BucketDispatch(u32 handlerAddress, void *bucketValue, struct PushBuffer *pb, struct mesh_info *mesh,
+static int Ovr229_800a665c_DrawWideDynamicList(void *bucketValue, struct PushBuffer *pb, struct mesh_info *mesh, struct PrimMem *primMem,
+                                               const int *visFaceList)
+{
+	DrawLevelOvr1P_SetPrimReserveBias(OVR229_WATER_BSP_LIST_PRIM_RESERVE_BIAS);
+	DrawLevelOvr1P_SetSplitGroundThresholdScratch();
+	return Ovr226_800a8b60_DrawWideDynamicBspList((struct VisMemBspListNode *)bucketValue, pb, mesh, primMem, visFaceList);
+}
+
+static int Ovr229_800a1178_800a72b0_BucketDispatch(u32 handlerAddress, void *bucketValue, struct PushBuffer *pb, struct mesh_info *mesh,
                                                    struct PrimMem *primMem, const int *visFaceList)
 {
 	if (handlerAddress == OVR229_WATER_BSP_LIST_HANDLER)
@@ -296,7 +309,10 @@ static int Ovr229_800a1178_800a665c_BucketDispatch(u32 handlerAddress, void *buc
 	if (handlerAddress == OVR229_SPLIT_GROUND_RENDERED_B_HANDLER)
 		return Ovr229_800a56ac_DrawSplitGroundRenderedB(bucketValue, pb, mesh, primMem);
 
-	// NOTE(aalhendi): Bucket families outside 0x800a1178..0x800a665c remain
+	if (handlerAddress == OVR229_WIDE_DYNAMIC_HANDLER)
+		return Ovr229_800a665c_DrawWideDynamicList(bucketValue, pb, mesh, primMem, visFaceList);
+
+	// NOTE(aalhendi): Bucket families outside 0x800a1178..0x800a72b0 remain
 	// unported. Fail closed if this audit-only entry reaches them.
 	return 0;
 }
@@ -400,5 +416,5 @@ int Ovr229_800a0cbc_Entry(void *LevRenderList, struct PushBuffer *pb, struct BSP
                           void *VisMem18, void *VisMem1C, void *waterEnvMap)
 {
 	return Ovr229_800a0cbc_EntryWithCallbacks(LevRenderList, pb, bspList, primMem, VisMem10, VisMem14, VisMem18, VisMem1C, waterEnvMap,
-	                                          Ovr229_800a1178_800a665c_BucketDispatch, Ovr229_UnportedClipConsumer);
+	                                          Ovr229_800a1178_800a72b0_BucketDispatch, Ovr229_UnportedClipConsumer);
 }
