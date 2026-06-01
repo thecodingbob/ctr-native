@@ -118,7 +118,14 @@ void AH_SaveObj_ThTick(struct Thread *t)
 				driverInst->thread->funcThTick = NULL;
 
 				save->flags |= 4;
-				gGT->hudFlags = save->hudFlagBackup;
+#if defined(CTR_NATIVE)
+				// NOTE(aalhendi): Retail hides the HUD before queueing a hub
+				// load while levelID is temporarily MAIN_MENU_LEVEL. Native can
+				// keep this save object ticking during that transition, so do not
+				// restore the hub HUD/map until loading is idle again.
+				if (sdata->Loading.stage == -1)
+#endif
+					gGT->hudFlags = save->hudFlagBackup;
 			}
 
 			// if camera is transitioning
