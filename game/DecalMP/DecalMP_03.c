@@ -73,7 +73,7 @@ void DecalMP_03(struct GameTracker *gGT)
 
 		u_long *ot = gGT->pushBuffer[cameraID].ptrOT + (entry->pb.renderBucketOTByteOffset >> 2);
 		prim[0] = *ot | 0x09000000;
-		*ot = ((u32)prim)ADD_PSX_ADDRESS;
+		CtrGpu_LinkPrimToOT(ot, prim);
 		gGT->backBuffer->primMem.curr = prim + 10;
 	}
 }

@@ -1,16 +1,5 @@
 #include "DecalMP_Common.h"
 
-static inline u32 DecalMP_OtLink(void *ptr)
-{
-#ifdef CTR_NATIVE
-	// NOTE(aalhendi): Native OT entries store host pointers; retail stores
-	// masked 24-bit PSX links.
-	return (u32)ptr;
-#else
-	return (u32)ptr & 0xffffff;
-#endif
-}
-
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80023640-0x80023784.
 void DecalMP_02(struct GameTracker *gGT)
 {
@@ -44,7 +33,7 @@ void DecalMP_02(struct GameTracker *gGT)
 				{
 					u_long *cameraOT = gGT->pushBuffer[cameraID].ptrOT;
 					*entry->pb.ptrOT = cameraOT[0x3ff];
-					cameraOT[0x3ff] = DecalMP_OtLink(entry->pb.renderBucketOTRangeEnd);
+					cameraOT[0x3ff] = CtrGpu_PrimToOTLink24(entry->pb.renderBucketOTRangeEnd);
 				}
 			}
 

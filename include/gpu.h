@@ -6,9 +6,23 @@
 #define ADD_PSX_ADDRESS ^0x80000000
 #endif
 
+force_inline u32 CtrGpu_PrimToOTLink(void *prim)
+{
+	return ((u32)prim)ADD_PSX_ADDRESS;
+}
+
+force_inline u32 CtrGpu_PrimToOTLink24(void *prim)
+{
+#ifdef CTR_NATIVE
+	return (u32)prim;
+#else
+	return (u32)prim & 0xffffff;
+#endif
+}
+
 force_inline void CtrGpu_LinkPrimToOT(u_long *ot, void *prim)
 {
-	*ot = ((u32)prim)ADD_PSX_ADDRESS;
+	*ot = CtrGpu_PrimToOTLink(prim);
 }
 
 force_inline void addPolyF3(u_long *ot, POLY_F3 *p)
