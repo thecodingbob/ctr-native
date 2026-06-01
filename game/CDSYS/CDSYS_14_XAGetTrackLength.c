@@ -1,7 +1,7 @@
 #include <common.h>
 
 #if defined(CTR_NATIVE)
-int PsyX_SPUAL_GetXATrackLength(int categoryID, int xaID);
+#include <platform/native_audio.h>
 #endif
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001cd20-0x8001cdb4
@@ -10,7 +10,7 @@ int CDSYS_XAGetTrackLength(int categoryID, int xaID)
 	if (sdata->boolUseDisc == 0)
 	{
 #if defined(CTR_NATIVE)
-		return PsyX_SPUAL_GetXATrackLength(categoryID, xaID);
+		return NativeAudio_GetXATrackLength(categoryID, xaID);
 #endif
 		return 0;
 	}

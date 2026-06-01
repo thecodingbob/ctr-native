@@ -18,6 +18,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE NEVER)
 
 set(GAME_SOURCES
     ctr_native.c
+    platform/native_audio.c
     platform/native_memcard.c
 )
 

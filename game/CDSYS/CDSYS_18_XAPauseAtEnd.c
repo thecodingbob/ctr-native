@@ -1,7 +1,7 @@
 #include <common.h>
 
 #if defined(CTR_NATIVE)
-int PsyX_SPUAL_IsXAPlaying(void);
+#include <platform/native_audio.h>
 #endif
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001d06c-0x8001d094.
@@ -10,7 +10,7 @@ void CDSYS_XAPauseAtEnd()
 	if (sdata->boolUseDisc == 0)
 	{
 #if defined(CTR_NATIVE)
-		if (PsyX_SPUAL_IsXAPlaying() != 0)
+		if (NativeAudio_IsXAPlaying() != 0)
 			sdata->XA_CurrOffset++;
 		else
 			sdata->XA_State = 0;
