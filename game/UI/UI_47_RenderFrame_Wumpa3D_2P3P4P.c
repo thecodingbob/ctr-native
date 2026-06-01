@@ -6,7 +6,7 @@ void UI_RenderFrame_Wumpa3D_2P3P4P(struct GameTracker *gGT)
 	RECT viewport2P;
 	RECT viewport3P4P;
 	RECT *viewport;
-	struct Instance *fruitDisp;
+	struct PushBuffer *wumpaPushBuffer;
 
 	*(u32 *)&viewport2P.x = sdata->multiplayerWumpaHudData[0];
 	*(u32 *)&viewport2P.w = sdata->multiplayerWumpaHudData[1];
@@ -17,15 +17,17 @@ void UI_RenderFrame_Wumpa3D_2P3P4P(struct GameTracker *gGT)
 	if (gGT->numPlyrCurrGame >= 3)
 		viewport = &viewport3P4P;
 
-	fruitDisp = (struct Instance *)(uintptr_t)sdata->ptrFruitDisp;
+	// NOTE(aalhendi): Retail reads the gp slot populated by UI_INSTANCE_InitAll
+	// with ptrPushBufferUI, not the adjacent ptrFruitDisp instance slot.
+	wumpaPushBuffer = (struct PushBuffer *)(uintptr_t)sdata->ptrPushBufferUI;
 
-	if (fruitDisp != NULL)
+	if (wumpaPushBuffer != NULL)
 	{
-		PushBuffer_SetDrawEnv_DecalMP(*(void **)((u8 *)fruitDisp + 0xf8), gGT->backBuffer, viewport, viewport->x + (viewport->w >> 1) - 0x100,
+		PushBuffer_SetDrawEnv_DecalMP(wumpaPushBuffer->renderBucketOTRangeEnd, gGT->backBuffer, viewport, viewport->x + (viewport->w >> 1) - 0x100,
 		                              viewport->y + (viewport->h >> 1) - 0x6c, 0, 0, 0, 0, 1);
 
-		u32 *textureStart = *(u32 **)((u8 *)fruitDisp + 0xf4);
-		u32 *textureEnd = *(u32 **)((u8 *)fruitDisp + 0xf8);
+		u32 *textureStart = wumpaPushBuffer->ptrOT;
+		u32 *textureEnd = wumpaPushBuffer->renderBucketOTRangeEnd;
 
 		if (textureStart != NULL && textureEnd != NULL)
 		{
@@ -48,10 +50,8 @@ void UI_RenderFrame_Wumpa3D_2P3P4P(struct GameTracker *gGT)
 		if ((gGT->gameMode1 & END_OF_RACE) != 0)
 			continue;
 
-		fruitDisp = (struct Instance *)(uintptr_t)sdata->ptrFruitDisp;
-
-		s16 posX = hud[3].x + fruitDisp->scale[0] - (viewport->w >> 1);
-		s16 posY = hud[3].y + fruitDisp->scale[1] - (viewport->h >> 1);
+		s16 posX = hud[3].x + wumpaPushBuffer->rect.x - (viewport->w >> 1);
+		s16 posY = hud[3].y + wumpaPushBuffer->rect.y - (viewport->h >> 1);
 
 		u32 *prim = (u32 *)gGT->backBuffer->primMem.curr;
 
