@@ -16,6 +16,8 @@ force_inline u32 CtrGpu_PrimToOTLink(const void *prim)
 	return ((u32)(uintptr_t)prim)ADD_PSX_ADDRESS;
 }
 
+// PS1 primitive tags store the next OT link as 24 bits. Native code that uses
+// this path must keep linked primitive memory in the low 16 MiB address range.
 force_inline u32 CtrGpu_PrimToOTLink24(const void *prim)
 {
 	uintptr_t addr = (uintptr_t)prim;
