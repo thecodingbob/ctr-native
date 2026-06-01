@@ -94,6 +94,11 @@ struct CsOpcodeMeta
 	s16 rotEnd;
 };
 
+enum CutsceneObjFlags
+{
+	CS_FLAG_PATH_MOTION_DISABLED = 0x0001,
+};
+
 struct CutsceneObj
 {
 	// 0x0
@@ -117,7 +122,7 @@ struct CutsceneObj
 	int *metadata;
 
 	// 0x14
-	s16 unk14;
+	s16 opcodeDuration;
 
 	// 0x16
 	// determines time or frame animation
@@ -131,7 +136,7 @@ struct CutsceneObj
 	s16 unk22;
 	s16 unk24;
 	s16 unk26;
-	u16 unk28;
+	u16 pathProgress32;
 
 	// 0x2a
 	s16 scaleSpeed;

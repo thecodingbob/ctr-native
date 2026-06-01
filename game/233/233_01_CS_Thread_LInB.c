@@ -60,7 +60,7 @@ void CS_Thread_LInB(struct Instance *inst)
 		cs->unk20 = 0;
 		cs->unk22 = 0;
 		cs->unk24 = 0;
-		cs->unk28 = 0;
+		cs->pathProgress32 = 0;
 		cs->unk1e = 0;
 		cs->flags = 0;
 		cs->scaleSpeed = 0;
@@ -68,7 +68,7 @@ void CS_Thread_LInB(struct Instance *inst)
 		cs->desiredScale = 0x1000;
 		cs->particleID = 0xff;
 
-		cs->unk14 = frameStart + (s16)(((rng >> 2 & 0xfff) * ((frameEnd - frameStart) + 1)) >> 0xc);
+		cs->opcodeDuration = frameStart + (s16)(((rng >> 2 & 0xfff) * ((frameEnd - frameStart) + 1)) >> 0xc);
 
 		struct GameTracker *gGT = sdata->gGT;
 

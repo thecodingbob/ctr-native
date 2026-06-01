@@ -240,7 +240,7 @@ after_opcode:
 	cs->unk18 = cs->metadata[2];
 
 	meta = (s16 *)cs->metadata;
-	cs->unk14 = meta[2] + (s16)(((MixRNG_Scramble() >> 2 & 0xfff) * ((meta[3] - meta[2]) + 1)) >> 0xc);
+	cs->opcodeDuration = meta[2] + (s16)(((MixRNG_Scramble() >> 2 & 0xfff) * ((meta[3] - meta[2]) + 1)) >> 0xc);
 
 	if (inst != NULL)
 	{
@@ -282,7 +282,7 @@ after_opcode:
 	}
 
 	cs->particleID = 0xff;
-	cs->unk28 = 0;
+	cs->pathProgress32 = 0;
 	cs->unk1e = 0;
 	cs->flags = 0;
 	cs->scaleSpeed = 0;

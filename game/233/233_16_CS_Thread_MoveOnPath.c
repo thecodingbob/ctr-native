@@ -19,7 +19,7 @@ void CS_Thread_MoveOnPath(struct Thread *t)
 	u16 frac;
 	s16 rot[3];
 
-	if ((cs->flags & 1) != 0)
+	if ((cs->flags & CS_FLAG_PATH_MOTION_DISABLED) != 0)
 		return;
 
 	if (inst == 0)
@@ -50,9 +50,9 @@ void CS_Thread_MoveOnPath(struct Thread *t)
 		if (coords == 0)
 			return;
 
-		progress = cs->unk28;
+		progress = cs->pathProgress32;
 		idx = (s16)progress >> 5;
-		cs->unk28 = (u16)(progress + (u16)gGT->elapsedTimeMS);
+		cs->pathProgress32 = (u16)(progress + (u16)gGT->elapsedTimeMS);
 		frac = progress & 0x1f;
 
 		if (idx >= spawnEntry->numCoords - 1)
@@ -62,11 +62,11 @@ void CS_Thread_MoveOnPath(struct Thread *t)
 			if (modelID == 0xDF)
 			{
 				idx = spawnEntry->numCoords - 2;
-				cs->unk28 = idx << 5;
+				cs->pathProgress32 = idx << 5;
 			}
 			else
 			{
-				cs->unk28 = 0;
+				cs->pathProgress32 = 0;
 			}
 		}
 
@@ -106,14 +106,14 @@ void CS_Thread_MoveOnPath(struct Thread *t)
 		if (coords == 0)
 			return;
 
-		progress = cs->unk28;
-		cs->unk28 = (u16)(progress + (u16)gGT->elapsedTimeMS);
+		progress = cs->pathProgress32;
+		cs->pathProgress32 = (u16)(progress + (u16)gGT->elapsedTimeMS);
 		idx = (s16)progress >> 5;
 
 		if (idx >= spawnEntry->numCoords - 1)
 		{
 			idx = 0;
-			cs->unk28 = 0;
+			cs->pathProgress32 = 0;
 		}
 
 		{

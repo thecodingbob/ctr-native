@@ -115,7 +115,7 @@ int CS_Thread_UseOpcode(struct Instance *instance, struct CutsceneObj *cs)
 					iVar8 = MixRNG_Scramble();
 					opcodeMeta = (struct CsOpcodeMeta *)cs->metadata;
 					opcodeMetaShorts = (s16 *)opcodeMeta;
-					cs->unk14 =
+					cs->opcodeDuration =
 					    opcodeMeta->frameStart + (s16)((int)((iVar8 >> 2 & 0xfff) * (((int)opcodeMeta->frameEnd - (int)opcodeMeta->frameStart) + 1)) >> 0xc);
 				}
 			}
@@ -132,7 +132,7 @@ int CS_Thread_UseOpcode(struct Instance *instance, struct CutsceneObj *cs)
 		}
 	}
 
-	opcodeDuration = (int)cs->unk14;
+	opcodeDuration = (int)cs->opcodeDuration;
 	iVar12 = cs->unk18;
 	iVar8 = (int)cs->unk1e;
 	elapsedTimeRemaining = gGT->elapsedTimeMS;
@@ -239,7 +239,7 @@ afterCameraAndSkipChecks:
 		cs->unk18 = iVar12;
 		cs->animIndex = (char)animIndex;
 		cs->unk1e = (s16)iVar8;
-		cs->unk14 = (s16)opcodeDuration;
+		cs->opcodeDuration = (s16)opcodeDuration;
 		iVar10 = (int)opcodeMeta->rotStart;
 		iVar12 = iVar12 >> 5;
 		if (iVar10 != (int)opcodeMeta->rotEnd)
@@ -471,11 +471,11 @@ processOpcode:
 
 	case 10:
 		if (opcodeMeta->arg1.i == -1)
-			cutsceneFlags = cs->flags | 1;
+			cutsceneFlags = cs->flags | CS_FLAG_PATH_MOTION_DISABLED;
 		else
 		{
-			cs->unk28 = 0;
-			cutsceneFlags = cs->flags & 0xfffe;
+			cs->pathProgress32 = 0;
+			cutsceneFlags = cs->flags & ~CS_FLAG_PATH_MOTION_DISABLED;
 		}
 		cs->flags = cutsceneFlags;
 		break;

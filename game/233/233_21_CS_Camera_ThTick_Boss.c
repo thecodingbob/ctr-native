@@ -123,7 +123,7 @@ void CS_Camera_ThTick_Boss(struct Thread *t)
 			if (i == 0)
 			{
 				CS_ScriptCmd_OpcodeAt(cs, bcd->opcode);
-				cs->unk14 = 0;
+				cs->opcodeDuration = 0;
 				continue;
 			}
 
