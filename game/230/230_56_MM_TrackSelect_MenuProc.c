@@ -583,7 +583,7 @@ void MM_TrackSelect_MenuProc(struct RectMenu *menu)
 
 					    // Y
 					    D230.drawMapOffset[iVar18].offsetY + p.y + (D230.transitionMeta_trackSel[2].currY - D230.transitionMeta_trackSel[1].currY) + 0x49 +
-					        0x22 + (mapBoxHeight >> 1) + (iVar10 >> 1),
+					        (mapBoxHeight >> 1) + (iVar10 >> 1),
 
 					    // pointer to PrimMem struct
 					    &gGT->backBuffer->primMem,
