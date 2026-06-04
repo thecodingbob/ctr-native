@@ -23,6 +23,9 @@ void Platform_PollHostEvents(void);
 #define NATIVE_GPU_LOG(fmt, ...)   Platform_Log("[CTR GPU] " fmt, ##__VA_ARGS__)
 #define NATIVE_GPU_ERROR(fmt, ...) Platform_LogError("[CTR GPU] [%s] - " fmt, __func__, ##__VA_ARGS__)
 
+#define NATIVE_GPU_STATE_MAGIC     0x47525443
+#define NATIVE_GPU_STATE_VERSION   1
+
 #define GET_TPAGE_BLEND(tpage)     ((BlendMode)(((tpage >> 5) & 3) + 1))
 
 #define GET_TPAGE_DITHER(tpage)    ((tpage >> 9) & 0x1)
@@ -93,6 +96,18 @@ typedef struct
 
 static NativeGpuState s_gpu;
 
+struct NativeGpuSnapshot
+{
+	u32 magic;
+	u32 version;
+	u32 size;
+	DRAWENV drawEnv;
+	DISPENV dispEnv;
+	s32 gpuDisabledState;
+	s32 psxDrawMaskSet;
+	u16 vram[VRAM_WIDTH * VRAM_HEIGHT];
+};
+
 int NativeGpu_HasPendingSplits(void)
 {
 	return s_gpu.splitIndex > 0;
@@ -106,6 +121,55 @@ void ClearSplits(void)
 	s_gpu.splits[0].texFormat = (TexFormat)0xFFFF;
 	s_gpu.splits[0].psxTexturedSemiTrans = false;
 	s_gpu.splits[0].psxDrawMaskSet = false;
+}
+
+int NativeGpu_GetStateSize(void)
+{
+	return (int)sizeof(struct NativeGpuSnapshot);
+}
+
+int NativeGpu_CaptureState(void *dst, int dstSize)
+{
+	struct NativeGpuSnapshot *snapshot = (struct NativeGpuSnapshot *)dst;
+
+	if ((dst == NULL) || (dstSize < (int)sizeof(*snapshot)))
+		return 0;
+	if (NativeRenderer_GetVRAMStateSize() != (int)sizeof(snapshot->vram))
+		return 0;
+
+	memset(snapshot, 0, sizeof(*snapshot));
+	snapshot->magic = NATIVE_GPU_STATE_MAGIC;
+	snapshot->version = NATIVE_GPU_STATE_VERSION;
+	snapshot->size = sizeof(*snapshot);
+	snapshot->drawEnv = activeDrawEnv;
+	snapshot->dispEnv = activeDispEnv;
+	snapshot->gpuDisabledState = g_GPUDisabledState;
+	snapshot->psxDrawMaskSet = s_gpu.psxDrawMaskSet;
+
+	return NativeRenderer_CaptureVRAMState(snapshot->vram, sizeof(snapshot->vram));
+}
+
+int NativeGpu_RestoreState(const void *src, int srcSize)
+{
+	const struct NativeGpuSnapshot *snapshot = (const struct NativeGpuSnapshot *)src;
+
+	if ((src == NULL) || (srcSize < (int)sizeof(*snapshot)))
+		return 0;
+	if ((snapshot->magic != NATIVE_GPU_STATE_MAGIC) || (snapshot->version != NATIVE_GPU_STATE_VERSION) || (snapshot->size != sizeof(*snapshot)))
+		return 0;
+	if ((snapshot->gpuDisabledState < 0) || (snapshot->gpuDisabledState > 1) || (snapshot->psxDrawMaskSet < 0) || (snapshot->psxDrawMaskSet > 1))
+		return 0;
+	if (NativeRenderer_GetVRAMStateSize() != (int)sizeof(snapshot->vram))
+		return 0;
+	if (!NativeRenderer_RestoreVRAMState(snapshot->vram, sizeof(snapshot->vram)))
+		return 0;
+
+	activeDrawEnv = snapshot->drawEnv;
+	activeDispEnv = snapshot->dispEnv;
+	g_GPUDisabledState = snapshot->gpuDisabledState;
+	s_gpu.psxDrawMaskSet = snapshot->psxDrawMaskSet;
+	ClearSplits();
+	return 1;
 }
 
 static void DrawEnvDimensionsInt(int *width, int *height)

@@ -1394,6 +1394,43 @@ void NativeRendererBackend_ReadVRAM(u16 *dst, int x, int y, int dst_w, int dst_h
 	}
 }
 
+int NativeRendererBackend_GetVRAMStateSize(void)
+{
+	return (int)sizeof(vram);
+}
+
+int NativeRendererBackend_CaptureVRAMState(void *dst, int dstSize)
+{
+	if ((dst == NULL) || (dstSize < (int)sizeof(vram)))
+		return 0;
+
+	// NOTE(aalhendi): Save-states own the CPU-side PSX VRAM mirror, not GL
+	// textures or PBOs. Pull pending framebuffer copies into the mirror first.
+	NativeRendererBackend_ReadFramebufferDataToVRAM();
+	SDL_memcpy(dst, vram, sizeof(vram));
+	return 1;
+}
+
+int NativeRendererBackend_RestoreVRAMState(const void *src, int srcSize)
+{
+	static const RECT16 zeroRect = {0, 0, 0, 0};
+
+	if ((src == NULL) || (srcSize < (int)sizeof(vram)))
+		return 0;
+
+	SDL_memcpy(vram, src, sizeof(vram));
+	// NOTE(aalhendi): Restored VRAM is authoritative PSX state. Host GL caches
+	// are rebuildable, so mark the texture dirty and drop stale bindings.
+	s_vramNeedsUpdate = 1;
+	s_framebufferNeedsUpdate = 0;
+	s_previousFramebuffer = zeroRect;
+	s_previousOffscreen = zeroRect;
+	s_previousOffscreenState = 0;
+	s_previousShader = -1;
+	s_lastBoundTexture = -1;
+	return 1;
+}
+
 void NativeRendererBackend_UpdateVRAM()
 {
 	if (!s_vramNeedsUpdate)

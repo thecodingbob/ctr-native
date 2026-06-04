@@ -19,5 +19,8 @@ int NativeGpu_HasPendingSplits(void);
 void ClearSplits(void);
 void DrawAllSplits(void);
 void ParsePrimitivesLinkedList(u32 *p, int singlePrimitive);
+int NativeGpu_GetStateSize(void);
+int NativeGpu_CaptureState(void *dst, int dstSize);
+int NativeGpu_RestoreState(const void *src, int srcSize);
 
 #endif

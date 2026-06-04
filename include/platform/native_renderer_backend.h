@@ -28,6 +28,9 @@ void NativeRendererBackend_CopyVRAM(u16 *src, int x, int y, int w, int h, int ds
 void NativeRendererBackend_ReadVRAM(u16 *dst, int x, int y, int dstW, int dstH);
 void NativeRendererBackend_UpdateVRAM(void);
 void NativeRendererBackend_ReadFramebufferDataToVRAM(void);
+int NativeRendererBackend_GetVRAMStateSize(void);
+int NativeRendererBackend_CaptureVRAMState(void *dst, int dstSize);
+int NativeRendererBackend_RestoreVRAMState(const void *src, int srcSize);
 TextureID NativeRendererBackend_GetVRAMTexture(void);
 TextureID NativeRendererBackend_GetWhiteTexture(void);
 TextureID NativeRendererBackend_CreateRGBATexture(int width, int height, u8 *data);

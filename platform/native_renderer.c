@@ -86,6 +86,21 @@ void NativeRenderer_ReadFramebufferDataToVRAM(void)
 	NativeRendererBackend_ReadFramebufferDataToVRAM();
 }
 
+int NativeRenderer_GetVRAMStateSize(void)
+{
+	return NativeRendererBackend_GetVRAMStateSize();
+}
+
+int NativeRenderer_CaptureVRAMState(void *dst, int dstSize)
+{
+	return NativeRendererBackend_CaptureVRAMState(dst, dstSize);
+}
+
+int NativeRenderer_RestoreVRAMState(const void *src, int srcSize)
+{
+	return NativeRendererBackend_RestoreVRAMState(src, srcSize);
+}
+
 TextureID NativeRenderer_GetVRAMTexture(void)
 {
 	return NativeRendererBackend_GetVRAMTexture();

@@ -20,6 +20,9 @@ void NativeRenderer_CopyVRAM(u16 *src, int x, int y, int w, int h, int dstX, int
 void NativeRenderer_ReadVRAM(u16 *dst, int x, int y, int dstW, int dstH);
 void NativeRenderer_UpdateVRAM(void);
 void NativeRenderer_ReadFramebufferDataToVRAM(void);
+int NativeRenderer_GetVRAMStateSize(void);
+int NativeRenderer_CaptureVRAMState(void *dst, int dstSize);
+int NativeRenderer_RestoreVRAMState(const void *src, int srcSize);
 TextureID NativeRenderer_GetVRAMTexture(void);
 TextureID NativeRenderer_GetWhiteTexture(void);
 void NativeRenderer_SetBlendMode(BlendMode blendMode);
