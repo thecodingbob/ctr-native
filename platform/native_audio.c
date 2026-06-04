@@ -1,6 +1,6 @@
 #include <platform/native_audio.h>
 
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,7 +17,7 @@ typedef s32 b32;
 #define NATIVE_AUDIO_GAUSS_INDEX_SHIFT  8
 #define NATIVE_AUDIO_DIRECT_VOL_MAX     0x4000
 #define NATIVE_AUDIO_VBLANK_FRAMES      (NATIVE_AUDIO_SAMPLE_RATE / 60)
-#define NATIVE_AUDIO_RING_FRAMES        (NATIVE_AUDIO_VBLANK_FRAMES * 8)
+#define NATIVE_AUDIO_MAX_QUEUED_FRAMES  (NATIVE_AUDIO_VBLANK_FRAMES * 8)
 #define NATIVE_AUDIO_STATE_MAGIC        0x41525443
 #define NATIVE_AUDIO_STATE_VERSION      1
 #define NATIVE_AUDIO_ARENA_ALIGN        16
@@ -134,17 +134,14 @@ struct NativeAudioSpuArena
 struct NativeAudioOutput
 {
 	SDL_AudioDeviceID device;
-	// NOTE(aalhendi): Host output queue only; clear it on restore instead of snapshotting it.
-	s16 ring[NATIVE_AUDIO_RING_FRAMES * NATIVE_AUDIO_CHANNELS];
-	int readFrame;
-	int writeFrame;
-	int frameCount;
+	SDL_AudioStream *stream;
 #ifdef CTR_INTERNAL
 	int underrunFrames;
 	int overflowFrames;
 	int reportVBlankCountdown;
 	int lastReportedUnderrunFrames;
 	int lastReportedOverflowFrames;
+	int lastReportedQueuedFrames;
 #endif
 };
 
@@ -299,6 +296,23 @@ struct NativeAudioSnapshot
 };
 
 static struct NativeAudioState s_audio;
+
+static b32 NativeAudio_OutputOpen(void)
+{
+	return s_audio.output.stream != NULL;
+}
+
+static void NativeAudio_LockOutput(void)
+{
+	if (s_audio.output.stream != NULL)
+		SDL_LockAudioStream(s_audio.output.stream);
+}
+
+static void NativeAudio_UnlockOutput(void)
+{
+	if (s_audio.output.stream != NULL)
+		SDL_UnlockAudioStream(s_audio.output.stream);
+}
 
 static const int s_posTable[5] = {0, 60, 115, 98, 122};
 static const int s_negTable[5] = {0, 0, -52, -55, -60};
@@ -1532,13 +1546,25 @@ static int NativeAudio_ValidateReverbSnapshot(const struct NativeAudioReverbStat
 
 static void NativeAudio_ClearOutputQueueNoLock(void)
 {
-	memset(s_audio.output.ring, 0, sizeof(s_audio.output.ring));
-	s_audio.output.readFrame = 0;
-	s_audio.output.writeFrame = 0;
-	s_audio.output.frameCount = 0;
+	if (s_audio.output.stream != NULL)
+		SDL_ClearAudioStream(s_audio.output.stream);
 }
 
 static int NativeAudio_OpenDevice(void);
+
+static void NativeAudio_SelectDriverHint(void)
+{
+#if defined(__linux__)
+	if (SDL_GetHint(SDL_HINT_AUDIO_DRIVER) == NULL)
+	{
+		// NOTE(aalhendi): SDL3 prefers PipeWire before PulseAudio on Linux, but
+		// the current PipeWire backend does not drain our VBlank-fed stream
+		// reliably in live probes. Keep user/env overrides, otherwise prefer
+		// the draining backends first and leave PipeWire as a fallback.
+		SDL_SetHint(SDL_HINT_AUDIO_DRIVER, "pulseaudio,alsa,pipewire");
+	}
+#endif
+}
 
 static int NativeAudio_BuildXAPath(char *path, size_t pathSize, int categoryID, int fileNumber)
 {
@@ -1936,69 +1962,48 @@ static void NativeAudio_MixSample(int *dstLeft, int *dstRight, int sampleLeft, i
 	*dstRight += sampleRight;
 }
 
-static void NativeAudio_RingPush(s16 left, s16 right)
+static int NativeAudio_GetQueuedFramesNoLock(void)
 {
-	if (s_audio.output.frameCount == NATIVE_AUDIO_RING_FRAMES)
-	{
-		s_audio.output.readFrame = (s_audio.output.readFrame + 1) % NATIVE_AUDIO_RING_FRAMES;
-		s_audio.output.frameCount--;
-#ifdef CTR_INTERNAL
-		if (s_audio.output.overflowFrames < INT_MAX)
-			s_audio.output.overflowFrames++;
-#endif
-	}
+	const int frameBytes = (int)sizeof(s16) * NATIVE_AUDIO_CHANNELS;
+	int queuedBytes;
 
-	s_audio.output.ring[s_audio.output.writeFrame * 2] = left;
-	s_audio.output.ring[s_audio.output.writeFrame * 2 + 1] = right;
-	s_audio.output.writeFrame = (s_audio.output.writeFrame + 1) % NATIVE_AUDIO_RING_FRAMES;
-	s_audio.output.frameCount++;
+	if (s_audio.output.stream == NULL)
+		return 0;
+
+	queuedBytes = SDL_GetAudioStreamQueued(s_audio.output.stream);
+	return queuedBytes > 0 ? queuedBytes / frameBytes : 0;
 }
 
-static void NativeAudio_RingPop(s16 *left, s16 *right)
+static b32 NativeAudio_QueueFramesNoLock(const s16 *frames, int frameCount)
 {
-	if (s_audio.output.frameCount <= 0)
-	{
-		*left = 0;
-		*right = 0;
-#ifdef CTR_INTERNAL
-		if (s_audio.output.underrunFrames < INT_MAX)
-			s_audio.output.underrunFrames++;
-#endif
-		return;
-	}
+	if ((s_audio.output.stream == NULL) || (frameCount <= 0))
+		return 1;
 
-	*left = s_audio.output.ring[s_audio.output.readFrame * 2];
-	*right = s_audio.output.ring[s_audio.output.readFrame * 2 + 1];
-	s_audio.output.readFrame = (s_audio.output.readFrame + 1) % NATIVE_AUDIO_RING_FRAMES;
-	s_audio.output.frameCount--;
+	return SDL_PutAudioStreamData(s_audio.output.stream, frames, frameCount * (int)sizeof(s16) * NATIVE_AUDIO_CHANNELS);
 }
 
 void NativeAudio_ClearOutputQueue(void)
 {
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	NativeAudio_ClearOutputQueueNoLock();
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 }
 
 #ifdef CTR_INTERNAL
 void NativeAudio_GetOutputStats(int *underrunFrames, int *overflowFrames, int *queuedFrames)
 {
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	if (underrunFrames != NULL)
 		*underrunFrames = s_audio.output.underrunFrames;
 	if (overflowFrames != NULL)
 		*overflowFrames = s_audio.output.overflowFrames;
 	if (queuedFrames != NULL)
-		*queuedFrames = s_audio.output.frameCount;
+		*queuedFrames = NativeAudio_GetQueuedFramesNoLock();
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 }
 
 static int NativeAudio_ShouldReportOutputStatsNoLock(int *underrunFrames, int *overflowFrames, int *queuedFrames)
@@ -2011,20 +2016,22 @@ static int NativeAudio_ShouldReportOutputStatsNoLock(int *underrunFrames, int *o
 
 	s_audio.output.reportVBlankCountdown = 60;
 
-	if ((s_audio.output.underrunFrames == 0) && (s_audio.output.overflowFrames == 0))
+	*underrunFrames = s_audio.output.underrunFrames;
+	*overflowFrames = s_audio.output.overflowFrames;
+	*queuedFrames = NativeAudio_GetQueuedFramesNoLock();
+
+	if ((*underrunFrames == 0) && (*overflowFrames == 0) && (*queuedFrames < NATIVE_AUDIO_MAX_QUEUED_FRAMES))
 		return 0;
 
-	if ((s_audio.output.underrunFrames == s_audio.output.lastReportedUnderrunFrames) &&
-	    (s_audio.output.overflowFrames == s_audio.output.lastReportedOverflowFrames))
+	if ((*underrunFrames == s_audio.output.lastReportedUnderrunFrames) && (*overflowFrames == s_audio.output.lastReportedOverflowFrames) &&
+	    (*queuedFrames == s_audio.output.lastReportedQueuedFrames))
 	{
 		return 0;
 	}
 
-	s_audio.output.lastReportedUnderrunFrames = s_audio.output.underrunFrames;
-	s_audio.output.lastReportedOverflowFrames = s_audio.output.overflowFrames;
-	*underrunFrames = s_audio.output.underrunFrames;
-	*overflowFrames = s_audio.output.overflowFrames;
-	*queuedFrames = s_audio.output.frameCount;
+	s_audio.output.lastReportedUnderrunFrames = *underrunFrames;
+	s_audio.output.lastReportedOverflowFrames = *overflowFrames;
+	s_audio.output.lastReportedQueuedFrames = *queuedFrames;
 	return 1;
 }
 #endif
@@ -2042,8 +2049,7 @@ int NativeAudio_CaptureState(void *dst, int dstSize)
 	if ((dst == NULL) || (dstSize < (int)sizeof(*snapshot)))
 		return 0;
 
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	memset(snapshot, 0, sizeof(*snapshot));
 	snapshot->magic = NATIVE_AUDIO_STATE_MAGIC;
@@ -2068,8 +2074,7 @@ int NativeAudio_CaptureState(void *dst, int dstSize)
 	NativeAudio_CopyXAToState(&snapshot->xa, &s_audio.xa);
 	memcpy(snapshot->spuSampleMem, s_audio.spu.memory, sizeof(snapshot->spuSampleMem));
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 
 	return 1;
 }
@@ -2111,8 +2116,7 @@ int NativeAudio_RestoreState(const void *src, int srcSize)
 			return 0;
 	}
 
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	NativeAudio_ResetVoicePcmArenaNoLock(0);
 	NativeAudio_FreeXA();
@@ -2166,8 +2170,7 @@ int NativeAudio_RestoreState(const void *src, int srcSize)
 
 	NativeAudio_ClearOutputQueueNoLock();
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 
 	return 1;
 }
@@ -2277,27 +2280,11 @@ static void NativeAudio_MixFrame(s16 *outLeft, s16 *outRight)
 	*outRight = (s16)NativeAudio_Clamp16(mixRight);
 }
 
-static void NativeAudio_Callback(void *userdata, u8 *stream, int len)
-{
-	s16 *out = (s16 *)stream;
-	int frameCount = len / ((int)sizeof(s16) * NATIVE_AUDIO_CHANNELS);
-	int frame;
-
-	(void)userdata;
-	memset(stream, 0, (size_t)len);
-
-	if (!s_audio.init)
-		return;
-
-	for (frame = 0; frame < frameCount; frame++)
-	{
-		NativeAudio_RingPop(&out[frame * 2], &out[frame * 2 + 1]);
-	}
-}
-
 void NativeAudio_StepVBlank(void)
 {
 	int frame;
+	int queuedFramesBeforePush;
+	s16 out[NATIVE_AUDIO_VBLANK_FRAMES * NATIVE_AUDIO_CHANNELS];
 #ifdef CTR_INTERNAL
 	int shouldReportStats = 0;
 	int underrunFrames = 0;
@@ -2308,24 +2295,34 @@ void NativeAudio_StepVBlank(void)
 	if (!s_audio.init)
 		return;
 
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	for (frame = 0; frame < NATIVE_AUDIO_VBLANK_FRAMES; frame++)
-	{
-		s16 left;
-		s16 right;
+		NativeAudio_MixFrame(&out[frame * 2], &out[frame * 2 + 1]);
 
-		NativeAudio_MixFrame(&left, &right);
-		NativeAudio_RingPush(left, right);
+	queuedFramesBeforePush = NativeAudio_GetQueuedFramesNoLock();
+	if (queuedFramesBeforePush + NATIVE_AUDIO_VBLANK_FRAMES > NATIVE_AUDIO_MAX_QUEUED_FRAMES)
+	{
+		// NOTE(aalhendi): Drop this host PCM chunk only. Native SPU/XA state has
+		// already advanced on the VBlank clock and remains the source of truth.
+#ifdef CTR_INTERNAL
+		if (s_audio.output.overflowFrames < INT_MAX)
+			s_audio.output.overflowFrames++;
+#endif
+	}
+	else if (!NativeAudio_QueueFramesNoLock(out, NATIVE_AUDIO_VBLANK_FRAMES))
+	{
+#ifdef CTR_INTERNAL
+		if (s_audio.output.overflowFrames < INT_MAX)
+			s_audio.output.overflowFrames++;
+#endif
 	}
 
 #ifdef CTR_INTERNAL
 	shouldReportStats = NativeAudio_ShouldReportOutputStatsNoLock(&underrunFrames, &overflowFrames, &queuedFrames);
 #endif
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 
 #ifdef CTR_INTERNAL
 	if (shouldReportStats)
@@ -2338,40 +2335,85 @@ void NativeAudio_StepVBlank(void)
 static int NativeAudio_OpenDevice(void)
 {
 	SDL_AudioSpec want;
-	SDL_AudioSpec have;
+	SDL_AudioSpec srcSpec;
+	SDL_AudioSpec dstSpec;
+	s16 silence[NATIVE_AUDIO_VBLANK_FRAMES * NATIVE_AUDIO_CHANNELS];
 
-	if (s_audio.output.device != 0)
+	if (NativeAudio_OutputOpen())
 		return 1;
 
-	if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0)
+	NativeAudio_SelectDriverHint();
+
+	if (SDL_InitSubSystem(SDL_INIT_AUDIO) == 0)
 		return 0;
 
 	memset(&want, 0, sizeof(want));
-	memset(&have, 0, sizeof(have));
+	memset(&srcSpec, 0, sizeof(srcSpec));
+	memset(&dstSpec, 0, sizeof(dstSpec));
 	want.freq = NATIVE_AUDIO_SAMPLE_RATE;
-	want.format = AUDIO_S16SYS;
+	want.format = SDL_AUDIO_S16;
 	want.channels = NATIVE_AUDIO_CHANNELS;
-	want.samples = 1024;
-	want.callback = NativeAudio_Callback;
 
-	s_audio.output.device = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
-	if (s_audio.output.device == 0)
+	s_audio.output.stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &want, NULL, NULL);
+	if (s_audio.output.stream == NULL)
 	{
 		fprintf(stderr, "[CTR Native] SDL audio unavailable: %s\n", SDL_GetError());
 		return 0;
 	}
 
-	if ((have.freq != want.freq) || (have.format != want.format) || (have.channels != want.channels))
+	s_audio.output.device = SDL_GetAudioStreamDevice(s_audio.output.stream);
+	if (!SDL_GetAudioStreamFormat(s_audio.output.stream, &srcSpec, &dstSpec))
 	{
-		fprintf(stderr, "[CTR Native] SDL audio rejected fixed PCM contract: got %d Hz format 0x%x channels %d\n", have.freq, have.format, have.channels);
-		SDL_CloseAudioDevice(s_audio.output.device);
+		fprintf(stderr, "[CTR Native] SDL audio stream format unavailable: %s\n", SDL_GetError());
+		SDL_DestroyAudioStream(s_audio.output.stream);
+		s_audio.output.stream = NULL;
 		s_audio.output.device = 0;
 		return 0;
 	}
 
-	printf("[CTR Native] SDL audio device opened: %d Hz, %d channels\n", have.freq, have.channels);
-	SDL_PauseAudioDevice(s_audio.output.device, 0);
+	if ((srcSpec.freq != want.freq) || (srcSpec.format != want.format) || (srcSpec.channels != want.channels))
+	{
+		fprintf(stderr, "[CTR Native] SDL audio rejected fixed PCM contract: got %d Hz format 0x%x channels %d\n", srcSpec.freq, srcSpec.format, srcSpec.channels);
+		SDL_DestroyAudioStream(s_audio.output.stream);
+		s_audio.output.stream = NULL;
+		s_audio.output.device = 0;
+		return 0;
+	}
+
+	printf("[CTR Native] SDL audio stream opened: driver=%s src=%d Hz/%d ch dst=%d Hz/%d ch\n", SDL_GetCurrentAudioDriver(), srcSpec.freq, srcSpec.channels, dstSpec.freq,
+	       dstSpec.channels);
+	NativeAudio_ClearOutputQueueNoLock();
+	memset(silence, 0, sizeof(silence));
+	if (!NativeAudio_QueueFramesNoLock(silence, NATIVE_AUDIO_VBLANK_FRAMES))
+	{
+		fprintf(stderr, "[CTR Native] SDL audio stream prime failed: %s\n", SDL_GetError());
+		SDL_DestroyAudioStream(s_audio.output.stream);
+		s_audio.output.stream = NULL;
+		s_audio.output.device = 0;
+		return 0;
+	}
+	if (!SDL_ResumeAudioStreamDevice(s_audio.output.stream))
+	{
+		fprintf(stderr, "[CTR Native] SDL audio stream resume failed: %s\n", SDL_GetError());
+		SDL_DestroyAudioStream(s_audio.output.stream);
+		s_audio.output.stream = NULL;
+		s_audio.output.device = 0;
+		return 0;
+	}
+
 	return 1;
+}
+
+void NativeAudio_Shutdown(void)
+{
+	if (s_audio.output.stream != NULL)
+	{
+		SDL_DestroyAudioStream(s_audio.output.stream);
+		s_audio.output.stream = NULL;
+		s_audio.output.device = 0;
+	}
+
+	SDL_QuitSubSystem(SDL_INIT_AUDIO);
 }
 
 s32 NativeAudio_SpuInit(void)
@@ -2404,14 +2446,12 @@ u32 NativeAudio_SpuSetTransferStartAddr(u32 addr)
 	if (addr > NATIVE_AUDIO_SPU_MEMSIZE)
 		return 0;
 
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	s_audio.spu.transferOffset = (int)addr;
 	result = (addr < 0x1010) ? 0 : 1;
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 
 	return result;
 }
@@ -2420,22 +2460,19 @@ u32 NativeAudio_SpuWrite(const u8 *addr, u32 size)
 {
 	int wptrOfs;
 
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	wptrOfs = s_audio.spu.transferOffset;
 	if ((addr == NULL) || (size == 0) || (size > (u32)NATIVE_AUDIO_SPU_MEMSIZE) || (wptrOfs < 0) || (size > (u32)(NATIVE_AUDIO_SPU_MEMSIZE - wptrOfs)))
 	{
-		if (s_audio.output.device != 0)
-			SDL_UnlockAudioDevice(s_audio.output.device);
+		NativeAudio_UnlockOutput();
 		return 0;
 	}
 
 	memcpy(&s_audio.spu.memory[wptrOfs], addr, size);
 	NativeAudio_MarkVoiceSamplesDirty();
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 
 	return size;
 }
@@ -2447,8 +2484,7 @@ void NativeAudio_SpuSetVoiceAttr(SpuVoiceAttr *psxAttrib)
 	if (!s_audio.init || psxAttrib == NULL)
 		return;
 
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	for (i = 0; i < NATIVE_AUDIO_SPU_VOICE_COUNT; i++)
 	{
@@ -2505,8 +2541,7 @@ void NativeAudio_SpuSetVoiceAttr(SpuVoiceAttr *psxAttrib)
 			NativeAudio_UpdatePackedAdsrFromFields(voice);
 	}
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 }
 
 void NativeAudio_SpuSetKey(s32 on_off, u32 voice_bit)
@@ -2516,8 +2551,7 @@ void NativeAudio_SpuSetKey(s32 on_off, u32 voice_bit)
 	if (!s_audio.init)
 		return;
 
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	for (i = 0; i < NATIVE_AUDIO_SPU_VOICE_COUNT; i++)
 	{
@@ -2549,22 +2583,19 @@ void NativeAudio_SpuSetKey(s32 on_off, u32 voice_bit)
 		}
 	}
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 }
 
 s32 NativeAudio_SpuSetReverb(s32 on_off)
 {
 	int oldState;
 
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	oldState = s_audio.reverbEnabled;
 	s_audio.reverbEnabled = on_off != 0;
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 
 	return oldState;
 }
@@ -2574,8 +2605,7 @@ s32 NativeAudio_SpuSetReverbModeParam(SpuReverbAttr *attr)
 	if (attr == NULL)
 		return SPU_INVALID_ARGS;
 
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	if (attr->mask & SPU_REV_MODE)
 	{
@@ -2593,31 +2623,27 @@ s32 NativeAudio_SpuSetReverbModeParam(SpuReverbAttr *attr)
 		s_audio.reverbAttr.feedback = attr->feedback;
 	s_audio.reverbAttr.mask |= attr->mask;
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 
 	return SPU_SUCCESS;
 }
 
 void NativeAudio_SpuSetReverbModeDepth(s16 left, s16 right)
 {
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	s_audio.reverbAttr.depth.left = left;
 	s_audio.reverbAttr.depth.right = right;
 	s_audio.reverbAttr.mask |= SPU_REV_DEPTHL | SPU_REV_DEPTHR;
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 }
 
 u32 NativeAudio_SpuSetReverbVoice(s32 on_off, u32 voice_bit)
 {
 	int i;
 
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	if (on_off)
 		s_audio.reverbVoiceBits |= voice_bit;
@@ -2630,16 +2656,14 @@ u32 NativeAudio_SpuSetReverbVoice(s32 on_off, u32 voice_bit)
 			s_audio.voices[i].reverb = on_off != 0;
 	}
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 
 	return 0;
 }
 
 void NativeAudio_SpuSetCommonMasterVolume(s16 left, s16 right)
 {
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	s_audio.masterVolumeLeft = left;
 	s_audio.masterVolumeRight = right;
@@ -2647,27 +2671,23 @@ void NativeAudio_SpuSetCommonMasterVolume(s16 left, s16 right)
 	s_audio.commonAttr.mvol.right = right;
 	s_audio.commonAttr.mask |= SPU_COMMON_MVOLL | SPU_COMMON_MVOLR;
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 }
 
 void NativeAudio_SpuSetCommonCDMix(s32 enabled)
 {
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	s_audio.cdMixEnabled = enabled != 0;
 	s_audio.commonAttr.cd.mix = enabled;
 	s_audio.commonAttr.mask |= SPU_COMMON_CDMIX;
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 }
 
 void NativeAudio_SpuSetCommonCDVolume(s16 left, s16 right)
 {
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	s_audio.xa.volumeLeft = left;
 	s_audio.xa.volumeRight = right;
@@ -2675,21 +2695,18 @@ void NativeAudio_SpuSetCommonCDVolume(s16 left, s16 right)
 	s_audio.commonAttr.cd.volume.right = right;
 	s_audio.commonAttr.mask |= SPU_COMMON_CDVOLL | SPU_COMMON_CDVOLR;
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 }
 
 void NativeAudio_SpuSetCommonCDReverb(s32 enabled)
 {
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	s_audio.cdReverbEnabled = enabled != 0;
 	s_audio.commonAttr.cd.reverb = enabled;
 	s_audio.commonAttr.mask |= SPU_COMMON_CDREV;
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 }
 
 int NativeAudio_GetXATrackLength(int categoryID, int xaID)
@@ -2704,19 +2721,16 @@ int NativeAudio_GetXATrackLength(int categoryID, int xaID)
 
 void NativeAudio_StopXA(void)
 {
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	NativeAudio_FreeXA();
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 }
 
 void NativeAudio_SetXAVolume(int volumeLeft, int volumeRight)
 {
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	s_audio.xa.volumeLeft = (s16)volumeLeft;
 	s_audio.xa.volumeRight = (s16)volumeRight;
@@ -2724,21 +2738,18 @@ void NativeAudio_SetXAVolume(int volumeLeft, int volumeRight)
 	s_audio.commonAttr.cd.volume.right = (s16)volumeRight;
 	s_audio.commonAttr.mask |= SPU_COMMON_CDVOLL | SPU_COMMON_CDVOLR;
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 }
 
 int NativeAudio_IsXAPlaying(void)
 {
 	int playing;
 
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	playing = s_audio.xa.active;
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 
 	return playing;
 }
@@ -2755,8 +2766,7 @@ int NativeAudio_PlayXATrack(int categoryID, int xaID, int volumeLeft, int volume
 	if (!NativeAudio_LoadXATrackPcm(&s_audio.xaPendingPcmArena, categoryID, xaID, &pcm, &frameCount, &sampleRate))
 		return 0;
 
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	NativeAudio_FreeXA();
 	NativeAudio_ArenaSwap(&s_audio.xaPcmArena, &s_audio.xaPendingPcmArena);
@@ -2775,8 +2785,7 @@ int NativeAudio_PlayXATrack(int categoryID, int xaID, int volumeLeft, int volume
 	s_audio.commonAttr.mask |= SPU_COMMON_CDVOLL | SPU_COMMON_CDVOLR;
 	s_audio.xa.active = 1;
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 
 	return 1;
 }
@@ -2787,8 +2796,7 @@ int NativeAudio_GetXACurrOffset(void)
 	u64 outputFrame;
 	int offset;
 
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	sourceFrame = s_audio.xa.positionFp >> NATIVE_AUDIO_FP_SHIFT;
 	if ((s_audio.xa.frameCount > 0) && (sourceFrame > (u64)s_audio.xa.frameCount))
@@ -2807,8 +2815,7 @@ int NativeAudio_GetXACurrOffset(void)
 		offset = outputFrame > (u64)INT_MAX ? INT_MAX : (int)outputFrame;
 	}
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 
 	return offset;
 }
@@ -2850,13 +2857,11 @@ int NativeAudio_GetXAMaxSample(void)
 {
 	int max;
 
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	max = NativeAudio_GetXAMaxSampleAtSourceFrameNoLock(s_audio.xa.positionFp >> NATIVE_AUDIO_FP_SHIFT);
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 
 	return max;
 }
@@ -2870,8 +2875,7 @@ int NativeAudio_GetXAMaxSampleAtOffset(int xaCurrOffset)
 	if (xaCurrOffset < 0)
 		return 0;
 
-	if (s_audio.output.device != 0)
-		SDL_LockAudioDevice(s_audio.output.device);
+	NativeAudio_LockOutput();
 
 	if ((s_audio.xa.active != 0) && (s_audio.xa.pcm != NULL) && (s_audio.xa.sampleRate > 0))
 	{
@@ -2880,8 +2884,7 @@ int NativeAudio_GetXAMaxSampleAtOffset(int xaCurrOffset)
 		max = NativeAudio_GetXAMaxSampleAtSourceFrameNoLock(sourceFrame);
 	}
 
-	if (s_audio.output.device != 0)
-		SDL_UnlockAudioDevice(s_audio.output.device);
+	NativeAudio_UnlockOutput();
 
 	return max;
 }

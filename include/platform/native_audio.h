@@ -28,6 +28,7 @@ void NativeAudio_SetXAVolume(int volumeLeft, int volumeRight);
 void NativeAudio_StopXA(void);
 void NativeAudio_StepVBlank(void);
 void NativeAudio_ClearOutputQueue(void);
+void NativeAudio_Shutdown(void);
 #ifdef CTR_INTERNAL
 void NativeAudio_GetOutputStats(int *underrunFrames, int *overflowFrames, int *queuedFrames);
 #endif

@@ -42,14 +42,27 @@ set(GAME_INCLUDES
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -w -Wno-error -Wno-implicit-function-declaration -Wno-int-conversion -Wno-incompatible-pointer-types -g")
 
-# SDL2
+# SDL3
 set(SDL_SHARED OFF CACHE BOOL "" FORCE)
 set(SDL_STATIC ON CACHE BOOL "" FORCE)
-set(SDL_TEST OFF CACHE BOOL "" FORCE)
+set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
 set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
+set(SDL_GPU OFF CACHE BOOL "" FORCE)
+set(SDL_RENDER OFF CACHE BOOL "" FORCE)
+set(SDL_CAMERA OFF CACHE BOOL "" FORCE)
+set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
+set(SDL_DIALOG OFF CACHE BOOL "" FORCE)
+set(SDL_TRAY OFF CACHE BOOL "" FORCE)
+set(SDL_POWER OFF CACHE BOOL "" FORCE)
+set(SDL_VULKAN OFF CACHE BOOL "" FORCE)
+set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
+set(SDL_OFFSCREEN OFF CACHE BOOL "" FORCE)
+set(SDL_SNDIO OFF CACHE BOOL "" FORCE)
+set(SDL_SNDIO_SHARED OFF CACHE BOOL "" FORCE)
+set(SDL_X11_XSCRNSAVER OFF CACHE BOOL "" FORCE)
 add_subdirectory(externals/SDL)
-target_include_directories(SDL2-static PUBLIC externals/SDL/include)
 
 # CTR Native
 add_executable(ctr_native ${GAME_SOURCES})
@@ -61,7 +74,7 @@ target_compile_definitions(ctr_native PRIVATE
     CTR_INTERNAL
 )
 target_compile_options(ctr_native PRIVATE -O2)
-target_link_libraries(ctr_native SDL2-static)
+target_link_libraries(ctr_native SDL3::SDL3)
 if(WIN32)
     target_link_options(ctr_native PRIVATE -static -static-libgcc -Wl,--image-base,0x400000 -Wl,--disable-dynamicbase -Wl,--disable-reloc-section)
 else()

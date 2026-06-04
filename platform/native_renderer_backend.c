@@ -5,6 +5,7 @@
  */
 
 #include "platform/native_renderer_types.h"
+#include <SDL3/SDL.h>
 #include "PsyX/PsyX_public.h"
 
 #include "../externals/PsyCross/src/platform.h"
@@ -282,7 +283,7 @@ static GrPBO s_glOffscreenPBO;
 #if defined(RENDERER_OGL) || defined(RENDERER_OGLES)
 int NativeRendererBackend_InitialiseGLContext(char* windowName, int fullscreen)
 {
-	int windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
+	SDL_WindowFlags windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
 
 #if defined(__ANDROID__)
 	windowFlags |= SDL_WINDOW_FULLSCREEN;
@@ -291,7 +292,7 @@ int NativeRendererBackend_InitialiseGLContext(char* windowName, int fullscreen)
 		windowFlags |= SDL_WINDOW_FULLSCREEN;
 #endif
 
-	g_window = SDL_CreateWindow(windowName, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, g_windowWidth, g_windowHeight, windowFlags);
+	g_window = SDL_CreateWindow(windowName, g_windowWidth, g_windowHeight, windowFlags);
 
 	if (g_window == NULL)
 	{
@@ -303,13 +304,13 @@ int NativeRendererBackend_InitialiseGLContext(char* windowName, int fullscreen)
 
 #if defined(__ANDROID__)
 	//Override to full screen.
-	SDL_DisplayMode displayMode;
-	if (SDL_GetCurrentDisplayMode(0, &displayMode) == 0)
+	const SDL_DisplayMode *displayMode = SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay());
+	if (displayMode != NULL)
 	{
-		screenWidth = displayMode.w;
-		windowWidth = displayMode.w;
-		screenHeight = displayMode.h;
-		windowHeight = displayMode.h;
+		screenWidth = displayMode->w;
+		windowWidth = displayMode->w;
+		screenHeight = displayMode->h;
+		windowHeight = displayMode->h;
 	}
 #endif
 
@@ -383,7 +384,7 @@ int NativeRendererBackend_InitialiseRender(char* windowName, int width, int heig
 	g_windowHeight = height;
 
 	// Due to debugging in fullscreen
-	SDL_SetHint(SDL_HINT_ALLOW_TOPMOST, "0");
+	SDL_SetHint(SDL_HINT_WINDOW_ALLOW_TOPMOST, "0");
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
 #if USE_OPENGL

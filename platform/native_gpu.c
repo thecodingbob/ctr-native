@@ -6,6 +6,8 @@
 
 #include "platform/native_gpu.h"
 
+#include <SDL3/SDL.h>
+
 #include "PsyX/PsyX_public.h"
 #include "PsyX/PsyX_globals.h"
 #include "platform/native_renderer.h"

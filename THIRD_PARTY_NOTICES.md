@@ -61,14 +61,16 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-## SDL2
+## SDL3
 
 Path: `externals/SDL`
 
-SDL2 provides cross-platform host windowing, input, timing, and audio device
+SDL3 provides cross-platform host windowing, input, timing, and audio device
 support for CTR Native.
 
-Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+Vendored version: 3.4.10 (`release-3.4.10`)
+
+Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
 This software is provided 'as-is', without any express or implied
 warranty.  In no event will the authors be held liable for any damages

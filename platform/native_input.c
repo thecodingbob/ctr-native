@@ -3,7 +3,7 @@
 #include <macros.h>
 #include "psx/libpad.h"
 
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,9 +55,8 @@ struct NativeInputControllerMapping
 
 struct NativeInputController
 {
-	Sint32 deviceIndex;
 	SDL_JoystickID instanceId;
-	SDL_GameController *controller;
+	SDL_Gamepad *controller;
 	u8 *padData;
 	s32 analogEnabled;
 	s32 switchingAnalog;
@@ -85,11 +84,11 @@ struct NativeInputStateSnapshot
 
 static struct NativeInputControllerMapping s_controllerMapping;
 static struct NativeInputKeyboardMapping s_keyboardMapping;
-static s32 s_controllerToSlotMapping[NATIVE_INPUT_MAX_CONTROLLERS] = {0, -1};
+static s32 s_controllerToSlotMapping[NATIVE_INPUT_MAX_CONTROLLERS] = {-1, -1};
 
 static struct NativeInputController s_controllers[NATIVE_INPUT_MAX_CONTROLLERS];
 static struct PlatformInputPadSnapshot s_installedSnapshots[NATIVE_INPUT_MAX_CONTROLLERS];
-static const u8 *s_keyboardState;
+static const bool *s_keyboardState;
 static s32 s_inputInitialized;
 static s32 s_installedSnapshotsActive;
 static s32 s_activeKeyboardControllers = 0x1;
@@ -176,34 +175,34 @@ static void NativeInput_DefaultMappings(void)
 	s_keyboardMapping.kc_select = SDL_SCANCODE_SPACE;
 	s_keyboardMapping.kc_start = SDL_SCANCODE_RETURN;
 
-	s_controllerMapping.gc_square = SDL_CONTROLLER_BUTTON_X;
-	s_controllerMapping.gc_circle = SDL_CONTROLLER_BUTTON_B;
-	s_controllerMapping.gc_triangle = SDL_CONTROLLER_BUTTON_Y;
-	s_controllerMapping.gc_cross = SDL_CONTROLLER_BUTTON_A;
+	s_controllerMapping.gc_square = SDL_GAMEPAD_BUTTON_WEST;
+	s_controllerMapping.gc_circle = SDL_GAMEPAD_BUTTON_EAST;
+	s_controllerMapping.gc_triangle = SDL_GAMEPAD_BUTTON_NORTH;
+	s_controllerMapping.gc_cross = SDL_GAMEPAD_BUTTON_SOUTH;
 
-	s_controllerMapping.gc_l1 = SDL_CONTROLLER_BUTTON_LEFTSHOULDER;
-	s_controllerMapping.gc_l2 = SDL_CONTROLLER_AXIS_TRIGGERLEFT | NATIVE_INPUT_MAP_FLAG_AXIS;
-	s_controllerMapping.gc_l3 = SDL_CONTROLLER_BUTTON_LEFTSTICK;
+	s_controllerMapping.gc_l1 = SDL_GAMEPAD_BUTTON_LEFT_SHOULDER;
+	s_controllerMapping.gc_l2 = SDL_GAMEPAD_AXIS_LEFT_TRIGGER | NATIVE_INPUT_MAP_FLAG_AXIS;
+	s_controllerMapping.gc_l3 = SDL_GAMEPAD_BUTTON_LEFT_STICK;
 
-	s_controllerMapping.gc_r1 = SDL_CONTROLLER_BUTTON_RIGHTSHOULDER;
-	s_controllerMapping.gc_r2 = SDL_CONTROLLER_AXIS_TRIGGERRIGHT | NATIVE_INPUT_MAP_FLAG_AXIS;
-	s_controllerMapping.gc_r3 = SDL_CONTROLLER_BUTTON_RIGHTSTICK;
+	s_controllerMapping.gc_r1 = SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER;
+	s_controllerMapping.gc_r2 = SDL_GAMEPAD_AXIS_RIGHT_TRIGGER | NATIVE_INPUT_MAP_FLAG_AXIS;
+	s_controllerMapping.gc_r3 = SDL_GAMEPAD_BUTTON_RIGHT_STICK;
 
-	s_controllerMapping.gc_dpad_up = SDL_CONTROLLER_BUTTON_DPAD_UP;
-	s_controllerMapping.gc_dpad_down = SDL_CONTROLLER_BUTTON_DPAD_DOWN;
-	s_controllerMapping.gc_dpad_left = SDL_CONTROLLER_BUTTON_DPAD_LEFT;
-	s_controllerMapping.gc_dpad_right = SDL_CONTROLLER_BUTTON_DPAD_RIGHT;
+	s_controllerMapping.gc_dpad_up = SDL_GAMEPAD_BUTTON_DPAD_UP;
+	s_controllerMapping.gc_dpad_down = SDL_GAMEPAD_BUTTON_DPAD_DOWN;
+	s_controllerMapping.gc_dpad_left = SDL_GAMEPAD_BUTTON_DPAD_LEFT;
+	s_controllerMapping.gc_dpad_right = SDL_GAMEPAD_BUTTON_DPAD_RIGHT;
 
-	s_controllerMapping.gc_select = SDL_CONTROLLER_BUTTON_BACK;
-	s_controllerMapping.gc_start = SDL_CONTROLLER_BUTTON_START;
+	s_controllerMapping.gc_select = SDL_GAMEPAD_BUTTON_BACK;
+	s_controllerMapping.gc_start = SDL_GAMEPAD_BUTTON_START;
 
-	s_controllerMapping.gc_axis_left_x = SDL_CONTROLLER_AXIS_LEFTX | NATIVE_INPUT_MAP_FLAG_AXIS;
-	s_controllerMapping.gc_axis_left_y = SDL_CONTROLLER_AXIS_LEFTY | NATIVE_INPUT_MAP_FLAG_AXIS;
-	s_controllerMapping.gc_axis_right_x = SDL_CONTROLLER_AXIS_RIGHTX | NATIVE_INPUT_MAP_FLAG_AXIS;
-	s_controllerMapping.gc_axis_right_y = SDL_CONTROLLER_AXIS_RIGHTY | NATIVE_INPUT_MAP_FLAG_AXIS;
+	s_controllerMapping.gc_axis_left_x = SDL_GAMEPAD_AXIS_LEFTX | NATIVE_INPUT_MAP_FLAG_AXIS;
+	s_controllerMapping.gc_axis_left_y = SDL_GAMEPAD_AXIS_LEFTY | NATIVE_INPUT_MAP_FLAG_AXIS;
+	s_controllerMapping.gc_axis_right_x = SDL_GAMEPAD_AXIS_RIGHTX | NATIVE_INPUT_MAP_FLAG_AXIS;
+	s_controllerMapping.gc_axis_right_y = SDL_GAMEPAD_AXIS_RIGHTY | NATIVE_INPUT_MAP_FLAG_AXIS;
 }
 
-static s32 NativeInput_ControllerButtonState(SDL_GameController *controller, s32 buttonOrAxis)
+static s32 NativeInput_ControllerButtonState(SDL_Gamepad *controller, s32 buttonOrAxis)
 {
 	if (controller == NULL)
 		return 0;
@@ -211,7 +210,7 @@ static s32 NativeInput_ControllerButtonState(SDL_GameController *controller, s32
 	if ((buttonOrAxis & NATIVE_INPUT_MAP_FLAG_AXIS) != 0)
 	{
 		s32 axis = buttonOrAxis & ~(NATIVE_INPUT_MAP_FLAG_AXIS | NATIVE_INPUT_MAP_FLAG_INVERSE);
-		s32 value = SDL_GameControllerGetAxis(controller, (SDL_GameControllerAxis)axis);
+		s32 value = SDL_GetGamepadAxis(controller, (SDL_GamepadAxis)axis);
 
 		if ((abs(value) > NATIVE_INPUT_AXIS_DEADZONE) && ((buttonOrAxis & NATIVE_INPUT_MAP_FLAG_INVERSE) != 0))
 			value *= -1;
@@ -222,7 +221,7 @@ static s32 NativeInput_ControllerButtonState(SDL_GameController *controller, s32
 	if (buttonOrAxis < 0)
 		return 0;
 
-	return SDL_GameControllerGetButton(controller, (SDL_GameControllerButton)buttonOrAxis) * 32767;
+	return SDL_GetGamepadButton(controller, (SDL_GamepadButton)buttonOrAxis) * 32767;
 }
 
 static u8 NativeInput_AxisToByte(s32 axis)
@@ -243,10 +242,10 @@ static void NativeInput_ApplyController(s32 slot)
 	struct NativeInputController *nativeController = &s_controllers[slot];
 	struct PlatformInputPadSnapshot *snapshot = &nativeController->snapshot;
 	const struct NativeInputControllerMapping *mapping = &s_controllerMapping;
-	SDL_GameController *controller = nativeController->controller;
+	SDL_Gamepad *controller = nativeController->controller;
 	u16 buttons = 0xffff;
 
-	if ((controller == NULL) || (SDL_GameControllerGetAttached(controller) == 0))
+	if ((controller == NULL) || (SDL_GamepadConnected(controller) == 0))
 		return;
 
 	snapshot->connected = 1;
@@ -400,16 +399,15 @@ static void NativeInput_CloseController(s32 slot)
 
 	controller = &s_controllers[slot];
 	if (controller->controller != NULL)
-		SDL_GameControllerClose(controller->controller);
+		SDL_CloseGamepad(controller->controller);
 
 	controller->controller = NULL;
-	controller->deviceIndex = -1;
 	controller->instanceId = -1;
 	controller->analogEnabled = 0;
 	controller->switchingAnalog = 0;
 }
 
-static void NativeInput_OpenController(Sint32 deviceIndex, s32 slot)
+static void NativeInput_OpenController(SDL_JoystickID instanceId, s32 slot)
 {
 	struct NativeInputController *controller;
 	SDL_Joystick *joystick;
@@ -417,36 +415,38 @@ static void NativeInput_OpenController(Sint32 deviceIndex, s32 slot)
 	if ((slot < 0) || (slot >= NATIVE_INPUT_MAX_CONTROLLERS))
 		return;
 
-	if (SDL_IsGameController(deviceIndex) == 0)
+	if (SDL_IsGamepad(instanceId) == 0)
 		return;
 
 	controller = &s_controllers[slot];
 	if (controller->controller != NULL)
 		return;
 
-	controller->controller = SDL_GameControllerOpen(deviceIndex);
+	controller->controller = SDL_OpenGamepad(instanceId);
 	if (controller->controller == NULL)
 		return;
 
-	joystick = SDL_GameControllerGetJoystick(controller->controller);
-	controller->deviceIndex = deviceIndex;
-	controller->instanceId = joystick != NULL ? SDL_JoystickInstanceID(joystick) : -1;
+	joystick = SDL_GetGamepadJoystick(controller->controller);
+	controller->instanceId = joystick != NULL ? SDL_GetJoystickID(joystick) : instanceId;
 	controller->analogEnabled = 1;
 	controller->switchingAnalog = 0;
 }
 
 static void NativeInput_OpenKnownControllers(void)
 {
-	s32 count = SDL_NumJoysticks();
-	s32 deviceIndex;
+	SDL_JoystickID *gamepads;
+	s32 count = 0;
+	s32 i;
 
-	for (deviceIndex = 0; deviceIndex < count; deviceIndex++)
+	gamepads = SDL_GetGamepads(&count);
+	for (i = 0; i < count; i++)
 	{
-		s32 slot = NativeInput_FindSlotForDeviceIndex(deviceIndex);
+		s32 slot = NativeInput_FindSlotForDeviceIndex(gamepads[i]);
 
 		if (slot >= 0)
-			NativeInput_OpenController(deviceIndex, slot);
+			NativeInput_OpenController(gamepads[i], slot);
 	}
+	SDL_free(gamepads);
 }
 
 int Platform_InputInit(void)
@@ -459,7 +459,6 @@ int Platform_InputInit(void)
 	memset(s_controllers, 0, sizeof(s_controllers));
 	for (slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
 	{
-		s_controllers[slot].deviceIndex = -1;
 		s_controllers[slot].instanceId = -1;
 		NativeInput_ResetSnapshot(slot);
 		s_installedSnapshots[slot] = s_controllers[slot].snapshot;
@@ -470,13 +469,13 @@ int Platform_InputInit(void)
 	s_installedSnapshotsActive = 0;
 	s_keyboardState = SDL_GetKeyboardState(NULL);
 
-	if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC) < 0)
+	if (SDL_InitSubSystem(SDL_INIT_GAMEPAD | SDL_INIT_HAPTIC) == 0)
 	{
 		fprintf(stderr, "[CTR Native] Failed to initialise SDL input subsystem: %s\n", SDL_GetError());
 		return 0;
 	}
 
-	SDL_GameControllerAddMappingsFromFile("gamecontrollerdb.txt");
+	SDL_AddGamepadMappingsFromFile("gamecontrollerdb.txt");
 	NativeInput_OpenKnownControllers();
 
 	s_inputInitialized = 1;
@@ -491,7 +490,7 @@ void Platform_InputShutdown(void)
 		NativeInput_CloseController(slot);
 
 	if (s_inputInitialized != 0)
-		SDL_QuitSubSystem(SDL_INIT_GAMECONTROLLER | SDL_INIT_HAPTIC);
+		SDL_QuitSubSystem(SDL_INIT_GAMEPAD | SDL_INIT_HAPTIC);
 
 	s_inputInitialized = 0;
 	s_installedSnapshotsActive = 0;
@@ -717,5 +716,5 @@ void Platform_InputPadVibrate(int port, unsigned char *table, int len)
 	if ((freqHigh != 0) && (freqHigh < 4096))
 		freqHigh = 4096;
 
-	SDL_GameControllerRumble(controller->controller, freqLow, freqHigh, 200);
+	SDL_RumbleGamepad(controller->controller, freqLow, freqHigh, 200);
 }

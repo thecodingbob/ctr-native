@@ -1,7 +1,7 @@
 #ifndef CTR_NATIVE_H
 #define CTR_NATIVE_H
 
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 
 struct ctr_state
 {

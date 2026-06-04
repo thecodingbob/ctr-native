@@ -4,8 +4,8 @@
  * See THIRD_PARTY_NOTICES.md for copyright and license details.
  */
 
+#include <SDL3/SDL.h>
 #include <psx/libapi.h>
-#include <SDL2/SDL.h>
 
 #define CTR_NATIVE_RCNT1_HZ 15720u
 

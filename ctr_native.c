@@ -8,7 +8,8 @@
 #include <string.h>
 
 #if __GNUC__
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 #if !defined(_WIN32)
 #include <errno.h>
 #include <sys/mman.h>
@@ -309,34 +310,29 @@ void Platform_PollHostEvents(void)
 	{
 		switch (event.type)
 		{
-		case SDL_CONTROLLERDEVICEADDED:
-			Platform_InputControllerAdded(event.cdevice.which);
+		case SDL_EVENT_GAMEPAD_ADDED:
+			Platform_InputControllerAdded(event.gdevice.which);
 			break;
-		case SDL_CONTROLLERDEVICEREMOVED:
-			Platform_InputControllerRemoved(event.cdevice.which);
+		case SDL_EVENT_GAMEPAD_REMOVED:
+			Platform_InputControllerRemoved(event.gdevice.which);
 			break;
-		case SDL_QUIT:
+		case SDL_EVENT_QUIT:
 			PsyX_RequestExit();
 			break;
-		case SDL_WINDOWEVENT:
-			switch (event.window.event)
-			{
-			case SDL_WINDOWEVENT_RESIZED:
-				PsyX_HandleHostWindowResize(event.window.data1, event.window.data2);
-				break;
-			case SDL_WINDOWEVENT_CLOSE:
-				PsyX_RequestExit();
-				break;
-			}
+		case SDL_EVENT_WINDOW_RESIZED:
+			PsyX_HandleHostWindowResize(event.window.data1, event.window.data2);
 			break;
-		case SDL_MOUSEMOTION:
+		case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+			PsyX_RequestExit();
+			break;
+		case SDL_EVENT_MOUSE_MOTION:
 			PsyX_HandleHostMouseMotion(event.motion.x, event.motion.y);
 			break;
-		case SDL_KEYDOWN:
-		case SDL_KEYUP:
+		case SDL_EVENT_KEY_DOWN:
+		case SDL_EVENT_KEY_UP:
 		{
-			int key = event.key.keysym.scancode;
-			char down = (event.type == SDL_KEYUP) ? 0 : 1;
+			int key = event.key.scancode;
+			char down = (event.type == SDL_EVENT_KEY_UP) ? 0 : 1;
 
 			if (key == SDL_SCANCODE_RALT)
 			{
@@ -368,7 +364,7 @@ void Platform_PollHostEvents(void)
 			PsyX_HandleHostKey(key, down);
 			break;
 		}
-		case SDL_TEXTINPUT:
+		case SDL_EVENT_TEXT_INPUT:
 			PsyX_HandleHostTextInput(event.text.text);
 			break;
 		}
@@ -384,7 +380,7 @@ int Platform_PollInput(void)
 
 int NikoGetEnterKey(void)
 {
-	const u8 *kb = SDL_GetKeyboardState(NULL);
+	const bool *kb = SDL_GetKeyboardState(NULL);
 	return (kb && kb[SDL_SCANCODE_RETURN]) ? 1 : 0;
 }
 
@@ -399,9 +395,20 @@ static void Native_WaitNextVBlank(void)
 {
 	const Uint64 freq = SDL_GetPerformanceFrequency();
 	const Uint64 hz = VBLANK_FREQUENCY_NTSC; // NOTE(aalhendi): ctr-native targets NTSC-U 926.
+	const Uint64 now = SDL_GetPerformanceCounter();
 
 	if (s_nextVBlankCounter == 0)
-		s_nextVBlankCounter = SDL_GetPerformanceCounter();
+	{
+		s_nextVBlankCounter = now;
+	}
+	else if ((Sint64)(now - s_nextVBlankCounter) > 0)
+	{
+		// NOTE(aalhendi): Retail VSync(0) waits for the next hardware VBlank;
+		// it does not catch up missed VBlanks with immediate returns after a
+		// host stall. Rebase stale targets so audio/video advance once per wait.
+		s_nextVBlankCounter = now;
+		s_vblankRemainder = 0;
+	}
 
 	s_nextVBlankCounter += freq / hz;
 	s_vblankRemainder += freq % hz;

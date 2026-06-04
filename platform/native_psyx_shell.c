@@ -4,11 +4,14 @@
  * See THIRD_PARTY_NOTICES.md for copyright and license details.
  */
 
+#include <SDL3/SDL.h>
+
 #include "PsyX/PsyX_globals.h"
 #include "platform/native_renderer_types.h"
 #include "PsyX/PsyX_public.h"
 #include "PsyX/PsyX_version.h"
 #include "platform/native_psyx_shell.h"
+#include "platform/native_audio.h"
 #include "platform/native_gpu.h"
 #include "platform/native_glad.h"
 #include "platform/native_renderer.h"
@@ -18,7 +21,6 @@
 #include <psx/libgte.h>
 #include <psx/libgpu.h>
 
-#include <SDL.h>
 #include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -340,7 +342,7 @@ void PsyX_Initialise(char *appName, int width, int height, int fullscreen)
 	SDL_SetHint(SDL_HINT_EMSCRIPTEN_ASYNCIFY, "0");
 #endif
 
-	if (SDL_Init(SDL_INIT_VIDEO) != 0)
+	if (SDL_Init(SDL_INIT_VIDEO) == 0)
 	{
 		eprinterr("Failed to initialise SDL\n");
 		PsyX_Shutdown();
@@ -369,7 +371,7 @@ void PsyX_Initialise(char *appName, int width, int height, int fullscreen)
 	}
 
 	atexit(PsyX_Shutdown);
-	SDL_ShowCursor(0);
+	SDL_HideCursor();
 }
 
 void PsyX_GetScreenSize(int *screenWidth, int *screenHeight)
@@ -398,7 +400,7 @@ void PsyX_HandleHostFullscreenToggle(void)
 {
 	int fullscreen = (SDL_GetWindowFlags(g_window) & SDL_WINDOW_FULLSCREEN) != 0;
 
-	SDL_SetWindowFullscreen(g_window, fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+	SDL_SetWindowFullscreen(g_window, fullscreen == 0);
 	SDL_GetWindowSize(g_window, &g_windowWidth, &g_windowHeight);
 	NativeRenderer_ResetDevice();
 }
@@ -427,11 +429,12 @@ char PsyX_BeginScene()
 	{
 		int swapInterval = (g_cfg_swapInterval && g_enableSwapInterval && !g_skipSwapInterval) ? g_swapInterval : 0;
 
-		SDL_DisplayMode curMode;
-		if (SDL_GetWindowDisplayMode(g_window, &curMode) == 0)
+		SDL_DisplayID displayId = SDL_GetDisplayForWindow(g_window);
+		const SDL_DisplayMode *curMode = displayId != 0 ? SDL_GetCurrentDisplayMode(displayId) : NULL;
+		if (curMode != NULL)
 		{
 			const int mode_frequency = g_vmode == MODE_NTSC ? VBLANK_FREQUENCY_NTSC : VBLANK_FREQUENCY_PAL;
-			if (curMode.refresh_rate < mode_frequency)
+			if (curMode->refresh_rate < (float)mode_frequency)
 				swapInterval--;
 		}
 
@@ -492,10 +495,14 @@ void PsyX_TakeScreenshot()
 	glReadPixels(0, 0, g_windowWidth, g_windowHeight, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 #endif
 
-	SDL_Surface *surface = SDL_CreateRGBSurfaceFrom(pixels, g_windowWidth, g_windowHeight, 8 * 4, g_windowWidth * 4, 0, 0, 0, 0);
+#if defined(RENDERER_OGL)
+	SDL_Surface *surface = SDL_CreateSurfaceFrom(g_windowWidth, g_windowHeight, SDL_PIXELFORMAT_BGRA8888, pixels, g_windowWidth * 4);
+#elif defined(RENDERER_OGLES)
+	SDL_Surface *surface = SDL_CreateSurfaceFrom(g_windowWidth, g_windowHeight, SDL_PIXELFORMAT_RGBA8888, pixels, g_windowWidth * 4);
+#endif
 
 	SDL_SaveBMP(surface, "SCREENSHOT.BMP");
-	SDL_FreeSurface(surface);
+	SDL_DestroySurface(surface);
 
 	free(pixels);
 }
@@ -618,8 +625,9 @@ void PsyX_Shutdown()
 	SDL_DestroyWindow(g_window);
 	g_window = NULL;
 
+	NativeAudio_Shutdown();
 	NativeRenderer_Shutdown();
-	SDL_QuitSubSystem(SDL_INIT_GAMECONTROLLER);
+	SDL_QuitSubSystem(SDL_INIT_GAMEPAD);
 
 	SDL_Quit();
 
