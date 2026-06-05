@@ -38,29 +38,6 @@ else()
     set(CTR_NATIVE_BUILD_ID "${CTR_NATIVE_GIT_HASH}-dirty-${CTR_NATIVE_BUILD_TIMESTAMP}")
 endif()
 
-set(GAME_SOURCES
-    ctr_native.c
-    platform/native_audio.c
-    platform/native_checkpoint_file.c
-    platform/native_cd.c
-    platform/native_gpu.c
-    platform/native_gte_core.c
-    platform/native_glad.c
-    platform/native_input.c
-    platform/native_inline_c.c
-    platform/native_libapi.c
-    platform/native_libetc.c
-    platform/native_libgte.c
-    platform/native_libgpu.c
-    platform/native_libpad.c
-    platform/native_libspu.c
-    platform/native_log.c
-    platform/native_memcard.c
-    platform/native_replay_scheduler.c
-    platform/native_renderer.c
-    platform/native_state.c
-)
-
 set(GAME_INCLUDES
     ${CMAKE_SOURCE_DIR}/include
 )
@@ -90,7 +67,7 @@ set(SDL_X11_XSCRNSAVER OFF CACHE BOOL "" FORCE)
 add_subdirectory(externals/SDL)
 
 # CTR Native
-add_executable(ctr_native ${GAME_SOURCES})
+add_executable(ctr_native main.c)
 target_include_directories(ctr_native PRIVATE ${GAME_INCLUDES})
 target_compile_definitions(ctr_native PRIVATE
     CTR_NATIVE

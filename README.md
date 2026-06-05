@@ -6,7 +6,7 @@ A native PC port of Crash Team Racing (PS1, 1999), built on top of the [CTR-ModS
 
 - **No byte budget.** Game source lives in `game/` as our own copies. Edit freely.
 - **No PSX toolchain.** Targets Windows and Linux with SDL3. No MIPS compiler needed.
-- **Clean platform layer.** Host details stay in `ctr_native.c` and `platform/native_*`.
+- **Clean platform layer.** `main.c` owns process startup; host details stay in `platform/native_*`.
 - **No build system nonsense.** Just `build.bat` / `build.sh`.
 - **Fully static build.** Single executable, zero dependencies. SDL3 is compiled from vendored source and linked statically.
 
@@ -14,7 +14,7 @@ A native PC port of Crash Team Racing (PS1, 1999), built on top of the [CTR-ModS
 
 ```
 ctr_native/
-  ctr_native.c        Platform layer: SDL3 init, main(), frame loop
+  main.c              Entrypoint and unity include manifest
   ctr_native.h        Platform state structs
   platform.h          Platform API the game calls through
   platform/           Native-owned audio, input, memcard, CD, and PSX facade glue
@@ -99,9 +99,9 @@ Internal builds can record a small bug report folder. See `docs/REPLAYS.md`.
 ## Architecture
 
 ```
-ctr_native.c (platform layer)
+main.c (entrypoint)
   |
-  +-- platform/native_* (audio, input, memcard, CD, renderer, PSX facade glue)
+  +-- platform/native_* (platform shell, audio, input, memcard, CD, renderer, PSX facade glue)
   |
   +-- game_includes.h
         |

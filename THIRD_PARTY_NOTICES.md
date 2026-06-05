@@ -13,30 +13,16 @@ SPU, CD, and controller library interfaces. CTR Native now owns those headers
 and native platform implementations in `include/` and `platform/` while
 preserving Psy-Q-shaped APIs.
 
-CTR Native contains project-owned derivatives of these PsyCross source files:
+CTR Native contains modified/project-owned PsyCross derivatives in these
+component areas:
 
-- `include/psx/*.h` from `externals/PsyCross/include/psx/*.h`
-- `include/platform/native_gpu.h` from `externals/PsyCross/src/gpu/PsyX_GPU.h`
-- `include/platform/native_renderer_types.h` from
-  `externals/PsyCross/include/PsyX/PsyX_render.h`
-- `platform/native_gpu.c` from `externals/PsyCross/src/gpu/PsyX_GPU.cpp`
-- `platform/native_gte_core.c` from
-  `externals/PsyCross/src/gte/PsyX_GTE.cpp`
-- `platform/native_inline_c.c` from `externals/PsyCross/src/psx/INLINE_C.C`
-- `platform/native_libapi.c` from `externals/PsyCross/src/psx/LIBAPI.C`
-- `platform/native_libetc.c` from `externals/PsyCross/src/psx/LIBETC.C`
-- `platform/native_libgte.c`, `platform/native_gte_rcossin_tbl.h`,
-  `platform/native_gte_ratan_tbl.h`, and `platform/native_gte_sqrt_tbl.h` from
-  `externals/PsyCross/src/psx/LIBGTE.C` and
-  `externals/PsyCross/src/gte/*_tbl.h`
-- `platform/native_libgpu.c` from `externals/PsyCross/src/psx/LIBGPU.C`
-- native shell portions of `ctr_native.c` from
-  `externals/PsyCross/src/PsyX_main.cpp`
-- `platform/native_renderer.c` from
-  `externals/PsyCross/src/render/PsyX_render.cpp`
-- `include/platform/native_glad.h` from
-  `externals/PsyCross/include/PsyX/common/glad.h`
-- `platform/native_glad.c` from `externals/PsyCross/src/render/glad.c`
+- `include/psx/`: Psy-Q-compatible facade headers
+- `include/platform/`: native GPU/renderer facade types and support headers
+- `platform/`: native PS1 facade implementations, GTE/GPU/render support,
+  platform shell code, and generated GL loader sources
+
+Individual source files may carry narrower provenance notes where the original
+PsyCross source path is useful during maintenance.
 
 License: MIT
 
