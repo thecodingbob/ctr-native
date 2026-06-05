@@ -16,7 +16,13 @@ void RB_TNT_ThTick_ThrowOffHead(struct Thread *t)
 	// do NOT use parenthesis
 	inst->matrix.t[1] += (mw->velocity[1] * gGT->elapsedTimeMS) >> 5;
 
+#if defined(CTR_NATIVE)
+	// NOTE(aalhendi): Retail reads through driverTarget blindly here. Boss-thrown TNT can have
+	// no target, and native cannot mirror PS1 low-memory null reads.
+	if ((mw->stopFallAtY == 0x3fff) && (mw->driverTarget != NULL))
+#else
 	if (mw->stopFallAtY == 0x3fff)
+#endif
 		mw->stopFallAtY = mw->driverTarget->instSelf->matrix.t[1];
 
 	if (inst->matrix.t[1] <= mw->stopFallAtY)
@@ -37,7 +43,12 @@ void RB_TNT_ThTick_ThrowOffHead(struct Thread *t)
 		// this thread is now dead
 		t->flags |= 0x800;
 
-		mw->driverTarget->instTntRecv = 0;
+#if defined(CTR_NATIVE)
+		// NOTE(aalhendi) Retail writes through driverTarget blindly; boss-thrown TNT has no
+		// driver-owned instTntRecv slot to clear.
+		if (mw->driverTarget != NULL)
+#endif
+			mw->driverTarget->instTntRecv = 0;
 	}
 
 	// decrease velocity (artificial gravity)
