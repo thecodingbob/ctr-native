@@ -31,7 +31,7 @@ int CS_Thread_UseOpcode(struct Instance *instance, struct CutsceneObj *cs)
 	u16 cutsceneFlags;
 	u32 conditionMet;
 	int iVar8;
-	char **cutsceneOpcodes;
+	char *const *cutsceneOpcodes;
 	int iVar10;
 	s16 levelToLoad;
 	int distanceToScreen;
@@ -62,11 +62,11 @@ int CS_Thread_UseOpcode(struct Instance *instance, struct CutsceneObj *cs)
 	if (instance != 0)
 	{
 		if ((instance->flags & SPLIT_LINE) != 0)
-			instance->vertSplit = OVR_233.VertSplitLine;
+			instance->vertSplit = D233.VertSplitLine;
 
 		if ((int)instance->model->id == (u32)(u8)gGT->podium_modelIndex_Second)
 		{
-			if (OVR_233.PodiumInitUnk2 - 0x65U < 0x87)
+			if (D233.PodiumInitUnk2 - 0x65U < 0x87)
 			{
 				instance->flags |= HIDE_MODEL;
 			}
@@ -83,7 +83,7 @@ int CS_Thread_UseOpcode(struct Instance *instance, struct CutsceneObj *cs)
 
 		if ((int)instance->model->id == (u32)(u8)gGT->podium_modelIndex_First)
 		{
-			if (OVR_233.PodiumInitUnk2 - 0x83U < 0x69)
+			if (D233.PodiumInitUnk2 - 0x83U < 0x69)
 			{
 				instance->flags |= HIDE_MODEL;
 			}
@@ -108,7 +108,7 @@ int CS_Thread_UseOpcode(struct Instance *instance, struct CutsceneObj *cs)
 					gGT->pushBuffer[0].fadeFromBlack_desiredResult = 0x1000;
 					gGT->pushBuffer[0].fade_step = 0xfd56;
 					cs->flags |= 0x100;
-					CS_ScriptCmd_OpcodeAt(cs, OVR_233.advCharSelectSelectOpcodes[(int)instance->model->id - STATIC_CRASHSELECT]);
+					CS_ScriptCmd_OpcodeAt(cs, R233.advCharSelectSelectOpcodes[(int)instance->model->id - STATIC_CRASHSELECT]);
 					CS_SaveDecodedOpcode(cs, metadataBackup);
 				reloadAdvCharSelectOpcodeState:
 					cs->unk18 = ((int *)&cs->decodedOpcode)[2];
@@ -124,7 +124,7 @@ int CS_Thread_UseOpcode(struct Instance *instance, struct CutsceneObj *cs)
 				if ((cs->flags & 0x100) != 0)
 				{
 					cs->flags &= 0xfeff;
-					CS_ScriptCmd_OpcodeAt(cs, OVR_233.advCharSelectDeselectOpcodes[(int)instance->model->id - STATIC_CRASHSELECT]);
+					CS_ScriptCmd_OpcodeAt(cs, R233.advCharSelectDeselectOpcodes[(int)instance->model->id - STATIC_CRASHSELECT]);
 					CS_SaveDecodedOpcode(cs, metadataBackup);
 					goto reloadAdvCharSelectOpcodeState;
 				}
@@ -183,7 +183,7 @@ int CS_Thread_UseOpcode(struct Instance *instance, struct CutsceneObj *cs)
 
 			if (((camPathFlags[0] & 0x10) != 0) && ((MixRNG_Scramble() & 0xf) == 0))
 			{
-				CTR_Box_DrawClearBox(&OVR_233.introClearBoxRect, &OVR_233.introClearBoxColor, 1, gGT->backBuffer->otMem.startPlusFour);
+				CTR_Box_DrawClearBox(&R233.introClearBoxRect, &R233.introClearBoxColor, 1, gGT->backBuffer->otMem.startPlusFour);
 			}
 
 			if (gGT->levelID == 0x29)
@@ -222,7 +222,7 @@ int CS_Thread_UseOpcode(struct Instance *instance, struct CutsceneObj *cs)
 				levelToLoad = MAIN_MENU_LEVEL;
 			requestSkipLevelLoad:
 				MainRaceTrack_RequestLoad(levelToLoad);
-				OVR_233.isCutsceneOver = 1;
+				D233.isCutsceneOver = 1;
 				gGT->gameMode2 &= ~VEH_FREEZE_PODIUM;
 				CS_RestoreDecodedOpcode(cs, metadataBackup);
 				return 1;
@@ -406,7 +406,7 @@ processOpcode:
 				initData->rot[2] = 0;
 			}
 
-			CS_Thread_Init(spawnModelID, OVR_233.s_spawn, (s16 *)initData, 0, instance->thread);
+			CS_Thread_Init(spawnModelID, R233.s_spawn, (s16 *)initData, 0, instance->thread);
 		}
 		break;
 
@@ -506,12 +506,12 @@ processOpcode:
 		gGT->bool_AdvHub_NeedToSwapLEV = 1;
 		if ((gGT->gameMode2 & CREDITS) == 0)
 		{
-			cutsceneOpcodes = OVR_233.introCutsceneOpcodes;
+			cutsceneOpcodes = R233.introCutsceneOpcodes;
 			iVar10 = gGT->levelID + -0x1e;
 		}
 		else
 		{
-			cutsceneOpcodes = OVR_233.creditsCutsceneOpcodes;
+			cutsceneOpcodes = R233.creditsCutsceneOpcodes;
 			iVar10 = gGT->levelID + -0x2c;
 		}
 		CS_ScriptCmd_OpcodeAt(cs, cutsceneOpcodes[iVar10]);
@@ -551,13 +551,13 @@ processOpcode:
 				if (iVar10 == 0x2c)
 					goto requestDirectLevelLoad;
 			}
-			OVR_233.boolLoadNextSwap = 1;
+			D233.boolLoadNextSwap = 1;
 			LOAD_Hub_ReadFile(sdata->ptrBigfileCdPos_2, iVar10, 3 - (int)gGT->activeMempackIndex);
 		}
 		break;
 
 	case 0x11:
-		if ((OVR_233.boolLoadNextSwap == 0) || (sdata->queueReady == 0) || (sdata->queueLength != 0))
+		if ((D233.boolLoadNextSwap == 0) || (sdata->queueReady == 0) || (sdata->queueLength != 0))
 			goto updateInstanceAndReturn;
 		break;
 
@@ -583,7 +583,7 @@ processOpcode:
 		gGT->stars.spread = gGT->level1->stars.spread;
 		gGT->stars.seed = gGT->level1->stars.seed;
 		gGT->stars.distance = gGT->level1->stars.distance;
-		OVR_233.boolLoadNextSwap = 0;
+		D233.boolLoadNextSwap = 0;
 		CS_ScriptCmd_OpcodeNext(cs);
 		goto finishOpcodeStep;
 
@@ -644,19 +644,19 @@ processOpcode:
 		break;
 
 	case 0x20:
-		OVR_233.isCutsceneOver = 1;
+		D233.isCutsceneOver = 1;
 		CS_DestroyPodium_StartDriving();
-		OVR_233.bossCutsceneIndex = -1;
+		D233.bossCutsceneIndex = -1;
 		gGT->overlayTransition = 3;
 		gGT->gameMode2 &= ~VEH_FREEZE_PODIUM;
 		CS_ScriptCmd_OpcodeNext(cs);
 		goto finishOpcodeStep;
 
 	case 0x21:
-		OVR_233.bossCutsceneIndex = opcodeMeta->arg1.i;
-		if ((OVR_233.bossCutsceneIndex == 0) && (0x11 < gGT->currAdvProfile.numRelics))
-			OVR_233.bossCutsceneIndex = 9;
-		OVR_233.cutsceneState = 1;
+		D233.bossCutsceneIndex = opcodeMeta->arg1.i;
+		if ((D233.bossCutsceneIndex == 0) && (0x11 < gGT->currAdvProfile.numRelics))
+			D233.bossCutsceneIndex = 9;
+		D233.cutsceneState = 1;
 		break;
 
 	case 0x22:
@@ -701,11 +701,11 @@ processOpcode:
 		if (dancerModelID == STATIC_CRASHDANCE)
 			initData->rot[1] += 0x800;
 
-		initData->rot[0] += OVR_233.creditsDancerRotOffset[0];
-		initData->rot[1] += OVR_233.creditsDancerRotOffset[1];
-		initData->rot[2] += OVR_233.creditsDancerRotOffset[2];
+		initData->rot[0] += R233.creditsDancerRotOffset[0];
+		initData->rot[1] += R233.creditsDancerRotOffset[1];
+		initData->rot[2] += R233.creditsDancerRotOffset[2];
 
-		dancerThread = (struct Thread *)CS_Thread_Init(dancerModelID, OVR_233.s_g_dancer, (s16 *)initData, 0, 0);
+		dancerThread = (struct Thread *)CS_Thread_Init(dancerModelID, R233.s_g_dancer, (s16 *)initData, 0, 0);
 		CS_Credits_NewDancer(dancerThread, (int)opcodeMetaShorts[6]);
 	}
 	break;
@@ -799,7 +799,7 @@ processOpcode:
 		break;
 
 	case 0x30:
-		OVR_233.CutsceneManipulatesAudio = 1;
+		D233.CutsceneManipulatesAudio = 1;
 		howl_VolumeSet(0, (u32) * ((u8 *)opcodeMeta + 2));
 		howl_VolumeSet(1, (u32) * ((u8 *)opcodeMeta + 4));
 		howl_VolumeSet(2, (u32) * ((u8 *)opcodeMeta + 6));

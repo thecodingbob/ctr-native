@@ -18,7 +18,7 @@ void CS_Camera_ThTick_Boss(struct Thread *t)
 	// for undecided cutscene:
 	//	hub*2+0 - intro (after winning trophy)
 	//	hub*2+1 - outro (after winning key)
-	if (OVR_233.bossCutsceneIndex < 0)
+	if (D233.bossCutsceneIndex < 0)
 	{
 		cutsceneID = (levID - GEM_STONE_VALLEY) * 2;
 
@@ -28,19 +28,19 @@ void CS_Camera_ThTick_Boss(struct Thread *t)
 
 	else
 	{
-		cutsceneID = OVR_233.bossCutsceneIndex;
+		cutsceneID = D233.bossCutsceneIndex;
 	}
 
-	struct BossCutsceneData *bcd = &OVR_233.bossCS[cutsceneID];
+	const struct BossCutsceneData *bcd = &R233.bossCS[cutsceneID];
 
-	switch (OVR_233.cutsceneState)
+	switch (D233.cutsceneState)
 	{
 	// Start Fade-to-black
 	case 0:
 	case 1:
 		gGT->pushBuffer_UI.fadeFromBlack_desiredResult = 0;
 		gGT->pushBuffer_UI.fade_step = -0x400;
-		OVR_233.cutsceneState = 2;
+		D233.cutsceneState = 2;
 		break;
 
 	// Wait for fade-to-black
@@ -64,7 +64,7 @@ void CS_Camera_ThTick_Boss(struct Thread *t)
 			break;
 
 		CS_LoadBoss(bcd);
-		OVR_233.cutsceneState = 3;
+		D233.cutsceneState = 3;
 		break;
 
 	// Wait for loading callback,
@@ -74,10 +74,10 @@ void CS_Camera_ThTick_Boss(struct Thread *t)
 
 		// NULLPTR checks if load finished,
 		// because CS_LoadBossCallback writes this last
-		if (OVR_233.ptrModelBossHead == 0)
+		if (D233.ptrModelBossHead == 0)
 			break;
 
-		struct Model **mArr = &OVR_233.ptrModelBossHead;
+		struct Model **mArr = &D233.ptrModelBossHead;
 
 		for (i = 0; i < 2; i++)
 		{
@@ -146,7 +146,7 @@ void CS_Camera_ThTick_Boss(struct Thread *t)
 		// fade back in
 		gGT->pushBuffer_UI.fadeFromBlack_desiredResult = 0x1000;
 		gGT->pushBuffer_UI.fade_step = 0x400;
-		OVR_233.cutsceneState = 4;
+		D233.cutsceneState = 4;
 		break;
 
 	case 4:
@@ -155,13 +155,13 @@ void CS_Camera_ThTick_Boss(struct Thread *t)
 		if (gGT->pushBuffer_UI.fadeFromBlack_currentValue != 0x1000)
 			break;
 
-		OVR_233.cutsceneState = 5;
+		D233.cutsceneState = 5;
 		break;
 
 	case 5:
 
 		// wait for cutscene to end
-		if (OVR_233.isCutsceneOver != 1)
+		if (D233.isCutsceneOver != 1)
 			break;
 
 		gGT->podiumRewardID = NOFUNC; // 0

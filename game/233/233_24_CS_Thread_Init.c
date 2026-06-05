@@ -55,12 +55,12 @@ void CS_Thread_ThTick(struct Thread *t)
 		if (inst == 0)
 			goto thTick_subtitles;
 
-		// ASM: 0x800ae6b4 - flag 0x8: write bone Y to OVR_233 global
+		// ASM: 0x800ae6b4 - flag 0x8 writes bone Y to overlay-233 mutable state.
 		if ((cs->flags & 0x8) != 0)
 		{
 			CS_Instance_GetFrameData(inst, inst->animIndex, inst->animFrame, (u16 *)bonePos, 0, 0);
 
-			OVR_233.VertSplitLine = bonePos[1];
+			D233.VertSplitLine = bonePos[1];
 
 			inst = t->inst;
 			if (inst == 0)
@@ -100,7 +100,7 @@ thTick_subtitles:
 
 thTick_epilogue:
 	// ASM: 0x800ae7dc - check isCutsceneOver, re-apply death flag
-	if (OVR_233.isCutsceneOver != 0)
+	if (D233.isCutsceneOver != 0)
 	{
 		t->flags |= 0x800;
 	}
@@ -158,23 +158,23 @@ struct Thread *CS_Thread_Init(s16 modelID, char *name, s16 *param_3, s16 param_4
 
 		if (level == NAUGHTY_DOG_CRATE)
 		{
-			scriptPtr = &OVR_233.creditsOpcodeData[0x18];
+			scriptPtr = (char *)&R233.creditsOpcodeData[0x18];
 		}
 		else if (level == OXIDE_ENDING)
 		{
-			scriptPtr = &OVR_233.introEndingOpcodeData[0];
+			scriptPtr = (char *)&R233.introEndingOpcodeData[0];
 		}
 		else if (level == OXIDE_TRUE_ENDING)
 		{
-			scriptPtr = &OVR_233.introEndingOpcodeData[0x30];
+			scriptPtr = (char *)&R233.introEndingOpcodeData[0x30];
 		}
 		else if ((gGT->gameMode2 & CREDITS) == 0)
 		{
-			scriptPtr = OVR_233.introCutsceneOpcodes[level - INTRO_RACE_TODAY];
+			scriptPtr = R233.introCutsceneOpcodes[level - INTRO_RACE_TODAY];
 		}
 		else
 		{
-			scriptPtr = OVR_233.creditsCutsceneOpcodes[level - CREDITS_CRASH];
+			scriptPtr = R233.creditsCutsceneOpcodes[level - CREDITS_CRASH];
 		}
 	}
 	else
@@ -183,18 +183,18 @@ struct Thread *CS_Thread_Init(s16 modelID, char *name, s16 *param_3, s16 param_4
 		{
 			if ((u32)(modelID - NDI_BOX_BOX_01) < 0x2b)
 			{
-				scriptPtr = OVR_233.boxModelScripts[modelID - NDI_BOX_BOX_01];
+				scriptPtr = R233.boxModelScripts[modelID - NDI_BOX_BOX_01];
 			}
 			else
 			{
-				scriptPtr = OVR_233.script_default;
+				scriptPtr = (char *)R233.script_default;
 			}
 
 			CS_ScriptCmd_OpcodeAt(cs, scriptPtr);
 
 			if ((u32)(modelID - NDI_KART0) < 4)
 			{
-				cs->frameOverrideRoot = (int *)&OVR_233.cs_initMatrixTable[modelID - NDI_KART0];
+				cs->frameOverrideRoot = (int *)&D233.cs_initMatrixTable[modelID - NDI_KART0];
 			}
 
 			goto after_opcode;
@@ -202,34 +202,34 @@ struct Thread *CS_Thread_Init(s16 modelID, char *name, s16 *param_3, s16 param_4
 
 		if ((u32)(modelID - STATIC_PINHEAD) < 5)
 		{
-			scriptPtr = OVR_233.script_default;
+			scriptPtr = (char *)R233.script_default;
 		}
 		else if (modelID == STATIC_DINGOFIRE)
 		{
-			scriptPtr = OVR_233.script_dingofire;
+			scriptPtr = (char *)R233.script_dingofire;
 		}
 		else if ((u32)(modelID - STATIC_TAWNA1) < 4)
 		{
 			if (gGT->gameMode2 & CREDITS)
-				scriptPtr = OVR_233.script_tawnaCredits;
+				scriptPtr = (char *)R233.script_tawnaCredits;
 			else
-				scriptPtr = OVR_233.script_tawnaNormal;
+				scriptPtr = (char *)R233.script_tawnaNormal;
 		}
 		else if ((u32)(modelID - STATIC_CRASHDANCE) < 0x10)
 		{
-			char **base;
+			char *const *base;
 			int off = (modelID - STATIC_CRASHDANCE);
 
 			if (modelID == gGT->podium_modelIndex_First)
-				base = OVR_233.danceFirstScripts;
+				base = R233.danceFirstScripts;
 			else
-				base = OVR_233.danceOtherScripts;
+				base = R233.danceOtherScripts;
 
 			scriptPtr = base[off];
 		}
 		else
 		{
-			scriptPtr = OVR_233.script_default;
+			scriptPtr = (char *)R233.script_default;
 		}
 	}
 

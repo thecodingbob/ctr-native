@@ -7,7 +7,7 @@ void CS_Podium_Prize_ThTick1(struct Thread *th)
 	s16 *prize = th->object;
 	int trig;
 
-	if (OVR_233.PodiumInitUnk3 != 0)
+	if (D233.PodiumInitUnk3 != 0)
 	{
 		if (th->modelIndex != STATIC_BIG1)
 			inst->flags &= ~HIDE_MODEL;
@@ -23,7 +23,7 @@ void CS_Podium_Prize_ThTick1(struct Thread *th)
 	trig = MATH_Cos(prize[5]);
 	inst->matrix.t[2] = prize[2] + ((prize[0x11] * trig) >> 12);
 
-	if (OVR_233.isCutsceneOver == 0)
+	if (D233.isCutsceneOver == 0)
 	{
 		CS_Podium_Prize_Spin(inst, prize);
 		return;

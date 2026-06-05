@@ -3,7 +3,7 @@
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b0248-0x800b0300
 void CS_Podium_Stand_Init(s16 *podiumData)
 {
-	struct Instance *inst = INSTANCE_BirthWithThread(STATIC_PODIUM, OVR_233.s_podium, SMALL, OTHER, CS_Podium_Stand_ThTick, 0, 0);
+	struct Instance *inst = INSTANCE_BirthWithThread(STATIC_PODIUM, R233.s_podium, SMALL, OTHER, CS_Podium_Stand_ThTick, 0, 0);
 
 	// if the instance was built
 	if (inst == NULL)

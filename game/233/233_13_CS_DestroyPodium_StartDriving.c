@@ -35,12 +35,12 @@ void CS_DestroyPodium_StartDriving(void)
 	d->funcPtrs[0] = VehPhysProc_Driving_Init;
 
 	// if cutscene changed audio, restore backup
-	if (OVR_233.CutsceneManipulatesAudio != 0)
+	if (D233.CutsceneManipulatesAudio != 0)
 	{
 		// restore backup of volume variables
-		howl_VolumeSet(0, OVR_233.FXVolumeBackup);
-		howl_VolumeSet(1, OVR_233.MusicVolumeBackup);
-		howl_VolumeSet(2, OVR_233.VoiceVolumeBackup);
+		howl_VolumeSet(0, D233.FXVolumeBackup);
+		howl_VolumeSet(1, D233.MusicVolumeBackup);
+		howl_VolumeSet(2, D233.VoiceVolumeBackup);
 	}
 
 	// cam mode be zero to follow you

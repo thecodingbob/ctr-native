@@ -8,12 +8,12 @@ void CS_Thread_LInB(struct Instance *inst)
 	s16 modelID;
 	char *scriptPtr;
 
-	OVR_233.isCutsceneOver = 0;
+	D233.isCutsceneOver = 0;
 
 	if (inst->thread != 0)
 		goto check_polar;
 
-	t = PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(0x60, NONE, MEDIUM, STATIC), CS_Thread_ThTick, OVR_233.s_introguy, 0);
+	t = PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(0x60, NONE, MEDIUM, STATIC), CS_Thread_ThTick, R233.s_introguy, 0);
 
 	inst->thread = t;
 
@@ -34,16 +34,16 @@ void CS_Thread_LInB(struct Instance *inst)
 	{
 		if ((u16)(modelID - STATIC_CRASHINTRO) < 0x10)
 		{
-			scriptPtr = OVR_233.introModelScripts[modelID - STATIC_CRASHINTRO];
+			scriptPtr = R233.introModelScripts[modelID - STATIC_CRASHINTRO];
 		}
 		else
 		{
-			scriptPtr = OVR_233.script_default;
+			scriptPtr = (char *)R233.script_default;
 		}
 	}
 	else
 	{
-		scriptPtr = OVR_233.boxModelScripts[modelID - NDI_BOX_BOX_01];
+		scriptPtr = R233.boxModelScripts[modelID - NDI_BOX_BOX_01];
 	}
 
 	CS_ScriptCmd_OpcodeAt(cs, scriptPtr);

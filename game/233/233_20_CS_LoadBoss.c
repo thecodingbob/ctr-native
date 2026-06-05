@@ -1,7 +1,7 @@
 #include <common.h>
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ae834-0x800ae9a8
-void CS_LoadBoss(struct BossCutsceneData *bcd)
+void CS_LoadBoss(const struct BossCutsceneData *bcd)
 {
 	struct GameTracker *gGT = sdata->gGT;
 	void (*const loadSentinel)(struct LoadQueueSlot *) = (void (*)(struct LoadQueueSlot *))-2;
@@ -12,8 +12,8 @@ void CS_LoadBoss(struct BossCutsceneData *bcd)
 	CDSYS_XAPauseRequest();
 
 	// erase HEAD + BODY
-	OVR_233.ptrModelBossBody = 0;
-	OVR_233.ptrModelBossHead = 0;
+	D233.ptrModelBossBody = 0;
+	D233.ptrModelBossHead = 0;
 
 	// invalidate alternative-hub, because
 	// the boss will load in that level's RAM
@@ -34,7 +34,7 @@ void CS_LoadBoss(struct BossCutsceneData *bcd)
 	// CTR Model File (body)
 	if (bcd->bodyFile != 0)
 	{
-		LOAD_AppendQueue(0, LT_DRAM, bcd->bodyFile - 1 + index, &OVR_233.ptrModelBossBody, loadSentinel);
+		LOAD_AppendQueue(0, LT_DRAM, bcd->bodyFile - 1 + index, &D233.ptrModelBossBody, loadSentinel);
 	}
 
 	// CTR Model File (head)

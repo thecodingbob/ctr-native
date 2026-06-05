@@ -134,7 +134,7 @@ enum NativeCheckpointRegionKind
 	NATIVE_CHECKPOINT_REGION_V230 = NATIVE_CHECKPOINT_FOURCC('V', '2', '3', '0'),  // main-menu video BSS
 	NATIVE_CHECKPOINT_REGION_D231 = NATIVE_CHECKPOINT_FOURCC('D', '2', '3', '1'),  // race/battle overlay data
 	NATIVE_CHECKPOINT_REGION_D232 = NATIVE_CHECKPOINT_FOURCC('D', '2', '3', '2'),  // adventure overlay data
-	NATIVE_CHECKPOINT_REGION_O233 = NATIVE_CHECKPOINT_FOURCC('O', '2', '3', '3'),  // cutscene overlay data
+	NATIVE_CHECKPOINT_REGION_D233 = NATIVE_CHECKPOINT_FOURCC('D', '2', '3', '3'),  // cutscene overlay mutable data
 	NATIVE_CHECKPOINT_REGION_GAR3 = NATIVE_CHECKPOINT_FOURCC('G', 'A', 'R', '3'),  // garage runtime state
 	NATIVE_CHECKPOINT_REGION_CRD3 = NATIVE_CHECKPOINT_FOURCC('C', 'R', 'D', '3'),  // credits runtime state
 	NATIVE_CHECKPOINT_REGION_MPAK = NATIVE_CHECKPOINT_FOURCC('M', 'P', 'A', 'K'),  // mempack backing store
@@ -268,12 +268,12 @@ static int NativeCheckpoint_GetRegionSize(u32 kind)
 		return (int)sizeof(D231);
 	case NATIVE_CHECKPOINT_REGION_D232:
 		return (int)sizeof(D232);
-	case NATIVE_CHECKPOINT_REGION_O233:
-		return (int)sizeof(OVR_233);
+	case NATIVE_CHECKPOINT_REGION_D233:
+		return (int)sizeof(D233);
 	case NATIVE_CHECKPOINT_REGION_GAR3:
 		return (int)sizeof(gGarage);
 	case NATIVE_CHECKPOINT_REGION_CRD3:
-		return (int)sizeof(creditsBSS);
+		return (int)sizeof(creditsBSS) - OFFSETOF(struct Ovr233_Credits_BSS, CreditThread);
 	case NATIVE_CHECKPOINT_REGION_MPAK:
 		return (int)sizeof(s_mempackMemory);
 	case NATIVE_CHECKPOINT_REGION_SCRP:
@@ -303,12 +303,10 @@ static void *NativeCheckpoint_GetRegionPtr(u32 kind)
 		return &D231;
 	case NATIVE_CHECKPOINT_REGION_D232:
 		return &D232;
-	case NATIVE_CHECKPOINT_REGION_O233:
-		return &OVR_233;
 	case NATIVE_CHECKPOINT_REGION_GAR3:
 		return &gGarage;
 	case NATIVE_CHECKPOINT_REGION_CRD3:
-		return &creditsBSS;
+		return &creditsBSS.CreditThread;
 	case NATIVE_CHECKPOINT_REGION_MPAK:
 		return &s_mempackMemory[0];
 	case NATIVE_CHECKPOINT_REGION_SCRP:
@@ -318,13 +316,71 @@ static void *NativeCheckpoint_GetRegionPtr(u32 kind)
 	return NULL;
 }
 
+static int NativeCheckpoint_CaptureD233(void *dst, int dstSize)
+{
+	struct OverlayDATA_233 *state = (struct OverlayDATA_233 *)dst;
+
+	if ((dst == NULL) || (dstSize != (int)sizeof(*state)))
+		return 0;
+
+	*state = D233;
+	memset(state->cs_initMatrixTable, 0, sizeof(state->cs_initMatrixTable));
+
+	return 1;
+}
+
+static int NativeCheckpoint_RestoreD233(const void *src, int srcSize)
+{
+	const struct OverlayDATA_233 *state = (const struct OverlayDATA_233 *)src;
+
+	if ((src == NULL) || (srcSize != (int)sizeof(*state)))
+		return 0;
+
+	D233 = *state;
+	OVR233_RebuildInitMatrixTable();
+
+	return 1;
+}
+
+static int NativeCheckpoint_CaptureRegion(u32 kind, void *dst, int dstSize)
+{
+	void *src;
+
+	if (kind == NATIVE_CHECKPOINT_REGION_D233)
+		return NativeCheckpoint_CaptureD233(dst, dstSize);
+	if (kind == NATIVE_CHECKPOINT_REGION_NATS)
+		return NativeState_Capture(dst, dstSize);
+
+	src = NativeCheckpoint_GetRegionPtr(kind);
+	if (src == NULL)
+		return 0;
+
+	memcpy(dst, src, (size_t)dstSize);
+	return 1;
+}
+
+static int NativeCheckpoint_RestoreRegion(u32 kind, const void *src, int srcSize)
+{
+	void *dst;
+
+	if (kind == NATIVE_CHECKPOINT_REGION_D233)
+		return NativeCheckpoint_RestoreD233(src, srcSize);
+
+	dst = NativeCheckpoint_GetRegionPtr(kind);
+	if (dst == NULL)
+		return 0;
+
+	memcpy(dst, src, (size_t)srcSize);
+	return 1;
+}
+
 static int NativeCheckpoint_InitHeader(struct NativeCheckpointHeader *header)
 {
 	u32 offset = NativeCheckpoint_Align4((u32)sizeof(*header));
 	u32 i;
 	static const u32 regionKinds[] = {
 	    NATIVE_CHECKPOINT_REGION_RDATA, NATIVE_CHECKPOINT_REGION_DATA, NATIVE_CHECKPOINT_REGION_SDATA, NATIVE_CHECKPOINT_REGION_D230,
-	    NATIVE_CHECKPOINT_REGION_V230,  NATIVE_CHECKPOINT_REGION_D231, NATIVE_CHECKPOINT_REGION_D232,  NATIVE_CHECKPOINT_REGION_O233,
+	    NATIVE_CHECKPOINT_REGION_V230,  NATIVE_CHECKPOINT_REGION_D231, NATIVE_CHECKPOINT_REGION_D232,  NATIVE_CHECKPOINT_REGION_D233,
 	    NATIVE_CHECKPOINT_REGION_GAR3,  NATIVE_CHECKPOINT_REGION_CRD3, NATIVE_CHECKPOINT_REGION_MPAK,  NATIVE_CHECKPOINT_REGION_SCRP,
 	    NATIVE_CHECKPOINT_REGION_NATS,
 	};
@@ -434,20 +490,8 @@ int NativeCheckpoint_Capture(void *dst, int dstSize)
 	{
 		struct NativeCheckpointRegion *region = &header.regions[i];
 
-		if (region->kind == NATIVE_CHECKPOINT_REGION_NATS)
-		{
-			if (!NativeState_Capture(&bytes[region->offset], (int)region->size))
-				return 0;
-		}
-		else
-		{
-			void *src = NativeCheckpoint_GetRegionPtr(region->kind);
-
-			if (src == NULL)
-				return 0;
-
-			memcpy(&bytes[region->offset], src, region->size);
-		}
+		if (!NativeCheckpoint_CaptureRegion(region->kind, &bytes[region->offset], (int)region->size))
+			return 0;
 	}
 
 	return 1;
@@ -463,6 +507,11 @@ int NativeCheckpoint_Restore(const void *src, int srcSize)
 	if (!NativeCheckpoint_ValidateHeader(header, srcSize))
 		return 0;
 
+	// NOTE(aalhendi): 233 checkpoints store only mutable overlay state. Restore
+	// the source-owned static image first, then overlay the captured runtime
+	// fields below.
+	OVR233_ResetRuntimeState();
+
 	for (i = 0; i < header->regionCount; i++)
 	{
 		const struct NativeCheckpointRegion *region = &header->regions[i];
@@ -473,12 +522,8 @@ int NativeCheckpoint_Restore(const void *src, int srcSize)
 		}
 		else
 		{
-			void *dst = NativeCheckpoint_GetRegionPtr(region->kind);
-
-			if (dst == NULL)
+			if (!NativeCheckpoint_RestoreRegion(region->kind, &bytes[region->offset], (int)region->size))
 				return 0;
-
-			memcpy(dst, &bytes[region->offset], region->size);
 		}
 	}
 

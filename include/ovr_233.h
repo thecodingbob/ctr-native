@@ -256,7 +256,15 @@ struct CsInitMatrixEntry
 
 _Static_assert(sizeof(struct CsInitMatrixEntry) == 0x20);
 
-extern struct
+struct Ovr233InitMatrixTableEntry
+{
+	void *data;
+	int count;
+};
+
+_Static_assert(sizeof(struct Ovr233InitMatrixTableEntry) == 0x8);
+
+struct OverlayRDATA_233
 {
 	char fill_beginning[4];
 
@@ -302,8 +310,9 @@ extern struct
 	char s_kart6[8];
 	char s_kart7[8];
 
-
-	// TODO: Divide OVR_233 into 'real' sections
+	// R233.c owns the source initializer. This struct preserves the retail
+	// address-space layout that native cutscene opcode translation audits
+	// against; live mutable cutscene state is owned by D233.
 	char fill1[0x4DA8];
 
 
@@ -406,11 +415,7 @@ extern struct
 
 	// 800b7330
 	// NOTE(aalhendi): Retail PTR_DAT_800b5b70_800b7330.
-	struct
-	{
-		void *data;
-		int count;
-	} cs_initMatrixTable[4];
+	struct Ovr233InitMatrixTableEntry cs_initMatrixTable[4];
 
 	// 800b7350
 	char cs_initMatrixBool;
@@ -454,14 +459,42 @@ extern struct
 	struct Model *ptrModelBossBody;
 
 	// 800b7780
+};
 
-} OVR_233;
+extern const struct OverlayRDATA_233 R233;
 
-// NOTE(aalhendi): Layout-verified for live overlay-233 references used by the audited cutscene thread path.
+struct OverlayDATA_233
+{
+	int VertSplitLine;
+	int boolLoadNextSwap;
+	int boolStartToSkip;
+	int bossCutsceneIndex;
+	int CutsceneManipulatesAudio;
+	u8 cs_initMatrixBool;
+	u8 padding_afterInitMatrixBool[3];
+	int isCutsceneOver;
+	int PodiumInitUnk2;
+	s16 FXVolumeBackup;
+	s16 MusicVolumeBackup;
+	s16 VoiceVolumeBackup;
+	s16 volumeunknown;
+	int PodiumInitUnk3;
+	int cutsceneState;
+	struct Model *ptrModelBossHead;
+	struct Model *ptrModelBossBody;
+	struct CsInitMatrixEntry cs_initMatrixData[190];
+	struct Ovr233InitMatrixTableEntry cs_initMatrixTable[4];
+};
+
+_Static_assert(sizeof(struct OverlayDATA_233) == 0x1818);
+
+extern struct OverlayDATA_233 D233;
+
+// NOTE(aalhendi): Layout-verified for overlay-233 references used by the audited cutscene thread path.
 // Retail base is NTSC-U 926 0x800ab9f0.
-#define OVR233_LAYOUT_ASSERT(ELEMENT, OFFSET, SIZE)                 \
-	_Static_assert(OFFSETOF(typeof(OVR_233), ELEMENT) == (OFFSET)); \
-	_Static_assert(sizeof(((typeof(OVR_233) *)0)->ELEMENT) == (SIZE))
+#define OVR233_LAYOUT_ASSERT(ELEMENT, OFFSET, SIZE)                         \
+	_Static_assert(OFFSETOF(struct OverlayRDATA_233, ELEMENT) == (OFFSET)); \
+	_Static_assert(sizeof(((struct OverlayRDATA_233 *)0)->ELEMENT) == (SIZE))
 
 _Static_assert(sizeof(void *) == 4);
 OVR233_LAYOUT_ASSERT(s_spawn, 0x4, 0x8);
@@ -539,7 +572,7 @@ OVR233_LAYOUT_ASSERT(PodiumInitUnk3, 0xbd80, 0x4);
 OVR233_LAYOUT_ASSERT(cutsceneState, 0xbd84, 0x4);
 OVR233_LAYOUT_ASSERT(ptrModelBossHead, 0xbd88, 0x4);
 OVR233_LAYOUT_ASSERT(ptrModelBossBody, 0xbd8c, 0x4);
-_Static_assert(sizeof(OVR_233) == 0xbd90);
+_Static_assert(sizeof(struct OverlayRDATA_233) == 0xbd90);
 
 #undef OVR233_LAYOUT_ASSERT
 

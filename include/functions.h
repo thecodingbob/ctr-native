@@ -306,6 +306,7 @@ void OVR231_ResetRuntimeState(void);
 void OVR231_InitData(void);
 void OVR232_ResetRuntimeState(void);
 void OVR232_InitData(void);
+void OVR233_RebuildInitMatrixTable(void);
 void OVR233_ResetRuntimeState(void);
 void OVR233_InitData(void);
 #endif
@@ -1097,4 +1098,4 @@ void VehPhysForce_CollideDrivers(struct Thread *thread, struct Driver *driver);
 void VehPhysForce_TranslateMatrix(struct Thread *thread, struct Driver *driver);
 int VehPhysGeneral_JumpGetVelY(s16 *normalVec, Vec3 *speedXYZ);
 void VehPhysGeneral_JumpAndFriction(struct Thread *thread, struct Driver *driver);
-void CS_LoadBoss(struct BossCutsceneData *bcd);
+void CS_LoadBoss(const struct BossCutsceneData *bcd);

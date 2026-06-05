@@ -19,29 +19,29 @@ void CS_Podium_FullScene_Init(void)
 	struct GameTracker *gGT = sdata->gGT;
 
 	// assume cutscene did not manipulate audio
-	OVR_233.CutsceneManipulatesAudio = 0;
+	D233.CutsceneManipulatesAudio = 0;
 
 	// Make a backup of FX volume, clamp to 0x100
-	OVR_233.FXVolumeBackup = howl_VolumeGet(0);
-	OVR_233.FXVolumeBackup &= 0xff;
+	D233.FXVolumeBackup = howl_VolumeGet(0);
+	D233.FXVolumeBackup &= 0xff;
 
 	// Make a backup of Music volume, clamp to 0x100
-	OVR_233.MusicVolumeBackup = howl_VolumeGet(1);
-	OVR_233.MusicVolumeBackup &= 0xff;
+	D233.MusicVolumeBackup = howl_VolumeGet(1);
+	D233.MusicVolumeBackup &= 0xff;
 
 	// Make a backup of Voice volume, clamp to 0x100
-	OVR_233.VoiceVolumeBackup = howl_VolumeGet(2);
-	OVR_233.VoiceVolumeBackup &= 0xff;
+	D233.VoiceVolumeBackup = howl_VolumeGet(2);
+	D233.VoiceVolumeBackup &= 0xff;
 
 	// Cutscene is now starting
-	OVR_233.isCutsceneOver = 0;
-	OVR_233.cutsceneState = 0;
+	D233.isCutsceneOver = 0;
+	D233.cutsceneState = 0;
 
-	OVR_233.PodiumInitUnk3 = 0;
+	D233.PodiumInitUnk3 = 0;
 
 	driverInstSelf = gGT->drivers[0]->instSelf;
 
-	OVR_233.PodiumInitUnk2 = 0;
+	D233.PodiumInitUnk2 = 0;
 
 	// Make kart model invisible
 	driverInstSelf->flags |= 0x80;
@@ -91,7 +91,7 @@ void CS_Podium_FullScene_Init(void)
 		InitData.characterPos[2] = 0;
 
 		// create thread for "third"
-		CS_Thread_Init(gGT->podium_modelIndex_Third, &OVR_233.s_third[0], (void *)&InitData, 0x600, 0);
+		CS_Thread_Init(gGT->podium_modelIndex_Third, &R233.s_third[0], (void *)&InitData, 0x600, 0);
 	}
 
 	// if someone placed second
@@ -102,7 +102,7 @@ void CS_Podium_FullScene_Init(void)
 		InitData.characterPos[2] = 0;
 
 		// create thread for "second"
-		CS_Thread_Init(gGT->podium_modelIndex_Second, &OVR_233.s_second[0], (void *)&InitData, 0x200, 0);
+		CS_Thread_Init(gGT->podium_modelIndex_Second, &R233.s_second[0], (void *)&InitData, 0x200, 0);
 	}
 
 	InitData.characterPos[0] = 0;
@@ -110,16 +110,16 @@ void CS_Podium_FullScene_Init(void)
 	InitData.characterPos[2] = 0;
 
 	// create thread for "first"
-	CS_Thread_Init(gGT->podium_modelIndex_First, &OVR_233.s_first[0], (void *)&InitData, 0, 0);
+	CS_Thread_Init(gGT->podium_modelIndex_First, &R233.s_first[0], (void *)&InitData, 0, 0);
 
 	InitData.characterPos[0] = 0x1a8;
 	InitData.characterPos[1] = 0xff80;
 	InitData.characterPos[2] = 0x140;
 
 	// create thread for trophy girl (internally called "tawna")
-	CS_Thread_Init(gGT->podium_modelIndex_tawna, &OVR_233.s_tawna[0], (void *)&InitData, -0x2aa, 0);
+	CS_Thread_Init(gGT->podium_modelIndex_tawna, &R233.s_tawna[0], (void *)&InitData, -0x2aa, 0);
 
-	CS_Podium_Prize_Init(gGT->podiumRewardID, &OVR_233.s_prize[0], (void *)&InitData);
+	CS_Podium_Prize_Init(gGT->podiumRewardID, &R233.s_prize[0], (void *)&InitData);
 
 	CS_Podium_Stand_Init((void *)&InitData);
 
@@ -128,7 +128,7 @@ void CS_Podium_FullScene_Init(void)
 	// 0 = no relation to param4
 	// 0x300 flag = SmallStackPool
 	// 0xf = camera thread bucket
-	victoryCamThread = (struct Thread *)PROC_BirthWithObject(0x4030f, (void *)CS_Camera_ThTick_Podium, OVR_233.s_victorycam, NULL);
+	victoryCamThread = (struct Thread *)PROC_BirthWithObject(0x4030f, (void *)CS_Camera_ThTick_Podium, R233.s_victorycam, NULL);
 
 	// if it allocated correctly
 	if (victoryCamThread != 0)

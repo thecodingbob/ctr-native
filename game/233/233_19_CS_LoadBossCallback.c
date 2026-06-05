@@ -5,5 +5,5 @@ void CS_LoadBossCallback(struct LoadQueueSlot *lqs)
 {
 	void *ptr = lqs->ptrDestination;
 	sdata->load_inProgress = 0;
-	OVR_233.ptrModelBossHead = ptr;
+	D233.ptrModelBossHead = ptr;
 }

@@ -11,13 +11,13 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 
 	if (gGT->cameraDC[0].cameraMode != 3)
 	{
-		if (OVR_233.cutsceneState < 1)
-			OVR_233.cutsceneState = 1;
+		if (D233.cutsceneState < 1)
+			D233.cutsceneState = 1;
 
-		OVR_233.PodiumInitUnk3 = 1;
+		D233.PodiumInitUnk3 = 1;
 	}
 
-	if (((OVR_233.cutsceneState != 0 || OVR_233.boolStartToSkip != 0) && ((gGT->gameMode2 & CUP_NEW_WIN) != 0)) && sdata->ptrActiveMenu == NULL)
+	if (((D233.cutsceneState != 0 || D233.boolStartToSkip != 0) && ((gGT->gameMode2 & CUP_NEW_WIN) != 0)) && sdata->ptrActiveMenu == NULL)
 	{
 		s16 stringIndex = 0x236;
 
@@ -28,7 +28,7 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 		gGT->gameMode2 &= ~(CUP_NEW_WIN | CUP_NEW_BATTLE);
 	}
 
-	if (OVR_233.cutsceneState == 0 || sdata->ptrActiveMenu != NULL)
+	if (D233.cutsceneState == 0 || sdata->ptrActiveMenu != NULL)
 	{
 		int numPoints = CAM_Path_GetNumPoints();
 		int maxFrame = (numPoints << 0x15) >> 0x10;
@@ -43,18 +43,18 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 			int frame;
 
 			if (maxFrame - 0x12c0 < frameTimeSigned)
-				OVR_233.PodiumInitUnk3 = 1;
+				D233.PodiumInitUnk3 = 1;
 
 			if (maxFrame <= frameTimeSigned)
 			{
 				frameTime = numPoints * 0x20 - 1;
 
-				if (OVR_233.cutsceneState < 1)
-					OVR_233.cutsceneState = 1;
+				if (D233.cutsceneState < 1)
+					D233.cutsceneState = 1;
 			}
 
 			frame = ((int)frameTime << 16) >> 21;
-			OVR_233.PodiumInitUnk2 = frame;
+			D233.PodiumInitUnk2 = frame;
 			podium[0] = frameTime;
 
 			CAM_Path_Move(frame, pos, rot, camPath);
@@ -80,7 +80,7 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 		u32 tapped = sdata->gGamepads->gamepad[0].buttonsTapped;
 		s16 rewardId;
 
-		if (((tapped & BTN_START) == 0) && ((OVR_233.cutsceneState == 0 || (tapped & (BTN_START | BTN_CROSS_one)) == 0)) &&
+		if (((tapped & BTN_START) == 0) && ((D233.cutsceneState == 0 || (tapped & (BTN_START | BTN_CROSS_one)) == 0)) &&
 		    ((gGT->gameMode2 & VEH_FREEZE_PODIUM) != 0))
 		{
 			return;
@@ -98,7 +98,7 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 			return;
 		}
 
-		OVR_233.PodiumInitUnk3 = 1;
+		D233.PodiumInitUnk3 = 1;
 		rewardId = gGT->podiumRewardID;
 		gGT->numWinners = 0;
 		gGT->renderFlags &= ~4;
@@ -109,7 +109,7 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 			{
 				s16 hintID;
 
-				OVR_233.isCutsceneOver = 1;
+				D233.isCutsceneOver = 1;
 				th->flags |= 0x800;
 
 				CS_DestroyPodium_StartDriving();
@@ -147,17 +147,17 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 
 			if (gGT->podiumRewardID != STATIC_RELIC)
 			{
-				OVR_233.bossCutsceneIndex = -1;
+				D233.bossCutsceneIndex = -1;
 				return;
 			}
 
 			if (gGT->currAdvProfile.numRelics < 18)
 			{
-				OVR_233.bossCutsceneIndex = -1;
+				D233.bossCutsceneIndex = -1;
 				return;
 			}
 
-			OVR_233.bossCutsceneIndex = gGT->levelID - GEM_STONE_VALLEY;
+			D233.bossCutsceneIndex = gGT->levelID - GEM_STONE_VALLEY;
 			return;
 		}
 
@@ -171,5 +171,5 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 
 check_skip_button:
 	if ((sdata->gGamepads->gamepad[0].buttonsTapped & BTN_START) != 0)
-		OVR_233.boolStartToSkip = 1;
+		D233.boolStartToSkip = 1;
 }

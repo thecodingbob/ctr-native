@@ -40,5 +40,5 @@
 #include "233_53_CS_Credits_DrawEpilogue.c"
 #include "233_54_CS_Credits_ThTick.c"
 #include "233_37_40_CS_Garage.c"
+#include "R233.c"
 #include "D233.c"
-#include "233_zGlobal_gGarage.c"

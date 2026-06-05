@@ -5,7 +5,7 @@ void CS_Thread_Particles(struct Thread *t)
 {
 	struct CutsceneObj *cs = t->object;
 	struct Instance *inst = t->inst;
-	struct CsParticleConfig *entry;
+	const struct CsParticleConfig *entry;
 	s8 particleID;
 
 	if (inst == NULL)
@@ -18,7 +18,7 @@ void CS_Thread_Particles(struct Thread *t)
 	if ((u8)particleID >= 9)
 		return;
 
-	entry = &OVR_233.particleConfigs[(int)particleID];
+	entry = &R233.particleConfigs[(int)particleID];
 
 	while (1)
 	{
