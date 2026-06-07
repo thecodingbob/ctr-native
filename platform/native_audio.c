@@ -1,6 +1,7 @@
 #include <macros.h>
 #include <platform/native_audio.h>
 #include <platform/native_assets.h>
+#include <platform/native_perf.h>
 
 #include <SDL3/SDL.h>
 #include <limits.h>
@@ -2673,6 +2674,7 @@ void NativeAudio_StepVBlank(void)
 	if (!s_audio.init)
 		return;
 
+	NativePerf_BeginScope(NATIVE_PERF_BUCKET_AUDIO_VBLANK);
 	NativeAudio_LockOutput();
 
 	if (s_audio.output.deterministicRenderMode)
@@ -2690,6 +2692,7 @@ void NativeAudio_StepVBlank(void)
 #endif
 
 	NativeAudio_UnlockOutput();
+	NativePerf_EndScope(NATIVE_PERF_BUCKET_AUDIO_VBLANK);
 
 #ifdef CTR_INTERNAL
 	if (shouldReportStats)

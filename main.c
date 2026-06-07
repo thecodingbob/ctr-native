@@ -30,6 +30,7 @@
 #include "psx/inline_c.h"
 #include "platform/native_assets.h"
 #include "platform/native_log.h"
+#include "platform/native_perf.h"
 #include "platform/native_replay_scheduler.h"
 #include "platform/native_savestate.h"
 
@@ -84,6 +85,7 @@ typedef enum
 #include "platform/native_libspu.c"
 #include "platform/native_log.c"
 #include "platform/native_memcard.c"
+#include "platform/native_perf.c"
 #include "platform/native_platform.c"
 #include "platform/native_replay_scheduler.c"
 #include "platform/native_renderer.c"
@@ -153,6 +155,15 @@ int main(int argc, char *argv[])
 #else
 	printf("[CTR Native] 4:3\n");
 	Platform_Init("Crash Team Racing", 800, 600);
+#endif
+
+#if defined(CTR_INTERNAL)
+	if (NativePerf_ConfigureFromArgs(argc, argv) != 0)
+	{
+		Platform_LogFlush();
+		Platform_Shutdown();
+		return 1;
+	}
 #endif
 
 	Platform_InitScratchpad();

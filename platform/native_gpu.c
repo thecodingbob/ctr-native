@@ -10,6 +10,7 @@
 #include <SDL3/SDL.h>
 
 #include "platform/native_log.h"
+#include "platform/native_perf.h"
 #include "platform/native_renderer.h"
 
 #include <assert.h>
@@ -888,6 +889,7 @@ internal void SetPSXMaskState(u32 code)
 //
 void DrawAllSplits()
 {
+	NativePerf_BeginScope(NATIVE_PERF_BUCKET_DRAW_ALL_SPLITS);
 #ifdef CTR_INTERNAL
 	if (g_dbg_emulatorPaused)
 	{
@@ -918,6 +920,7 @@ void DrawAllSplits()
 		DrawSplit(&s_gpu.splits[i]);
 
 	ClearSplits();
+	NativePerf_EndScope(NATIVE_PERF_BUCKET_DRAW_ALL_SPLITS);
 }
 
 // forward declarations
@@ -928,6 +931,8 @@ void ParsePrimitivesLinkedList(u32 *p, int singlePrimitive)
 {
 	if (!p)
 		return;
+
+	NativePerf_BeginScope(NATIVE_PERF_BUCKET_DRAW_OTAG_PARSE);
 
 	// setup single primitive flag (needed for AddSplits)
 	s_gpu.drawPrimMode = singlePrimitive;
@@ -981,6 +986,8 @@ void ParsePrimitivesLinkedList(u32 *p, int singlePrimitive)
 				break;
 		}
 	}
+
+	NativePerf_EndScope(NATIVE_PERF_BUCKET_DRAW_OTAG_PARSE);
 }
 
 internal inline int IsNull(POLY_FT3 *poly)

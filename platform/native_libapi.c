@@ -11,7 +11,7 @@
 
 #define CTR_NATIVE_RCNT1_HZ 15720u
 
-global_variable Uint64 s_rootCounterBase = 0;
+global_variable u64 s_rootCounterBase = 0;
 
 int SetRCnt(int spec, unsigned short target, int mode)
 {
@@ -26,10 +26,10 @@ int SetRCnt(int spec, unsigned short target, int mode)
 
 int GetRCnt(int spec)
 {
-	const Uint64 freq = SDL_GetPerformanceFrequency();
-	const Uint64 now = SDL_GetPerformanceCounter();
-	Uint64 elapsed;
-	Uint64 counts;
+	const u64 freq = SDL_GetPerformanceFrequency();
+	const u64 now = SDL_GetPerformanceCounter();
+	u64 elapsed;
+	u64 counts;
 
 	(void)spec;
 

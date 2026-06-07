@@ -17,6 +17,8 @@ typedef uint16_t u16;
 typedef int16_t s16;
 typedef uint8_t u8;
 typedef int8_t s8;
+typedef float f32;
+typedef double f64;
 
 #define AugReview 805
 // TODO: Aug5 and Aug14
@@ -40,9 +42,9 @@ typedef int8_t s8;
 #define MINUTE       (SECOND * 60)
 #define HOUR         (MINUTE * 60)
 
-#define SECONDS(x)   ((s32)(((float)(x)) * SECOND))
-#define MINUTES(x)   ((s32)(((float)(x)) * MINUTE))
-#define HOURS(x)     ((s32)(((float)(x)) * HOUR))
+#define SECONDS(x)   ((s32)(((f32)(x)) * SECOND))
+#define MINUTES(x)   ((s32)(((f32)(x)) * MINUTE))
+#define HOURS(x)     ((s32)(((f32)(x)) * HOUR))
 
 #define nullptr      ((void *)0)
 

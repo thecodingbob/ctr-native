@@ -1,11 +1,31 @@
 #include <common.h>
 
 #if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+#include <platform/native_perf.h>
 #include <platform/native_replay_scheduler.h>
 #include <platform/native_savestate.h>
 #endif
 
 #if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+static struct NativePerfFrameInfo MainPerf_FrameInfo(struct GameTracker *gGT)
+{
+	struct NativePerfFrameInfo info;
+
+	info.frameCounter = sdata->frameCounter;
+	info.timer = gGT->timer;
+	info.levelID = gGT->levelID;
+	info.gameMode1 = gGT->gameMode1;
+	info.loadingStage = sdata->Loading.stage;
+	info.boolDemoMode = gGT->boolDemoMode;
+	info.numPlyrCurrGame = gGT->numPlyrCurrGame;
+	info.elapsedTimeMS = gGT->elapsedTimeMS;
+	info.vsyncTillFlip = sdata->vsyncTillFlip;
+	info.vSync_between_drawSync = gGT->vSync_between_drawSync;
+	info.frameTimer_VsyncCallback = gGT->frameTimer_VsyncCallback;
+
+	return info;
+}
+
 static struct NativeReplaySchedulerFrameInfo MainReplayScheduler_FrameInfo(struct GameTracker *gGT)
 {
 	struct NativeReplaySchedulerFrameInfo info;
@@ -301,6 +321,11 @@ u32 main(void)
 				gGT = sdata->gGT;
 				gGS = sdata->gGamepads;
 			}
+			{
+				struct NativePerfFrameInfo perfFrameInfo = MainPerf_FrameInfo(gGT);
+
+				NativePerf_BeginFrame(&perfFrameInfo);
+			}
 #endif
 			GAMEPAD_ProcessAnyoneVars(gGS);
 
@@ -367,7 +392,13 @@ u32 main(void)
 
 			if ((gGT->gameMode1 & LOADING) == 0)
 			{
+#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+				NativePerf_BeginScope(NATIVE_PERF_BUCKET_GAME_LOGIC);
+#endif
 				MainFrame_GameLogic(gGT, gGS);
+#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+				NativePerf_EndScope(NATIVE_PERF_BUCKET_GAME_LOGIC);
+#endif
 			}
 
 			// If you are in demo mode
@@ -402,7 +433,13 @@ u32 main(void)
 #ifdef CTR_NATIVE
 			Platform_BeginFrame();
 #endif
+#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+			NativePerf_BeginScope(NATIVE_PERF_BUCKET_RENDER_FRAME);
+#endif
 			MainFrame_RenderFrame(gGT, gGS);
+#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+			NativePerf_EndScope(NATIVE_PERF_BUCKET_RENDER_FRAME);
+#endif
 #ifdef CTR_NATIVE
 			Platform_EndFrame();
 #endif
@@ -419,6 +456,11 @@ u32 main(void)
 
 				if (NativeReplayScheduler_EndFrame(&replayFrameInfo) != 0)
 					return 0;
+			}
+			{
+				struct NativePerfFrameInfo perfFrameInfo = MainPerf_FrameInfo(gGT);
+
+				NativePerf_EndFrame(&perfFrameInfo);
 			}
 #endif
 			break;

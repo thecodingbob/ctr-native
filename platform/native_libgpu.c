@@ -10,6 +10,7 @@
 
 #include <platform/native_renderer.h>
 #include <platform/native_gpu.h>
+#include <platform/native_perf.h>
 #include "../platform.h"
 
 #include <string.h>
@@ -258,11 +259,13 @@ u_int DrawSyncCallback(void (*func)(void))
 
 void DrawOTag(u_long *p)
 {
+	NativePerf_BeginScope(NATIVE_PERF_BUCKET_DRAW_OTAG);
 	do
 	{
 		if (g_GPUDisabledState)
 		{
 			ClearSplits();
+			NativePerf_EndScope(NATIVE_PERF_BUCKET_DRAW_OTAG);
 			return;
 		}
 
@@ -274,6 +277,7 @@ void DrawOTag(u_long *p)
 		ParsePrimitivesLinkedList((u_int *)p, 0);
 		DrawAllSplits();
 	} while (g_dbg_emulatorPaused);
+	NativePerf_EndScope(NATIVE_PERF_BUCKET_DRAW_OTAG);
 }
 
 void DrawPrim(void *p)

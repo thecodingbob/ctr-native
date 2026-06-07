@@ -1,5 +1,14 @@
 #include <common.h>
 
+#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+#include <platform/native_perf.h>
+#define MAINFRAME_PERF_BEGIN(bucket) NativePerf_BeginScope(bucket)
+#define MAINFRAME_PERF_END(bucket)   NativePerf_EndScope(bucket)
+#else
+#define MAINFRAME_PERF_BEGIN(bucket) ((void)0)
+#define MAINFRAME_PERF_END(bucket)   ((void)0)
+#endif
+
 #ifdef CTR_INTERNAL
 volatile int gCtrDebugSkipLevelGeometry = 0;
 #endif
@@ -9,7 +18,7 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 	struct Level *lev = gGT->level1;
 	struct mesh_info *ptr_mesh_info = 0;
 
-
+	MAINFRAME_PERF_BEGIN(NATIVE_PERF_BUCKET_MAINFRAME_SETUP);
 	DrawUnpluggedMsg(gGT, gGamepads);
 	DrawFinalLap(gGT);
 
@@ -39,7 +48,9 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 	RainLogic(gGT);
 	DropRain_MakeSound(gGT);
 	MenuHighlight();
+	MAINFRAME_PERF_END(NATIVE_PERF_BUCKET_MAINFRAME_SETUP);
 
+	MAINFRAME_PERF_BEGIN(NATIVE_PERF_BUCKET_MAINFRAME_EFFECTS);
 	RenderAllWeather(gGT);
 	RenderAllConfetti(gGT);
 	// NOTE(aalhendi): ASM-verified NTSC-U 926 subrange 0x800364f8-0x80036538.
@@ -48,15 +59,23 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 
 	if (((gGT->renderFlags & 0x100) != 0) && (gGT->numPlyrCurrGame > 1))
 		DecalMP_01(gGT);
+	MAINFRAME_PERF_END(NATIVE_PERF_BUCKET_MAINFRAME_EFFECTS);
 
+	MAINFRAME_PERF_BEGIN(NATIVE_PERF_BUCKET_MAINFRAME_HUD);
 	RenderAllHUD(gGT);
+	MAINFRAME_PERF_END(NATIVE_PERF_BUCKET_MAINFRAME_HUD);
 
+	MAINFRAME_PERF_BEGIN(NATIVE_PERF_BUCKET_MAINFRAME_EFFECTS);
 	RenderAllBeakerRain(gGT);
 
 	RenderAllBoxSceneSplitLines(gGT);
+	MAINFRAME_PERF_END(NATIVE_PERF_BUCKET_MAINFRAME_EFFECTS);
 
+	MAINFRAME_PERF_BEGIN(NATIVE_PERF_BUCKET_MAINFRAME_QUEUE_INSTANCES);
 	RenderBucket_QueueAllInstances(gGT);
+	MAINFRAME_PERF_END(NATIVE_PERF_BUCKET_MAINFRAME_QUEUE_INSTANCES);
 
+	MAINFRAME_PERF_BEGIN(NATIVE_PERF_BUCKET_MAINFRAME_EFFECTS);
 	RenderAllNormalParticles(gGT);
 
 	RenderDispEnv_World(gGT); // == RenderDispEnv_World ==
@@ -66,9 +85,13 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 
 	RenderAllFlag0x40(gGT); // I need a better name
 	RenderAllTitleDPP(gGT);
+	MAINFRAME_PERF_END(NATIVE_PERF_BUCKET_MAINFRAME_EFFECTS);
 
+	MAINFRAME_PERF_BEGIN(NATIVE_PERF_BUCKET_MAINFRAME_EXECUTE_INSTANCES);
 	RenderBucket_ExecuteAllInstances(gGT);
+	MAINFRAME_PERF_END(NATIVE_PERF_BUCKET_MAINFRAME_EXECUTE_INSTANCES);
 
+	MAINFRAME_PERF_BEGIN(NATIVE_PERF_BUCKET_MAINFRAME_EFFECTS);
 	RenderAllTires(gGT);
 
 	RenderAllShadows(gGT);
@@ -76,6 +99,7 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 	RenderAllHeatParticles(gGT);
 
 	PushBuffer_FadeAllWindows();
+	MAINFRAME_PERF_END(NATIVE_PERF_BUCKET_MAINFRAME_EFFECTS);
 
 	if (((gGT->renderFlags & 1) != 0) && (ptr_mesh_info != 0))
 	{
@@ -83,9 +107,12 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 		if (gCtrDebugSkipLevelGeometry == 0)
 #endif
 		{
+			MAINFRAME_PERF_BEGIN(NATIVE_PERF_BUCKET_MAINFRAME_LEVEL_GEOMETRY);
 			RenderAllLevelGeometry(gGT, lev, ptr_mesh_info);
+			MAINFRAME_PERF_END(NATIVE_PERF_BUCKET_MAINFRAME_LEVEL_GEOMETRY);
 		}
 
+		MAINFRAME_PERF_BEGIN(NATIVE_PERF_BUCKET_MAINFRAME_POST_LEVEL);
 		RenderDispEnv_World(gGT); // == RenderDispEnv_World ==
 
 		if (((gGT->hudFlags & 1) != 0) && (gGT->numPlyrCurrGame > 1))
@@ -129,29 +156,38 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 #endif
 				PlayLevel_UpdateLapStats();
 		}
+		MAINFRAME_PERF_END(NATIVE_PERF_BUCKET_MAINFRAME_POST_LEVEL);
 	}
 
 	// If in main menu, or in adventure arena,
 	// or in End-Of-Race menu
 	if ((gGT->gameMode1 & (ADVENTURE_ARENA | END_OF_RACE | MAIN_MENU)) != 0)
 	{
+		MAINFRAME_PERF_BEGIN(NATIVE_PERF_BUCKET_MAINFRAME_REFRESHCARD);
 		RefreshCard_Entry();
+		MAINFRAME_PERF_END(NATIVE_PERF_BUCKET_MAINFRAME_REFRESHCARD);
 	}
 
 	// clear swapchain
 	if (((gGT->renderFlags & 0x2000) != 0) && ((lev->clearColor[0].enable != 0) || (lev->clearColor[1].enable != 0)))
 	{
+		MAINFRAME_PERF_BEGIN(NATIVE_PERF_BUCKET_MAINFRAME_CLEAR_SCREEN);
 		CAM_ClearScreen(gGT);
+		MAINFRAME_PERF_END(NATIVE_PERF_BUCKET_MAINFRAME_CLEAR_SCREEN);
 	}
 
+	MAINFRAME_PERF_BEGIN(NATIVE_PERF_BUCKET_MAINFRAME_UI);
 	if ((gGT->renderFlags & 0x1000) != 0)
 	{
 		RaceFlag_DrawSelf();
 	}
 
 	RenderDispEnv_UI(gGT);
+	MAINFRAME_PERF_END(NATIVE_PERF_BUCKET_MAINFRAME_UI);
 
+	MAINFRAME_PERF_BEGIN(NATIVE_PERF_BUCKET_MAINFRAME_RENDER_VSYNC);
 	RenderVSYNC(gGT);
+	MAINFRAME_PERF_END(NATIVE_PERF_BUCKET_MAINFRAME_RENDER_VSYNC);
 
 #ifndef CTR_NATIVE
 	RenderFMV();
@@ -1159,6 +1195,10 @@ void RenderSubmit(struct GameTracker *gGT)
 	// 1 VSYNC = 60fps
 	// 2 VSYNCs = 30fps
 
+#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+	NativePerf_BeginScope(NATIVE_PERF_BUCKET_RENDER_SUBMIT);
+#endif
+
 	gGT->clockDurationStall = Timer_GetTime_Elapsed(gGT->clockDurationStall, 0);
 
 #if defined(CTR_NATIVE)
@@ -1199,4 +1239,8 @@ void RenderSubmit(struct GameTracker *gGT)
 	DrawOTag(ot);
 
 	gGT->frameTimer_notPaused = gGT->frameTimer_VsyncCallback;
+
+#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+	NativePerf_EndScope(NATIVE_PERF_BUCKET_RENDER_SUBMIT);
+#endif
 }

@@ -11,6 +11,7 @@
 #include "platform/native_gpu.h"
 #include "platform/native_glad.h"
 #include "platform/native_log.h"
+#include "platform/native_perf.h"
 #include "platform/native_renderer.h"
 
 #include <assert.h>
@@ -197,13 +198,16 @@ internal void PBO_Download(GrPBO *pbo)
 		*/
 		glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo->pbos[pbo->dx]);
 
+		NativePerf_BeginScope(NATIVE_PERF_BUCKET_PBO_ISSUE_READ);
 		glGetTexImage(GL_TEXTURE_2D, 0, pbo->fmt, GL_UNSIGNED_BYTE, 0);
+		NativePerf_EndScope(NATIVE_PERF_BUCKET_PBO_ISSUE_READ);
 	}
 	else
 	{
 		/* Read from the oldest bound pbo */
 		glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo->pbos[pbo->dx]);
 
+		NativePerf_BeginScope(NATIVE_PERF_BUCKET_PBO_MAP_COPY);
 		ptr = (u8 *)glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
 		if (NULL != ptr)
 		{
@@ -212,9 +216,12 @@ internal void PBO_Download(GrPBO *pbo)
 		}
 		else
 			NATIVE_RENDERER_WARN("Failed to map the buffer\n");
+		NativePerf_EndScope(NATIVE_PERF_BUCKET_PBO_MAP_COPY);
 
 		/* Trigger the next read. */
+		NativePerf_BeginScope(NATIVE_PERF_BUCKET_PBO_ISSUE_READ);
 		glGetTexImage(GL_TEXTURE_2D, 0, pbo->fmt, GL_UNSIGNED_BYTE, 0);
+		NativePerf_EndScope(NATIVE_PERF_BUCKET_PBO_ISSUE_READ);
 	}
 
 	++pbo->dx;
@@ -355,6 +362,7 @@ void NativeRenderer_UpdateSwapIntervalState(int swapInterval)
 
 void NativeRenderer_BeginScene(void)
 {
+	NativePerf_BeginScope(NATIVE_PERF_BUCKET_RENDERER_BEGIN_SCENE);
 	s_lastBoundTexture = 0;
 
 	glClear(GL_STENCIL_BUFFER_BIT);
@@ -369,6 +377,7 @@ void NativeRenderer_BeginScene(void)
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 	}
+	NativePerf_EndScope(NATIVE_PERF_BUCKET_RENDERER_BEGIN_SCENE);
 }
 
 void NativeRenderer_EndScene(void)
@@ -1340,12 +1349,15 @@ void NativeRenderer_SetOffscreenState(const RECT16 *offscreenRect, int enable)
 
 void NativeRenderer_StoreFrameBuffer(int x, int y, int w, int h)
 {
+	NativePerf_BeginScope(NATIVE_PERF_BUCKET_FRAMEBUFFER_STORE);
 	// set storage size first
 	if (s_previousFramebuffer.w != w || s_previousFramebuffer.h != h)
 	{
+		NativePerf_BeginScope(NATIVE_PERF_BUCKET_FRAMEBUFFER_RESIZE);
 		glBindTexture(GL_TEXTURE_2D, s_framebufferTexture);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 		glBindTexture(GL_TEXTURE_2D, 0);
+		NativePerf_EndScope(NATIVE_PERF_BUCKET_FRAMEBUFFER_RESIZE);
 	}
 
 	s_previousFramebuffer.x = x;
@@ -1357,6 +1369,7 @@ void NativeRenderer_StoreFrameBuffer(int x, int y, int w, int h)
 
 	// before drawing set source and target
 	{
+		NativePerf_BeginScope(NATIVE_PERF_BUCKET_FRAMEBUFFER_BLIT);
 		// setup draw and read framebuffers
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, 0); // source is backbuffer
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, s_glBlitFramebuffer);
@@ -1366,13 +1379,18 @@ void NativeRenderer_StoreFrameBuffer(int x, int y, int w, int h)
 		// done, unbind
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+		NativePerf_EndScope(NATIVE_PERF_BUCKET_FRAMEBUFFER_BLIT);
 	}
 
 	// after drawing
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	NativePerf_BeginScope(NATIVE_PERF_BUCKET_FRAMEBUFFER_FLUSH);
 	glFlush();
+	NativePerf_EndScope(NATIVE_PERF_BUCKET_FRAMEBUFFER_FLUSH);
 
+	NativePerf_BeginScope(NATIVE_PERF_BUCKET_FRAMEBUFFER_ALLOC);
 	u32 *pixels = (u32 *)malloc((size_t)w * (size_t)h * sizeof(u32));
+	NativePerf_EndScope(NATIVE_PERF_BUCKET_FRAMEBUFFER_ALLOC);
 	if (pixels != NULL)
 	{
 		// NOTE(aalhendi): Screen-feedback effects sample PS1 VRAM as packed
@@ -1380,15 +1398,22 @@ void NativeRenderer_StoreFrameBuffer(int x, int y, int w, int h)
 		// pack the copied framebuffer synchronously before the next primitive
 		// can sample it.
 		glBindTexture(GL_TEXTURE_2D, s_framebufferTexture);
+		NativePerf_BeginScope(NATIVE_PERF_BUCKET_FRAMEBUFFER_READBACK);
 		glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+		NativePerf_EndScope(NATIVE_PERF_BUCKET_FRAMEBUFFER_READBACK);
 		glBindTexture(GL_TEXTURE_2D, 0);
 
+		NativePerf_BeginScope(NATIVE_PERF_BUCKET_FRAMEBUFFER_PACK);
 		NativeRenderer_CopyRGBAFramebufferToVRAM(pixels, x, y, w, h, 1, 0);
+		NativePerf_EndScope(NATIVE_PERF_BUCKET_FRAMEBUFFER_PACK);
+		NativePerf_BeginScope(NATIVE_PERF_BUCKET_FRAMEBUFFER_VRAM_UPLOAD);
 		NativeRenderer_UpdateVRAM();
+		NativePerf_EndScope(NATIVE_PERF_BUCKET_FRAMEBUFFER_VRAM_UPLOAD);
 		s_lastBoundTexture = -1;
 
 		free(pixels);
 	}
+	NativePerf_EndScope(NATIVE_PERF_BUCKET_FRAMEBUFFER_STORE);
 }
 
 void NativeRenderer_CopyVRAM(u16 *src, int x, int y, int w, int h, int dst_x, int dst_y)
@@ -1475,6 +1500,7 @@ void NativeRenderer_UpdateVRAM(void)
 	if (!s_vramNeedsUpdate)
 		return;
 
+	NativePerf_BeginScope(NATIVE_PERF_BUCKET_RENDERER_UPDATE_VRAM);
 	s_vramNeedsUpdate = 0;
 
 	s_vramTexture = s_vramTexturesDouble[s_vramTextureIndex];
@@ -1484,6 +1510,7 @@ void NativeRenderer_UpdateVRAM(void)
 	glBindTexture(GL_TEXTURE_2D, s_vramTexture);
 
 	glTexImage2D(GL_TEXTURE_2D, 0, VRAM_INTERNAL_FORMAT, VRAM_WIDTH, VRAM_HEIGHT, 0, VRAM_FORMAT, GL_UNSIGNED_BYTE, vram);
+	NativePerf_EndScope(NATIVE_PERF_BUCKET_RENDERER_UPDATE_VRAM);
 }
 
 internal u8 NativeRenderer_Expand5To8(u16 value)
@@ -1613,9 +1640,9 @@ void NativeRenderer_PresentVRAMDisplay(void)
 
 void NativeRenderer_SwapWindow(void)
 {
+	NativePerf_BeginScope(NATIVE_PERF_BUCKET_SWAP_WINDOW);
 	SDL_GL_SwapWindow(g_window);
-
-	// glFinish();
+	NativePerf_EndScope(NATIVE_PERF_BUCKET_SWAP_WINDOW);
 }
 
 internal void NativeRenderer_EnableDepth(int enable)
@@ -1725,6 +1752,7 @@ internal void NativeRenderer_BindVertexBuffer(void)
 
 void NativeRenderer_UpdateVertexBuffer(const GrVertex *vertices, int num_vertices)
 {
+	NativePerf_BeginScope(NATIVE_PERF_BUCKET_RENDERER_VERTEX_UPLOAD);
 	if (num_vertices >= MAX_VERTEX_BUFFER_SIZE)
 	{
 		NATIVE_RENDERER_ERROR("MAX_VERTEX_BUFFER_SIZE reached, expect rendering errors\n");
@@ -1735,11 +1763,14 @@ void NativeRenderer_UpdateVertexBuffer(const GrVertex *vertices, int num_vertice
 	NativeRenderer_BindVertexBuffer();
 
 	glBufferSubData(GL_ARRAY_BUFFER, 0, num_vertices * sizeof(GrVertex), vertices);
+	NativePerf_EndScope(NATIVE_PERF_BUCKET_RENDERER_VERTEX_UPLOAD);
 }
 
 void NativeRenderer_DrawTriangles(int start_vertex, int triangles)
 {
+	NativePerf_BeginScope(NATIVE_PERF_BUCKET_RENDERER_DRAW_TRIANGLES);
 	glDrawArrays(GL_TRIANGLES, start_vertex, triangles * 3);
+	NativePerf_EndScope(NATIVE_PERF_BUCKET_RENDERER_DRAW_TRIANGLES);
 }
 
 void NativeRenderer_PushDebugLabel(const char *label)

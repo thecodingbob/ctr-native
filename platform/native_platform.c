@@ -7,6 +7,7 @@
 #include "platform/native_gpu.h"
 #include "platform/native_input.h"
 #include "platform/native_log.h"
+#include "platform/native_perf.h"
 #include "platform/native_renderer.h"
 #include "platform/native_replay_scheduler.h"
 #include "platform/native_savestate.h"
@@ -31,21 +32,41 @@ global_variable int s_hostAltKeyState = 0;
 global_variable int s_platformInitialized = 0;
 global_variable int s_platformBeginScene = 0;
 global_variable int s_pinnedVramDisplayFrames = 0;
-global_variable int s_frameGap = 2000;
-global_variable int s_frameCount = 0;
-global_variable int s_oldTicks = 0;
+#define NATIVE_FPS_REPORT_FRAME_WINDOW 2000
+global_variable int s_fpsFrameCount = 0;
+global_variable u64 s_fpsLastCounter = 0;
 
 internal void Platform_CalcFPS(void)
 {
-	if (s_frameCount++ != s_frameGap)
+#if defined(CTR_INTERNAL)
+	const u64 freq = SDL_GetPerformanceFrequency();
+	const u64 now = SDL_GetPerformanceCounter();
+
+	if (freq == 0)
 		return;
 
-	s_frameCount = 0;
-	int newTicks = SDL_GetTicks();
-	int delta = newTicks - s_oldTicks;
-	s_oldTicks = newTicks;
+	if (s_fpsLastCounter == 0)
+	{
+		s_fpsLastCounter = now;
+		s_fpsFrameCount = 0;
+		return;
+	}
 
-	printf("FPS: %d\n", (1000 * s_frameGap) / delta);
+	s_fpsFrameCount++;
+	if (s_fpsFrameCount < NATIVE_FPS_REPORT_FRAME_WINDOW)
+		return;
+
+	if (now > s_fpsLastCounter)
+	{
+		const f64 elapsedSeconds = (f64)(now - s_fpsLastCounter) / (f64)freq;
+		const f64 fps = (f64)s_fpsFrameCount / elapsedSeconds;
+
+		Platform_Log("[CTR Native] FPS: %.2f (last %d frames)\n", fps, s_fpsFrameCount);
+	}
+
+	s_fpsFrameCount = 0;
+	s_fpsLastCounter = now;
+#endif
 }
 
 internal void Platform_GetWindowName(const char *appName, char *buffer, size_t bufferSize)
@@ -191,6 +212,7 @@ void Platform_Shutdown(void)
 
 	s_platformInitialized = 0;
 #if defined(CTR_INTERNAL)
+	NativePerf_Shutdown();
 	NativeReplayScheduler_Shutdown();
 #endif
 	Platform_InputShutdown();
@@ -221,6 +243,7 @@ int Platform_BeginScene(void)
 	if (s_platformBeginScene)
 		return 0;
 
+	NativePerf_BeginScope(NATIVE_PERF_BUCKET_PLATFORM_BEGIN_SCENE);
 	// NOTE(aalhendi): CTR already throttles through the retail VSync/draw-sync
 	// path. Do not add a second SDL swap wait; some GL drivers charge that wait
 	// to the next frame's first clear instead of SDL_GL_SwapWindow.
@@ -242,6 +265,7 @@ int Platform_BeginScene(void)
 
 	Platform_LogFlush();
 
+	NativePerf_EndScope(NATIVE_PERF_BUCKET_PLATFORM_BEGIN_SCENE);
 	return 1;
 }
 
@@ -250,6 +274,7 @@ void Platform_EndScene(void)
 	if (!s_platformBeginScene)
 		return;
 
+	NativePerf_BeginScope(NATIVE_PERF_BUCKET_PLATFORM_END_SCENE);
 	s_platformBeginScene = 0;
 
 	NativeRenderer_EndScene();
@@ -259,20 +284,24 @@ void Platform_EndScene(void)
 		NativeRenderer_PresentVRAMDisplay();
 		NativeRenderer_SwapWindow();
 		s_pinnedVramDisplayFrames--;
+		NativePerf_EndScope(NATIVE_PERF_BUCKET_PLATFORM_END_SCENE);
 		return;
 	}
 
 	NativeRenderer_StoreFrameBuffer(activeDispEnv.disp.x, activeDispEnv.disp.y, activeDispEnv.disp.w, activeDispEnv.disp.h);
 
 	NativeRenderer_SwapWindow();
+	NativePerf_EndScope(NATIVE_PERF_BUCKET_PLATFORM_END_SCENE);
 }
 
 // NOTE(aalhendi): Frame timing is handled by VSync() in the platform layer,
 // matching PS1 hardware behavior. Platform_EndFrame only does buffer swap + FPS.
 void Platform_EndFrame(void)
 {
+	NativePerf_BeginScope(NATIVE_PERF_BUCKET_PLATFORM_END_FRAME);
 	Platform_EndScene();
 	Platform_CalcFPS();
+	NativePerf_EndScope(NATIVE_PERF_BUCKET_PLATFORM_END_FRAME);
 }
 
 void Platform_PresentVRAMDisplay(void)
@@ -368,15 +397,21 @@ int NikoGetEnterKey(void)
 // native_libetc.c; native VSync emits that callback at each emulated VBlank.
 #define NATIVE_VSYNC_HZ          60
 #define NATIVE_VSYNC_CATCHUP_MAX 8
+#define NATIVE_VSYNC_SPIN_US     1000
 
-global_variable Uint64 s_nextVBlankCounter = 0;
-global_variable Uint64 s_vblankRemainder = 0;
+global_variable u64 s_nextVBlankCounter = 0;
+global_variable u64 s_vblankRemainder = 0;
 global_variable int s_nativeVBlankCount = 0;
+
+internal u64 Native_CounterFromMicroseconds(u64 freq, u64 microseconds)
+{
+	return (freq * microseconds) / 1000000;
+}
 
 internal void Native_AdvanceVBlankTarget(void)
 {
-	const Uint64 freq = SDL_GetPerformanceFrequency();
-	const Uint64 hz = NATIVE_VSYNC_HZ;
+	const u64 freq = SDL_GetPerformanceFrequency();
+	const u64 hz = NATIVE_VSYNC_HZ;
 
 	s_nextVBlankCounter += freq / hz;
 	s_vblankRemainder += freq % hz;
@@ -389,7 +424,7 @@ internal void Native_AdvanceVBlankTarget(void)
 
 internal void Native_EnsureVBlankTarget(void)
 {
-	const Uint64 now = SDL_GetPerformanceCounter();
+	const u64 now = SDL_GetPerformanceCounter();
 
 	if (s_nextVBlankCounter == 0)
 	{
@@ -401,24 +436,39 @@ internal void Native_EnsureVBlankTarget(void)
 
 internal void Native_WaitUntilVBlankTarget(void)
 {
-	const Uint64 freq = SDL_GetPerformanceFrequency();
+	const u64 freq = SDL_GetPerformanceFrequency();
+	const u64 spinWindow = Native_CounterFromMicroseconds(freq, NATIVE_VSYNC_SPIN_US);
 
+	NativePerf_BeginScope(NATIVE_PERF_BUCKET_VSYNC_WAIT);
 	while (1)
 	{
-		const Uint64 now = SDL_GetPerformanceCounter();
-		Uint64 remaining;
-		Uint64 remainingMs;
+		const u64 now = SDL_GetPerformanceCounter();
+		u64 remaining;
+		u64 sleepMs;
 
 		if (now >= s_nextVBlankCounter)
+		{
+			NativePerf_EndScope(NATIVE_PERF_BUCKET_VSYNC_WAIT);
 			return;
+		}
 
 		remaining = s_nextVBlankCounter - now;
-		remainingMs = (remaining * 1000) / freq;
+		if (remaining <= spinWindow)
+		{
+			// NOTE(aalhendi): SDL_Delay can wake late. Sleep while safely far
+			// from the VBlank target, then spin the final small window so the
+			// native VBlank emitter is paced by our clock, not the OS scheduler.
+			while (SDL_GetPerformanceCounter() < s_nextVBlankCounter)
+			{
+			}
 
-		if (remainingMs > 1)
-			SDL_Delay((Uint32)(remainingMs - 1));
-		else
-			SDL_Delay(0);
+			NativePerf_EndScope(NATIVE_PERF_BUCKET_VSYNC_WAIT);
+			return;
+		}
+
+		sleepMs = ((remaining - spinWindow) * 1000) / freq;
+		if (sleepMs > 0)
+			SDL_Delay((u32)sleepMs);
 	}
 }
 
@@ -439,7 +489,7 @@ internal int Native_CatchUpDueVBlanks(void)
 
 	while (SDL_GetPerformanceCounter() >= s_nextVBlankCounter)
 	{
-		const Uint64 now = SDL_GetPerformanceCounter();
+		const u64 now = SDL_GetPerformanceCounter();
 
 		Native_EmitVBlank();
 		emittedVBlanks++;
@@ -483,7 +533,7 @@ int VSync(int mode)
 #if defined(CTR_INTERNAL)
 	if (NativeReplayScheduler_ConsumeVSyncPacket(requestedVBlanks, &emittedVBlanks))
 	{
-		for (int i = 0; i < emittedVBlanks; i++)
+		for (s32 i = 0; i < emittedVBlanks; i++)
 			Native_WaitAndEmitVBlank();
 
 		return s_nativeVBlankCount;
@@ -492,7 +542,7 @@ int VSync(int mode)
 
 	emittedVBlanks += Native_CatchUpDueVBlanks();
 
-	for (int i = 0; i < requestedVBlanks; i++)
+	for (s32 i = 0; i < requestedVBlanks; i++)
 	{
 		Native_WaitAndEmitVBlank();
 		emittedVBlanks++;
