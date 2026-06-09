@@ -185,9 +185,9 @@ static void VehGroundShadow_BuildProjectionPoints(struct VehGroundShadowEntry *e
 	points[3][1] = (s16)((baseY + local[0][1]) - local[1][1]);
 	points[3][2] = (s16)((baseZ + local[0][2]) - local[1][2]);
 
-	points[4][0] = (s16)(baseX + local[1][0]);
-	points[4][1] = (s16)(baseY + local[1][1]);
-	points[4][2] = (s16)(baseZ + local[1][2]);
+	points[4][0] = (s16)(baseX + local[0][0]);
+	points[4][1] = (s16)(baseY + local[0][1]);
+	points[4][2] = (s16)(baseZ + local[0][2]);
 
 	points[5][0] = (s16)(baseX + local[2][0] + local[0][0]);
 	points[5][1] = (s16)(baseY + local[2][1] + local[0][1]);
