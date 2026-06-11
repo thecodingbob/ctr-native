@@ -8,6 +8,26 @@ enum
 {
 	LOAD_NATIVE_NDBOX_INTRO_SONG_SYNC_TIME = 0x11c0,
 };
+
+static void LOAD_NativeAudio_SetStateAfterBankReload(u32 state)
+{
+	int isSameLatchedState = sdata->unkAudioState == (s16)state;
+	int isStoppedSong0State = (state == 2) || (state == 5) || (state == 7);
+
+	if ((sdata->cseqBoolPlay == 0) && isSameLatchedState && isStoppedSong0State)
+	{
+		// NOTE(aalhendi): Native can arrive here after LOAD_TenStages
+		// stopped song-0 CSEQ music for a bank reload while the retail
+		// audio-state latch still matches. Re-enter the same CSEQ state
+		// so post-load menu/hub music is started again.
+		Voiceline_EmptyFunc();
+		Audio_SetState(state);
+		sdata->unkAudioState = (s16)state;
+		return;
+	}
+
+	Audio_SetState_Safe(state);
+}
 #endif
 
 int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *bigfile)
@@ -592,8 +612,12 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 		{
 			uVar16 = 7;
 		LAB_800346b0:
-			// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80034694-0x800346b8 for post-load audio state selection.
+			// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80034694-0x800346b8 for the retail post-load audio state call.
+#if defined(CTR_NATIVE)
+			LOAD_NativeAudio_SetStateAfterBankReload(uVar16);
+#else
 			Audio_SetState_Safe(uVar16);
+#endif
 			return loadingStage + 1;
 		}
 
