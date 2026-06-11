@@ -530,14 +530,7 @@
 #include "game/Vehicle/VehGroundSkids_1_Subset2.c"
 #include "game/Vehicle/VehGroundSkids_2_Main.c"
 
-#include "game/Vehicle/VehPhysProc_00_Driving_PhysLinear.c"
-#include "game/Vehicle/VehPhysProc_01_Driving_Audio.c"
-#include "game/Vehicle/VehPhysProc_02_Driving_Update.c"
-#include "game/Vehicle/VehPhysProc_03_Driving_Init.c"
-#include "game/Vehicle/VehPhysProc_04_FreezeEndEvent_PhysLinear.c"
-#include "game/Vehicle/VehPhysProc_05_FreezeEndEvent_Init.c"
-
-#include "game/Vehicle/VehPhysProc_AAA_BigBlock1.c"
+#include "game/Vehicle/VehPhysProc.c"
 
 #include "game/Vehicle/VehPickupItem_0_MaskBoolGoodGuy.c"
 #include "game/Vehicle/VehPickupItem_1_MaskUseWeapon.c"
