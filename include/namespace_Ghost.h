@@ -3,13 +3,15 @@
 
 struct GhostPacket
 {
-	s16 pos[3];
-	s16 rot[3];
+	SVec3 pos;
+	SVec3 rot;
 
-	void *bufferPacket;
+	u8 *bufferPacket;
 
 	// 0x10 -- size of packet
 };
+
+_Static_assert(sizeof(struct GhostPacket) == 0x10);
 
 struct GhostTape
 {

@@ -15,7 +15,7 @@ void GhostReplay_ThTick(struct Thread *t)
 	struct Instance *inst;
 	struct Driver *d;
 	struct GhostPacket *packet;
-	s16 local_rot[3]; // ushort?
+	SVec3 local_rot; // ushort?
 	int timeInRace;
 	int scaledNum;
 	int color;
@@ -76,9 +76,9 @@ void GhostReplay_ThTick(struct Thread *t)
 	{
 		opcodePos = 0;
 		packetPtr = tape->ptrCurr;
-		s16 tmpPos[3] = {0};
+		SVec3 tmpPos = {0};
 
-		char *packetEndChain = tape->ptrCurr;
+		u8 *packetEndChain = tape->ptrCurr;
 
 		tape->packetID = -1;
 		tape->timeInPacket01 = tape->timeInPacket32_backup;
@@ -119,15 +119,15 @@ void GhostReplay_ThTick(struct Thread *t)
 						// Little Endian to Big Endian
 						u16 rawValue = (u16)((packetPtr[1 + i * 2] << 8) | packetPtr[2 + i * 2]);
 
-						tmpPos[i] = (s16)(((int)((u32)rawValue << 0x10)) >> 0xd);
-						packet->pos[i] = tmpPos[i];
+						tmpPos.v[i] = (s16)(((int)((u32)rawValue << 0x10)) >> 0xd);
+						packet->pos.v[i] = tmpPos.v[i];
 					}
 
-					packet->rot[0] = 0;
+					packet->rot.x = 0;
 
 					// yes, this is correct
-					packet->rot[1] = (u16)packetPtr[9] << 4;
-					packet->rot[2] = (u16)packetPtr[10] << 4;
+					packet->rot.y = (u16)packetPtr[9] << 4;
+					packet->rot.z = (u16)packetPtr[10] << 4;
 
 					// if 2nd position opcode
 					if (opcodePos == 1)
@@ -171,15 +171,8 @@ void GhostReplay_ThTick(struct Thread *t)
 					break;
 
 				case 0x84: // driver does nothing
-					for (int i = 0; i < 3; ++i)
-					{
-						packet->pos[i] = tmpPos[i];
-					}
-
-					for (int i = 0; i < 3; ++i)
-					{
-						packet[0].rot[i] = packet[-1].rot[i];
-					}
+					packet->pos = tmpPos;
+					packet[0].rot = packet[-1].rot;
 
 					packet->bufferPacket = packetEndChain;
 					packetPtr += 1;
@@ -195,15 +188,15 @@ void GhostReplay_ThTick(struct Thread *t)
 			{
 				for (int i = 0; i < 3; ++i)
 				{
-					tmpPos[i] += (s16)((char)packetPtr[i]) * 8;
-					packet->pos[i] = tmpPos[i];
+					tmpPos.v[i] += (s16)((char)packetPtr[i]) * 8;
+					packet->pos.v[i] = tmpPos.v[i];
 				}
 
-				packet->rot[0] = 0;
+				packet->rot.x = 0;
 
 				// yes, this is right
-				packet->rot[1] = packetPtr[3] << 4;
-				packet->rot[2] = packetPtr[4] << 4;
+				packet->rot.y = packetPtr[3] << 4;
+				packet->rot.z = packetPtr[4] << 4;
 
 				packet->bufferPacket = packetEndChain;
 				packetPtr += 5;
@@ -257,40 +250,40 @@ void GhostReplay_ThTick(struct Thread *t)
 	struct GhostPacket *nextPacket = &tape->packets[packetIdx + 1];
 
 	int vel[3];
-	vel[0] = (int)nextPacket->pos[0] - (int)currPacket->pos[0];
-	vel[1] = (int)nextPacket->pos[1] - (int)currPacket->pos[1];
-	vel[2] = (int)nextPacket->pos[2] - (int)currPacket->pos[2];
+	vel[0] = (int)nextPacket->pos.x - (int)currPacket->pos.x;
+	vel[1] = (int)nextPacket->pos.y - (int)currPacket->pos.y;
+	vel[2] = (int)nextPacket->pos.z - (int)currPacket->pos.z;
 
-	inst->matrix.t[0] = currPacket->pos[0] + ((vel[0] * lerp4096) >> 0xC);
-	inst->matrix.t[1] = currPacket->pos[1] + ((vel[1] * lerp4096) >> 0xC);
-	inst->matrix.t[2] = currPacket->pos[2] + ((vel[2] * lerp4096) >> 0xC);
+	inst->matrix.t[0] = currPacket->pos.x + ((vel[0] * lerp4096) >> 0xC);
+	inst->matrix.t[1] = currPacket->pos.y + ((vel[1] * lerp4096) >> 0xC);
+	inst->matrix.t[2] = currPacket->pos.z + ((vel[2] * lerp4096) >> 0xC);
 
 	// Calculate delta + perform 12-bit wrapping and lerp
-	delta = ((int)nextPacket->rot[0] - (int)currPacket->rot[0]) & 0xFFF;
+	delta = ((int)nextPacket->rot.x - (int)currPacket->rot.x) & 0xFFF;
 	if (delta > 0x7FF)
 		delta -= 0x1000;
-	local_rot[0] = currPacket->rot[0] + ((delta * lerp4096) >> 0xC) & 0xFFF;
+	local_rot.x = currPacket->rot.x + ((delta * lerp4096) >> 0xC) & 0xFFF;
 
-	delta = ((int)nextPacket->rot[1] - (int)currPacket->rot[1]) & 0xFFF;
+	delta = ((int)nextPacket->rot.y - (int)currPacket->rot.y) & 0xFFF;
 	if (delta > 0x7FF)
 		delta -= 0x1000;
-	local_rot[1] = currPacket->rot[1] + ((delta * lerp4096) >> 0xC) & 0xFFF;
+	local_rot.y = currPacket->rot.y + ((delta * lerp4096) >> 0xC) & 0xFFF;
 
-	delta = ((int)nextPacket->rot[2] - (int)currPacket->rot[2]) & 0xFFF;
+	delta = ((int)nextPacket->rot.z - (int)currPacket->rot.z) & 0xFFF;
 	if (delta > 0x7FF)
 		delta -= 0x1000;
-	local_rot[2] = currPacket->rot[2] + ((delta * lerp4096) >> 0xC) & 0xFFF;
+	local_rot.z = currPacket->rot.z + ((delta * lerp4096) >> 0xC) & 0xFFF;
 
 	// Retail converts the interpolated rotation into the instance matrix.
-	ConvertRotToMatrix(&inst->matrix, local_rot);
+	ConvertRotToMatrix(&inst->matrix, &local_rot);
 
 	d->posCurr.x = inst->matrix.t[0] << 8;
 	d->posCurr.y = inst->matrix.t[1] << 8;
 	d->posCurr.z = inst->matrix.t[2] << 8;
 
-	d->rotCurr.x = local_rot[0];
-	d->rotCurr.y = local_rot[1];
-	d->rotCurr.z = local_rot[2];
+	d->rotCurr.x = local_rot.x;
+	d->rotCurr.y = local_rot.y;
+	d->rotCurr.z = local_rot.z;
 
 	u8 *buffer = tape->packets[packetIdx].bufferPacket;
 

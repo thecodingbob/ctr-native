@@ -94,8 +94,9 @@ struct CameraDC
 	u32 unk0xC;
 
 	// 0x10
-	// desired rotation
-	s16 desiredRot[4];
+	// desired rotation (only X used, others reserved)
+	SVec3 desiredRot;
+	s16 _pad_desiredRot;
 
 	// 0x18
 	s16 unk18;
@@ -248,10 +249,11 @@ struct CameraDC
 		s16 unkOffset[2];
 
 		// 0xcc
-		s16 desiredRot[4];
+		SVec3 desiredRot;
+		s16 _pad_desiredRot;
 
 		// 0xd4
-		s16 desiredPos[3];
+		SVec3 desiredPos;
 
 		// 0xda
 		s16 framesRemaining;

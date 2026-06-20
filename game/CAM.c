@@ -552,7 +552,7 @@ void CAM_StartOfRace(struct CameraDC *cDC)
 
 		// make transition to driver last one second
 		cDC->transitionFrameCount = 0x1E;
-		cDC->desiredRot[6] = 0;
+		cDC->nearOrFar = 0;
 
 		// when camera reaches player, be zoomed in
 		cDC->cameraMode = 0;
@@ -1237,7 +1237,7 @@ void CAM_FollowDriver_Normal(struct CameraDC *cDC, struct Driver *d, s16 *pushBu
 	// camera RotY
 	*(u16 *)(scratchpad + 0x20e) = (d->rotCurr.w + d->angle + 0x800 + sVar10) & 0xfff;
 
-	*(s16 *)(scratchpad + 0x210) = cDC->desiredRot[0] * -2;
+	*(s16 *)(scratchpad + 0x210) = cDC->desiredRot.x * -2;
 
 	// convert 3 rotation shorts into rotation matrix
 	ConvertRotToMatrix((MATRIX *)(void *)(scratchpad + 0x220), (s16 *)(void *)(scratchpad + 0x20c));
@@ -1362,7 +1362,7 @@ void CAM_FollowDriver_Normal(struct CameraDC *cDC, struct Driver *d, s16 *pushBu
 	*(int *)(scratchpad + 0x260) += (int)*(s16 *)(scratchpad + 0x210);
 	*(int *)(scratchpad + 0x25c) += (int)*(s16 *)(scratchpad + 0x20e) + (int)zoom->angle[2];
 
-	cDC->desiredRot[0] = ((zoom->angle[1] * (int)cDC->desiredRot[0]) + ((0x100 - (int)zoom->angle[1]) * (int)d->rotCurr.z)) >> 8;
+	cDC->desiredRot.x = ((zoom->angle[1] * (int)cDC->desiredRot.x) + ((0x100 - (int)zoom->angle[1]) * (int)d->rotCurr.z)) >> 8;
 
 
 	state = d->kartState;
@@ -1392,13 +1392,13 @@ void CAM_FollowDriver_Normal(struct CameraDC *cDC, struct Driver *d, s16 *pushBu
 	{
 		cDC->BlastedLerp.boolLerpPending = 0;
 
-		cDC->BlastedLerp.desiredRot[0] = cDC->lookAtPos.x - *(s16 *)(scratchpad + 600);
-		cDC->BlastedLerp.desiredRot[1] = cDC->lookAtPos.y - *(s16 *)(scratchpad + 0x25c);
-		cDC->BlastedLerp.desiredRot[2] = cDC->lookAtPos.z - *(s16 *)(scratchpad + 0x260);
+		cDC->BlastedLerp.desiredRot.x = cDC->lookAtPos.x - *(s16 *)(scratchpad + 600);
+		cDC->BlastedLerp.desiredRot.y = cDC->lookAtPos.y - *(s16 *)(scratchpad + 0x25c);
+		cDC->BlastedLerp.desiredRot.z = cDC->lookAtPos.z - *(s16 *)(scratchpad + 0x260);
 
-		cDC->BlastedLerp.desiredPos[0] = cDC->cameraPos.x - *(s16 *)(scratchpad + 0x240);
-		cDC->BlastedLerp.desiredPos[1] = cDC->cameraPos.y - *(s16 *)(scratchpad + 0x244);
-		cDC->BlastedLerp.desiredPos[2] = cDC->cameraPos.z - *(s16 *)(scratchpad + 0x248);
+		cDC->BlastedLerp.desiredPos.x = cDC->cameraPos.x - *(s16 *)(scratchpad + 0x240);
+		cDC->BlastedLerp.desiredPos.y = cDC->cameraPos.y - *(s16 *)(scratchpad + 0x244);
+		cDC->BlastedLerp.desiredPos.z = cDC->cameraPos.z - *(s16 *)(scratchpad + 0x248);
 
 		cDC->BlastedLerp.framesRemaining = 8;
 	}
@@ -1436,13 +1436,13 @@ void CAM_FollowDriver_Normal(struct CameraDC *cDC, struct Driver *d, s16 *pushBu
 		{
 			cDC->BlastedLerp.boolLerpPending = 0;
 
-			cDC->BlastedLerp.desiredRot[0] = cDC->lookAtPos.x - *(s16 *)(scratchpad + 0x258);
-			cDC->BlastedLerp.desiredRot[1] = cDC->lookAtPos.y - *(s16 *)(scratchpad + 0x25c);
-			cDC->BlastedLerp.desiredRot[2] = cDC->lookAtPos.z - *(s16 *)(scratchpad + 0x260);
+			cDC->BlastedLerp.desiredRot.x = cDC->lookAtPos.x - *(s16 *)(scratchpad + 0x258);
+			cDC->BlastedLerp.desiredRot.y = cDC->lookAtPos.y - *(s16 *)(scratchpad + 0x25c);
+			cDC->BlastedLerp.desiredRot.z = cDC->lookAtPos.z - *(s16 *)(scratchpad + 0x260);
 
-			cDC->BlastedLerp.desiredPos[0] = cDC->cameraPos.x - *(s16 *)(scratchpad + 0x240);
-			cDC->BlastedLerp.desiredPos[1] = cDC->cameraPos.y - *(s16 *)(scratchpad + 0x244);
-			cDC->BlastedLerp.desiredPos[2] = cDC->cameraPos.z - *(s16 *)(scratchpad + 0x248);
+			cDC->BlastedLerp.desiredPos.x = cDC->cameraPos.x - *(s16 *)(scratchpad + 0x240);
+			cDC->BlastedLerp.desiredPos.y = cDC->cameraPos.y - *(s16 *)(scratchpad + 0x244);
+			cDC->BlastedLerp.desiredPos.z = cDC->cameraPos.z - *(s16 *)(scratchpad + 0x248);
 
 			cDC->BlastedLerp.framesRemaining = 8;
 
@@ -1454,13 +1454,13 @@ void CAM_FollowDriver_Normal(struct CameraDC *cDC, struct Driver *d, s16 *pushBu
 		// if frame countdown is not finished
 		if (cDC->BlastedLerp.framesRemaining != 0)
 		{
-			*(int *)(scratchpad + 0x240) += (cDC->BlastedLerp.desiredPos[0] * cDC->BlastedLerp.framesRemaining) >> 3;
-			*(int *)(scratchpad + 0x244) += (cDC->BlastedLerp.desiredPos[1] * cDC->BlastedLerp.framesRemaining) >> 3;
-			*(int *)(scratchpad + 0x248) += (cDC->BlastedLerp.desiredPos[2] * cDC->BlastedLerp.framesRemaining) >> 3;
+			*(int *)(scratchpad + 0x240) += (cDC->BlastedLerp.desiredPos.x * cDC->BlastedLerp.framesRemaining) >> 3;
+			*(int *)(scratchpad + 0x244) += (cDC->BlastedLerp.desiredPos.y * cDC->BlastedLerp.framesRemaining) >> 3;
+			*(int *)(scratchpad + 0x248) += (cDC->BlastedLerp.desiredPos.z * cDC->BlastedLerp.framesRemaining) >> 3;
 
-			*(int *)(scratchpad + 0x258) += (cDC->BlastedLerp.desiredRot[0] * cDC->BlastedLerp.framesRemaining) >> 3;
-			*(int *)(scratchpad + 0x25c) += (cDC->BlastedLerp.desiredRot[1] * cDC->BlastedLerp.framesRemaining) >> 3;
-			*(int *)(scratchpad + 0x260) += (cDC->BlastedLerp.desiredRot[2] * cDC->BlastedLerp.framesRemaining) >> 3;
+			*(int *)(scratchpad + 0x258) += (cDC->BlastedLerp.desiredRot.x * cDC->BlastedLerp.framesRemaining) >> 3;
+			*(int *)(scratchpad + 0x25c) += (cDC->BlastedLerp.desiredRot.y * cDC->BlastedLerp.framesRemaining) >> 3;
+			*(int *)(scratchpad + 0x260) += (cDC->BlastedLerp.desiredRot.z * cDC->BlastedLerp.framesRemaining) >> 3;
 
 			// decrease frame countdown
 			cDC->BlastedLerp.framesRemaining--;
@@ -1566,7 +1566,7 @@ LAB_8001ab04:
 		x_00 = ratan2(*(s32 *)(scratchpad + 0x250), x_00);
 		pb->rot.x = 0x800 - (s16)x_00;
 
-		pb->rot.z = (s16)CTR_MipsSra(CAM_MulLo((int)zoom->angle[0], (int)cDC->desiredRot[0]), 8);
+		pb->rot.z = (s16)CTR_MipsSra(CAM_MulLo((int)zoom->angle[0], (int)cDC->desiredRot.x), 8);
 	}
 
 	// something with pushBuffer position
@@ -2003,7 +2003,7 @@ void CAM_ThTick(struct Thread *t)
 		*(s16 *)&cDC->mode = psVar21[3];
 		*(s16 *)&cDC->unk0xC = psVar21[4];
 		*(s16 *)((int)&cDC->unk0xC + 2) = psVar21[5];
-		cDC->desiredRot[0] = psVar21[6];
+		cDC->desiredRot.x = psVar21[6];
 		break;
 	case 4:
 		pb->pos.x = *psVar19;
