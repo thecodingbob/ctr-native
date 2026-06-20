@@ -14,8 +14,8 @@ void CS_Podium_Prize_Init(u32 prizeModel, const char *prizeName, s16 *posOnScree
 
 	if (inst == NULL)
 	{
-		if (D233.cutsceneState < 1)
-			D233.cutsceneState = 1;
+		if (D233.cutsceneState < CS_WAIT_INPUT)
+			D233.cutsceneState = CS_WAIT_INPUT;
 
 		gGT->gameMode2 &= ~VEH_FREEZE_PODIUM;
 		return;

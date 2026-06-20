@@ -35,7 +35,7 @@ void CS_Podium_FullScene_Init(void)
 
 	// Cutscene is now starting
 	D233.isCutsceneOver = 0;
-	D233.cutsceneState = 0;
+	D233.cutsceneState = CS_CAMERA_PAN;
 
 	D233.PodiumInitUnk3 = 0;
 

@@ -11,13 +11,13 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 
 	if (gGT->cameraDC[0].cameraMode != 3)
 	{
-		if (D233.cutsceneState < 1)
-			D233.cutsceneState = 1;
+		if (D233.cutsceneState < CS_WAIT_INPUT)
+			D233.cutsceneState = CS_WAIT_INPUT;
 
 		D233.PodiumInitUnk3 = 1;
 	}
 
-	if (((D233.cutsceneState != 0 || D233.boolStartToSkip != 0) && ((gGT->gameMode2 & CUP_NEW_WIN) != 0)) && sdata->ptrActiveMenu == NULL)
+	if (((D233.cutsceneState != CS_CAMERA_PAN || D233.boolStartToSkip != 0) && ((gGT->gameMode2 & CUP_NEW_WIN) != 0)) && sdata->ptrActiveMenu == NULL)
 	{
 		s16 stringIndex = 0x236;
 
@@ -28,7 +28,7 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 		gGT->gameMode2 &= ~(CUP_NEW_WIN | CUP_NEW_BATTLE);
 	}
 
-	if (D233.cutsceneState == 0 || sdata->ptrActiveMenu != NULL)
+	if (D233.cutsceneState == CS_CAMERA_PAN || sdata->ptrActiveMenu != NULL)
 	{
 		int numPoints = CAM_Path_GetNumPoints();
 		int maxFrame = (numPoints << 0x15) >> 0x10;
@@ -49,8 +49,8 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 			{
 				frameTime = numPoints * 0x20 - 1;
 
-				if (D233.cutsceneState < 1)
-					D233.cutsceneState = 1;
+				if (D233.cutsceneState < CS_WAIT_INPUT)
+					D233.cutsceneState = CS_WAIT_INPUT;
 			}
 
 			frame = ((int)frameTime << 16) >> 21;
@@ -80,7 +80,7 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 		u32 tapped = sdata->gGamepads->gamepad[0].buttonsTapped;
 		s16 rewardId;
 
-		if (((tapped & BTN_START) == 0) && ((D233.cutsceneState == 0 || (tapped & (BTN_START | BTN_CROSS_one)) == 0)) &&
+		if (((tapped & BTN_START) == 0) && ((D233.cutsceneState == CS_CAMERA_PAN || (tapped & (BTN_START | BTN_CROSS_one)) == 0)) &&
 		    ((gGT->gameMode2 & VEH_FREEZE_PODIUM) != 0))
 		{
 			return;

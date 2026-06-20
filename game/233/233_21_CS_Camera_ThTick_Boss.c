@@ -36,16 +36,16 @@ void CS_Camera_ThTick_Boss(struct Thread *t)
 	switch (D233.cutsceneState)
 	{
 	// Start Fade-to-black
-	case 0:
-	case 1:
+	case CS_CAMERA_PAN:
+	case CS_WAIT_INPUT:
 		gGT->pushBuffer_UI.fadeFromBlack_desiredResult = 0;
 		gGT->pushBuffer_UI.fade_step = -0x400;
-		D233.cutsceneState = 2;
+		D233.cutsceneState = CS_FADE_OUT;
 		break;
 
 	// Wait for fade-to-black
 	// Start loading process
-	case 2:
+	case CS_FADE_OUT:
 
 		// wait for fade
 		if (gGT->pushBuffer_UI.fadeFromBlack_currentValue != 0)
@@ -64,13 +64,13 @@ void CS_Camera_ThTick_Boss(struct Thread *t)
 			break;
 
 		CS_LoadBoss(bcd);
-		D233.cutsceneState = 3;
+		D233.cutsceneState = CS_LOADING;
 		break;
 
 	// Wait for loading callback,
 	// start thread for head+body
 	// start fade-to-normal
-	case 3:
+	case CS_LOADING:
 
 		// NULLPTR checks if load finished,
 		// because CS_LoadBossCallback writes this last
@@ -146,19 +146,19 @@ void CS_Camera_ThTick_Boss(struct Thread *t)
 		// fade back in
 		gGT->pushBuffer_UI.fadeFromBlack_desiredResult = 0x1000;
 		gGT->pushBuffer_UI.fade_step = 0x400;
-		D233.cutsceneState = 4;
+		D233.cutsceneState = CS_FADE_IN;
 		break;
 
-	case 4:
+	case CS_FADE_IN:
 
 		// wait for fade
 		if (gGT->pushBuffer_UI.fadeFromBlack_currentValue != 0x1000)
 			break;
 
-		D233.cutsceneState = 5;
+		D233.cutsceneState = CS_WAIT_END;
 		break;
 
-	case 5:
+	case CS_WAIT_END:
 
 		// wait for cutscene to end
 		if (D233.isCutsceneOver != 1)

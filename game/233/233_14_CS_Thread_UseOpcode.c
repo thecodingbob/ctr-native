@@ -656,7 +656,7 @@ processOpcode:
 		D233.bossCutsceneIndex = opcodeMeta->arg1.i;
 		if ((D233.bossCutsceneIndex == 0) && (0x11 < gGT->currAdvProfile.numRelics))
 			D233.bossCutsceneIndex = 9;
-		D233.cutsceneState = 1;
+		D233.cutsceneState = CS_WAIT_INPUT;
 		break;
 
 	case 0x22:

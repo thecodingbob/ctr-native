@@ -1,4 +1,14 @@
 
+typedef enum CutscenePhase : s32
+{
+	CS_CAMERA_PAN = 0,
+	CS_WAIT_INPUT = 1,
+	CS_FADE_OUT = 2,
+	CS_LOADING = 3,
+	CS_FADE_IN = 4,
+	CS_WAIT_END = 5,
+} CutscenePhase;
+
 struct CsThreadInitData
 {
 	// podium position
@@ -452,7 +462,7 @@ struct OverlayRDATA_233
 	// 800b7770
 	int PodiumInitUnk3;
 	// 800b7774
-	int cutsceneState;
+	CutscenePhase cutsceneState;
 
 	// 800b7778
 	struct Model *ptrModelBossHead;
@@ -479,7 +489,7 @@ struct OverlayDATA_233
 	s16 VoiceVolumeBackup;
 	s16 volumeunknown;
 	int PodiumInitUnk3;
-	int cutsceneState;
+	CutscenePhase cutsceneState;
 	struct Model *ptrModelBossHead;
 	struct Model *ptrModelBossBody;
 	struct CsInitMatrixEntry cs_initMatrixData[190];
