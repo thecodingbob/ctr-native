@@ -501,7 +501,7 @@ struct RainBuffer
 	char unk_4[0x10];
 
 	// 0x18 (0x1a58)
-	s16 cameraPos[3];
+	SVec3 cameraPos;
 
 	// 0x1E
 	s16 unk_22;
@@ -770,15 +770,12 @@ struct Level
 
 	// 0x48
 	// used for additional skybox gradients (e.g. papu's pyramid)
-	struct
+	struct SkyboxGlowGradient
 	{
 		s16 pointFrom;
 		s16 pointTo;
-
-		// RGBA
 		u32 colorFrom;
 		u32 colorTo;
-
 	} glowGradient[3];
 
 	// 0x6c

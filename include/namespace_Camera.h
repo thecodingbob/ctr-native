@@ -1,3 +1,26 @@
+// Camera scratchpad overlay.
+// Cast from (scratchpad + 0x20C) where scratchpad is the u8* parameter
+// pointing to absolute 0x1f800108.
+// Fields span absolute scratchpad 0x314-0x36B.
+struct CameraScratch
+{
+	SVec3 rot;     // +0x00 (abs 0x314)
+	s16 _pad0;     // +0x06
+	Vec3 posCopy;  // +0x08 (abs 0x31C) s32 copies of pos below
+	MATRIX matrix; // +0x14 (abs 0x328)
+	Vec3 pos;      // +0x34 (abs 0x348)
+	Vec3 dir;      // +0x40 (abs 0x354) written by CAM_LookAtPosition
+	Vec3 delta;    // +0x4C (abs 0x360)
+};
+
+_Static_assert(offsetof(struct CameraScratch, rot) == 0x00);
+_Static_assert(offsetof(struct CameraScratch, posCopy) == 0x08);
+_Static_assert(offsetof(struct CameraScratch, matrix) == 0x14);
+_Static_assert(offsetof(struct CameraScratch, pos) == 0x34);
+_Static_assert(offsetof(struct CameraScratch, dir) == 0x40);
+_Static_assert(offsetof(struct CameraScratch, delta) == 0x4C);
+_Static_assert(sizeof(struct CameraScratch) == 0x58);
+
 struct ZoomData
 {
 	// get distance by mapping camera speeed from:
@@ -63,6 +86,7 @@ typedef enum CameraFlags : u32
 	CAMERA_FLAG_DIRECTION_CHANGED = 0x8,
 	CAMERA_FLAG_MASK_GRAB = 0x10,
 	CAMERA_FLAG_ARCADE_END_OF_RACE_REQUESTED = 0x20,
+	CAMERA_FLAG_TRACK_PATH_FACE_DRIVER = 0x40,
 	CAMERA_FLAG_FIRE_SPEED_ZOOM = 0x80,
 	CAMERA_FLAG_TRACK_PATH_ALT_BRANCH = 0x100,
 	CAMERA_FLAG_TRANSITION_AWAY = 0x200,

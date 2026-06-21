@@ -1,47 +1,5 @@
 #include <common.h>
 
-struct CAMSkyboxGlowGradient
-{
-	s16 pointFrom;
-	s16 pointTo;
-	u32 colorFrom;
-	u32 colorTo;
-};
-
-_Static_assert(sizeof(POLY_G3) == 0x1C);
-_Static_assert(offsetof(POLY_G3, tag) == 0x00);
-_Static_assert(offsetof(POLY_G3, r0) == 0x04);
-_Static_assert(offsetof(POLY_G3, x0) == 0x08);
-_Static_assert(offsetof(POLY_G3, r1) == 0x0C);
-_Static_assert(offsetof(POLY_G3, x1) == 0x10);
-_Static_assert(offsetof(POLY_G3, r2) == 0x14);
-_Static_assert(offsetof(POLY_G3, x2) == 0x18);
-
-_Static_assert(sizeof(POLY_G4) == 0x24);
-_Static_assert(offsetof(POLY_G4, tag) == 0x00);
-_Static_assert(offsetof(POLY_G4, r0) == 0x04);
-_Static_assert(offsetof(POLY_G4, x0) == 0x08);
-_Static_assert(offsetof(POLY_G4, r1) == 0x0C);
-_Static_assert(offsetof(POLY_G4, x1) == 0x10);
-_Static_assert(offsetof(POLY_G4, r2) == 0x14);
-_Static_assert(offsetof(POLY_G4, x2) == 0x18);
-_Static_assert(offsetof(POLY_G4, r3) == 0x1C);
-_Static_assert(offsetof(POLY_G4, x3) == 0x20);
-
-_Static_assert(sizeof(POLY_F3) == 0x14);
-_Static_assert(offsetof(POLY_F3, tag) == 0x00);
-_Static_assert(offsetof(POLY_F3, r0) == 0x04);
-_Static_assert(offsetof(POLY_F3, x0) == 0x08);
-_Static_assert(offsetof(POLY_F3, x1) == 0x0C);
-_Static_assert(offsetof(POLY_F3, x2) == 0x10);
-
-_Static_assert(sizeof(POLY_F4) == 0x18);
-_Static_assert(offsetof(POLY_F4, tag) == 0x00);
-_Static_assert(offsetof(POLY_F4, r0) == 0x04);
-_Static_assert(offsetof(POLY_F4, x0) == 0x08);
-_Static_assert(offsetof(POLY_F4, x1) == 0x0C);
-_Static_assert(offsetof(POLY_F4, x2) == 0x10);
-_Static_assert(offsetof(POLY_F4, x3) == 0x14);
 
 enum
 {
@@ -55,39 +13,39 @@ static u32 CAM_SkyboxGlow_PrimAddr(const void *prim)
 	return CtrGpu_PrimToOTLink24(prim);
 }
 
-static u32 CAM_SkyboxGlow_PackXY(int x, int y)
+static u32 CAM_SkyboxGlow_PackXY(s32 x, s32 y)
 {
 	return ((u32)(u16)x) | ((u32)(u16)y << 16);
 }
 
-static u32 CAM_SkyboxGlow_LerpColor(u32 from, u32 to, int ratio)
+static u32 CAM_SkyboxGlow_LerpColor(u32 from, u32 to, s32 ratio)
 {
-	int r = (u8)from + ((((int)(u8)to - (int)(u8)from) * ratio) >> 12);
-	int g = (u8)(from >> 8) + ((((int)(u8)(to >> 8) - (int)(u8)(from >> 8)) * ratio) >> 12);
-	int b = (u8)(from >> 16) + ((((int)(u8)(to >> 16) - (int)(u8)(from >> 16)) * ratio) >> 12);
+	s32 r = (u8)from + ((((s32)(u8)to - (s32)(u8)from) * ratio) >> 12);
+	s32 g = (u8)(from >> 8) + ((((s32)(u8)(to >> 8) - (s32)(u8)(from >> 8)) * ratio) >> 12);
+	s32 b = (u8)(from >> 16) + ((((s32)(u8)(to >> 16) - (s32)(u8)(from >> 16)) * ratio) >> 12);
 
 	return ((u32)(u8)r) | ((u32)(u8)g << 8) | ((u32)(u8)b << 16);
 }
 
-static int CAM_SkyboxGlow_FixedRatio(int numerator, int denominator)
+static s32 CAM_SkyboxGlow_FixedRatio(s32 numerator, s32 denominator)
 {
 	return (numerator << 12) / denominator;
 }
 
-static int CAM_SkyboxGlow_ScreenX(int screenWidth, int ratio)
+static s32 CAM_SkyboxGlow_ScreenX(s32 screenWidth, s32 ratio)
 {
 	return (screenWidth * ratio) >> 12;
 }
 
-static int CAM_SkyboxGlow_Div2TowardZero(int value)
+static s32 CAM_SkyboxGlow_Div2TowardZero(s32 value)
 {
 	return (value + ((u32)value >> 31)) >> 1;
 }
 
-static int CAM_SkyboxGlow_CalcCenterY(struct PushBuffer *pb)
+static s32 CAM_SkyboxGlow_CalcCenterY(struct PushBuffer *pb)
 {
-	int pitch = (pb->rot.x - 0x800) * 0x78;
-	int height = (s16)pb->rect.h;
+	s32 pitch = (pb->rot.x - 0x800) * 0x78;
+	s32 height = (s16)pb->rect.h;
 
 	if (pitch < 0)
 		pitch += 0x3ff;
@@ -95,18 +53,14 @@ static int CAM_SkyboxGlow_CalcCenterY(struct PushBuffer *pb)
 	return (pitch >> 10) + CAM_SkyboxGlow_Div2TowardZero(height);
 }
 
-static int CAM_SkyboxGlow_CalcTilt(struct PushBuffer *pb)
+static s32 CAM_SkyboxGlow_CalcTilt(struct PushBuffer *pb)
 {
-	int sine = MATH_Sin(pb->rot.z);
-	int cosine = MATH_Cos(pb->rot.z);
-	int ratio;
-	int shifted;
-
+	s32 cosine = MATH_Cos(pb->rot.z);
 	if (cosine == 0)
 		cosine = 1;
 
-	ratio = (sine << 12) / cosine;
-	shifted = (s32)((u32)ratio << 8);
+	s32 ratio = (MATH_Sin(pb->rot.z) << 12) / cosine;
+	s32 shifted = (s32)((u32)ratio << 8);
 	shifted >>= 12;
 
 	return CAM_SkyboxGlow_Div2TowardZero(-shifted);
@@ -175,7 +129,7 @@ static void CAM_SkyboxGlow_EmitF4(struct PrimMem *primMem, u_long *ot, u32 color
 	primMem->cursor = poly + 1;
 }
 
-static int CAM_SkyboxGlow_HasClearGradient(int gradientIndex)
+static s32 CAM_SkyboxGlow_HasClearGradient(s32 gradientIndex)
 {
 	return gradientIndex == 0 && sdata->gGT->level1->clearColor[2].enable != 0;
 }
@@ -186,21 +140,20 @@ static u32 CAM_SkyboxGlow_ClearGradientColor(void)
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800175cc-0x8001861c
-void CAM_SkyboxGlow(s16 *param_1, struct PushBuffer *pb, struct PrimMem *primMem, u_long *ptrOT)
+void CAM_SkyboxGlow(struct SkyboxGlowGradient *grad, struct PushBuffer *pb, struct PrimMem *primMem, u_long *ptrOT)
 {
-	struct CAMSkyboxGlowGradient *grad = (struct CAMSkyboxGlowGradient *)param_1;
-	int tilt = CAM_SkyboxGlow_CalcTilt(pb);
-	int centerY1 = CAM_SkyboxGlow_CalcCenterY(pb);
-	int centerY2 = CAM_SkyboxGlow_CalcCenterY(pb);
-	int screenWidth = (s16)pb->rect.w;
+	s32 tilt = CAM_SkyboxGlow_CalcTilt(pb);
+	s32 centerY1 = CAM_SkyboxGlow_CalcCenterY(pb);
+	s32 centerY2 = CAM_SkyboxGlow_CalcCenterY(pb);
+	s32 screenWidth = (s16)pb->rect.w;
 	u32 screenWidthXY = (u16)screenWidth;
 
-	for (int i = 0; i < 3; i++, grad++)
+	for (s32 i = 0; i < 3; i++, grad++)
 	{
-		int toLeft = centerY2 - grad->pointTo - tilt;
-		int toRight = centerY2 - grad->pointTo + tilt;
-		int fromLeft = centerY1 - grad->pointFrom - tilt;
-		int fromRight = centerY1 - grad->pointFrom + tilt;
+		s32 toLeft = centerY2 - grad->pointTo - tilt;
+		s32 toRight = centerY2 - grad->pointTo + tilt;
+		s32 fromLeft = centerY1 - grad->pointFrom - tilt;
+		s32 fromRight = centerY1 - grad->pointFrom + tilt;
 		u32 colorFrom = grad->colorFrom & 0xffffff;
 		u32 colorTo = grad->colorTo & 0xffffff;
 		u32 mask = 0;
@@ -218,8 +171,8 @@ void CAM_SkyboxGlow(s16 *param_1, struct PushBuffer *pb, struct PrimMem *primMem
 		{
 		case 1:
 		{
-			int leftRatio = CAM_SkyboxGlow_FixedRatio(fromLeft, fromLeft - toLeft);
-			int rightRatio = CAM_SkyboxGlow_FixedRatio(toLeft, toLeft - toRight);
+			s32 leftRatio = CAM_SkyboxGlow_FixedRatio(fromLeft, fromLeft - toLeft);
+			s32 rightRatio = CAM_SkyboxGlow_FixedRatio(toLeft, toLeft - toRight);
 			u32 leftColor = CAM_SkyboxGlow_LerpColor(colorFrom, colorTo, leftRatio);
 			u32 rightX = (u16)CAM_SkyboxGlow_ScreenX(screenWidth, rightRatio);
 
@@ -228,8 +181,8 @@ void CAM_SkyboxGlow(s16 *param_1, struct PushBuffer *pb, struct PrimMem *primMem
 		}
 		case 2:
 		{
-			int rightRatio = CAM_SkyboxGlow_FixedRatio(fromRight, fromRight - toRight);
-			int leftRatio = CAM_SkyboxGlow_FixedRatio(toLeft, toLeft - toRight);
+			s32 rightRatio = CAM_SkyboxGlow_FixedRatio(fromRight, fromRight - toRight);
+			s32 leftRatio = CAM_SkyboxGlow_FixedRatio(toLeft, toLeft - toRight);
 			u32 rightColor = CAM_SkyboxGlow_LerpColor(colorFrom, colorTo, rightRatio);
 			u32 leftX = (u16)CAM_SkyboxGlow_ScreenX(screenWidth, leftRatio);
 
@@ -238,8 +191,8 @@ void CAM_SkyboxGlow(s16 *param_1, struct PushBuffer *pb, struct PrimMem *primMem
 		}
 		case 3:
 		{
-			int leftRatio = CAM_SkyboxGlow_FixedRatio(fromLeft, fromLeft - toLeft);
-			int rightRatio = CAM_SkyboxGlow_FixedRatio(fromRight, fromRight - toRight);
+			s32 leftRatio = CAM_SkyboxGlow_FixedRatio(fromLeft, fromLeft - toLeft);
+			s32 rightRatio = CAM_SkyboxGlow_FixedRatio(fromRight, fromRight - toRight);
 			u32 leftColor = CAM_SkyboxGlow_LerpColor(colorFrom, colorTo, leftRatio);
 			u32 rightColor = CAM_SkyboxGlow_LerpColor(colorFrom, colorTo, rightRatio);
 
@@ -249,8 +202,8 @@ void CAM_SkyboxGlow(s16 *param_1, struct PushBuffer *pb, struct PrimMem *primMem
 		}
 		case 5:
 		{
-			int fromRatio = CAM_SkyboxGlow_FixedRatio(fromLeft, fromLeft - fromRight);
-			int toRatio = CAM_SkyboxGlow_FixedRatio(toLeft, toLeft - toRight);
+			s32 fromRatio = CAM_SkyboxGlow_FixedRatio(fromLeft, fromLeft - fromRight);
+			s32 toRatio = CAM_SkyboxGlow_FixedRatio(toLeft, toLeft - toRight);
 			u32 fromX = (u16)CAM_SkyboxGlow_ScreenX(screenWidth, fromRatio);
 			u32 toX = (u16)CAM_SkyboxGlow_ScreenX(screenWidth, toRatio);
 
@@ -263,8 +216,8 @@ void CAM_SkyboxGlow(s16 *param_1, struct PushBuffer *pb, struct PrimMem *primMem
 		}
 		case 7:
 		{
-			int fromRatio = CAM_SkyboxGlow_FixedRatio(fromLeft, fromLeft - fromRight);
-			int rightRatio = CAM_SkyboxGlow_FixedRatio(fromRight, fromRight - toRight);
+			s32 fromRatio = CAM_SkyboxGlow_FixedRatio(fromLeft, fromLeft - fromRight);
+			s32 rightRatio = CAM_SkyboxGlow_FixedRatio(fromRight, fromRight - toRight);
 			u32 fromX = (u16)CAM_SkyboxGlow_ScreenX(screenWidth, fromRatio);
 			u32 rightColor = CAM_SkyboxGlow_LerpColor(colorFrom, colorTo, rightRatio);
 
@@ -278,8 +231,8 @@ void CAM_SkyboxGlow(s16 *param_1, struct PushBuffer *pb, struct PrimMem *primMem
 		}
 		case 10:
 		{
-			int fromRatio = CAM_SkyboxGlow_FixedRatio(fromLeft, fromLeft - fromRight);
-			int toRatio = CAM_SkyboxGlow_FixedRatio(toLeft, toLeft - toRight);
+			s32 fromRatio = CAM_SkyboxGlow_FixedRatio(fromLeft, fromLeft - fromRight);
+			s32 toRatio = CAM_SkyboxGlow_FixedRatio(toLeft, toLeft - toRight);
 			u32 fromX = (u16)CAM_SkyboxGlow_ScreenX(screenWidth, fromRatio);
 			u32 toX = (u16)CAM_SkyboxGlow_ScreenX(screenWidth, toRatio);
 			u32 fromRightXY = CAM_SkyboxGlow_PackXY(screenWidth, fromRight);
@@ -292,8 +245,8 @@ void CAM_SkyboxGlow(s16 *param_1, struct PushBuffer *pb, struct PrimMem *primMem
 		}
 		case 11:
 		{
-			int fromRatio = CAM_SkyboxGlow_FixedRatio(fromLeft, fromLeft - fromRight);
-			int leftRatio = CAM_SkyboxGlow_FixedRatio(fromLeft, fromLeft - toLeft);
+			s32 fromRatio = CAM_SkyboxGlow_FixedRatio(fromLeft, fromLeft - fromRight);
+			s32 leftRatio = CAM_SkyboxGlow_FixedRatio(fromLeft, fromLeft - toLeft);
 			u32 fromX = (u16)CAM_SkyboxGlow_ScreenX(screenWidth, fromRatio);
 			u32 leftColor = CAM_SkyboxGlow_LerpColor(colorFrom, colorTo, leftRatio);
 			u32 fromRightXY = CAM_SkyboxGlow_PackXY(screenWidth, fromRight);
@@ -324,72 +277,42 @@ void CAM_SkyboxGlow(s16 *param_1, struct PushBuffer *pb, struct PrimMem *primMem
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001861c-0x80018818
 void CAM_ClearScreen(struct GameTracker *gGT)
 {
-	char numPlyr;
-	char swap;
-	s16 x;
-	s16 y;
-	s16 w;
-	s16 h;
-	struct DB *backDB;
-	int iVar5;
-	int iVar7;
-	struct PushBuffer *pb;
-	TILE *tile;
-	int loop;
-	struct Level *level1;
-	u_long *endOT;
+	s8 numPlyr = gGT->numPlyrCurrGame;
+	s8 swap = gGT->swapchainIndex;
+	struct Level *level1 = gGT->level1;
+	struct DB *backDB = gGT->backBuffer;
+	TILE *tile = backDB->primMem.cursor;
 
-	backDB = gGT->backBuffer;
-	tile = backDB->primMem.cursor;
-	numPlyr = gGT->numPlyrCurrGame;
-	swap = gGT->swapchainIndex;
-	level1 = gGT->level1;
-
-	for (loop = 0; loop < numPlyr; loop++)
+	for (s32 loop = 0; loop < numPlyr; loop++)
 	{
-		// pointer to pushBuffer struct
-		pb = &gGT->pushBuffer[loop];
-		endOT = &pb->ptrOT[0x3FF];
+		struct PushBuffer *pb = &gGT->pushBuffer[loop];
+		u_long *endOT = &pb->ptrOT[0x3FF];
 
-		x = pb->rect.x;
-		y = pb->rect.y + swap * 0x128;
-		w = pb->rect.w;
-		h = pb->rect.h;
+		s16 x = pb->rect.x;
+		s16 y = pb->rect.y + swap * 0x128;
+		s16 w = pb->rect.w;
+		s16 h = pb->rect.h;
 
-		// pushBuffer rotation
-		// cam up/down will change where the line splits.
+		// cam up/down changes where the line splits.
 		// At 0x800, camera looks straight, and line is perfectly midpoint
-		iVar5 = ((int)pb->rot.x - 0x800 >> 3) + (h >> 1);
+		s32 splitLine = ((s32)pb->rot.x - 0x800 >> 3) + (h >> 1);
 
-		// if splitline is above top of screen,
-		// camera looks far down and only sees bottom half
-		if (iVar5 < 0)
-		{
-			// top half has zero height
-			iVar5 = 0;
-		}
+		if (splitLine < 0)
+			splitLine = 0;
 
-		// if splitline is below bottom of the screen,
-		// top quad height is window sizeY, bottom quad is zero height
-		iVar7 = h;
+		s32 topHeight = h;
+		if (splitLine < h)
+			topHeight = splitLine;
 
-		// if splitline is below top of screen
-		if (iVar5 < h)
-		{
-			// set midpoint accordingly
-			iVar7 = iVar5;
-		}
-
-		// if top-half clear color exists,
-		// and if splitline is below top of screen (so top quad exists)
-		if ((level1->clearColor[0].enable != 0) && (0 < iVar7))
+		// top half
+		if ((level1->clearColor[0].enable != 0) && (0 < topHeight))
 		{
 			tile->x0 = x;
 			tile->y0 = y;
 			tile->w = w;
-			tile->h = iVar7;
+			tile->h = topHeight;
 
-			*(int *)&tile->r0 = *(int *)&level1->clearColor[0].rgb[0];
+			*(s32 *)&tile->r0 = *(s32 *)&level1->clearColor[0].rgb[0];
 			tile->code = 0x2;
 
 			tile->tag = *(u32 *)endOT | 0x3000000;
@@ -398,16 +321,15 @@ void CAM_ClearScreen(struct GameTracker *gGT)
 			tile++;
 		}
 
-		// if bottom-half clear color exists,
-		// and if splitline is above bottom of screen (so bottom quad exists)
-		if ((level1->clearColor[1].enable != 0) && (iVar7 < h))
+		// bottom half
+		if ((level1->clearColor[1].enable != 0) && (topHeight < h))
 		{
 			tile->x0 = x;
-			tile->y0 = y + iVar7;
+			tile->y0 = y + topHeight;
 			tile->w = w;
-			tile->h = h - iVar7;
+			tile->h = h - topHeight;
 
-			*(int *)&tile->r0 = *(int *)&level1->clearColor[1].rgb[0];
+			*(s32 *)&tile->r0 = *(s32 *)&level1->clearColor[1].rgb[0];
 			tile->code = 0x2;
 
 			tile->tag = *(u32 *)endOT | 0x3000000;
@@ -418,12 +340,10 @@ void CAM_ClearScreen(struct GameTracker *gGT)
 	}
 
 	backDB->primMem.cursor = tile;
-
-	return;
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80018818-0x800188a8
-void CAM_Init(struct CameraDC *cDC, int cameraID, struct Driver *d, struct PushBuffer *pb)
+void CAM_Init(struct CameraDC *cDC, s32 cameraID, struct Driver *d, struct PushBuffer *pb)
 {
 // Naughty Dog debug printf
 #if BUILD == SepReview
@@ -447,7 +367,7 @@ void CAM_Init(struct CameraDC *cDC, int cameraID, struct Driver *d, struct PushB
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80018b18-0x80018ba0
-int CAM_Path_GetNumPoints(void)
+s32 CAM_Path_GetNumPoints(void)
 {
 	struct GameTracker *gGT;
 	struct Level *level1;
@@ -483,19 +403,10 @@ int CAM_Path_GetNumPoints(void)
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80018ba0-0x80018d20
-u8 CAM_Path_Move(int frameIndex, s16 *position, s16 *rotation, s16 *getPath)
+u8 CAM_Path_Move(s32 frameIndex, s16 *position, s16 *rotation, s16 *getPath)
 {
-	s16 frame;
-	s16 numPos;
-	u16 pathNumNode;
-	u16 pathID;
-	s16 *ptrCam;
-	s16 *move;
-
-	frame = (s16)frameIndex;
-
-	// get number of position on track
-	numPos = CAM_Path_GetNumPoints();
+	s16 frame = (s16)frameIndex;
+	s16 numPos = CAM_Path_GetNumPoints();
 
 	if (frame < 0)
 		return 0;
@@ -503,11 +414,11 @@ u8 CAM_Path_Move(int frameIndex, s16 *position, s16 *rotation, s16 *getPath)
 		return 0;
 
 	void **ptrs = ST1_GETPOINTERS(sdata->gGT->level1->ptrSpawnType1);
-	ptrCam = ptrs[ST1_CAMERA_PATH];
+	s16 *ptrCam = ptrs[ST1_CAMERA_PATH];
 
-	pathNumNode = (u16)ptrCam[0];
-	pathID = (u16)ptrCam[1];
-	move = ptrCam + 2;
+	u16 pathNumNode = (u16)ptrCam[0];
+	u16 pathID = (u16)ptrCam[1];
+	s16 *move = ptrCam + 2;
 
 	while ((s16)pathNumNode <= frame)
 	{
@@ -519,7 +430,7 @@ u8 CAM_Path_Move(int frameIndex, s16 *position, s16 *rotation, s16 *getPath)
 	}
 
 	// advance pointer to pos+rot
-	move += (int)frame * 6;
+	move += (s32)frame * 6;
 
 	*getPath = pathID;
 
@@ -542,15 +453,14 @@ void CAM_StartOfRace(struct CameraDC *cDC)
 	struct Level *level1 = gGT->level1;
 
 	// if fly-in camera data exists and there is only one screen
-	int hasFlyInCamera = (2 < level1->cnt_restart_points);
+	s32 hasFlyInCamera = (2 < level1->cnt_restart_points);
 
 	if (hasFlyInCamera)
 	{
-		int flyInData = (int)level1->ptr_restart_points;
+		s32 flyInData = (s32)level1->ptr_restart_points;
 		cDC->trackPathProgress = 0;
 		cDC->transitionBlend = 0;
 
-		// make transition to driver last one second
 		cDC->transitionFrameCount = 0x1E;
 		cDC->nearOrFar = 0;
 
@@ -559,11 +469,9 @@ void CAM_StartOfRace(struct CameraDC *cDC)
 		cDC->trackPathNode = (struct CheckpointNode *)(flyInData + 0x18);
 
 		// if 1 or less screens
-		// set fly-in to last 165 frames, (5.25 seconds)
 		cDC->transitionFrame = 0xA5;
 		if (gGT->numPlyrCurrGame > 1)
 		{
-			// set animation to last one frame
 			cDC->transitionFrame = 1;
 		}
 	}
@@ -571,40 +479,26 @@ void CAM_StartOfRace(struct CameraDC *cDC)
 	cDC->cameraMode = 0;
 
 	cDC->flags &= ~(CAMERA_FLAG_BATTLE_END_OF_RACE | CAMERA_FLAG_ARCADE_END_OF_RACE_ACTIVE);
-	return;
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80018d9c-0x80018e38.
 void CAM_EndOfRace_Battle(struct CameraDC *cDC, struct Driver *d)
 {
-	int dx;
-	int dz;
-	int height;
-	struct PushBuffer *pb;
-
-	// This is NOT TransitionTo,
-	// spin360's spinSpeed (missing union)
-	// and spinHeight, spinDistance, etc
-	height = data.Spin360_heightOffset_cameraPos[sdata->gGT->numPlyrCurrGame];
+	s32 height = data.Spin360_heightOffset_cameraPos[sdata->gGT->numPlyrCurrGame];
 	cDC->transitionTo.pos.x = 0xffe5;
 	cDC->transitionTo.pos.y = height;
 	cDC->transitionTo.pos.z = 0xc0;
 
-	// use camera that spins around player
 	cDC->flags |= CAMERA_FLAG_BATTLE_END_OF_RACE;
 
-	// transition should take two seconds
 	cDC->transitionBlend = 0;
 	cDC->transitionFrame = 60;
 	cDC->transitionFrameCount = 60;
 
-	// direction to face
-	pb = cDC->pushBuffer;
-	dx = CTR_MipsSubLo(pb->pos.x, CTR_MipsSra(d->posCurr.x, 8));
-	dz = CTR_MipsSubLo(pb->pos.z, CTR_MipsSra(d->posCurr.z, 8));
+	struct PushBuffer *pb = cDC->pushBuffer;
+	s32 dx = CTR_MipsSubLo(pb->pos.x, CTR_MipsSra(d->posCurr.x, 8));
+	s32 dz = CTR_MipsSubLo(pb->pos.z, CTR_MipsSra(d->posCurr.z, 8));
 	cDC->spin360Angle = ratan2(dx, dz);
-
-	return;
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80018e38-0x80018ec0.
@@ -628,7 +522,6 @@ void CAM_EndOfRace(struct CameraDC *cDC, struct Driver *d)
 	return;
 
 #else
-	// this is SepReview's more error-prone version of the function
 
 	if (gGT->level1->ptrSpawnType1->count < 2 || gGT->numPlyrCurrGame > 2)
 		CAM_EndOfRace_Battle(cDC, d);
@@ -644,37 +537,35 @@ static s32 CAM_MulLo(s32 a, s32 b)
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80018fec-0x80019128
-void CAM_ProcessTransition(s16 *currPos, s16 *currRot, s16 *startPos, s16 *startRot, s16 *endPos, s16 *endRot, int frame)
+void CAM_ProcessTransition(SVec3 *currPos, SVec3 *currRot, SVec3 *startPos, SVec3 *startRot, SVec3 *endPos, SVec3 *endRot, s32 frame)
 {
-	int deltaRot;
+	s32 deltaRot;
 
-	currPos[0] = startPos[0] + (s16)(CAM_MulLo((int)endPos[0] - (int)startPos[0], frame) >> 0xc);
-	currPos[1] = startPos[1] + (s16)(CAM_MulLo((int)endPos[1] - (int)startPos[1], frame) >> 0xc);
-	currPos[2] = startPos[2] + (s16)(CAM_MulLo((int)endPos[2] - (int)startPos[2], frame) >> 0xc);
+	currPos->x = startPos->x + (s16)(CAM_MulLo((s32)endPos->x - (s32)startPos->x, frame) >> 0xc);
+	currPos->y = startPos->y + (s16)(CAM_MulLo((s32)endPos->y - (s32)startPos->y, frame) >> 0xc);
+	currPos->z = startPos->z + (s16)(CAM_MulLo((s32)endPos->z - (s32)startPos->z, frame) >> 0xc);
 
-	deltaRot = (int)endRot[0] - (int)startRot[0] & 0xfff;
+	deltaRot = (s32)endRot->x - (s32)startRot->x & 0xfff;
 	if (0x7ff < deltaRot)
 	{
 		deltaRot -= 0x1000;
 	}
 
-	currRot[0] = startRot[0] + (s16)(CAM_MulLo(deltaRot, frame) >> 0xc) & 0xfff;
-	deltaRot = (int)endRot[1] - (int)startRot[1] & 0xfff;
+	currRot->x = startRot->x + (s16)(CAM_MulLo(deltaRot, frame) >> 0xc) & 0xfff;
+	deltaRot = (s32)endRot->y - (s32)startRot->y & 0xfff;
 	if (0x7ff < deltaRot)
 	{
 		deltaRot -= 0x1000;
 	}
-	currRot[1] = startRot[1] + (s16)(CAM_MulLo(deltaRot, frame) >> 0xc) & 0xfff;
-	deltaRot = (int)endRot[2] - (int)startRot[2] & 0xfff;
+	currRot->y = startRot->y + (s16)(CAM_MulLo(deltaRot, frame) >> 0xc) & 0xfff;
+	deltaRot = (s32)endRot->z - (s32)startRot->z & 0xfff;
 	if (0x7ff < deltaRot)
 	{
 		deltaRot -= 0x1000;
 	}
-	currRot[2] = startRot[2] + (s16)(CAM_MulLo(deltaRot, frame) >> 0xc) & 0xfff;
-	return;
+	currRot->z = startRot->z + (s16)(CAM_MulLo(deltaRot, frame) >> 0xc) & 0xfff;
 }
 
-_Static_assert(sizeof(struct QuadBlock) == 0x5c);
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800188a8-0x80018b18
 void CAM_FindClosestQuadblock(struct ScratchpadStruct *sps, struct CameraDC *cDC, struct Driver *d, const VECTOR *pos)
@@ -754,43 +645,43 @@ void CAM_FindClosestQuadblock(struct ScratchpadStruct *sps, struct CameraDC *cDC
 void CAM_StartLine_FlyIn_FixY(s16 *posRot)
 {
 	struct ScratchpadStruct *sps = &sdata->scratchpadStruct;
-	s16 pos[3];
-	int i;
+	SVec3 pos;
+	s32 i;
 
 	sps->Union.QuadBlockColl.quadFlagsWanted = QUADBLOCK_FLAG_GROUND | QUADBLOCK_FLAG_COLLISION_SURFACE;
 	sps->Union.QuadBlockColl.quadFlagsIgnored = 0;
 	sps->Union.QuadBlockColl.searchFlags = COLL_SEARCH_HIGH_LOD;
 	sps->ptr_mesh_info = sdata->gGT->level1->ptr_mesh_info;
 
-	pos[0] = posRot[0];
-	pos[1] = posRot[1];
-	pos[2] = posRot[2];
+	pos.x = posRot[0];
+	pos.y = posRot[1];
+	pos.z = posRot[2];
 
 	for (i = 0; i < 8; i++)
 	{
 		s32 probeOffset = i * 0x400;
 
 		SVec3 posTop = {
-		    .x = pos[0],
-		    .y = (s16)CTR_MipsSubLo((u16)pos[1], CTR_MipsAddLo(probeOffset, 0x400)),
-		    .z = pos[2],
+		    .x = pos.x,
+		    .y = (s16)CTR_MipsSubLo((u16)pos.y, CTR_MipsAddLo(probeOffset, 0x400)),
+		    .z = pos.z,
 		};
 		SVec3 posBottom = {
-		    .x = pos[0],
-		    .y = (s16)CTR_MipsSubLo((u16)pos[1], CTR_MipsSubLo(probeOffset, 0x100)),
-		    .z = pos[2],
+		    .x = pos.x,
+		    .y = (s16)CTR_MipsSubLo((u16)pos.y, CTR_MipsSubLo(probeOffset, 0x100)),
+		    .z = pos.z,
 		};
 
 		COLL_SearchBSP_CallbackQUADBLK(&posTop, &posBottom, sps, 0);
 
 		if (sps->boolDidTouchQuadblock != 0)
 		{
-			CTR_COPY_VEC3(pos, sps->Union.QuadBlockColl.hitPos.v);
+			pos = sps->Union.QuadBlockColl.hitPos;
 			break;
 		}
 	}
 
-	posRot[1] = pos[1];
+	posRot[1] = pos.y;
 }
 
 static s32 CAM_FollowDriver_AngleAxis_MulLo(s32 a, s32 b)
@@ -818,16 +709,16 @@ static void CAM_FollowDriver_AngleAxis_TransformOffset(const SVec3 *offset, VECT
 	gte_stlvnl(out);
 }
 
-void CAM_FollowDriver_AngleAxis(struct CameraDC *cDC, struct Driver *d, u8 *workBuffer, s16 *pushBufferPos, s16 *pushBufferRot)
+void CAM_FollowDriver_AngleAxis(struct CameraDC *cDC, struct Driver *d, u8 *workBuffer, SVec3 *pushBufferPos, SVec3 *pushBufferRot)
 {
-	MATRIX *axisMatrix = (MATRIX *)(void *)(workBuffer + 0x220);
-	VECTOR *eye = (VECTOR *)(void *)(workBuffer + 0x240);
+	MATRIX *axisMatrix = (MATRIX *)(workBuffer + 0x220);
+	VECTOR *eye = (VECTOR *)(workBuffer + 0x240);
 	VECTOR lookAt;
-	int ratio;
-	int dx;
-	int dy;
-	int dz;
-	int distanceXZ;
+	s32 ratio;
+	s32 dx;
+	s32 dy;
+	s32 dz;
+	s32 distanceXZ;
 
 	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80019128-0x800194c8.
 	if (cDC->cameraMode == 0xe)
@@ -849,9 +740,9 @@ void CAM_FollowDriver_AngleAxis(struct CameraDC *cDC, struct Driver *d, u8 *work
 	{
 		ratio = cDC->angleAxisLerpRatio;
 
-		eye->vx = CAM_FollowDriver_AngleAxis_Lerp256(eye->vx, pushBufferPos[0], ratio);
-		eye->vy = CAM_FollowDriver_AngleAxis_Lerp256(eye->vy, pushBufferPos[1], ratio);
-		eye->vz = CAM_FollowDriver_AngleAxis_Lerp256(eye->vz, pushBufferPos[2], ratio);
+		eye->vx = CAM_FollowDriver_AngleAxis_Lerp256(eye->vx, pushBufferPos->x, ratio);
+		eye->vy = CAM_FollowDriver_AngleAxis_Lerp256(eye->vy, pushBufferPos->y, ratio);
+		eye->vz = CAM_FollowDriver_AngleAxis_Lerp256(eye->vz, pushBufferPos->z, ratio);
 
 		cDC->lookAtPos.x = CAM_FollowDriver_AngleAxis_Lerp256(lookAt.vx, cDC->lookAtPos.x, ratio);
 		cDC->lookAtPos.y = CAM_FollowDriver_AngleAxis_Lerp256(lookAt.vy, cDC->lookAtPos.y, ratio);
@@ -862,27 +753,27 @@ void CAM_FollowDriver_AngleAxis(struct CameraDC *cDC, struct Driver *d, u8 *work
 	dy = eye->vy - cDC->lookAtPos.y;
 	dz = eye->vz - cDC->lookAtPos.z;
 
-	*(int *)(workBuffer + 0x24c) = dx;
-	*(int *)(workBuffer + 0x250) = dy;
-	*(int *)(workBuffer + 0x254) = dz;
+	*(s32 *)(workBuffer + 0x24c) = dx;
+	*(s32 *)(workBuffer + 0x250) = dy;
+	*(s32 *)(workBuffer + 0x254) = dz;
 
-	pushBufferRot[1] = (s16)ratan2(dx, dz);
+	pushBufferRot->y = (s16)ratan2(dx, dz);
 	distanceXZ = SquareRoot0_stub(CTR_MipsAddLo(CAM_FollowDriver_AngleAxis_MulLo(dx, dx), CAM_FollowDriver_AngleAxis_MulLo(dz, dz)));
-	pushBufferRot[0] = 0x800 - (s16)ratan2(dy, distanceXZ);
-	pushBufferRot[2] = 0;
+	pushBufferRot->x = 0x800 - (s16)ratan2(dy, distanceXZ);
+	pushBufferRot->z = 0;
 
-	pushBufferPos[0] = (s16)eye->vx;
-	pushBufferPos[1] = (s16)eye->vy;
-	pushBufferPos[2] = (s16)eye->vz;
+	pushBufferPos->x = (s16)eye->vx;
+	pushBufferPos->y = (s16)eye->vy;
+	pushBufferPos->z = (s16)eye->vz;
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800194c8-0x800198f8.
-void CAM_StartLine_FlyIn(struct FlyInData *flyInData, s16 maxFrames, int frame, s16 *desiredPos, s16 *desiredRot)
+void CAM_StartLine_FlyIn(struct FlyInData *flyInData, s16 maxFrames, s32 frame, SVec3 *desiredPos, SVec3 *desiredRot)
 {
 	struct Level *lev = sdata->gGT->level1;
-	int frameIndex = (frame << 0x10) >> 4;
-	int frameRatio = frameIndex / maxFrames;
-	int countEnd = flyInData->frameCount1;
+	s32 frameIndex = (frame << 0x10) >> 4;
+	s32 frameRatio = frameIndex / maxFrames;
+	s32 countEnd = flyInData->frameCount1;
 	s16 count = flyInData->frameCount2;
 	SVECTOR local_78;
 	SVECTOR local_70;
@@ -892,7 +783,7 @@ void CAM_StartLine_FlyIn(struct FlyInData *flyInData, s16 maxFrames, int frame, 
 	s32 flags[2];
 	s16 *pathEnd;
 	s16 *pathStart;
-	int pathRatioEnd;
+	s32 pathRatioEnd;
 
 	if (count < countEnd)
 		count = countEnd;
@@ -919,7 +810,7 @@ void CAM_StartLine_FlyIn(struct FlyInData *flyInData, s16 maxFrames, int frame, 
 		frameRatio = 0;
 	}
 
-	int ratio = count * pathRatioEnd & 0xfff;
+	s32 ratio = count * pathRatioEnd & 0xfff;
 	local_78.vx = pathEnd[0] + (s16)(((pathEnd[3] - pathEnd[0]) * ratio) >> 0xc);
 	local_78.vy = pathEnd[1] + (s16)(((pathEnd[4] - pathEnd[1]) * ratio) >> 0xc);
 	local_78.vz = pathEnd[2] + (s16)(((pathEnd[5] - pathEnd[2]) * ratio) >> 0xc);
@@ -947,19 +838,19 @@ void CAM_StartLine_FlyIn(struct FlyInData *flyInData, s16 maxFrames, int frame, 
 	SetTransMatrix(&matrix);
 
 	RotTrans(&local_78, &transformed, (long *)flags);
-	desiredPos[0] = (s16)transformed.vx;
-	desiredPos[1] = (s16)transformed.vy;
-	desiredPos[2] = (s16)transformed.vz;
+	desiredPos->x = (s16)transformed.vx;
+	desiredPos->y = (s16)transformed.vy;
+	desiredPos->z = (s16)transformed.vz;
 
 	RotTrans(&local_70, &transformed, (long *)flags);
 
-	s16 deltaX = desiredPos[0] - (s16)transformed.vx;
-	s16 deltaY = desiredPos[1] - (s16)transformed.vy;
-	s16 deltaZ = desiredPos[2] - (s16)transformed.vz;
+	s16 deltaX = desiredPos->x - (s16)transformed.vx;
+	s16 deltaY = desiredPos->y - (s16)transformed.vy;
+	s16 deltaZ = desiredPos->z - (s16)transformed.vz;
 
-	desiredRot[1] = (s16)ratan2(deltaX, deltaZ);
-	desiredRot[0] = 0x800 - (s16)ratan2(deltaY, SquareRoot0(deltaX * deltaX + deltaZ * deltaZ));
-	desiredRot[2] = 0;
+	desiredRot->y = (s16)ratan2(deltaX, deltaZ);
+	desiredRot->x = 0x800 - (s16)ratan2(deltaY, SquareRoot0(deltaX * deltaX + deltaZ * deltaZ));
+	desiredRot->z = 0;
 }
 
 static s32 CAM_FollowDriver_TrackPath_MulLo(s32 a, s32 b)
@@ -967,7 +858,7 @@ static s32 CAM_FollowDriver_TrackPath_MulLo(s32 a, s32 b)
 	return (s32)(u32)((s64)a * (s64)b);
 }
 
-static struct CheckpointNode *CAM_FollowDriver_TrackPath_GetNode(struct CameraDC *cDC, struct CheckpointNode *node, int speed)
+static struct CheckpointNode *CAM_FollowDriver_TrackPath_GetNode(struct CameraDC *cDC, struct CheckpointNode *node, s32 speed)
 {
 	struct CheckpointNode *nodes = sdata->gGT->level1->ptr_restart_points;
 	u8 nodeIndex;
@@ -988,7 +879,7 @@ static struct CheckpointNode *CAM_FollowDriver_TrackPath_GetNode(struct CameraDC
 	return &nodes[nodeIndex];
 }
 
-static int CAM_FollowDriver_TrackPath_Length(struct CheckpointNode *from, struct CheckpointNode *to, int *dx, int *dy, int *dz)
+static s32 CAM_FollowDriver_TrackPath_Length(struct CheckpointNode *from, struct CheckpointNode *to, s32 *dx, s32 *dy, s32 *dz)
 {
 	*dx = to->pos[0] - from->pos[0];
 	*dy = to->pos[1] - from->pos[1];
@@ -999,20 +890,20 @@ static int CAM_FollowDriver_TrackPath_Length(struct CheckpointNode *from, struct
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800198f8-0x80019e7c.
-u32 CAM_FollowDriver_TrackPath(struct CameraDC *cDC, s16 *pos, int speed, int update)
+u32 CAM_FollowDriver_TrackPath(struct CameraDC *cDC, SVec3 *pos, s32 speed, s32 update)
 {
 	struct CheckpointNode *curr = cDC->trackPathNode;
 	struct CheckpointNode *next = CAM_FollowDriver_TrackPath_GetNode(cDC, curr, speed);
 	struct CheckpointNode *angleNext;
-	int pathProgress;
-	int segmentLength;
-	int ratio;
-	int dx;
-	int dy;
-	int dz;
-	int yaw;
-	int nextYaw;
-	int yawDelta;
+	s32 pathProgress;
+	s32 segmentLength;
+	s32 ratio;
+	s32 dx;
+	s32 dy;
+	s32 dz;
+	s32 yaw;
+	s32 nextYaw;
+	s32 yawDelta;
 
 	segmentLength = CAM_FollowDriver_TrackPath_Length(curr, next, &dx, &dy, &dz);
 
@@ -1042,9 +933,9 @@ u32 CAM_FollowDriver_TrackPath(struct CameraDC *cDC, s16 *pos, int speed, int up
 	else
 		ratio = 0;
 
-	pos[0] = curr->pos[0] + (s16)((CAM_FollowDriver_TrackPath_MulLo(dx, ratio)) >> 12);
-	pos[1] = curr->pos[1] + (s16)((CAM_FollowDriver_TrackPath_MulLo(dy, ratio)) >> 12) + 0x80;
-	pos[2] = curr->pos[2] + (s16)((CAM_FollowDriver_TrackPath_MulLo(dz, ratio)) >> 12);
+	pos->x = curr->pos[0] + (s16)((CAM_FollowDriver_TrackPath_MulLo(dx, ratio)) >> 12);
+	pos->y = curr->pos[1] + (s16)((CAM_FollowDriver_TrackPath_MulLo(dy, ratio)) >> 12) + 0x80;
+	pos->z = curr->pos[2] + (s16)((CAM_FollowDriver_TrackPath_MulLo(dz, ratio)) >> 12);
 
 	yaw = (s16)ratan2(dx, dz) + 0x800;
 	angleNext = CAM_FollowDriver_TrackPath_GetNode(cDC, next, speed);
@@ -1058,33 +949,31 @@ u32 CAM_FollowDriver_TrackPath(struct CameraDC *cDC, s16 *pos, int speed, int up
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80019e7c-0x80019f58
-void CAM_LookAtPosition(u8 *scratchpad, int *positions, s16 *desiredPos, s16 *desiredRot)
+void CAM_LookAtPosition(u8 *scratchpad, Vec3 *positions, SVec3 *desiredPos, SVec3 *desiredRot)
 {
-	int dirX = desiredPos[0] - (positions[0] >> 8);
-	int dirY = desiredPos[1] - ((positions[1] >> 8) + data.Spin360_heightOffset_driverPos[sdata->gGT->numPlyrCurrGame]);
-	int dirZ = desiredPos[2] - (positions[2] >> 8);
+	struct CameraScratch *cam = (struct CameraScratch *)(scratchpad + 0x20C);
 
-	// Store dirX, dirY, dirZ in scratchpad
-	*(int *)(scratchpad + 0x24c) = dirX;
-	*(int *)(scratchpad + 0x250) = dirY;
-	*(int *)(scratchpad + 0x254) = dirZ;
+	s32 dirX = desiredPos->x - (positions->x >> 8);
+	s32 dirY = desiredPos->y - ((positions->y >> 8) + data.Spin360_heightOffset_driverPos[sdata->gGT->numPlyrCurrGame]);
+	s32 dirZ = desiredPos->z - (positions->z >> 8);
 
-	int distance = SquareRoot0_stub(CAM_MulLo(dirX, dirX) + CAM_MulLo(dirZ, dirZ));
+	cam->dir.x = dirX;
+	cam->dir.y = dirY;
+	cam->dir.z = dirZ;
+
+	s32 distance = SquareRoot0_stub(CAM_MulLo(dirX, dirX) + CAM_MulLo(dirZ, dirZ));
 
 	// rotations
-	desiredRot[0] = 0x800 - (s16)ratan2(dirY, distance);
-	desiredRot[1] = (s16)ratan2(dirX, dirZ);
-	desiredRot[2] = 0;
-
-	return;
+	desiredRot->x = 0x800 - (s16)ratan2(dirY, distance);
+	desiredRot->y = (s16)ratan2(dirX, dirZ);
+	desiredRot->z = 0;
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80019f58-0x8001a054
-void CAM_FollowDriver_Spin360(struct CameraDC *cDC, u8 *scratchpad, struct Driver *d, s16 *desiredPos, s16 *desiredRot)
+void CAM_FollowDriver_Spin360(struct CameraDC *cDC, u8 *scratchpad, struct Driver *d, SVec3 *desiredPos, SVec3 *desiredRot)
 {
-	int ratio;
+	s32 ratio;
 
-	// === Union Missing ===
 	// Not really "transitionTo" but the variables
 	// are shared with other camera modes, therefore
 	// need a union with proper names for each mode
@@ -1100,23 +989,21 @@ void CAM_FollowDriver_Spin360(struct CameraDC *cDC, u8 *scratchpad, struct Drive
 		cDC->spin360Angle += cDC->transitionTo.pos.x;
 	}
 
-	int angle = cDC->spin360Angle;
+	s32 angle = cDC->spin360Angle;
 	ratio = MATH_Sin(angle);
-	desiredPos[0] = (s16)CTR_MipsAddLo(CTR_MipsSra(d->posCurr.x, 8), CTR_MipsSra(CAM_MulLo(ratio, cDC->transitionTo.pos.z), 0xc));
+	desiredPos->x = (s16)CTR_MipsAddLo(CTR_MipsSra(d->posCurr.x, 8), CTR_MipsSra(CAM_MulLo(ratio, cDC->transitionTo.pos.z), 0xc));
 
 	ratio = MATH_Cos(angle);
-	desiredPos[2] = (s16)CTR_MipsAddLo(CTR_MipsSra(d->posCurr.z, 8), CTR_MipsSra(CAM_MulLo(ratio, cDC->transitionTo.pos.z), 0xc));
+	desiredPos->z = (s16)CTR_MipsAddLo(CTR_MipsSra(d->posCurr.z, 8), CTR_MipsSra(CAM_MulLo(ratio, cDC->transitionTo.pos.z), 0xc));
 
-	desiredPos[1] = (s16)CTR_MipsAddLo((u16)cDC->transitionTo.pos.y, CTR_MipsSra(d->posCurr.y, 8));
+	desiredPos->y = (s16)CTR_MipsAddLo((u16)cDC->transitionTo.pos.y, CTR_MipsSra(d->posCurr.y, 8));
 
-	CAM_LookAtPosition(scratchpad, (int *)&d->posCurr.x, desiredPos, desiredRot);
-	return;
+	CAM_LookAtPosition(scratchpad, (s32 *)&d->posCurr.x, desiredPos, desiredRot);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001a054-0x8001a0bc
 void CAM_SetDesiredPosRot(struct CameraDC *cDC, const SVec3 *pos, const SVec3 *rot)
 {
-	// save desired pos and rot
 	cDC->transitionTo.pos = *pos;
 	cDC->transitionTo.rot = *rot;
 
@@ -1130,26 +1017,27 @@ void CAM_SetDesiredPosRot(struct CameraDC *cDC, const SVec3 *pos, const SVec3 *r
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001a0bc-0x8001b254.
-void CAM_FollowDriver_Normal(struct CameraDC *cDC, struct Driver *d, s16 *pushBuffer, u8 *scratchpad, struct ZoomData *zoom)
+void CAM_FollowDriver_Normal(struct CameraDC *cDC, struct Driver *d, SVec3 *pushBufferPos, u8 *scratchpad, struct ZoomData *zoom)
 {
-	struct PushBuffer *pb = (struct PushBuffer *)pushBuffer;
-	struct ScratchpadStruct *sps = (struct ScratchpadStruct *)(void *)scratchpad;
+	struct PushBuffer *pb = (struct PushBuffer *)pushBufferPos;
+	struct ScratchpadStruct *sps = (struct ScratchpadStruct *)scratchpad;
+	struct CameraScratch *cam = (struct CameraScratch *)(scratchpad + 0x20C);
 	struct GameTracker *gGT = sdata->gGT;
 	struct GamepadBuffer *pad = &sdata->gGamepads->gamepad[d->driverID];
-	char state;
+	s8 state;
 	s16 uVar8;
 	u16 uVar9;
 	s16 sVar10;
 	u32 backupFlags;
-	int x;
+	s32 x;
 	s32 x_00;
 	u32 uVar11;
-	int iVar12;
+	s32 iVar12;
 	SVECTOR *psVar12;
 	u32 uVar13;
-	int iVar14;
-	s16 local_40[3];
-	s16 local_38[3];
+	s32 iVar14;
+	SVec3 local_40;
+	SVec3 local_38;
 	struct FlyInData flyInData;
 
 	// backup flags
@@ -1177,7 +1065,6 @@ void CAM_FollowDriver_Normal(struct CameraDC *cDC, struct Driver *d, s16 *pushBu
 	// (either forward to reverse, or reverse to forward)
 	if (backupFlags != cDC->flags)
 	{
-		// set flag that cam just changed this frame
 		cDC->flags |= CAMERA_FLAG_DIRECTION_CHANGED;
 	}
 
@@ -1189,7 +1076,7 @@ void CAM_FollowDriver_Normal(struct CameraDC *cDC, struct Driver *d, s16 *pushBu
 	if ((cDC->flags & CAMERA_FLAG_DIRECTION_CHANGED) == 0)
 	{
 		// absolute value driver speed
-		x = (int)d->speedApprox;
+		x = (s32)d->speedApprox;
 
 		if (x < 0)
 		{
@@ -1211,14 +1098,14 @@ void CAM_FollowDriver_Normal(struct CameraDC *cDC, struct Driver *d, s16 *pushBu
 			uVar13 = (u32)zoom->percentage1;
 			uVar11 = (u32)zoom->percentage1;
 		}
-		cDC->cameraMoveSpeed = (int)(uVar11 * cDC->cameraMoveSpeed + (0x100 - uVar13) * x) >> 8;
+		cDC->cameraMoveSpeed = (s32)(uVar11 * cDC->cameraMoveSpeed + (0x100 - uVar13) * x) >> 8;
 	}
 
 	// if camera angle changed
 	else
 	{
 		// absolute value driver speed
-		x = (int)d->speedApprox;
+		x = (s32)d->speedApprox;
 		if (x < 0)
 			x = -x;
 
@@ -1231,27 +1118,27 @@ void CAM_FollowDriver_Normal(struct CameraDC *cDC, struct Driver *d, s16 *pushBu
 		uVar8 = 0xff9c;
 	}
 
-	*(s16 *)(scratchpad + 0x20c) = uVar8;
+	cam->rot.x = uVar8;
 
 	// 0x20e
 	// camera RotY
-	*(u16 *)(scratchpad + 0x20e) = (d->rotCurr.w + d->angle + 0x800 + sVar10) & 0xfff;
+	cam->rot.y = (d->rotCurr.w + d->angle + 0x800 + sVar10) & 0xfff;
 
-	*(s16 *)(scratchpad + 0x210) = cDC->desiredRot.x * -2;
+	cam->rot.z = cDC->desiredRot.x * -2;
 
 	// convert 3 rotation shorts into rotation matrix
-	ConvertRotToMatrix((MATRIX *)(void *)(scratchpad + 0x220), (s16 *)(void *)(scratchpad + 0x20c));
+	ConvertRotToMatrix(&cam->matrix, &cam->rot);
 
-	if (((cDC->flags & CAMERA_FLAG_FIRE_SPEED_ZOOM) != 0) && (x = (int)((u32)d->fireSpeedCap << 0x10) >> 0x14, cDC->fireSpeedZoom.timer < x))
+	if (((cDC->flags & CAMERA_FLAG_FIRE_SPEED_ZOOM) != 0) && (x = (s32)((u32)d->fireSpeedCap << 0x10) >> 0x14, cDC->fireSpeedZoom.timer < x))
 	{
 		cDC->fireSpeedZoom.timer = x;
 	}
-	*(s16 *)(scratchpad + 0x20c) = 0;
-	*(s16 *)(scratchpad + 0x20e) = 0;
+	cam->rot.x = 0;
+	cam->rot.y = 0;
 
-	uVar8 = VehCalc_MapToRange(cDC->cameraMoveSpeed, (int)zoom->speedMin, (int)zoom->speedMax, (int)zoom->distMin, (int)zoom->distMax);
+	uVar8 = VehCalc_MapToRange(cDC->cameraMoveSpeed, (s32)zoom->speedMin, (s32)zoom->speedMax, (s32)zoom->distMin, (s32)zoom->distMax);
 
-	*(s16 *)(scratchpad + 0x210) = uVar8;
+	cam->rot.z = uVar8;
 
 	if (cDC->fireSpeedZoom.timer == 0)
 	{
@@ -1273,59 +1160,59 @@ void CAM_FollowDriver_Normal(struct CameraDC *cDC, struct Driver *d, s16 *pushBu
 		if (cDC->fireSpeedZoom.timer < 0)
 			cDC->fireSpeedZoom.timer = 0;
 	}
-	*(s16 *)(scratchpad + 0x210) += cDC->fireSpeedZoom.distanceOffset >> 8;
+	cam->rot.z += cDC->fireSpeedZoom.distanceOffset >> 8;
 
-	gte_SetRotMatrix((MATRIX *)(void *)(scratchpad + 0x220));
-	psVar12 = (SVECTOR *)(void *)(scratchpad + 0x20c);
+	gte_SetRotMatrix(&cam->matrix);
+	psVar12 = (SVECTOR *)&cam->rot;
 	gte_ldv0(psVar12);
 	gte_rtv0();
-	gte_stlvnl((VECTOR *)(void *)(scratchpad + 0x240));
+	gte_stlvnl((VECTOR *)&cam->pos);
 
-	*(s16 *)(scratchpad + 0x20c) = 0;
-	*(s16 *)(scratchpad + 0x20e) = 0x40;
-	*(s16 *)(scratchpad + 0x210) = 0;
+	cam->rot.x = 0;
+	cam->rot.y = 0x40;
+	cam->rot.z = 0;
 
 	gte_ldv0(psVar12);
 	gte_rtv0();
-	gte_stlvnl((VECTOR *)(void *)(scratchpad + 0x27c));
+	gte_stlvnl((VECTOR *)(scratchpad + 0x27c));
 
-	*(int *)(scratchpad + 600) = CTR_MipsSra(d->posCurr.x, 8);
-	*(int *)(scratchpad + 0x25c) = CTR_MipsSra(d->posCurr.y, 8);
-	*(int *)(scratchpad + 0x260) = CTR_MipsSra(d->posCurr.z, 8);
+	cam->delta.x = CTR_MipsSra(d->posCurr.x, 8);
+	cam->delta.y = CTR_MipsSra(d->posCurr.y, 8);
+	cam->delta.z = CTR_MipsSra(d->posCurr.z, 8);
 
-	*(int *)(scratchpad + 600) += *(int *)(scratchpad + 0x27c);
-	*(int *)(scratchpad + 0x260) += *(int *)(scratchpad + 0x284);
-	*(int *)(scratchpad + 0x240) += *(int *)(scratchpad + 600);
+	cam->delta.x += *(s32 *)(scratchpad + 0x27c);
+	cam->delta.z += *(s32 *)(scratchpad + 0x284);
+	cam->pos.x += cam->delta.x;
 
 
 	// mask-grab
 	if ((cDC->flags & CAMERA_FLAG_MASK_GRAB) != 0)
 	{
-		*(int *)(scratchpad + 0x244) = CTR_MipsSra(d->quadBlockHeight, 8) + (int)cDC->maskGrabHeightOffset + (int)zoom->vertDistance;
+		cam->pos.y = CTR_MipsSra(d->quadBlockHeight, 8) + (s32)cDC->maskGrabHeightOffset + (s32)zoom->vertDistance;
 	}
 
 	else
 	{
-		*(int *)(scratchpad + 0x244) += *(int *)(scratchpad + 0x25c) + (int)zoom->vertDistance;
+		cam->pos.y += cam->delta.y + (s32)zoom->vertDistance;
 	}
 
-	*(int *)(scratchpad + 0x248) += *(int *)(scratchpad + 0x260);
+	cam->pos.z += cam->delta.z;
 
 	uVar8 = 0;
 	if (gGT->numPlyrCurrGame != 2)
 		uVar8 = 0xff9c;
 
 	// rotX
-	*(s16 *)(scratchpad + 0x20c) = uVar8;
+	cam->rot.x = uVar8;
 
 	// rotZ
-	*(s16 *)(scratchpad + 0x210) = 0;
+	cam->rot.z = 0;
 
 	// rotY
-	*(u16 *)(scratchpad + 0x20e) = (d->rotCurr.w + d->angle + d->turnAngleCurr + 0x800 + sVar10) & 0xfff;
+	cam->rot.y = (d->rotCurr.w + d->angle + d->turnAngleCurr + 0x800 + sVar10) & 0xfff;
 
 	// convert 3 rotation shorts into rotation matrix
-	ConvertRotToMatrix((MATRIX *)(void *)(scratchpad + 0x220), (s16 *)(void *)(scratchpad + 0x20c));
+	ConvertRotToMatrix(&cam->matrix, &cam->rot);
 
 	// if racer is not damaged,
 	// slight-down view angle
@@ -1346,23 +1233,23 @@ void CAM_FollowDriver_Normal(struct CameraDC *cDC, struct Driver *d, s16 *pushBu
 	}
 
 	// Z, Y, X
-	*(s16 *)(scratchpad + 0x210) = cDC->damagePitchOffset;
-	*(s16 *)(scratchpad + 0x20e) = 0;
-	*(s16 *)(scratchpad + 0x20c) = 0;
+	cam->rot.z = cDC->damagePitchOffset;
+	cam->rot.y = 0;
+	cam->rot.x = 0;
 
-	gte_SetRotMatrix((MATRIX *)(void *)(scratchpad + 0x220));
+	gte_SetRotMatrix(&cam->matrix);
 
-	psVar12 = (SVECTOR *)(void *)(scratchpad + 0x20c);
+	psVar12 = (SVECTOR *)&cam->rot;
 
 	gte_ldv0(psVar12);
 	gte_rtv0();
 	gte_stsv(psVar12);
 
-	*(int *)(scratchpad + 600) += (int)*(s16 *)(scratchpad + 0x20c);
-	*(int *)(scratchpad + 0x260) += (int)*(s16 *)(scratchpad + 0x210);
-	*(int *)(scratchpad + 0x25c) += (int)*(s16 *)(scratchpad + 0x20e) + (int)zoom->angle[2];
+	cam->delta.x += (s32)cam->rot.x;
+	cam->delta.z += (s32)cam->rot.z;
+	cam->delta.y += (s32)cam->rot.y + (s32)zoom->angle[2];
 
-	cDC->desiredRot.x = ((zoom->angle[1] * (int)cDC->desiredRot.x) + ((0x100 - (int)zoom->angle[1]) * (int)d->rotCurr.z)) >> 8;
+	cDC->desiredRot.x = ((zoom->angle[1] * (s32)cDC->desiredRot.x) + ((0x100 - (s32)zoom->angle[1]) * (s32)d->rotCurr.z)) >> 8;
 
 
 	state = d->kartState;
@@ -1370,11 +1257,10 @@ void CAM_FollowDriver_Normal(struct CameraDC *cDC, struct Driver *d, s16 *pushBu
 	if (state == KS_MASK_GRABBED)
 	{
 		// pushBuffer position
-		*(int *)(scratchpad + 0x240) = (int)pb->pos.x;
-		*(int *)(scratchpad + 0x244) = (int)pb->pos.y;
-		*(int *)(scratchpad + 0x248) = (int)pb->pos.z;
+		cam->pos.x = (s32)pb->pos.x;
+		cam->pos.y = (s32)pb->pos.y;
+		cam->pos.z = (s32)pb->pos.z;
 
-		// reset camera interpolation
 		cDC->heightSmoothing.startOffset = 0;
 		cDC->heightSmoothing.framesRemaining = 0;
 		cDC->heightSmoothing.currentOffset = 0;
@@ -1382,7 +1268,6 @@ void CAM_FollowDriver_Normal(struct CameraDC *cDC, struct Driver *d, s16 *pushBu
 
 	if (state == KS_ENGINE_REVVING)
 	{
-		// reset camera interpolation
 		cDC->heightSmoothing.startOffset = 0;
 		cDC->heightSmoothing.framesRemaining = 0;
 		cDC->heightSmoothing.currentOffset = 0;
@@ -1392,13 +1277,13 @@ void CAM_FollowDriver_Normal(struct CameraDC *cDC, struct Driver *d, s16 *pushBu
 	{
 		cDC->BlastedLerp.boolLerpPending = 0;
 
-		cDC->BlastedLerp.desiredRot.x = cDC->lookAtPos.x - *(s16 *)(scratchpad + 600);
-		cDC->BlastedLerp.desiredRot.y = cDC->lookAtPos.y - *(s16 *)(scratchpad + 0x25c);
-		cDC->BlastedLerp.desiredRot.z = cDC->lookAtPos.z - *(s16 *)(scratchpad + 0x260);
+		cDC->BlastedLerp.desiredRot.x = cDC->lookAtPos.x - *(s16 *)&cam->delta.x;
+		cDC->BlastedLerp.desiredRot.y = cDC->lookAtPos.y - *(s16 *)&cam->delta.y;
+		cDC->BlastedLerp.desiredRot.z = cDC->lookAtPos.z - *(s16 *)&cam->delta.z;
 
-		cDC->BlastedLerp.desiredPos.x = cDC->cameraPos.x - *(s16 *)(scratchpad + 0x240);
-		cDC->BlastedLerp.desiredPos.y = cDC->cameraPos.y - *(s16 *)(scratchpad + 0x244);
-		cDC->BlastedLerp.desiredPos.z = cDC->cameraPos.z - *(s16 *)(scratchpad + 0x248);
+		cDC->BlastedLerp.desiredPos.x = cDC->cameraPos.x - *(s16 *)&cam->pos.x;
+		cDC->BlastedLerp.desiredPos.y = cDC->cameraPos.y - *(s16 *)&cam->pos.y;
+		cDC->BlastedLerp.desiredPos.z = cDC->cameraPos.z - *(s16 *)&cam->pos.z;
 
 		cDC->BlastedLerp.framesRemaining = 8;
 	}
@@ -1411,16 +1296,15 @@ void CAM_FollowDriver_Normal(struct CameraDC *cDC, struct Driver *d, s16 *pushBu
 
 		if (cDC->BlastedLerp.boolLerpPending == 0)
 		{
-			*(s16 *)((int)cDC + 0xc8) = cDC->lookAtPos.y - cDC->cameraPos.y;
-			*(s16 *)((int)cDC + 0xca) = cDC->cameraPos.y - CTR_MipsSra(d->quadBlockHeight, 8);
+			*(s16 *)((s32)cDC + 0xc8) = cDC->lookAtPos.y - cDC->cameraPos.y;
+			*(s16 *)((s32)cDC + 0xca) = cDC->cameraPos.y - CTR_MipsSra(d->quadBlockHeight, 8);
 		}
 
 		cDC->BlastedLerp.boolLerpPending = 1;
 
-		if ((cDC->cameraPos.y < *(int *)(scratchpad + 0x244)) &&
-		    (x = (int)*(s16 *)((int)cDC + 0xca) + CTR_MipsSra(d->quadBlockHeight, 8), x < *(int *)(scratchpad + 0x244)))
+		if ((cDC->cameraPos.y < cam->pos.y) && (x = (s32) * (s16 *)((s32)cDC + 0xca) + CTR_MipsSra(d->quadBlockHeight, 8), x < cam->pos.y))
 		{
-			*(int *)(scratchpad + 0x244) = x;
+			cam->pos.y = x;
 		}
 
 	LAB_8001a8b0:
@@ -1436,13 +1320,13 @@ void CAM_FollowDriver_Normal(struct CameraDC *cDC, struct Driver *d, s16 *pushBu
 		{
 			cDC->BlastedLerp.boolLerpPending = 0;
 
-			cDC->BlastedLerp.desiredRot.x = cDC->lookAtPos.x - *(s16 *)(scratchpad + 0x258);
-			cDC->BlastedLerp.desiredRot.y = cDC->lookAtPos.y - *(s16 *)(scratchpad + 0x25c);
-			cDC->BlastedLerp.desiredRot.z = cDC->lookAtPos.z - *(s16 *)(scratchpad + 0x260);
+			cDC->BlastedLerp.desiredRot.x = cDC->lookAtPos.x - *(s16 *)&cam->delta.x;
+			cDC->BlastedLerp.desiredRot.y = cDC->lookAtPos.y - *(s16 *)&cam->delta.y;
+			cDC->BlastedLerp.desiredRot.z = cDC->lookAtPos.z - *(s16 *)&cam->delta.z;
 
-			cDC->BlastedLerp.desiredPos.x = cDC->cameraPos.x - *(s16 *)(scratchpad + 0x240);
-			cDC->BlastedLerp.desiredPos.y = cDC->cameraPos.y - *(s16 *)(scratchpad + 0x244);
-			cDC->BlastedLerp.desiredPos.z = cDC->cameraPos.z - *(s16 *)(scratchpad + 0x248);
+			cDC->BlastedLerp.desiredPos.x = cDC->cameraPos.x - *(s16 *)&cam->pos.x;
+			cDC->BlastedLerp.desiredPos.y = cDC->cameraPos.y - *(s16 *)&cam->pos.y;
+			cDC->BlastedLerp.desiredPos.z = cDC->cameraPos.z - *(s16 *)&cam->pos.z;
 
 			cDC->BlastedLerp.framesRemaining = 8;
 
@@ -1454,40 +1338,40 @@ void CAM_FollowDriver_Normal(struct CameraDC *cDC, struct Driver *d, s16 *pushBu
 		// if frame countdown is not finished
 		if (cDC->BlastedLerp.framesRemaining != 0)
 		{
-			*(int *)(scratchpad + 0x240) += (cDC->BlastedLerp.desiredPos.x * cDC->BlastedLerp.framesRemaining) >> 3;
-			*(int *)(scratchpad + 0x244) += (cDC->BlastedLerp.desiredPos.y * cDC->BlastedLerp.framesRemaining) >> 3;
-			*(int *)(scratchpad + 0x248) += (cDC->BlastedLerp.desiredPos.z * cDC->BlastedLerp.framesRemaining) >> 3;
+			cam->pos.x += (cDC->BlastedLerp.desiredPos.x * cDC->BlastedLerp.framesRemaining) >> 3;
+			cam->pos.y += (cDC->BlastedLerp.desiredPos.y * cDC->BlastedLerp.framesRemaining) >> 3;
+			cam->pos.z += (cDC->BlastedLerp.desiredPos.z * cDC->BlastedLerp.framesRemaining) >> 3;
 
-			*(int *)(scratchpad + 0x258) += (cDC->BlastedLerp.desiredRot.x * cDC->BlastedLerp.framesRemaining) >> 3;
-			*(int *)(scratchpad + 0x25c) += (cDC->BlastedLerp.desiredRot.y * cDC->BlastedLerp.framesRemaining) >> 3;
-			*(int *)(scratchpad + 0x260) += (cDC->BlastedLerp.desiredRot.z * cDC->BlastedLerp.framesRemaining) >> 3;
+			cam->delta.x += (cDC->BlastedLerp.desiredRot.x * cDC->BlastedLerp.framesRemaining) >> 3;
+			cam->delta.y += (cDC->BlastedLerp.desiredRot.y * cDC->BlastedLerp.framesRemaining) >> 3;
+			cam->delta.z += (cDC->BlastedLerp.desiredRot.z * cDC->BlastedLerp.framesRemaining) >> 3;
 
 			// decrease frame countdown
 			cDC->BlastedLerp.framesRemaining--;
 		}
 	}
 
-	CAM_FindClosestQuadblock(sps, cDC, d, (VECTOR *)(void *)(scratchpad + 0x240));
+	CAM_FindClosestQuadblock(sps, cDC, d, (VECTOR *)&cam->pos);
 
 	struct QuadBlock *quad = sps->hit.ptrQuadblock;
 	if ((sps->boolDidTouchQuadblock == 0) || ((quad->quadFlags & CAM_FOLLOW_DRIVER_QUAD_FLAGS_SKIP_TERRAIN_HEIGHT) != 0))
 	{
-		if (*(int *)(scratchpad + 0x244) < (int)cDC->heightSmoothing.currentOffset + CTR_MipsSra(d->posCurr.y, 8))
+		if (cam->pos.y < (s32)cDC->heightSmoothing.currentOffset + CTR_MipsSra(d->posCurr.y, 8))
 		{
 			cDC->heightSmoothing.framesRemaining = 8;
 			cDC->heightSmoothing.startOffset = cDC->heightSmoothing.currentOffset;
-			*(int *)(scratchpad + 0x244) = (int)cDC->heightSmoothing.currentOffset + CTR_MipsSra(d->posCurr.y, 8);
+			cam->pos.y = (s32)cDC->heightSmoothing.currentOffset + CTR_MipsSra(d->posCurr.y, 8);
 
 			goto LAB_8001ab04;
 		}
 
 		cDC->heightSmoothing.framesRemaining = 8;
-		cDC->heightSmoothing.startOffset = *(s16 *)(scratchpad + 0x244) - (s16)CTR_MipsSra(d->posCurr.y, 8);
+		cDC->heightSmoothing.startOffset = *(s16 *)&cam->pos.y - (s16)CTR_MipsSra(d->posCurr.y, 8);
 	}
 
 	else
 	{
-		state = (char)quad->terrain_type;
+		state = (s8)quad->terrain_type;
 
 		// Mud, Water, or FastWater
 		if (((state == 0xe) || (state == 4)) || (state == 0xd))
@@ -1495,34 +1379,34 @@ void CAM_FollowDriver_Normal(struct CameraDC *cDC, struct Driver *d, s16 *pushBu
 			*(s16 *)(scratchpad + 0x1e) = 0;
 		}
 
-		x = (int)*(s16 *)(scratchpad + 0x1e) + (int)zoom->vertDistance;
-		if (*(int *)(scratchpad + 0x244) < x)
+		x = (s32) * (s16 *)(scratchpad + 0x1e) + (s32)zoom->vertDistance;
+		if (cam->pos.y < x)
 		{
-			*(int *)(scratchpad + 0x244) = x;
+			cam->pos.y = x;
 		}
 
 		x = cDC->heightSmoothing.framesRemaining;
 		if (x != 0)
 		{
-			*(int *)(scratchpad + 0x244) =
+			cam->pos.y =
 
-			    (8 - x) * *(int *)(scratchpad + 0x244) + x * ((int)cDC->heightSmoothing.startOffset + CTR_MipsSra(d->posCurr.y, 8)) >> 3;
+			    (8 - x) * cam->pos.y + x * ((s32)cDC->heightSmoothing.startOffset + CTR_MipsSra(d->posCurr.y, 8)) >> 3;
 
 			cDC->heightSmoothing.framesRemaining += -1;
 		}
 	}
-	cDC->heightSmoothing.currentOffset = *(s16 *)(scratchpad + 0x244) - CTR_MipsSra(d->posCurr.y, 8);
+	cDC->heightSmoothing.currentOffset = *(s16 *)&cam->pos.y - CTR_MipsSra(d->posCurr.y, 8);
 LAB_8001ab04:
 
 	// if mask grabs you when you're underwater
-	if (((gGT->level1->configFlags & 2) != 0) && (*(int *)(scratchpad + 0x244) < zoom->vertDistance))
+	if (((gGT->level1->configFlags & 2) != 0) && (cam->pos.y < zoom->vertDistance))
 	{
-		*(int *)(scratchpad + 0x244) = zoom->vertDistance;
+		cam->pos.y = zoom->vertDistance;
 	}
 
 	if (cDC->BlastedLerp.boolLerpPending != 0)
 	{
-		*(int *)(scratchpad + 0x25c) = *(int *)(scratchpad + 0x244) + (int)*(s16 *)((int)cDC + 0xc8);
+		cam->delta.y = cam->pos.y + (s32) * (s16 *)((s32)cDC + 0xc8);
 	}
 
 	if (d->kartState == KS_MASK_GRABBED)
@@ -1530,13 +1414,13 @@ LAB_8001ab04:
 		pb->rot.z -= (pb->rot.z >> 3);
 
 		// camera dirX, cameraPosX minus driverPosX
-		*(int *)(scratchpad + 0x24c) = (int)pb->pos.x - CTR_MipsSra(d->posCurr.x, 8);
+		cam->dir.x = (s32)pb->pos.x - CTR_MipsSra(d->posCurr.x, 8);
 
 		// camera dirY, cameraPosY minus driverPosY, plus something else
-		*(int *)(scratchpad + 0x250) = (int)pb->pos.y - (CTR_MipsSra(d->posCurr.y, 8) + (int)zoom->angle[2]);
+		cam->dir.y = (s32)pb->pos.y - (CTR_MipsSra(d->posCurr.y, 8) + (s32)zoom->angle[2]);
 
 		// camera dirZ, cameraPosZ minus driverPosZ
-		*(int *)(scratchpad + 0x254) = (int)pb->pos.z - CTR_MipsSra(d->posCurr.z, 8);
+		cam->dir.z = (s32)pb->pos.z - CTR_MipsSra(d->posCurr.z, 8);
 
 		if (pb->rot.x < 0x800)
 		{
@@ -1549,34 +1433,33 @@ LAB_8001ab04:
 	// if not mask grab
 	else
 	{
-		x = *(int *)(scratchpad + 0x248) - *(int *)(scratchpad + 0x260);
+		x = cam->pos.z - cam->delta.z;
 
 		// camera direction
-		*(int *)(scratchpad + 0x254) = x;
-		*(int *)(scratchpad + 0x24c) = *(int *)(scratchpad + 0x240) - *(int *)(scratchpad + 600);
-		*(int *)(scratchpad + 0x250) = *(int *)(scratchpad + 0x244) - *(int *)(scratchpad + 0x25c);
+		cam->dir.z = x;
+		cam->dir.x = cam->pos.x - cam->delta.x;
+		cam->dir.y = cam->pos.y - cam->delta.y;
 
 		// camera rotation
-		x_00 = ratan2(*(s32 *)(scratchpad + 0x24c), x);
+		x_00 = ratan2(cam->dir.x, x);
 		pb->rot.y = (s16)x_00;
 
-		x_00 = SquareRoot0_stub(CTR_MipsAddLo(CAM_MulLo(*(int *)(scratchpad + 0x24c), *(int *)(scratchpad + 0x24c)),
-		                                      CAM_MulLo(*(int *)(scratchpad + 0x254), *(int *)(scratchpad + 0x254))));
+		x_00 = SquareRoot0_stub(CTR_MipsAddLo(CAM_MulLo(cam->dir.x, cam->dir.x), CAM_MulLo(cam->dir.z, cam->dir.z)));
 
-		x_00 = ratan2(*(s32 *)(scratchpad + 0x250), x_00);
+		x_00 = ratan2(cam->dir.y, x_00);
 		pb->rot.x = 0x800 - (s16)x_00;
 
-		pb->rot.z = (s16)CTR_MipsSra(CAM_MulLo((int)zoom->angle[0], (int)cDC->desiredRot.x), 8);
+		pb->rot.z = (s16)CTR_MipsSra(CAM_MulLo((s32)zoom->angle[0], (s32)cDC->desiredRot.x), 8);
 	}
 
 	// something with pushBuffer position
-	*(int *)(scratchpad + 0x214) = *(int *)(scratchpad + 0x240) - (int)pb->pos.x;
-	*(int *)(scratchpad + 0x218) = *(int *)(scratchpad + 0x244) - (int)pb->pos.y;
-	*(int *)(scratchpad + 0x21c) = *(int *)(scratchpad + 0x248) - (int)pb->pos.z;
+	cam->posCopy.x = cam->pos.x - (s32)pb->pos.x;
+	cam->posCopy.y = cam->pos.y - (s32)pb->pos.y;
+	cam->posCopy.z = cam->pos.z - (s32)pb->pos.z;
 
-	cDC->pushBufferPosCorrection.x -= (*(int *)(scratchpad + 0x240) - cDC->cameraPos.x);
-	cDC->pushBufferPosCorrection.y -= (*(int *)(scratchpad + 0x244) - cDC->cameraPos.y);
-	cDC->pushBufferPosCorrection.z -= (*(int *)(scratchpad + 0x248) - cDC->cameraPos.z);
+	cDC->pushBufferPosCorrection.x -= (cam->pos.x - cDC->cameraPos.x);
+	cDC->pushBufferPosCorrection.y -= (cam->pos.y - cDC->cameraPos.y);
+	cDC->pushBufferPosCorrection.z -= (cam->pos.z - cDC->cameraPos.z);
 
 	if (cDC->pushBufferPosCorrection.x > 2)
 		cDC->pushBufferPosCorrection.x = 2;
@@ -1595,17 +1478,17 @@ LAB_8001ab04:
 	if (d->kartState != KS_MASK_GRABBED)
 	{
 		// pushBuffer position
-		pb->pos.x += *(s16 *)(scratchpad + 0x214) + cDC->pushBufferPosCorrection.x;
-		pb->pos.y += *(s16 *)(scratchpad + 0x218) + cDC->pushBufferPosCorrection.y;
-		pb->pos.z += *(s16 *)(scratchpad + 0x21c) + cDC->pushBufferPosCorrection.z;
+		pb->pos.x += *(s16 *)&cam->posCopy.x + cDC->pushBufferPosCorrection.x;
+		pb->pos.y += *(s16 *)&cam->posCopy.y + cDC->pushBufferPosCorrection.y;
+		pb->pos.z += *(s16 *)&cam->posCopy.z + cDC->pushBufferPosCorrection.z;
 	}
 
-	cDC->cameraPos.x = *(int *)(scratchpad + 0x240);
-	cDC->cameraPos.y = *(int *)(scratchpad + 0x244);
-	cDC->cameraPos.z = *(int *)(scratchpad + 0x248);
-	cDC->lookAtPos.x = *(int *)(scratchpad + 0x258);
-	cDC->lookAtPos.y = *(int *)(scratchpad + 0x25c);
-	cDC->lookAtPos.z = *(int *)(scratchpad + 0x260);
+	cDC->cameraPos.x = cam->pos.x;
+	cDC->cameraPos.y = cam->pos.y;
+	cDC->cameraPos.z = cam->pos.z;
+	cDC->lookAtPos.x = cam->delta.x;
+	cDC->lookAtPos.y = cam->delta.y;
+	cDC->lookAtPos.z = cam->delta.z;
 
 	// backup flags (again)
 	backupFlags = cDC->flags;
@@ -1619,12 +1502,11 @@ LAB_8001ab04:
 		return;
 	}
 
-	// === Transition, end-race battle, intro-race ===
 
 	// if end-of-race battle
 	if ((backupFlags & CAMERA_FLAG_BATTLE_END_OF_RACE) != 0)
 	{
-		CAM_FollowDriver_Spin360(cDC, scratchpad, d, &local_40[0], &local_38[0]);
+		CAM_FollowDriver_Spin360(cDC, scratchpad, d, &local_40.x, &local_38.x);
 
 		// reverse interpolation of fly-in [0x1000 to 0]
 		x = 0x1000 - cDC->transitionBlend;
@@ -1637,13 +1519,13 @@ LAB_8001ab04:
 		if ((backupFlags & CAMERA_FLAG_TRANSITION_AWAY) != 0)
 		{
 			// cameraDC TransitionTo pos and rot
-			local_40[0] = cDC->transitionTo.pos.x;
-			local_40[1] = cDC->transitionTo.pos.y;
-			local_40[2] = cDC->transitionTo.pos.z;
+			local_40.x = cDC->transitionTo.pos.x;
+			local_40.y = cDC->transitionTo.pos.y;
+			local_40.z = cDC->transitionTo.pos.z;
 
-			local_38[0] = cDC->transitionTo.rot.x;
-			local_38[1] = cDC->transitionTo.rot.y;
-			local_38[2] = cDC->transitionTo.rot.z;
+			local_38.x = cDC->transitionTo.rot.x;
+			local_38.y = cDC->transitionTo.rot.y;
+			local_38.z = cDC->transitionTo.rot.z;
 
 			// interpolate fly-in [0 to 0x1000]
 			x = cDC->transitionBlend;
@@ -1652,11 +1534,10 @@ LAB_8001ab04:
 		// if startline camera
 		else
 		{
-			// get camera path from level
 			struct SpawnType1 *st1 = gGT->level1->ptrSpawnType1;
 			void **pointers = ST1_GETPOINTERS(st1);
 			x = pointers[ST1_CAMERA_PATH];
-			int flyInDone = 0;
+			s32 flyInDone = 0;
 
 			// No camera + No ghosts (battle maps)
 			if (st1->count < 4)
@@ -1680,10 +1561,9 @@ LAB_8001ab04:
 				if ((s16)x > 0x96)
 					x = 0x96;
 
-				CAM_StartLine_FlyIn(&flyInData, 0x96, x, &local_40[0], &local_38[0]);
+				CAM_StartLine_FlyIn(&flyInData, 0x96, x, &local_40.x, &local_38.x);
 
-				// get interpolation of fly-in [0 - 0x1000]
-				x = (int)cDC->transitionBlend;
+				x = (s32)cDC->transitionBlend;
 			}
 
 			if (cDC->transitionFrame < 1)
@@ -1708,20 +1588,20 @@ LAB_8001ab04:
 	}
 
 	// use camera pos+rot, TransitionTo pos+rot, camera pos+rot, and interpolation
-	CAM_ProcessTransition(&pb->pos.x, &pb->rot.x, &local_40[0], &local_38[0], &pb->pos.x, &pb->rot.x, x);
+	CAM_ProcessTransition(&pb->pos.x, &pb->rot.x, &local_40.x, &local_38.x, &pb->pos.x, &pb->rot.x, x);
 
-	*(int *)(scratchpad + 0x240) = (int)pb->pos.x;
-	*(int *)(scratchpad + 0x244) = (int)pb->pos.y;
-	*(int *)(scratchpad + 0x248) = (int)pb->pos.z;
+	cam->pos.x = (s32)pb->pos.x;
+	cam->pos.y = (s32)pb->pos.y;
+	cam->pos.z = (s32)pb->pos.z;
 
-	CAM_FindClosestQuadblock((struct ScratchpadStruct *)(void *)scratchpad, cDC, d, (VECTOR *)(void *)(scratchpad + 0x240));
+	CAM_FindClosestQuadblock((struct ScratchpadStruct *)scratchpad, cDC, d, (VECTOR *)&cam->pos);
 
 	x = cDC->transitionFrameCount;
 	iVar14 = cDC->transitionFrameCount;
 
 	if (iVar14 != 0)
 	{
-		iVar12 = (int)cDC->transitionFrame;
+		iVar12 = (s32)cDC->transitionFrame;
 
 		if (iVar12 <= iVar14)
 		{
@@ -1805,24 +1685,22 @@ LAB_8001ab04:
 			return;
 		}
 	}
-
-	return;
 }
 
-int CAM_MapRange_PosPoints(s16 *pos1, s16 *pos2, s16 *currPos)
+s32 CAM_MapRange_PosPoints(SVec3 *pos1, SVec3 *pos2, SVec3 *currPos)
 {
 	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001b254-0x8001b334.
 	SVec3 pathDelta;
-	pathDelta.x = pos1[0] - pos2[0];
-	pathDelta.y = pos1[1] - pos2[1];
-	pathDelta.z = pos1[2] - pos2[2];
+	pathDelta.x = pos1->x - pos2->x;
+	pathDelta.y = pos1->y - pos2->y;
+	pathDelta.z = pos1->z - pos2->z;
 
 	MATH_VectorNormalize(&pathDelta);
 
 	SVec3 currDelta;
-	currDelta.x = currPos[0] - pos1[0];
-	currDelta.y = currPos[1] - pos1[1];
-	currDelta.z = currPos[2] - pos1[2];
+	currDelta.x = currPos->x - pos1->x;
+	currDelta.y = currPos->y - pos1->y;
+	currDelta.z = currPos->z - pos1->z;
 
 	CTC2(CTR_PackS16Pair(pathDelta.x, pathDelta.y), 0);
 	CTC2((s32)pathDelta.z, 1);
@@ -1836,22 +1714,22 @@ int CAM_MapRange_PosPoints(s16 *pos1, s16 *pos2, s16 *currPos)
 void CAM_ThTick(struct Thread *t)
 {
 	s16 sVar1;
-	int bVar2;
+	s32 bVar2;
 	u16 uVar4;
 	s16 sVar5;
 	s16 sVar6;
-	int iVar7;
-	int iVar8;
+	s32 iVar7;
+	s32 iVar8;
 	u32 uVar9;
 	u32 uVar10;
 	struct PVS *psVar11;
-	int *piVar12;
+	s32 *piVar12;
 	struct Instance **ppsVar13;
 	struct SpawnType1 *psVar14;
 	struct CheckpointNode *psVar15;
 	u32 uVar16;
-	int iVar17;
-	int iVar18;
+	s32 iVar17;
+	s32 iVar18;
 	s16 *psVar19;
 	s16 *psVar20;
 	s16 *psVar21;
@@ -1862,12 +1740,13 @@ void CAM_ThTick(struct Thread *t)
 	struct Driver *d;
 	u8 *scratchpadBytes;
 	s16 *scratchpad;
-	int iVar24;
-	int iVar25;
+	s32 iVar24;
+	s32 iVar25;
 
 	struct GameTracker *gGT = sdata->gGT;
 	scratchpadBytes = CTR_SCRATCHPAD_PTR(u8, 0x108);
-	scratchpad = (s16 *)(void *)scratchpadBytes;
+	scratchpad = (s16 *)scratchpadBytes;
+	struct CameraScratch *camThTick = (struct CameraScratch *)(scratchpadBytes + 0x20C);
 	cDC = (struct CameraDC *)t->inst;
 	d = cDC->driverToFollow;
 	pb = cDC->pushBuffer;
@@ -1935,7 +1814,7 @@ void CAM_ThTick(struct Thread *t)
 		for (; sVar6 != 0; sVar6--)
 		{
 			// camera mode
-			iVar7 = (int)*psVar19;
+			iVar7 = (s32)*psVar19;
 			if (iVar7 < 0)
 			{
 				iVar7 = -iVar7;
@@ -1945,7 +1824,7 @@ void CAM_ThTick(struct Thread *t)
 			uVar16 = (u32)*psVar20;
 
 			// +2 to include respawnPoint and modeID
-			psVar20 = (s16 *)((int)psVar19 + data.EndOfRace_Camera_Size[iVar7] + 2);
+			psVar20 = (s16 *)((s32)psVar19 + data.EndOfRace_Camera_Size[iVar7] + 2);
 
 			psVar15 = &gGT->level1->ptr_restart_points[uVar16];
 
@@ -1999,10 +1878,10 @@ void CAM_ThTick(struct Thread *t)
 		pb->rot.y = psVar21[5];
 		pb->rot.z = psVar21[6];
 		*(s16 *)&cDC->action = *psVar19;
-		*(s16 *)((int)&cDC->action + 2) = psVar21[2];
+		*(s16 *)((s32)&cDC->action + 2) = psVar21[2];
 		*(s16 *)&cDC->mode = psVar21[3];
 		*(s16 *)&cDC->unk0xC = psVar21[4];
-		*(s16 *)((int)&cDC->unk0xC + 2) = psVar21[5];
+		*(s16 *)((s32)&cDC->unk0xC + 2) = psVar21[5];
 		cDC->desiredRot.x = psVar21[6];
 		break;
 	case 4:
@@ -2013,12 +1892,12 @@ void CAM_ThTick(struct Thread *t)
 	case 7:
 		(cDC->transitionTo).pos.x = *psVar19;
 		sVar6 = psVar21[2];
-		uVar22 = cDC->flags & 0xffffffbf;
+		uVar22 = cDC->flags & ~CAMERA_FLAG_TRACK_PATH_FACE_DRIVER;
 		cDC->flags = uVar22;
 		(cDC->transitionTo).pos.y = sVar6;
 		if (psVar21[3] != 0)
 		{
-			cDC->flags = uVar22 | 0x40;
+			cDC->flags = uVar22 | CAMERA_FLAG_TRACK_PATH_FACE_DRIVER;
 		}
 		break;
 	case 8:
@@ -2036,7 +1915,7 @@ void CAM_ThTick(struct Thread *t)
 		sVar5 = psVar21[2];
 		sVar1 = psVar21[3];
 
-		iVar7 = VehCalc_MapToRange((int)sVar6 * (int)sVar6 + (int)sVar5 * (int)sVar5 + (int)sVar1 * (int)sVar1, 0x10000, 0x190000, 0x80, 0xf0);
+		iVar7 = VehCalc_MapToRange((s32)sVar6 * (s32)sVar6 + (s32)sVar5 * (s32)sVar5 + (s32)sVar1 * (s32)sVar1, 0x10000, 0x190000, 0x80, 0xf0);
 
 		cDC->angleAxisLerpRatio = (s16)iVar7;
 		break;
@@ -2104,7 +1983,7 @@ SkipNewCameraEOR:
 			if (sVar6 == 4)
 			{
 			LAB_8001c11c:
-				CAM_LookAtPosition(scratchpadBytes, (int *)&d->posCurr.x, &pb->pos.x, &pb->rot.x);
+				CAM_LookAtPosition(scratchpadBytes, (s32 *)&d->posCurr.x, &pb->pos.x, &pb->rot.x);
 				psVar21 = scratchpad;
 			LAB_8001c128:
 				scratchpad = psVar21;
@@ -2134,7 +2013,7 @@ SkipNewCameraEOR:
 
 						iVar8 = CAM_MapRange_PosPoints((cDC->transitionTo).pos.v, (cDC->transitionTo).rot.v, &stackMemPos[0]);
 
-						iVar17 = (int)cDC->eorModeData.pointPath.speed;
+						iVar17 = (s32)cDC->eorModeData.pointPath.speed;
 
 						stackMemPos[0] = cDC->eorModeData.pointPath.endPos.x - (cDC->transitionTo).rot.x;
 						stackMemPos[1] = cDC->eorModeData.pointPath.endPos.y - (cDC->transitionTo).rot.y;
@@ -2153,8 +2032,8 @@ SkipNewCameraEOR:
 						}
 
 						iVar24 = SquareRoot0_stub(CTR_MipsAddLo(
-						    CTR_MipsAddLo(CAM_MulLo((int)stackMemPos[0], (int)stackMemPos[0]), CAM_MulLo((int)stackMemPos[1], (int)stackMemPos[1])),
-						    CAM_MulLo((int)stackMemPos[2], (int)stackMemPos[2])));
+						    CTR_MipsAddLo(CAM_MulLo((s32)stackMemPos[0], (s32)stackMemPos[0]), CAM_MulLo((s32)stackMemPos[1], (s32)stackMemPos[1])),
+						    CAM_MulLo((s32)stackMemPos[2], (s32)stackMemPos[2])));
 
 						iVar18 = cDC->trackPathProgress << 0xc;
 						iVar25 = iVar18 / iVar24;
@@ -2208,7 +2087,7 @@ SkipNewCameraEOR:
 						pb->rot.z = 0;
 						pb->rot.x = sVar6 + 0x400;
 						psVar21 = scratchpad;
-						if ((cDC->flags & 0x40) != 0)
+						if ((cDC->flags & CAMERA_FLAG_TRACK_PATH_FACE_DRIVER) != 0)
 						{
 							pb->rot.y = d->angle + 0x800;
 						}
@@ -2253,10 +2132,9 @@ SkipNewCameraEOR:
 						{
 							if ((gGT->level1->cnt_restart_points != 0) && ((gGT->gameMode1 & 0xf) == 0))
 							{
-								s16 *trackPathPos = CTR_SCRATCHPAD_PTR(s16, 0x390);
-								s16 *trackPathLookaheadPos = CTR_SCRATCHPAD_PTR(s16, 0x398);
-								s16 *trackPathRot = CTR_SCRATCHPAD_PTR(s16, 0x314);
-								MATRIX *trackPathMatrix = CTR_SCRATCHPAD_PTR(MATRIX, 0x328);
+								SVec3 *trackPathPos = CTR_SCRATCHPAD_PTR(SVec3, 0x390);
+								SVec3 *trackPathLookaheadPos = CTR_SCRATCHPAD_PTR(SVec3, 0x398);
+
 
 								uVar9 = CAM_FollowDriver_TrackPath(cDC, trackPathPos, cDC->eorModeData.trackPathSpeed, 1);
 
@@ -2268,17 +2146,17 @@ SkipNewCameraEOR:
 
 								// interpolate two rotations
 
-								iVar8 = ((int)(((uVar10 - uVar9) + 0x800U & 0xfff) - 0x800) >> 1);
-								trackPathRot[0] = 0x800;
-								trackPathRot[1] = (s16)uVar9 + (s16)iVar8;
-								trackPathRot[2] = 0;
+								iVar8 = ((s32)(((uVar10 - uVar9) + 0x800U & 0xfff) - 0x800) >> 1);
+								camThTick->rot.x = 0x800;
+								camThTick->rot.y = (s16)uVar9 + (s16)iVar8;
+								camThTick->rot.z = 0;
 
 								// interpolate two positions
-								trackPathPos[0] = (s16)(((int)trackPathPos[0] + (int)trackPathLookaheadPos[0]) >> 1);
-								trackPathPos[1] = (s16)(((int)trackPathPos[1] + (int)trackPathLookaheadPos[1]) >> 1);
-								trackPathPos[2] = (s16)(((int)trackPathPos[2] + (int)trackPathLookaheadPos[2]) >> 1);
-								ConvertRotToMatrix(trackPathMatrix, trackPathRot);
-								gte_SetRotMatrix(trackPathMatrix);
+								trackPathPos->x = (s16)(((s32)trackPathPos->x + (s32)trackPathLookaheadPos->x) >> 1);
+								trackPathPos->y = (s16)(((s32)trackPathPos->y + (s32)trackPathLookaheadPos->y) >> 1);
+								trackPathPos->z = (s16)(((s32)trackPathPos->z + (s32)trackPathLookaheadPos->z) >> 1);
+								ConvertRotToMatrix(&camThTick->matrix, &camThTick->rot);
+								gte_SetRotMatrix(&camThTick->matrix);
 								gte_ldv0((SVECTOR *)&cDC->transitionTo);
 								gte_rtv0();
 
@@ -2288,12 +2166,12 @@ SkipNewCameraEOR:
 								iVar7 = pathOffset.vy;
 								iVar8 = pathOffset.vz;
 
-								pb->pos.x = trackPathPos[0] + (s16)uVar9;
-								pb->pos.y = trackPathPos[1] + (s16)iVar7;
-								pb->pos.z = trackPathPos[2] + (s16)iVar8;
-								pb->rot.x = trackPathRot[0] + cDC->transitionTo.rot.x;
-								pb->rot.y = trackPathRot[1] + cDC->transitionTo.rot.y;
-								pb->rot.z = trackPathRot[2] + cDC->transitionTo.rot.z;
+								pb->pos.x = trackPathPos->x + (s16)uVar9;
+								pb->pos.y = trackPathPos->y + (s16)iVar7;
+								pb->pos.z = trackPathPos->z + (s16)iVar8;
+								pb->rot.x = camThTick->rot.x + cDC->transitionTo.rot.x;
+								pb->rot.y = camThTick->rot.y + cDC->transitionTo.rot.y;
+								pb->rot.z = camThTick->rot.z + cDC->transitionTo.rot.z;
 							}
 							psVar21 = scratchpad;
 							if (cDC->cameraMode == 0xd)
@@ -2303,13 +2181,12 @@ SkipNewCameraEOR:
 					goto LAB_8001c128;
 				}
 
-				CAM_LookAtPosition(scratchpadBytes, (int *)&d->posCurr.x, &pb->pos.x, &pb->rot.x);
+				CAM_LookAtPosition(scratchpadBytes, (s32 *)&d->posCurr.x, &pb->pos.x, &pb->rot.x);
 
-				iVar7 = SquareRoot0_stub(CTR_MipsAddLo(CAM_MulLo(*(int *)(scratchpadBytes + 0x24c), *(int *)(scratchpadBytes + 0x24c)),
-				                                       CAM_MulLo(*(int *)(scratchpadBytes + 0x254), *(int *)(scratchpadBytes + 0x254))));
-				iVar17 = (int)(cDC->transitionTo).pos.x;
+				iVar7 = SquareRoot0_stub(CTR_MipsAddLo(CAM_MulLo(camThTick->dir.x, camThTick->dir.x), CAM_MulLo(camThTick->dir.z, camThTick->dir.z)));
+				iVar17 = (s32)(cDC->transitionTo).pos.x;
 				iVar24 = (iVar7 - (cDC->transitionTo).pos.y) * iVar17;
-				iVar8 = (int)(cDC->transitionTo).pos.z;
+				iVar8 = (s32)(cDC->transitionTo).pos.z;
 				iVar7 = iVar24 / iVar8;
 				/*
 				if (iVar8 == 0)
@@ -2334,12 +2211,12 @@ SkipNewCameraEOR:
 				pb->distanceToScreen_PREV = pb->distanceToScreen_CURR + iVar7;
 			}
 
-			VECTOR *cameraProbePos = (VECTOR *)(void *)(scratchpadBytes + 0x240);
-			cameraProbePos->vx = (int)pb->pos.x;
-			cameraProbePos->vy = (int)pb->pos.y;
-			cameraProbePos->vz = (int)pb->pos.z;
+			VECTOR *cameraProbePos = (VECTOR *)&camThTick->pos;
+			cameraProbePos->vx = (s32)pb->pos.x;
+			cameraProbePos->vy = (s32)pb->pos.y;
+			cameraProbePos->vz = (s32)pb->pos.z;
 
-			CAM_FindClosestQuadblock((struct ScratchpadStruct *)(void *)scratchpadBytes, cDC, d, cameraProbePos);
+			CAM_FindClosestQuadblock((struct ScratchpadStruct *)scratchpadBytes, cDC, d, cameraProbePos);
 			goto LAB_8001c150;
 		}
 	}
@@ -2394,12 +2271,8 @@ LAB_8001c150:
 
 	if ((cDC->flags & CAMERA_FLAG_RESET_RAIN_POS) != 0)
 	{
-		gGT->rainBuffer[cDC->cameraID].cameraPos[0] = pb->pos.x;
-		gGT->rainBuffer[cDC->cameraID].cameraPos[1] = pb->pos.y;
-		gGT->rainBuffer[cDC->cameraID].cameraPos[2] = pb->pos.z;
+		gGT->rainBuffer[cDC->cameraID].cameraPos = pb->pos;
 		cDC->flags &= ~CAMERA_FLAG_RESET_RAIN_POS;
 	}
 	cDC->flags &= ~(CAMERA_FLAG_DIRECTION_CHANGED | CAMERA_FLAG_FIRE_SPEED_ZOOM);
-
-	return;
 }
