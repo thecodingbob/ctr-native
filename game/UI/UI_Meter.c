@@ -4,11 +4,9 @@
 
 void UI_JumpMeter_Update(struct Driver *d)
 {
-	// if player is not in the air
-	if ((d->actionsFlagSet & 0x80000) == 0)
+	if ((d->actionsFlagSet & ACTION_AIRBORNE) == 0)
 	{
-		// if, in previous frame? player was not in the air either
-		if ((d->actionsFlagSetPrevFrame & 0x80000) == 0)
+		if ((d->actionsFlagSetPrevFrame & ACTION_AIRBORNE) == 0)
 		{
 			// if Jump meter Timer is done
 			if (d->jumpMeterTimer == 0)

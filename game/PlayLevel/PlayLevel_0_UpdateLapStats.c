@@ -29,7 +29,7 @@ void PlayLevel_UpdateLapStats(void)
 	{
 		currDriver = gGT->driversInRaceOrder[iVar9];
 
-		if ((currDriver != 0) && ((currDriver->actionsFlagSet & 0x100000) == 0))
+		if ((currDriver != 0) && ((currDriver->actionsFlagSet & ACTION_BOT) == 0))
 		{
 			firstRank = currDriver;
 			break;
@@ -78,10 +78,9 @@ void PlayLevel_UpdateLapStats(void)
 			// Set racer's distance driven backwards to zero
 			currDriver->distanceDrivenBackwards = 0;
 
-			// if driving behind startline, now not
-			if ((currDriver->actionsFlagSet & 0x1000000) != 0)
+			if ((currDriver->actionsFlagSet & ACTION_BEHIND_START_LINE) != 0)
 			{
-				currDriver->actionsFlagSet &= ~(0x1000000);
+				currDriver->actionsFlagSet &= ~ACTION_BEHIND_START_LINE;
 
 				// skip next 46 lines of code
 				goto LAB_800418b4;
@@ -132,8 +131,7 @@ void PlayLevel_UpdateLapStats(void)
 				// If Final Lap
 				if (lapCounter == (gGT->numLaps - 1))
 				{
-					// if this is human and not AI
-					if ((currDriver->actionsFlagSet & 0x100000) == 0)
+					if ((currDriver->actionsFlagSet & ACTION_BOT) == 0)
 					{
 						// frames, so the animation lasts 3 seconds
 						sdata->finalLapTextTimer[iVar10] = 90;
@@ -147,11 +145,9 @@ void PlayLevel_UpdateLapStats(void)
 
 			// === If did just finish race ===
 
-			// if racer hadn't finished the race
-			if ((currDriver->actionsFlagSet & 0x2000000) == 0)
+			if ((currDriver->actionsFlagSet & ACTION_RACE_FINISHED) == 0)
 			{
-				// this one racer has now finished the race
-				currDriver->actionsFlagSet |= 0x2000000;
+				currDriver->actionsFlagSet |= ACTION_RACE_FINISHED;
 
 				// === Run on first frame that race ends ===
 
@@ -167,8 +163,7 @@ void PlayLevel_UpdateLapStats(void)
 				// you have no weapon
 				currDriver->heldItemID = 0xf;
 
-				// If this is human and not AI
-				if ((currDriver->actionsFlagSet & 0x100000) == 0)
+				if ((currDriver->actionsFlagSet & ACTION_BOT) == 0)
 				{
 					// If this racer is in first place
 					if (currDriver->driverRank == 0)
@@ -213,7 +208,7 @@ void PlayLevel_UpdateLapStats(void)
 			{
 				// automatic backwards penalty
 				currDriver->distanceDrivenBackwards = 600;
-				currDriver->actionsFlagSet |= 0x1000000;
+				currDriver->actionsFlagSet |= ACTION_BEHIND_START_LINE;
 			}
 
 			// if player did not JUST cross finish backwards
@@ -223,7 +218,7 @@ void PlayLevel_UpdateLapStats(void)
 
 				if (
 				    // if player did not EVER cross finish backwards
-				    ((currDriver->actionsFlagSet & 0x1000000) == 0) &&
+				    ((currDriver->actionsFlagSet & ACTION_BEHIND_START_LINE) == 0) &&
 
 				    (
 				        // if distance driven this frame is less than...
@@ -238,8 +233,7 @@ void PlayLevel_UpdateLapStats(void)
 			}
 
 		LAB_800418b4:
-			// if racer hasn't finished the race
-			if ((currDriver->actionsFlagSet & 0x2000000) == 0)
+			if ((currDriver->actionsFlagSet & ACTION_RACE_FINISHED) == 0)
 			{
 				// set rank to "unsorted"
 				currDriver->driverRank = -1;
@@ -295,8 +289,7 @@ void PlayLevel_UpdateLapStats(void)
 			// driver lap index
 			iVar4 = currDriver->lapIndex;
 
-			// if drive backwards behind startline
-			if ((currDriver->actionsFlagSet & 0x1000000) != 0)
+			if ((currDriver->actionsFlagSet & ACTION_BEHIND_START_LINE) != 0)
 				iVar4 -= 1;
 
 			if (
@@ -409,18 +402,16 @@ void PlayLevel_UpdateLapStats(void)
 			if (currDriver == NULL)
 				continue;
 
-			// if driver already finished race
-			if ((currDriver->actionsFlagSet & 0x2000000) != 0)
+			if ((currDriver->actionsFlagSet & ACTION_RACE_FINISHED) != 0)
 				continue;
 
-			// End the race for this player
-			currDriver->actionsFlagSet |= 0x2000000;
+			currDriver->actionsFlagSet |= ACTION_RACE_FINISHED;
 
 			// remove weapon
 			currDriver->heldItemID = 0xf;
 
 			// skip AIs
-			if ((currDriver->actionsFlagSet & 0x100000) != 0)
+			if ((currDriver->actionsFlagSet & ACTION_BOT) != 0)
 				continue;
 
 			// === VS Mode ===

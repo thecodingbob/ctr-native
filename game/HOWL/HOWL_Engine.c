@@ -218,17 +218,17 @@ void EngineSound_Player(struct Driver *driver)
 		if (steer < 0)
 			steer = -steer;
 
-		u32 volMax = ((driver->actionsFlagSet & 0x100000) == 0) ? 0xe6 : 0xbe;
+		u32 volMax = ((driver->actionsFlagSet & ACTION_BOT) == 0) ? 0xe6 : 0xbe;
 		volume = VehCalc_MapToRange(driver->engineSoundVolumeState, 0, driver->const_AccelSpeed_ClassStat, 0x82, volMax);
 
 		if ((driver->kartState != KS_DRIFTING) && ((driver->actionsFlagSet & 8) == 0))
 			volume += steer >> 3;
 
-		u32 pitchMax = ((driver->actionsFlagSet & 0x100000) == 0) ? 200 : 0xbe;
+		u32 pitchMax = ((driver->actionsFlagSet & ACTION_BOT) == 0) ? 200 : 0xbe;
 		int enginePitch =
 		    VehCalc_MapToRange(driver->engineSoundPitchState, 0, driver->const_AccelSpeed_ClassStat + driver->const_SacredFireSpeed + 0xf00, 0x3c, pitchMax);
 
-		if ((driver->actionsFlagSet & 0x100000) == 0)
+		if ((driver->actionsFlagSet & ACTION_BOT) == 0)
 		{
 			if (driver->kartState == KS_DRIFTING)
 			{
@@ -277,7 +277,7 @@ void EngineSound_Player(struct Driver *driver)
 	distortion = (distortion & 0xff) << 8;
 	lr &= 0xff;
 
-	if ((driver->actionsFlagSet & 0x10000) != 0)
+	if ((driver->actionsFlagSet & ACTION_ENGINE_ECHO) != 0)
 		volume |= distortion | 0x1000000;
 	else
 		volume |= distortion;
@@ -423,7 +423,7 @@ void EngineSound_AI(struct Driver *ai, struct Driver *cameraDriver, int slotInde
 		lr = 0xff;
 
 	distortion = (distortion & 0xff) << 8;
-	if ((cameraDriver->actionsFlagSet & 0x10000) != 0)
+	if ((cameraDriver->actionsFlagSet & ACTION_ENGINE_ECHO) != 0)
 		distortion |= 0x1000000;
 
 	EngineAudio_Recalculate((slotIndex + 0x10) & 0xffff, ((volume & 0xff) << 0x10) | distortion | (lr & 0xff));

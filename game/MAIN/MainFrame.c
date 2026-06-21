@@ -118,7 +118,7 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 				}
 				else
 				{
-					if ((psVar9->actionsFlagSet & 0x2000000) != 0)
+					if ((psVar9->actionsFlagSet & ACTION_RACE_FINISHED) != 0)
 					{
 						psVar9->clockReceive = 0;
 					}

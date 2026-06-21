@@ -113,8 +113,7 @@ void UI_DrawRankedDrivers(void)
 			// if player structure pointer is not nullptr
 			if ((gGT->drivers[iVar14] != 0) &&
 
-			    // if racer finished the race
-			    ((gGT->drivers[iVar14]->actionsFlagSet & 0x2000000) != 0))
+			    ((gGT->drivers[iVar14]->actionsFlagSet & ACTION_RACE_FINISHED) != 0))
 			{
 				// count how many racers have finished
 				numRacersFinished++;
@@ -254,7 +253,7 @@ void UI_DrawRankedDrivers(void)
 
 			    // racer crossed the startline backwards
 			    // this is when race starts and you're behind the finish line
-			    ((gGT->drivers[iVar14]->actionsFlagSet & 0x1000000) != 0))
+			    ((gGT->drivers[iVar14]->actionsFlagSet & ACTION_BEHIND_START_LINE) != 0))
 			{
 			LAB_80052b00:
 				// icon posX is zero,

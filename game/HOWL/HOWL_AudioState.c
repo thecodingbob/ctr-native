@@ -158,8 +158,7 @@ void Audio_SetMaskSong(u32 tempo)
 
 	for (i = 0; i < gGT->numPlyrCurrGame; i++)
 	{
-		// if player is using mask weapon
-		if ((gGT->drivers[i]->actionsFlagSet & 0x800000) != 0)
+		if ((gGT->drivers[i]->actionsFlagSet & ACTION_MASK_WEAPON) != 0)
 		{
 			// There is at least one player using a mask
 			isMaskUsed = true;
@@ -254,7 +253,7 @@ void Audio_Update1(void)
 		{
 			d = gGT->driversInRaceOrder[i];
 
-			if ((d != NULL) && ((d->actionsFlagSet & 0x100000) == 0))
+			if ((d != NULL) && ((d->actionsFlagSet & ACTION_BOT) == 0))
 			{
 				break;
 			}
@@ -292,7 +291,7 @@ void Audio_Update1(void)
 		{
 			d = gGT->driversInRaceOrder[i];
 
-			if ((d != NULL) && ((d->actionsFlagSet & 0x100000) == 0))
+			if ((d != NULL) && ((d->actionsFlagSet & ACTION_BOT) == 0))
 			{
 				break;
 			}
@@ -363,7 +362,7 @@ void Audio_Update1(void)
 		{
 			d = gGT->driversInRaceOrder[i];
 
-			if ((d != NULL) && ((d->actionsFlagSet & 0x100000) == 0))
+			if ((d != NULL) && ((d->actionsFlagSet & ACTION_BOT) == 0))
 			{
 				break;
 			}
@@ -436,8 +435,7 @@ void Audio_Update1(void)
 
 		Level_AmbientSound();
 
-		// if the race is over for this racer
-		if ((d->actionsFlagSet & 0x2000000) != 0)
+		if ((d->actionsFlagSet & ACTION_RACE_FINISHED) != 0)
 		{
 			// if did not just open N Tropy
 			if ((gGT->gameModeEnd & NTROPY_JUST_OPENED) == 0)

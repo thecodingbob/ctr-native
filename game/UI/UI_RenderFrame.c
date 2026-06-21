@@ -100,8 +100,7 @@ void UI_RenderFrame_Racing()
 	// numPlyrCurrGame is 0
 	if ((numPlyr == '\0') &&
 
-	    // If this is an AI and not a human
-	    ((gGT->drivers[0]->actionsFlagSet & 0x100000) != 0))
+	    ((gGT->drivers[0]->actionsFlagSet & ACTION_BOT) != 0))
 	{
 		// force draw speedometer, and not map, why?
 		sdata->HudAndDebugFlags = 8;
@@ -136,18 +135,15 @@ void UI_RenderFrame_Racing()
 		{
 			// pointer to player structure
 			playerStruct = (struct Driver *)playerThread->object;
-
+			// if player has not driven backwards very far,
 			if (
-			    // if player has not driven backwards very far,
 			    (playerStruct->distanceDrivenBackwards < 0x1f5)
 
 			    ||
 
-			    // racer is not going the Wrong Way
-			    ((playerStruct->actionsFlagSet & 0x100) == 0))
+			    ((playerStruct->actionsFlagSet & ACTION_DRIVING_WRONG_WAY) == 0))
 			{
 			LAB_80053260:
-				// If game is not paused
 				if ((gameMode1 & PAUSE_ALL) == 0)
 				{
 					// execute Jump meter and landing boost processes
@@ -159,7 +155,6 @@ void UI_RenderFrame_Racing()
 			// wrong way for too long
 			else
 			{
-				// If game is not paused
 				if ((gameMode1 & PAUSE_ALL) == 0)
 				{
 					pb = &gGT->pushBuffer[playerStruct->driverID];
@@ -198,8 +193,7 @@ void UI_RenderFrame_Racing()
 				UI_DrawSpeedBG();
 			}
 
-			// if racer hasn't finished the race
-			if ((playerStruct->actionsFlagSet & 0x2000000) == 0)
+			if ((playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) == 0)
 			{
 				// If you're not in Battle Mode
 				if ((gameMode1 & BATTLE_MODE) == 0)
@@ -331,8 +325,7 @@ void UI_RenderFrame_Racing()
 			// If you're not in a Relic Race
 			if ((gameMode1 & RELIC_RACE) == 0)
 			{
-				// if racer hasn't finished the race
-				if ((playerStruct->actionsFlagSet & 0x2000000) == 0)
+				if ((playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) == 0)
 				{
 					// Draw weapon and number of wumpa fruit in HUD
 					UI_Weapon_DrawSelf(hudStructPtr[0].x, hudStructPtr[0].y, hudStructPtr[0].scale, playerStruct);
@@ -421,17 +414,13 @@ void UI_RenderFrame_Racing()
 				}
 			}
 
-			// If you're not in Battle Mode
 			if ((gameMode1 & BATTLE_MODE) == 0)
 			{
-				// if racer hasn't finished the race
-				if ((playerStruct->actionsFlagSet & 0x2000000) == 0)
+				if ((playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) == 0)
 				{
 					UI_DrawLapCount(hudStructPtr[1].x, hudStructPtr[1].y, (u32)hudStructPtr[1].scale, playerStruct);
 				}
 			}
-
-			// if you're in battle mode
 			else
 			{
 				// Draw how many points or lifes the player has
@@ -439,24 +428,19 @@ void UI_RenderFrame_Racing()
 			}
 
 			if (
-			    // if you're in adventure mode or Arcade mode and
 			    ((gameMode1 & (ARCADE_MODE | ADVENTURE_MODE)) != 0) &&
-
-			    // racer finished the race
-			    ((playerStruct->actionsFlagSet & 0x2000000) != 0))
+			    ((playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) != 0))
 			{
 				AA_EndEvent_DisplayTime((u32)playerStruct->driverID, 0);
 			}
 
 			partTimeVariable5 = gameMode1;
 
-			// If you are in Relic Race, and not in battle mode,
-			// and not in time trial
+			// If you are in Relic Race, and not in battle mode, and not in time trial
 			if ((partTimeVariable5 & 0x4020020) == 0)
 			{
 				if (
-				    // if racer hasn't finished the race
-				    ((playerStruct->actionsFlagSet & 0x2000000) == 0) || ((
+				    ((playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) == 0) || ((
 				                                                             // if numPlyrCurrGame is 2
 				                                                             numPlyr == '\x02' &&
 
@@ -541,9 +525,7 @@ void UI_RenderFrame_Racing()
 			}
 
 			if ((playerStruct->numWumpas >= 10) &&
-
-			    // if racer hasn't finished the race
-			    ((playerStruct->actionsFlagSet & 0x2000000) == 0))
+			    ((playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) == 0))
 			{
 				// draw shining background behind wumpa fruit
 				UI_Weapon_DrawBG(hudStructPtr[0xC].x, hudStructPtr[0xC].y, hudStructPtr[0xC].scale, playerStruct);
@@ -822,10 +804,7 @@ void UI_RenderFrame_Racing()
 			pb = &gGT->pushBuffer[playerStruct->driverID];
 
 			if ((
-			        // if racer finished the race
-			        ((playerStruct->actionsFlagSet & 0x2000000) != 0) &&
-
-			        // If you're not in Arcade or Time Trial
+			        ((playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) != 0) &&
 			        ((gameMode1 & (ARCADE_MODE | TIME_TRIAL)) == 0)) &&
 			    ((
 			        // cooldown is finished
@@ -994,8 +973,7 @@ void UI_RenderFrame_CrystChall(void)
 		{
 			player->funcPtrs[DRIVER_FUNC_INIT] = VehPhysProc_FreezeEndEvent_Init;
 
-			// turn on 26th bit of Actions Flag set (means racer finished the race)
-			player->actionsFlagSet |= 0x2000000;
+			player->actionsFlagSet |= ACTION_RACE_FINISHED;
 
 			MainGameEnd_Initialize();
 		}

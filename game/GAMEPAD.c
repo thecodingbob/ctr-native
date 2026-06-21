@@ -912,8 +912,7 @@ int GAMEPAD_ProcessAnyoneVars(struct GamepadSystem *gGamepads)
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800263a0-0x800263fc
 void GAMEPAD_JogCon1(struct Driver *d, char val, u16 timeMS)
 {
-	// if AI
-	if ((d->actionsFlagSet & 0x100000) != 0)
+	if ((d->actionsFlagSet & ACTION_BOT) != 0)
 		return;
 
 	struct GamepadBuffer *gb = &sdata->gGamepads->gamepad[d->driverID];
@@ -929,8 +928,7 @@ void GAMEPAD_JogCon1(struct Driver *d, char val, u16 timeMS)
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800263fc-0x80026440.
 void GAMEPAD_JogCon2(struct Driver *d, char val, s16 timeMS)
 {
-	// if AI
-	if ((d->actionsFlagSet & 0x100000) != 0)
+	if ((d->actionsFlagSet & ACTION_BOT) != 0)
 		return;
 
 	struct GamepadBuffer *gb = &sdata->gGamepads->gamepad[d->driverID];
@@ -943,8 +941,7 @@ void GAMEPAD_JogCon2(struct Driver *d, char val, s16 timeMS)
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80026440-0x800264c0.
 void GAMEPAD_ShockFreq(struct Driver *d, int frame, int val)
 {
-	// if AI
-	if ((d->actionsFlagSet & 0x100000) != 0)
+	if ((d->actionsFlagSet & ACTION_BOT) != 0)
 		return;
 
 	// 0 for enabled,
@@ -968,8 +965,7 @@ void GAMEPAD_ShockFreq(struct Driver *d, int frame, int val)
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800264c0-0x80026540.
 void GAMEPAD_ShockForce1(struct Driver *d, int frame, int val)
 {
-	// if AI
-	if ((d->actionsFlagSet & 0x100000) != 0)
+	if ((d->actionsFlagSet & ACTION_BOT) != 0)
 		return;
 
 	// 0 for enabled,
@@ -993,8 +989,7 @@ void GAMEPAD_ShockForce1(struct Driver *d, int frame, int val)
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80026540-0x800265c0.
 void GAMEPAD_ShockForce2(struct Driver *d, int frame, int val)
 {
-	// if AI
-	if ((d->actionsFlagSet & 0x100000) != 0)
+	if ((d->actionsFlagSet & ACTION_BOT) != 0)
 		return;
 
 	// 0 for enabled,

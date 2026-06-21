@@ -21,8 +21,8 @@ static int PickupBots_IsBotWeaponReady(struct Driver *driver)
 		return 0;
 #endif
 
-	return ((driver->actionsFlagSet & 0x100000) != 0) && ((driver->botData.botFlags & BOT_FLAG_DAMAGE_ACTIVE) == 0) &&
-	       ((driver->actionsFlagSet & 0x2000000) == 0) && (driver->botData.weaponCooldown == 0) && (driver->instTntRecv == NULL) && (driver->clockReceive == 0);
+	return ((driver->actionsFlagSet & ACTION_BOT) != 0) && ((driver->botData.botFlags & BOT_FLAG_DAMAGE_ACTIVE) == 0) &&
+	       ((driver->actionsFlagSet & ACTION_RACE_FINISHED) == 0) && (driver->botData.weaponCooldown == 0) && (driver->instTntRecv == NULL) && (driver->clockReceive == 0);
 }
 
 static int PickupBots_IsCloseToPlayer(struct Driver *player, struct Driver *bot)
@@ -72,7 +72,7 @@ static void PickupBots_UpdateArcade(void)
 					{
 						bot->heldItemID = PICKUPBOTS_ITEM_TNT;
 
-						if ((player->actionsFlagSet & 0x100000) == 0)
+						if ((player->actionsFlagSet & ACTION_BOT) == 0)
 						{
 							PickupBots_PlayVoice(0xf, bot, player);
 						}
@@ -83,7 +83,7 @@ static void PickupBots_UpdateArcade(void)
 					{
 						bot->heldItemID = PICKUPBOTS_ITEM_POTION;
 
-						if ((player->actionsFlagSet & 0x100000) == 0)
+						if ((player->actionsFlagSet & ACTION_BOT) == 0)
 						{
 							PickupBots_PlayVoice(0xf, bot, player);
 						}
@@ -99,7 +99,7 @@ static void PickupBots_UpdateArcade(void)
 				{
 					bot->heldItemID = PICKUPBOTS_ITEM_BOMB;
 
-					if ((player->actionsFlagSet & 0x100000) == 0)
+					if ((player->actionsFlagSet & ACTION_BOT) == 0)
 					{
 						PickupBots_PlayVoice(10, bot, player);
 					}
@@ -111,7 +111,7 @@ static void PickupBots_UpdateArcade(void)
 				{
 					bot->heldItemID = PICKUPBOTS_ITEM_MISSILE;
 
-					if ((player->actionsFlagSet & 0x100000) == 0)
+					if ((player->actionsFlagSet & ACTION_BOT) == 0)
 					{
 						PickupBots_PlayVoice(11, bot, player);
 					}
@@ -147,7 +147,7 @@ static void PickupBots_UpdateArcade(void)
 				{
 					bot->heldItemID = weaponID;
 
-					if ((player->actionsFlagSet & 0x100000) == 0)
+					if ((player->actionsFlagSet & ACTION_BOT) == 0)
 					{
 						PickupBots_PlayVoice(11, bot, player);
 					}
@@ -386,7 +386,7 @@ static void PickupBots_UpdateBoss(void)
 	struct Driver *player = gGT->drivers[0];
 	struct MetaDataBOSS *bossMeta = sdata->bossWeaponMeta;
 
-	if (((boss->botData.botFlags & BOT_FLAG_DAMAGE_ACTIVE) != 0) || ((boss->actionsFlagSet & 0x2000000) != 0) || (boss->instTntRecv != NULL) ||
+	if (((boss->botData.botFlags & BOT_FLAG_DAMAGE_ACTIVE) != 0) || ((boss->actionsFlagSet & ACTION_RACE_FINISHED) != 0) || (boss->instTntRecv != NULL) ||
 	    (boss->clockReceive != 0) || (boss->botData.aiPhysics.speedLinear < 0x1f41))
 	{
 		PickupBots_SetBossCooldown(bossMeta);

@@ -469,9 +469,7 @@ void UI_DrawLimitClock(s16 posX, s16 posY, s16 fontType)
 			{
 				// pointer of each player (P1, P2, P3, P4)
 				d = gGT->drivers[i];
-
-				// end the race for every racer
-				d->actionsFlagSet |= 0x2000000;
+				d->actionsFlagSet |= ACTION_RACE_FINISHED;
 			};
 
 			MainGameEnd_Initialize();
