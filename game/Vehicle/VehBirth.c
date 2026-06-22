@@ -1,11 +1,5 @@
 #include <common.h>
 
-struct VehBirthPosRot
-{
-	SVec3 pos;
-	SVec3 rot;
-};
-
 static int VehBirth_IsDoor5InstDef(struct InstDef *instDef)
 {
 	if (instDef->modelID != STATIC_DOOR)
@@ -64,9 +58,9 @@ static int VehBirth_ShouldUseStartlineInAdv(struct GameTracker *gGT, s16 *warppa
 	       ((u32)(prevLEV - CREDITS_CRASH) < 0x14) || (warppadRot == NULL);
 }
 
-static struct VehBirthPosRot *VehBirth_SpawnType2PosRot(struct Level *level)
+static struct SpawnPosRot *VehBirth_SpawnType2PosRot(struct Level *level)
 {
-	return (struct VehBirthPosRot *)level->ptrSpawnType2_PosRot[1].posCoords;
+	return level->ptrSpawnType2_PosRot[1].posRot;
 }
 
 static void VehBirth_SetBottomFromPos(SVec3 *posBottom, const SVec3 *pos)
@@ -126,7 +120,7 @@ void VehBirth_TeleportSelf(struct Driver *d, u8 spawnFlag, int spawnPosY)
 	struct ScratchpadStruct *sps = CTR_SCRATCHPAD_PTR(struct ScratchpadStruct, 0x108);
 
 	struct InstDef *doorInst = NULL;
-	struct VehBirthPosRot *advSpawn = NULL;
+	struct SpawnPosRot *advSpawn = NULL;
 	s16 *warppadRot = NULL;
 	int spawnAtBoss;
 	int spawnOutsideBoss = 0;

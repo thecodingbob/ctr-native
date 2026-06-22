@@ -620,10 +620,21 @@ struct SpawnType1
 };
 #define ST1_GETPOINTERS(x) (void **)((u32)x + sizeof(struct SpawnType1))
 
+struct SpawnPosRot
+{
+	SVec3 pos;
+	SVec3 rot;
+};
+
 struct SpawnType2
 {
 	int numCoords;
-	s16 *posCoords; // maybe should be `struct PosRot*` instead of `s16*`
+	union
+	{
+		s16 *posCoords;
+		SVec3 *positions;
+		struct SpawnPosRot *posRot;
+	};
 };
 
 // per-quadblock checkpoint node
@@ -830,7 +841,7 @@ struct Level
 
 	// spawn_arrays2 is for things
 	// like Seal, Minecart, etc,
-	// series of positions (only positions)
+	// series of SVec3 positions
 
 	// 0x138
 	int numSpawnType2;
@@ -840,7 +851,7 @@ struct Level
 
 	// spawn_arrays is for things
 	// N Gin Labs barrel, Snowball,
-	// series of positions and rotations
+	// series of SpawnPosRot records
 
 	// 0x140
 	int numSpawnType2_PosRot;
@@ -917,4 +928,12 @@ struct Level
 };
 
 _Static_assert(sizeof(struct RainBuffer) == 0x30);
+_Static_assert(sizeof(struct SpawnPosRot) == 0xc);
+_Static_assert(offsetof(struct SpawnPosRot, pos) == 0x0);
+_Static_assert(offsetof(struct SpawnPosRot, rot) == 0x6);
+_Static_assert(sizeof(struct SpawnType2) == 0x8);
+_Static_assert(offsetof(struct SpawnType2, numCoords) == 0x0);
+_Static_assert(offsetof(struct SpawnType2, posCoords) == 0x4);
+_Static_assert(offsetof(struct SpawnType2, positions) == 0x4);
+_Static_assert(offsetof(struct SpawnType2, posRot) == 0x4);
 _Static_assert(offsetof(struct Level, jumpVerticalSpeedCap) == 0x18C);
