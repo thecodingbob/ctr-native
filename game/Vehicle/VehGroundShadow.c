@@ -174,7 +174,7 @@ static void VehGroundShadow_TransformLocalAxes(struct VehGroundShadowEntry *entr
 
 	for (int i = 0; i < 3; i++)
 	{
-		gte_ldv0(local);
+		CTR_GteLoadS16TripletV0(local);
 		gte_llv0_b();
 
 		if (i == 0)
@@ -379,7 +379,7 @@ void VehGroundShadow_Main(void)
 			scaled[1] = (s16)scaledY;
 			scaled[2] = (s16)scaledZ;
 			scaled[3] = 0;
-			gte_ldv0(scaled);
+			CTR_GteLoadS16TripletV0(scaled);
 			gte_rtv0_b();
 			groundDistance = (s32)MFC2(27) >> 2;
 

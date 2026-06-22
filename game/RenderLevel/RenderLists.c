@@ -99,7 +99,7 @@ static int RenderLists_ProjectDistance(struct PushBuffer *pb, const struct Bound
 
 	RenderLists_SelectBoxCorner(box, pb->RenderListJmpIndex[5] & 7, point);
 
-	gte_ldv0(point);
+	CTR_GteLoadS16TripletV0(point);
 	gte_rtps();
 	gte_stsz(&distance);
 
