@@ -136,30 +136,24 @@ static int VehGroundSkids_IntensityFromDepth(int depth)
 	return intensity;
 }
 
-static void VehGroundSkids_ProjectFrame(struct VehGroundSkidsScratch *scratch, const SVECTOR *frame, u32 *sxy, s32 *depth)
+force_inline void VehGroundSkids_ProjectTriplet(struct VehGroundSkidsScratch *scratch, const SVECTOR *frame, u32 *sxy, s32 *depth)
 {
 	VehGroundSkids_Subset2(scratch, &frame[0], &frame[1], &frame[2]);
-	gte_ldv0(&scratch->projected[0]);
-	gte_ldv1(&scratch->projected[1]);
-	gte_ldv2(&scratch->projected[2]);
+	CTR_GteLoadSV3(&scratch->projected[0], &scratch->projected[1], &scratch->projected[2]);
 	gte_rtpt();
-	gte_stsxy3(&sxy[0], &sxy[1], &sxy[2]);
+	CTR_GteStoreSXY3(&sxy[0], &sxy[1], &sxy[2]);
 	gte_stsz3(&depth[0], &depth[1], &depth[2]);
+}
 
-	VehGroundSkids_Subset2(scratch, &frame[3], &frame[4], &frame[5]);
-	gte_ldv0(&scratch->projected[0]);
-	gte_ldv1(&scratch->projected[1]);
-	gte_ldv2(&scratch->projected[2]);
-	gte_rtpt();
-	gte_stsxy3(&sxy[3], &sxy[4], &sxy[5]);
-	gte_stsz3(&depth[3], &depth[4], &depth[5]);
+static void VehGroundSkids_ProjectFrame(struct VehGroundSkidsScratch *scratch, const SVECTOR *frame, u32 *sxy, s32 *depth)
+{
+	VehGroundSkids_ProjectTriplet(scratch, &frame[0], &sxy[0], &depth[0]);
+	VehGroundSkids_ProjectTriplet(scratch, &frame[3], &sxy[3], &depth[3]);
 
 	VehGroundSkids_Subset2(scratch, &frame[6], &frame[7], &frame[0]);
-	gte_ldv0(&scratch->projected[0]);
-	gte_ldv1(&scratch->projected[1]);
-	gte_ldv2(&scratch->projected[2]);
+	CTR_GteLoadSV3(&scratch->projected[0], &scratch->projected[1], &scratch->projected[2]);
 	gte_rtpt();
-	gte_stsxy3(&sxy[6], &sxy[7], &sxy[8]);
+	CTR_GteStoreSXY3(&sxy[6], &sxy[7], &sxy[8]);
 	gte_stsz3(&depth[6], &depth[7], &depth[8]);
 }
 
@@ -211,7 +205,7 @@ void VehGroundSkids_Main(struct Thread *thread, struct PushBuffer *pb)
 
 			if (VehGroundSkids_InitPoint(scratch->projected, &framePoints[0], scratch->origin.v))
 			{
-				gte_ldv0(scratch->projected);
+				CTR_GteLoadSV0(&scratch->projected[0]);
 				gte_rtv0();
 
 				int intensity = VehGroundSkids_IntensityFromDepth(MFC2_S(27));
