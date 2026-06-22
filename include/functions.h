@@ -433,6 +433,7 @@ void MainRaceTrack_RequestLoad(s16 levelID);
 
 int MATH_Sin(u32 angle);
 int MATH_Cos(u32 angle);
+s32 MATH_FastSqrt(u32 value, s32 shift);
 void TRIG_AngleSinCos_r19r17r18(u32 angle, s32 *sine, s32 *cosine);
 void TRIG_AngleSinCos_r15r16r17(u32 angle, s32 *sine, s32 *cosine);
 void TRIG_AngleSinCos_r16r17r18_duplicate(u32 angle, u32 *sine, u32 *cosine);
@@ -551,6 +552,7 @@ void RECTMENU_Hide(struct RectMenu *m);
 void RECTMENU_Show(struct RectMenu *m);
 
 int MixRNG_Scramble(void);
+int RngDeadCoed(u32 *state);
 
 void MainStats_ClearBattleVS(void);
 void MainStats_RestartRaceCountLoss(void);
