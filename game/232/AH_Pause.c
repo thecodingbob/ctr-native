@@ -298,6 +298,7 @@ void AH_Pause_Draw(int pageID, int posX)
 
 	else if (type == 2)
 	{
+		char totalString[32];
 		s16 count[3];
 		count[0] = 0;
 		count[1] = 0;
@@ -341,11 +342,9 @@ void AH_Pause_Draw(int pageID, int posX)
 		// variable reuse
 		bitIndex = count[0] + count[1] + count[2];
 
-		// be careful, might overflow in languages
-		// other than english, where "TOTAL" is longer
-		sprintf((char *)&count[0], "%s %d", sdata->lngStrings[LNG_TOTAL], bitIndex);
+		sprintf(totalString, "%s %d", sdata->lngStrings[LNG_TOTAL], bitIndex);
 
-		DecalFont_DrawLine((char *)count, posX + 0x100, 0x6e, FONT_BIG, 0xffff8000);
+		DecalFont_DrawLine(totalString, posX + 0x100, 0x6e, FONT_BIG, 0xffff8000);
 	}
 
 	int iVar7 = DecalFont_GetLineWidth(str, FONT_BIG);
