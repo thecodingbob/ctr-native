@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(CTR-Native C)
+include(CheckCCompilerFlag)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -41,6 +42,20 @@ endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -Wno-error -g")
 
+function(ctr_native_add_label_warning_if_supported target warning flag_check)
+    set(saved_required_flags "${CMAKE_REQUIRED_FLAGS}")
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+        set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -Werror=unknown-warning-option")
+    endif()
+
+    check_c_compiler_flag("${warning}" "${flag_check}")
+    set(CMAKE_REQUIRED_FLAGS "${saved_required_flags}")
+
+    if(${flag_check})
+        target_compile_options(${target} PRIVATE "${warning}")
+    endif()
+endfunction()
+
 # SDL3
 set(SDL_SHARED OFF CACHE BOOL "" FORCE)
 set(SDL_STATIC ON CACHE BOOL "" FORCE)
@@ -76,6 +91,11 @@ target_compile_definitions(ctr_native PRIVATE
 target_compile_options(ctr_native PRIVATE -O2)
 if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
     target_compile_options(ctr_native PRIVATE -Wenum-conversion -Wenum-compare -Wswitch-enum -Wformat -Wparentheses)
+endif()
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+    ctr_native_add_label_warning_if_supported(ctr_native -Wfree-labels CTR_HAS_WFREE_LABELS)
+elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
+    ctr_native_add_label_warning_if_supported(ctr_native -Wc23-extensions CTR_HAS_WC23_EXTENSIONS)
 endif()
 target_link_libraries(ctr_native SDL3::SDL3)
 target_link_options(ctr_native PRIVATE -static-libgcc)
