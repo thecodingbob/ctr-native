@@ -85,7 +85,7 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 	}
 
 	// Draw background box
-	RECT bg = {0x46, 0x34, 0x1D4, 0x88};
+	RECT bg = {0x46, 0x28, 0x1D4, 0x9C};
 	RECTMENU_DrawInnerRect(&bg, 4, ot);
 
 	// Draw menu title
@@ -100,35 +100,49 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		RECTMENU_DrawOuterRect_Edge(&sep, sepColor, 0x20, ot);
 	}
 
-	// Draw rows
+	// Draw section headers and config rows
+	static char *s_sectionLabels[] = {
+		"General",
+		"Adventure",
+		"Vehicle",
+	};
+
+	int labelX = 0x72;
+	int valueX = 0x1E0;
+	int sectionX = 0x5C;
+
 	for (i = 0; i < 3; i++)
 	{
-		int y = 0x54 + i * 0x10;
+		int sectionY = 0x54 + i * 0x24;
+		int rowY = sectionY + 0x0C;
+
+		// Section header
+		DecalFont_DrawLineOT(s_sectionLabels[i], sectionX, sectionY, FONT_SMALL, PERIWINKLE, ot);
 
 		// Highlight bar on selected row
 		if (i == menu->rowSelected)
 		{
-			RECT sel = {0x50, y - 2, 0x1C0, 0x10};
+			RECT sel = {0x50, rowY - 2, 0x1C0, 0x10};
 			CTR_Box_DrawClearBox(&sel, &sdata->menuRowHighlight_Normal, TRANS_50_DECAL, ot);
 		}
 
 		switch (i)
 		{
 			case 0:
-				DecalFont_DrawLineOT("Skip Intros", 0x6E, y, FONT_SMALL, ORANGE, ot);
+				DecalFont_DrawLineOT("Skip Intros", labelX, rowY, FONT_SMALL, ORANGE, ot);
 				DecalFont_DrawLineOT(g_config.skipIntro ? "ON" : "OFF",
-					0x1E0, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+					valueX, rowY, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
 				break;
 			case 1:
-				DecalFont_DrawLineOT("Skip Mask Hints", 0x6E, y, FONT_SMALL, ORANGE, ot);
+				DecalFont_DrawLineOT("Skip Mask Hints", labelX, rowY, FONT_SMALL, ORANGE, ot);
 				DecalFont_DrawLineOT(g_config.skipHints ? "ON" : "OFF",
-					0x1E0, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+					valueX, rowY, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
 				break;
 			case 2:
-				DecalFont_DrawLineOT("Kart Speed Multiplier", 0x6E, y, FONT_SMALL, ORANGE, ot);
+				DecalFont_DrawLineOT("Kart Speed Multiplier", labelX, rowY, FONT_SMALL, ORANGE, ot);
 				sprintf(buf, "%d%%", g_config.speedMultiplier);
 				DecalFont_DrawLineOT(buf,
-					0x1E0, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+					valueX, rowY, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
 				break;
 		}
 	}
