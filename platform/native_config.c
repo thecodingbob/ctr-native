@@ -4,8 +4,8 @@
 #include <ctype.h>
 #include <stdbool.h>
 
-NativeConfig g_config = {false, false, 100, false};
-int numConfigOptions = 4;
+NativeConfig g_config = {false, false, 100, false, false};
+int numConfigOptions = 5;
 int numConfigSections = 4;
 
 static bool ParseBool(const char *s)
@@ -22,6 +22,7 @@ typedef struct {
 static const ConfigBoolEntry s_boolEntries[] = {
     {"General",   "skip_intro", &g_config.skipIntro},
     {"Adventure", "skip_hints", &g_config.skipHints},
+    {"Adventure", "unlock_all_gates", &g_config.unlockAllGates},
 	{"Unlocks", "unlock_all_characters", &g_config.unlockAllCharacters}
 };
 
@@ -129,6 +130,7 @@ void NativeConfig_Save(void)
 	fprintf(f, "\n");
 	fprintf(f, "[Adventure]\n");
 	fprintf(f, "skip_hints = %s\n", g_config.skipHints ? "true" : "false");
+	fprintf(f, "unlock_all_gates = %s\n", g_config.unlockAllGates ? "true" : "false");
 	fprintf(f, "\n");
 	fprintf(f, "[Vehicle]\n");
 	fprintf(f, "speed_stat_multiplier = %d\n", g_config.speedMultiplier);
