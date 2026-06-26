@@ -4,8 +4,8 @@
 #include <ctype.h>
 #include <stdbool.h>
 
-NativeConfig g_config = {false, false, 100, false, false};
-int numConfigOptions = 5;
+NativeConfig g_config = {false, false, 100, 100, false, false};
+int numConfigOptions = 6;
 int numConfigSections = 4;
 
 static bool ParseBool(const char *s)
@@ -34,6 +34,7 @@ typedef struct {
 
 static const ConfigIntEntry s_intEntries[] = {
     {"Vehicle", "speed_stat_multiplier", &g_config.speedMultiplier},
+    {"Vehicle", "gravity_stat_multiplier", &g_config.gravityMultiplier},
 };
 
 
@@ -134,6 +135,8 @@ void NativeConfig_Save(void)
 	fprintf(f, "\n");
 	fprintf(f, "[Vehicle]\n");
 	fprintf(f, "speed_stat_multiplier = %d\n", g_config.speedMultiplier);
+	fprintf(f, "gravity_stat_multiplier = %d\n", g_config.gravityMultiplier);
+	fprintf(f, "\n");
 	fprintf(f, "[Unlocks]\n");
 	fprintf(f, "unlock_all_characters = %s\n", g_config.unlockAllCharacters ? "true" : "false");
 

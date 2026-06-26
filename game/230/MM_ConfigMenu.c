@@ -5,7 +5,8 @@
 #define CONFIG_ROW_SKIP_HINTS       1
 #define CONFIG_ROW_UNLOCK_GATES     2
 #define CONFIG_ROW_SPEED            3
-#define CONFIG_ROW_UNLOCK_CHARS     4
+#define CONFIG_ROW_GRAVITY          4
+#define CONFIG_ROW_UNLOCK_CHARS     5
 
 // Row arrays with CONFIG entry at bottom, used by MM_MenuProc_Main
 struct MenuRow s_rowsMainMenuBasicConfig[] = {
@@ -30,6 +31,30 @@ struct MenuRow s_rowsMainMenuWithSBConfig[] = {
 	{0x0E, 6, 7, 7, 7},
 	{-1},
 };
+
+static void Config_UpdateSlider(struct GamepadBuffer *pad, int rowSelected, int rowIndex, int *value, int min, int max, int step)
+{
+	if (rowSelected != rowIndex)
+		return;
+	int held = pad->buttonsHeldCurrFrame;
+	if ((held & BTN_LEFT) != 0 && (sdata->frameCounter % 3) == 0)
+	{
+		*value -= step;
+		if (*value < min) *value = min;
+	}
+	if ((held & BTN_RIGHT) != 0 && (sdata->frameCounter % 3) == 0)
+	{
+		*value += step;
+		if (*value > max) *value = max;
+	}
+}
+
+static void Config_DrawSlider(char *label, int val, int labelX, int valueX, int y, uint32_t *ot, char *buf)
+{
+	DecalFont_DrawLineOT(label, labelX, y, FONT_SMALL, ORANGE, ot);
+	sprintf(buf, "%d%%", val);
+	DecalFont_DrawLineOT(buf, valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+}
 
 static void MM_MenuProc_Config(struct RectMenu *menu);
 
@@ -82,23 +107,8 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		}
 	}
 
-	if (menu->rowSelected == CONFIG_ROW_SPEED)
-	{
-		int held = pad->buttonsHeldCurrFrame;
-
-		if ((held & BTN_LEFT) != 0 && (sdata->frameCounter % 3) == 0)
-		{
-			g_config.speedMultiplier -= 10;
-			if (g_config.speedMultiplier < 10)
-				g_config.speedMultiplier = 10;
-		}
-		if ((held & BTN_RIGHT) != 0 && (sdata->frameCounter % 3) == 0)
-		{
-			g_config.speedMultiplier += 10;
-			if (g_config.speedMultiplier > 200)
-				g_config.speedMultiplier = 200;
-		}
-	}
+	Config_UpdateSlider(pad, menu->rowSelected, CONFIG_ROW_SPEED, &g_config.speedMultiplier, 10, 200, 10);
+	Config_UpdateSlider(pad, menu->rowSelected, CONFIG_ROW_GRAVITY, &g_config.gravityMultiplier, 10, 300, 10);
 
 	// Draw menu title (text first so it renders on top)
 	DecalFont_DrawLineOT(sdata->lngStrings[LNG_OPTIONS],
@@ -112,7 +122,7 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		"Unlocks",
 	};
 
-	int rowsPerSection[] = {1, 2, 1, 1};
+	int rowsPerSection[] = {1, 2, 2, 1};
 
 	int labelX = 0x38;
 	int valueX = 0x1DC;
@@ -154,13 +164,13 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 						DecalFont_DrawLineOT(g_config.unlockAllGates ? "ON" : "OFF",
 							valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
 						break;
-					case 3:
-						DecalFont_DrawLineOT("Kart Speed Multiplier", labelX, y, FONT_SMALL, ORANGE, ot);
-						sprintf(buf, "%d%%", g_config.speedMultiplier);
-						DecalFont_DrawLineOT(buf,
-							valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+					case CONFIG_ROW_SPEED:
+						Config_DrawSlider("Kart Speed Multiplier", g_config.speedMultiplier, labelX, valueX, y, ot, buf);
 						break;
-					case 4:
+					case CONFIG_ROW_GRAVITY:
+						Config_DrawSlider("Gravity Multiplier", g_config.gravityMultiplier, labelX, valueX, y, ot, buf);
+						break;
+					case CONFIG_ROW_UNLOCK_CHARS:
 						DecalFont_DrawLineOT("Unlock All Characters", labelX, y, FONT_SMALL, ORANGE, ot);
 						DecalFont_DrawLineOT(g_config.unlockAllCharacters ? "ON" : "OFF",
 							valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);

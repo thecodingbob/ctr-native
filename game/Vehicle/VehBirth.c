@@ -548,6 +548,9 @@ void VehBirth_SetConsts(struct Driver *driver)
 		if (metaPhys->offset == SPEED_CLASS_STAT_OFFSET) {
 			rawValue = rawValue * g_config.speedMultiplier / 100;
 		}
+		if (metaPhys->offset == GRAVITY_OFFSET) {
+			rawValue = rawValue * g_config.gravityMultiplier / 100;
+		}
 
 		u8 *dst = &d[metaPhys->offset];
 
