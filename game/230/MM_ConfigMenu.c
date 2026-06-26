@@ -113,27 +113,23 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 	int sectionX = 0x24;
 
 	int sectionStartY = 0x3C;
-	int sectionSpacing = 0x1A;
+	int rowSpacing = 0x0E;
+	int sectionGap = 0x10;
+	int highlightHeight = 0x0C;
 
 	{
 		int rowIdx = 0;
+		int yPos = sectionStartY;
 		for (i = 0; i < numConfigSections; i++)
 		{
-			int sectionY = sectionStartY + rowIdx * sectionSpacing;
+			int sectionY = yPos;
 
 			// Section header
 			DecalFont_DrawLineOT(s_sectionLabels[i], sectionX, sectionY, FONT_SMALL, PERIWINKLE, ot);
 
 			for (int j = 0; j < rowsPerSection[i]; j++)
 			{
-				int y = sectionY + 0x0A + j * sectionSpacing;
-
-				// Highlight bar
-				if (rowIdx == menu->rowSelected)
-				{
-					RECT sel = {0x18, y - 2, 0x1D0, 0x10};
-					CTR_Box_DrawClearBox(&sel, &sdata->menuRowHighlight_Normal, TRANS_50_DECAL, ot);
-				}
+				int y = sectionY + 0x0A + j * rowSpacing;
 
 				switch (rowIdx)
 				{
@@ -164,8 +160,18 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 							valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
 						break;
 				}
+
+				// Highlight bar (drawn after text so text renders on top)
+				if (rowIdx == menu->rowSelected)
+				{
+					RECT sel = {0x30, y - 2, 0x1B0, highlightHeight};
+					CTR_Box_DrawClearBox(&sel, &sdata->menuRowHighlight_Normal, TRANS_50_DECAL, ot);
+				}
+
 				rowIdx++;
 			}
+
+			yPos = sectionY + 0x0A + (rowsPerSection[i] - 1) * rowSpacing + sectionGap;
 		}
 	}
 
