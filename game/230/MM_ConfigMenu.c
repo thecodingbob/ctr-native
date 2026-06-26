@@ -1,6 +1,12 @@
 #include <common.h>
 #include <stdio.h>
 
+#define CONFIG_ROW_SKIP_INTROS      0
+#define CONFIG_ROW_SKIP_HINTS       1
+#define CONFIG_ROW_UNLOCK_GATES     2
+#define CONFIG_ROW_SPEED            3
+#define CONFIG_ROW_UNLOCK_CHARS     4
+
 // Row arrays with CONFIG entry at bottom, used by MM_MenuProc_Main
 struct MenuRow s_rowsMainMenuBasicConfig[] = {
 	{0x4C, 0, 1, 0, 0},
@@ -68,14 +74,15 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		OtherFX_Play(1, 1);
 		switch (menu->rowSelected)
 		{
-			case 0: g_config.skipIntro ^= 1; break;
-			case 1: g_config.skipHints ^= 1; break;
-			case 3: g_config.unlockAllCharacters ^=1; break;
+			case CONFIG_ROW_SKIP_INTROS:    g_config.skipIntro ^= 1; break;
+			case CONFIG_ROW_SKIP_HINTS:     g_config.skipHints ^= 1; break;
+			case CONFIG_ROW_UNLOCK_GATES:   g_config.unlockAllGates ^= 1; break;
+			case CONFIG_ROW_UNLOCK_CHARS:   g_config.unlockAllCharacters ^= 1; break;
 			default: break;
 		}
 	}
 
-	if (menu->rowSelected == 2)
+	if (menu->rowSelected == CONFIG_ROW_SPEED)
 	{
 		int held = pad->buttonsHeldCurrFrame;
 
@@ -105,55 +112,72 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		"Unlocks",
 	};
 
+	int rowsPerSection[] = {1, 2, 1, 1};
+
 	int labelX = 0x38;
 	int valueX = 0x1DC;
 	int sectionX = 0x24;
 
 	int sectionStartY = 0x3C;
-	int sectionSpacing = 0x1A;
+	int rowSpacing = 0x0E;
+	int sectionGap = 0x10;
+	int highlightHeight = 0x0C;
 
-	for (i = 0; i < numConfigSections; i++)
 	{
-		int sectionY = sectionStartY + i * sectionSpacing;
-		int rowY = sectionY + 0x0A;
-
-		// Section header
-		DecalFont_DrawLineOT(s_sectionLabels[i], sectionX, sectionY, FONT_SMALL, PERIWINKLE, ot);
-
-		switch (i)
+		int rowIdx = 0;
+		int yPos = sectionStartY;
+		for (i = 0; i < numConfigSections; i++)
 		{
-			case 0:
-				DecalFont_DrawLineOT("Skip Intros", labelX, rowY, FONT_SMALL, ORANGE, ot);
-				DecalFont_DrawLineOT(g_config.skipIntro ? "ON" : "OFF",
-					valueX, rowY, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
-				break;
-			case 1:
-				DecalFont_DrawLineOT("Skip Mask Hints", labelX, rowY, FONT_SMALL, ORANGE, ot);
-				DecalFont_DrawLineOT(g_config.skipHints ? "ON" : "OFF",
-					valueX, rowY, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
-				break;
-			case 2:
-				DecalFont_DrawLineOT("Kart Speed Multiplier", labelX, rowY, FONT_SMALL, ORANGE, ot);
-				sprintf(buf, "%d%%", g_config.speedMultiplier);
-				DecalFont_DrawLineOT(buf,
-					valueX, rowY, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
-				break;
-			case 3:
-				DecalFont_DrawLineOT("Unlock All Characters", labelX, rowY, FONT_SMALL, ORANGE, ot);
-				DecalFont_DrawLineOT(g_config.unlockAllCharacters ? "ON" : "OFF", 
-					valueX, rowY, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
-		}
-	}
+			int sectionY = yPos;
 
-	// Highlight bar on selected row (drawn after text, rendered between text and separator)
-	for (i = 0; i < numConfigSections; i++)
-	{
-		if (i == menu->rowSelected)
-		{
-			int rowY = sectionStartY + i * sectionSpacing + 0x0A;
-			RECT sel = {0x18, rowY - 2, 0x1D0, 0x10};
-			CTR_Box_DrawClearBox(&sel, &sdata->menuRowHighlight_Normal, TRANS_50_DECAL, ot);
-			break;
+			// Section header
+			DecalFont_DrawLineOT(s_sectionLabels[i], sectionX, sectionY, FONT_SMALL, PERIWINKLE, ot);
+
+			for (int j = 0; j < rowsPerSection[i]; j++)
+			{
+				int y = sectionY + 0x0A + j * rowSpacing;
+
+				switch (rowIdx)
+				{
+					case 0:
+						DecalFont_DrawLineOT("Skip Intros", labelX, y, FONT_SMALL, ORANGE, ot);
+						DecalFont_DrawLineOT(g_config.skipIntro ? "ON" : "OFF",
+							valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+						break;
+					case 1:
+						DecalFont_DrawLineOT("Skip Mask Hints", labelX, y, FONT_SMALL, ORANGE, ot);
+						DecalFont_DrawLineOT(g_config.skipHints ? "ON" : "OFF",
+							valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+						break;
+					case 2:
+						DecalFont_DrawLineOT("Open All Gates", labelX, y, FONT_SMALL, ORANGE, ot);
+						DecalFont_DrawLineOT(g_config.unlockAllGates ? "ON" : "OFF",
+							valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+						break;
+					case 3:
+						DecalFont_DrawLineOT("Kart Speed Multiplier", labelX, y, FONT_SMALL, ORANGE, ot);
+						sprintf(buf, "%d%%", g_config.speedMultiplier);
+						DecalFont_DrawLineOT(buf,
+							valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+						break;
+					case 4:
+						DecalFont_DrawLineOT("Unlock All Characters", labelX, y, FONT_SMALL, ORANGE, ot);
+						DecalFont_DrawLineOT(g_config.unlockAllCharacters ? "ON" : "OFF",
+							valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+						break;
+				}
+
+				// Highlight bar (drawn after text so text renders on top)
+				if (rowIdx == menu->rowSelected)
+				{
+					RECT sel = {0x30, y - 2, 0x1B0, highlightHeight};
+					CTR_Box_DrawClearBox(&sel, &sdata->menuRowHighlight_Normal, TRANS_50_DECAL, ot);
+				}
+
+				rowIdx++;
+			}
+
+			yPos = sectionY + 0x0A + (rowsPerSection[i] - 1) * rowSpacing + sectionGap;
 		}
 	}
 

@@ -8,6 +8,7 @@ typedef struct {
     bool skipHints;             // false = off (default), true = skip all mask hints in adventure mode
     int speedMultiplier;        // percent, 10%..200%, 100 = 1.0x (default)
     bool unlockAllCharacters;   // false = off (normal unlock logic), true = all characters already unlocked
+    bool unlockAllGates;        // false = off, true = all adventure mode wood doors open without keys
 } NativeConfig;
 
 extern NativeConfig g_config;
