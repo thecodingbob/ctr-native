@@ -1,6 +1,12 @@
 #include <common.h>
 #include <stdio.h>
 
+#define CONFIG_ROW_SKIP_INTROS      0
+#define CONFIG_ROW_SKIP_HINTS       1
+#define CONFIG_ROW_UNLOCK_GATES     2
+#define CONFIG_ROW_SPEED            3
+#define CONFIG_ROW_UNLOCK_CHARS     4
+
 // Row arrays with CONFIG entry at bottom, used by MM_MenuProc_Main
 struct MenuRow s_rowsMainMenuBasicConfig[] = {
 	{0x4C, 0, 1, 0, 0},
@@ -68,15 +74,15 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		OtherFX_Play(1, 1);
 		switch (menu->rowSelected)
 		{
-			case 0: g_config.skipIntro ^= 1; break;
-			case 1: g_config.skipHints ^= 1; break;
-			case 2: g_config.unlockAllGates ^= 1; break;
-			case 4: g_config.unlockAllCharacters ^= 1; break;
+			case CONFIG_ROW_SKIP_INTROS:    g_config.skipIntro ^= 1; break;
+			case CONFIG_ROW_SKIP_HINTS:     g_config.skipHints ^= 1; break;
+			case CONFIG_ROW_UNLOCK_GATES:   g_config.unlockAllGates ^= 1; break;
+			case CONFIG_ROW_UNLOCK_CHARS:   g_config.unlockAllCharacters ^= 1; break;
 			default: break;
 		}
 	}
 
-	if (menu->rowSelected == 3)
+	if (menu->rowSelected == CONFIG_ROW_SPEED)
 	{
 		int held = pad->buttonsHeldCurrFrame;
 
