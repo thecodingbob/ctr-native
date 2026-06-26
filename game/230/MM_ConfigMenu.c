@@ -70,12 +70,13 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		{
 			case 0: g_config.skipIntro ^= 1; break;
 			case 1: g_config.skipHints ^= 1; break;
-			case 3: g_config.unlockAllCharacters ^=1; break;
+			case 2: g_config.unlockAllGates ^= 1; break;
+			case 4: g_config.unlockAllCharacters ^= 1; break;
 			default: break;
 		}
 	}
 
-	if (menu->rowSelected == 2)
+	if (menu->rowSelected == 3)
 	{
 		int held = pad->buttonsHeldCurrFrame;
 
@@ -105,6 +106,8 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		"Unlocks",
 	};
 
+	int rowsPerSection[] = {1, 2, 1, 1};
+
 	int labelX = 0x38;
 	int valueX = 0x1DC;
 	int sectionX = 0x24;
@@ -112,48 +115,57 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 	int sectionStartY = 0x3C;
 	int sectionSpacing = 0x1A;
 
-	for (i = 0; i < numConfigSections; i++)
 	{
-		int sectionY = sectionStartY + i * sectionSpacing;
-		int rowY = sectionY + 0x0A;
-
-		// Section header
-		DecalFont_DrawLineOT(s_sectionLabels[i], sectionX, sectionY, FONT_SMALL, PERIWINKLE, ot);
-
-		switch (i)
+		int rowIdx = 0;
+		for (i = 0; i < numConfigSections; i++)
 		{
-			case 0:
-				DecalFont_DrawLineOT("Skip Intros", labelX, rowY, FONT_SMALL, ORANGE, ot);
-				DecalFont_DrawLineOT(g_config.skipIntro ? "ON" : "OFF",
-					valueX, rowY, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
-				break;
-			case 1:
-				DecalFont_DrawLineOT("Skip Mask Hints", labelX, rowY, FONT_SMALL, ORANGE, ot);
-				DecalFont_DrawLineOT(g_config.skipHints ? "ON" : "OFF",
-					valueX, rowY, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
-				break;
-			case 2:
-				DecalFont_DrawLineOT("Kart Speed Multiplier", labelX, rowY, FONT_SMALL, ORANGE, ot);
-				sprintf(buf, "%d%%", g_config.speedMultiplier);
-				DecalFont_DrawLineOT(buf,
-					valueX, rowY, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
-				break;
-			case 3:
-				DecalFont_DrawLineOT("Unlock All Characters", labelX, rowY, FONT_SMALL, ORANGE, ot);
-				DecalFont_DrawLineOT(g_config.unlockAllCharacters ? "ON" : "OFF", 
-					valueX, rowY, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
-		}
-	}
+			int sectionY = sectionStartY + rowIdx * sectionSpacing;
 
-	// Highlight bar on selected row (drawn after text, rendered between text and separator)
-	for (i = 0; i < numConfigSections; i++)
-	{
-		if (i == menu->rowSelected)
-		{
-			int rowY = sectionStartY + i * sectionSpacing + 0x0A;
-			RECT sel = {0x18, rowY - 2, 0x1D0, 0x10};
-			CTR_Box_DrawClearBox(&sel, &sdata->menuRowHighlight_Normal, TRANS_50_DECAL, ot);
-			break;
+			// Section header
+			DecalFont_DrawLineOT(s_sectionLabels[i], sectionX, sectionY, FONT_SMALL, PERIWINKLE, ot);
+
+			for (int j = 0; j < rowsPerSection[i]; j++)
+			{
+				int y = sectionY + 0x0A + j * sectionSpacing;
+
+				// Highlight bar
+				if (rowIdx == menu->rowSelected)
+				{
+					RECT sel = {0x18, y - 2, 0x1D0, 0x10};
+					CTR_Box_DrawClearBox(&sel, &sdata->menuRowHighlight_Normal, TRANS_50_DECAL, ot);
+				}
+
+				switch (rowIdx)
+				{
+					case 0:
+						DecalFont_DrawLineOT("Skip Intros", labelX, y, FONT_SMALL, ORANGE, ot);
+						DecalFont_DrawLineOT(g_config.skipIntro ? "ON" : "OFF",
+							valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+						break;
+					case 1:
+						DecalFont_DrawLineOT("Skip Mask Hints", labelX, y, FONT_SMALL, ORANGE, ot);
+						DecalFont_DrawLineOT(g_config.skipHints ? "ON" : "OFF",
+							valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+						break;
+					case 2:
+						DecalFont_DrawLineOT("Open All Gates", labelX, y, FONT_SMALL, ORANGE, ot);
+						DecalFont_DrawLineOT(g_config.unlockAllGates ? "ON" : "OFF",
+							valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+						break;
+					case 3:
+						DecalFont_DrawLineOT("Kart Speed Multiplier", labelX, y, FONT_SMALL, ORANGE, ot);
+						sprintf(buf, "%d%%", g_config.speedMultiplier);
+						DecalFont_DrawLineOT(buf,
+							valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+						break;
+					case 4:
+						DecalFont_DrawLineOT("Unlock All Characters", labelX, y, FONT_SMALL, ORANGE, ot);
+						DecalFont_DrawLineOT(g_config.unlockAllCharacters ? "ON" : "OFF",
+							valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+						break;
+				}
+				rowIdx++;
+			}
 		}
 	}
 
