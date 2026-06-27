@@ -641,6 +641,8 @@ void PushBuffer_UpdateFrustum(struct PushBuffer *pb)
 
 	struct FrustumCornerOUT *fcOUT = &spf->fc[3];
 
+	int farClip = g_config.increaseDrawDistance ? 0x200 : 0x100;
+
 	for (int i = 0; i < 4; i++)
 	{
 		// multiply corner of screen,
@@ -653,10 +655,10 @@ void PushBuffer_UpdateFrustum(struct PushBuffer *pb)
 		// from end of PushBuffer_SetMatrixVP (called earlier)
 		PushBuffer_UpdateFrustum_ReadMAC(&tx, &ty, &tz);
 
-		// far clip: pos + dir*100
-		posX = tx * 0x100 + cameraPosX;
-		posY = ty * 0x100 + cameraPosY;
-		posZ = tz * 0x100 + cameraPosZ;
+		// far clip: pos + dir*farClip
+		posX = tx * farClip + cameraPosX;
+		posY = ty * farClip + cameraPosY;
+		posZ = tz * farClip + cameraPosZ;
 
 		iVar19 = 0x1000;
 
