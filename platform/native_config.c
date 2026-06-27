@@ -4,9 +4,9 @@
 #include <ctype.h>
 #include <stdbool.h>
 
-NativeConfig g_config = {false, false, 100, 100, false, false, false};
-int numConfigOptions = 7;
-int numConfigSections = 4;
+NativeConfig g_config = {false, false, 100, 100, false, false, false, false};
+int numConfigOptions = 8;
+int numConfigSections = 5;
 
 static bool ParseBool(const char *s)
 {
@@ -24,7 +24,8 @@ static const ConfigBoolEntry s_boolEntries[] = {
     {"Adventure", "skip_hints", &g_config.skipHints},
     {"Adventure", "unlock_all_gates", &g_config.unlockAllGates},
     {"Adventure", "unlock_all_portals", &g_config.unlockAllPortals},
-	{"Unlocks", "unlock_all_characters", &g_config.unlockAllCharacters}
+	{"Unlocks", "unlock_all_characters", &g_config.unlockAllCharacters},
+	{"Graphics", "increase_draw_distance", &g_config.increaseDrawDistance},
 };
 
 typedef struct {
@@ -36,6 +37,7 @@ typedef struct {
 static const ConfigIntEntry s_intEntries[] = {
     {"Vehicle", "speed_stat_multiplier", &g_config.speedMultiplier},
     {"Vehicle", "gravity_stat_multiplier", &g_config.gravityMultiplier},
+
 };
 
 
@@ -141,6 +143,9 @@ void NativeConfig_Save(void)
 	fprintf(f, "\n");
 	fprintf(f, "[Unlocks]\n");
 	fprintf(f, "unlock_all_characters = %s\n", g_config.unlockAllCharacters ? "true" : "false");
+	fprintf(f, "\n");
+	fprintf(f, "[Graphics]\n");
+	fprintf(f, "increase_draw_distance = %s\n", g_config.increaseDrawDistance ? "true" : "false");
 
 	fclose(f);
 }

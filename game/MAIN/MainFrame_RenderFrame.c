@@ -937,6 +937,8 @@ void RenderAllLevelGeometry(struct GameTracker *gGT, struct Level *level1, struc
 
 			scratch->depthScale = RenderAllLevelGeometry_ScaleDistanceShift8(distToScreen, 0x2080);
 			scratch->bspLodDistanceThreshold = CTR_MipsMulLo(distToScreen, 0x1a);
+			if (g_config.increaseDrawDistance)
+				scratch->bspLodDistanceThreshold = scratch->bspLodDistanceThreshold * 3;
 			scratch->textureLodDepthThreshold0 = CTR_MipsMulLo(distToScreen, 0x18);
 			scratch->textureLodDepthThreshold1 = CTR_MipsMulLo(distToScreen, 0xc);
 			scratch->topLevelNearDepthThreshold = CTR_MipsMulLo(distToScreen, 7);

@@ -8,6 +8,7 @@
 #define CONFIG_ROW_SPEED            4
 #define CONFIG_ROW_GRAVITY          5
 #define CONFIG_ROW_UNLOCK_CHARS     6
+#define CONFIG_ROW_DRAW_DISTANCE    7
 
 // Row arrays with CONFIG entry at bottom, used by MM_MenuProc_Main
 struct MenuRow s_rowsMainMenuBasicConfig[] = {
@@ -105,6 +106,7 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 			case CONFIG_ROW_UNLOCK_GATES:   g_config.unlockAllGates ^= 1; break;
 			case CONFIG_ROW_UNLOCK_PORTALS: g_config.unlockAllPortals ^= 1; break;
 			case CONFIG_ROW_UNLOCK_CHARS:   g_config.unlockAllCharacters ^= 1; break;
+			case CONFIG_ROW_DRAW_DISTANCE:  g_config.increaseDrawDistance ^= 1; break;
 			default: break;
 		}
 	}
@@ -122,9 +124,10 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		"Adventure",
 		"Vehicle",
 		"Unlocks",
+		"Graphics",
 	};
 
-	int rowsPerSection[] = {1, 3, 2, 1};
+	int rowsPerSection[] = {1, 3, 2, 1, 1};
 
 	int labelX = 0x38;
 	int valueX = 0x1DC;
@@ -180,6 +183,11 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 					case CONFIG_ROW_UNLOCK_CHARS:
 						DecalFont_DrawLineOT("Unlock All Characters", labelX, y, FONT_SMALL, ORANGE, ot);
 						DecalFont_DrawLineOT(g_config.unlockAllCharacters ? "ON" : "OFF",
+							valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+						break;
+					case CONFIG_ROW_DRAW_DISTANCE:
+						DecalFont_DrawLineOT("Increase Draw Distance", labelX, y, FONT_SMALL, ORANGE, ot);
+						DecalFont_DrawLineOT(g_config.increaseDrawDistance ? "ON" : "OFF",
 							valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
 						break;
 				}
