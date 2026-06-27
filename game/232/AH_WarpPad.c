@@ -615,56 +615,62 @@ void AH_WarpPad_ThTick(struct Thread *t)
 
 	if (levelID < AH_WP_SLIDE_COLISEUM)
 	{
-		if (CHECK_ADV_BIT(sdata->advProgress.rewards, levelID + ADV_REWARD_FIRST_TROPHY) != 0)
+		if (g_config.unlockAllPortals || CHECK_ADV_BIT(sdata->advProgress.rewards, levelID + ADV_REWARD_FIRST_TROPHY) != 0)
 		{
-			if (gGT->currAdvProfile.numTrophies >= data.metaDataLEV[levelID].numTrophiesToOpen)
+			if (g_config.unlockAllPortals || gGT->currAdvProfile.numTrophies >= data.metaDataLEV[levelID].numTrophiesToOpen)
 			{
 				if (warppadObj->framesWarping < 61)
 				{
 					goto WarpPad_TrophyAnimateOnly;
 				}
 
-				// if never opened
-				if (sdata->boolOpenTokenRelicMenu == 0)
+				// if not using unlockAllPortals, or trophy is actually earned,
+				// show token/relic menu + hints. otherwise go straight to race.
+				if (!g_config.unlockAllPortals ||
+				    CHECK_ADV_BIT(sdata->advProgress.rewards, levelID + ADV_REWARD_FIRST_TROPHY) != 0)
 				{
-					if ((gGT->gameMode1 & ADVENTURE_ARENA) != 0)
+					// if never opened
+					if (sdata->boolOpenTokenRelicMenu == 0)
 					{
-						D232.menuTokenRelic.rowSelected = (CHECK_ADV_BIT(sdata->advProgress.rewards, levelID + ADV_REWARD_FIRST_CTR_TOKEN) != 0);
+						if ((gGT->gameMode1 & ADVENTURE_ARENA) != 0)
+						{
+							D232.menuTokenRelic.rowSelected = (CHECK_ADV_BIT(sdata->advProgress.rewards, levelID + ADV_REWARD_FIRST_CTR_TOKEN) != 0);
 
-						RECTMENU_Show(&D232.menuTokenRelic);
+							RECTMENU_Show(&D232.menuTokenRelic);
 
-						// now opened
-						sdata->boolOpenTokenRelicMenu = 1;
+							// now opened
+							sdata->boolOpenTokenRelicMenu = 1;
+						}
 					}
-				}
 
-				// if opened, but not closed yet
-				if ((RECTMENU_BoolHidden(&D232.menuTokenRelic) & 0xffff) == 0)
-				{
-					goto WarpPad_TrophyAnimateOnly;
-				}
+					// if opened, but not closed yet
+					if ((RECTMENU_BoolHidden(&D232.menuTokenRelic) & 0xffff) == 0)
+					{
+						goto WarpPad_TrophyAnimateOnly;
+					}
 
-				// Relic Hint
-				i = ADV_MASK_HINT_ID_RELIC_CHALLENGE;
+					// Relic Hint
+					i = ADV_MASK_HINT_ID_RELIC_CHALLENGE;
 
-				// CTR Token Hint
-				if ((gGT->gameMode2 & 8) != 0)
-				{
-					i = ADV_MASK_HINT_ID_CTR_TOKEN_CHALLENGE;
-				}
+					// CTR Token Hint
+					if ((gGT->gameMode2 & 8) != 0)
+					{
+						i = ADV_MASK_HINT_ID_CTR_TOKEN_CHALLENGE;
+					}
 
-				// if hint is locked
-				if (CHECK_ADV_BIT(sdata->advProgress.rewards, ADV_REWARD_FIRST_HINT + i) == 0)
-				{
-					MainFrame_RequestMaskHint(i, 1);
-				}
+					// if hint is locked
+					if (CHECK_ADV_BIT(sdata->advProgress.rewards, ADV_REWARD_FIRST_HINT + i) == 0)
+					{
+						MainFrame_RequestMaskHint(i, 1);
+					}
 
-				// if can't spawn aku cause he's already here,
-				// quit function, wait till he's done to start race
-				i = AH_MaskHint_boolCanSpawn();
-				if ((i & 0xffff) == 0)
-				{
-					goto WarpPad_TrophyAnimateOnly;
+					// if can't spawn aku cause he's already here,
+					// quit function, wait till he's done to start race
+					i = AH_MaskHint_boolCanSpawn();
+					if ((i & 0xffff) == 0)
+					{
+						goto WarpPad_TrophyAnimateOnly;
+					}
 				}
 
 				// reset for future gameplay
@@ -1104,7 +1110,7 @@ void AH_WarpPad_LInB(struct Instance *inst)
 	}
 
 	// if unlocked
-	if (unlockItem_numOwned >= unlockItem_numNeeded)
+	if (g_config.unlockAllPortals || unlockItem_numOwned >= unlockItem_numNeeded)
 	{
 		warppadObj->digit1s = 0;
 		t->modelIndex = 1;

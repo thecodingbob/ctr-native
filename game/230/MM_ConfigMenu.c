@@ -4,9 +4,10 @@
 #define CONFIG_ROW_SKIP_INTROS      0
 #define CONFIG_ROW_SKIP_HINTS       1
 #define CONFIG_ROW_UNLOCK_GATES     2
-#define CONFIG_ROW_SPEED            3
-#define CONFIG_ROW_GRAVITY          4
-#define CONFIG_ROW_UNLOCK_CHARS     5
+#define CONFIG_ROW_UNLOCK_PORTALS   3
+#define CONFIG_ROW_SPEED            4
+#define CONFIG_ROW_GRAVITY          5
+#define CONFIG_ROW_UNLOCK_CHARS     6
 
 // Row arrays with CONFIG entry at bottom, used by MM_MenuProc_Main
 struct MenuRow s_rowsMainMenuBasicConfig[] = {
@@ -102,6 +103,7 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 			case CONFIG_ROW_SKIP_INTROS:    g_config.skipIntro ^= 1; break;
 			case CONFIG_ROW_SKIP_HINTS:     g_config.skipHints ^= 1; break;
 			case CONFIG_ROW_UNLOCK_GATES:   g_config.unlockAllGates ^= 1; break;
+			case CONFIG_ROW_UNLOCK_PORTALS: g_config.unlockAllPortals ^= 1; break;
 			case CONFIG_ROW_UNLOCK_CHARS:   g_config.unlockAllCharacters ^= 1; break;
 			default: break;
 		}
@@ -122,7 +124,7 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		"Unlocks",
 	};
 
-	int rowsPerSection[] = {1, 2, 2, 1};
+	int rowsPerSection[] = {1, 3, 2, 1};
 
 	int labelX = 0x38;
 	int valueX = 0x1DC;
@@ -162,6 +164,11 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 					case 2:
 						DecalFont_DrawLineOT("Open All Gates", labelX, y, FONT_SMALL, ORANGE, ot);
 						DecalFont_DrawLineOT(g_config.unlockAllGates ? "ON" : "OFF",
+							valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+						break;
+					case CONFIG_ROW_UNLOCK_PORTALS:
+						DecalFont_DrawLineOT("Open All Portals", labelX, y, FONT_SMALL, ORANGE, ot);
+						DecalFont_DrawLineOT(g_config.unlockAllPortals ? "ON" : "OFF",
 							valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
 						break;
 					case CONFIG_ROW_SPEED:

@@ -189,34 +189,37 @@ void AH_Garage_ThTick(struct Thread *t)
 
 LAB_800aeb6c:
 
-	// If you're in Gemstone Valley
-	if (levelID == GEM_STONE_VALLEY)
+	if (!g_config.unlockAllPortals)
 	{
-		// ripper roo boss key
-		bitIndex = ADV_REWARD_FIRST_BOSS_KEY;
+		// If you're in Gemstone Valley
+		if (levelID == GEM_STONE_VALLEY)
+		{
+			// ripper roo boss key
+			bitIndex = ADV_REWARD_FIRST_BOSS_KEY;
 
-		// check four boss keys
-		for (i = 0; i < 4; i++)
-		{
-			if (CHECK_ADV_BIT(adv->rewards, bitIndex) == 0)
+			// check four boss keys
+			for (i = 0; i < 4; i++)
 			{
-				goto LAB_800aebd0;
+				if (CHECK_ADV_BIT(adv->rewards, bitIndex) == 0)
+				{
+					goto LAB_800aebd0;
+				}
+				bitIndex++;
 			}
-			bitIndex++;
 		}
-	}
-	// If you're not in Gemstone Valley
-	else
-	{
-		check = &data.advHubTrackIDs[(levelID - N_SANITY_BEACH) * 4];
-		// check all four tracks on hub
-		for (i = 0; i < 4; i++)
+		// If you're not in Gemstone Valley
+		else
 		{
-			// if any trophy on this hub is not unlocked
-			if (CHECK_ADV_BIT(adv->rewards, check[i] + ADV_REWARD_FIRST_TROPHY) == 0)
+			check = &data.advHubTrackIDs[(levelID - N_SANITY_BEACH) * 4];
+			// check all four tracks on hub
+			for (i = 0; i < 4; i++)
 			{
-				// boss is not open
-				goto LAB_800aebd0;
+				// if any trophy on this hub is not unlocked
+				if (CHECK_ADV_BIT(adv->rewards, check[i] + ADV_REWARD_FIRST_TROPHY) == 0)
+				{
+					// boss is not open
+					goto LAB_800aebd0;
+				}
 			}
 		}
 	}
@@ -443,34 +446,37 @@ void AH_Garage_LInB(struct Instance *inst)
 		garage->garageTopInst = garageTop;
 	}
 
-	if (levelID == GEM_STONE_VALLEY)
+	if (!g_config.unlockAllPortals)
 	{
-		// ripper roo boss key
-		bitIndex = ADV_REWARD_FIRST_BOSS_KEY;
-		// check four boss keys
-		for (i = 0; i < 4; i++)
+		if (levelID == GEM_STONE_VALLEY)
 		{
-			if (CHECK_ADV_BIT(adv->rewards, bitIndex) == 0)
+			// ripper roo boss key
+			bitIndex = ADV_REWARD_FIRST_BOSS_KEY;
+			// check four boss keys
+			for (i = 0; i < 4; i++)
 			{
-				goto GarageLocked;
+				if (CHECK_ADV_BIT(adv->rewards, bitIndex) == 0)
+				{
+					goto GarageLocked;
+				}
+				bitIndex++;
 			}
-			bitIndex++;
+			bossIsOpen = true;
 		}
-		bossIsOpen = true;
-	}
 
-	// if not gemstone valley
-	else
-	{
-		check = &data.advHubTrackIDs[(levelID - N_SANITY_BEACH) * 4];
-		// check all four tracks on hub
-		for (i = 0; i < 4; i++)
+		// if not gemstone valley
+		else
 		{
-			// if any trophy on this hub is not unlocked
-			if (CHECK_ADV_BIT(adv->rewards, check[i] + ADV_REWARD_FIRST_TROPHY) == 0)
+			check = &data.advHubTrackIDs[(levelID - N_SANITY_BEACH) * 4];
+			// check all four tracks on hub
+			for (i = 0; i < 4; i++)
 			{
-				// boss is not open
-				goto GarageLocked;
+				// if any trophy on this hub is not unlocked
+				if (CHECK_ADV_BIT(adv->rewards, check[i] + ADV_REWARD_FIRST_TROPHY) == 0)
+				{
+					// boss is not open
+					goto GarageLocked;
+				}
 			}
 		}
 	}
