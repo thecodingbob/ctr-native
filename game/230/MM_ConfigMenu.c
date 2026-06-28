@@ -1,15 +1,6 @@
 #include <common.h>
 #include <stdio.h>
 
-#define CONFIG_ROW_SKIP_INTROS      0
-#define CONFIG_ROW_SKIP_HINTS       1
-#define CONFIG_ROW_UNLOCK_GATES     2
-#define CONFIG_ROW_UNLOCK_PORTALS   3
-#define CONFIG_ROW_SPEED            4
-#define CONFIG_ROW_GRAVITY          5
-#define CONFIG_ROW_UNLOCK_CHARS     6
-#define CONFIG_ROW_DRAW_DISTANCE    7
-#define CONFIG_ROW_SPLIT_SCREEN_LOD 8
 
 // Row arrays with CONFIG entry at bottom, used by MM_MenuProc_Main
 struct MenuRow s_rowsMainMenuBasicConfig[] = {
@@ -35,11 +26,44 @@ struct MenuRow s_rowsMainMenuWithSBConfig[] = {
 	{-1},
 };
 
-static void Config_UpdateSlider(struct GamepadBuffer *pad, int rowSelected, int rowIndex, int *value, int min, int max, int step)
+static void MM_MenuProc_Config(struct RectMenu *menu);
+
+// Section lookup built from g_configEntries at first use
+static int s_sectionToEntry[16];
+static int s_sectionCount[16];
+static int s_numSections = 0;
+
+static void BuildSectionMap(void)
 {
-	if (rowSelected != rowIndex)
+	s_numSections = 0;
+	const char *curSection = NULL;
+	for (int i = 0; i < g_numConfigEntries; i++)
+	{
+		if (curSection == NULL || strcmp(g_configEntries[i].section, curSection) != 0)
+		{
+			curSection = g_configEntries[i].section;
+			s_sectionToEntry[s_numSections] = i;
+			s_sectionCount[s_numSections] = 0;
+			s_numSections++;
+		}
+		s_sectionCount[s_numSections - 1]++;
+	}
+}
+
+static int s_currentSection = -1; // -1 = section selector, 0+ = submenu
+
+struct RectMenu g_configMenu = {
+	.stringIndexTitle = -1,
+	.state = EXECUTE_FUNCPTR | DISABLE_INPUT_ALLOW_FUNCPTRS,
+	.funcPtr = MM_MenuProc_Config,
+};
+
+static void Config_UpdateSlider(const struct GamepadBuffer *pad, const int rowSelected,
+                              const int localRow, int *value, const int min, const int max, const int step)
+{
+	if (rowSelected != localRow)
 		return;
-	int held = pad->buttonsHeldCurrFrame;
+	const int held = pad->buttonsHeldCurrFrame;
 	if ((held & BTN_LEFT) != 0 && (sdata->frameCounter % 3) == 0)
 	{
 		*value -= step;
@@ -52,31 +76,19 @@ static void Config_UpdateSlider(struct GamepadBuffer *pad, int rowSelected, int 
 	}
 }
 
-static void Config_DrawSlider(char *label, int val, int labelX, int valueX, int y, uint32_t *ot, char *buf)
+static void Config_DrawValue(const ConfigEntry *e, const int valueX, int y, uint32_t *ot, char *buf)
 {
-	DecalFont_DrawLineOT(label, labelX, y, FONT_SMALL, ORANGE, ot);
-	sprintf(buf, "%d%%", val);
-	DecalFont_DrawLineOT(buf, valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+	if (e->type == CFG_BOOL)
+	{
+		DecalFont_DrawLineOT(*(bool *)e->valuePtr ? "ON" : "OFF",
+			valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+	}
+	else
+	{
+		sprintf(buf, "%d%%", *(int *)e->valuePtr);
+		DecalFont_DrawLineOT(buf, valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+	}
 }
-
-static void MM_MenuProc_Config(struct RectMenu *menu);
-
-static char *s_sectionLabels[] = {
-	"General",
-	"Adventure",
-	"Vehicle",
-	"Unlocks",
-	"Graphics",
-};
-static int s_rowsPerSection[] = {1, 3, 2, 1, 2};
-static int s_sectionRowOffset[] = {0, 1, 4, 6, 7};
-static int s_currentSection = -1; // -1 = section selector, 0-4 = submenu
-
-struct RectMenu g_configMenu = {
-	.stringIndexTitle = -1,
-	.state = EXECUTE_FUNCPTR | DISABLE_INPUT_ALLOW_FUNCPTRS,
-	.funcPtr = MM_MenuProc_Config,
-};
 
 static void MM_MenuProc_Config(struct RectMenu *menu)
 {
@@ -84,6 +96,9 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 	uint32_t *ot = gGT->backBuffer->otMem.uiOT;
 	struct GamepadBuffer *pad = &sdata->gGamepads->gamepad[0];
 	char buf[32];
+
+	if (s_numSections == 0)
+		BuildSectionMap();
 
 	if ((pad->buttonsTapped & (BTN_TRIANGLE | BTN_START)) != 0)
 	{
@@ -102,9 +117,9 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 
 	if (s_currentSection >= 0)
 	{
-		int sectionIndex = s_currentSection;
-		int numRows = s_rowsPerSection[sectionIndex];
-		int firstRow = s_sectionRowOffset[sectionIndex];
+		const int sec = s_currentSection;
+		const int numRows = s_sectionCount[sec];
+		const int firstEntry = s_sectionToEntry[sec];
 
 		if ((pad->buttonsTapped & BTN_UP) != 0)
 		{
@@ -120,26 +135,20 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		if ((pad->buttonsTapped & (BTN_CROSS | BTN_CIRCLE)) != 0)
 		{
 			OtherFX_Play(1, 1);
-			int globalRow = firstRow + menu->rowSelected;
-			switch (globalRow)
-			{
-				case CONFIG_ROW_SKIP_INTROS:    g_config.skipIntro ^= 1; break;
-				case CONFIG_ROW_SKIP_HINTS:     g_config.skipHints ^= 1; break;
-				case CONFIG_ROW_UNLOCK_GATES:   g_config.unlockAllGates ^= 1; break;
-				case CONFIG_ROW_UNLOCK_PORTALS: g_config.unlockAllPortals ^= 1; break;
-				case CONFIG_ROW_UNLOCK_CHARS:   g_config.unlockAllCharacters ^= 1; break;
-				case CONFIG_ROW_DRAW_DISTANCE:  g_config.increaseDrawDistance ^= 1; break;
-				case CONFIG_ROW_SPLIT_SCREEN_LOD: g_config.disableSplitScreenLod ^= 1; break;
-			}
+			const ConfigEntry *e = &g_configEntries[firstEntry + menu->rowSelected];
+			if (e->type == CFG_BOOL)
+				*(bool *)e->valuePtr ^= 1;
 		}
 
-		if (sectionIndex == 2)
+		// slider update for int entries
+		for (int j = 0; j < numRows; j++)
 		{
-			Config_UpdateSlider(pad, menu->rowSelected, 0, &g_config.speedMultiplier, 10, 200, 10);
-			Config_UpdateSlider(pad, menu->rowSelected, 1, &g_config.gravityMultiplier, 10, 300, 10);
+			const ConfigEntry *e = &g_configEntries[firstEntry + j];
+			if (e->type == CFG_INT)
+				Config_UpdateSlider(pad, menu->rowSelected, j, (int *)e->valuePtr, e->min, e->max, e->step);
 		}
 
-		DecalFont_DrawLineOT(s_sectionLabels[sectionIndex],
+		DecalFont_DrawLineOT((char *)g_configEntries[firstEntry].section,
 			0x100, 0x18, FONT_BIG, JUSTIFY_CENTER | ORANGE, ot);
 
 		int labelX = 0x38;
@@ -149,53 +158,11 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 
 		for (int j = 0; j < numRows; j++)
 		{
-			int globalRow = firstRow + j;
+			const ConfigEntry *e = &g_configEntries[firstEntry + j];
 			int y = startY + j * rowSpacing;
 
-			switch (globalRow)
-			{
-				case CONFIG_ROW_SKIP_INTROS:
-					DecalFont_DrawLineOT("Skip Intros", labelX, y, FONT_SMALL, ORANGE, ot);
-					DecalFont_DrawLineOT(g_config.skipIntro ? "ON" : "OFF",
-						valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
-					break;
-				case CONFIG_ROW_SKIP_HINTS:
-					DecalFont_DrawLineOT("Skip Mask Hints", labelX, y, FONT_SMALL, ORANGE, ot);
-					DecalFont_DrawLineOT(g_config.skipHints ? "ON" : "OFF",
-						valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
-					break;
-				case CONFIG_ROW_UNLOCK_GATES:
-					DecalFont_DrawLineOT("Open All Gates", labelX, y, FONT_SMALL, ORANGE, ot);
-					DecalFont_DrawLineOT(g_config.unlockAllGates ? "ON" : "OFF",
-						valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
-					break;
-				case CONFIG_ROW_UNLOCK_PORTALS:
-					DecalFont_DrawLineOT("Open All Portals", labelX, y, FONT_SMALL, ORANGE, ot);
-					DecalFont_DrawLineOT(g_config.unlockAllPortals ? "ON" : "OFF",
-						valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
-					break;
-				case CONFIG_ROW_SPEED:
-					Config_DrawSlider("Kart Speed Multiplier", g_config.speedMultiplier, labelX, valueX, y, ot, buf);
-					break;
-				case CONFIG_ROW_GRAVITY:
-					Config_DrawSlider("Gravity Multiplier", g_config.gravityMultiplier, labelX, valueX, y, ot, buf);
-					break;
-				case CONFIG_ROW_UNLOCK_CHARS:
-					DecalFont_DrawLineOT("Unlock All Characters", labelX, y, FONT_SMALL, ORANGE, ot);
-					DecalFont_DrawLineOT(g_config.unlockAllCharacters ? "ON" : "OFF",
-						valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
-					break;
-				case CONFIG_ROW_DRAW_DISTANCE:
-					DecalFont_DrawLineOT("Increase Draw Distance", labelX, y, FONT_SMALL, ORANGE, ot);
-					DecalFont_DrawLineOT(g_config.increaseDrawDistance ? "ON" : "OFF",
-						valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
-					break;
-				case CONFIG_ROW_SPLIT_SCREEN_LOD:
-					DecalFont_DrawLineOT("Hi-Res Models in Multiplayer", labelX, y, FONT_SMALL, ORANGE, ot);
-					DecalFont_DrawLineOT(g_config.disableSplitScreenLod ? "ON" : "OFF",
-						valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
-					break;
-			}
+			DecalFont_DrawLineOT((char *)e->label, labelX, y, FONT_SMALL, ORANGE, ot);
+			Config_DrawValue(e, valueX, y, ot, buf);
 
 			if (j == menu->rowSelected)
 			{
@@ -208,12 +175,12 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 	{
 		if ((pad->buttonsTapped & BTN_UP) != 0)
 		{
-			menu->rowSelected = (menu->rowSelected > 0) ? menu->rowSelected - 1 : numConfigSections - 1;
+			menu->rowSelected = (menu->rowSelected > 0) ? menu->rowSelected - 1 : s_numSections - 1;
 			OtherFX_Play(0, 1);
 		}
 		if ((pad->buttonsTapped & BTN_DOWN) != 0)
 		{
-			menu->rowSelected = (menu->rowSelected < numConfigSections - 1) ? menu->rowSelected + 1 : 0;
+			menu->rowSelected = (menu->rowSelected < s_numSections - 1) ? menu->rowSelected + 1 : 0;
 			OtherFX_Play(0, 1);
 		}
 
@@ -231,10 +198,11 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		int startY = 0x3C;
 		int spacing = 0x0E;
 
-		for (int i = 0; i < numConfigSections; i++)
+		for (int i = 0; i < s_numSections; i++)
 		{
+			const ConfigEntry *e = &g_configEntries[s_sectionToEntry[i]];
 			int y = startY + i * spacing;
-			DecalFont_DrawLineOT(s_sectionLabels[i], labelX, y, FONT_SMALL, ORANGE, ot);
+			DecalFont_DrawLineOT((char *)e->section, labelX, y, FONT_SMALL, ORANGE, ot);
 			if (i == menu->rowSelected)
 			{
 				RECT sel = {0x30, y - 2, 0x1B0, 0x0C};
