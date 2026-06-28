@@ -627,6 +627,9 @@ void PushBuffer_UpdateFrustum(struct PushBuffer *pb)
 	val_X = pb->rect.w;
 	val_X = val_X / 2;
 
+	if (g_config.widescreen)
+		val_X = val_X * 0x800 / 0x600;
+
 	val_Y = ((pb->rect.h * 0x600) / 0x360);
 	val_Y = val_Y / 2;
 
