@@ -9,6 +9,7 @@
 #define CONFIG_ROW_GRAVITY          5
 #define CONFIG_ROW_UNLOCK_CHARS     6
 #define CONFIG_ROW_DRAW_DISTANCE    7
+#define CONFIG_ROW_SPLIT_SCREEN_LOD 8
 
 // Row arrays with CONFIG entry at bottom, used by MM_MenuProc_Main
 struct MenuRow s_rowsMainMenuBasicConfig[] = {
@@ -67,7 +68,7 @@ static char *s_sectionLabels[] = {
 	"Unlocks",
 	"Graphics",
 };
-static int s_rowsPerSection[] = {1, 3, 2, 1, 1};
+static int s_rowsPerSection[] = {1, 3, 2, 1, 2};
 static int s_sectionRowOffset[] = {0, 1, 4, 6, 7};
 static int s_currentSection = -1; // -1 = section selector, 0-4 = submenu
 
@@ -128,6 +129,7 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 				case CONFIG_ROW_UNLOCK_PORTALS: g_config.unlockAllPortals ^= 1; break;
 				case CONFIG_ROW_UNLOCK_CHARS:   g_config.unlockAllCharacters ^= 1; break;
 				case CONFIG_ROW_DRAW_DISTANCE:  g_config.increaseDrawDistance ^= 1; break;
+				case CONFIG_ROW_SPLIT_SCREEN_LOD: g_config.disableSplitScreenLod ^= 1; break;
 			}
 		}
 
@@ -186,6 +188,11 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 				case CONFIG_ROW_DRAW_DISTANCE:
 					DecalFont_DrawLineOT("Increase Draw Distance", labelX, y, FONT_SMALL, ORANGE, ot);
 					DecalFont_DrawLineOT(g_config.increaseDrawDistance ? "ON" : "OFF",
+						valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+					break;
+				case CONFIG_ROW_SPLIT_SCREEN_LOD:
+					DecalFont_DrawLineOT("Hi-Res Models in Multiplayer", labelX, y, FONT_SMALL, ORANGE, ot);
+					DecalFont_DrawLineOT(g_config.disableSplitScreenLod ? "ON" : "OFF",
 						valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
 					break;
 			}

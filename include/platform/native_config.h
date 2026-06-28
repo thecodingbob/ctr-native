@@ -11,7 +11,8 @@ typedef struct {
     bool unlockAllCharacters;   // false = off (normal unlock logic), true = all characters already unlocked
     bool unlockAllGates;        // false = off, true = all adventure mode wood doors open without keys
     bool unlockAllPortals;      // false = off, true = all warp pads and boss garages unlocked
-    bool increaseDrawDistance;       // false = off (default), true = render 3x farther
+    bool increaseDrawDistance;  // false = off (default), true = render 3x farther
+    bool disableSplitScreenLod; // false = off (default,  true = load hi-res character models in 3+ multiplayer)
 } NativeConfig;
 
 extern NativeConfig g_config;

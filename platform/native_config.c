@@ -4,8 +4,8 @@
 #include <ctype.h>
 #include <stdbool.h>
 
-NativeConfig g_config = {false, false, 100, 100, false, false, false, false};
-int numConfigOptions = 8;
+NativeConfig g_config = {false, false, 100, 100, false, false, false, false, false};
+int numConfigOptions = 9;
 int numConfigSections = 5;
 
 static bool ParseBool(const char *s)
@@ -26,6 +26,7 @@ static const ConfigBoolEntry s_boolEntries[] = {
     {"Adventure", "unlock_all_portals", &g_config.unlockAllPortals},
 	{"Unlocks", "unlock_all_characters", &g_config.unlockAllCharacters},
 	{"Graphics", "increase_draw_distance", &g_config.increaseDrawDistance},
+	{"Graphics", "disable_split_screen_lod", &g_config.disableSplitScreenLod},
 };
 
 typedef struct {
@@ -146,6 +147,7 @@ void NativeConfig_Save(void)
 	fprintf(f, "\n");
 	fprintf(f, "[Graphics]\n");
 	fprintf(f, "increase_draw_distance = %s\n", g_config.increaseDrawDistance ? "true" : "false");
+	fprintf(f, "disable_split_screen_lod = %s\n", g_config.disableSplitScreenLod ? "true" : "false");
 
 	fclose(f);
 }
