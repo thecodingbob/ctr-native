@@ -429,6 +429,17 @@ void PushBuffer_SetMatrixVP(struct PushBuffer *pb)
 	// scale Y axis (3)
 	pb->matrix_ViewProj.m[1][2] = pb->matrix_ViewProj.m[1][2] * r360 / r600;
 
+	// widescreen: scale X by r600/r800 (0.75) to widen horizontal FOV
+	if (g_config.widescreen)
+	{
+#define r800 0x800
+		pb->matrix_ViewProj.t[0] = pb->matrix_ViewProj.t[0] * r600 / r800;
+		pb->matrix_ViewProj.m[0][0] = pb->matrix_ViewProj.m[0][0] * r600 / r800;
+		pb->matrix_ViewProj.m[0][1] = pb->matrix_ViewProj.m[0][1] * r600 / r800;
+		pb->matrix_ViewProj.m[0][2] = pb->matrix_ViewProj.m[0][2] * r600 / r800;
+#undef r800
+	}
+
 	// store camera matrix,
 	// otherwise oxide intro cutscene bugs out,
 	// when crash is sleeping on the grassy hill

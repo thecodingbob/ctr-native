@@ -13,6 +13,7 @@
 #include "platform/native_log.h"
 #include "platform/native_perf.h"
 #include "platform/native_renderer.h"
+#include "platform/native_config.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -300,8 +301,16 @@ internal void NativeRenderer_UpdatePresentationViewport(void)
 {
 	int viewportW;
 	int viewportH;
+	int effAspectW = s_presentAspectW;
+	int effAspectH = s_presentAspectH;
 
-	if ((g_windowWidth <= 0) || (g_windowHeight <= 0) || (s_presentAspectW <= 0) || (s_presentAspectH <= 0))
+	if (g_config.widescreen)
+	{
+		effAspectW = 16;
+		effAspectH = 9;
+	}
+
+	if ((g_windowWidth <= 0) || (g_windowHeight <= 0) || (effAspectW <= 0) || (effAspectH <= 0))
 	{
 		s_presentViewport.x = 0;
 		s_presentViewport.y = 0;
@@ -311,12 +320,12 @@ internal void NativeRenderer_UpdatePresentationViewport(void)
 	}
 
 	viewportW = g_windowWidth;
-	viewportH = (viewportW * s_presentAspectH) / s_presentAspectW;
+	viewportH = (viewportW * effAspectH) / effAspectW;
 
 	if (viewportH > g_windowHeight)
 	{
 		viewportH = g_windowHeight;
-		viewportW = (viewportH * s_presentAspectW) / s_presentAspectH;
+		viewportW = (viewportH * effAspectW) / effAspectH;
 	}
 
 	if (viewportW < 1)

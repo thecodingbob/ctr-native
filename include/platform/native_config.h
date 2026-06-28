@@ -16,6 +16,7 @@ typedef struct {
     bool unlockAllPortals;      // false = off, true = all warp pads and boss garages unlocked
     bool increaseDrawDistance;  // false = off (default), true = render 3x farther
     bool disableSplitScreenLod; // false = off (default), true = load hi-res character models in 3+ multiplayer
+    bool widescreen;            // false = off (default), true = 16:9 widescreen rendering
 } NativeConfig;
 
 typedef enum { CFG_BOOL, CFG_INT } ConfigType;
