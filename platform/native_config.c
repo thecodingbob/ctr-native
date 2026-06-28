@@ -6,7 +6,7 @@
 #include <platform/native_config.h>
 #include <platform/native_assets.h>
 
-NativeConfig g_config = {false, false, 100, 100, false, false, false, false, false};
+NativeConfig g_config = {false, false, 100, 100, 100, 100, false, false, false, false, false, false};
 
 const ConfigEntry g_configEntries[] = {
     {"General",   "skip_intro",               "Skip Intros",                  CFG_BOOL, &g_config.skipIntro},
@@ -16,6 +16,7 @@ const ConfigEntry g_configEntries[] = {
     {"Vehicle",   "speed_stat_multiplier",    "Kart Speed Multiplier",        CFG_INT,  &g_config.speedMultiplier,        10, 200, 10},
     {"Vehicle",   "gravity_stat_multiplier",  "Gravity Multiplier",           CFG_INT,  &g_config.gravityMultiplier,      10, 300, 10},
     {"Vehicle",   "turn_stat_multiplier",     "Kart Turn Multiplier",         CFG_INT, &g_config.turnMultiplier,          10, 400, 10},
+    {"Vehicle",   "jump_stat_multiplier",     "Kart Jump Multiplier",         CFG_INT, &g_config.jumpMultiplier,          10, 300, 10},
     {"Unlocks",   "unlock_all_characters",    "Unlock All Characters",        CFG_BOOL, &g_config.unlockAllCharacters},
     {"Graphics",  "increase_draw_distance",   "Increase Draw Distance",       CFG_BOOL, &g_config.increaseDrawDistance},
     {"Graphics",  "disable_split_screen_lod", "Hi-Res Models in Multiplayer", CFG_BOOL, &g_config.disableSplitScreenLod},
