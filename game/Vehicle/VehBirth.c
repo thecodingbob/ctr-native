@@ -545,11 +545,19 @@ void VehBirth_SetConsts(struct Driver *driver)
 
 		u32 rawValue = (u32)metaPhys->value[engineID];
 
-		if (metaPhys->offset == SPEED_CLASS_STAT_OFFSET) {
+		switch (metaPhys->offset)
+		{
+		case SPEED_CLASS_STAT_OFFSET:
 			rawValue = rawValue * g_config.speedMultiplier / 100;
-		}
-		if (metaPhys->offset == GRAVITY_OFFSET) {
+			break;
+		case GRAVITY_OFFSET:
 			rawValue = rawValue * g_config.gravityMultiplier / 100;
+			break;
+		case TURN_RATE_OFFSET:
+			rawValue = rawValue * g_config.turnMultiplier / 100;
+			break;
+		default:
+			break;
 		}
 
 		u8 *dst = &d[metaPhys->offset];

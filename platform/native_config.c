@@ -15,6 +15,7 @@ const ConfigEntry g_configEntries[] = {
     {"Adventure", "unlock_all_portals",       "Open All Portals",             CFG_BOOL, &g_config.unlockAllPortals},
     {"Vehicle",   "speed_stat_multiplier",    "Kart Speed Multiplier",        CFG_INT,  &g_config.speedMultiplier,        10, 200, 10},
     {"Vehicle",   "gravity_stat_multiplier",  "Gravity Multiplier",           CFG_INT,  &g_config.gravityMultiplier,      10, 300, 10},
+    {"Vehicle",   "turn_stat_multiplier",     "Kart Turn Multiplier",         CFG_INT, &g_config.turnMultiplier,          10, 400, 10},
     {"Unlocks",   "unlock_all_characters",    "Unlock All Characters",        CFG_BOOL, &g_config.unlockAllCharacters},
     {"Graphics",  "increase_draw_distance",   "Increase Draw Distance",       CFG_BOOL, &g_config.increaseDrawDistance},
     {"Graphics",  "disable_split_screen_lod", "Hi-Res Models in Multiplayer", CFG_BOOL, &g_config.disableSplitScreenLod},
