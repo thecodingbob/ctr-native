@@ -556,6 +556,9 @@ void VehBirth_SetConsts(struct Driver *driver)
 		case TURN_RATE_OFFSET:
 			rawValue = rawValue * g_config.turnMultiplier / 100;
 			break;
+		case JUMP_OFFSET:
+			rawValue = rawValue * g_config.jumpMultiplier / 100;
+			break;
 		default:
 			break;
 		}
