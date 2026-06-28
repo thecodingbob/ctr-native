@@ -3,151 +3,129 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdbool.h>
+#include <platform/native_config.h>
+#include <platform/native_assets.h>
 
 NativeConfig g_config = {false, false, 100, 100, false, false, false, false, false};
-int numConfigOptions = 9;
-int numConfigSections = 5;
+
+const ConfigEntry g_configEntries[] = {
+    {"General",   "skip_intro",               "Skip Intros",                  CFG_BOOL, &g_config.skipIntro},
+    {"Adventure", "skip_hints",               "Skip Mask Hints",              CFG_BOOL, &g_config.skipHints},
+    {"Adventure", "unlock_all_gates",         "Open All Gates",               CFG_BOOL, &g_config.unlockAllGates},
+    {"Adventure", "unlock_all_portals",       "Open All Portals",             CFG_BOOL, &g_config.unlockAllPortals},
+    {"Vehicle",   "speed_stat_multiplier",    "Kart Speed Multiplier",        CFG_INT,  &g_config.speedMultiplier,        10, 200, 10},
+    {"Vehicle",   "gravity_stat_multiplier",  "Gravity Multiplier",           CFG_INT,  &g_config.gravityMultiplier,      10, 300, 10},
+    {"Unlocks",   "unlock_all_characters",    "Unlock All Characters",        CFG_BOOL, &g_config.unlockAllCharacters},
+    {"Graphics",  "increase_draw_distance",   "Increase Draw Distance",       CFG_BOOL, &g_config.increaseDrawDistance},
+    {"Graphics",  "disable_split_screen_lod", "Hi-Res Models in Multiplayer", CFG_BOOL, &g_config.disableSplitScreenLod},
+};
+
+const int g_numConfigEntries = sizeof(g_configEntries) / sizeof(g_configEntries[0]);
 
 static bool ParseBool(const char *s)
 {
     return strcmp(s, "true") == 0 || strcmp(s, "1") == 0;
 }
 
-typedef struct {
-    const char *section;
-    const char *key;
-    bool *field;
-} ConfigBoolEntry;
-
-static const ConfigBoolEntry s_boolEntries[] = {
-    {"General",   "skip_intro", &g_config.skipIntro},
-    {"Adventure", "skip_hints", &g_config.skipHints},
-    {"Adventure", "unlock_all_gates", &g_config.unlockAllGates},
-    {"Adventure", "unlock_all_portals", &g_config.unlockAllPortals},
-	{"Unlocks", "unlock_all_characters", &g_config.unlockAllCharacters},
-	{"Graphics", "increase_draw_distance", &g_config.increaseDrawDistance},
-	{"Graphics", "disable_split_screen_lod", &g_config.disableSplitScreenLod},
-};
-
-typedef struct {
-    const char *section;
-    const char *key;
-    int *field;
-} ConfigIntEntry;
-
-static const ConfigIntEntry s_intEntries[] = {
-    {"Vehicle", "speed_stat_multiplier", &g_config.speedMultiplier},
-    {"Vehicle", "gravity_stat_multiplier", &g_config.gravityMultiplier},
-
-};
-
-
 static char *trimWhitespace(char *s)
 {
-	while (isspace((unsigned char)*s))
-		s++;
-	if (*s == '\0')
-		return s;
-	char *end = s + strlen(s) - 1;
-	while (end > s && isspace((unsigned char)*end))
-		end--;
-	*(end + 1) = '\0';
-	return s;
+    while (isspace((unsigned char)*s))
+        s++;
+    if (*s == '\0')
+        return s;
+    char *end = s + strlen(s) - 1;
+    while (end > s && isspace((unsigned char)*end))
+        end--;
+    *(end + 1) = '\0';
+    return s;
 }
 
 void NativeConfig_Load(void)
 {
     printf("[Config] Base:       %s\n", NativeAssets_GetBaseDir());
-	FILE *f = fopen("build/config.ini", "r");
-	if (!f) {
+    FILE *f = fopen("build/config.ini", "r");
+    if (!f) {
         printf("[Config] config.ini NOT FOUND (CWD is not base dir)\n");
-		return;
+        return;
     }
 
     printf("[Config] config.ini opened OK\n");
-    printf("[Config] speedMultiplier DEFAULT = %d\n", g_config.speedMultiplier);
 
-	char line[256];
-	char section[64] = "";
+    char line[256];
+    char section[64] = "";
 
-	while (fgets(line, sizeof(line), f))
-	{
-		char *p = trimWhitespace(line);
+    while (fgets(line, sizeof(line), f))
+    {
+        char *p = trimWhitespace(line);
 
-		if (*p == '\0' || *p == ';' || *p == '#')
-			continue;
+        if (*p == '\0' || *p == ';' || *p == '#')
+            continue;
 
-		if (*p == '[')
-		{
-			char *end = strchr(p + 1, ']');
-			if (end)
-			{
-				*end = '\0';
-				strncpy(section, p + 1, sizeof(section) - 1);
-				section[sizeof(section) - 1] = '\0';
-			}
+        if (*p == '[')
+        {
+            char *end = strchr(p + 1, ']');
+            if (end)
+            {
+                *end = '\0';
+                strncpy(section, p + 1, sizeof(section) - 1);
+                section[sizeof(section) - 1] = '\0';
+            }
             printf("[Config] Section: [%s]\n", section);
-			continue;
-		}
+            continue;
+        }
 
-		char *eq = strchr(p, '=');
-		if (!eq)
-			continue;
+        char *eq = strchr(p, '=');
+        if (!eq)
+            continue;
 
-		*eq = '\0';
-		char *key = trimWhitespace(p);
-		char *value = trimWhitespace(eq + 1);
+        *eq = '\0';
+        char *key = trimWhitespace(p);
+        char *value = trimWhitespace(eq + 1);
 
-		for (int i = 0; i < (int)(sizeof(s_boolEntries) / sizeof(s_boolEntries[0])); i++) {
-			if (strcmp(section, s_boolEntries[i].section) == 0 &&
-			    strcmp(key, s_boolEntries[i].key) == 0)
-			{
-				*s_boolEntries[i].field = ParseBool(value);
-				printf("[Config] %s/%s = %d\n", s_boolEntries[i].section, s_boolEntries[i].key, *s_boolEntries[i].field);
-				break;
-			}
-		}
+        for (int i = 0; i < g_numConfigEntries; i++)
+        {
+            const ConfigEntry *e = &g_configEntries[i];
+            if (strcmp(section, e->section) == 0 &&
+                strcmp(key, e->key) == 0)
+            {
+                if (e->type == CFG_BOOL)
+                    *(bool *)e->valuePtr = ParseBool(value);
+                else
+                    *(int *)e->valuePtr = atoi(value);
+                printf("[Config] %s/%s = %s\n", e->section, e->key, value);
+                break;
+            }
+        }
+    }
 
-		for (int i = 0; i < (int)(sizeof(s_intEntries) / sizeof(s_intEntries[0])); i++) {
-			if (strcmp(section, s_intEntries[i].section) == 0 &&
-			    strcmp(key, s_intEntries[i].key) == 0)
-			{
-				*s_intEntries[i].field = atoi(value);
-				printf("[Config] %s/%s = %d\n", s_intEntries[i].section, s_intEntries[i].key, *s_intEntries[i].field);
-				break;
-			}
-		}
-
-	}
-
-	fclose(f);
-
+    fclose(f);
 }
 
 void NativeConfig_Save(void)
 {
-	FILE *f = fopen("build/config.ini", "w");
-	if (!f)
-		return;
+    FILE *f = fopen("build/config.ini", "w");
+    if (!f)
+        return;
 
-	fprintf(f, "[General]\n");
-	fprintf(f, "skip_intro = %s\n", g_config.skipIntro ? "true" : "false");
-	fprintf(f, "\n");
-	fprintf(f, "[Adventure]\n");
-	fprintf(f, "skip_hints = %s\n", g_config.skipHints ? "true" : "false");
-	fprintf(f, "unlock_all_gates = %s\n", g_config.unlockAllGates ? "true" : "false");
-	fprintf(f, "unlock_all_portals = %s\n", g_config.unlockAllPortals ? "true" : "false");
-	fprintf(f, "\n");
-	fprintf(f, "[Vehicle]\n");
-	fprintf(f, "speed_stat_multiplier = %d\n", g_config.speedMultiplier);
-	fprintf(f, "gravity_stat_multiplier = %d\n", g_config.gravityMultiplier);
-	fprintf(f, "\n");
-	fprintf(f, "[Unlocks]\n");
-	fprintf(f, "unlock_all_characters = %s\n", g_config.unlockAllCharacters ? "true" : "false");
-	fprintf(f, "\n");
-	fprintf(f, "[Graphics]\n");
-	fprintf(f, "increase_draw_distance = %s\n", g_config.increaseDrawDistance ? "true" : "false");
-	fprintf(f, "disable_split_screen_lod = %s\n", g_config.disableSplitScreenLod ? "true" : "false");
+    const char *lastSection = NULL;
 
-	fclose(f);
+    for (int i = 0; i < g_numConfigEntries; i++)
+    {
+        const ConfigEntry *e = &g_configEntries[i];
+
+        if (lastSection == NULL || strcmp(e->section, lastSection) != 0)
+        {
+            if (lastSection != NULL)
+                fprintf(f, "\n");
+            fprintf(f, "[%s]\n", e->section);
+            lastSection = e->section;
+        }
+
+        if (e->type == CFG_BOOL)
+            fprintf(f, "%s = %s\n", e->key, *(bool *)e->valuePtr ? "true" : "false");
+        else
+            fprintf(f, "%s = %d\n", e->key, *(int *)e->valuePtr);
+    }
+
+    fclose(f);
 }
