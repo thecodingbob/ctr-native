@@ -71,6 +71,7 @@
 
 #include <namespace_UI.h>
 #include <namespace_Vehicle.h>
+#include <widescreen.h>
 #include <ovr_226.h>
 #include <ovr_227.h>
 #include <ovr_228.h>

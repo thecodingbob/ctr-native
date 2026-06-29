@@ -248,6 +248,8 @@
 
 #include "game/Vector.c"
 
+#include "game/widescreen.c"
+
 #include "game/221.c"
 #include "game/222.c"
 #include "game/223.c"
