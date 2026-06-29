@@ -28,6 +28,15 @@ void DecalHUD_DrawPolyFT4(struct Icon *icon, s16 posX, s16 posY, struct PrimMem 
 		setTransparency(p, transparency);
 	}
 
+	if (g_config.widescreen)
+	{
+		int len = ((p->x1 - p->x0) * 125) / 1000;
+		p->x0 += len;
+		p->x2 += len;
+		p->x1 -= len;
+		p->x3 -= len;
+	}
+
 	primMem->cursor = p + 1;
 }
 
@@ -90,6 +99,15 @@ void DecalHUD_DrawWeapon(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *
 		setTransparency(p, transparency);
 	}
 
+	if (g_config.widescreen)
+	{
+		int len = ((p->x2 - p->x0) * 125) / 1000;
+		p->x0 += len;
+		p->x1 += len;
+		p->x2 -= len;
+		p->x3 -= len;
+	}
+
 	primMem->cursor = p + 1;
 }
 
@@ -121,6 +139,15 @@ void DecalHUD_DrawPolyGT4(struct Icon *icon, s16 posX, s16 posY, struct PrimMem 
 	if (transparency)
 	{
 		setTransparency(p, transparency);
+	}
+
+	if (g_config.widescreen)
+	{
+		int len = ((p->x1 - p->x0) * 125) / 1000;
+		p->x0 += len;
+		p->x2 += len;
+		p->x1 -= len;
+		p->x3 -= len;
 	}
 
 	primMem->cursor = p + 1;

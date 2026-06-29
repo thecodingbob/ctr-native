@@ -147,6 +147,15 @@ void UI_WeaponBG_DrawShine(struct Icon *icon, s16 posX, s16 posY, struct PrimMem
 			break;
 		}
 
+		if (g_config.widescreen)
+		{
+			int len = ((p->x1 - p->x0) * 125) / 1000;
+			p->x0 += len;
+			p->x2 += len;
+			p->x1 -= len;
+			p->x3 -= len;
+		}
+
 		// color RGB
 		*(u32 *)&p->r0 = wumpaShine[2];
 		*(u32 *)&p->r1 = wumpaShine[1];
@@ -292,6 +301,16 @@ void UI_DrawDriverIcon(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *pr
 	p->v[2].pos.y = bottomY;
 	p->v[3].pos.x = bottomX;
 	p->v[3].pos.y = bottomY;
+
+	if (g_config.widescreen)
+	{
+		int w = bottomX - topX;
+		int len = (w * 125) / 1000;
+		p->v[0].pos.x += len;
+		p->v[2].pos.x += len;
+		p->v[1].pos.x -= len;
+		p->v[3].pos.x -= len;
+	}
 
 	p->polyClut.self = icon->texLayout.clut;
 	p->polyTpage.self = icon->texLayout.tpage;
