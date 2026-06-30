@@ -2,18 +2,21 @@
 
 int Widescreen_GetFactor(void)
 {
-        // (4 * windowHeight * 1000) / (3 * windowWidth)
-	if (!g_config.widescreen)
-		return 1000; // 4:3
-	return 750; // 16:9
+	switch (g_config.aspectRatio)
+	{
+		case 1:  return 750;  // 16:9  → 1000 * (4/3) / (16/9)  = 750
+		case 2:  return 833;  // 16:10 → 1000 * (4/3) / (16/10) ≈ 833
+		case 3:  return 563;  // 21:9 (64:27) → 1000 * (4/3) / (64/27) ≈ 563
+		default: return 1000; // 4:3 (vanilla)
+	}
 }
 
 int Widescreen_XShift(int width)
 {
-	if (!g_config.widescreen)
-		return 0;
-
 	const int factor = Widescreen_GetFactor();
+
+	if (factor == 1000)
+		return 0;
 
 	return (width * (1000 - factor)) / 2000;
 }

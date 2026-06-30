@@ -83,6 +83,20 @@ static void Config_DrawValue(const ConfigEntry *e, const int valueX, int y, uint
 		DecalFont_DrawLineOT(*(bool *)e->valuePtr ? "ON" : "OFF",
 			valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
 	}
+	else if (e->type == CFG_ENUM)
+	{
+		int val = *(int *)e->valuePtr;
+		const char *name = "?";
+		for (int j = 0; j < e->numEnumValues; j++)
+		{
+			if (e->enumValues[j].value == val)
+			{
+				name = e->enumValues[j].name;
+				break;
+			}
+		}
+		DecalFont_DrawLineOT((char *)name, valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+	}
 	else
 	{
 		sprintf(buf, "%d%%", *(int *)e->valuePtr);
@@ -138,6 +152,11 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 			const ConfigEntry *e = &g_configEntries[firstEntry + menu->rowSelected];
 			if (e->type == CFG_BOOL)
 				*(bool *)e->valuePtr ^= 1;
+			else if (e->type == CFG_ENUM)
+			{
+				int *val = (int *)e->valuePtr;
+				*val = (*val + 1) % e->numEnumValues;
+			}
 		}
 
 		// slider update for int entries

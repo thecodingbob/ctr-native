@@ -304,10 +304,12 @@ internal void NativeRenderer_UpdatePresentationViewport(void)
 	int effAspectW = s_presentAspectW;
 	int effAspectH = s_presentAspectH;
 
-	if (g_config.widescreen)
+	switch (g_config.aspectRatio)
 	{
-		effAspectW = 16;
-		effAspectH = 9;
+		case 1: effAspectW = 16; effAspectH = 9;  break;
+		case 2: effAspectW = 16; effAspectH = 10; break;
+		case 3: effAspectW = 64; effAspectH = 27; break;
+		default: break; // 4:3 — keep defaults from SetPresentationAspect
 	}
 
 	if ((g_windowWidth <= 0) || (g_windowHeight <= 0) || (effAspectW <= 0) || (effAspectH <= 0))

@@ -429,14 +429,15 @@ void PushBuffer_SetMatrixVP(struct PushBuffer *pb)
 	// scale Y axis (3)
 	pb->matrix_ViewProj.m[1][2] = pb->matrix_ViewProj.m[1][2] * r360 / r600;
 
-	// widescreen: scale X by r600/r800 (0.75) to widen horizontal FOV
-	if (g_config.widescreen)
+	// widescreen: scale X by ws/r800 to widen horizontal FOV
+	if (g_config.aspectRatio != 0)
 	{
+		int ws = Widescreen_GetFactor() * 0x800 / 1000;
 #define r800 0x800
-		pb->matrix_ViewProj.t[0] = pb->matrix_ViewProj.t[0] * r600 / r800;
-		pb->matrix_ViewProj.m[0][0] = pb->matrix_ViewProj.m[0][0] * r600 / r800;
-		pb->matrix_ViewProj.m[0][1] = pb->matrix_ViewProj.m[0][1] * r600 / r800;
-		pb->matrix_ViewProj.m[0][2] = pb->matrix_ViewProj.m[0][2] * r600 / r800;
+		pb->matrix_ViewProj.t[0] = pb->matrix_ViewProj.t[0] * ws / r800;
+		pb->matrix_ViewProj.m[0][0] = pb->matrix_ViewProj.m[0][0] * ws / r800;
+		pb->matrix_ViewProj.m[0][1] = pb->matrix_ViewProj.m[0][1] * ws / r800;
+		pb->matrix_ViewProj.m[0][2] = pb->matrix_ViewProj.m[0][2] * ws / r800;
 #undef r800
 	}
 
@@ -627,8 +628,11 @@ void PushBuffer_UpdateFrustum(struct PushBuffer *pb)
 	val_X = pb->rect.w;
 	val_X = val_X / 2;
 
-	if (g_config.widescreen)
-		val_X = val_X * 0x800 / 0x600;
+	if (g_config.aspectRatio != 0)
+	{
+		int ws = Widescreen_GetFactor() * 0x800 / 1000;
+		val_X = val_X * 0x800 / ws;
+	}
 
 	val_Y = ((pb->rect.h * 0x600) / 0x360);
 	val_Y = val_Y / 2;

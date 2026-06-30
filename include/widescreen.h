@@ -1,7 +1,6 @@
 #ifndef WIDESCREEN_H
 #define WIDESCREEN_H
 
-void Widescreen_Init(int windowWidth, int windowHeight);
 int Widescreen_GetFactor(void);
 int Widescreen_XShift(int width);
 
