@@ -117,6 +117,46 @@ ctr_native/
       MUSIC/S00.XA ... S01.XA
 ```
 
+## Configuration
+
+All settings can be changed at runtime from the in-game config menu
+(Options → Config). This is the recommended way — changes take effect
+immediately and are saved automatically.
+
+For reference, the settings are persisted to `build/config.ini` (standard INI
+format). An example template is at `default_config.ini` in the project root.
+
+### General
+
+| Key        | Values  | Default | Description                                     |
+|------------|---------|---------|-------------------------------------------------|
+| `skip_intro` | `true` / `false` | `false` | Skip boot intros and go straight into main menu |
+
+### Adventure
+
+| Key                 | Values  | Default | Description                                                   |
+|---------------------|---------|---------|---------------------------------------------------------------|
+| `skip_hints`          | `true` / `false` | `false` | Skip mask hints in adventure mode                             |
+| `unlock_all_gates`    | `true` / `false` | `false` | Opens all adventure wood gates bypassing the key requirements |
+| `unlock_all_portals`  | `true` / `false` | `false` | Unlock all warp pads and boss garages                         |
+
+### Vehicle
+
+| Key                      | Values    | Default | Description                                                                                              |
+|--------------------------|-----------|---------|----------------------------------------------------------------------------------------------------------|
+| `speed_stat_multiplier`   | `10`–`200` (percent) | `100`  | Kart top-speed multiplier                                                                                |
+| `gravity_stat_multiplier` | `10`–`300` (percent) | `100`  | Kart gravity multiplier. The lower the value, the more you'll spend in the air when jumping or dropping. |
+| `turn_stat_multiplier`    | `10`–`400` (percent) | `100`  | Kart turn-rate multiplier. Higher values makes turning easier.                                           |
+| `jump_stat_multiplier`    | `10`–`300` (percent) | `100`  | Kart jump-height multiplier                                                                              |
+
+### Graphics
+
+| Key                       | Values  | Default | Description                                                             |
+|---------------------------|---------|---------|-------------------------------------------------------------------------|
+| `increase_draw_distance`   | `true` / `false` | `false` | Renders farther objects and uses higher poly models at higher distances |
+| `disable_split_screen_lod` | `true` / `false` | `false` | Use high-detail character models in 3–4P split-screen                   |
+| `aspect_ratio`             | `4:3`, `16:9`, `16:10`, `21:9` | `4:3`   | Display aspect ratio                                                    |
+
 ## Bug Replays
 
 Internal builds can record a small bug report folder. See `docs/REPLAYS.md`.
