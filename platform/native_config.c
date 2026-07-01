@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <platform/native_config.h>
 #include <platform/native_assets.h>
+#include <platform/native_path.h>
 
 static const ConfigEnumValue kAspectRatioValues[] = {
     {"4:3", 0},
@@ -55,9 +56,11 @@ static char *trimWhitespace(char *s)
 void NativeConfig_Load(void)
 {
     printf("[Config] Base:       %s\n", NativeAssets_GetBaseDir());
-    FILE *f = fopen("build/config.ini", "r");
+    char path[512];
+    NativePath_Join(path, sizeof(path), NativeStr8_FromCString(NativeAssets_GetBaseDir()), NATIVE_STR8_LIT("config.ini"));
+    FILE *f = fopen(path, "r");
     if (!f) {
-        printf("[Config] config.ini NOT FOUND (CWD is not base dir)\n");
+        printf("[Config] config.ini NOT FOUND (%s)\n", path);
         return;
     }
 
@@ -130,7 +133,9 @@ void NativeConfig_Load(void)
 
 void NativeConfig_Save(void)
 {
-    FILE *f = fopen("build/config.ini", "w");
+    char path[512];
+    NativePath_Join(path, sizeof(path), NativeStr8_FromCString(NativeAssets_GetBaseDir()), NATIVE_STR8_LIT("config.ini"));
+    FILE *f = fopen(path, "w");
     if (!f)
         return;
 
