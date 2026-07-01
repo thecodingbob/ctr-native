@@ -121,6 +121,7 @@ internal void Platform_HandleFullscreenToggle(void)
 	SDL_GetWindowSize(g_window, &g_windowWidth, &g_windowHeight);
 	Platform_UpdateCursorVisibility();
 	NativeRenderer_ResetDevice();
+	NativeConfig_Save();
 }
 
 #if defined(CTR_INTERNAL)
@@ -430,7 +431,7 @@ void Platform_PollHostEvents(void)
 			int key = event.key.scancode;
 			char down = (event.type == SDL_EVENT_KEY_UP) ? 0 : 1;
 
-			if (key == SDL_SCANCODE_RALT)
+			if (key == SDL_SCANCODE_RALT || key == SDL_SCANCODE_LALT)
 			{
 				s_hostAltKeyState = down;
 			}
