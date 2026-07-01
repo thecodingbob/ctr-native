@@ -98,12 +98,6 @@ void UI_Map_DrawMap_ExtraFunc(struct Icon *icon, POLY_FT4 *p, s16 posX, s16 empt
 	p->x2 = leftX;
 	p->x3 = posX;
 
-	int len = Widescreen_XShift(sizeX);
-	p->x0 += len;
-	p->x2 += len;
-	p->x1 -= len;
-	p->x3 -= len;
-
 	// set header
 	setPolyFT4(p);
 
