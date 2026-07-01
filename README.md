@@ -151,12 +151,13 @@ format). An example template is at `default_config.ini` in the project root.
 
 ### Graphics
 
-| Key                       | Values  | Default | Description                                                             |
-|---------------------------|---------|---------|-------------------------------------------------------------------------|
+| Key                        | Values  | Default | Description                                                             |
+|----------------------------|---------|---------|-------------------------------------------------------------------------|
 | `increase_draw_distance`   | `true` / `false` | `false` | Renders farther objects and uses higher poly models at higher distances |
 | `disable_split_screen_lod` | `true` / `false` | `false` | Use high-detail character models in 3–4P split-screen                   |
 | `fullscreen`               | `true` / `false` | `false` | Borderless fullscreen on startup                                        |
 | `aspect_ratio`             | `4:3`, `16:9`, `16:10`, `21:9` | `4:3`   | Display aspect ratio                                                    |
+| `dithering`                | `true` / `false` | `true`  | Enable color dithering                                                  |
 
 ## Bug Replays
 
