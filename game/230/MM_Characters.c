@@ -360,15 +360,22 @@ void MM_Characters_SetMenuLayout(void)
 
 	// Loop through bottom characters,
 	// if any are unlocked, use expanded
-	for (i = 0xc; i < NUM_ICONS; i++)
+	if (g_config.unlockAllCharacters)
 	{
-		// OG game code
-		unlocked = D230.csm_1P2P[i].unlockFlags;
-
-		if (((sdata->gameProgress.unlocks[unlocked >> 5] >> (unlocked & 0x1f)) & 1) != 0)
+		expand = 1;
+	}
+	else
+	{
+		for (i = 0xc; i < NUM_ICONS; i++)
 		{
-			expand = 1;
-			break;
+			// OG game code
+			unlocked = D230.csm_1P2P[i].unlockFlags;
+
+			if (((sdata->gameProgress.unlocks[unlocked >> 5] >> (unlocked & 0x1f)) & 1) != 0)
+			{
+				expand = 1;
+				break;
+			}
 		}
 	}
 
