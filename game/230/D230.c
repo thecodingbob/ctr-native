@@ -17,24 +17,28 @@ struct OverlayDATA_230 D230 = {
 
     .rowsMainMenuBasic =
         {
-            {0x4C, 0, 1, 0, 0},
-            {0x4D, 0, 2, 1, 1},
-            {0x4E, 1, 3, 2, 2},
-            {0x4F, 2, 4, 3, 3},
-            {0x50, 3, 5, 4, 4},
-            {0x51, 4, 5, 5, 5},
-            {-1},
-        },
-
-    .rowsMainMenuWithScrapbook =
-        {
-            {0x4C, 0, 1, 0, 0},
+            {0x4C, 7, 1, 0, 0},
             {0x4D, 0, 2, 1, 1},
             {0x4E, 1, 3, 2, 2},
             {0x4F, 2, 4, 3, 3},
             {0x50, 3, 5, 4, 4},
             {0x51, 4, 6, 5, 5},
-            {0x234, 5, 6, 6, 6},
+            {0x0E, 5, 7, 6, 6},
+            {0x003, 6, 0, 7, 7},
+            {-1},
+        },
+
+    .rowsMainMenuWithScrapbook =
+        {
+            {0x4C, 8, 1, 0, 0},
+            {0x4D, 0, 2, 1, 1},
+            {0x4E, 1, 3, 2, 2},
+            {0x4F, 2, 4, 3, 3},
+            {0x50, 3, 5, 4, 4},
+            {0x51, 4, 6, 5, 5},
+            {0x234, 5, 7, 6, 6},
+            {0x0E, 6, 8, 7, 7},
+            {0x003, 7, 0, 8, 8},
             {-1},
         },
 
@@ -748,6 +752,21 @@ struct OverlayDATA_230 D230 = {
 
                       .state = 0x81,
                       .rows = &D230.rowsHighScore[0]},
+
+    .rowsQuitConfirm =
+        {
+            {0xd2, 1, 1, 0, 0},
+            {0xd3, 0, 0, 1, 1},
+            {-1},
+        },
+
+    .menuQuitConfirm =
+        {
+            .stringIndexTitle = -1,
+            .state = 0x09,
+            .rows = &D230.rowsQuitConfirm[0],
+            .funcPtr = MM_MenuProc_QuitConfirm,
+        },
 
     .highScore_trackDesired = 0,
     .highScore_rowDesired = 0,
