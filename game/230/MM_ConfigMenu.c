@@ -4,19 +4,19 @@
 
 // Row arrays with CONFIG entry at bottom, used by MM_MenuProc_Main
 struct MenuRow s_rowsMainMenuBasicConfig[] = {
-	{0x4C, 0, 1, 0, 0},
+	{0x4C, 7, 1, 0, 0},
 	{0x4D, 0, 2, 1, 1},
 	{0x4E, 1, 3, 2, 2},
 	{0x4F, 2, 4, 3, 3},
 	{0x50, 3, 5, 4, 4},
 	{0x51, 4, 6, 5, 5},
 	{0x0E, 5, 7, 6, 6},
-	{0x003, 6, 7, 6, 7},
+	{0x003, 6, 0, 7, 7},
 	{-1},
 };
 
 struct MenuRow s_rowsMainMenuWithSBConfig[] = {
-	{0x4C, 0, 1, 0, 0},
+	{0x4C, 8, 1, 0, 0},
 	{0x4D, 0, 2, 1, 1},
 	{0x4E, 1, 3, 2, 2},
 	{0x4F, 2, 4, 3, 3},
@@ -24,7 +24,7 @@ struct MenuRow s_rowsMainMenuWithSBConfig[] = {
 	{0x51, 4, 6, 5, 5},
 	{0x234, 5, 7, 6, 6},
 	{0x0E, 6, 8, 7, 7},
-	{0x003, 7, 8, 7, 8},
+	{0x003, 7, 0, 8, 8},
 	{-1},
 };
 

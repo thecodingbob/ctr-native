@@ -785,6 +785,7 @@ void MM_ToggleRows_Difficulty(void);
 void MM_MenuProc_Difficulty(struct RectMenu *menu);
 void MM_MenuProc_SingleCup(struct RectMenu *menu);
 void MM_MenuProc_NewLoad(struct RectMenu *menu);
+void MM_MenuProc_QuitConfirm(struct RectMenu *menu);
 struct RectMenu *MM_AdvNewLoad_GetMenuPtr(void);
 void MM_Characters_AnimateColors(u8 *colorData, s16 playerID, s16 flag);
 int MM_Characters_GetNextDriver(s16 dpad, char characterID);

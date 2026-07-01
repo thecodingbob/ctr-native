@@ -180,9 +180,9 @@ struct OverlayDATA_230
 	// 800b4c4c - EurRetail
 	// 800b7f68 - JpnRetail
 #if BUILD == EurRetail
-	struct MenuRow rowsMainMenuBasic[8];
+ 	struct MenuRow rowsMainMenuBasic[9];
 #else
-	struct MenuRow rowsMainMenuBasic[7];
+	struct MenuRow rowsMainMenuBasic[9];
 	char padding800b450E[2];
 #endif
 
@@ -190,10 +190,12 @@ struct OverlayDATA_230
 	// 800b4c7c - EurRetail
 	// 800b7f94 - JpnRetail
 #if BUILD == EurRetail
-	struct MenuRow rowsMainMenuWithScrapbook[9];
+	struct MenuRow rowsMainMenuWithScrapbook[10];
 	char padding800b4cb2[2];
 #else
-	struct MenuRow rowsMainMenuWithScrapbook[8];
+	struct MenuRow rowsMainMenuWithScrapbook[10];
+        struct MenuRow rowsQuitConfirm[3];
+        struct RectMenu menuQuitConfirm;
 #endif
 
 	// 800b4540 - UsaRetail

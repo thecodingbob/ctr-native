@@ -276,8 +276,28 @@ void MM_MenuProc_Main(struct RectMenu *mainMenu)
 	// Quit
 	if (choose == 0x003)
 	{
-		exit(0);
+		mainMenu->ptrNextBox_InHierarchy = &D230.menuQuitConfirm;
+		mainMenu->state |= DRAW_NEXT_MENU_IN_HIERARCHY;
+		return;
 	}
+}
+
+void MM_MenuProc_QuitConfirm(struct RectMenu *menu)
+{
+	if (menu->rowSelected < 0)
+	{
+		menu->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
+		return;
+	}
+	// Called every frame from RECTMENU_ProcessState with unk1e=1;
+	// only act on actual button presses (unk1e=0 from ProcessInput).
+	if (menu->unk1e != 0)
+		return;
+
+	if (menu->rowSelected == 0) // YES
+		exit(0);
+	// NO - go back
+	menu->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
 }
 
 // NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 230 0x800ad448-0x800ad560.
