@@ -6,6 +6,7 @@
 #include "platform/native_glad.h"
 #include "platform/native_gpu.h"
 #include "platform/native_input.h"
+#include "platform/native_config.h"
 #include "platform/native_log.h"
 #include "platform/native_perf.h"
 #include "platform/native_renderer.h"
@@ -113,9 +114,10 @@ internal void Platform_UpdateCursorVisibility(void)
 
 internal void Platform_HandleFullscreenToggle(void)
 {
-	int fullscreen = (SDL_GetWindowFlags(g_window) & SDL_WINDOW_FULLSCREEN) != 0;
+	bool fullscreen = (SDL_GetWindowFlags(g_window) & SDL_WINDOW_FULLSCREEN) != 0;
 
-	SDL_SetWindowFullscreen(g_window, fullscreen == 0);
+	g_config.fullscreen = !fullscreen;
+	SDL_SetWindowFullscreen(g_window, g_config.fullscreen);
 	SDL_GetWindowSize(g_window, &g_windowWidth, &g_windowHeight);
 	Platform_UpdateCursorVisibility();
 	NativeRenderer_ResetDevice();
@@ -219,7 +221,7 @@ void Platform_Init(const char *title, int width, int height)
 
 	s_platformInitialized = 1;
 
-	if (!NativeRenderer_InitialiseRender(windowName, width, height, 0))
+	if (!NativeRenderer_InitialiseRender(windowName, width, height, g_config.fullscreen))
 	{
 		Platform_LogError("[CTR Native] Failed to initialise window\n");
 		Platform_Shutdown();
@@ -268,9 +270,15 @@ void Platform_Shutdown(void)
 
 void Platform_BeginFrame(void)
 {
-	// NOTE(aalhendi): Normal rendering begins from DrawOTag after the current
-	// draw env is installed. Starting a host scene here clears the previous env
-	// and can force the host GL driver to block before the retail render-submit path.
+	// Sync g_config.fullscreen with actual window state.
+	bool isFullscreen = (SDL_GetWindowFlags(g_window) & SDL_WINDOW_FULLSCREEN) != 0;
+	if (g_config.fullscreen != isFullscreen)
+	{
+		SDL_SetWindowFullscreen(g_window, g_config.fullscreen);
+		SDL_GetWindowSize(g_window, &g_windowWidth, &g_windowHeight);
+		Platform_UpdateCursorVisibility();
+		NativeRenderer_ResetDevice();
+	}
 }
 
 int Platform_BeginScene(void)
