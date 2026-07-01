@@ -15,7 +15,7 @@ static const ConfigEnumValue kAspectRatioValues[] = {
 };
 #define NUM_ASPECT_RATIOS (sizeof(kAspectRatioValues) / sizeof(kAspectRatioValues[0]))
 
-NativeConfig g_config = {false, false, 100, 100, 100, 100, false, false, false, false, false, false, 0};
+NativeConfig g_config = {false, false, 100, 100, 100, 100, false, false, false, false, false, false, 0, false};
 
 const ConfigEntry g_configEntries[] = {
     {"General",   "skip_intro",               "Skip Intros",                  CFG_BOOL, &g_config.skipIntro},
@@ -29,6 +29,7 @@ const ConfigEntry g_configEntries[] = {
     {"Unlocks",   "unlock_all_characters",    "Unlock All Characters",        CFG_BOOL, &g_config.unlockAllCharacters},
     {"Graphics",  "increase_draw_distance",   "Increase Draw Distance",       CFG_BOOL, &g_config.increaseDrawDistance},
     {"Graphics",  "disable_split_screen_lod", "Hi-Res Models in Multiplayer", CFG_BOOL, &g_config.disableSplitScreenLod},
+    {"Graphics",  "dithering",         "Dithering",            CFG_BOOL, &g_config.dithering},
     {"Graphics",  "fullscreen",               "Fullscreen",                   CFG_BOOL, &g_config.fullscreen},
     {"Graphics",  "aspect_ratio",             "Aspect Ratio",                 CFG_ENUM, &g_config.aspectRatio, 0, 0, 0, kAspectRatioValues, NUM_ASPECT_RATIOS},
 };
