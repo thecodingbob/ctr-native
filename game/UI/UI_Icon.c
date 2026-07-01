@@ -147,6 +147,8 @@ void UI_WeaponBG_DrawShine(struct Icon *icon, s16 posX, s16 posY, struct PrimMem
 			break;
 		}
 
+		Widescreen_CompressGT4(p);
+
 		// color RGB
 		*(u32 *)&p->r0 = wumpaShine[2];
 		*(u32 *)&p->r1 = wumpaShine[1];
@@ -292,6 +294,8 @@ void UI_DrawDriverIcon(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *pr
 	p->v[2].pos.y = bottomY;
 	p->v[3].pos.x = bottomX;
 	p->v[3].pos.y = bottomY;
+
+	Widescreen_CompressNative(p);
 
 	p->polyClut.self = icon->texLayout.clut;
 	p->polyTpage.self = icon->texLayout.tpage;

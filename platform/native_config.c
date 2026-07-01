@@ -6,7 +6,15 @@
 #include <platform/native_config.h>
 #include <platform/native_assets.h>
 
-NativeConfig g_config = {false, false, 100, 100, 100, 100, false, false, false, false, false, false};
+static const ConfigEnumValue kAspectRatioValues[] = {
+    {"4:3", 0},
+    {"16:9", 1},
+    {"16:10", 2},
+    {"21:9", 3},
+};
+#define NUM_ASPECT_RATIOS (sizeof(kAspectRatioValues) / sizeof(kAspectRatioValues[0]))
+
+NativeConfig g_config = {false, false, 100, 100, 100, 100, false, false, false, false, false, 0};
 
 const ConfigEntry g_configEntries[] = {
     {"General",   "skip_intro",               "Skip Intros",                  CFG_BOOL, &g_config.skipIntro},
@@ -20,6 +28,7 @@ const ConfigEntry g_configEntries[] = {
     {"Unlocks",   "unlock_all_characters",    "Unlock All Characters",        CFG_BOOL, &g_config.unlockAllCharacters},
     {"Graphics",  "increase_draw_distance",   "Increase Draw Distance",       CFG_BOOL, &g_config.increaseDrawDistance},
     {"Graphics",  "disable_split_screen_lod", "Hi-Res Models in Multiplayer", CFG_BOOL, &g_config.disableSplitScreenLod},
+    {"Graphics",  "aspect_ratio",             "Aspect Ratio",                 CFG_ENUM, &g_config.aspectRatio, 0, 0, 0, kAspectRatioValues, NUM_ASPECT_RATIOS},
 };
 
 const int g_numConfigEntries = sizeof(g_configEntries) / sizeof(g_configEntries[0]);
@@ -92,6 +101,21 @@ void NativeConfig_Load(void)
             {
                 if (e->type == CFG_BOOL)
                     *(bool *)e->valuePtr = ParseBool(value);
+                else if (e->type == CFG_ENUM)
+                {
+                    int matched = 0;
+                    for (int j = 0; j < e->numEnumValues; j++)
+                    {
+                        if (strcmp(value, e->enumValues[j].name) == 0)
+                        {
+                            *(int *)e->valuePtr = e->enumValues[j].value;
+                            matched = 1;
+                            break;
+                        }
+                    }
+                    if (!matched)
+                        *(int *)e->valuePtr = atoi(value);
+                }
                 else
                     *(int *)e->valuePtr = atoi(value);
                 printf("[Config] %s/%s = %s\n", e->section, e->key, value);
@@ -125,6 +149,20 @@ void NativeConfig_Save(void)
 
         if (e->type == CFG_BOOL)
             fprintf(f, "%s = %s\n", e->key, *(bool *)e->valuePtr ? "true" : "false");
+        else if (e->type == CFG_ENUM)
+        {
+            int val = *(int *)e->valuePtr;
+            const char *name = "?";
+            for (int j = 0; j < e->numEnumValues; j++)
+            {
+                if (e->enumValues[j].value == val)
+                {
+                    name = e->enumValues[j].name;
+                    break;
+                }
+            }
+            fprintf(f, "%s = %s\n", e->key, name);
+        }
         else
             fprintf(f, "%s = %d\n", e->key, *(int *)e->valuePtr);
     }
