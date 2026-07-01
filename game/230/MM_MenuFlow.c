@@ -1,4 +1,5 @@
 #include <common.h>
+#include <stdlib.h>
 
 extern struct MenuRow s_rowsMainMenuBasicConfig[];
 extern struct MenuRow s_rowsMainMenuWithSBConfig[];
@@ -270,6 +271,12 @@ void MM_MenuProc_Main(struct RectMenu *mainMenu)
 	{
 		sdata->ptrDesiredMenu = &g_configMenu;
 		return;
+	}
+
+	// Quit
+	if (choose == 0x003)
+	{
+		exit(0);
 	}
 }
 
