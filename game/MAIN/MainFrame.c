@@ -27,6 +27,10 @@ static void MainFrame_RegisterGpuLinkRanges(struct GameTracker *gGT)
 }
 #endif
 
+#if defined(CTR_NATIVE)
+static b32 s_selectOpenedSaveMenu = 0;
+#endif
+
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80034b48-0x80034bbc.
 void MainFrame_TogglePauseAudio(b32 bool_pause)
 {
@@ -232,8 +236,8 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 					if (iVar4 < 0)
 					{
 						gGT->frozenTimeRemaining = 0;
-					}
-					else
+			}
+			else
 					{
 						uVar3 = gGT->timer;
 						// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80034f84-0x80034fec for frozen-time tick SFX.
@@ -421,6 +425,11 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 			{
 				gGT->cooldownfromPauseUntilUnpause--;
 			}
+			if (s_selectOpenedSaveMenu && sdata->ptrActiveMenu == NULL)
+			{
+				s_selectOpenedSaveMenu = 0;
+				gGT->gameMode1 &= ~PAUSE_1;
+			}
 		}
 		else if (gGT->cooldownFromUnpauseUntilPause == 0)
 		{
@@ -448,6 +457,20 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 
 									MainFreeze_IfPressStart();
 
+									gGT->cooldownfromPauseUntilUnpause = 5;
+								}
+
+								if (g_config.saveAnywhere &&
+								    (gGT->gameMode1 & ADVENTURE_ARENA) != 0 &&
+								    (gGamepads->gamepad[iVar4].buttonsTapped & BTN_SELECT) != 0 &&
+								    gGT->overlayIndex_Threads != -1)
+								{
+									s_selectOpenedSaveMenu = 1;
+									SelectProfile_GetTrackID();
+									gGT->gameMode1 |= PAUSE_1;
+									gGT->gameModeEnd = (gGT->gameMode1 & GAME_MODE_END_RETAINED_MODE_MASK) | PAUSE_1;
+									RECTMENU_Show(&data.menuGreenLoadSave);
+									OtherFX_Play(1, 1);
 									gGT->cooldownfromPauseUntilUnpause = 5;
 								}
 							}

@@ -15,11 +15,12 @@ static const ConfigEnumValue kAspectRatioValues[] = {
 };
 #define NUM_ASPECT_RATIOS (sizeof(kAspectRatioValues) / sizeof(kAspectRatioValues[0]))
 
-NativeConfig g_config = {false, false, 100, 100, 100, 100, false, false, false, false, false, false, 0, false};
+NativeConfig g_config = {false, false, 100, 100, 100, 100, false, false, false, false, false, false, 0, false, false};
 
 const ConfigEntry g_configEntries[] = {
     {"General",   "skip_intro",               "Skip Intros",                  CFG_BOOL, &g_config.skipIntro},
     {"Adventure", "skip_hints",               "Skip Mask Hints",              CFG_BOOL, &g_config.skipHints},
+    {"Adventure",   "save_anywhere",  "Save Anywhere",       CFG_BOOL, &g_config.saveAnywhere},
     {"Adventure", "unlock_all_gates",         "Open All Gates",               CFG_BOOL, &g_config.unlockAllGates},
     {"Adventure", "unlock_all_portals",       "Open All Portals",             CFG_BOOL, &g_config.unlockAllPortals},
     {"Vehicle",   "speed_stat_multiplier",    "Kart Speed Multiplier",        CFG_INT,  &g_config.speedMultiplier,        10, 200, 10},
