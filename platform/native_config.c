@@ -27,6 +27,7 @@ const ConfigEntry g_configEntries[] = {
     {"Vehicle",   "gravity_stat_multiplier",  "Gravity Multiplier",           CFG_INT,  &g_config.gravityMultiplier,      10, 300, 10},
     {"Vehicle",   "turn_stat_multiplier",     "Kart Turn Multiplier",         CFG_INT, &g_config.turnMultiplier,          10, 400, 10},
     {"Vehicle",   "jump_stat_multiplier",     "Kart Jump Multiplier",         CFG_INT, &g_config.jumpMultiplier,          10, 300, 10},
+    {"Vehicle",   "turbo_reserves_multiplier","Turbo Reserves Multiplier",        CFG_INT, &g_config.reserveMultiplier,    0, 400, 20},
     {"Unlocks",   "unlock_all_characters",    "Unlock All Characters",        CFG_BOOL, &g_config.unlockAllCharacters},
     {"Graphics",  "increase_draw_distance",   "Increase Draw Distance",       CFG_BOOL, &g_config.increaseDrawDistance},
     {"Graphics",  "disable_split_screen_lod", "Hi-Res Models in Multiplayer", CFG_BOOL, &g_config.disableSplitScreenLod},
