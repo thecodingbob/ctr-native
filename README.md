@@ -143,12 +143,13 @@ format). An example template is at `default_config.ini` in the project root.
 
 ### Vehicle
 
-| Key                      | Values    | Default | Description                                                                                              |
-|--------------------------|-----------|---------|----------------------------------------------------------------------------------------------------------|
-| `speed_stat_multiplier`   | `10`–`200` (percent) | `100`  | Kart top-speed multiplier                                                                                |
-| `gravity_stat_multiplier` | `10`–`300` (percent) | `100`  | Kart gravity multiplier. The lower the value, the more you'll spend in the air when jumping or dropping. |
-| `turn_stat_multiplier`    | `10`–`400` (percent) | `100`  | Kart turn-rate multiplier. Higher values makes turning easier.                                           |
-| `jump_stat_multiplier`    | `10`–`300` (percent) | `100`  | Kart jump-height multiplier                                                                              |
+| Key                         | Values               | Default | Description                                                                                                              |
+|-----------------------------|----------------------|---------|--------------------------------------------------------------------------------------------------------------------------|
+| `speed_stat_multiplier`     | `10`–`200` (percent) | `100`  | Kart top-speed multiplier                                                                                                |
+| `gravity_stat_multiplier`   | `10`–`300` (percent) | `100`  | Kart gravity multiplier. The lower the value, the more you'll spend in the air when jumping or dropping.                 |
+| `turn_stat_multiplier`      | `10`–`400` (percent) | `100`  | Kart turn-rate multiplier. Higher values makes turning easier.                                                           |
+| `jump_stat_multiplier`      | `10`–`300` (percent) | `100`  | Kart jump-height multiplier                                                                                              |
+| `turbo_reserves_multiplier` | `0`–`400`  (percent) | `100`  | Reserve accumulation multiplier. The higher the value, the more reserve your kart will get when executing a turbo drift. |
 
 ### Graphics
 
