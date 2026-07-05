@@ -80,9 +80,9 @@ void RB_TNT_ThTick_SitOnHead(struct Thread *t)
 {
 	struct Instance *inst;
 	struct MineWeapon *mw;
-	char state;
+	u8 state;
 	s16 numFrames;
-	u16 uVar3;
+	u16 scaleXZ;
 	int rng;
 
 	inst = t->inst;
@@ -94,7 +94,7 @@ void RB_TNT_ThTick_SitOnHead(struct Thread *t)
 	// To: TNT instance
 	// From: obj->driverWhoHitMe->instance
 	// Delta: TNT -> 0x1c (position relative to driver)
-	LHMatrix_Parent(inst, mw->driverTarget->instSelf, (SVECTOR *)&mw->deltaPos.x);
+	LHMatrix_Parent(inst, mw->driverTarget->instSelf, &mw->deltaPos);
 
 	// Get Kart State
 	state = mw->driverTarget->kartState;
@@ -126,7 +126,7 @@ void RB_TNT_ThTick_SitOnHead(struct Thread *t)
 	else
 	{
 		// If you are already blasted
-		if (state == 6)
+		if (state == KS_BLASTED)
 		{
 			// Play explosion sound
 			PlaySound3D(0x3d, inst);
@@ -224,9 +224,9 @@ LAB_800ad5f8:
 	}
 
 	// set scale of TNT, given frame of animation
-	uVar3 = s_tntSitScale[numFrames * 2 + 0];
-	inst->scale.x = uVar3;
-	inst->scale.z = uVar3;
+	scaleXZ = s_tntSitScale[numFrames * 2 + 0];
+	inst->scale.x = scaleXZ;
+	inst->scale.z = scaleXZ;
 	inst->scale.y = s_tntSitScale[numFrames * 2 + 1];
 }
 
@@ -244,8 +244,8 @@ void RB_TNT_ThTick_ThrowOnHead(struct Thread *t)
 	SVec3 rot;
 	s16 distHead;
 
-	// matrix?
-	s16 auStack48[32];
+	// temporary rotation matrix
+	MATRIX localMatrix;
 
 	gGT = sdata->gGT;
 
@@ -287,7 +287,7 @@ void RB_TNT_ThTick_ThrowOnHead(struct Thread *t)
 	}
 
 	// CopyMatrix
-	LHMatrix_Parent(inst, mw->driverTarget->instSelf, (SVECTOR *)&mw->deltaPos.x);
+	LHMatrix_Parent(inst, mw->driverTarget->instSelf, &mw->deltaPos);
 
 	// rotation
 	rot.x = 0;
@@ -295,9 +295,9 @@ void RB_TNT_ThTick_ThrowOnHead(struct Thread *t)
 	rot.z = 0;
 
 	// convert 3 rotation shorts into rotation matrix
-	ConvertRotToMatrix((MATRIX *)auStack48, &rot);
+	ConvertRotToMatrix(&localMatrix, &rot);
 
-	MatrixRotate(&inst->matrix, &inst->matrix, (MATRIX *)auStack48);
+	MatrixRotate(&inst->matrix, &inst->matrix, &localMatrix);
 
 	// reduce time remaining until TNT lands on head
 	mw->velocity.y -= ((gGT->elapsedTimeMS << 2) >> 5);

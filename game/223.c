@@ -31,8 +31,8 @@ enum RelicRaceEndMenuConstants
 	RR_RELIC_FULL_SCALE = 0xc00,
 	RR_RELIC_GROW_STEP = 0x80,
 	RR_SCREEN_DEPTH = 0x100,
-	RR_PLATINUM_RELIC_COLOR = 0xffede90,
-	RR_GOLD_RELIC_COLOR = 0xd8d2090,
+	RR_PLATINUM_RELIC_COLOR = INST_COLOR_PLATINUM_RELIC,
+	RR_GOLD_RELIC_COLOR = INST_COLOR_GOLD_RELIC,
 	RR_RELIC_AWARD_SFX = 0x67,
 	RR_PERFECT_SFX = 0x65,
 	RR_COUNTDOWN_TICK_SFX = 99,
@@ -84,7 +84,7 @@ void RR_EndEvent_UnlockAward(void)
 		s32 rewardBit = ADV_REWARD_FIRST_SAPPHIRE_RELIC + ADV_REWARD_RELIC_TIER_STRIDE * relicIndex + levelID;
 
 		// if relic already unlocked, check next relic
-		if (CHECK_ADV_BIT(adv->rewards, rewardBit) != 0)
+		if (CHECK_ADV_BIT(adv->rewards, rewardBit))
 		{
 			continue;
 		}
@@ -221,7 +221,7 @@ void RR_EndEvent_DrawMenu(void)
 	// interpolate fly-in
 	UI_Lerp2D_Linear(pos.v, startX, 0x32, 0x100, endY, elapsedFrames, RR_LERP_FRAMES);
 
-	UI_DrawRaceClock(pos.x, pos.y - 8, 1, driver);
+	UI_DrawRaceClock(pos.x, pos.y - 8, UI_RACE_CLOCK_SHOW_RESULTS, driver);
 
 
 	// Draw Relic,

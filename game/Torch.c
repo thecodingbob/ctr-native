@@ -509,7 +509,7 @@ static u32 *Torch_EmitParticle(u32 *prim, uint32_t *ot)
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004b470-0x8004b914
-void Torch_Main(void *particleList_heatWarp, struct PushBuffer *pb, struct PrimMem *primMem, char numPlyr, int swapchainIndex)
+void Torch_Main(void *particleList_heatWarp, struct PushBuffer *pb, struct PrimMem *primMem, u8 numPlyr, int swapchainIndex)
 {
 	struct Particle *firstParticle = particleList_heatWarp;
 	struct TorchScratch *scratch = Torch_Scratch();
