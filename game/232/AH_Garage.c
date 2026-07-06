@@ -195,38 +195,38 @@ void AH_Garage_ThTick(struct Thread *t)
 
 LAB_800aeb6c:
 
-	if (!g_config.unlockAllPortals)
-	{
-		// If you're in Gemstone Valley
-		if (levelID == GEM_STONE_VALLEY)
-		{
-			// ripper roo boss key
-			bitIndex = ADV_REWARD_FIRST_BOSS_KEY;
+	if (!g_config.unlockAllPortals) {
+	  // If you're in Gemstone Valley
+	  if (levelID == GEM_STONE_VALLEY)
+	  {
+	    // ripper roo boss key
+	    bitIndex = ADV_REWARD_FIRST_BOSS_KEY;
 
-		// check all boss keys
-		for (i = 0; i < AH_BOSS_KEY_COUNT; i++)
-		{
-			if (!CHECK_ADV_BIT(adv->rewards, bitIndex))
-			{
-				goto LAB_800aebd0;
-			}
-			bitIndex++;
-		}
-	}
-	// If you're not in Gemstone Valley
-	else
-	{
-		check = &data.advHubTrackIDs[(levelID - N_SANITY_BEACH) * AH_HUB_TRACK_COUNT];
-		// check all tracks on hub
-		for (i = 0; i < AH_HUB_TRACK_COUNT; i++)
-		{
-			// if any trophy on this hub is not unlocked
-			if (!CHECK_ADV_BIT(adv->rewards, check[i] + ADV_REWARD_FIRST_TROPHY))
-			{
-				// boss is not open
-				goto LAB_800aebd0;
-			}
-		}
+	    // check all boss keys
+	    for (i = 0; i < AH_BOSS_KEY_COUNT; i++)
+	    {
+	      if (!CHECK_ADV_BIT(adv->rewards, bitIndex))
+	      {
+	        goto LAB_800aebd0;
+	      }
+	      bitIndex++;
+	    }
+	  }
+	  // If you're not in Gemstone Valley
+	  else
+	  {
+	    check = &data.advHubTrackIDs[(levelID - N_SANITY_BEACH) * AH_HUB_TRACK_COUNT];
+	    // check all tracks on hub
+	    for (i = 0; i < AH_HUB_TRACK_COUNT; i++)
+	    {
+	      // if any trophy on this hub is not unlocked
+	      if (!CHECK_ADV_BIT(adv->rewards, check[i] + ADV_REWARD_FIRST_TROPHY))
+	      {
+	        // boss is not open
+	        goto LAB_800aebd0;
+	      }
+	    }
+	  }
 	}
 	goto LAB_800aec34;
 

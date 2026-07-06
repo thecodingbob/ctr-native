@@ -457,7 +457,7 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 								if (g_config.saveAnywhere &&
 								    (gGT->gameMode1 & ADVENTURE_ARENA) != 0 &&
 								    (gGamepads->gamepad[iVar4].buttonsTapped & BTN_SELECT) != 0 &&
-								    gGT->overlayIndex_Threads != -1)
+								    gGT->overlayIndex_Threads != OVERLAY_INDEX_NONE)
 								{
 									s_selectOpenedSaveMenu = 1;
 									SelectProfile_GetTrackID();

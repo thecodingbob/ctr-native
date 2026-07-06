@@ -286,9 +286,9 @@ void MM_MenuProc_QuitConfirm(struct RectMenu *menu)
 		menu->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
 		return;
 	}
-	// Called every frame from RECTMENU_ProcessState with unk1e=1;
-	// only act on actual button presses (unk1e=0 from ProcessInput).
-	if (menu->unk1e != 0)
+	// Called every frame from RECTMENU_ProcessState with funcState=1;
+	// only act on actual button presses (funcState=0 from ProcessInput).
+	if (menu->funcState != 0)
 		return;
 
 	if (menu->rowSelected == 0) // YES

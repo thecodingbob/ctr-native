@@ -37,6 +37,8 @@
 #include "game/zGlobal_RDATA.c"
 #include "game/zGlobal_DATA.c"
 #include "game/zGlobal_SDATA.c"
+#include "game/widescreen.c"
+
 
 #undef RECT
 
@@ -69,7 +71,7 @@
 #include "platform/native_savestate.c"
 #include "platform/native_state.c"
 #include "platform/native_str.c"
-#include "platform/native_config.c" 
+#include "platform/native_config.c"
 
 #ifndef CC
 #if __GNUC__

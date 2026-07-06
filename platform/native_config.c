@@ -15,25 +15,160 @@ static const ConfigEnumValue kAspectRatioValues[] = {
 };
 #define NUM_ASPECT_RATIOS (sizeof(kAspectRatioValues) / sizeof(kAspectRatioValues[0]))
 
-NativeConfig g_config = {false, false, 100, 100, 100, 100, false, false, false, false, false, false, 0, false, false};
+NativeConfig g_config = {
+  .skipIntro = false,
+  .skipHints = false,
+
+  .speedMultiplier = 100,
+  .gravityMultiplier = 100,
+  .turnMultiplier = 100,
+  .jumpMultiplier = 100,
+  .reserveMultiplier = 100,
+
+  .unlockAllCharacters = false,
+  .unlockAllGates = false,
+  .unlockAllPortals = false,
+
+  .increaseDrawDistance = false,
+  .disableSplitScreenLod = false,
+
+  .fullscreen = false,
+  .aspectRatio = 0,
+  .dithering = true,
+  .saveAnywhere = false
+};
 
 const ConfigEntry g_configEntries[] = {
-    {"General",   "skip_intro",               "Skip Intros",                  CFG_BOOL, &g_config.skipIntro},
-    {"Adventure", "skip_hints",               "Skip Mask Hints",              CFG_BOOL, &g_config.skipHints},
-    {"Adventure", "save_anywhere",          "Save Anywhere",                  CFG_BOOL, &g_config.saveAnywhere},
-    {"Adventure", "unlock_all_gates",         "Open All Gates",               CFG_BOOL, &g_config.unlockAllGates},
-    {"Adventure", "unlock_all_portals",       "Open All Portals",             CFG_BOOL, &g_config.unlockAllPortals},
-    {"Vehicle",   "speed_stat_multiplier",    "Kart Speed Multiplier",        CFG_INT,  &g_config.speedMultiplier,        10, 200, 10},
-    {"Vehicle",   "gravity_stat_multiplier",  "Gravity Multiplier",           CFG_INT,  &g_config.gravityMultiplier,      10, 300, 10},
-    {"Vehicle",   "turn_stat_multiplier",     "Kart Turn Multiplier",         CFG_INT, &g_config.turnMultiplier,          10, 400, 10},
-    {"Vehicle",   "jump_stat_multiplier",     "Kart Jump Multiplier",         CFG_INT, &g_config.jumpMultiplier,          10, 300, 10},
-    {"Vehicle",   "turbo_reserves_multiplier","Turbo Reserves Multiplier",        CFG_INT, &g_config.reserveMultiplier,    0, 400, 20},
-    {"Unlocks",   "unlock_all_characters",    "Unlock All Characters",        CFG_BOOL, &g_config.unlockAllCharacters},
-    {"Graphics",  "increase_draw_distance",   "Increase Draw Distance",       CFG_BOOL, &g_config.increaseDrawDistance},
-    {"Graphics",  "disable_split_screen_lod", "Hi-Res Models in Multiplayer", CFG_BOOL, &g_config.disableSplitScreenLod},
-    {"Graphics",  "dithering",         "Dithering",            CFG_BOOL, &g_config.dithering},
-    {"Graphics",  "fullscreen",               "Fullscreen",                   CFG_BOOL, &g_config.fullscreen},
-    {"Graphics",  "aspect_ratio",             "Aspect Ratio",                 CFG_ENUM, &g_config.aspectRatio, 0, 0, 0, kAspectRatioValues, NUM_ASPECT_RATIOS},
+
+    {
+        .section = "General",
+        .key = "skip_intro",
+        .label = "Skip Intros",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.skipIntro
+    },
+    {
+        .section = "Adventure",
+        .key = "skip_hints",
+        .label = "Skip Mask Hints",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.skipHints
+    },
+    {
+        .section = "Adventure",
+        .key = "save_anywhere",
+        .label = "Save Anywhere",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.saveAnywhere
+    },
+    {
+        .section = "Adventure",
+        .key = "unlock_all_gates",
+        .label = "Open All Gates",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.unlockAllGates
+    },
+    {
+        .section = "Adventure",
+        .key = "unlock_all_portals",
+        .label = "Open All Portals",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.unlockAllPortals
+    },
+    {
+        .section = "Vehicle",
+        .key = "speed_stat_multiplier",
+        .label = "Kart Speed Multiplier",
+        .type = CFG_INT,
+        .valuePtr = &g_config.speedMultiplier,
+        .min = 10,
+        .max = 200,
+        .step = 10
+    },
+    {
+        .section = "Vehicle",
+        .key = "gravity_stat_multiplier",
+        .label = "Gravity Multiplier",
+        .type = CFG_INT,
+        .valuePtr = &g_config.gravityMultiplier,
+        .min = 10,
+        .max = 300,
+        .step = 10
+    },
+    {
+        .section = "Vehicle",
+        .key = "turn_stat_multiplier",
+        .label = "Kart Turn Multiplier",
+        .type = CFG_INT,
+        .valuePtr = &g_config.turnMultiplier,
+        .min = 10,
+        .max = 400,
+        .step = 10
+    },
+    {
+        .section = "Vehicle",
+        .key = "jump_stat_multiplier",
+        .label = "Kart Jump Multiplier",
+        .type = CFG_INT,
+        .valuePtr = &g_config.jumpMultiplier,
+        .min = 10,
+        .max = 300,
+        .step = 10
+    },
+    {
+        .section = "Vehicle",
+        .key = "turbo_reserves_multiplier",
+        .label = "Turbo Reserves Multiplier",
+        .type = CFG_INT,
+        .valuePtr = &g_config.reserveMultiplier,
+        .min = 0,
+        .max = 400,
+        .step = 20
+    },
+    {
+        .section = "Unlocks",
+        .key = "unlock_all_characters",
+        .label = "Unlock All Characters",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.unlockAllCharacters
+    },
+    {
+        .section = "Graphics",
+        .key = "increase_draw_distance",
+        .label = "Increase Draw Distance",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.increaseDrawDistance
+    },
+    {
+        .section = "Graphics",
+        .key = "disable_split_screen_lod",
+        .label = "Hi-Res Models in Multiplayer",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.disableSplitScreenLod
+    },
+    {
+        .section = "Graphics",
+        .key = "dithering",
+        .label = "Dithering",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.dithering
+    },
+    {
+        .section = "Graphics",
+        .key = "fullscreen",
+        .label = "Fullscreen",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.fullscreen
+    },
+    {
+        .section = "Graphics",
+        .key = "aspect_ratio",
+        .label = "Aspect Ratio",
+        .type = CFG_ENUM,
+        .valuePtr = &g_config.aspectRatio,
+        .enumValues = kAspectRatioValues,
+        .numEnumValues = NUM_ASPECT_RATIOS
+    }
 };
 
 const int g_numConfigEntries = sizeof(g_configEntries) / sizeof(g_configEntries[0]);

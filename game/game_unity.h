@@ -259,6 +259,7 @@
 #include "230/MM_HighScore.c"
 #include "230/MM_Scrapbook.c"
 #include "230/MM_Video.c"
+#include "230/MM_ConfigMenu.c"
 
 #include "231/R231.c"
 #include "231/D231.c"
