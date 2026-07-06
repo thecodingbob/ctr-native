@@ -190,8 +190,6 @@ void RB_CrateAny_ThTick_Grow(struct Thread *t)
 	}
 }
 
-typedef int (*CrateCollideFunc)(struct Thread *, struct Thread *, void *, struct ScratchpadStruct *);
-
 static struct Thread *RB_CrateAny_LInC_Birth(struct Instance *crateInst, void *funcThCollide, char *debugName)
 {
 	struct Thread *crateThread;
@@ -225,6 +223,7 @@ static struct Thread *RB_CrateAny_LInC_Birth(struct Instance *crateInst, void *f
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b3e7c-0x800b4278.
 int RB_CrateWeapon_ThCollide(struct Thread *crateThread, struct Thread *collidingTh, void *funcThCollide, struct ScratchpadStruct *sps)
 {
+	(void)funcThCollide;
 	struct PushBuffer *pb;
 	s16 posScreen[2];
 	struct Instance *crateInst;
@@ -255,7 +254,7 @@ int RB_CrateWeapon_ThCollide(struct Thread *crateThread, struct Thread *collidin
 				return 1;
 			}
 
-			if ((driver->heldItemID != 0xf) && (driver->noItemTimer == 0))
+			if ((driver->heldItemID != HELD_ITEM_NONE) && (driver->noItemTimer == 0))
 			{
 				return 1;
 			}
@@ -283,7 +282,7 @@ int RB_CrateWeapon_ThCollide(struct Thread *crateThread, struct Thread *collidin
 				return 1;
 			}
 
-			driver->heldItemID = 0x10;
+			driver->heldItemID = HELD_ITEM_ROULETTE;
 			driver->numTimesHitWeaponBox++;
 			driver->itemRollTimer = 90;
 
@@ -296,9 +295,9 @@ int RB_CrateWeapon_ThCollide(struct Thread *crateThread, struct Thread *collidin
 			driver->PickupTimeboxHUD.cooldown = 5;
 			driver->noItemTimer = 0;
 
-			if (driver->numWumpas == 10)
+			if (driver->numWumpas == DRIVER_WUMPA_JUICED_COUNT)
 			{
-				driver->BattleHUD.juicedUpCooldown = 10;
+				driver->BattleHUD.juicedUpCooldown = DRIVER_WUMPA_JUICED_HUD_COOLDOWN_FRAMES;
 			}
 
 			pb = &sdata->gGT->pushBuffer[driver->driverID];
@@ -344,12 +343,13 @@ int RB_CrateWeapon_LInC(struct Instance *crateInst, struct Thread *collidingTh, 
 		return 0;
 	}
 
-	return ((CrateCollideFunc)crateThread->funcThCollide)(crateThread, collidingTh, crateThread->funcThCollide, sps);
+	return ((ThreadScratchCollideFunc)crateThread->funcThCollide)(crateThread, collidingTh, crateThread->funcThCollide, sps);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b432c-0x800b471c.
 int RB_CrateFruit_ThCollide(struct Thread *crateThread, struct Thread *collidingTh, void *funcThCollide, struct ScratchpadStruct *sps)
 {
+	(void)funcThCollide;
 	struct PushBuffer *pb;
 	s16 posScreen[2];
 	struct Instance *crateInst;
@@ -436,12 +436,13 @@ int RB_CrateFruit_LInC(struct Instance *crateInst, struct Thread *collidingTh, s
 		return 0;
 	}
 
-	return ((CrateCollideFunc)crateThread->funcThCollide)(crateThread, collidingTh, crateThread->funcThCollide, sps);
+	return ((ThreadScratchCollideFunc)crateThread->funcThCollide)(crateThread, collidingTh, crateThread->funcThCollide, sps);
 }
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b47d0-0x800b4ba8.
 int RB_CrateTime_ThCollide(struct Thread *crateThread, struct Thread *driverTh, void *funcThCollide, struct ScratchpadStruct *sps)
 {
+	(void)funcThCollide;
 	struct PushBuffer *pb;
 	s16 posScreen[2];
 	struct Instance *crateInst;
@@ -550,5 +551,5 @@ int RB_CrateTime_LInC(struct Instance *crateInst, struct Thread *driverTh, struc
 		return 0;
 	}
 
-	return ((CrateCollideFunc)crateThread->funcThCollide)(crateThread, driverTh, crateThread->funcThCollide, sps);
+	return ((ThreadScratchCollideFunc)crateThread->funcThCollide)(crateThread, driverTh, crateThread->funcThCollide, sps);
 }

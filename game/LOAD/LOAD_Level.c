@@ -17,7 +17,7 @@ void LOAD_TalkingMask(int packID, int maskID)
 	MEMPACK_SwapPacks(packID);
 	MEMPACK_ClearLowMem();
 
-	sdata->PatchMem_Size = 1;
+	sdata->PatchMem_Size = LOAD_HUB_PATCH_MEM_ACTIVE;
 
 	int offset = maskID * 4 + (packID - 1) * 2;
 
@@ -35,15 +35,15 @@ void LOAD_LevelFile(int levelID)
 	// why here?
 	sdata->modelMaskHints3D = 0;
 
-	gGT->hudFlags &= 0xfe;
+	gGT->hudFlags &= HUD_FLAG_CLEAR_RACE_HUD_MASK;
 
 	gGT->prevLEV = gGT->levelID;
 	gGT->levelID = levelID;
 
 	// disable all rendering except checkeredFlag
-	gGT->renderFlags &= 0x1000;
+	gGT->renderFlags &= RENDER_FLAG_CHECKERED_FLAG;
 
-	if (RaceFlag_IsFullyOffScreen() == 1)
+	if (RaceFlag_IsFullyOffScreen())
 	{
 		RaceFlag_BeginTransition(1);
 	}

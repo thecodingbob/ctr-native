@@ -513,7 +513,7 @@ internal int NativeAudio_Clamp16(int value)
 	return value;
 }
 
-internal int NativeAudio_VolumeScale(s16 volume)
+internal int NativeAudio_VolumeScale(int volume)
 {
 	if (volume < 0)
 	{
@@ -1286,14 +1286,6 @@ internal int NativeAudio_AlignUpInt(int value, int align)
 	return (value + mask) & ~mask;
 }
 
-internal void NativeAudio_ArenaFree(struct NativeAudioDecodeArena *arena)
-{
-	free(arena->memory);
-	arena->memory = NULL;
-	arena->capacity = 0;
-	arena->used = 0;
-}
-
 internal void NativeAudio_ArenaReset(struct NativeAudioDecodeArena *arena)
 {
 	arena->used = 0;
@@ -1443,56 +1435,27 @@ internal int NativeAudio_VoiceArenaEnsureCapacityNoLock(int capacity)
 
 internal int NativeAudio_ReadFileBytes(const char *path, struct NativeAudioByteBuffer *bytes)
 {
-	FILE *fp;
-	long size;
-	size_t read;
+	struct NativeAssetsByteBuffer assetBytes;
+	size_t pathLen;
+	int readMode = NATIVE_ASSET_READ_DATA_FILE;
 
 	bytes->data = NULL;
 	bytes->size = 0;
 
-	fp = NativeAssets_Open(path, "rb");
-	if (fp == NULL)
+	pathLen = strlen(path);
+	if ((pathLen >= 3) && (path[pathLen - 3] == '.') && ((path[pathLen - 2] == 'X') || (path[pathLen - 2] == 'x')) &&
+	    ((path[pathLen - 1] == 'A') || (path[pathLen - 1] == 'a')))
+	{
+		readMode = NATIVE_ASSET_READ_RAW_CD_SECTORS;
+	}
+
+	if (!NativeAssets_ReadBytes(path, readMode, &assetBytes))
 	{
 		return 0;
 	}
 
-	if (fseek(fp, 0, SEEK_END) != 0)
-	{
-		fclose(fp);
-		return 0;
-	}
-
-	size = ftell(fp);
-	if ((size <= 0) || (size > INT_MAX))
-	{
-		fclose(fp);
-		return 0;
-	}
-
-	if (fseek(fp, 0, SEEK_SET) != 0)
-	{
-		fclose(fp);
-		return 0;
-	}
-
-	bytes->data = (u8 *)malloc((size_t)size);
-	if (bytes->data == NULL)
-	{
-		fclose(fp);
-		return 0;
-	}
-
-	read = fread(bytes->data, 1, (size_t)size, fp);
-	fclose(fp);
-
-	if (read != (size_t)size)
-	{
-		free(bytes->data);
-		bytes->data = NULL;
-		return 0;
-	}
-
-	bytes->size = (int)size;
+	bytes->data = assetBytes.data;
+	bytes->size = assetBytes.size;
 	return 1;
 }
 

@@ -28,7 +28,7 @@ void MainStats_RestartRaceCountLoss(void)
 	gameMode1 = gGT->gameMode1;
 
 	// Turn off HUD
-	sdata->gGT->hudFlags &= 0xfe;
+	sdata->gGT->hudFlags &= HUD_FLAG_CLEAR_RACE_HUD_MASK;
 
 	// Reset team points
 	for (int i = 0; i < 4; i++)

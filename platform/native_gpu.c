@@ -7,7 +7,7 @@
 #include <macros.h>
 #include "platform/native_gpu.h"
 
-#include "../platform.h"
+#include <platform.h>
 
 #include <SDL3/SDL.h>
 
@@ -215,16 +215,6 @@ internal void DrawEnvDimensionsInt(int *width, int *height)
 		*width = activeDrawEnv.clip.w;
 		*height = activeDrawEnv.clip.h;
 	}
-}
-
-internal void DrawEnvDimensionsFloat(float *width, float *height)
-{
-	int intWidth;
-	int intHeight;
-
-	DrawEnvDimensionsInt(&intWidth, &intHeight);
-	*width = (float)intWidth;
-	*height = (float)intHeight;
 }
 
 void DrawEnvOffset(float *ofsX, float *ofsY)
@@ -1264,7 +1254,6 @@ internal int ProcessFlatLines(P_TAG *polyTag)
 	}
 	case 0xc:
 	{
-		int i;
 		LINE_F4 *poly = (LINE_F4 *)polyTag;
 
 		AddSplit(semiTrans, false, false);
@@ -1794,7 +1783,6 @@ internal void ProcessDrawEnvCommand(u32 code)
 
 internal int ProcessPsyXPrims(P_TAG *polyTag)
 {
-	const int primType = polyTag->code & 0xF0;
 	const int primSubType = polyTag->code & 0x0F;
 
 	switch (primSubType)

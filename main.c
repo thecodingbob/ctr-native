@@ -19,16 +19,9 @@
 #define ExitCriticalSection()
 #endif
 
-#include "psx/libetc.h"
-#include "psx/libgte.h"
-#include "psx/libgpu.h"
-#include "psx/libspu.h"
-#include "psx/libcd.h"
-#include "psx/libapi.h"
-#include "psx/strings.h"
-#include "psx/inline_c.h"
 #include "platform/native_assets.h"
 #include "platform/native_log.h"
+#include "platform/native_memory.h"
 #include "platform/native_perf.h"
 #include "platform/native_replay_scheduler.h"
 #include "platform/native_savestate.h"
@@ -37,32 +30,19 @@
 #define __attribute__(x)
 #endif
 
-#define RECT RECT16
-typedef enum
-{
-	PAD_ID_MOUSE = 0x1,
-	PAD_ID_NEGCON = 0x2,
-	PAD_ID_IRQ10_GUN = 0x3,
-	PAD_ID_DIGITAL = 0x4,
-	PAD_ID_ANALOG_STICK = 0x5,
-	PAD_ID_GUNCON = 0x6,
-	PAD_ID_ANALOG = 0x7,
-	PAD_ID_MULTITAP = 0x8,
-	PAD_ID_JOGCON = 0xe,
-	PAD_ID_CONFIG_MODE = 0xf,
-	PAD_ID_NONE = 0xf
-} PadTypeID;
+#include <platform.h>
 
-#include "platform.h"
-
-#include "game_includes.h"
+#include "game/game_unity.h"
 
 #include "game/zGlobal_RDATA.c"
 #include "game/zGlobal_DATA.c"
 #include "game/zGlobal_SDATA.c"
+#include "game/widescreen.c"
+
 
 #undef RECT
 
+#include "platform/native_disc_image.c"
 #include "platform/native_assets.c"
 #include "platform/native_audio.c"
 #include "platform/native_memory.c"
@@ -83,6 +63,7 @@ typedef enum
 #include "platform/native_libspu.c"
 #include "platform/native_log.c"
 #include "platform/native_memcard.c"
+#include "platform/native_memcard_adapter.c"
 #include "platform/native_perf.c"
 #include "platform/native_platform.c"
 #include "platform/native_replay_scheduler.c"
@@ -90,7 +71,7 @@ typedef enum
 #include "platform/native_savestate.c"
 #include "platform/native_state.c"
 #include "platform/native_str.c"
-#include "platform/native_config.c" 
+#include "platform/native_config.c"
 
 #ifndef CC
 #if __GNUC__
