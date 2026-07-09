@@ -29,6 +29,8 @@ extern int g_dbg_wireframeMode;
 extern int g_windowHeight;
 extern int g_windowWidth;
 
+#define HOST_ALT_LEFT  (1 << 0)
+#define HOST_ALT_RIGHT (1 << 1)
 global_variable int s_hostAltKeyState = 0;
 global_variable int s_platformInitialized = 0;
 global_variable int s_platformBeginScene = 0;
@@ -124,6 +126,34 @@ internal void Platform_HandleFullscreenToggle(void)
 	NativeConfig_Save();
 }
 
+internal void Platform_UpdateHostAltKeyState(const s32 key, const s8 down)
+{
+	s32 altKeyBit = 0;
+
+	if (key == SDL_SCANCODE_LALT)
+	{
+		altKeyBit = HOST_ALT_LEFT;
+	}
+	else if (key == SDL_SCANCODE_RALT)
+	{
+		altKeyBit = HOST_ALT_RIGHT;
+	}
+
+	if (altKeyBit == 0)
+	{
+		return;
+	}
+
+	if (down != 0)
+	{
+		s_hostAltKeyState |= altKeyBit;
+	}
+	else
+	{
+		s_hostAltKeyState &= ~altKeyBit;
+	}
+}
+
 #if defined(CTR_INTERNAL)
 internal void Platform_TakeScreenshot(void)
 {
@@ -181,7 +211,7 @@ internal void Platform_HandleKey(int key, char down)
 		case SDL_SCANCODE_F10:
 			NativeReplayScheduler_RequestStop();
 			break;
-		case SDL_SCANCODE_F11:
+		case SDL_SCANCODE_F7:
 			Platform_LogWarn("[CTR Native] saving VRAM.TGA\n");
 			NativeRenderer_SaveVRAM("VRAM.TGA", 0, 0, VRAM_WIDTH, VRAM_HEIGHT, 1);
 			break;
@@ -431,13 +461,20 @@ void Platform_PollHostEvents(void)
 			int key = event.key.scancode;
 			char down = (event.type == SDL_EVENT_KEY_UP) ? 0 : 1;
 
-			if (key == SDL_SCANCODE_RALT || key == SDL_SCANCODE_LALT)
+			Platform_UpdateHostAltKeyState(key, down);
+
+			if (key == SDL_SCANCODE_F11)
 			{
-				s_hostAltKeyState = down;
+				if ((down != 0) && (event.key.repeat == 0))
+				{
+					Platform_HandleFullscreenToggle();
+				}
+				break;
 			}
-			else if (key == SDL_SCANCODE_RETURN)
+
+			if (key == SDL_SCANCODE_RETURN)
 			{
-				if ((s_hostAltKeyState != 0) && (down != 0))
+				if ((s_hostAltKeyState != 0) && (down != 0) && (event.key.repeat == 0))
 				{
 					Platform_HandleFullscreenToggle();
 				}
