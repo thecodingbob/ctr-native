@@ -28,6 +28,7 @@ typedef struct {
     int missileSpeedMultiplier; // percent, 20%..500%, 100 = 1.0x (default)
     int bombSpeedMultiplier;    // percent, 20%..300%, 100 = 1.0x (default)
     int warpballSpeedMultiplier; // percent, 20%..300%, 100 = 1.0x (default)
+    int bombExplosionRadiusMultiplier; // percent, 50%..600%, 100 = 1.0x (default)
 } NativeConfig;
 
 typedef enum { CFG_BOOL, CFG_INT, CFG_ENUM } ConfigType;

@@ -174,11 +174,12 @@ format). An example template is at `default_config.ini` in the project root.
 
 ### Weapons
 
-| Key                         | Values               | Default | Description             |
-|-----------------------------|----------------------|---------|-------------------------|
-| `missile_speed_multiplier`  | `20`–`500` (percent) | `100`  | Missile speed multiplier |
-| `bomb_speed_multiplier`    | `20`–`300` (percent) | `100`  | Bomb speed multiplier |
-| `warpball_speed_multiplier` | `20`–`300` (percent) | `100`  | Warpball speed multiplier |
+| Key                                | Values               | Default | Description                      |
+|------------------------------------|----------------------|---------|----------------------------------|
+| `missile_speed_multiplier`         | `20`–`500` (percent) | `100`  | Missile speed multiplier         |
+| `bomb_speed_multiplier`            | `20`–`300` (percent) | `100`  | Bomb speed multiplier            |
+| `warpball_speed_multiplier`        | `20`–`300` (percent) | `100`  | Warpball speed multiplier        |
+| `bomb_explosion_radius_multiplier` | `50`–`600` (percent) | `100`  | Bomb explosion radius multiplier |
 
 ### Graphics
 

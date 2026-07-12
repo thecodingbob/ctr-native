@@ -27,6 +27,8 @@ NativeConfig g_config = {
 
   .missileSpeedMultiplier =  100,
   .bombSpeedMultiplier = 100,
+  .warpballSpeedMultiplier = 100,
+  .bombExplosionRadiusMultiplier = 100,
 
   .unlockAllCharacters = false,
   .unlockAllGates = false,
@@ -157,6 +159,16 @@ const ConfigEntry g_configEntries[] = {
         .min = 20,
         .max = 300,
         .step = 20
+    },
+    {
+        .section = "Weapons",
+        .key = "bomb_explosion_radius_multiplier",
+        .label = "Bomb Explosion Radius",
+        .type = CFG_INT,
+        .valuePtr = &g_config.bombExplosionRadiusMultiplier,
+        .min = 50,
+        .max = 600,
+        .step = 50
     },
     {
         .section = "Unlocks",

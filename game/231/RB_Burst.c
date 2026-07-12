@@ -394,6 +394,12 @@ void RB_Burst_Init(struct Instance *weaponInst)
 			sps->Input1.hitRadius = 0x200;
 			sps->Input1.hitRadiusSquared = 0x40000;
 		}
+
+		if (modelID == DYNAMIC_BOMB)
+		{
+			sps->Input1.hitRadius = sps->Input1.hitRadius * g_config.bombExplosionRadiusMultiplier / 100;
+			sps->Input1.hitRadiusSquared = sps->Input1.hitRadius * sps->Input1.hitRadius;
+		}
 	}
 
 	sps->Input1.modelID = modelID;
