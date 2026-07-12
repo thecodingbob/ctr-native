@@ -7,6 +7,15 @@
 #include <platform/native_assets.h>
 #include <platform/native_path.h>
 
+static const ConfigEnumValue kMaskModeValues[] = {
+    {"Normal", MASK_MODE_NORMAL},
+    {"Random", MASK_MODE_RANDOM},
+    {"Inverted", MASK_MODE_INVERTED},
+    {"All Uka", MASK_MODE_ALL_UKA},
+    {"All Aku", MASK_MODE_ALL_AKU},
+};
+#define NUM_MASK_MODES (sizeof(kMaskModeValues) / sizeof(kMaskModeValues[0]))
+
 static const ConfigEnumValue kAspectRatioValues[] = {
     {"4:3", 0},
     {"16:9", 1},
@@ -53,6 +62,15 @@ const ConfigEntry g_configEntries[] = {
         .type = CFG_BOOL,
         .valuePtr = &g_config.skipIntro
     },
+      {
+        .section = "General",
+        .key = "mask_mode",
+        .label = "Mask Mode",
+        .type = CFG_ENUM,
+        .valuePtr = &g_config.maskMode,
+        .enumValues = kMaskModeValues,
+        .numEnumValues = NUM_MASK_MODES
+      },
     {
         .section = "Adventure",
         .key = "skip_hints",

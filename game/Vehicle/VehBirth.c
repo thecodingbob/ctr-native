@@ -776,6 +776,8 @@ struct Driver *VehBirth_Player(int index)
 	struct Driver *d = t->object;
 	memset(d, 0, DRIVER_NTSC_RETAIL_SIZE);
 
+	d->maskIsAku = -1;
+
 	VehBirth_NonGhost(t, index);
 
 	d->funcPtrs[DRIVER_FUNC_INIT] = VehPhysProc_Driving_Init;

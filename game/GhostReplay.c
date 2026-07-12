@@ -388,6 +388,7 @@ void GhostReplay_Init1(void)
 
 		struct Driver *ghostDriver = t->object;
 		memset(ghostDriver, 0, 0x638);
+		ghostDriver->maskIsAku = -1;
 		ghostDriver->ghostID = i;
 		ghostDriver->driverID = i + 1;
 		ghostDriver->ghostBoolInit = 0;

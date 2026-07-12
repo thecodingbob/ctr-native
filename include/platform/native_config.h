@@ -30,7 +30,17 @@ typedef struct {
     int warpballSpeedMultiplier; // percent, 20%..300%, 100 = 1.0x (default)
     int bombExplosionRadiusMultiplier; // percent, 50%..600%, 100 = 1.0x (default)
     int tntExplosionRadiusMultiplier;  // percent, 50%..600%, 100 = 1.0x (default)
+    int maskMode;               // MASK_MODE_NORMAL=0(default), RANDOM=1, INVERTED=2, ALL_UKA=3, ALL_AKU=4
 } NativeConfig;
+
+enum
+{
+    MASK_MODE_NORMAL = 0,
+    MASK_MODE_RANDOM = 1,
+    MASK_MODE_INVERTED = 2,
+    MASK_MODE_ALL_UKA = 3,
+    MASK_MODE_ALL_AKU = 4,
+};
 
 typedef enum { CFG_BOOL, CFG_INT, CFG_ENUM } ConfigType;
 
