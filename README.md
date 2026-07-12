@@ -185,6 +185,8 @@ format). An example template is at `default_config.ini` in the project root.
 | `mask_protects_from_damage`        | `true` / `false`                                         | `true`   | Mask makes driver immune to damage    |
 | `mask_damages_others`              | `true` / `false`                                         | `true`   | Mask damages other drivers on contact |
 | `mask_persists_after_oob`          | `true` / `false`                                         | `false`  | Mask stays active after falling OOB   |
+| `mask_duration_multiplier`         | `20`–`250` (percent)                                     | `100`    | Mask weapon duration multiplier       |
+| `mask_extra_speed_multiplier`      | `0`–`300` (percent)                                      | `100`    | Mask extra speed multiplier           |
 
 ### Graphics
 

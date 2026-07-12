@@ -322,6 +322,7 @@ struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, b32 bo
 
 		maskObj = currThread->object;
 		maskObj->duration = (driver->numWumpas < DRIVER_WUMPA_JUICED_COUNT) ? MASK_HEAD_DURATION_NORMAL : MASK_HEAD_DURATION_JUICED;
+		maskObj->duration = (maskObj->duration * g_config.maskDurationMultiplier) / 100;
 
 		if (
 		    // If this is human and not AI
@@ -390,6 +391,7 @@ struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, b32 bo
 	instance->flags |= HIDE_MODEL;
 	maskObj->maskBeamInst->flags |= HIDE_MODEL;
 	maskObj->duration = (driver->numWumpas < DRIVER_WUMPA_JUICED_COUNT) ? MASK_HEAD_DURATION_NORMAL : MASK_HEAD_DURATION_JUICED;
+	maskObj->duration = (maskObj->duration * g_config.maskDurationMultiplier) / 100;
 	maskObj->rot.x = MASK_INITIAL_ROT_X;
 	maskObj->rot.y = 0;
 	maskObj->rot.z = 0;

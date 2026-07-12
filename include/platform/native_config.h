@@ -34,6 +34,8 @@ typedef struct {
     bool maskProtectsFromDamage; // true (default) = immune to damage while mask is active, false = can take damage through mask
     bool maskDamagesOthers;      // true (default) = mask damages drivers on contact, false = no damage
     bool maskPersistsAfterOOB;   // false (default) = mask is consumed on OOB, true = mask continues after OOB
+    int maskDurationMultiplier;  // percent, 20%..250%, 100 = 1.0x (default)
+    int maskExtraSpeedMultiplier; // percent, 0%..300%, 100 = 1.0x (default)
 } NativeConfig;
 
 enum

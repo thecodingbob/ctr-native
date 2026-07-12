@@ -1335,7 +1335,7 @@ int VehPhysGeneral_GetBaseSpeed(struct Driver *driver)
 
 	if ((driver->actionsFlagSet & ACTION_MASK_WEAPON) != 0)
 	{
-		speedAdditional = CTR_MipsAddLo(speedAdditional, driver->const_MaskSpeed);
+		speedAdditional = CTR_MipsAddLo(speedAdditional, (driver->const_MaskSpeed * g_config.maskExtraSpeedMultiplier) / 100);
 	}
 
 	if (driver->reserves != 0)

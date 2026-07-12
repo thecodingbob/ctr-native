@@ -721,7 +721,7 @@ void BOTS_MaskGrab(struct Thread *botThread)
 
 	if (mask != 0)
 	{
-		mask->duration = MASK_HEAD_DURATION_NORMAL;
+		mask->duration = (MASK_HEAD_DURATION_NORMAL * g_config.maskDurationMultiplier) / 100;
 		mask->rot.z |= MASK_HEAD_ROT_WORLD_SPACE;
 	}
 

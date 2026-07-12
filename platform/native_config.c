@@ -54,7 +54,9 @@ NativeConfig g_config = {
   .maskMode = MASK_MODE_NORMAL,
   .maskProtectsFromDamage = true,
   .maskDamagesOthers = true,
-  .maskPersistsAfterOOB = false
+  .maskPersistsAfterOOB = false,
+  .maskDurationMultiplier = 100,
+  .maskExtraSpeedMultiplier = 100
 };
 
 const ConfigEntry g_configEntries[] = {
@@ -217,13 +219,33 @@ const ConfigEntry g_configEntries[] = {
         .type = CFG_BOOL,
         .valuePtr = &g_config.maskDamagesOthers
       },
-      {
+    {
         .section = "Weapons",
         .key = "mask_persists_after_oob",
         .label = "Mask Persists After OOB",
         .type = CFG_BOOL,
         .valuePtr = &g_config.maskPersistsAfterOOB
-      },
+    },
+    {
+        .section = "Weapons",
+        .key = "mask_duration_multiplier",
+        .label = "Mask Duration",
+        .type = CFG_INT,
+        .valuePtr = &g_config.maskDurationMultiplier,
+        .min = 20,
+        .max = 250,
+        .step = 10
+    },
+    {
+        .section = "Weapons",
+        .key = "mask_extra_speed_multiplier",
+        .label = "Mask Extra Speed",
+        .type = CFG_INT,
+        .valuePtr = &g_config.maskExtraSpeedMultiplier,
+        .min = 0,
+        .max = 300,
+        .step = 20
+    },
     {
         .section = "Unlocks",
         .key = "unlock_all_characters",

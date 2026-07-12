@@ -777,6 +777,7 @@ struct Driver *VehBirth_Player(int index)
 	memset(d, 0, DRIVER_NTSC_RETAIL_SIZE);
 
 	d->maskIsAku = -1;
+	d->boolHadMaskBeforeOOB = 0;
 
 	VehBirth_NonGhost(t, index);
 
