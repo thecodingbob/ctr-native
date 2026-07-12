@@ -180,6 +180,7 @@ format). An example template is at `default_config.ini` in the project root.
 | `bomb_speed_multiplier`            | `20`–`300` (percent) | `100`  | Bomb speed multiplier            |
 | `warpball_speed_multiplier`        | `20`–`300` (percent) | `100`  | Warpball speed multiplier        |
 | `bomb_explosion_radius_multiplier` | `50`–`600` (percent) | `100`  | Bomb explosion radius multiplier |
+| `tnt_explosion_radius_multiplier` | `50`–`600` (percent) | `100`  | TNT/Nitro explosion radius multiplier |
 
 ### Graphics
 

@@ -29,6 +29,7 @@ NativeConfig g_config = {
   .bombSpeedMultiplier = 100,
   .warpballSpeedMultiplier = 100,
   .bombExplosionRadiusMultiplier = 100,
+  .tntExplosionRadiusMultiplier = 100,
 
   .unlockAllCharacters = false,
   .unlockAllGates = false,
@@ -159,6 +160,16 @@ const ConfigEntry g_configEntries[] = {
         .min = 20,
         .max = 300,
         .step = 20
+    },
+    {
+      .section = "Weapons",
+      .key = "tnt_explosion_radius",
+      .label = "TNT/Nitro Explosion Radius",
+      .type = CFG_INT,
+      .valuePtr = &g_config.tntExplosionRadiusMultiplier,
+      .min = 50,
+      .max = 600,
+      .step = 50
     },
     {
         .section = "Weapons",

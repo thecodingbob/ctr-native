@@ -191,6 +191,9 @@ void RB_Blowup_Init(struct Instance *weaponInst)
 		sps->Input1.hitRadiusSquared = 0x4000;
 	}
 
+        sps->Input1.hitRadius = sps->Input1.hitRadius * g_config.tntExplosionRadiusMultiplier / 100;
+        sps->Input1.hitRadiusSquared = sps->Input1.hitRadius * sps->Input1.hitRadius;
+
 	// check collision with player threads
 	PROC_CollideHitboxWithBucket(gGT->threadBuckets[PLAYER].thread, sps, 0);
 
