@@ -31,6 +31,9 @@ typedef struct {
     int bombExplosionRadiusMultiplier; // percent, 50%..600%, 100 = 1.0x (default)
     int tntExplosionRadiusMultiplier;  // percent, 50%..600%, 100 = 1.0x (default)
     int maskMode;               // MASK_MODE_NORMAL=0(default), RANDOM=1, INVERTED=2, ALL_UKA=3, ALL_AKU=4
+    bool maskProtectsFromDamage; // true (default) = immune to damage while mask is active, false = can take damage through mask
+    bool maskDamagesOthers;      // true (default) = mask damages drivers on contact, false = no damage
+    bool maskPersistsAfterOOB;   // false (default) = mask is consumed on OOB, true = mask continues after OOB
 } NativeConfig;
 
 enum

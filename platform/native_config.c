@@ -50,7 +50,11 @@ NativeConfig g_config = {
   .fullscreen = false,
   .aspectRatio = 0,
   .dithering = true,
-  .saveAnywhere = false
+  .saveAnywhere = false,
+  .maskMode = MASK_MODE_NORMAL,
+  .maskProtectsFromDamage = true,
+  .maskDamagesOthers = true,
+  .maskPersistsAfterOOB = false
 };
 
 const ConfigEntry g_configEntries[] = {
@@ -199,6 +203,27 @@ const ConfigEntry g_configEntries[] = {
         .max = 600,
         .step = 50
     },
+      {
+        .section = "Weapons",
+        .key = "mask_protects_from_damage",
+        .label = "Mask Protects From Damage",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.maskProtectsFromDamage
+      },
+      {
+        .section = "Weapons",
+        .key = "mask_damages_others",
+        .label = "Mask Damages Others",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.maskDamagesOthers
+      },
+      {
+        .section = "Weapons",
+        .key = "mask_persists_after_oob",
+        .label = "Mask Persists After OOB",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.maskPersistsAfterOOB
+      },
     {
         .section = "Unlocks",
         .key = "unlock_all_characters",

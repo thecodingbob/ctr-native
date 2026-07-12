@@ -215,7 +215,7 @@ int VehPhysCrash_Attack(struct Driver *driver1, struct Driver *driver2, b32 canP
 {
 	if ((driver1->actionsFlagSet & ACTION_MASK_WEAPON) == 0)
 	{
-		if ((driver2->actionsFlagSet & ACTION_MASK_WEAPON) != 0)
+		if ((driver2->actionsFlagSet & ACTION_MASK_WEAPON) != 0 && g_config.maskDamagesOthers)
 		{
 			driver1->pendingDamageType = VEH_PHYS_CRASH_DAMAGE_TYPE_MASK;
 			VehPhysCrash_Attack_SetReason(driver1, VEH_PHYS_CRASH_DAMAGE_REASON_MASK);

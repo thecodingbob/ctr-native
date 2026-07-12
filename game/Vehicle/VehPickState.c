@@ -95,8 +95,8 @@ int VehPickState_NewState(struct Driver *victimDriver, int damageType, struct Dr
 	}
 
 	if (
-	    // If player is using mask weapon
-	    ((victimDriver->actionsFlagSet & ACTION_MASK_WEAPON) != 0) ||
+	    // If player is using mask weapon and it protects from damage
+	    ((victimDriver->actionsFlagSet & ACTION_MASK_WEAPON) != 0 && g_config.maskProtectsFromDamage) ||
 
 	    (victimDriver->invincibleTimer != 0))
 	{
