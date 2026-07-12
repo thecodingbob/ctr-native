@@ -141,6 +141,12 @@ LAB_800adc08:;
 				tw->vel.z = -tw->vel.z;
 				tw->vel.x = -tw->vel.x;
 			}
+
+		        if (modelID == DYNAMIC_BOMB)
+		        {
+		                tw->vel.x = tw->vel.x * g_config.bombSpeedMultiplier / 100;
+		                tw->vel.z = tw->vel.z * g_config.bombSpeedMultiplier / 100;
+		        }
 		}
 
 		// if 0x29 (MISSILE)

@@ -177,6 +177,7 @@ format). An example template is at `default_config.ini` in the project root.
 | Key                         | Values               | Default | Description             |
 |-----------------------------|----------------------|---------|-------------------------|
 | `missile_speed_multiplier`  | `20`–`500` (percent) | `100`  | Missile speed multiplier |
+| `bomb_speed_multiplier`    | `20`–`500` (percent) | `100`  | Bomb speed multiplier |
 
 ### Graphics
 

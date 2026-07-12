@@ -25,6 +25,9 @@ NativeConfig g_config = {
   .jumpMultiplier = 100,
   .reserveMultiplier = 100,
 
+  .missileSpeedMultiplier =  100,
+  .bombSpeedMultiplier = 100,
+
   .unlockAllCharacters = false,
   .unlockAllGates = false,
   .unlockAllPortals = false,
@@ -133,6 +136,16 @@ const ConfigEntry g_configEntries[] = {
         .valuePtr = &g_config.missileSpeedMultiplier,
         .min = 20,
         .max = 500,
+        .step = 20
+    },
+    {
+        .section = "Weapons",
+        .key = "bomb_speed_multiplier",
+        .label = "Bomb Speed Multiplier",
+        .type = CFG_INT,
+        .valuePtr = &g_config.bombSpeedMultiplier,
+        .min = 20,
+        .max = 300,
         .step = 20
     },
     {
