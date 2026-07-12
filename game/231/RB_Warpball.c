@@ -529,6 +529,8 @@ void RB_Warpball_ThTick(struct Thread *t)
 			tw->dir.z = 0;
 			tw->vel.x = (MATH_Sin(tw->dir.y) * 7) >> 8;
 			tw->vel.z = (MATH_Cos(tw->dir.y) * 7) >> 8;
+		        tw->vel.x = tw->vel.x * g_config.warpballSpeedMultiplier / 100;
+		        tw->vel.z = tw->vel.z * g_config.warpballSpeedMultiplier / 100;
 
 			if (distY > 0)
 			{
@@ -566,7 +568,7 @@ void RB_Warpball_ThTick(struct Thread *t)
 			struct CheckpointNode *curr = tw->ptrNodeCurr;
 			struct CheckpointNode *next = tw->ptrNodeNext;
 			int segmentLength = RB_Warpball_NodeDeltaLength(curr, next, &distX, &distY, &distZ);
-			int progress = tw->pathProgress + ((elapsedTime * 0x70) >> 5);
+			int progress = tw->pathProgress + (((elapsedTime * 0x70) >> 5) * g_config.warpballSpeedMultiplier / 100);
 			int fraction;
 
 			if (segmentLength <= progress)
@@ -612,6 +614,8 @@ void RB_Warpball_ThTick(struct Thread *t)
 			tw->dir.y = ratan2(distX, distZ);
 			tw->vel.x = (MATH_Sin(tw->dir.y) * 7) >> 8;
 			tw->vel.z = (MATH_Cos(tw->dir.y) * 7) >> 8;
+		        tw->vel.x = tw->vel.x * g_config.warpballSpeedMultiplier / 100;
+		        tw->vel.z = tw->vel.z * g_config.warpballSpeedMultiplier / 100;
 			tw->vel.y = 0;
 		}
 	}

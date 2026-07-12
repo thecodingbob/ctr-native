@@ -149,6 +149,16 @@ const ConfigEntry g_configEntries[] = {
         .step = 20
     },
     {
+        .section = "Weapons",
+        .key = "warpball_speed_multiplier",
+        .label = "Warpball Speed Multiplier",
+        .type = CFG_INT,
+        .valuePtr = &g_config.warpballSpeedMultiplier,
+        .min = 20,
+        .max = 300,
+        .step = 20
+    },
+    {
         .section = "Unlocks",
         .key = "unlock_all_characters",
         .label = "Unlock All Characters",
