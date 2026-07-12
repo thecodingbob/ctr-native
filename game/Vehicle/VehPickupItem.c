@@ -1094,6 +1094,7 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 		{
 			hurtVal = CLOCK_HURT_DURATION_JUICED;
 		}
+		hurtVal = (hurtVal * g_config.clockDurationMultiplier) / 100;
 
 		struct Driver **dptr;
 

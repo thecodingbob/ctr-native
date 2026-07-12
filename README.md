@@ -187,6 +187,8 @@ format). An example template is at `default_config.ini` in the project root.
 | `mask_persists_after_oob`          | `true` / `false`                                         | `false`  | Mask stays active after falling OOB   |
 | `mask_duration_multiplier`         | `20`–`250` (percent)                                     | `100`    | Mask weapon duration multiplier       |
 | `mask_extra_speed_multiplier`      | `0`–`300` (percent)                                      | `100`    | Mask extra speed multiplier           |
+| `clock_duration_multiplier`        | `20`–`250` (percent)                                     | `100`    | Clock slowdown duration multiplier    |
+| `allow_weapons_during_clock`       | `true` / `false`                                         | `false`  | Allow weapon usage while clocked       |
 
 ### Graphics
 

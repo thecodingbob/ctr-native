@@ -56,7 +56,9 @@ NativeConfig g_config = {
   .maskDamagesOthers = true,
   .maskPersistsAfterOOB = false,
   .maskDurationMultiplier = 100,
-  .maskExtraSpeedMultiplier = 100
+  .maskExtraSpeedMultiplier = 100,
+  .clockDurationMultiplier = 100,
+  .allowWeaponsDuringClock = false
 };
 
 const ConfigEntry g_configEntries[] = {
@@ -245,6 +247,23 @@ const ConfigEntry g_configEntries[] = {
         .min = 0,
         .max = 300,
         .step = 20
+    },
+    {
+        .section = "Weapons",
+        .key = "clock_duration_multiplier",
+        .label = "Clock Duration",
+        .type = CFG_INT,
+        .valuePtr = &g_config.clockDurationMultiplier,
+        .min = 20,
+        .max = 250,
+        .step = 10
+    },
+    {
+        .section = "Weapons",
+        .key = "allow_weapons_during_clock",
+        .label = "Weapons During Clock",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.allowWeaponsDuringClock
     },
     {
         .section = "Unlocks",

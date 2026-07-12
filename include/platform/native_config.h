@@ -36,6 +36,8 @@ typedef struct {
     bool maskPersistsAfterOOB;   // false (default) = mask is consumed on OOB, true = mask continues after OOB
     int maskDurationMultiplier;  // percent, 20%..250%, 100 = 1.0x (default)
     int maskExtraSpeedMultiplier; // percent, 0%..300%, 100 = 1.0x (default)
+    int clockDurationMultiplier;  // percent, 20%..250%, 100 = 1.0x (default)
+    bool allowWeaponsDuringClock; // false (default) = clock blocks weapon usage, true = weapons work during clock
 } NativeConfig;
 
 enum
