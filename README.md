@@ -172,6 +172,12 @@ format). An example template is at `default_config.ini` in the project root.
 | `jump_stat_multiplier`      | `10`–`300` (percent) | `100`  | Kart jump-height multiplier                                                                                              |
 | `turbo_reserves_multiplier` | `0`–`400`  (percent) | `100`  | Reserve accumulation multiplier. The higher the value, the more reserve your kart will get when executing a turbo drift. |
 
+### Weapons
+
+| Key                         | Values               | Default | Description             |
+|-----------------------------|----------------------|---------|-------------------------|
+| `missile_speed_multiplier`  | `20`–`500` (percent) | `100`  | Missile speed multiplier |
+
 ### Graphics
 
 | Key                        | Values  | Default | Description                                                             |

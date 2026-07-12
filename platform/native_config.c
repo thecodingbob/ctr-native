@@ -126,6 +126,16 @@ const ConfigEntry g_configEntries[] = {
         .step = 20
     },
     {
+        .section = "Weapons",
+        .key = "missile_speed_multiplier",
+        .label = "Missile Speed Multiplier",
+        .type = CFG_INT,
+        .valuePtr = &g_config.missileSpeedMultiplier,
+        .min = 20,
+        .max = 500,
+        .step = 20
+    },
+    {
         .section = "Unlocks",
         .key = "unlock_all_characters",
         .label = "Unlock All Characters",

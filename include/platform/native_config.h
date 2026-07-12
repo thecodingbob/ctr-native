@@ -25,6 +25,7 @@ typedef struct {
     int aspectRatio;            // 0 = 4:3 (default), 1 = 16:9, 2 = 16:10, 3 = 21:10
     bool dithering;             // true = dithering enabled (default), false = disabled
     bool saveAnywhere;          // false = off (default), true = save anywhere in adventure mode by pressing select or from the pause menu
+    int missileSpeedMultiplier; // percent, 20%..500%, 100 = 1.0x (default)
 } NativeConfig;
 
 typedef enum { CFG_BOOL, CFG_INT, CFG_ENUM } ConfigType;

@@ -164,6 +164,9 @@ LAB_800adc08:;
 				tw->vel.z = (MATH_Cos(tw->rotY) * 3) >> 7;
 			}
 
+		        tw->vel.x = tw->vel.x * g_config.missileSpeedMultiplier / 100;
+		        tw->vel.z = tw->vel.z * g_config.missileSpeedMultiplier / 100;
+
 			tw->dir.x = 0;
 			tw->dir.z = 0;
 			tw->dir.y = tw->rotY;
