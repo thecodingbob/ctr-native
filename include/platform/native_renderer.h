@@ -17,9 +17,12 @@ void NativeRenderer_StoreFrameBuffer(int x, int y, int w, int h);
 void NativeRenderer_PresentVRAMDisplay(void);
 void NativeRenderer_PresentVRAMRect(int x, int y, int w, int h);
 // Present the main render target directly to the window viewport, skipping the
-// VRAM roundtrip. Used by the internal render-scale experiment (scale > 1);
-// the packed PSX-sized VRAM copy is still produced for feedback effects.
+// VRAM roundtrip. Used by every render-scale mode except Original; the packed
+// PSX-sized VRAM copy is still produced for feedback effects.
 void NativeRenderer_PresentMainRenderTarget(void);
+// True when the player's render-scale mode presents through the direct blit
+// (any mode except Original). Platform_EndScene picks its present path off it.
+int NativeRenderer_UsesDirectPresent(void);
 void NativeRenderer_SaveVRAM(const char *outputFileName, int x, int y, int width, int height, int readFromFramebuffer);
 void NativeRenderer_Clear(int x, int y, int w, int h, u8 r, u8 g, u8 b);
 void NativeRenderer_ClearVRAM(int x, int y, int w, int h, u8 r, u8 g, u8 b);

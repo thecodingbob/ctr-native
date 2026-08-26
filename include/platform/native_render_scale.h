@@ -1,10 +1,15 @@
 #ifndef NATIVE_RENDER_SCALE_H
 #define NATIVE_RENDER_SCALE_H
 
-// Internal-only integer scale for the MAIN render target. This is a build-time
-// experiment knob, not a user-facing option: default 1 keeps every runtime
-// behavior of the shipped renderer, including the VRAM-roundtrip presentation.
-// A proof build passes -DNATIVE_RENDER_SCALE=2.
+// Runtime internal render scale for the MAIN render target, selected by the
+// player through the options menu (g_config.renderScale; see
+// platform/native_config.c). Modes:
+//
+//   1        Original: the PSX-sized raster and the shipped VRAM-roundtrip
+//            presentation, byte-for-byte the pre-scale behavior. Default.
+//   2, 3, 4  Fixed multiples of the PSX display raster.
+//   0        Native window: the raster follows the letterboxed presentation
+//            viewport (never smaller than the PSX raster).
 //
 // Coordinate spaces (the contract every helper below serves):
 //
@@ -12,10 +17,11 @@
 //                 draw-area clips, AP HUD coordinates all live here. Never
 //                 multiplied by the scale.
 //   Main target   The RGBA framebuffer normal draws land in. Its raster is
-//                 (display * scale). Projection still maps logical display
-//                 coordinates onto the full viewport, so geometry scales in
-//                 rasterization, not in game code. Scissor and clear rects
-//                 must be scaled into this space.
+//                 the logical display size mapped through the mode above.
+//                 Projection still maps logical display coordinates onto the
+//                 full viewport, so geometry scales in rasterization, not in
+//                 game code. Scissor and clear rects must be scaled into this
+//                 space per axis.
 //   Offscreen     Warp/heat/clock feedback targets. Semantically PSX-sized;
 //                 the scale never applies to them.
 //   VRAM          The persistent 1024x512 RG8 texture of packed 15-bit PSX
@@ -25,63 +31,78 @@
 //                 to the PSX-sized rect (the pack quad samples the whole
 //                 source with normalized UVs, so destination viewport size
 //                 alone decides the decimation).
-//   Host window   The presentation viewport (letterboxed). At scale 1 the
-//                 frame reaches it through the VRAM roundtrip exactly as
-//                 shipped; at scale > 1 the main target is blitted to it
-//                 directly, skipping the 15-bit PSX downsample for the
+//   Host window   The presentation viewport (letterboxed). In Original mode
+//                 the frame reaches it through the VRAM roundtrip exactly as
+//                 shipped; in every other mode the main target is blitted to
+//                 it directly, skipping the 15-bit PSX downsample for the
 //                 presented image only.
+//
 // The helpers below are pinned by tools/test-render-scale.c (standalone:
 // gcc -Wall -Wextra tools/test-render-scale.c && ./a.out).
-#ifndef NATIVE_RENDER_SCALE
-#define NATIVE_RENDER_SCALE 1
-#endif
 
-#define NATIVE_RENDER_SCALE_MAX 8
+#define NATIVE_RENDER_SCALE_MODE_NATIVE   0
+#define NATIVE_RENDER_SCALE_MODE_ORIGINAL 1
+#define NATIVE_RENDER_SCALE_MODE_MAX      4
 
-static inline int NativeRenderScale_Factor(void)
+// Snap any persisted/hand-edited value onto the supported ladder. 0 stays
+// Native; everything else clamps into 1..4.
+static inline int NativeRenderScale_ClampMode(int mode)
 {
-	int scale = NATIVE_RENDER_SCALE;
-	if (scale < 1)
+	if (mode == NATIVE_RENDER_SCALE_MODE_NATIVE)
 	{
-		scale = 1;
+		return mode;
 	}
-	if (scale > NATIVE_RENDER_SCALE_MAX)
+	if (mode < NATIVE_RENDER_SCALE_MODE_ORIGINAL)
 	{
-		scale = NATIVE_RENDER_SCALE_MAX;
+		return NATIVE_RENDER_SCALE_MODE_ORIGINAL;
 	}
-	return scale;
+	if (mode > NATIVE_RENDER_SCALE_MODE_MAX)
+	{
+		return NATIVE_RENDER_SCALE_MODE_MAX;
+	}
+	return mode;
 }
 
-// Main render target raster size for a logical PSX display dimension.
-static inline int NativeRenderScale_MainTargetDim(int logicalDim, int scale)
+// Anything but Original presents the main target directly instead of the
+// shipped VRAM roundtrip.
+static inline int NativeRenderScale_ModeUsesDirectPresent(int mode)
 {
+	return NativeRenderScale_ClampMode(mode) != NATIVE_RENDER_SCALE_MODE_ORIGINAL;
+}
+
+// Main render target raster size for one axis. viewportDim is the
+// presentation-viewport dimension on the same axis, consumed only by Native
+// mode. The target never drops below the logical raster: packing a
+// smaller-than-PSX target back into the PSX-sized VRAM rect would upsample
+// and corrupt feedback semantics.
+static inline int NativeRenderScale_TargetDimForMode(int logicalDim, int mode, int viewportDim)
+{
+	mode = NativeRenderScale_ClampMode(mode);
 	if (logicalDim <= 0)
 	{
 		return logicalDim;
 	}
-	return logicalDim * scale;
-}
-
-// VRAM source rect dimension when seeding the main target from VRAM. This is
-// deliberately the logical dimension, NOT the target dimension: a 320x240
-// display loaded into a 640x480 target must still sample 320x240 texels of
-// VRAM. (Using the target dimension here reproduces the rejected black-screen
-// class of bugs; the unit test pins this.)
-static inline int NativeRenderScale_MainVramSourceDim(int logicalDim, int scale)
-{
-	(void)scale;
-	return logicalDim;
+	if (mode == NATIVE_RENDER_SCALE_MODE_NATIVE)
+	{
+		return viewportDim > logicalDim ? viewportDim : logicalDim;
+	}
+	return logicalDim * mode;
 }
 
 // Scale one scissor/clear coordinate from logical display space into main
-// target space. Callers apply it to x, y, w and h alike. Takes float and
-// multiplies BEFORE truncating: for the float-valued scissor math this keeps
-// any sub-pixel rounding error at its shipped one-logical-pixel magnitude
-// instead of magnifying it by the scale, and at scale 1 it truncates exactly
-// like the implicit float-to-GLint conversion the shipped glScissor call did.
-static inline int NativeRenderScale_ScissorCoord(float logicalCoord, int scale)
+// target space along one axis. Multiplies by the exact target/logical ratio
+// BEFORE truncating: for the float-valued scissor math this keeps any
+// sub-pixel rounding error at its shipped one-logical-pixel magnitude instead
+// of magnifying it, and when target equals logical (Original mode, offscreen
+// targets, or a not-yet-sized target guarded below) it truncates exactly like
+// the implicit float-to-GLint conversion the shipped glScissor call did.
+static inline int NativeRenderScale_ScaleAxisCoord(float logicalCoord, int logicalDim, int targetDim)
 {
-	return (int)(logicalCoord * (float)scale);
+	if ((logicalDim <= 0) || (targetDim <= 0))
+	{
+		return (int)logicalCoord;
+	}
+	return (int)(logicalCoord * ((float)targetDim / (float)logicalDim));
 }
 
 // Executable documentation of the pack-shader downsample (not called by the
