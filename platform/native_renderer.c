@@ -13,6 +13,7 @@
 #include "platform/native_log.h"
 #include "platform/native_perf.h"
 #include "platform/native_renderer.h"
+#include "platform/native_render_scale.h"
 #include "platform/native_config.h"
 
 #include <assert.h>
@@ -157,8 +158,9 @@ internal void NativeRenderer_InitRenderTarget(struct NativeRenderTarget *target)
 internal void NativeRenderer_DestroyRenderTarget(struct NativeRenderTarget *target);
 internal void NativeRenderer_EnsureRenderTarget(struct NativeRenderTarget *target, int width, int height);
 internal void NativeRenderer_BindMainRenderTarget(void);
+internal void NativeRenderer_MainTargetLogicalDims(int *width, int *height);
 internal void NativeRenderer_DrawVRAMRegion(int x, int y, int width, int height);
-internal void NativeRenderer_LoadRenderTargetFromVRAM(struct NativeRenderTarget *target, int x, int y);
+internal void NativeRenderer_LoadRenderTargetFromVRAM(struct NativeRenderTarget *target, int x, int y, int sourceWidth, int sourceHeight);
 #if defined(CTR_INTERNAL)
 internal void NativeRenderer_ResolveGpuMeasurements(b32 waitForResults);
 #endif
@@ -348,7 +350,14 @@ void NativeRenderer_BeginScene(void)
 	NativeRenderer_UpdateVRAM();
 	if (!activeDrawEnv.isbg)
 	{
-		NativeRenderer_LoadRenderTargetFromVRAM(&s_mainRenderTarget, activeDispEnv.disp.x, activeDispEnv.disp.y);
+		// The VRAM seed samples the PSX-sized display rect regardless of the
+		// (possibly scaled) main target raster; see native_render_scale.h.
+		int logicalW;
+		int logicalH;
+		NativeRenderer_MainTargetLogicalDims(&logicalW, &logicalH);
+		NativeRenderer_LoadRenderTargetFromVRAM(&s_mainRenderTarget, activeDispEnv.disp.x, activeDispEnv.disp.y,
+		                                        NativeRenderScale_MainVramSourceDim(logicalW, NativeRenderScale_Factor()),
+		                                        NativeRenderScale_MainVramSourceDim(logicalH, NativeRenderScale_Factor()));
 	}
 	else
 	{
@@ -560,17 +569,26 @@ internal void NativeRenderer_EnsureRenderTarget(struct NativeRenderTarget *targe
 	s_lastBoundTexture = (TextureID)-1;
 }
 
+internal void NativeRenderer_MainTargetLogicalDims(int *width, int *height)
+{
+	*width = activeDispEnv.disp.w;
+	*height = activeDispEnv.disp.h;
+	if ((*width <= 0) || (*height <= 0))
+	{
+		*width = activeDrawEnv.clip.w;
+		*height = activeDrawEnv.clip.h;
+	}
+}
+
 internal void NativeRenderer_BindMainRenderTarget(void)
 {
-	int width = activeDispEnv.disp.w;
-	int height = activeDispEnv.disp.h;
-	if ((width <= 0) || (height <= 0))
-	{
-		width = activeDrawEnv.clip.w;
-		height = activeDrawEnv.clip.h;
-	}
+	int width;
+	int height;
+	NativeRenderer_MainTargetLogicalDims(&width, &height);
 
-	NativeRenderer_EnsureRenderTarget(&s_mainRenderTarget, width, height);
+	NativeRenderer_EnsureRenderTarget(&s_mainRenderTarget,
+	                                  NativeRenderScale_MainTargetDim(width, NativeRenderScale_Factor()),
+	                                  NativeRenderScale_MainTargetDim(height, NativeRenderScale_Factor()));
 	glBindFramebuffer(GL_FRAMEBUFFER, s_mainRenderTarget.framebuffer);
 }
 
@@ -584,7 +602,7 @@ internal void NativeRenderer_DrawVRAMRegion(int x, int y, int width, int height)
 	NativeRenderer_DrawTriangles(0, 2);
 }
 
-internal void NativeRenderer_LoadRenderTargetFromVRAM(struct NativeRenderTarget *target, int x, int y)
+internal void NativeRenderer_LoadRenderTargetFromVRAM(struct NativeRenderTarget *target, int x, int y, int sourceWidth, int sourceHeight)
 {
 	const ShaderID previousShader = s_previousShader;
 	const TextureID previousTexture = s_lastBoundTexture;
@@ -597,7 +615,10 @@ internal void NativeRenderer_LoadRenderTargetFromVRAM(struct NativeRenderTarget 
 	glDisable(GL_SCISSOR_TEST);
 	glDisable(GL_STENCIL_TEST);
 	glViewport(0, 0, target->width, target->height);
-	NativeRenderer_DrawVRAMRegion(x, y, target->width, target->height);
+	// Source and destination dimensions are deliberately distinct: the VRAM
+	// source rect is PSX-sized while the destination viewport is the target's
+	// raster, which may be scaled for the main target.
+	NativeRenderer_DrawVRAMRegion(x, y, sourceWidth, sourceHeight);
 	glClear(GL_STENCIL_BUFFER_BIT);
 	glEnable(GL_STENCIL_TEST);
 
@@ -1342,8 +1363,13 @@ void NativeRenderer_SetupClipMode(const RECT16 *rect, const DISPENV *displayEnv,
 		clipRectX += 0.5f;
 	}
 
-	// Normal game draws target the PSX-sized main framebuffer. Host-window
-	// coordinates are introduced only by the final presentation pass.
+	// Normal game draws target the main framebuffer, whose raster is the PSX
+	// display size times the internal render scale. Host-window coordinates are
+	// introduced only by the final presentation pass. The scissor box is
+	// computed in logical display pixels and then magnified into target pixels;
+	// this branch is only reached for on-screen draws, so the offscreen targets
+	// keep their PSX-sized spaces untouched.
+	const int scale = NativeRenderScale_Factor();
 	const float viewportX = 0.0f;
 	const float viewportY = 0.0f;
 	const float viewportW = (float)displayEnv->disp.w;
@@ -1354,7 +1380,8 @@ void NativeRenderer_SetupClipMode(const RECT16 *rect, const DISPENV *displayEnv,
 	const float crw = clipRectW * viewportW;
 	const float crh = clipRectH * viewportH;
 
-	glScissor(crx, flipOffset - cry, crw, crh);
+	glScissor(NativeRenderScale_ScissorCoord(crx, scale), NativeRenderScale_ScissorCoord(flipOffset - cry, scale),
+	          NativeRenderScale_ScissorCoord(crw, scale), NativeRenderScale_ScissorCoord(crh, scale));
 }
 
 internal void NativeRenderer_SetShader(const ShaderID shader)
@@ -1717,10 +1744,14 @@ void NativeRenderer_Clear(int x, int y, int w, int h, u8 r, u8 g, u8 b)
 
 	const int relX = overlapX - displayX;
 	const int relBottom = overlapBottom - displayY;
-	const int scissorX = relX;
-	const int scissorY = displayH - relBottom;
-	const int scissorW = overlapRight - overlapX;
-	const int scissorH = overlapBottom - overlapY;
+	// Clears of the display region land on the main target, whose raster is
+	// scaled; magnify the logical scissor box to match. When an offscreen
+	// target is bound the space stays PSX-sized, exactly as shipped.
+	const int clearScale = s_previousOffscreenState ? 1 : NativeRenderScale_Factor();
+	const int scissorX = NativeRenderScale_ScissorCoord(relX, clearScale);
+	const int scissorY = NativeRenderScale_ScissorCoord(displayH - relBottom, clearScale);
+	const int scissorW = NativeRenderScale_ScissorCoord(overlapRight - overlapX, clearScale);
+	const int scissorH = NativeRenderScale_ScissorCoord(overlapBottom - overlapY, clearScale);
 
 	if ((scissorW <= 0) || (scissorH <= 0))
 	{
@@ -1920,9 +1951,11 @@ void NativeRenderer_SetOffscreenState(const RECT16 *offscreenRect, int enable)
 		}
 
 		s_previousOffscreenState = 1;
+		// Offscreen feedback targets stay semantically PSX-sized: no scale, and
+		// source rect equals the target raster.
 		NativeRenderer_EnsureRenderTarget(&s_offscreenRenderTarget, offscreenRect->w, offscreenRect->h);
 		s_previousOffscreen = *offscreenRect;
-		NativeRenderer_LoadRenderTargetFromVRAM(&s_offscreenRenderTarget, offscreenRect->x, offscreenRect->y);
+		NativeRenderer_LoadRenderTargetFromVRAM(&s_offscreenRenderTarget, offscreenRect->x, offscreenRect->y, offscreenRect->w, offscreenRect->h);
 	}
 	else
 	{
@@ -2150,6 +2183,32 @@ void NativeRenderer_PresentVRAMRect(int displayX, int displayY, int displayW, in
 
 	s_previousShader = (ShaderID)-1;
 	s_lastBoundTexture = (TextureID)-1;
+}
+
+void NativeRenderer_PresentMainRenderTarget(void)
+{
+	if ((s_mainRenderTarget.width <= 0) || (s_mainRenderTarget.height <= 0) || (s_presentViewport.w <= 0) || (s_presentViewport.h <= 0))
+	{
+		// No usable frame yet; fall back to the shipped VRAM presentation so a
+		// frame is never silently dropped.
+		NativeRenderer_PresentVRAMDisplay();
+		return;
+	}
+
+	// Both the main target and the default framebuffer are bottom-left-origin
+	// GL surfaces holding the frame in the same orientation (the projection put
+	// the game's top row at NDC +1 in the target), so the blit needs no flip.
+	// Linear filtering maps the scaled raster onto the letterboxed viewport;
+	// the presentation bars were already cleared in BeginScene. Scissor must be
+	// off or it would clip the blit.
+	NativeRenderer_SetScissorState(0);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, s_mainRenderTarget.framebuffer);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	glBlitFramebuffer(0, 0, s_mainRenderTarget.width, s_mainRenderTarget.height,
+	                  s_presentViewport.x, s_presentViewport.y,
+	                  s_presentViewport.x + s_presentViewport.w, s_presentViewport.y + s_presentViewport.h,
+	                  GL_COLOR_BUFFER_BIT, GL_LINEAR);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void NativeRenderer_PresentVRAMDisplay(void)
