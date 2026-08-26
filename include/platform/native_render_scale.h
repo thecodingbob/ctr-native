@@ -30,6 +30,8 @@
 //                 shipped; at scale > 1 the main target is blitted to it
 //                 directly, skipping the 15-bit PSX downsample for the
 //                 presented image only.
+// The helpers below are pinned by tools/test-render-scale.c (standalone:
+// gcc -Wall -Wextra tools/test-render-scale.c && ./a.out).
 #ifndef NATIVE_RENDER_SCALE
 #define NATIVE_RENDER_SCALE 1
 #endif
@@ -72,12 +74,14 @@ static inline int NativeRenderScale_MainVramSourceDim(int logicalDim, int scale)
 }
 
 // Scale one scissor/clear coordinate from logical display space into main
-// target space. Callers apply it to x, y, w and h alike; the mapping is a pure
-// linear magnification with origin preserved, so no rounding is introduced for
-// integer inputs.
-static inline int NativeRenderScale_ScissorCoord(int logicalCoord, int scale)
+// target space. Callers apply it to x, y, w and h alike. Takes float and
+// multiplies BEFORE truncating: for the float-valued scissor math this keeps
+// any sub-pixel rounding error at its shipped one-logical-pixel magnitude
+// instead of magnifying it by the scale, and at scale 1 it truncates exactly
+// like the implicit float-to-GLint conversion the shipped glScissor call did.
+static inline int NativeRenderScale_ScissorCoord(float logicalCoord, int scale)
 {
-	return logicalCoord * scale;
+	return (int)(logicalCoord * (float)scale);
 }
 
 // Executable documentation of the pack-shader downsample (not called by the

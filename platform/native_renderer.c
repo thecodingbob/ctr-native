@@ -617,7 +617,17 @@ internal void NativeRenderer_LoadRenderTargetFromVRAM(struct NativeRenderTarget 
 	glViewport(0, 0, target->width, target->height);
 	// Source and destination dimensions are deliberately distinct: the VRAM
 	// source rect is PSX-sized while the destination viewport is the target's
-	// raster, which may be scaled for the main target.
+	// raster, which may be scaled for the main target. Clamp like
+	// EnsureRenderTarget does so a degenerate display env keeps the shipped
+	// 1x1 seed instead of a zero-sized source rect.
+	if (sourceWidth < 1)
+	{
+		sourceWidth = 1;
+	}
+	if (sourceHeight < 1)
+	{
+		sourceHeight = 1;
+	}
 	NativeRenderer_DrawVRAMRegion(x, y, sourceWidth, sourceHeight);
 	glClear(GL_STENCIL_BUFFER_BIT);
 	glEnable(GL_STENCIL_TEST);
@@ -1748,10 +1758,10 @@ void NativeRenderer_Clear(int x, int y, int w, int h, u8 r, u8 g, u8 b)
 	// scaled; magnify the logical scissor box to match. When an offscreen
 	// target is bound the space stays PSX-sized, exactly as shipped.
 	const int clearScale = s_previousOffscreenState ? 1 : NativeRenderScale_Factor();
-	const int scissorX = NativeRenderScale_ScissorCoord(relX, clearScale);
-	const int scissorY = NativeRenderScale_ScissorCoord(displayH - relBottom, clearScale);
-	const int scissorW = NativeRenderScale_ScissorCoord(overlapRight - overlapX, clearScale);
-	const int scissorH = NativeRenderScale_ScissorCoord(overlapBottom - overlapY, clearScale);
+	const int scissorX = NativeRenderScale_ScissorCoord((float)relX, clearScale);
+	const int scissorY = NativeRenderScale_ScissorCoord((float)(displayH - relBottom), clearScale);
+	const int scissorW = NativeRenderScale_ScissorCoord((float)(overlapRight - overlapX), clearScale);
+	const int scissorH = NativeRenderScale_ScissorCoord((float)(overlapBottom - overlapY), clearScale);
 
 	if ((scissorW <= 0) || (scissorH <= 0))
 	{

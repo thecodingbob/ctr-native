@@ -43,11 +43,17 @@ int main(void)
 	// Scissor/clear magnification into target pixels. Mutation proof: leaving
 	// the box unscaled fails these; the origin stays fixed so a scaled empty
 	// box stays empty.
-	expect(NativeRenderScale_ScissorCoord(8, 2) == 16, "scissor x scales");
-	expect(NativeRenderScale_ScissorCoord(37, 3) == 111, "odd scissor extent scales exactly");
-	expect(NativeRenderScale_ScissorCoord(0, 4) == 0, "origin is preserved");
-	expect(NativeRenderScale_ScissorCoord(240, 1) == 240, "scale 1 is identity");
-	expect(NativeRenderScale_ScissorCoord(100, 2) != 100, "unscaled scissor is not accepted at scale 2");
+	expect(NativeRenderScale_ScissorCoord(8.0f, 2) == 16, "scissor x scales");
+	expect(NativeRenderScale_ScissorCoord(37.0f, 3) == 111, "odd scissor extent scales exactly");
+	expect(NativeRenderScale_ScissorCoord(0.0f, 4) == 0, "origin is preserved");
+	expect(NativeRenderScale_ScissorCoord(240.0f, 1) == 240, "scale 1 is identity");
+	expect(NativeRenderScale_ScissorCoord(100.0f, 2) != 100, "unscaled scissor is not accepted at scale 2");
+	// Truncation-order proof: multiply first, then truncate. A truncate-first
+	// mutation would give 79 * 2 = 158 and magnify the shipped sub-pixel error.
+	expect(NativeRenderScale_ScissorCoord(79.75f, 2) == 159, "fractional coordinate truncates after scaling");
+	// Scale 1 must truncate exactly like the shipped implicit float-to-GLint
+	// conversion at glScissor.
+	expect(NativeRenderScale_ScissorCoord(79.75f, 1) == 79, "scale 1 keeps shipped truncation");
 
 	// Pack downsample characterization (executable documentation of the pack
 	// quad's normalized-UV nearest sampling): a 640-wide source packed through
