@@ -665,6 +665,12 @@ enum HeldItemConstants
 	HELD_ITEM_STACK_COUNT = 3,
 };
 
+enum MaskConstants
+{
+	MASK_GOOD_GUY_CHARACTER_BITS = 0x20c9,
+	MASK_MODEL_COUNT = 2,
+};
+
 enum DriverWumpaConstants
 {
 	DRIVER_WUMPA_JUICED_COUNT = 10,
@@ -2027,6 +2033,9 @@ struct Driver
 
 	// 0x668 - size of pool object, minus object pool pointers
 	// 0x670 - size of pool object
+
+	s8 maskIsAku; // -1=unset, 0=Uka, 1=Aku — pre-decided at item assignment
+	bool boolHadMaskBeforeOOB; // set by OOB rescue: 1 if player had mask before going OOB
 };
 
 enum

@@ -7,6 +7,15 @@
 #include <platform/native_assets.h>
 #include <platform/native_path.h>
 
+static const ConfigEnumValue kMaskModeValues[] = {
+    {"Normal", MASK_MODE_NORMAL},
+    {"Random", MASK_MODE_RANDOM},
+    {"Inverted", MASK_MODE_INVERTED},
+    {"All Uka", MASK_MODE_ALL_UKA},
+    {"All Aku", MASK_MODE_ALL_AKU},
+};
+#define NUM_MASK_MODES (sizeof(kMaskModeValues) / sizeof(kMaskModeValues[0]))
+
 static const ConfigEnumValue kAspectRatioValues[] = {
     {"4:3", 0},
     {"16:9", 1},
@@ -25,6 +34,12 @@ NativeConfig g_config = {
   .jumpMultiplier = 100,
   .reserveMultiplier = 100,
 
+  .missileSpeedMultiplier =  100,
+  .bombSpeedMultiplier = 100,
+  .warpballSpeedMultiplier = 100,
+  .bombExplosionRadiusMultiplier = 100,
+  .tntExplosionRadiusMultiplier = 100,
+
   .unlockAllCharacters = false,
   .unlockAllGates = false,
   .unlockAllPortals = false,
@@ -35,7 +50,13 @@ NativeConfig g_config = {
   .fullscreen = false,
   .aspectRatio = 0,
   .dithering = true,
-  .saveAnywhere = false
+  .saveAnywhere = false,
+  .maskMode = MASK_MODE_NORMAL,
+  .maskProtectsFromDamage = true,
+  .maskDamagesOthers = true,
+  .maskPersistsAfterOOB = false,
+  .maskDurationMultiplier = 100,
+  .maskExtraSpeedMultiplier = 100
 };
 
 const ConfigEntry g_configEntries[] = {
@@ -47,6 +68,15 @@ const ConfigEntry g_configEntries[] = {
         .type = CFG_BOOL,
         .valuePtr = &g_config.skipIntro
     },
+      {
+        .section = "General",
+        .key = "mask_mode",
+        .label = "Mask Mode",
+        .type = CFG_ENUM,
+        .valuePtr = &g_config.maskMode,
+        .enumValues = kMaskModeValues,
+        .numEnumValues = NUM_MASK_MODES
+      },
     {
         .section = "Adventure",
         .key = "skip_hints",
@@ -123,6 +153,97 @@ const ConfigEntry g_configEntries[] = {
         .valuePtr = &g_config.reserveMultiplier,
         .min = 0,
         .max = 400,
+        .step = 20
+    },
+    {
+        .section = "Weapons",
+        .key = "missile_speed_multiplier",
+        .label = "Missile Speed Multiplier",
+        .type = CFG_INT,
+        .valuePtr = &g_config.missileSpeedMultiplier,
+        .min = 20,
+        .max = 500,
+        .step = 20
+    },
+    {
+        .section = "Weapons",
+        .key = "bomb_speed_multiplier",
+        .label = "Bomb Speed Multiplier",
+        .type = CFG_INT,
+        .valuePtr = &g_config.bombSpeedMultiplier,
+        .min = 20,
+        .max = 300,
+        .step = 20
+    },
+    {
+        .section = "Weapons",
+        .key = "warpball_speed_multiplier",
+        .label = "Warpball Speed Multiplier",
+        .type = CFG_INT,
+        .valuePtr = &g_config.warpballSpeedMultiplier,
+        .min = 20,
+        .max = 300,
+        .step = 20
+    },
+    {
+      .section = "Weapons",
+      .key = "tnt_explosion_radius",
+      .label = "TNT/Nitro Explosion Radius",
+      .type = CFG_INT,
+      .valuePtr = &g_config.tntExplosionRadiusMultiplier,
+      .min = 50,
+      .max = 600,
+      .step = 50
+    },
+    {
+        .section = "Weapons",
+        .key = "bomb_explosion_radius_multiplier",
+        .label = "Bomb Explosion Radius",
+        .type = CFG_INT,
+        .valuePtr = &g_config.bombExplosionRadiusMultiplier,
+        .min = 50,
+        .max = 600,
+        .step = 50
+    },
+      {
+        .section = "Weapons",
+        .key = "mask_protects_from_damage",
+        .label = "Mask Protects From Damage",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.maskProtectsFromDamage
+      },
+      {
+        .section = "Weapons",
+        .key = "mask_damages_others",
+        .label = "Mask Damages Others",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.maskDamagesOthers
+      },
+    {
+        .section = "Weapons",
+        .key = "mask_persists_after_oob",
+        .label = "Mask Persists After OOB",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.maskPersistsAfterOOB
+    },
+    {
+        .section = "Weapons",
+        .key = "mask_duration_multiplier",
+        .label = "Mask Duration",
+        .type = CFG_INT,
+        .valuePtr = &g_config.maskDurationMultiplier,
+        .min = 20,
+        .max = 250,
+        .step = 10
+    },
+    {
+        .section = "Weapons",
+        .key = "mask_extra_speed_multiplier",
+        .label = "Mask Extra Speed",
+        .type = CFG_INT,
+        .valuePtr = &g_config.maskExtraSpeedMultiplier,
+        .min = 0,
+        .max = 300,
         .step = 20
     },
     {

@@ -89,11 +89,15 @@ void UI_Weapon_DrawSelf(s16 posX, s16 posY, s16 scale, struct Driver *d)
 		// if mask item
 		if (itemID == UI_WEAPON_ITEM_MASK)
 		{
-			// Crash, Coco, Pura, Polar, NO Penta
-			u32 goodMaskCharacterBits = UI_WEAPON_MASK_GOOD_CHARACTER_BITS;
+			int maskIsAku = d->maskIsAku;
 
-			// This is a bad guy, change icon to Uka
-			if (((goodMaskCharacterBits >> characterID) & 1) == 0)
+			if (maskIsAku < 0)
+			{
+				u32 goodMaskCharacterBits = UI_WEAPON_MASK_GOOD_CHARACTER_BITS;
+				maskIsAku = (goodMaskCharacterBits >> characterID) & 1;
+			}
+
+			if (maskIsAku == 0)
 			{
 				iconID = UI_WEAPON_MASK_UKA_ICON;
 			}

@@ -141,6 +141,12 @@ LAB_800adc08:;
 				tw->vel.z = -tw->vel.z;
 				tw->vel.x = -tw->vel.x;
 			}
+
+		        if (modelID == DYNAMIC_BOMB)
+		        {
+		                tw->vel.x = tw->vel.x * g_config.bombSpeedMultiplier / 100;
+		                tw->vel.z = tw->vel.z * g_config.bombSpeedMultiplier / 100;
+		        }
 		}
 
 		// if 0x29 (MISSILE)
@@ -163,6 +169,9 @@ LAB_800adc08:;
 				tw->vel.x = (MATH_Sin(tw->rotY) * 3) >> 7;
 				tw->vel.z = (MATH_Cos(tw->rotY) * 3) >> 7;
 			}
+
+		        tw->vel.x = tw->vel.x * g_config.missileSpeedMultiplier / 100;
+		        tw->vel.z = tw->vel.z * g_config.missileSpeedMultiplier / 100;
 
 			tw->dir.x = 0;
 			tw->dir.z = 0;

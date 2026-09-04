@@ -1194,6 +1194,7 @@ int VehCalc_InterpBySpeed(int val, int speed, int desired);
 int VehCalc_MapToRange(int val, int oldMin, int oldMax, int newMin, int newMax);
 // void VehStuckProc_Tumble_Animate(struct Thread* thread, struct Driver* driver);
 b32 VehPickupItem_MaskBoolGoodGuy(struct Driver *d);
+b32 VehPickupItem_ApplyMaskMode(struct Driver *driver);
 int RB_Hazard_HurtDriver(struct Driver *driverVictim, int damageType, struct Driver *driverAttacker, int reason);
 void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags);
 int VehPickState_NewState(struct Driver *victimDriver, int damageType, struct Driver *attackDriver, int reason);

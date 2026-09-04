@@ -26,8 +26,6 @@ static inline void VehPickupItem_ClearMineMotion(struct MineWeapon *mine)
 
 enum
 {
-	MASK_GOOD_GUY_CHARACTER_BITS = 0x20c9,
-	MASK_MODEL_COUNT = 2,
 	MASK_SOUND_ID_OFFSET_FROM_MODEL = 0x1a,
 	MASK_BEAM_MODEL_STRIDE = 2,
 	MASK_INITIAL_ROT_X = 0x40,
@@ -242,6 +240,32 @@ b32 VehPickupItem_MaskBoolGoodGuy(struct Driver *d)
 	return (maskBits >> charID) & 1;
 }
 
+b32 VehPickupItem_ApplyMaskMode(struct Driver *driver)
+{
+	b32 maskIsAku;
+
+	switch (g_config.maskMode)
+	{
+	case MASK_MODE_RANDOM:
+		maskIsAku = MixRNG_Scramble() & 1;
+		break;
+	case MASK_MODE_INVERTED:
+		maskIsAku = !VehPickupItem_MaskBoolGoodGuy(driver);
+		break;
+	case MASK_MODE_ALL_UKA:
+		maskIsAku = 0;
+		break;
+	case MASK_MODE_ALL_AKU:
+		maskIsAku = 1;
+		break;
+	case MASK_MODE_NORMAL:
+	default:
+		maskIsAku = VehPickupItem_MaskBoolGoodGuy(driver);
+		break;
+	}
+	return maskIsAku;
+}
+
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80064c38-0x80064f94.
 // boolPlaySound only gates sound when refreshing an existing mask object.
 struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, b32 boolPlaySound)
@@ -264,7 +288,19 @@ struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, b32 bo
 		return maskObj;
 	}
 
+	b32 maskIsAku;
+	if (driver->maskIsAku >= 0)
+	{
+		maskIsAku = driver->maskIsAku;
+	}
+	else
+	{
+		maskIsAku = VehPickupItem_ApplyMaskMode(driver);
+	}
+
 	t = driver->instSelf->thread;
+
+	s32 desiredModelID = STATIC_UKAUKA - maskIsAku;
 
 	// check for existing mask
 	for (currThread = t->childThread; currThread != 0; currThread = currThread->siblingThread)
@@ -275,10 +311,18 @@ struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, b32 bo
 			continue;
 		}
 
+		// If mask type was pre-decided and existing mask doesn't match,
+		// skip it so we fall through to create a new one of the right type
+		if (driver->maskIsAku >= 0 && currThread->modelIndex != desiredModelID)
+		{
+			continue;
+		}
+
 		currThread->funcThTick = RB_MaskWeapon_ThTick;
 
 		maskObj = currThread->object;
 		maskObj->duration = (driver->numWumpas < DRIVER_WUMPA_JUICED_COUNT) ? MASK_HEAD_DURATION_NORMAL : MASK_HEAD_DURATION_JUICED;
+		maskObj->duration = (maskObj->duration * g_config.maskDurationMultiplier) / 100;
 
 		if (
 		    // If this is human and not AI
@@ -293,13 +337,14 @@ struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, b32 bo
 		// un-kill thread
 		currThread->flags &= ~THREAD_FLAG_DEAD;
 
+		// decouple from last item assignment
+		driver->maskIsAku = -1;
+
 		// return object attached to thread
 		return (struct MaskHeadWeapon *)currThread->object;
 	}
 
-	b32 boolGoodGuy = VehPickupItem_MaskBoolGoodGuy(driver);
-
-	s32 modelID = STATIC_UKAUKA - boolGoodGuy;
+	s32 modelID = STATIC_UKAUKA - maskIsAku;
 
 	instance = INSTANCE_BirthWithThread(modelID, sdata->s_doctor1, SMALL, OTHER, RB_MaskWeapon_ThTick, sizeof(struct MaskHeadWeapon), t);
 
@@ -313,7 +358,7 @@ struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, b32 bo
 
 	     (driver->kartState != KS_ENGINE_REVVING) && (driver->kartState != KS_MASK_GRABBED)))
 	{
-		if (boolGoodGuy == 0)
+		if (maskIsAku == 0)
 		{
 			gGT->gameMode1 &= ~(AKU_SONG);
 			gGT->gameMode1 |= UKA_SONG;
@@ -346,10 +391,13 @@ struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, b32 bo
 	instance->flags |= HIDE_MODEL;
 	maskObj->maskBeamInst->flags |= HIDE_MODEL;
 	maskObj->duration = (driver->numWumpas < DRIVER_WUMPA_JUICED_COUNT) ? MASK_HEAD_DURATION_NORMAL : MASK_HEAD_DURATION_JUICED;
+	maskObj->duration = (maskObj->duration * g_config.maskDurationMultiplier) / 100;
 	maskObj->rot.x = MASK_INITIAL_ROT_X;
 	maskObj->rot.y = 0;
 	maskObj->rot.z = 0;
 	maskObj->scale = MASK_HEAD_SCALE_NORMAL;
+
+	driver->maskIsAku = -1;
 
 	return maskObj;
 }

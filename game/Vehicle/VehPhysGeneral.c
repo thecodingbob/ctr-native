@@ -1256,6 +1256,15 @@ void VehPhysGeneral_SetHeldItem(struct Driver *driver)
 		driver->numHeldItems = HELD_ITEM_STACK_COUNT;
 	}
 
+	if (driver->heldItemID == HELD_ITEM_MASK)
+	{
+		driver->maskIsAku = (s8)VehPickupItem_ApplyMaskMode(driver);
+	}
+	else
+	{
+		driver->maskIsAku = -1;
+	}
+
 	return;
 }
 
@@ -1326,7 +1335,7 @@ int VehPhysGeneral_GetBaseSpeed(struct Driver *driver)
 
 	if ((driver->actionsFlagSet & ACTION_MASK_WEAPON) != 0)
 	{
-		speedAdditional = CTR_MipsAddLo(speedAdditional, driver->const_MaskSpeed);
+		speedAdditional = CTR_MipsAddLo(speedAdditional, (driver->const_MaskSpeed * g_config.maskExtraSpeedMultiplier) / 100);
 	}
 
 	if (driver->reserves != 0)

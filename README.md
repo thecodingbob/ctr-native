@@ -172,6 +172,22 @@ format). An example template is at `default_config.ini` in the project root.
 | `jump_stat_multiplier`      | `10`–`300` (percent) | `100`  | Kart jump-height multiplier                                                                                              |
 | `turbo_reserves_multiplier` | `0`–`400`  (percent) | `100`  | Reserve accumulation multiplier. The higher the value, the more reserve your kart will get when executing a turbo drift. |
 
+### Weapons
+
+| Key                                | Values                                                   | Default  | Description                           |
+|------------------------------------|----------------------------------------------------------|----------|---------------------------------------|
+| `missile_speed_multiplier`         | `20`–`500` (percent)                                     | `100`    | Missile speed multiplier              |
+| `bomb_speed_multiplier`            | `20`–`300` (percent)                                     | `100`    | Bomb speed multiplier                 |
+| `warpball_speed_multiplier`        | `20`–`300` (percent)                                     | `100`    | Warpball speed multiplier             |
+| `bomb_explosion_radius_multiplier` | `50`–`600` (percent)                                     | `100`    | Bomb explosion radius multiplier      |
+| `tnt_explosion_radius_multiplier`  | `50`–`600` (percent)                                     | `100`    | TNT/Nitro explosion radius multiplier |
+| `mask_mode`                        | `Normal` / `Random` / `Inverted` / `All Uka` / `All Aku` | `Normal` | Mask assignment mode                  |
+| `mask_protects_from_damage`        | `true` / `false`                                         | `true`   | Mask makes driver immune to damage    |
+| `mask_damages_others`              | `true` / `false`                                         | `true`   | Mask damages other drivers on contact |
+| `mask_persists_after_oob`          | `true` / `false`                                         | `false`  | Mask stays active after falling OOB   |
+| `mask_duration_multiplier`         | `20`–`250` (percent)                                     | `100`    | Mask weapon duration multiplier       |
+| `mask_extra_speed_multiplier`      | `0`–`300` (percent)                                      | `100`    | Mask extra speed multiplier           |
+
 ### Graphics
 
 | Key                        | Values  | Default | Description                                                             |
