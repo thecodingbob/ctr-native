@@ -342,7 +342,7 @@ void UI_DrawSlideMeter(s16 posX, s16 posY, struct Driver *driver)
 	}
 }
 
-// Ported from ctr-native-ap's CTR-ModSDK ReservesMeter implementation.
+// Ported from CTR-ModSDK's Retro-Fueled_and_ReservesMeter mod pack.
 void UI_DrawReservesMeter(s16 posX, s16 posY, struct Driver *driver)
 {
 	const struct GameTracker *gGT = sdata->gGT;

@@ -193,7 +193,7 @@ void UI_RenderFrame_Racing()
 				{
 					// Draw powerslide meter
 					UI_DrawSlideMeter(hudStructPtr[UI_HUD_SLOT_SLIDE_METER].x + offset, hudStructPtr[UI_HUD_SLOT_SLIDE_METER].y, playerStruct);
-					if (numPlyr == 1)
+					if (g_config.showReservesMeter && (numPlyr == 1))
 					{
 						UI_DrawReservesMeter(hudStructPtr[UI_HUD_SLOT_SLIDE_METER].x + offset,
 						                     hudStructPtr[UI_HUD_SLOT_SLIDE_METER].y + 5, playerStruct);
@@ -923,7 +923,10 @@ void UI_RenderFrame_CrystChall(void)
 	UI_JumpMeter_Draw(hudStructPtr[UI_HUD_SLOT_JUMP_METER].x, hudStructPtr[UI_HUD_SLOT_JUMP_METER].y, player);
 
 	UI_DrawSlideMeter(hudStructPtr[UI_HUD_SLOT_SLIDE_METER].x, hudStructPtr[UI_HUD_SLOT_SLIDE_METER].y, player);
-	UI_DrawReservesMeter(hudStructPtr[UI_HUD_SLOT_SLIDE_METER].x, hudStructPtr[UI_HUD_SLOT_SLIDE_METER].y + 5, player);
+	if (g_config.showReservesMeter)
+	{
+		UI_DrawReservesMeter(hudStructPtr[UI_HUD_SLOT_SLIDE_METER].x, hudStructPtr[UI_HUD_SLOT_SLIDE_METER].y + 5, player);
+	}
 
 	UI_DrawSpeedBG();
 
