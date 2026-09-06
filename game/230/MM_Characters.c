@@ -661,6 +661,15 @@ void MM_Characters_MenuProc(struct RectMenu *unused)
 
 			MM_Characters_HideDrivers();
 
+			if (g_config.extendedAdventureCharacterSelect && ((gGT->gameMode1 & ADVENTURE_MODE) != 0))
+			{
+				// Adventure needs a profile name before loading the first hub.
+				sdata->advProgress.characterID = data.characterIDs[0];
+				sdata->ptrDesiredMenu = &data.menuSubmitName;
+				SubmitName_RestoreName(0);
+				return;
+			}
+
 			// if you are in a cup
 			if ((gGT->gameMode2 & CUP_ANY_KIND) != 0)
 			{
