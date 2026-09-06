@@ -10,6 +10,7 @@
 #include "platform/native_log.h"
 #include "platform/native_perf.h"
 #include "platform/native_renderer.h"
+#include "platform/native_render_scale.h"
 #include "platform/native_replay_scheduler.h"
 #include "platform/native_savestate.h"
 
@@ -220,8 +221,10 @@ internal void Platform_HandleKey(int key, char down)
 			Platform_TakeScreenshot();
 			break;
 		case SDL_SCANCODE_F3:
-			g_cfg_bilinearFiltering ^= 1;
-			Platform_LogWarn("[CTR Native] filtering mode: %d\n", g_cfg_bilinearFiltering);
+			// Debug toggle for the same option the menu edits; the per-frame
+			// sync in Platform_BeginFrame pushes it into the renderer.
+			g_config.textureFiltering = !g_config.textureFiltering;
+			Platform_LogWarn("[CTR Native] filtering mode: %d\n", g_config.textureFiltering ? 1 : 0);
 			break;
 		case SDL_SCANCODE_F5:
 			NativeSaveState_RequestSave();
@@ -301,6 +304,9 @@ void Platform_Shutdown(void)
 
 void Platform_BeginFrame(void)
 {
+	// Keep the renderer's live filtering flag synchronized with the persisted option.
+	g_cfg_bilinearFiltering = g_config.textureFiltering ? 1 : 0;
+
 	// Sync g_config.fullscreen with actual window state.
 	bool isFullscreen = (SDL_GetWindowFlags(g_window) & SDL_WINDOW_FULLSCREEN) != 0;
 	if (g_config.fullscreen != isFullscreen)
@@ -381,7 +387,19 @@ void Platform_EndScene(void)
 	// NOTE(aalhendi): Keep the displayed VRAM region current for screen-copy
 	// effects without forcing a CPU readback.
 	NativeRenderer_StoreFrameBuffer(activeDispEnv.disp.x, activeDispEnv.disp.y, activeDispEnv.disp.w, activeDispEnv.disp.h);
-	NativeRenderer_PresentVRAMRect(activeDispEnv.disp.x, activeDispEnv.disp.y, activeDispEnv.disp.w, activeDispEnv.disp.h);
+	if (NativeRenderer_UsesDirectPresent())
+	{
+		// Render-scale modes other than Original: the PSX-sized VRAM copy above
+		// keeps every feedback effect fed, but the presented image comes
+		// straight from the scaled main target instead of the 15-bit VRAM
+		// roundtrip. The pinned VRAM-display paths earlier in this function
+		// deliberately keep presenting VRAM: their content exists only there.
+		NativeRenderer_PresentMainRenderTarget();
+	}
+	else
+	{
+		NativeRenderer_PresentVRAMRect(activeDispEnv.disp.x, activeDispEnv.disp.y, activeDispEnv.disp.w, activeDispEnv.disp.h);
+	}
 	NativeRenderer_EndGpuFrame();
 	NativeRenderer_SwapWindow();
 	NativePerf_EndScope(NATIVE_PERF_BUCKET_PLATFORM_END_SCENE);

@@ -226,6 +226,9 @@ format). An example template is at `default_config.ini` in the project root.
 | `fullscreen`               | `true` / `false` | `false` | Borderless fullscreen on startup                                        |
 | `aspect_ratio`             | `4:3`, `16:9`, `16:10`, `21:9` | `4:3`   | Display aspect ratio                                                    |
 | `dithering`                | `true` / `false` | `true`  | Enable color dithering                                                  |
+| `render_scale`             | `Original`, `2X`, `3X`, `4X`, `Native` | `Native` | Internal render resolution; Native follows the presentation viewport |
+| `smooth_scaling`           | `true` / `false` | `true`  | Use linear filtering when presenting scaled output                      |
+| `texture_filtering`        | `true` / `false` | `false` | Enable bilinear filtering for PSX textures                              |
 
 ## Bug Replays
 
@@ -259,4 +262,5 @@ main.c (entrypoint)
 - [CTR-ModSDK](https://github.com/CTR-tools/CTR-ModSDK) — the decompilation project this is built on
 - [PsyCross](https://github.com/OpenDriver2/PsyCross) — original PS1 compatibility code from which parts of CTR Native's owned platform layer and PsyQ facade headers are derived
 - [SDL3](https://github.com/libsdl-org/SDL) — cross-platform multimedia
+- [ctr-native-ap](https://github.com/dowlle/ctr-native-ap) by dowlle — render-scale, scaling-filter, and texture-filtering options
 - Crash Team Racing is a trademark of Sony Computer Entertainment / Naughty Dog
