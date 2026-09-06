@@ -577,9 +577,11 @@ struct OverlayDATA_230
 	// 800b4c4c - EurRetail
 	// 800b7f68 - JpnRetail
 #if BUILD == EurRetail
- 	struct MenuRow rowsMainMenuBasic[9];
+	struct MenuRow rowsMainMenuBasic[9];
 #else
 	struct MenuRow rowsMainMenuBasic[9];
+#endif
+
 	char padding800b450E[2];
 
 	// 800b4510 - UsaRetail
