@@ -469,9 +469,18 @@ void SubmitName_MenuProc(struct RectMenu *menu)
 		// if hit CANCEL
 		if (selection < 0)
 		{
-			// Change active Menu back to Adv char select
-			sdata->ptrDesiredMenu = CS_Garage_GetMenuPtr();
-			CS_Garage_ZoomOut(1);
+			if (g_config.extendedAdventureCharacterSelect)
+			{
+				// The garage was skipped, so return to the replacement selector.
+				sdata->ptrDesiredMenu = &D230.menuCharacterSelect;
+				MM_Characters_RestoreIDs();
+			}
+			else
+			{
+				// Change active Menu back to Adv char select
+				sdata->ptrDesiredMenu = CS_Garage_GetMenuPtr();
+				CS_Garage_ZoomOut(1);
+			}
 		}
 		else
 		{

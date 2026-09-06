@@ -12,6 +12,7 @@ typedef struct {
     bool skipIntro;             // false = off (default), true = skip all intros
     bool showReservesMeter;     // true = show the in-game reserves meter (default = false)
     bool skipHints;             // false = off (default), true = skip all mask hints in adventure mode
+    bool extendedAdventureCharacterSelect; // false = garage, true = extended selector for new Adventure
     int speedMultiplier;        // percent, 10%..200%, 100 = 1.0x (default)
     int gravityMultiplier;      // percent, 10%..300%, 100 = 1.0x (default)
     int turnMultiplier;         // percent, 10%..400%, 100 = 1.0x (default)

@@ -37,6 +37,7 @@ NativeConfig g_config = {
   .skipIntro = false,
   .showReservesMeter = false,
   .skipHints = false,
+  .extendedAdventureCharacterSelect = false,
 
   .speedMultiplier = 100,
   .gravityMultiplier = 100,
@@ -105,6 +106,13 @@ const ConfigEntry g_configEntries[] = {
         .label = "Skip Mask Hints",
         .type = CFG_BOOL,
         .valuePtr = &g_config.skipHints
+    },
+    {
+        .section = "Adventure",
+        .key = "extended_character_select",
+        .label = "Extended Character Select",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.extendedAdventureCharacterSelect
     },
     {
         .section = "Adventure",
