@@ -193,6 +193,11 @@ void UI_RenderFrame_Racing()
 				{
 					// Draw powerslide meter
 					UI_DrawSlideMeter(hudStructPtr[UI_HUD_SLOT_SLIDE_METER].x + offset, hudStructPtr[UI_HUD_SLOT_SLIDE_METER].y, playerStruct);
+					if (g_config.showReservesMeter && (numPlyr == 1))
+					{
+						UI_DrawReservesMeter(hudStructPtr[UI_HUD_SLOT_SLIDE_METER].x + offset,
+						                     hudStructPtr[UI_HUD_SLOT_SLIDE_METER].y + 5, playerStruct);
+					}
 				}
 
 				// If you are not in Time Trial or Relic Race
@@ -918,6 +923,10 @@ void UI_RenderFrame_CrystChall(void)
 	UI_JumpMeter_Draw(hudStructPtr[UI_HUD_SLOT_JUMP_METER].x, hudStructPtr[UI_HUD_SLOT_JUMP_METER].y, player);
 
 	UI_DrawSlideMeter(hudStructPtr[UI_HUD_SLOT_SLIDE_METER].x, hudStructPtr[UI_HUD_SLOT_SLIDE_METER].y, player);
+	if (g_config.showReservesMeter)
+	{
+		UI_DrawReservesMeter(hudStructPtr[UI_HUD_SLOT_SLIDE_METER].x, hudStructPtr[UI_HUD_SLOT_SLIDE_METER].y + 5, player);
+	}
 
 	UI_DrawSpeedBG();
 

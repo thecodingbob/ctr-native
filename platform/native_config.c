@@ -35,6 +35,7 @@ static const ConfigEnumValue kRenderScaleValues[] = {
 
 NativeConfig g_config = {
   .skipIntro = false,
+  .showReservesMeter = false,
   .skipHints = false,
 
   .speedMultiplier = 100,
@@ -81,6 +82,13 @@ const ConfigEntry g_configEntries[] = {
         .label = "Skip Intros",
         .type = CFG_BOOL,
         .valuePtr = &g_config.skipIntro
+    },
+    {
+        .section = "General",
+        .key = "show_reserves_meter",
+        .label = "Show Reserves Meter",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.showReservesMeter
     },
       {
         .section = "General",

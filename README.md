@@ -176,9 +176,11 @@ format). An example template is at `default_config.ini` in the project root.
 
 ### General
 
-| Key        | Values  | Default | Description                                     |
-|------------|---------|---------|-------------------------------------------------|
-| `skip_intro` | `true` / `false` | `false` | Skip boot intros and go straight into main menu |
+| Key                   | Values                                                   | Default   | Description                                     |
+|-----------------------|----------------------------------------------------------|-----------|-------------------------------------------------|
+| `skip_intro`          | `true` / `false`                                         | `false`   | Skip boot intros and go straight into main menu |
+| `mask_mode            | `Normal` / `Random` / `Inverted` / `All Uka` / `All Aku` | `Normal`  | Mask assignment mode                            |
+| `show_reserves_meter` | `true` / `false`                                         | `false`   | Show the in-game reserves meter                 |
 
 ### Adventure
 
@@ -208,7 +210,6 @@ format). An example template is at `default_config.ini` in the project root.
 | `warpball_speed_multiplier`        | `20`–`300` (percent)                                     | `100`    | Warpball speed multiplier             |
 | `bomb_explosion_radius_multiplier` | `50`–`600` (percent)                                     | `100`    | Bomb explosion radius multiplier      |
 | `tnt_explosion_radius_multiplier`  | `50`–`600` (percent)                                     | `100`    | TNT/Nitro explosion radius multiplier |
-| `mask_mode`                        | `Normal` / `Random` / `Inverted` / `All Uka` / `All Aku` | `Normal` | Mask assignment mode                  |
 | `mask_protects_from_damage`        | `true` / `false`                                         | `true`   | Mask makes driver immune to damage    |
 | `mask_damages_others`              | `true` / `false`                                         | `true`   | Mask damages other drivers on contact |
 | `mask_persists_after_oob`          | `true` / `false`                                         | `false`  | Mask stays active after falling OOB   |
