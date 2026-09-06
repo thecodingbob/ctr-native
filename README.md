@@ -1,6 +1,6 @@
-# CTR Native
+# CTR Native Expanded
 
-A native PC port of Crash Team Racing (PS1, 1999), built on top of the [CTR-ModSDK](https://github.com/CTR-tools/CTR-ModSDK) decompilation project.
+A native PC port of Crash Team Racing (PS1, 1999) with extra additions. It builds on [CTR-tools/ctr-native](https://github.com/CTR-tools/ctr-native) and adds optional quality-of-life and customization features.
 
 ## Philosophy
 
