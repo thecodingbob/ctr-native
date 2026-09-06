@@ -53,6 +53,8 @@ static void BuildSectionMap(void)
 }
 
 static int s_currentSection = -1; // -1 = section selector, 0+ = submenu
+static int s_scrollOffset = 0;    // first visible row in submenu
+#define CONFIG_MAX_VISIBLE_ROWS 10
 
 struct RectMenu g_configMenu = {
 	.stringIndexTitle = -1,
@@ -139,12 +141,32 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 
 		if ((pad->buttonsTapped & BTN_UP) != 0)
 		{
-			menu->rowSelected = (menu->rowSelected > 0) ? menu->rowSelected - 1 : numRows - 1;
+			if (menu->rowSelected > 0)
+			{
+				menu->rowSelected--;
+				if (menu->rowSelected < s_scrollOffset)
+					s_scrollOffset--;
+			}
+			else
+			{
+				menu->rowSelected = numRows - 1;
+				s_scrollOffset = numRows > CONFIG_MAX_VISIBLE_ROWS ? numRows - CONFIG_MAX_VISIBLE_ROWS : 0;
+			}
 			OtherFX_Play(0, 1);
 		}
 		if ((pad->buttonsTapped & BTN_DOWN) != 0)
 		{
-			menu->rowSelected = (menu->rowSelected < numRows - 1) ? menu->rowSelected + 1 : 0;
+			if (menu->rowSelected < numRows - 1)
+			{
+				menu->rowSelected++;
+				if (menu->rowSelected >= s_scrollOffset + CONFIG_MAX_VISIBLE_ROWS)
+					s_scrollOffset++;
+			}
+			else
+			{
+				menu->rowSelected = 0;
+				s_scrollOffset = 0;
+			}
 			OtherFX_Play(0, 1);
 		}
 
@@ -177,10 +199,14 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		int startY = 0x3C;
 		int rowSpacing = 0x0E;
 
-		for (int j = 0; j < numRows; j++)
+		int visibleEnd = numRows;
+		if (visibleEnd > s_scrollOffset + CONFIG_MAX_VISIBLE_ROWS)
+			visibleEnd = s_scrollOffset + CONFIG_MAX_VISIBLE_ROWS;
+
+		for (int j = s_scrollOffset; j < visibleEnd; j++)
 		{
 			const ConfigEntry *e = &g_configEntries[firstEntry + j];
-			int y = startY + j * rowSpacing;
+			int y = startY + (j - s_scrollOffset) * rowSpacing;
 
 			DecalFont_DrawLineOT((char *)e->label, labelX, y, FONT_SMALL, ORANGE, ot);
 			Config_DrawValue(e, valueX, y, ot, buf);
@@ -191,6 +217,8 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 				CTR_Box_DrawClearBox(&sel, &sdata->menuRowHighlight_Normal, TRANS_50_DECAL, ot);
 			}
 		}
+
+
 	}
 	else
 	{
@@ -210,6 +238,7 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 			OtherFX_Play(1, 1);
 			s_currentSection = menu->rowSelected;
 			menu->rowSelected = 0;
+			s_scrollOffset = 0;
 		}
 
 		DecalFont_DrawLineOT(sdata->lngStrings[LNG_OPTIONS],
