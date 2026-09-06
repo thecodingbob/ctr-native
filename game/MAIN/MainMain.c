@@ -44,14 +44,13 @@ static struct NativeReplaySchedulerFrameInfo MainReplayScheduler_FrameInfo(struc
 	info.audioRNG = sdata->audioRNG;
 	info.deadcoed0 = (u32)gGT->deadcoed_struct.state0;
 	info.deadcoed1 = (u32)gGT->deadcoed_struct.state1;
-	info.advRng0 = (u32)sdata->const_0x30215400;
-	info.advRng1 = (u32)sdata->const_0x493583fe;
+	info.advRng0 = sdata->advRng.state0;
+	info.advRng1 = sdata->advRng.state1;
 
 	return info;
 }
 #endif
 
-// NOTE(aalhendi): PSX path ASM-verified NTSC-U 926 0x8003c58c-0x8003cf7c.
 #ifdef CTR_NATIVE
 u32 CTR_Main(void)
 #else
@@ -91,7 +90,6 @@ u32 main(void)
 #endif
 
 		LOAD_NextQueuedFile();
-		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003c5d0-0x8003c5dc for per-frame XA pause handling.
 		CDSYS_XAPauseAtEnd();
 
 		switch (sdata->mainGameState)
@@ -107,7 +105,6 @@ u32 main(void)
 			ElimBG_Deactivate(gGT);
 
 			MainStats_RestartRaceCountLoss();
-			// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003c9f8-0x8003ca04 for load-complete voiceline reset.
 			Voiceline_ClearTimeStamp();
 
 			// Disable End-Of-Race menu
@@ -135,7 +132,6 @@ u32 main(void)
 			GAMEPAD_GetNumConnected(gGS);
 
 			sdata->boolSoundPaused = 0;
-			// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003caa4-0x8003cab4 for load-complete engine audio init.
 			VehBirth_EngineAudio_AllPlayers();
 
 			// 9 = intro cutscene
@@ -396,7 +392,7 @@ u32 main(void)
 					uVar12 = 100;
 				}
 
-				DecalFont_DrawMultiLine(sdata->lngStrings[LNG_DEMO_MODE_PRESS_ANY_BUTTON_TO_EXIT], 0x100, uVar12, 0x200, 2, 0xffff8000);
+				DecalFont_DrawMultiLine(sdata->lngStrings[LNG_DEMO_MODE_PRESS_ANY_BUTTON_TO_EXIT], 0x100, uVar12, 0x200, FONT_SMALL, JUSTIFY_CENTER | ORANGE);
 			}
 
 			if ((gGT->gameMode1 & LOADING) == 0)
@@ -504,10 +500,7 @@ void StateZero()
 	struct GamepadSystem *gGS;
 	gGS = sdata->gGamepads;
 
-// already zero, part of BSS
-#if 0
-	memset(gGT, 0, sizeof(struct GameTracker));
-#endif
+	memset(gGT, 0, sizeof(*gGT));
 
 	// Set Video Mode to NTSC
 	SetVideoMode(0);
@@ -570,7 +563,9 @@ void StateZero()
 	gGT->trafficLightsTimer = 0xfffffc40;
 
 	Timer_Init();
-	DrawSyncCallback(&MainDrawCb_DrawSync);
+	EnterCriticalSection();
+	sdata->MainDrawCb_DrawSyncPtr = (void *)(u32)DrawSyncCallback(&MainDrawCb_DrawSync);
+	ExitCriticalSection();
 
 	MEMCARD_InitCard();
 	VSync(0);
@@ -607,16 +602,20 @@ void StateZero()
 #endif
 
 	// English=1
-	// PAL SCES02105 calls it multiple times
 	LOAD_LangFile((int)sdata->ptrBigfile1, 1);
 	GAMEPROG_NewGame_OnBoot();
 	gGT->overlayIndex_null_notUsed = 0;
 
-	if (g_config.skipIntro) {
+	if (g_config.skipIntro)
+	{
 		gGT->levelID = MAIN_MENU_LEVEL;
-	} else {
+	}
+	else
+	{
 		gGT->levelID = NAUGHTY_DOG_CRATE;
 	}
+	memcpy(gGT->levelName, sdata->s_ndi, sizeof(sdata->s_ndi));
+	// gGT->levelID = OXIDE_TRUE_ENDING;
 
 	InitGeom();
 	SetGeomOffset(0x100, 0x78); // width/2, height/2
@@ -638,8 +637,8 @@ void StateZero()
 	PutDispEnv(&gGT->db[1].dispEnv);
 	PutDrawEnv(&gGT->db[1].drawEnv);
 	DrawSync(0);
-	
-	if (!g_config.skipIntro) {
+	if (!g_config.skipIntro)
+	{
 		// Load Intro TIM for "SCEA Presents" from VRAM file
 		LOAD_VramFile(sdata->ptrBigfile1, 0x1fd, NULL, &vramSize, -1);
 		MainInit_VRAMDisplay();
@@ -652,7 +651,8 @@ void StateZero()
 
 	VSyncCallback(MainDrawCb_Vsync);
 
-	if (!g_config.skipIntro) {
+	if (!g_config.skipIntro)
+	{
 		Music_SetIntro();
 		CseqMusic_StopAll();
 		CseqMusic_Start(CSEQ_SONG_LEVEL, 0, NULL, 0, 0);

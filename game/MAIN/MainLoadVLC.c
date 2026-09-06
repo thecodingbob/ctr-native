@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003c508-0x8003c518.
 void MainLoadVLC_Callback(struct LoadQueueSlot *param_1)
 {
 	// VLC is now loaded
@@ -12,7 +11,6 @@ void MainLoadVLC_Callback(struct LoadQueueSlot *param_1)
 #endif
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003c518-0x8003c58c.
 void MainLoadVLC(void)
 {
 	struct BigHeader *bigfile;

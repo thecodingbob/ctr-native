@@ -11,7 +11,7 @@ union DrawTiresScratchWord
 	{
 		s16 lo;
 		s16 hi;
-	};
+	} halves;
 	s32 word;
 };
 
@@ -61,8 +61,8 @@ struct DrawTiresScratch
 };
 
 CTR_STATIC_ASSERT(sizeof(union DrawTiresScratchWord) == 0x4);
-CTR_STATIC_ASSERT(offsetof(union DrawTiresScratchWord, lo) == 0x0);
-CTR_STATIC_ASSERT(offsetof(union DrawTiresScratchWord, hi) == 0x2);
+CTR_STATIC_ASSERT(offsetof(union DrawTiresScratchWord, halves.lo) == 0x0);
+CTR_STATIC_ASSERT(offsetof(union DrawTiresScratchWord, halves.hi) == 0x2);
 CTR_STATIC_ASSERT(sizeof(struct DrawTiresPackedVec3) == 0x8);
 CTR_STATIC_ASSERT(offsetof(struct DrawTiresPackedVec3, x) == 0x0);
 CTR_STATIC_ASSERT(offsetof(struct DrawTiresPackedVec3, y) == 0x2);
@@ -80,10 +80,10 @@ CTR_STATIC_ASSERT(offsetof(struct DrawTiresScratch, wheelSize) == 0x48);
 CTR_STATIC_ASSERT(offsetof(struct DrawTiresScratch, vertSplit) == 0x4c);
 CTR_STATIC_ASSERT(offsetof(struct DrawTiresScratch, splitCameraY) == 0x50);
 CTR_STATIC_ASSERT(offsetof(struct DrawTiresScratch, lodThreshold) == 0x54);
-CTR_STATIC_ASSERT(offsetof(struct DrawTiresScratch, wheelLocal[0]) == 0x58);
-CTR_STATIC_ASSERT(offsetof(struct DrawTiresScratch, wheelLocal[1]) == 0x68);
-CTR_STATIC_ASSERT(offsetof(struct DrawTiresScratch, wheelLocal[2]) == 0x78);
-CTR_STATIC_ASSERT(offsetof(struct DrawTiresScratch, wheelLocal[3]) == 0x88);
+CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct DrawTiresScratch, wheelLocal, 0) == 0x58);
+CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct DrawTiresScratch, wheelLocal, 1) == 0x68);
+CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct DrawTiresScratch, wheelLocal, 2) == 0x78);
+CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct DrawTiresScratch, wheelLocal, 3) == 0x88);
 CTR_STATIC_ASSERT(offsetof(struct DrawTiresScratch, viewNormalVectors) == 0x98);
 CTR_STATIC_ASSERT(offsetof(struct DrawTiresScratch, transformedRimVectors) == 0xb8);
 CTR_STATIC_ASSERT(offsetof(struct DrawTiresScratch, tireAxisA) == 0xd8);

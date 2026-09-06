@@ -19,7 +19,6 @@ enum
 	UI_DRAWNUM_TIMEBOX_TEXT_OFFSET_Y = -0xe,
 };
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80050c20-0x80050e6c.
 void UI_DrawNumWumpa(s16 posX, s16 posY, struct Driver *d)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -53,7 +52,6 @@ void UI_DrawNumWumpa(s16 posX, s16 posY, struct Driver *d)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80050e6c-0x80050f18.
 void UI_DrawNumTimebox(s16 posX, s16 posY, struct Driver *d)
 {
 	char string[UI_DRAWNUM_COUNTER_TEXT_BUFFER_SIZE];
@@ -69,7 +67,6 @@ void UI_DrawNumTimebox(s16 posX, s16 posY, struct Driver *d)
 	DecalFont_DrawLine(string, posX + UI_DRAWNUM_TIMEBOX_TEXT_OFFSET_X, posY + UI_DRAWNUM_TIMEBOX_TEXT_OFFSET_Y, FONT_BIG, ORANGE);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80050f18-0x80050fc4.
 void UI_DrawNumRelic(s16 posX, s16 posY)
 {
 	char string[UI_DRAWNUM_COUNTER_TEXT_BUFFER_SIZE];
@@ -87,7 +84,6 @@ void UI_DrawNumRelic(s16 posX, s16 posY)
 	DecalFont_DrawLine(string, posX + UI_DRAWNUM_BIG_TEXT_OFFSET_X, posY, FONT_BIG, ORANGE);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80050fc4-0x80051070.
 void UI_DrawNumKey(s16 posX, s16 posY)
 {
 	char string[UI_DRAWNUM_COUNTER_TEXT_BUFFER_SIZE];
@@ -105,7 +101,6 @@ void UI_DrawNumKey(s16 posX, s16 posY)
 	DecalFont_DrawLine(string, posX + UI_DRAWNUM_BIG_TEXT_OFFSET_X, posY, FONT_BIG, ORANGE);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80051070-0x8005111c.
 void UI_DrawNumTrophy(s16 posX, s16 posY)
 {
 	char string[UI_DRAWNUM_COUNTER_TEXT_BUFFER_SIZE];
@@ -123,7 +118,6 @@ void UI_DrawNumTrophy(s16 posX, s16 posY)
 	DecalFont_DrawLine(string, posX + UI_DRAWNUM_BIG_TEXT_OFFSET_X, posY, FONT_BIG, ORANGE);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005111c-0x800511c0.
 void UI_DrawNumCrystal(s16 posX, s16 posY, struct Driver *d)
 {
 	char string[UI_DRAWNUM_COUNTER_TEXT_BUFFER_SIZE];

@@ -11,7 +11,6 @@ enum
 	UI_LERP2D_TRANSITION_SCALE = 4,
 };
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004eaa8-0x8004ec18.
 void UI_Lerp2D_Angular(SVec2 *pos, s16 drawnPosition, s16 absolutePosition, s16 frameCounter)
 {
 	int drawnPositionInt = (int)drawnPosition;
@@ -33,7 +32,6 @@ void UI_Lerp2D_Angular(SVec2 *pos, s16 drawnPosition, s16 absolutePosition, s16 
 	             (UI_LERP2D_TRANSITION_FRAMES * UI_LERP2D_TRANSITION_SCALE);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004ec18-0x8004ecd4.
 void UI_Lerp2D_HUD(s16 *pos, s16 startX, s16 startY, s16 endX, s16 endY, int curFrame, s16 endFrame)
 {
 	int newPosX = curFrame * ((int)startX - (int)endX);
@@ -44,7 +42,6 @@ void UI_Lerp2D_HUD(s16 *pos, s16 startX, s16 startY, s16 endX, s16 endY, int cur
 	pos[1] = endY + (s16)(newPosY / endFrameInt);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004ecd4-0x8004edac.
 void UI_Lerp2D_Linear(s16 *pos, s16 startX, s16 startY, s16 endX, s16 endY, int curFrame, s16 endFrame)
 {
 	int endFrameInt = (int)endFrame;

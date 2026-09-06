@@ -1,7 +1,6 @@
 #include <common.h>
 
 // for oxide intro and ND box
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b087c-0x800b0b38
 void CS_Cutscene_Start(void)
 {
 	struct CsThreadInitData initData = {0};

@@ -35,39 +35,7 @@ enum
 	TURBO_STOP_SFX_ID = -1,
 };
 
-CTR_STATIC_ASSERT(TURBO_FIRE_SIZE_MIN == 4);
-CTR_STATIC_ASSERT(TURBO_FIRE_SIZE_MAX == 8);
-CTR_STATIC_ASSERT(TURBO_FIRE_MATRIX_SCALE_SHIFT == 3);
-CTR_STATIC_ASSERT(TURBO_FIRE_LEFT_X_NUMERATOR == 9);
-CTR_STATIC_ASSERT(TURBO_FIRE_LEFT_X_SHIFT == 0xb);
-CTR_STATIC_ASSERT(TURBO_FIRE_RIGHT_X_NUMERATOR == -0x12);
-CTR_STATIC_ASSERT(TURBO_FIRE_RIGHT_X_SHIFT == 0xc);
-CTR_STATIC_ASSERT(TURBO_FIRE_Y_NUMERATOR == 3);
-CTR_STATIC_ASSERT(TURBO_FIRE_Y_SHIFT == 8);
-CTR_STATIC_ASSERT(TURBO_FIRE_Z_NUMERATOR == -0x34);
-CTR_STATIC_ASSERT(TURBO_FIRE_Z_SHIFT == 0xc);
-CTR_STATIC_ASSERT(TURBO_COOLDOWN_SIGN_SCALE == 0x10000);
-CTR_STATIC_ASSERT(TURBO_ALPHA_RUMBLE_THRESHOLD == 2500);
-CTR_STATIC_ASSERT(TURBO_RUMBLE_FRAMES == 4);
-CTR_STATIC_ASSERT(TURBO_RUMBLE_FORCE == 4);
-CTR_STATIC_ASSERT(TURBO_SECONDARY_MODEL_FRAME_OFFSET == 3);
-CTR_STATIC_ASSERT(TURBO_ANIM_FRAME_COUNT == 8);
-CTR_STATIC_ASSERT(TURBO_ANIM_FRAME_MASK == 7);
-CTR_STATIC_ASSERT(TURBO_AUDIO_SLOT == 3);
-CTR_STATIC_ASSERT(TURBO_AUDIO_VOLUME_BASE == 0x100);
-CTR_STATIC_ASSERT(TURBO_AUDIO_ALPHA_SHIFT == 4);
-CTR_STATIC_ASSERT(TURBO_AUDIO_VOLUME_MAX == 0x82);
-CTR_STATIC_ASSERT(TURBO_AUDIO_DISTORT_STEP == 0x10);
-CTR_STATIC_ASSERT(TURBO_AUDIO_DISTORT_MAX == 0x80);
-CTR_STATIC_ASSERT(TURBO_AUDIO_DISTORT_INCREMENT_LIMIT == 0xc0);
-CTR_STATIC_ASSERT(TURBO_AUDIO_SFX_ID == 0xe);
-CTR_STATIC_ASSERT(TURBO_RESERVES_DISAPPEAR_THRESHOLD == 0x10);
-CTR_STATIC_ASSERT(TURBO_ALPHA_FULL_MINUS_ONE == 0xfff);
-CTR_STATIC_ASSERT(TURBO_FADE_FAST_STEP == 0x100);
-CTR_STATIC_ASSERT(TURBO_FADE_SLOW_STEP == 0x40);
-CTR_STATIC_ASSERT(TURBO_STOP_SFX_ID == -1);
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80069284-0x80069370.
 void VehTurbo_ProcessBucket(struct Thread *turboThread)
 {
 	while (turboThread != NULL)
@@ -110,15 +78,14 @@ void VehTurbo_ProcessBucket(struct Thread *turboThread)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80069370-0x800693c8.
 void VehTurbo_ThDestroy(struct Thread *t)
 {
 	struct Turbo *turboObj = t->object;
 	struct Driver *d = turboObj->driver;
 	d->actionsFlagSet &= ~ACTION_TURBO_ITEM;
 
-	INSTANCE_Death(t->inst);
 	INSTANCE_Death(turboObj->inst);
+	INSTANCE_Death(t->inst);
 }
 
 static void VehTurbo_TransformOffset(struct Instance *driverInst, s16 x, s16 y, s16 z, s32 *out)
@@ -133,7 +100,6 @@ static void VehTurbo_TransformOffset(struct Instance *driverInst, s16 x, s16 y, 
 	CTR_GteStoreIR(out);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800693c8-0x80069bb0.
 void VehTurbo_ThTick(struct Thread *turboThread)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -336,13 +302,11 @@ void VehTurbo_ThTick(struct Thread *turboThread)
 	    // if this is a ghost
 	    (instanceDriver->thread->modelIndex == DYNAMIC_GHOST) ||
 
-	    ((kartState != KS_MASK_GRABBED) && (kartState != KS_CRASHING)
+	    ((kartState != KS_MASK_GRABBED) &&
+	     (kartState != KS_CRASHING)
 
-// lol they found a glitch with this
-#if BUILD > SepReview
-	     && (kartState != KS_WARP_PAD)
-#endif
-	         ))
+	     // lol they found a glitch with this
+	     && (kartState != KS_WARP_PAD)))
 	{
 		// if reserves are nearing zero
 		if ((driver->reserves < TURBO_RESERVES_DISAPPEAR_THRESHOLD) || (turbo->fireDisappearCountdown == 0))

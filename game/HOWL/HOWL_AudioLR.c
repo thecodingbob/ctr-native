@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002e55c-0x8002e5cc
 void GTE_AudioLR_Inst(MATRIX *matrix, s32 *vec)
 {
 	SVECTOR input;
@@ -16,7 +15,6 @@ void GTE_AudioLR_Inst(MATRIX *matrix, s32 *vec)
 	CTR_GteStoreMAC(vec);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002e5cc-0x8002e658
 void GTE_AudioLR_Driver(MATRIX *matrix, struct Driver *driver, s32 *out)
 {
 	SVECTOR input;
@@ -32,7 +30,6 @@ void GTE_AudioLR_Driver(MATRIX *matrix, struct Driver *driver, s32 *out)
 	CTR_GteStoreMAC(out);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002e658-0x8002e690
 int GTE_GetSquaredLength(s32 *vec)
 {
 	MTC2(vec[0], 9);

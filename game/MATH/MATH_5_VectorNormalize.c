@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003d378-0x8003d460
 s32 MATH_VectorNormalize(SVec3 *vector)
 {
 	s32 length = MATH_VectorLength(vector);

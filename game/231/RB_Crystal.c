@@ -1,6 +1,6 @@
 #include <common.h>
 
-SVec3 crystalLightDir = {{0x94F, 0x94F, 0x94F}};
+SVec3 crystalLightDir = {0x94F, 0x94F, 0x94F};
 
 static void RB_Crystal_RotateStep(struct Instance *crystalInst, struct Crystal *crystalObj)
 {
@@ -8,7 +8,6 @@ static void RB_Crystal_RotateStep(struct Instance *crystalInst, struct Crystal *
 	ConvertRotToMatrix(&crystalInst->matrix, &crystalObj->rot);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b4c5c-0x800b4dd8.
 int RB_Crystal_ThCollide(struct Thread *crystalTh, struct Thread *driverTh, void *funcThCollide, struct ScratchpadStruct *sps)
 {
 	(void)funcThCollide;
@@ -61,7 +60,6 @@ int RB_Crystal_ThCollide(struct Thread *crystalTh, struct Thread *driverTh, void
 	return 1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b4dd8-0x800b4e7c.
 void RB_Crystal_ThTick(struct Thread *t)
 {
 	int sine;
@@ -85,7 +83,6 @@ void RB_Crystal_ThTick(struct Thread *t)
 	Vector_SpecLightSpin3D(crystalInst, &crystalObj->rot, &crystalLightDir);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b4e7c-0x800b4f48.
 int RB_Crystal_LInC(struct Instance *crystalInst, struct Thread *driverTh, struct ScratchpadStruct *sps)
 {
 	struct Thread *crystalTh;
@@ -126,7 +123,6 @@ int RB_Crystal_LInC(struct Instance *crystalInst, struct Thread *driverTh, struc
 	return ((ThreadScratchCollideFunc)crystalTh->funcThCollide)(crystalTh, driverTh, crystalTh->funcThCollide, sps);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b4f48-0x800b4fe4.
 void RB_Crystal_LInB(struct Instance *inst)
 {
 	struct Crystal *crystalObj;

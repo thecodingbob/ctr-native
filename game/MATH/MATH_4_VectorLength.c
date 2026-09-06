@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003d328-0x8003d378
 s32 MATH_VectorLength(SVec3 *vector)
 {
 	u32 xy = CTR_ReadU32LE(&vector->x);

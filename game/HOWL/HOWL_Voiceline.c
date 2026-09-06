@@ -1,7 +1,6 @@
 #include <common.h>
 
 // does not really touch voiceline
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002c918-0x8002caa8
 void Voiceline_PoolInit(void)
 {
 	s32 index;
@@ -19,7 +18,7 @@ void Voiceline_PoolInit(void)
 	LIST_Clear(&sdata->channelFree);
 	LIST_Clear(&sdata->channelTaken);
 
-	LIST_Init(&sdata->channelFree, &sdata->channelStatsPrev[0].item, 0x20, 0x18);
+	LIST_Init(&sdata->channelFree, &sdata->channelStatsPrev[0].link.item, 0x20, 0x18);
 
 	SpuSetReverbVoice(0, 0xffffff);
 
@@ -71,7 +70,6 @@ void Voiceline_PoolInit(void)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002caa8-0x8002cae0
 void Voiceline_ClearTimeStamp(void)
 {
 	for (s32 i = 0; i < 16; i++)
@@ -82,7 +80,6 @@ void Voiceline_ClearTimeStamp(void)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002cae0-0x8002cb44
 void Voiceline_PoolClear(void)
 {
 	sdata->boolCanPlayWrongWaySFX = false;
@@ -101,7 +98,6 @@ void Voiceline_PoolClear(void)
 	Voiceline_ClearTimeStamp();
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002cb44-0x8002cbb4
 void Voiceline_StopAll(void)
 {
 	while (sdata->Voiceline2.last != 0)
@@ -113,7 +109,6 @@ void Voiceline_StopAll(void)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002cbb4-0x8002cbe8
 void Voiceline_ToggleEnable(int toggle)
 {
 	// if this is disabling
@@ -132,7 +127,6 @@ static u32 Voiceline_RequestPlay_NextAudioRNG(void)
 	return sdata->audioRNG;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002cbe8-0x8002cf28
 void Voiceline_RequestPlay(u32 voiceID, u32 characterID, u32 characterID2)
 {
 	u8 voiceType;
@@ -287,7 +281,6 @@ queueVoiceline:
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002cf28-0x8002d0f8
 void Voiceline_StartPlay(struct Item *voiceLine)
 {
 	struct VoicelineItem *voiceLineItem = (struct VoicelineItem *)voiceLine;
@@ -332,7 +325,6 @@ void Voiceline_StartPlay(struct Item *voiceLine)
 	sdata->voicelineCooldown = (s16)(CDSYS_XAGetTrackLength(CDSYS_XA_TYPE_GAME, xaID) / 5) + 0x1e;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002d0f8-0x8002d2a8
 void Voiceline_Update(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -408,15 +400,14 @@ playQueuedVoice:
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002d2a8-0x8002d2b0
 void Voiceline_EmptyFunc(void)
 {
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002d2b0-0x8002d2f4
 void Voiceline_SetDefaults(void)
 {
 	sdata->audioState = AUDIO_NONE;
+	sdata->desiredXA_FinalLapIndex = 0;
 	sdata->desiredXA_RaceIntroIndex = 0;
 
 	sdata->WrongWayDirection_bool = false;

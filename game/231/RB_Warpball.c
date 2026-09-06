@@ -8,7 +8,6 @@ static const s32 s_warpballFadeY[6] = {
     -64, -256, -87, 57, 167, 228,
 };
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ae524-0x800ae604.
 // NOTE(aalhendi): Native uses retail fade scale/Y table bytes from 0x800b2c88 and 0x800b2cac.
 void RB_Warpball_FadeAway(struct Thread *t)
 {
@@ -54,7 +53,6 @@ void RB_Warpball_FadeAway(struct Thread *t)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ae604-0x800ae668.
 void RB_Warpball_Death(struct Thread *t)
 {
 	struct TrackerWeapon *tw;
@@ -75,7 +73,6 @@ void RB_Warpball_Death(struct Thread *t)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800ae668-0x800ae778.
 struct CheckpointNode *RB_Warpball_NewPathNode(struct CheckpointNode *cn, struct Driver *d)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -130,7 +127,6 @@ struct CheckpointNode *RB_Warpball_NewPathNode(struct CheckpointNode *cn, struct
 	return &gGT->level1->ptr_restart_points[cn->nextIndex_forward];
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800ae778-0x800ae7dc.
 void RB_Warpball_Start(struct TrackerWeapon *tw)
 {
 	tw->ptrNodeCurr = RB_Warpball_NewPathNode(tw->ptrNodeCurr, tw->driverTarget);
@@ -138,7 +134,6 @@ void RB_Warpball_Start(struct TrackerWeapon *tw)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800ae7dc-0x800aeaac.
 struct Driver *RB_Warpball_GetDriverTarget(struct TrackerWeapon *tw, struct Instance *inst)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -207,7 +202,6 @@ struct Driver *RB_Warpball_GetDriverTarget(struct TrackerWeapon *tw, struct Inst
 	return bestDriver;
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800aeaac-0x800aece0.
 void RB_Warpball_SetTargetDriver(struct TrackerWeapon *tw)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -281,7 +275,6 @@ void RB_Warpball_SetTargetDriver(struct TrackerWeapon *tw)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800aece0-0x800aede0.
 void RB_Warpball_SeekDriver(struct TrackerWeapon *tw, u32 checkpointIndex, struct Driver *d)
 {
 	checkpointIndex &= 0xff;
@@ -314,7 +307,6 @@ void RB_Warpball_SeekDriver(struct TrackerWeapon *tw, u32 checkpointIndex, struc
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800aede0-0x800aef9c.
 void RB_Warpball_TurnAround(struct Thread *t)
 {
 	struct TrackerWeapon *tw;
@@ -414,7 +406,6 @@ static void RB_Warpball_SetQuadblockIndex(struct TrackerWeapon *tw, struct Scrat
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800aef9c-0x800afb70.
 // NOTE(aalhendi): Native uses the extracted warpball particle-height halfword from RDATA 0x800b2c84.
 void RB_Warpball_ThTick(struct Thread *t)
 {

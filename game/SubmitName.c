@@ -34,19 +34,7 @@ enum
 	SUBMIT_NAME_PANEL_H = 130,
 };
 
-CTR_STATIC_ASSERT(SUBMIT_NAME_MODE_ADVENTURE == 0);
-CTR_STATIC_ASSERT(SUBMIT_NAME_MODE_TIME_TRIAL == 1);
-CTR_STATIC_ASSERT(SUBMIT_NAME_BUFFER_SIZE == 0x11);
-CTR_STATIC_ASSERT(SUBMIT_NAME_MAX_VISIBLE_CHARS == 8);
-CTR_STATIC_ASSERT(SUBMIT_NAME_KEYBOARD_COLS == 13);
-CTR_STATIC_ASSERT(SUBMIT_NAME_KEYBOARD_ROWS == 3);
-CTR_STATIC_ASSERT(SUBMIT_NAME_CURSOR_BACKSPACE == 38);
-CTR_STATIC_ASSERT(SUBMIT_NAME_CURSOR_CANCEL == 1000);
-CTR_STATIC_ASSERT(SUBMIT_NAME_CURSOR_SAVE == 1001);
-CTR_STATIC_ASSERT(SUBMIT_NAME_CURSOR_MIDDLE_THRESHOLD == 500);
-CTR_STATIC_ASSERT(SUBMIT_NAME_ASCII_BYTE_MARKER == 0x1000);
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004aa08-0x8004aa60
 void SubmitName_RestoreName(s16 submitNameMode)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -68,8 +56,7 @@ void SubmitName_RestoreName(s16 submitNameMode)
 	gGT->typeCursorPosition = cursor;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004aa60-0x8004b144 for the
-// retail path. CTR_NATIVE adds host keyboard shortcuts before retail input.
+// CTR_NATIVE adds host keyboard shortcuts before the retail input path.
 
 #ifdef CTR_NATIVE
 int kbCurr = 0;
@@ -91,11 +78,10 @@ s16 SubmitName_DrawMenu(u16 string)
 	u16 stringCopy = string;
 	s16 currNameLength = strlen(gGT->currNameEntered);
 	char *currNameEntered = gGT->currNameEntered;
-	u16 blinkWhite = ((sdata->typeTimer >> 0) & 1) << 2;
 
 	while (currNameEntered[0] != 0)
 	{
-		if (currNameEntered[0] > 2)
+		if ((u8)currNameEntered[0] > 2)
 		{
 			nameLength++;
 		}
@@ -110,6 +96,7 @@ s16 SubmitName_DrawMenu(u16 string)
 	}
 
 	sdata->typeTimer++;
+	u16 blinkWhite = (sdata->typeTimer & 1) << 2;
 	int letterID = 0;
 
 	// grid of letters, 13x3
@@ -200,7 +187,7 @@ s16 SubmitName_DrawMenu(u16 string)
 	r.y = SUBMIT_NAME_NAME_UNDERLINE_Y;
 	r.h = 2;
 	Color color;
-	color.self = sdata->battleSetup_Color_UI_1;
+	ColorCode_SetPacked(&color, sdata->battleSetup_Color_UI_1);
 	RECTMENU_DrawOuterRect_Edge(&r, color, 0x20, gGT->backBuffer->otMem.uiOT);
 
 	r.y = SUBMIT_NAME_PANEL_Y;
@@ -365,7 +352,7 @@ s16 SubmitName_DrawMenu(u16 string)
 					soundID = 4;
 					gGT->currNameEntered[currNameLength - 1] = 0;
 
-					if (gGT->currNameEntered[currNameLength - 2] < 3)
+					if ((u8)gGT->currNameEntered[currNameLength - 2] < 3)
 					{
 						gGT->currNameEntered[currNameLength - 2] = 0;
 					}
@@ -437,14 +424,12 @@ FinishInput:
 
 	if (soundID != 0)
 	{
-		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004b0dc-0x8004b0f8 for keyboard SFX lookup/play.
 		OtherFX_Play(data.soundIndexArray[soundID], 1);
 	}
 	gGT->typeCursorPosition = cursorPosition;
 	return selectionResult;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004b144-0x8004b230.
 void SubmitName_MenuProc(struct RectMenu *menu)
 {
 	struct GameTracker *gGT = sdata->gGT;

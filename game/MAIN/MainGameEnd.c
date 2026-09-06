@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80039fa8-0x8003a2b4
 void MainGameEnd_SoloRaceGetReward(int subtractTimeCrateBonus)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -97,7 +96,6 @@ CheckOxideAllTracks:
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003a2b4-0x8003a3fc.
 void MainGameEnd_SoloRaceSaveHighScore(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -144,7 +142,6 @@ void MainGameEnd_SoloRaceSaveHighScore(void)
 	memmove(entry->name, gGT->prevNameEntered, 0x11);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003a3fc-0x8003aee8
 
 static void MainGameEnd_AddBattleWinner(struct GameTracker *gGT, struct Driver *driver)
 {

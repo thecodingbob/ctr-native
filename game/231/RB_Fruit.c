@@ -24,7 +24,6 @@ void RB_Fruit_GetScreenCoords(struct PushBuffer *pb, struct Instance *inst, s16 
 	CTR_GteStoreSXY(&output[0]);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b706c-0x800b70a8.
 void RB_Fruit_ThTick(struct Thread *fruitTh)
 {
 	struct Instance *fruitInst;
@@ -34,7 +33,6 @@ void RB_Fruit_ThTick(struct Thread *fruitTh)
 	fruitTh->flags |= THREAD_FLAG_DEAD;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b70a8-0x800b722c.
 int RB_Fruit_ThCollide(struct Thread *fruitTh, struct Thread *driverTh, void *funcThCollide, struct ScratchpadStruct *sps)
 {
 	(void)funcThCollide;
@@ -79,7 +77,6 @@ int RB_Fruit_ThCollide(struct Thread *fruitTh, struct Thread *driverTh, void *fu
 	return 1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b722c-0x800b7260.
 void RB_Fruit_LInB(struct Instance *inst)
 {
 	RB_Default_LInB(inst);
@@ -87,7 +84,6 @@ void RB_Fruit_LInB(struct Instance *inst)
 	inst->flags |= ANIM_LOOP;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b7260-0x800b7338.
 int RB_Fruit_LInC(struct Instance *fruitInst, struct Thread *driverTh, struct ScratchpadStruct *sps)
 {
 	struct Thread *fruitTh;

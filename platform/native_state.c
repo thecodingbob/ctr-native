@@ -138,7 +138,6 @@ int NativeState_Capture(void *dst, int dstSize)
 {
 	struct NativeStateHeader header;
 	u8 *bytes = (u8 *)dst;
-	u32 i;
 
 	if (!NativeState_InitHeader(&header))
 	{
@@ -152,7 +151,7 @@ int NativeState_Capture(void *dst, int dstSize)
 	memset(dst, 0, header.size);
 	memcpy(dst, &header, sizeof(header));
 
-	for (i = 0; i < header.regionCount; i++)
+	for (u32 i = 0; i < header.regionCount; i++)
 	{
 		struct NativeStateRegion *region = &header.regions[i];
 

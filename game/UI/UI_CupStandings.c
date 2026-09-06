@@ -52,19 +52,7 @@ enum
 	UI_CUP_STANDINGS_MAX_CUP_LOSSES = 10,
 };
 
-CTR_STATIC_ASSERT(UI_CUP_STANDINGS_CONFIRM_BUTTONS == 0x50);
-CTR_STATIC_ASSERT(UI_CUP_STANDINGS_PAGE_TRANSITION_FRAME == 0xf0);
-CTR_STATIC_ASSERT(UI_CUP_STANDINGS_DONE_FRAME == 0x10f);
-CTR_STATIC_ASSERT(UI_CUP_STANDINGS_MENU_READY_END_OPTIONS == 1);
-CTR_STATIC_ASSERT(UI_CUP_STANDINGS_PAGE_TRACK_POINTS == 0x4);
-CTR_STATIC_ASSERT(UI_CUP_STANDINGS_PAGE_OVERALL_POINTS == 0x8);
-CTR_STATIC_ASSERT(UI_CUP_STANDINGS_PURPLE_GEM_CUP_ID == 4);
-CTR_STATIC_ASSERT(UI_CUP_STANDINGS_ICON_SCALE == 0x1000);
-CTR_STATIC_ASSERT(UI_CUP_STANDINGS_TRACKS_PER_CUP == 4);
-CTR_STATIC_ASSERT(UI_CUP_STANDINGS_DRIVER_SLOTS == 8);
-CTR_STATIC_ASSERT(GEM_STONE_VALLEY == 0x19);
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005607c-0x80056220.
 void UI_CupStandings_FinalizeCupRanks(void)
 {
 	struct GameTracker *gGT;
@@ -122,7 +110,6 @@ void UI_CupStandings_FinalizeCupRanks(void)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80056220-0x800562fc.
 void UI_CupStandings_UpdateCupRanks(void)
 {
 	struct GameTracker *gGT;
@@ -168,7 +155,6 @@ void UI_CupStandings_UpdateCupRanks(void)
 
 void UI_CupStandings_InputAndDraw(void)
 {
-	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800562fc-0x800572d0.
 	struct GameTracker *gGT = sdata->gGT;
 	s16 iconColumnOffset;
 	int i;
@@ -260,7 +246,7 @@ void UI_CupStandings_InputAndDraw(void)
 		animationFrame = sdata->framesSinceRaceEnded - UI_CUP_STANDINGS_PAGE_TRANSITION_FRAME;
 	}
 
-	UI_Lerp2D_Linear(drawPos.v, titleStartX, titleStartY, titleEndX, titleEndY, animationFrame, UI_CUP_STANDINGS_LERP_FRAMES);
+	UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(drawPos)), titleStartX, titleStartY, titleEndX, titleEndY, animationFrame, UI_CUP_STANDINGS_LERP_FRAMES);
 
 	// "FINAL"
 	int titleString = LNG_FINAL;
@@ -407,7 +393,7 @@ void UI_CupStandings_InputAndDraw(void)
 		}
 
 		// Interpolate fly-in variables over 0x14 frames
-		UI_Lerp2D_Linear(drawPos.v, iconStartX, iconTargetY, iconEndX, iconTargetY, animationFrame, UI_CUP_STANDINGS_LERP_FRAMES);
+		UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(drawPos)), iconStartX, iconTargetY, iconEndX, iconTargetY, animationFrame, UI_CUP_STANDINGS_LERP_FRAMES);
 
 		// %d
 		sprintf(text, (char *)&sdata->s_int, i + 1);
@@ -438,7 +424,7 @@ void UI_CupStandings_InputAndDraw(void)
 		                  drawPos.x, drawPos.y, &gGT->backBuffer->primMem,
 
 		                  gGT->pushBuffer_UI.ptrOT, TRANS_50_DECAL, UI_CUP_STANDINGS_ICON_SCALE,
-		                  MakeColor(UI_CUP_STANDINGS_ICON_NEUTRAL_CHANNEL, UI_CUP_STANDINGS_ICON_NEUTRAL_CHANNEL, UI_CUP_STANDINGS_ICON_NEUTRAL_CHANNEL).self);
+		                  MakeColorPacked(UI_CUP_STANDINGS_ICON_NEUTRAL_CHANNEL, UI_CUP_STANDINGS_ICON_NEUTRAL_CHANNEL, UI_CUP_STANDINGS_ICON_NEUTRAL_CHANNEL));
 
 		// If this is the first screen of cup standings,
 		// where you see just amount of points added
@@ -480,8 +466,8 @@ void UI_CupStandings_InputAndDraw(void)
 	if ((sdata->menuReadyToPass & UI_CUP_STANDINGS_PAGE_TRACK_POINTS) == 0)
 	{
 		// fly-in interpolation
-		UI_Lerp2D_Linear(drawPos.v, UI_CUP_STANDINGS_PANEL_X, pageEnterY, UI_CUP_STANDINGS_PANEL_X, UI_CUP_STANDINGS_PANEL_Y, sdata->framesSinceRaceEnded,
-		                 UI_CUP_STANDINGS_LERP_FRAMES);
+		UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(drawPos)), UI_CUP_STANDINGS_PANEL_X, pageEnterY, UI_CUP_STANDINGS_PANEL_X, UI_CUP_STANDINGS_PANEL_Y,
+		                 sdata->framesSinceRaceEnded, UI_CUP_STANDINGS_LERP_FRAMES);
 	}
 
 	// if it's not...
@@ -496,7 +482,7 @@ void UI_CupStandings_InputAndDraw(void)
 		else
 		{
 			// fly-in interpolation
-			UI_Lerp2D_Linear(drawPos.v, UI_CUP_STANDINGS_PANEL_X, UI_CUP_STANDINGS_PANEL_Y, UI_CUP_STANDINGS_PANEL_X, pageExitY,
+			UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(drawPos)), UI_CUP_STANDINGS_PANEL_X, UI_CUP_STANDINGS_PANEL_Y, UI_CUP_STANDINGS_PANEL_X, pageExitY,
 			                 sdata->framesSinceRaceEnded + -UI_CUP_STANDINGS_PAGE_TRANSITION_FRAME, UI_CUP_STANDINGS_LERP_FRAMES);
 		}
 	}
@@ -673,15 +659,15 @@ void UI_CupStandings_InputAndDraw(void)
 						}
 
 						// reset counter for number of times you lost cup, to zero
-						sdata->advProgress.timesLostCupRace[i] = 0;
+						sdata->advProgress.timesLostCupRace[gGT->cup.trackIndex] = 0;
 					}
 
 					// If player 1 did not win the cup
 					else
 					{
-						if (sdata->advProgress.timesLostCupRace[i] < UI_CUP_STANDINGS_MAX_CUP_LOSSES)
+						if (sdata->advProgress.timesLostCupRace[gGT->cup.trackIndex] < UI_CUP_STANDINGS_MAX_CUP_LOSSES)
 						{
-							sdata->advProgress.timesLostCupRace[i]++;
+							sdata->advProgress.timesLostCupRace[gGT->cup.trackIndex]++;
 						}
 					}
 				}
@@ -705,7 +691,7 @@ void UI_CupStandings_InputAndDraw(void)
 							difficulty = UI_CUP_STANDINGS_MAX_ARCADE_DIFFICULTY;
 						}
 
-						u32 *rewardsSet = &sdata->gameProgress.unlockFlags;
+						u32 *rewardsSet = &sdata->gameProgress.unlocks[0];
 
 						int baseIndex = sdata->UnlockBitIndex.CupCompletion_prev[difficulty];
 

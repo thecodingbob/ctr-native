@@ -35,7 +35,6 @@ global_variable s32 s_rankString224 = 0x20; // " \0"
 extern struct RectMenu menu224;
 extern struct RectMenu menu224NoSave;
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8009fdc8-0x800a04d4.
 void TT_EndEvent_DrawMenu(void)
 {
 	s32 elapsedFrames;
@@ -51,7 +50,7 @@ void TT_EndEvent_DrawMenu(void)
 	// If you just beat N Tropy && N Tropy was beaten on all tracks
 	if (((gameModeEnd & NTROPY_JUST_BEAT) != 0) && GAMEPROG_CheckGhostsBeaten(1))
 	{
-		sdata->gameProgress.unlockFlags |= UNLOCK_TROPY;
+		sdata->gameProgress.unlocks[0] |= UNLOCK_TROPY;
 	}
 
 	// copy the frame counter variable
@@ -90,7 +89,7 @@ void TT_EndEvent_DrawMenu(void)
 		}
 
 		// draw race clock in top-left corner
-		UI_Lerp2D_Linear(pos.v, 0x14, 8, endX, 8, elapsedFrames, TT_LERP_FRAMES);
+		UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), 0x14, 8, endX, 8, elapsedFrames, TT_LERP_FRAMES);
 
 		UI_DrawRaceClock(pos.x, pos.y, UI_RACE_CLOCK_SHOW_CURRENT_TIME, gGT->drivers[0]);
 
@@ -105,13 +104,13 @@ void TT_EndEvent_DrawMenu(void)
 		elapsedFrames -= TT_RACE_CLOCK_HOLD_FRAMES;
 
 		// race time
-		UI_Lerp2D_Linear(pos.v, -0x64, 90, 0x100, 90, elapsedFrames, TT_LERP_FRAMES);
+		UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), -0x64, 90, 0x100, 90, elapsedFrames, TT_LERP_FRAMES);
 
 		TT_EndEvent_DisplayTime(pos.x, pos.y, sdata->flags_timeTrialEndOfRace);
 
 
 		// Blink Orange/White
-		s32 textColor = (gGT->timer & 1) ? 0xffff8000 : 0xffff8004;
+		s32 textColor = (gGT->timer & 1) ? (JUSTIFY_CENTER | ORANGE) : (JUSTIFY_CENTER | WHITE);
 
 
 		// "new high score" 1 second later
@@ -122,7 +121,7 @@ void TT_EndEvent_DrawMenu(void)
 		    // if there is a new high score
 		    gGT->newHighScoreIndex > -1)
 		{
-			UI_Lerp2D_Linear(pos.v, 0x264, 122, 0x100, 122, elapsedFrames, TT_LERP_FRAMES);
+			UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), 0x264, 122, 0x100, 122, elapsedFrames, TT_LERP_FRAMES);
 
 			DecalFont_DrawLine(lngStrings[LNG_NEW_HIGH_SCORE], pos.x, pos.y, FONT_BIG, textColor);
 
@@ -139,7 +138,7 @@ void TT_EndEvent_DrawMenu(void)
 		    // if got new best lap
 		    ((gameModeEnd & NEW_BEST_LAP) != 0))
 		{
-			UI_Lerp2D_Linear(pos.v, -0x64, 142, 0x100, 142, elapsedFrames, TT_LERP_FRAMES);
+			UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), -0x64, 142, 0x100, 142, elapsedFrames, TT_LERP_FRAMES);
 
 			DecalFont_DrawLine(lngStrings[LNG_NEW_BEST_LAP], pos.x, pos.y, FONT_BIG, textColor);
 
@@ -161,7 +160,7 @@ void TT_EndEvent_DrawMenu(void)
 		    // if just open, or beat, n tropy
 		    ((gameModeEnd & nTropyEventFlags) != 0))
 		{
-			UI_Lerp2D_Linear(pos.v, 0x264, 162, 0x100, 162, elapsedFrames, TT_LERP_FRAMES);
+			UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), 0x264, 162, 0x100, 162, elapsedFrames, TT_LERP_FRAMES);
 
 			char *nTropyString;
 			if ((gameModeEnd & NTROPY_JUST_OPENED) != 0)
@@ -176,7 +175,7 @@ void TT_EndEvent_DrawMenu(void)
 			DecalFont_DrawLine(nTropyString, pos.x, pos.y, FONT_BIG, textColor);
 		}
 
-		DecalFont_DrawLine(lngStrings[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, 0xffff8000);
+		DecalFont_DrawLine(lngStrings[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, JUSTIFY_CENTER | ORANGE);
 
 		// If you press Cross or Circle
 		if ((sdata->AnyPlayerTap & TT_CONFIRM_BUTTON_MASK) != 0)
@@ -215,7 +214,7 @@ void TT_EndEvent_DrawMenu(void)
 			}
 
 
-			UI_Lerp2D_Linear(pos.v, startX, 10, endX, 10, elapsedFrames, TT_LERP_FRAMES);
+			UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), startX, 10, endX, 10, elapsedFrames, TT_LERP_FRAMES);
 
 			TT_EndEvent_DrawHighScore(pos.x, pos.y, TT_SCORE_MODE_TIME_TRIAL);
 
@@ -235,11 +234,11 @@ void TT_EndEvent_DrawMenu(void)
 				endX = 0x296;
 			}
 
-			UI_Lerp2D_Linear(pos.v, startX, 0x82, endX, 0x82, elapsedFrames, TT_LERP_FRAMES);
+			UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), startX, 0x82, endX, 0x82, elapsedFrames, TT_LERP_FRAMES);
 
 			TT_EndEvent_DisplayTime(pos.x, pos.y, sdata->flags_timeTrialEndOfRace);
 
-			DecalFont_DrawLine(lngStrings[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, 0xffff8000);
+			DecalFont_DrawLine(lngStrings[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, JUSTIFY_CENTER | ORANGE);
 
 			// ==== Pause Timer until Press X =======
 			// Cross or Circle, or if timer drags on too long
@@ -270,7 +269,6 @@ void TT_EndEvent_DrawMenu(void)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8009f704-0x8009f8c0.
 void TT_EndEvent_DisplayTime(int paramX, s16 paramY, u32 raceClockFlags)
 {
 	SVec2 pos;
@@ -283,8 +281,8 @@ void TT_EndEvent_DisplayTime(int paramX, s16 paramY, u32 raceClockFlags)
 
 	// === Naughty Dog Bug ===
 	// Start and End is the same
-	UI_Lerp2D_Linear(pos.v, (paramX - (0x88 - startTextWidth) / 2), paramY, (paramX - (0x88 - endTextWidth) / 2), paramY, sdata->framesSinceRaceEnded,
-	                 TT_LERP_FRAMES);
+	UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), (paramX - (0x88 - startTextWidth) / 2), paramY, (paramX - (0x88 - endTextWidth) / 2), paramY,
+	                 sdata->framesSinceRaceEnded, TT_LERP_FRAMES);
 
 	DecalFont_DrawLine(sdata->lngStrings[LNG_YOUR_TIME], paramX, ((u32)pos.y - 0x4c), FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 
@@ -303,7 +301,6 @@ void TT_EndEvent_DisplayTime(int paramX, s16 paramY, u32 raceClockFlags)
 }
 
 // same in TT and RR, but not the same in Main Menu
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8009f8c0-0x8009fdc8.
 void TT_EndEvent_DrawHighScore(s16 startX, int startY, s16 scoreMode)
 {
 	// This is different from High Score in Main Menu because Main Menu
@@ -325,9 +322,9 @@ void TT_EndEvent_DrawHighScore(s16 startX, int startY, s16 scoreMode)
 	// Start and End is the same
 
 	// interpolate fly-in
-	UI_Lerp2D_Linear(pos.v, startX, startY, startX, startY, sdata->framesSinceRaceEnded, TT_LERP_FRAMES);
+	UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), startX, startY, startX, startY, sdata->framesSinceRaceEnded, TT_LERP_FRAMES);
 
-	DecalFont_DrawLine(sdata->lngStrings[LNG_BEST_TIMES], pos.x, pos.y, FONT_BIG, 0xffff8000);
+	DecalFont_DrawLine(sdata->lngStrings[LNG_BEST_TIMES], pos.x, pos.y, FONT_BIG, JUSTIFY_CENTER | ORANGE);
 
 	// Draw icon, name, and time of the
 	// 5 best times in Time Trial
@@ -388,24 +385,24 @@ void TT_EndEvent_DrawHighScore(s16 startX, int startY, s16 scoreMode)
 	if (scoreMode == TT_SCORE_MODE_TIME_TRIAL)
 	{
 		// Change the way text flickers
-		timeColor = 0xffff8000;
+		timeColor = JUSTIFY_CENTER | ORANGE;
 
 		DecalFont_DrawLine(sdata->lngStrings[LNG_BEST_LAP], startX, startY + 0x95, FONT_BIG, timeColor);
 
 		// If you got a new best lap
 		if (((gGT->gameModeEnd & NEW_BEST_LAP) != 0) && ((gGT->timer & TT_HIGH_SCORE_FLASH_TIMER_BIT) != 0))
 		{
-			timeColor = 0xffff8004;
+			timeColor = JUSTIFY_CENTER | WHITE;
 		}
 		// make a string for best lap
 		timeString = RECTMENU_DrawTime(scoreEntries[0].time);
 	}
 	else
 	{
-		DecalFont_DrawLine(sdata->lngStrings[LNG_YOUR_TIME], startX, startY + 0x95, FONT_BIG, 0xffff8000);
+		DecalFont_DrawLine(sdata->lngStrings[LNG_YOUR_TIME], startX, startY + 0x95, FONT_BIG, JUSTIFY_CENTER | ORANGE);
 
 		timeString = RECTMENU_DrawTime(d->timeElapsedInRace);
-		timeColor = 0xffff8000;
+		timeColor = JUSTIFY_CENTER | ORANGE;
 	}
 
 	// Print amount of time, for whichever purpose

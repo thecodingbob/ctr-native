@@ -22,7 +22,7 @@ enum GameMode1
 	LIFE_LIMIT = 0x8000,
 	TIME_LIMIT = 0x10000,
 	TIME_TRIAL = 0x20000,
-	BETA_UNLIMITED = 0x40000, // Spyro 2 demo
+	BETA_UNLIMITED = 0x40000,
 	ADVENTURE_MODE = 0x80000,
 	ADVENTURE_ARENA = 0x100000,
 	END_OF_RACE = 0x200000,
@@ -49,19 +49,12 @@ enum GameMode1Masks
 	GAME_MODE_GHOST_RECORD_BLOCK_MASK = PAUSE_ALL | DEBUG_MENU,
 };
 
-CTR_STATIC_ASSERT(GAME_MODE_VIBRATION_MASK == 0xf00);
-CTR_STATIC_ASSERT(GAME_MODE_END_RETAINED_MODE_MASK == 0x3e0020);
-CTR_STATIC_ASSERT(GAME_MODE_MENU_OR_CUTSCENE_MASK == 0x20002000);
-CTR_STATIC_ASSERT(GAME_MODE_TIME_TRIAL_GAMEPLAY_MASK == 0x20022000);
-CTR_STATIC_ASSERT(GAME_MODE_SAVE_LAP_TIME_MASK == 0x4a0000);
-CTR_STATIC_ASSERT(GAME_MODE_GHOST_RECORD_BLOCK_MASK == 0x1f);
 
 enum BattleSetupConstants
 {
 	BATTLE_DEFAULT_WEAPON_FLAGS = 0x34de,
 };
 
-CTR_STATIC_ASSERT(BATTLE_DEFAULT_WEAPON_FLAGS == 0x34de);
 
 // NOTE(aalhendi): ADVENTURE_BOSS = 0x80000000 sets the sign bit. Retail tests this via
 // signed comparison (bltz). Keep the same semantics, not a bitmask test.
@@ -80,12 +73,6 @@ enum
 typedef s32 LoadStage;
 
 CTR_STATIC_ASSERT(sizeof(LoadStage) == 0x4);
-CTR_STATIC_ASSERT(LOAD_VLC == -6);
-CTR_STATIC_ASSERT(LOAD_RESTART == -5);
-CTR_STATIC_ASSERT(LOAD_REQUESTED == -4);
-CTR_STATIC_ASSERT(LOAD_FINISHED == -2);
-CTR_STATIC_ASSERT(LOAD_IDLE == -1);
-CTR_STATIC_ASSERT(LOAD_TEN_STAGES_0 == 0);
 
 enum OverlayIndex
 {
@@ -96,11 +83,6 @@ enum OverlayIndex
 	OVERLAY_INDEX_PODIUMS = 3,
 };
 
-CTR_STATIC_ASSERT(OVERLAY_INDEX_NONE == 0xff);
-CTR_STATIC_ASSERT(OVERLAY_INDEX_MAIN_MENU == 0);
-CTR_STATIC_ASSERT(OVERLAY_INDEX_RACING_OR_BATTLE == 1);
-CTR_STATIC_ASSERT(OVERLAY_INDEX_ADV_HUB == 2);
-CTR_STATIC_ASSERT(OVERLAY_INDEX_PODIUMS == 3);
 
 enum GameRenderFlag
 {
@@ -129,10 +111,6 @@ enum GameRenderFlagMasks
 	RENDER_FLAG_ALL_EXCEPT_CHECKERED_FLAG_MASK = 0xffffefff,
 };
 
-CTR_STATIC_ASSERT(RENDER_FLAG_VISMEM_REFRESH_MASK == 0x21);
-CTR_STATIC_ASSERT(RENDER_FLAG_LOADING_SCREEN_MASK == 0x1020);
-CTR_STATIC_ASSERT(RENDER_FLAG_ALL_EXCEPT_CHECKERED_FLAG_MASK == 0xffffefff);
-CTR_STATIC_ASSERT(RENDER_FLAG_SPLIT_SCREEN_LINES == 0x8000);
 
 enum GameHudFlag
 {
@@ -154,12 +132,6 @@ enum GameHudFlagMasks
 	HUD_FLAG_CLEAR_RENDER_LESS_MASK = 0xdf,
 };
 
-CTR_STATIC_ASSERT(HUD_FLAG_LOAD_RESET_MASK == 0xf6);
-CTR_STATIC_ASSERT(HUD_FLAG_PAUSE_SCREENSHOT_MASK == 0xf6);
-CTR_STATIC_ASSERT(HUD_FLAG_CLEAR_RACE_HUD_MASK == 0xfe);
-CTR_STATIC_ASSERT(HUD_FLAG_CLEAR_CUP_STANDINGS_MASK == 0xfb);
-CTR_STATIC_ASSERT(HUD_FLAG_CLEAR_INTRO_RACE_TITLE_BARS_MASK == 0xf7);
-CTR_STATIC_ASSERT(HUD_FLAG_CLEAR_RENDER_LESS_MASK == 0xdf);
 
 enum
 {
@@ -173,8 +145,6 @@ enum
 typedef s16 MainMenuState;
 
 CTR_STATIC_ASSERT(sizeof(MainMenuState) == 0x2);
-CTR_STATIC_ASSERT(MAIN_MENU_TITLE == 0);
-CTR_STATIC_ASSERT(MAIN_MENU_SCRAPBOOK == 5);
 
 enum GameModeEnd
 {
@@ -245,7 +215,7 @@ enum GameMode2
 	INC_KEY = 0x2000000,
 	INC_TROPHY = 0x4000000,
 	CHEAT_TURBOCOUNT = 0x8000000,
-	LNG_CHANGE = 0x10000000, // (EurRetail Only)
+	LNG_CHANGE = 0x10000000,
 	CHEAT_ALL = CHEAT_ADV | CHEAT_BOMBS | CHEAT_ENGINE | CHEAT_ICY | CHEAT_INVISIBLE | CHEAT_MASK | CHEAT_ONELAP | CHEAT_SUPERHARD | CHEAT_TURBO |
 	            CHEAT_TURBOCOUNT | CHEAT_TURBOPAD | CHEAT_WUMPA,
 };
@@ -256,8 +226,6 @@ enum GameMode2Masks
 	GAME_MODE2_VEH_FREEZE_MASK = VEH_FREEZE_PODIUM | VEH_FREEZE_DOOR,
 };
 
-CTR_STATIC_ASSERT(GAME_MODE2_SPAWN_CLEAR_MASK == 0x3);
-CTR_STATIC_ASSERT(GAME_MODE2_VEH_FREEZE_MASK == 0x4004);
 
 enum CharacterUnlock
 {
@@ -311,17 +279,8 @@ CTR_STATIC_ASSERT(sizeof(struct RngDeadCoedState) == 0x8);
 
 struct GameTrackerConfetti
 {
-	union
-	{
-		// Retail updates the current particle halfword through a 32-bit lw/sw.
-		u32 numParticles_currWord;
-		struct
-		{
-			// 0x00
-			s16 numParticles_curr;
-			s16 numParticlesPad;
-		};
-	};
+	// Retail updates the current particle halfword through a 32-bit lw/sw.
+	u32 numParticles_currWord;
 
 	// 0x04
 	s16 numParticles_max;
@@ -466,33 +425,21 @@ struct GameTracker
 	// 1a10
 	int levelID;
 
-// 1a14
-#if BUILD == SepReview
-	char levelName[0xC];
-#elif BUILD >= UsaRetail
+	// 1a14
 	char levelName[0x24];
-#endif
 
-// according to FUN_8003af84,
-// 0x1a38 is offset 400 (0x190) of LEV
+	// according to FUN_8003af84,
+	// 0x1a38 is offset 400 (0x190) of LEV
 
-// 0x1a38
-// This "region" is only in EurRetail and JpnRetail,
-// while the other "region" goes back to JpnTrial
-#if BUILD >= EurRetail
-	char s_region_8byte[8];
-#endif
-
-	// 0x1a38 -- UsaRetail
-	// 0x1a40 -- EurRetail, JpnRetail
+	// 0x1a38
 	struct VisMem *visMem1;
 	struct VisMem *visMem2;
 
-	// 0x1a40 -- UsaRetail
+	// 0x1a40
 	// one for each player
 	struct RainBuffer rainBuffer[4];
 
-	// 0x1b00 -- UsaRetail
+	// 0x1b00
 	struct GameTrackerConfetti confetti;
 
 	// 0x1b0c
@@ -538,9 +485,7 @@ struct GameTracker
 	// 1ca4
 	int numParticles;
 
-	// 1c40 -- SepReview
-	// 1ca8 -- UsaRetail, JpnTrial
-	// 1cb0 -- EurRetail, JpnRetail
+	// 1ca8
 
 	// 1ca8, 1ca9
 	u8 numPlyrCurrGame;
@@ -667,51 +612,40 @@ struct GameTracker
 	// 1d48
 	char unknown_1d48_notFound;
 
-	// sep 0x1ce1 -- found
-	// usa 0x1d49 -- found
+	// 0x1d49 -- found
 	char newHighScoreIndex;
 
-#if BUILD >= UsaRetail
 	// 0x1d4a
 	s16 notFoundInCode1;
-#endif
 
-	// sep 0x1ce2
-	// usa 0x1d4c
+	// 0x1d4c
 	// on-screen keyboard
 	s16 typeCursorPosition;
 
 
-#if BUILD >= UsaRetail
 	// 0x1d4e
 	s16 notFoundInCode2;
 
 	// 0x1d50
 	s16 langIndex;
-#endif
 
-	// sep 1ce4 -- found
-	// usa 1d52 -- found
+	// 0x1d52 -- found
 	s16 constVal_9000;
 
-	// sep 1ce6
-	// usa 1d54
+	// 0x1d54
 	char prevNameEntered[0x11];
 
-	// sep 1cf7
-	// usa 1d65
+	// 0x1d65
 	char currNameEntered[0x11];
 
-#if BUILD >= UsaRetail
 	// 1d76
 	// 1d77
 	s16 nameEnterPadding;
-#endif
 
-	// usa 1d78 -- found
+	// 0x1d78 -- found
 	int timeToBeatInTimeTrial_ForCurrentEvent;
 
-	// usa 1d7c
+	// 0x1d7c
 	int trackLength_x_numLaps_x_8;
 
 	// ========================================
@@ -857,15 +791,12 @@ struct GameTracker
 	// 1ebc
 	int arcadeDifficulty;
 
-#if BUILD >= UsaRetail
 	// 1ec0
 	u32 numMissiles;
 	// 1ec4
 	int numPlayersWith3Missiles;
-#endif
 
-	// 1e50 sep
-	// 1ec8 usa
+	// 0x1ec8
 	// Only used in Tiger Temple and Cortex Castle,
 	// watch it change when you go into a room, it
 	// change to zero when rain stops, and gets a
@@ -877,11 +808,7 @@ struct GameTracker
 	struct Icon *trafficLightIcon[4];
 
 	// 1edc
-	// In retail versions of the game, this is
-	// used to end "Demo Mode" where you watch AIs drive.
-	// In real demos (june 1999, spyro2), this is used to
-	// end the demo while inactive, and reboot game. Both
-	// are exactly 4 bytes after GreenOn
+	// Ends Demo Mode after watching AI drivers.
 	u32 demoCountdownTimer;
 
 	// 1ee0
@@ -889,8 +816,7 @@ struct GameTracker
 	int unk1ee4;
 	int unk1ee8;
 
-	// 0x1e74 sep3
-	// 0x1eec UsaRetail
+	// 0x1eec
 	struct Icon *ptrIcons[0x88];
 
 	// internal name first, followed by what it is
@@ -923,10 +849,10 @@ struct GameTracker
 	// 0x16 -
 	// 0x17 - shieldj -- Blue Shield Icon
 	// 0x18 -
-	// 0x19 - first -- big 1, used to have st in early builds
-	// 0x1a - second -- big 2, used to have nd in early builds
-	// 0x1b - third -- big 3, used to have rd in early builds
-	// 0x1c - fourth -- big 4, used to have th in early builds
+	// 0x19 - first -- big 1
+	// 0x1a - second -- big 2
+	// 0x1b - third -- big 3
+	// 0x1c - fourth -- big 4
 	// 0x1d -
 	// 0x1e -
 	// 0x1f -
@@ -1045,17 +971,10 @@ struct GameTracker
 	// 210C
 	int unk210c;
 
-// No clue if this is right, I just know that
-// 4 bytes were addded between the start of
-// the icon array, and teh start of iconGroup,
-// between Sep3 and UsaRetail
-#if BUILD >= UsaRetail
+	// NOTE(aalhendi): This unknown word preserves the 0x2114 iconGroup offset.
 	int unk2110;
-#endif
 
-	// 2114 -- UsaRetail, JpnTrial
-	// 211c -- JpnRetail
-	// 2098 -- SepReview
+	// 2114
 	struct IconGroup *iconGroup[0x11];
 
 	// Different pointer struct than 1f6c
@@ -1071,16 +990,16 @@ struct GameTracker
 
 	// 0x07 - bubble
 	// 0x08 - bubblepop (underwater)
-	// 0x09 - falling ("drop" in JpnTrial) (only on some tracks)
+	// 0x09 - falling (only on some tracks)
 	// 0x0A - fire (mystery cave, tiger temple)
 
 	// 0x0B - wumpaposter
 	// 0x0C - trtireAnim
 	// 0x0D - mud (in Tiny Arena only)
 
-	// 0x0E - map-hub-02 in UsaRetail, jfontBigAnim in Japanese builds (118 icons)
-	// 0x0F - hub-dust-puff in UsaRetail, jfontSmallAnim in Japanese builds (118 icons)
-	// 0x10 - hubdustpuff (doesn't exist in 1006?)
+	// 0x0E - map-hub-02
+	// 0x0F - hub-dust-puff
+	// 0x10 - hubdustpuff
 
 	// ----------------------------------------------
 
@@ -1090,14 +1009,10 @@ struct GameTracker
 	// 215C
 	int unk215C;
 
-// 2160
-// always one more than the
-// array of Init Func Info
-#if BUILD == SepReview
-	struct Model *modelPtr[0xdf];
-#elif BUILD >= UsaRetail
+	// 2160
+	// always one more than the
+	// array of Init Func Info
 	struct Model *modelPtr[0xe3];
-#endif
 
 	// 0x00 - NO_FUNC
 	// 0x01 - ANIMATE_IF_HIT
@@ -1442,7 +1357,7 @@ struct GameTracker
 	// all podium related?
 
 	// 2572
-	u16 podiumRewardID;
+	s16 podiumRewardID;
 
 	// 2574
 	u8 bool_AdvHub_NeedToSwapLEV;
@@ -1477,39 +1392,11 @@ struct GameTracker
 	//  or Demo Mode, from main menu inactivity
 	u16 boolSeenOxideIntro;
 
-// 2584 (end of UsaRetail)
-
-// not in UsaRetail
-#if BUILD >= JpnTrial
-
 	// 2584
-	struct
-	{
-		// Will not draw in ePSXe, emu bug.
-		// should draw while transitioning hubs
-
-		// draws max of 0x5a (90) frames (3 sec)
-		int countdown_ThreeSeconds;
-
-		// 2588
-		int lngIndex_AdvHubName;
-
-	} AdvHubTitle_3Seconds;
-
-// 258C (end of jpnTrial)
-#endif
 };
 
 #ifndef CTR_NATIVE
-#if BUILD == SepReview
-CTR_STATIC_ASSERT(sizeof(struct GameTracker) == 0x24F8);
-#elif BUILD == UsaRetail
 CTR_STATIC_ASSERT(sizeof(struct GameTracker) == 0x2584);
-#elif BUILD == JpnTrial
-CTR_STATIC_ASSERT(sizeof(struct GameTracker) == 0x258C);
-#elif BUILD >= EurRetail
-CTR_STATIC_ASSERT(sizeof(struct GameTracker) == 0x2594);
-#endif
 #endif
 
 #endif

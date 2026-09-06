@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CTR_NATIVE_GPU_H
+#define CTR_NATIVE_GPU_H
 
 #ifdef CTR_NATIVE
 #include <platform/native_gpu_links.h>
@@ -6,37 +7,37 @@
 
 // PS1 primitive tags store the next OT link as 24 bits. Native routes this
 // through a GPU link-token bridge so the packet layout stays retail-shaped.
-force_inline u32 CtrGpu_PrimToOTLink24(const void *prim)
+static inline u32 CtrGpu_PrimToOTLink24(const void *prim)
 {
 #ifdef CTR_NATIVE
 	return NativeGpuLinks_FromHostPointer(prim);
 #else
-	return (u32)((uintptr_t)prim & 0xffffffu);
+	return (u32)((u32)prim & 0xffffffu);
 #endif
 }
 
-force_inline u32 CtrGpu_PackOTTag(uint32_t ot, u32 tag)
+static inline u32 CtrGpu_PackOTTag(u32 ot, u32 tag)
 {
 	return ((u32)ot & 0xffffffu) | tag;
 }
 
 #ifdef CTR_NATIVE
-force_inline b32 CtrGpu_IsCurrentOTRange(const struct DB *db, const uint32_t *start, const uint32_t *end)
+static inline b32 CtrGpu_IsCurrentOTRange(const struct DB *db, const u32 *start, const u32 *end)
 {
-	uintptr_t rangeStart;
-	uintptr_t rangeEnd;
-	uintptr_t otStart;
-	uintptr_t otCursor;
+	u32 rangeStart;
+	u32 rangeEnd;
+	u32 otStart;
+	u32 otCursor;
 
 	if ((db == NULL) || (start == NULL) || (end == NULL))
 	{
 		return false;
 	}
 
-	rangeStart = (uintptr_t)start;
-	rangeEnd = (uintptr_t)end;
-	otStart = (uintptr_t)db->otMem.start;
-	otCursor = (uintptr_t)db->otMem.cursor;
+	rangeStart = (u32)start;
+	rangeEnd = (u32)end;
+	otStart = (u32)db->otMem.start;
+	otCursor = (u32)db->otMem.cursor;
 
 	if (rangeEnd < rangeStart)
 	{
@@ -48,37 +49,37 @@ force_inline b32 CtrGpu_IsCurrentOTRange(const struct DB *db, const uint32_t *st
 
 #endif
 
-force_inline u32 CtrGpu_PackColorCode(u32 color, u32 code)
+static inline u32 CtrGpu_PackColorCode(u32 color, u32 code)
 {
 	return (color & 0xffffff) | (code << 24);
 }
 
-force_inline void CtrGpu_WriteColorCode(uint8_t *r, u32 colorCode)
+static inline void CtrGpu_WriteColorCode(u8 *r, u32 colorCode)
 {
-	r[0] = (uint8_t)colorCode;
-	r[1] = (uint8_t)(colorCode >> 8);
-	r[2] = (uint8_t)(colorCode >> 16);
-	r[3] = (uint8_t)(colorCode >> 24);
+	r[0] = (u8)colorCode;
+	r[1] = (u8)(colorCode >> 8);
+	r[2] = (u8)(colorCode >> 16);
+	r[3] = (u8)(colorCode >> 24);
 }
 
-force_inline void CtrGpu_WritePackedXY(VERTTYPE *x, u32 xy)
+static inline void CtrGpu_WritePackedXY(VERTTYPE *x, u32 xy)
 {
 	x[0] = (VERTTYPE)xy;
 	x[1] = (VERTTYPE)(xy >> 16);
 }
 
-force_inline void CtrGpu_WritePackedUV(uint8_t *u, u16 uv)
+static inline void CtrGpu_WritePackedUV(u8 *u, u16 uv)
 {
-	u[0] = (uint8_t)uv;
-	u[1] = (uint8_t)(uv >> 8);
+	u[0] = (u8)uv;
+	u[1] = (u8)(uv >> 8);
 }
 
-force_inline void CtrGpu_WritePackedUVWord(uint8_t *u, u32 uvTpage)
+static inline void CtrGpu_WritePackedUVWord(u8 *u, u32 uvTpage)
 {
-	u[0] = (uint8_t)uvTpage;
-	u[1] = (uint8_t)(uvTpage >> 8);
-	u[2] = (uint8_t)(uvTpage >> 16);
-	u[3] = (uint8_t)(uvTpage >> 24);
+	u[0] = (u8)uvTpage;
+	u[1] = (u8)(uvTpage >> 8);
+	u[2] = (u8)(uvTpage >> 16);
+	u[3] = (u8)(uvTpage >> 24);
 }
 
 CTR_STATIC_ASSERT(sizeof(POLY_FT4) == 0x28);
@@ -122,137 +123,137 @@ CTR_STATIC_ASSERT(offsetof(struct CtrGpuDrawModePacket, tag) == 0x00);
 CTR_STATIC_ASSERT(offsetof(struct CtrGpuDrawModePacket, drawMode) == 0x04);
 CTR_STATIC_ASSERT(offsetof(struct CtrGpuDrawModePacket, terminator) == 0x08);
 
-force_inline void CtrGpu_LinkPacket24(uint32_t *ot, u32 *packetTag, const void *packet, u32 tag)
+static inline void CtrGpu_LinkPacket24(u32 *ot, u32 *packetTag, const void *packet, u32 tag)
 {
 	*packetTag = CtrGpu_PackOTTag(*ot, tag);
-	*ot = (uint32_t)CtrGpu_PrimToOTLink24(packet);
+	*ot = (u32)CtrGpu_PrimToOTLink24(packet);
 }
 
-force_inline void CtrGpu_LinkPrimToOT(uint32_t *ot, const void *prim)
+static inline void CtrGpu_LinkPrimToOT(u32 *ot, const void *prim)
 {
-	*ot = (uint32_t)CtrGpu_PrimToOTLink24(prim);
+	*ot = (u32)CtrGpu_PrimToOTLink24(prim);
 }
 
-force_inline void addPolyF3(uint32_t *ot, POLY_F3 *p)
+static inline void addPolyF3(u32 *ot, POLY_F3 *p)
 {
 	p->tag = CtrGpu_PackOTTag(*ot, 0x4000000);
 	CtrGpu_LinkPrimToOT(ot, p);
 	p->code = 0x20;
 }
 
-force_inline void addPolyFT3(uint32_t *ot, POLY_FT3 *p)
+static inline void addPolyFT3(u32 *ot, POLY_FT3 *p)
 {
 	p->tag = CtrGpu_PackOTTag(*ot, 0x7000000);
 	CtrGpu_LinkPrimToOT(ot, p);
 	p->code = 0x24;
 }
 
-force_inline void addPolyG3(uint32_t *ot, POLY_G3 *p)
+static inline void addPolyG3(u32 *ot, POLY_G3 *p)
 {
 	p->tag = CtrGpu_PackOTTag(*ot, 0x6000000);
 	CtrGpu_LinkPrimToOT(ot, p);
 	p->code = 0x30;
 }
 
-force_inline void addPolyGT3(uint32_t *ot, POLY_GT3 *p)
+static inline void addPolyGT3(u32 *ot, POLY_GT3 *p)
 {
 	p->tag = CtrGpu_PackOTTag(*ot, 0x9000000);
 	CtrGpu_LinkPrimToOT(ot, p);
 	p->code = 0x34;
 }
 
-force_inline void addPolyF4(uint32_t *ot, POLY_F4 *p)
+static inline void addPolyF4(u32 *ot, POLY_F4 *p)
 {
 	p->tag = CtrGpu_PackOTTag(*ot, 0x5000000);
 	CtrGpu_LinkPrimToOT(ot, p);
 	p->code = 0x28;
 }
 
-force_inline void addPolyFT4(uint32_t *ot, POLY_FT4 *p)
+static inline void addPolyFT4(u32 *ot, POLY_FT4 *p)
 {
 	p->tag = CtrGpu_PackOTTag(*ot, 0x9000000);
 	CtrGpu_LinkPrimToOT(ot, p);
 	p->code = 0x2c;
 }
 
-force_inline void addPolyG4(uint32_t *ot, POLY_G4 *p)
+static inline void addPolyG4(u32 *ot, POLY_G4 *p)
 {
 	p->tag = CtrGpu_PackOTTag(*ot, 0x8000000);
 	CtrGpu_LinkPrimToOT(ot, p);
 	p->code = 0x38;
 }
 
-force_inline void addPolyGT4(uint32_t *ot, POLY_GT4 *p)
+static inline void addPolyGT4(u32 *ot, POLY_GT4 *p)
 {
 	p->tag = CtrGpu_PackOTTag(*ot, 0xc000000);
 	CtrGpu_LinkPrimToOT(ot, p);
 	p->code = 0x3c;
 }
 
-force_inline void addSprt8(uint32_t *ot, SPRT *p)
+static inline void addSprt8(u32 *ot, SPRT *p)
 {
 	p->tag = CtrGpu_PackOTTag(*ot, 0x3000000);
 	CtrGpu_LinkPrimToOT(ot, p);
 	p->code = 0x74;
 }
 
-force_inline void addSprt16(uint32_t *ot, SPRT *p)
+static inline void addSprt16(u32 *ot, SPRT *p)
 {
 	p->tag = CtrGpu_PackOTTag(*ot, 0x3000000);
 	CtrGpu_LinkPrimToOT(ot, p);
 	p->code = 0x7c;
 }
 
-force_inline void addSprt(uint32_t *ot, SPRT *p)
+static inline void addSprt(u32 *ot, SPRT *p)
 {
 	p->tag = CtrGpu_PackOTTag(*ot, 0x4000000);
 	CtrGpu_LinkPrimToOT(ot, p);
 	p->code = 0x64;
 }
 
-force_inline void addTile1(uint32_t *ot, TILE *p)
+static inline void addTile1(u32 *ot, TILE *p)
 {
 	p->tag = CtrGpu_PackOTTag(*ot, 0x2000000);
 	CtrGpu_LinkPrimToOT(ot, p);
 	p->code = 0x68;
 }
 
-force_inline void addTile8(uint32_t *ot, TILE *p)
+static inline void addTile8(u32 *ot, TILE *p)
 {
 	p->tag = CtrGpu_PackOTTag(*ot, 0x2000000);
 	CtrGpu_LinkPrimToOT(ot, p);
 	p->code = 0x70;
 }
 
-force_inline void addTile16(uint32_t *ot, TILE *p)
+static inline void addTile16(u32 *ot, TILE *p)
 {
 	p->tag = CtrGpu_PackOTTag(*ot, 0x2000000);
 	CtrGpu_LinkPrimToOT(ot, p);
 	p->code = 0x78;
 }
 
-force_inline void addTile(uint32_t *ot, TILE *p)
+static inline void addTile(u32 *ot, TILE *p)
 {
 	p->tag = CtrGpu_PackOTTag(*ot, 0x3000000);
 	CtrGpu_LinkPrimToOT(ot, p);
 	p->code = 0x60;
 }
 
-force_inline void addLineF2(uint32_t *ot, LINE_F2 *p)
+static inline void addLineF2(u32 *ot, LINE_F2 *p)
 {
 	p->tag = CtrGpu_PackOTTag(*ot, 0x3000000);
 	CtrGpu_LinkPrimToOT(ot, p);
 	p->code = 0x40;
 }
 
-force_inline void addLineG2(uint32_t *ot, LINE_G2 *p)
+static inline void addLineG2(u32 *ot, LINE_G2 *p)
 {
 	p->tag = CtrGpu_PackOTTag(*ot, 0x4000000);
 	CtrGpu_LinkPrimToOT(ot, p);
 	p->code = 0x50;
 }
 
-force_inline void addLineF3(uint32_t *ot, LINE_F3 *p)
+static inline void addLineF3(u32 *ot, LINE_F3 *p)
 {
 	p->tag = CtrGpu_PackOTTag(*ot, 0x5000000);
 	CtrGpu_LinkPrimToOT(ot, p);
@@ -260,7 +261,7 @@ force_inline void addLineF3(uint32_t *ot, LINE_F3 *p)
 	p->pad = 0x55555555;
 }
 
-force_inline void addLineG3(uint32_t *ot, LINE_G3 *p)
+static inline void addLineG3(u32 *ot, LINE_G3 *p)
 {
 	p->tag = CtrGpu_PackOTTag(*ot, 0x7000000);
 	CtrGpu_LinkPrimToOT(ot, p);
@@ -270,7 +271,7 @@ force_inline void addLineG3(uint32_t *ot, LINE_G3 *p)
 	p->p2 = 0;
 }
 
-force_inline void addLineF4(uint32_t *ot, LINE_F4 *p)
+static inline void addLineF4(u32 *ot, LINE_F4 *p)
 {
 	p->tag = CtrGpu_PackOTTag(*ot, 0x6000000);
 	CtrGpu_LinkPrimToOT(ot, p);
@@ -278,7 +279,7 @@ force_inline void addLineF4(uint32_t *ot, LINE_F4 *p)
 	p->pad = 0x55555555;
 }
 
-force_inline void addLineG4(uint32_t *ot, LINE_G4 *p)
+static inline void addLineG4(u32 *ot, LINE_G4 *p)
 {
 	p->tag = CtrGpu_PackOTTag(*ot, 0x9000000);
 	CtrGpu_LinkPrimToOT(ot, p);
@@ -287,15 +288,6 @@ force_inline void addLineG4(uint32_t *ot, LINE_G4 *p)
 	p->p1 = 0;
 	p->p2 = 0;
 }
-
-#ifndef CTR_NATIVE
-force_inline void addFill(uint32_t *ot, FILL *p)
-{
-	p->tag = CtrGpu_PackOTTag(*ot, 0x3000000);
-	CtrGpu_LinkPrimToOT(ot, p);
-	p->code = 2;
-}
-#endif
 
 // version of psn00bsdk's setXY4 macro that compiles to a smaller bytesize
 // based on original compiled code for the game's primitive functions
@@ -323,3 +315,5 @@ force_inline void addFill(uint32_t *ot, FILL *p)
 #define setColor4(p, rgb0, rgb1, rgb2, rgb3)                                                                                         \
 	(((P_COLOR *)&((p)->r0))->color = (rgb0)), (((P_COLOR *)&((p)->r1))->color = (rgb1)), (((P_COLOR *)&((p)->r2))->color = (rgb2)), \
 	    (((P_COLOR *)&((p)->r3))->color = (rgb3))
+
+#endif

@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b5f50-0x800b64c0.
 
 int RB_Fireball_ThCollide(struct Thread *fireballThread, struct Thread *driverTh, void *funcThCollide, struct ScratchpadStruct *sps)
 {

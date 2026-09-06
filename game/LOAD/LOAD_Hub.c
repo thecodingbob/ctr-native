@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-audited NTSC-U 926 0x80032ffc-0x80033108.
 // packID will always be 3-gGT->activeMempackIndex
 void LOAD_Hub_ReadFile(struct BigHeader *bigfile, int levID, int packID)
 {
@@ -19,7 +18,7 @@ void LOAD_Hub_ReadFile(struct BigHeader *bigfile, int levID, int packID)
 	MEMPACK_SwapPacks(packID);
 	MEMPACK_ClearLowMem();
 
-	sdata->PatchMem_Size = LOAD_HUB_PATCH_MEM_ACTIVE;
+	sdata->load_inProgress = 1;
 	gGT->level2 = 0;
 	gGT->levID_in_each_mempack[packID] = levID;
 
@@ -28,7 +27,6 @@ void LOAD_Hub_ReadFile(struct BigHeader *bigfile, int levID, int packID)
 	LOAD_AppendQueue(bigfile, LT_SETADDR, LOAD_GetBigfileIndex(levID, LOAD_LEVEL_LOD_1P, LVI_PTR), sdata->PatchMem_Ptr, LOAD_HubCallback);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80033108-0x80033318.
 void LOAD_Hub_SwapNow()
 {
 	struct Level *level1;
@@ -43,14 +41,7 @@ void LOAD_Hub_SwapNow()
 		VSync(0);
 	}
 
-	// Aug 5
-	// ptrintf("gGT->level2 = 0x%08x\n",gGT->level2);
-	// ptrintf("SWAPPING 1...\n");
-
 	LevInstDef_RePack(gGT->level1->ptr_mesh_info, 1);
-
-	// Aug 5
-	// ptrintf("SWAPPING 2...\n");
 
 	LOAD_HubSwapPtrs(gGT);
 
@@ -62,18 +53,7 @@ void LOAD_Hub_SwapNow()
 
 	Audio_AdvHub_SwapSong(gGT->levelID);
 
-	// Aug 5
-	// ptrintf("SWAPPING 3...\n");
-
 	LibraryOfModels_Clear(gGT);
-
-	/*
-	In Aug 5
-	if (sdata->PLYROBJECTLIST == 0)
-	{
-	    printf("ERROR: No PLYROBJECTLIST!\n");
-	}
-	*/
 
 	if (sdata->PLYROBJECTLIST != 0)
 	{
@@ -81,14 +61,6 @@ void LOAD_Hub_SwapNow()
 	}
 
 	level1 = gGT->level1;
-
-	/*
-	In Aug 5
-	if (level1 == 0)
-	{
-	    printf("ERROR: No LEVEL!\n");
-	}
-	*/
 
 	if (level1 != 0)
 	{
@@ -139,7 +111,6 @@ static const int s_advHubConnectedLevID[LOAD_ADV_HUB_COUNT][LOAD_ADV_HUB_CONNECT
 #define LOAD_HUB_CONNECTED_LEV(hub, index) rdata.MetaDataHubs[(hub)].connectedHub_LevID[(index)]
 #endif
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80033318-0x80033474.
 void LOAD_Hub_Main(struct BigHeader *bigfilePtr)
 {
 	struct GameTracker *gGT;
@@ -176,13 +147,11 @@ void LOAD_Hub_Main(struct BigHeader *bigfilePtr)
 			u32 currLevelID = gGT->levelID - GEM_STONE_VALLEY;
 
 			// ctr hubs are 0-4
-			if (currLevelID >= LOAD_ADV_HUB_COUNT)
+			if (currLevelID < LOAD_ADV_HUB_COUNT)
 			{
-				return;
+				LOAD_Hub_ReadFile(bigfilePtr, LOAD_HUB_CONNECTED_LEV(currLevelID, nextLevelID - LOAD_HUB_TRIGGER_ID_BIAS),
+				                  LOAD_HUB_MEMPACK_PAIR_INDEX_SUM - gGT->activeMempackIndex);
 			}
-
-			LOAD_Hub_ReadFile(bigfilePtr, LOAD_HUB_CONNECTED_LEV(currLevelID, nextLevelID - LOAD_HUB_TRIGGER_ID_BIAS),
-			                  LOAD_HUB_MEMPACK_PAIR_INDEX_SUM - gGT->activeMempackIndex);
 		}
 	}
 }

@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80033474-0x800334f4.
 void LOAD_OvrLOD(u32 numPlyrCurrGame)
 {
 	// change {1-4} -> {0-3}
@@ -13,7 +12,8 @@ void LOAD_OvrLOD(u32 numPlyrCurrGame)
 	{
 #ifndef CTR_NATIVE
 		// LOD overlay 226-229
-		LOAD_AppendQueue(0, LT_SETADDR, BI_OVERLAYSECT2 + overlayIndex, &OVR_Region2, LOAD_Callback_Overlay_Generic);
+		sdata->load_inProgress = 1;
+		LOAD_AppendQueue(sdata->ptrBigfileCdPos_2, LT_SETADDR, BI_OVERLAYSECT2 + overlayIndex, &OVR_Region2, LOAD_Callback_Overlay_Generic);
 #endif
 
 		// save ID, and reload next overlay (sector read invalidation)
@@ -23,7 +23,6 @@ void LOAD_OvrLOD(u32 numPlyrCurrGame)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800334f4-0x80033570.
 void LOAD_OvrEndRace(u32 overlayIndex)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -33,7 +32,8 @@ void LOAD_OvrEndRace(u32 overlayIndex)
 	{
 #ifndef CTR_NATIVE
 		// EndOfRace overlay 221-225
-		LOAD_AppendQueue(0, LT_SETADDR, BI_OVERLAYSECT1 + overlayIndex, &OVR_Region1, LOAD_Callback_Overlay_Generic);
+		sdata->load_inProgress = 1;
+		LOAD_AppendQueue(sdata->ptrBigfileCdPos_2, LT_SETADDR, BI_OVERLAYSECT1 + overlayIndex, &OVR_Region1, LOAD_Callback_Overlay_Generic);
 #endif
 
 		gGT->overlayIndex_EndOfRace = overlayIndex;
@@ -65,7 +65,6 @@ static void LOAD_NativeResetThreadsOverlay(enum OverlayIndex overlayIndex)
 }
 #endif
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80033570-0x800335dc.
 void LOAD_OvrThreads(u32 overlayIndex)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -76,7 +75,8 @@ void LOAD_OvrThreads(u32 overlayIndex)
 #ifndef CTR_NATIVE
 		gGT->overlayIndex_Threads = OVERLAY_INDEX_NONE;
 		// Threads overlay 230-233
-		LOAD_AppendQueue(0, LT_SETADDR, BI_OVERLAYSECT3 + overlayIndex, &OVR_Region3, data.overlayCallbackFuncs[overlayIndex]);
+		sdata->load_inProgress = 1;
+		LOAD_AppendQueue(sdata->ptrBigfileCdPos_2, LT_SETADDR, BI_OVERLAYSECT3 + overlayIndex, &OVR_Region3, data.overlayCallbackFuncs[overlayIndex]);
 #else
 		// NOTE(aalhendi): Native overlays are already linked, so reset the
 		// overlay-owned data that retail would refresh by streaming into OVR_Region3.
@@ -87,7 +87,6 @@ void LOAD_OvrThreads(u32 overlayIndex)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800335dc-0x80033610.
 int LOAD_GetAdvPackIndex(void)
 {
 	int levelID = sdata->gGT->levelID;

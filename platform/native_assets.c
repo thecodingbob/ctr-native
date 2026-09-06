@@ -48,14 +48,12 @@ global_variable int s_nativeAssetIndexBuilt;
 
 internal int NativeAssets_FileExistsHost(const char *path)
 {
-	FILE *file;
-
 	if (path == NULL)
 	{
 		return 0;
 	}
 
-	file = fopen(path, "rb");
+	FILE *file = fopen(path, "rb");
 	if (file == NULL)
 	{
 		return 0;
@@ -140,10 +138,9 @@ internal int NativeAssets_FindHostChildCaseInsensitive(NativeStr8 parent, Native
 		FindClose(findHandle);
 	}
 #else
-	DIR *dir;
 	struct dirent *entry;
 
-	dir = opendir(parentPath);
+	DIR *dir = opendir(parentPath);
 	if (dir == NULL)
 	{
 		return 0;
@@ -203,16 +200,13 @@ internal int NativeAssets_FindAssetsDir(NativeStr8 baseDir, char *dst, size_t ds
 
 internal char *NativeAssets_CopyCString(const char *src)
 {
-	size_t size;
-	char *copy;
-
 	if (src == NULL)
 	{
 		return NULL;
 	}
 
-	size = strlen(src) + 1u;
-	copy = (char *)malloc(size);
+	size_t size = strlen(src) + 1u;
+	char *copy = (char *)malloc(size);
 	if (copy == NULL)
 	{
 		return NULL;
@@ -224,9 +218,7 @@ internal char *NativeAssets_CopyCString(const char *src)
 
 internal void NativeAssets_ClearIndex(void)
 {
-	int i;
-
-	for (i = 0; i < s_nativeAssetIndexCount; i++)
+	for (int i = 0; i < s_nativeAssetIndexCount; i++)
 	{
 		free(s_nativeAssetIndex[i].key);
 		free(s_nativeAssetIndex[i].path);
@@ -241,21 +233,18 @@ internal void NativeAssets_ClearIndex(void)
 
 internal int NativeAssets_IndexReserve(int needed)
 {
-	struct NativeAssetIndexEntry *entries;
-	int newCapacity;
-
 	if (needed <= s_nativeAssetIndexCapacity)
 	{
 		return 1;
 	}
 
-	newCapacity = (s_nativeAssetIndexCapacity == 0) ? 256 : s_nativeAssetIndexCapacity * 2;
+	int newCapacity = (s_nativeAssetIndexCapacity == 0) ? 256 : s_nativeAssetIndexCapacity * 2;
 	while (newCapacity < needed)
 	{
 		newCapacity *= 2;
 	}
 
-	entries = (struct NativeAssetIndexEntry *)realloc(s_nativeAssetIndex, (size_t)newCapacity * sizeof(*s_nativeAssetIndex));
+	struct NativeAssetIndexEntry *entries = (struct NativeAssetIndexEntry *)realloc(s_nativeAssetIndex, (size_t)newCapacity * sizeof(*s_nativeAssetIndex));
 	if (entries == NULL)
 	{
 		return 0;
@@ -268,15 +257,13 @@ internal int NativeAssets_IndexReserve(int needed)
 
 internal int NativeAssets_NormalizeRelativeKey(NativeStr8 relativePath, char *dst, size_t dstSize)
 {
-	size_t i;
-
 	relativePath = NativePath_SkipLeadingSeparators(relativePath);
 	if ((dst == NULL) || (dstSize == 0) || (relativePath.len >= dstSize))
 	{
 		return 0;
 	}
 
-	for (i = 0; i < relativePath.len; i++)
+	for (size_t i = 0; i < relativePath.len; i++)
 	{
 		u8 byte = relativePath.ptr[i];
 		dst[i] = (char)(NativePath_IsSeparator(byte) ? '/' : NativeStr8_ToLowerAscii(byte));
@@ -289,14 +276,13 @@ internal int NativeAssets_NormalizeRelativeKey(NativeStr8 relativePath, char *ds
 internal const char *NativeAssets_FindIndexedPath(NativeStr8 relativePath)
 {
 	char key[NATIVE_ASSETS_PATH_MAX];
-	int i;
 
 	if (!NativeAssets_NormalizeRelativeKey(relativePath, key, sizeof(key)))
 	{
 		return NULL;
 	}
 
-	for (i = 0; i < s_nativeAssetIndexCount; i++)
+	for (int i = 0; i < s_nativeAssetIndexCount; i++)
 	{
 		if (strcmp(s_nativeAssetIndex[i].key, key) == 0)
 		{
@@ -310,8 +296,6 @@ internal const char *NativeAssets_FindIndexedPath(NativeStr8 relativePath)
 internal int NativeAssets_IndexAdd(NativeStr8 relativePath, const char *hostPath)
 {
 	char key[NATIVE_ASSETS_PATH_MAX];
-	char *keyCopy;
-	char *pathCopy;
 
 	if (!NativeAssets_NormalizeRelativeKey(relativePath, key, sizeof(key)))
 	{
@@ -323,8 +307,8 @@ internal int NativeAssets_IndexAdd(NativeStr8 relativePath, const char *hostPath
 		return 0;
 	}
 
-	keyCopy = NativeAssets_CopyCString(key);
-	pathCopy = NativeAssets_CopyCString(hostPath);
+	char *keyCopy = NativeAssets_CopyCString(key);
+	char *pathCopy = NativeAssets_CopyCString(hostPath);
 	if ((keyCopy == NULL) || (pathCopy == NULL))
 	{
 		free(keyCopy);
@@ -394,10 +378,9 @@ internal void NativeAssets_IndexScanDir(const char *dirPath, NativeStr8 relative
 		FindClose(findHandle);
 	}
 #else
-	DIR *dir;
 	struct dirent *entry;
 
-	dir = opendir(dirPath);
+	DIR *dir = opendir(dirPath);
 	if (dir == NULL)
 	{
 		return;
@@ -408,7 +391,6 @@ internal void NativeAssets_IndexScanDir(const char *dirPath, NativeStr8 relative
 		NativeStr8 entryName = NativeStr8_FromCString(entry->d_name);
 		char childPath[NATIVE_ASSETS_PATH_MAX];
 		char relativePath[NATIVE_ASSETS_PATH_MAX];
-		DIR *childDir;
 
 		if (NativeStr8_Equals(entryName, NATIVE_STR8_LIT(".")) || NativeStr8_Equals(entryName, NATIVE_STR8_LIT("..")))
 		{
@@ -435,7 +417,7 @@ internal void NativeAssets_IndexScanDir(const char *dirPath, NativeStr8 relative
 			}
 		}
 
-		childDir = opendir(childPath);
+		DIR *childDir = opendir(childPath);
 		if (childDir != NULL)
 		{
 			closedir(childDir);
@@ -535,14 +517,14 @@ internal int NativeAssets_SetBaseDir(NativeStr8 baseDir)
 int NativeAssets_Init(const char *executableBasePath)
 {
 	char parentDir[NATIVE_ASSETS_PATH_MAX];
-	NativeStr8 exeDir;
+	char grandparentDir[NATIVE_ASSETS_PATH_MAX];
 
 	if ((executableBasePath == NULL) || (executableBasePath[0] == '\0'))
 	{
 		executableBasePath = ".";
 	}
 
-	exeDir = NativePath_TrimTrailingSeparators(NativeStr8_FromCString(executableBasePath));
+	NativeStr8 exeDir = NativePath_TrimTrailingSeparators(NativeStr8_FromCString(executableBasePath));
 
 	if (NativeAssets_BaseHasRequiredFile(exeDir))
 	{
@@ -556,6 +538,16 @@ int NativeAssets_Init(const char *executableBasePath)
 		if (NativeAssets_BaseHasRequiredFile(parent))
 		{
 			return NativeAssets_SetBaseDir(parent);
+		}
+
+		if (NativePath_Parent(grandparentDir, sizeof(grandparentDir), parent))
+		{
+			NativeStr8 grandparent = NativeStr8_FromCString(grandparentDir);
+
+			if (NativeAssets_BaseHasRequiredFile(grandparent))
+			{
+				return NativeAssets_SetBaseDir(grandparent);
+			}
 		}
 	}
 
@@ -590,7 +582,6 @@ int NativeAssets_BuildPath(const char *relativePath, char *dst, size_t dstSize)
 int NativeAssets_ResolvePathStr8(NativeStr8 relativePath, char *dst, size_t dstSize)
 {
 	char path[NATIVE_ASSETS_PATH_MAX];
-	const char *indexedPath;
 
 	if (!NativeAssets_BuildPathStr8(relativePath, path, sizeof(path)))
 	{
@@ -603,7 +594,7 @@ int NativeAssets_ResolvePathStr8(NativeStr8 relativePath, char *dst, size_t dstS
 	}
 
 	NativeAssets_BuildIndex();
-	indexedPath = NativeAssets_FindIndexedPath(relativePath);
+	const char *indexedPath = NativeAssets_FindIndexedPath(relativePath);
 	if (indexedPath == NULL)
 	{
 		return 0;
@@ -620,14 +611,13 @@ int NativeAssets_ResolvePath(const char *relativePath, char *dst, size_t dstSize
 FILE *NativeAssets_OpenHostStr8(NativeStr8 relativePath, const char *mode)
 {
 	char path[NATIVE_ASSETS_PATH_MAX];
-	FILE *file;
 
 	if ((mode == NULL) || !NativeAssets_BuildPathStr8(relativePath, path, sizeof(path)))
 	{
 		return NULL;
 	}
 
-	file = fopen(path, mode);
+	FILE *file = fopen(path, mode);
 	if (file != NULL)
 	{
 		return file;
@@ -668,13 +658,10 @@ internal u32 NativeAssets_ReadLE32(const u8 *data)
 
 internal int NativeAssets_ReadHostBytes(const char *path, struct NativeAssetsByteBuffer *bytes)
 {
-	FILE *file;
-	long size;
-
 	bytes->data = NULL;
 	bytes->size = 0;
 
-	file = NativeAssets_OpenHost(path, "rb");
+	FILE *file = NativeAssets_OpenHost(path, "rb");
 	if (file == NULL)
 	{
 		return 0;
@@ -686,7 +673,7 @@ internal int NativeAssets_ReadHostBytes(const char *path, struct NativeAssetsByt
 		return 0;
 	}
 
-	size = ftell(file);
+	long size = ftell(file);
 	if ((size <= 0) || (size > 0x7fffffff))
 	{
 		fclose(file);
@@ -786,10 +773,6 @@ internal int NativeAssets_ValidateXA(void)
 	};
 	struct NativeAssetsByteBuffer xnf;
 	u8 required[NATIVE_ASSETS_XA_TYPE_COUNT][NATIVE_ASSETS_XA_MAX_FILE_NUMBER];
-	u32 numXasTotal;
-	u32 numTracksTotal;
-	u32 entryOffset;
-	u32 entryEnd;
 	u32 missing = 0;
 	u32 categoryID;
 
@@ -808,10 +791,10 @@ internal int NativeAssets_ValidateXA(void)
 		return 0;
 	}
 
-	numXasTotal = NativeAssets_ReadLE32(&xnf.data[NATIVE_ASSETS_XA_NUM_XAS_TOTAL_OFFSET]);
-	numTracksTotal = NativeAssets_ReadLE32(&xnf.data[NATIVE_ASSETS_XA_NUM_TRACKS_TOTAL_OFFSET]);
-	entryOffset = NATIVE_ASSETS_XA_HEADER_SIZE + numXasTotal * 4u;
-	entryEnd = entryOffset + numTracksTotal * NATIVE_ASSETS_XA_ENTRY_BYTES;
+	u32 numXasTotal = NativeAssets_ReadLE32(&xnf.data[NATIVE_ASSETS_XA_NUM_XAS_TOTAL_OFFSET]);
+	u32 numTracksTotal = NativeAssets_ReadLE32(&xnf.data[NATIVE_ASSETS_XA_NUM_TRACKS_TOTAL_OFFSET]);
+	u32 entryOffset = NATIVE_ASSETS_XA_HEADER_SIZE + numXasTotal * 4u;
+	u32 entryEnd = entryOffset + numTracksTotal * NATIVE_ASSETS_XA_ENTRY_BYTES;
 
 	if ((entryEnd < entryOffset) || (entryEnd > (u32)xnf.size))
 	{
@@ -824,7 +807,6 @@ internal int NativeAssets_ValidateXA(void)
 	{
 		u32 numSongs = NativeAssets_ReadLE32(&xnf.data[NATIVE_ASSETS_XA_NUM_SONGS_OFFSET + categoryID * 4u]);
 		u32 firstSongIndex = NativeAssets_ReadLE32(&xnf.data[NATIVE_ASSETS_XA_FIRST_SONG_INDEX_OFFSET + categoryID * 4u]);
-		u32 xaID;
 
 		if ((firstSongIndex > numTracksTotal) || (numSongs > numTracksTotal) || (firstSongIndex + numSongs > numTracksTotal))
 		{
@@ -833,7 +815,7 @@ internal int NativeAssets_ValidateXA(void)
 			return 0;
 		}
 
-		for (xaID = 0; xaID < numSongs; xaID++)
+		for (u32 xaID = 0; xaID < numSongs; xaID++)
 		{
 			const u8 *entry = &xnf.data[entryOffset + (firstSongIndex + xaID) * NATIVE_ASSETS_XA_ENTRY_BYTES];
 			required[categoryID][entry[1]] = 1;
@@ -844,21 +826,18 @@ internal int NativeAssets_ValidateXA(void)
 
 	for (categoryID = 0; categoryID < NATIVE_ASSETS_XA_TYPE_COUNT; categoryID++)
 	{
-		u32 fileNumber;
-
-		for (fileNumber = 0; fileNumber < NATIVE_ASSETS_XA_MAX_FILE_NUMBER; fileNumber++)
+		for (u32 fileNumber = 0; fileNumber < NATIVE_ASSETS_XA_MAX_FILE_NUMBER; fileNumber++)
 		{
 			char relativePath[256];
 			char path[NATIVE_ASSETS_PATH_MAX];
 			struct NativeDiscImageFile discFile;
-			int written;
 
 			if (!required[categoryID][fileNumber])
 			{
 				continue;
 			}
 
-			written = snprintf(relativePath, sizeof(relativePath), "%s/S%02u.XA", xaDirs[categoryID], (unsigned int)fileNumber);
+			int written = snprintf(relativePath, sizeof(relativePath), "%s/S%02u.XA", xaDirs[categoryID], (unsigned int)fileNumber);
 			if ((written <= 0) || ((size_t)written >= sizeof(relativePath)) || !NativeAssets_BuildPath(relativePath, path, sizeof(path)))
 			{
 				fprintf(stderr, "[CTR Native] XA asset path too long: %s/S%02u.XA\n", xaDirs[categoryID], (unsigned int)fileNumber);

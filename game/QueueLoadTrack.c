@@ -1,7 +1,6 @@
 #include <common.h>
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80043b30-0x80043c04.
 void QueueLoadTrack_MenuProc(struct RectMenu *menu)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -35,7 +34,6 @@ void QueueLoadTrack_MenuProc(struct RectMenu *menu)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80043c04-0x80043c10.
 struct RectMenu *QueueLoadTrack_GetMenuPtr()
 {
 	return &data.menuQueueLoadTrack;

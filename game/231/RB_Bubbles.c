@@ -2,7 +2,6 @@
 
 extern struct ParticleEmitter emSet_TubeBubbles[7];
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b39dc-0x800b3bc0.
 void RB_Bubbles_RoosTubes()
 {
 	struct GameTracker *gGT;
@@ -43,7 +42,7 @@ void RB_Bubbles_RoosTubes()
 	for (
 	    // initializer, skip one cause level geometry
 	    // covers the particles (see #ctr-early-content)
-	    numSpawnPosCoords = spawnType2->numCoords - 1, spawnPos = &spawnType2->positions[1], numFreeParticles = gGT->JitPools.particle.free.count;
+	    numSpawnPosCoords = spawnType2->numCoords - 1, spawnPos = &spawnType2->coords.positions[1], numFreeParticles = gGT->JitPools.particle.free.count;
 
 	    // end condition
 	    (numSpawnPosCoords > 0) && (numFreeParticles >= 0x14);
@@ -93,7 +92,7 @@ void RB_Bubbles_RoosTubes()
 
 		for (i = 0; i < 3; i++)
 		{
-			p->axis[i].startVal += spawnPos->v[i] * 0x100;
+			p->axis[i].startVal += CTR_VECTOR_DATA(spawnPos)[i] * 0x100;
 		}
 	}
 }

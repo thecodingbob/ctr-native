@@ -2,7 +2,6 @@
 
 int MATH_Cos(u32 angle)
 {
-	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003d1c0-0x8003d214.
 	u32 trig = CTR_ReadU32LE(&data.trigApprox[ANG_MODULO_HALF_PI(angle)]);
 	s32 cosine;
 

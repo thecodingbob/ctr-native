@@ -26,7 +26,6 @@ enum
 
 static const u32 UI_REWARD_PICKUP_COLOR = 0xffff0000u;
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004c55c-0x8004c718.
 void UI_SaveLapTime(int numLaps, int lapTime, s16 driverID)
 {
 	int playerLapIndex = ((int)driverID * UI_LAP_TIME_LAPS_PER_PLAYER) + numLaps;
@@ -50,7 +49,6 @@ void UI_SaveLapTime(int numLaps, int lapTime, s16 driverID)
 	sdata->LapTimes.p1_Ms1s[playerLapIndex] = (CTR_MipsMulLo(lapTime, UI_LAP_TIME_CENTISECOND_SCALE) / UI_LAP_TIME_TICKS_PER_SECOND) % UI_LAP_TIME_DECIMAL_BASE;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004c718-0x8004c850.
 void UI_ThTick_CountPickup(struct Thread *bucket)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -86,7 +84,6 @@ void UI_ThTick_CountPickup(struct Thread *bucket)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004c850-0x8004c914.
 void UI_ThTick_Reward(struct Thread *bucket)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -115,7 +112,6 @@ void UI_ThTick_Reward(struct Thread *bucket)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004c914-0x8004ca04.
 void UI_ThTick_CtrLetters(struct Thread *bucket)
 {
 	struct Instance *inst = bucket->inst;
@@ -154,7 +150,6 @@ void UI_ThTick_CtrLetters(struct Thread *bucket)
 	MatrixRotate(&inst->matrix, &obj->m, &inst->matrix);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004ca04-0x8004caa8.
 void UI_ThTick_big1(struct Thread *bucket)
 {
 	struct UiElement3D *obj = bucket->object;

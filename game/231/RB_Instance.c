@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800abab0-0x800abbb4.
 void RB_MakeInstanceReflective(struct ScratchpadStruct *sps, struct Instance *inst)
 {
 	u16 quadFlags;

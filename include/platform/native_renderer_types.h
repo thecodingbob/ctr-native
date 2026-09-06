@@ -22,7 +22,6 @@
 
 #define MAX_VERTEX_BUFFER_SIZE (1u << 16)
 
-#pragma pack(push, 1)
 typedef struct
 {
 	s16 x, y, page, clut;
@@ -32,7 +31,8 @@ typedef struct
 
 	s8 tcx, tcy, _p0, _p1;
 } GrVertex;
-#pragma pack(pop)
+
+CTR_STATIC_ASSERT(sizeof(GrVertex) == 20);
 
 typedef enum
 {

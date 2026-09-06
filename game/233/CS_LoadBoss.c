@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ae81c-0x800ae834
 void CS_LoadBossCallback(struct LoadQueueSlot *lqs)
 {
 	void *ptr = lqs->ptrDestination;
@@ -8,7 +7,6 @@ void CS_LoadBossCallback(struct LoadQueueSlot *lqs)
 	D233.ptrModelBossHead = ptr;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ae834-0x800ae9a8
 void CS_LoadBoss(const struct BossCutsceneData *bcd)
 {
 	struct GameTracker *gGT = sdata->gGT;

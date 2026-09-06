@@ -52,15 +52,6 @@ enum RaceFlagConstants
 	RACE_FLAG_TRIG_NEGATE_MASK = 0x800,
 };
 
-CTR_STATIC_ASSERT(RACE_FLAG_POSITION_OFFSCREEN == 5000);
-CTR_STATIC_ASSERT(RACE_FLAG_POSITION_OFFSCREEN_LEFT == -5000);
-CTR_STATIC_ASSERT(RACE_FLAG_OFFSCREEN_CHECK_WIDTH == 9999);
-CTR_STATIC_ASSERT(RACE_FLAG_LOADING_OFFSCREEN_X == 0x23c);
-CTR_STATIC_ASSERT(RACE_FLAG_LOADING_CENTER_X == 0x100);
-CTR_STATIC_ASSERT(RACE_FLAG_LOADING_ANIM_RESET_FRAME == 0x50);
-CTR_STATIC_ASSERT(RACE_FLAG_TRIG_TABLE_MASK == 0x3ff);
-CTR_STATIC_ASSERT(RACE_FLAG_TRIG_HIGH_HALF_MASK == 0x400);
-CTR_STATIC_ASSERT(RACE_FLAG_TRIG_NEGATE_MASK == 0x800);
 
 struct RaceFlagProjectedRow
 {
@@ -81,7 +72,6 @@ struct RaceFlagScratch
 CTR_STATIC_ASSERT(sizeof(union RaceFlagScreenBuffer) == 0x78);
 CTR_STATIC_ASSERT(sizeof(struct RaceFlagScratch) == 0xf0);
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80043e34-0x80043f1c.
 int RaceFlag_MoveModels(int frameIndex, int numFrames)
 {
 	// need a better prefix than TitleFlag,
@@ -128,7 +118,6 @@ int RaceFlag_MoveModels(int frameIndex, int numFrames)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80043f1c-0x80043f28.
 b32 RaceFlag_IsFullyOnScreen(void)
 {
 	// return true if flag is fully on screen
@@ -137,7 +126,6 @@ b32 RaceFlag_IsFullyOnScreen(void)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80043f28-0x80043f44.
 b32 RaceFlag_IsFullyOffScreen(void)
 {
 	// return false, "not true", if flag is < 5000, partially on-screen
@@ -146,7 +134,6 @@ b32 RaceFlag_IsFullyOffScreen(void)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80043f44-0x80043f8c.
 b32 RaceFlag_IsTransitioning(void)
 {
 	int pos = sdata->RaceFlag_Position;
@@ -160,14 +147,12 @@ b32 RaceFlag_IsTransitioning(void)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80043f8c-0x80043fb0.
 void RaceFlag_SetDrawOrder(b32 drawAfterFlag)
 {
 	sdata->RaceFlag_DrawOrder = (drawAfterFlag != 0) ? RACE_FLAG_DRAW_ORDER_AFTER_FLAG : RACE_FLAG_DRAW_ORDER_BEFORE_FLAG;
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80043fb0-0x8004402c.
 void RaceFlag_BeginTransition(int direction)
 {
 	// Begin Transition on-screen
@@ -195,7 +180,6 @@ void RaceFlag_BeginTransition(int direction)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004402c-0x80044058.
 void RaceFlag_SetFullyOnScreen()
 {
 	sdata->RaceFlag_AnimationType = RACE_FLAG_TRANSITION_ONSCREEN;
@@ -209,7 +193,6 @@ void RaceFlag_SetFullyOnScreen()
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80044058-0x80044088.
 void RaceFlag_SetFullyOffScreen()
 {
 	sdata->RaceFlag_AnimationType = RACE_FLAG_TRANSITION_ONSCREEN;
@@ -223,21 +206,18 @@ void RaceFlag_SetFullyOffScreen()
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80044088-0x80044094.
 void RaceFlag_SetCanDraw(s16 canDraw)
 {
 	sdata->RaceFlag_CanDraw = canDraw;
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80044094-0x800440a0.
 s16 RaceFlag_GetCanDraw(void)
 {
 	return sdata->RaceFlag_CanDraw;
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800440a0-0x80044290.
 u32 *RaceFlag_GetOT(void)
 {
 	s16 positionStep;
@@ -338,14 +318,12 @@ u32 *RaceFlag_GetOT(void)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80044290-0x800442a0.
 void RaceFlag_ResetTextAnim(void)
 {
 	sdata->RaceFlag_LoadingTextAnimFrame = -1;
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800442a0-0x800444e8.
 void RaceFlag_DrawLoadingString(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -359,7 +337,7 @@ void RaceFlag_DrawLoadingString(void)
 	int nextLetterStartX;
 	int drawX;
 	u32 *oldOT;
-	char glyph[2];
+	u8 glyph[2];
 
 	loadingText = sdata->lngStrings[LNG_LOADING];
 
@@ -431,7 +409,7 @@ void RaceFlag_DrawLoadingString(void)
 			glyph[0] = *loadingText;
 			nextGlyph = loadingText + 1;
 			glyphByteCount = 1;
-			if ((u8)glyph[0] < RACE_FLAG_LOADING_GLYPH_EXTENDED_MAX)
+			if (glyph[0] < RACE_FLAG_LOADING_GLYPH_EXTENDED_MAX)
 			{
 				glyph[1] = *nextGlyph;
 				nextGlyph = loadingText + 2;
@@ -443,11 +421,11 @@ void RaceFlag_DrawLoadingString(void)
 			}
 			if ((s16)letterX != RACE_FLAG_LOADING_OFFSCREEN_X)
 			{
-				DecalFont_DrawLineStrlen(glyph, glyphByteCount, (drawX + letterX), RACE_FLAG_LOADING_Y, RACE_FLAG_LOADING_FONT_SIZE,
+				DecalFont_DrawLineStrlen((char *)glyph, glyphByteCount, (s16)(drawX + letterX), RACE_FLAG_LOADING_Y, RACE_FLAG_LOADING_FONT_SIZE,
 				                         RACE_FLAG_LOADING_TEXT_FLAGS);
 			}
 
-			letterX = DecalFont_GetLineWidthStrlen(glyph, glyphByteCount, RACE_FLAG_LOADING_FONT_SIZE);
+			letterX = DecalFont_GetLineWidthStrlen((char *)glyph, glyphByteCount, RACE_FLAG_LOADING_FONT_SIZE);
 
 			drawX = drawX + letterX;
 			nextLetterStartX = nextLetterStartX + RACE_FLAG_LOADING_NEXT_LETTER_START_X;
@@ -463,7 +441,7 @@ void RaceFlag_DrawLoadingString(void)
 	}
 
 	// pointer to OT mem
-	gGT->pushBuffer_UI.ptrOT = (uint32_t *)oldOT;
+	gGT->pushBuffer_UI.ptrOT = (u32 *)oldOT;
 
 	if (letterAnimFrame < RACE_FLAG_LOADING_ANIM_RESET_FRAME)
 	{
@@ -488,7 +466,7 @@ void RaceFlag_DrawLoadingString(void)
 	return;
 }
 
-force_inline char RaceFlag_CalculateBrightness(u32 sine, u8 darkTile)
+static char RaceFlag_CalculateBrightness(u32 sine, u8 darkTile)
 {
 	if (darkTile)
 	{
@@ -497,7 +475,7 @@ force_inline char RaceFlag_CalculateBrightness(u32 sine, u8 darkTile)
 	return ((sine * -125 + 0x1fe000) >> 0xD);
 }
 
-force_inline int RaceFlag_Sin(u32 angle)
+static int RaceFlag_Sin(u32 angle)
 {
 	int sine;
 
@@ -519,7 +497,6 @@ force_inline int RaceFlag_Sin(u32 angle)
 	return sine;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800444e8-0x80044ef8.
 void RaceFlag_DrawSelf()
 {
 	int i, j;
@@ -527,7 +504,7 @@ void RaceFlag_DrawSelf()
 	int toggle;
 
 	s16 flagPos;
-	uint32_t *ot;
+	u32 *ot;
 	u32 screenlimit;
 	u32 dimensions;
 
@@ -569,7 +546,7 @@ void RaceFlag_DrawSelf()
 SKIP_LOADING_TEXT:
 
 	sdata->RaceFlag_CopyLoadStage = sdata->Loading.stage;
-	ot = (uint32_t *)RaceFlag_GetOT();
+	ot = (u32 *)RaceFlag_GetOT();
 
 	gte_SetRotMatrix(&data.matrixTitleFlag);
 	gte_SetTransMatrix(&data.matrixTitleFlag);
@@ -682,7 +659,7 @@ SKIP_LOADING_TEXT:
 
 	// === Rest of Iterations ===
 	// Now executing without branching
-	for (column = 1; column < 36; column++)
+	for (column = 1; column < 35; column++)
 	{
 		union RaceFlagScreenBuffer *writeScreen = &scratch->screen[toggle];
 		toggle = toggle ^ 1;

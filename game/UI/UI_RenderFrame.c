@@ -2,7 +2,6 @@
 
 // To do: add a header
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80052f98-0x80054298.
 // CTR_NATIVE only adds an ST1 map-metadata null guard below.
 void UI_RenderFrame_Racing()
 {
@@ -16,7 +15,7 @@ void UI_RenderFrame_Racing()
 	struct PushBuffer *pb;
 	u32 partTimeVariable5;
 	struct Icon *iconPtr;
-	uint32_t *primMemCurr;
+	u32 *primMemCurr;
 	char *fmt;
 	POLY_G4 *TurboCounterBar;
 	s16 sVar17;
@@ -233,7 +232,6 @@ void UI_RenderFrame_Racing()
 
 
 						// OtherFX_Play to get wumpa fruit
-						// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005347c-0x80053484 for wumpa pickup SFX.
 						OtherFX_Play(0x42, 1);
 
 						// initial timer value
@@ -247,7 +245,7 @@ void UI_RenderFrame_Racing()
 					}
 					else
 					{
-						UI_Lerp2D_HUD(wumpaModelPos.v, (int)playerStruct->PickupWumpaHUD.startX, (int)playerStruct->PickupWumpaHUD.startY,
+						UI_Lerp2D_HUD(CTR_VECTOR_DATA(&(wumpaModelPos)), (int)playerStruct->PickupWumpaHUD.startX, (int)playerStruct->PickupWumpaHUD.startY,
 						              hudStructPtr[UI_HUD_SLOT_FRUIT_MODEL].x, hudStructPtr[UI_HUD_SLOT_FRUIT_MODEL].y, playerStruct->PickupWumpaHUD.cooldown,
 						              5);
 
@@ -310,8 +308,8 @@ void UI_RenderFrame_Racing()
 					// PickupLetterHUD.startX and PickupLetterHUD.startY are start position of animation
 
 					// Interpolate from start pos to end pos
-					UI_Lerp2D_HUD(letterCtrPos.v, playerStruct->PickupLetterHUD.startX, playerStruct->PickupLetterHUD.startY, (int)letterCtrPos.x,
-					              (int)letterCtrPos.y, (int)playerStruct->PickupLetterHUD.cooldown, 10);
+					UI_Lerp2D_HUD(CTR_VECTOR_DATA(&(letterCtrPos)), playerStruct->PickupLetterHUD.startX, playerStruct->PickupLetterHUD.startY,
+					              (int)letterCtrPos.x, (int)letterCtrPos.y, (int)playerStruct->PickupLetterHUD.cooldown, 10);
 
 					curr->matrix.t[0] = UI_ConvertX_2((int)letterCtrPos.x, 0x200);
 					curr->matrix.t[1] = UI_ConvertY_2((int)letterCtrPos.y, 0x200);
@@ -344,7 +342,7 @@ void UI_RenderFrame_Racing()
 					sprintf(&string[0], &sdata->s_subtractLongInt[0], gGT->timeCrateTypeSmashed);
 
 					// 4b4 and 4b6 are WindowStartPos(x,y) from PushBuffer, inside Driver
-					UI_Lerp2D_HUD(wumpaModelPos.v, playerStruct->PickupTimeboxHUD.startX, playerStruct->PickupTimeboxHUD.startY, 0x14, 8,
+					UI_Lerp2D_HUD(CTR_VECTOR_DATA(&(wumpaModelPos)), playerStruct->PickupTimeboxHUD.startX, playerStruct->PickupTimeboxHUD.startY, 0x14, 8,
 					              playerStruct->PickupTimeboxHUD.cooldown, 10);
 
 					// Decrease remaining number of frames for this to be on screen
@@ -403,7 +401,7 @@ void UI_RenderFrame_Racing()
 
 					sprintf((char *)&string[0], fmt, partTimeVariable1);
 
-					UI_Lerp2D_HUD(wumpaModelPos.v, (int)playerStruct->BattleHUD.startX, (int)playerStruct->BattleHUD.startY,
+					UI_Lerp2D_HUD(CTR_VECTOR_DATA(&(wumpaModelPos)), (int)playerStruct->BattleHUD.startX, (int)playerStruct->BattleHUD.startY,
 					              (int)(hudStructPtr[UI_HUD_SLOT_BATTLE_SCORE].x + 0x20), (int)(hudStructPtr[UI_HUD_SLOT_BATTLE_SCORE].y + 8),
 					              playerStruct->BattleHUD.cooldown, 5);
 
@@ -660,7 +658,7 @@ void UI_RenderFrame_Racing()
 			if (sdata->TurboDisplayPos_Only1P != 0)
 			{
 				// Interpolate the turbo counter slide in from the right
-				UI_Lerp2D_Linear(turboCountPos.v, 0x2c8, 0x20, 500, 0x20, sdata->TurboDisplayPos_Only1P, 10);
+				UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(turboCountPos)), 0x2c8, 0x20, 500, 0x20, sdata->TurboDisplayPos_Only1P, 10);
 
 				// The actual counter number will continue to
 				// increase past 1000, but the on-screen text
@@ -875,7 +873,6 @@ void UI_RenderFrame_Racing()
 	    ((gameMode1 & ROLLING_ITEM) != 0))
 	{
 		// stop weapon shuffle sound
-		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005423c-0x8005424c for roulette SFX stop.
 		OtherFX_Stop2(0x5d);
 
 		// disable the randomizing effect in the HUD
@@ -883,7 +880,6 @@ void UI_RenderFrame_Racing()
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80054298-0x8005435c.
 void UI_RenderFrame_AdvHub(void)
 {
 	struct UiElement2D *hudStructPtr;
@@ -897,7 +893,6 @@ void UI_RenderFrame_AdvHub(void)
 	UI_DrawNumTrophy(hudStructPtr[UI_HUD_SLOT_TROPHY].x + 0x10, hudStructPtr[UI_HUD_SLOT_TROPHY].y - 10);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005435c-0x8005465c for the retail path.
 void UI_RenderFrame_CrystChall(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -994,7 +989,6 @@ void UI_RenderFrame_CrystChall(void)
 			MainGameEnd_Initialize();
 		}
 
-		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80054550-0x80054558 for crystal pickup SFX.
 		OtherFX_Play(0x42, 1);
 
 		if (player->PickupWumpaHUD.numCollected != 0)
@@ -1007,8 +1001,8 @@ void UI_RenderFrame_CrystChall(void)
 	else
 	{
 		// interpolate position over course of 5 frames
-		UI_Lerp2D_HUD(crystalPos.v, (int)player->PickupWumpaHUD.startX, (int)player->PickupWumpaHUD.startY, (int)hudStructPtr[UI_HUD_SLOT_CRYSTAL].x,
-		              (int)hudStructPtr[UI_HUD_SLOT_CRYSTAL].y, player->PickupWumpaHUD.cooldown, 5);
+		UI_Lerp2D_HUD(CTR_VECTOR_DATA(&(crystalPos)), (int)player->PickupWumpaHUD.startX, (int)player->PickupWumpaHUD.startY,
+		              (int)hudStructPtr[UI_HUD_SLOT_CRYSTAL].x, (int)hudStructPtr[UI_HUD_SLOT_CRYSTAL].y, player->PickupWumpaHUD.cooldown, 5);
 
 		// reduce cooldown between getting each wumpa (or crystal)
 		player->PickupWumpaHUD.cooldown--;
@@ -1060,14 +1054,12 @@ LAB_800545e8:
 	// if not paused, item stopped rolling, and
 	// weapon roulette sound is playing, then
 	// stop the sound and remove flag
-	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80054618-0x80054628 for roulette SFX stop.
 	OtherFX_Stop2(0x5d);
 	gGT->gameMode1 &= ~(ROLLING_ITEM);
 
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005465c-0x80054a08 for the retail path.
 void UI_RenderFrame_Wumpa3D_2P3P4P(struct GameTracker *gGT)
 {
 	RECT viewport2P;
@@ -1099,12 +1091,12 @@ void UI_RenderFrame_Wumpa3D_2P3P4P(struct GameTracker *gGT)
 
 	// NOTE(aalhendi): Retail reads the gp slot populated by UI_INSTANCE_InitAll
 	// with ptrPushBufferUI, not the adjacent ptrFruitDisp instance slot.
-	wumpaPushBuffer = (struct PushBuffer *)(uintptr_t)sdata->ptrPushBufferUI;
+	wumpaPushBuffer = (struct PushBuffer *)(u32)sdata->ptrPushBufferUI;
 
 	if (wumpaPushBuffer != NULL)
 	{
-		uint32_t *textureStart = wumpaPushBuffer->ptrOT;
-		uint32_t *textureEnd = wumpaPushBuffer->renderBucketOTRangeEnd;
+		u32 *textureStart = wumpaPushBuffer->ptrOT;
+		u32 *textureEnd = wumpaPushBuffer->renderBucketOTRangeEnd;
 		b32 shouldCycleTexture = (textureStart != NULL) && (textureEnd != NULL);
 
 #ifdef CTR_NATIVE
@@ -1168,7 +1160,7 @@ void UI_RenderFrame_Wumpa3D_2P3P4P(struct GameTracker *gGT)
 
 		if (driver->numWumpas >= DRIVER_WUMPA_JUICED_COUNT)
 		{
-			u8 shineColor = sdata->wumpaShineColor1[0][0];
+			u8 shineColor = (u8)sdata->wumpaShineResult;
 			prim->r0 = shineColor;
 			prim->g0 = shineColor;
 			prim->b0 = shineColor;

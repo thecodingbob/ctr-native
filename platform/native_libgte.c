@@ -562,25 +562,21 @@ VECTOR *ApplyMatrixLV(MATRIX *m, VECTOR *v0, VECTOR *v1)
 MATRIX *RotMatrix(SVECTOR *r, MATRIX *m)
 {
 	// correct Psy-Q implementation
-	int c0, c1, c2;
-	int s0, s1, s2;
-	int s2p0, s2m0, c2p0, c2m0;
-	int s2c0, s2s0, c2c0, c2s0;
 
-	c0 = rcos(r->vx);
-	c1 = rcos(r->vy);
-	c2 = rcos(r->vz);
-	s0 = rsin(r->vx);
-	s1 = rsin(r->vy);
-	s2 = rsin(r->vz);
-	s2p0 = rsin(r->vz + r->vx);
-	s2m0 = rsin(r->vz - r->vx);
-	c2p0 = rcos(r->vz + r->vx);
-	c2m0 = rcos(r->vz - r->vx);
-	s2c0 = (s2p0 + s2m0) / 2;
-	c2s0 = (s2p0 - s2m0) / 2;
-	s2s0 = (c2m0 - c2p0) / 2;
-	c2c0 = (c2m0 + c2p0) / 2;
+	int c0 = rcos(r->vx);
+	int c1 = rcos(r->vy);
+	int c2 = rcos(r->vz);
+	int s0 = rsin(r->vx);
+	int s1 = rsin(r->vy);
+	int s2 = rsin(r->vz);
+	int s2p0 = rsin(r->vz + r->vx);
+	int s2m0 = rsin(r->vz - r->vx);
+	int c2p0 = rcos(r->vz + r->vx);
+	int c2m0 = rcos(r->vz - r->vx);
+	int s2c0 = (s2p0 + s2m0) / 2;
+	int c2s0 = (s2p0 - s2m0) / 2;
+	int s2s0 = (c2m0 - c2p0) / 2;
+	int c2c0 = (c2m0 + c2p0) / 2;
 
 	m->m[0][0] = FIXED(c2 * c1);
 	m->m[1][0] = s2c0 + FIXED(c2s0 * s1);
@@ -598,15 +594,13 @@ MATRIX *RotMatrix(SVECTOR *r, MATRIX *m)
 MATRIX *RotMatrixYXZ(SVECTOR *r, MATRIX *m)
 {
 	// correct Psy-Q implementation
-	int c0, c1, c2;
-	int s0, s1, s2;
 
-	c0 = rcos(r->vx);
-	c1 = rcos(r->vy);
-	c2 = rcos(r->vz);
-	s0 = rsin(r->vx);
-	s1 = rsin(r->vy);
-	s2 = rsin(r->vz);
+	int c0 = rcos(r->vx);
+	int c1 = rcos(r->vy);
+	int c2 = rcos(r->vz);
+	int s0 = rsin(r->vx);
+	int s1 = rsin(r->vy);
+	int s2 = rsin(r->vz);
 
 	// Y-axis
 	m->m[1][0] = FIXED(s2 * c0);
@@ -633,9 +627,8 @@ MATRIX *RotMatrixX(int r, MATRIX *m)
 	// correct Psy-Q implementation
 	int s0 = rsin(r);
 	int c0 = rcos(r);
-	int t1, t2;
-	t1 = m->m[1][0];
-	t2 = m->m[2][0];
+	int t1 = m->m[1][0];
+	int t2 = m->m[2][0];
 	m->m[1][0] = FIXED(t1 * c0 - t2 * s0);
 	m->m[2][0] = FIXED(t1 * s0 + t2 * c0);
 	t1 = m->m[1][1];
@@ -655,9 +648,8 @@ MATRIX *RotMatrixY(int r, MATRIX *m)
 	// correct Psy-Q implementation
 	int s0 = rsin(r);
 	int c0 = rcos(r);
-	int t1, t2;
-	t1 = m->m[0][0];
-	t2 = m->m[2][0];
+	int t1 = m->m[0][0];
+	int t2 = m->m[2][0];
 	m->m[0][0] = FIXED(t1 * c0 + t2 * s0);
 	m->m[2][0] = FIXED(-t1 * s0 + t2 * c0);
 	t1 = m->m[0][1];
@@ -677,9 +669,8 @@ MATRIX *RotMatrixZ(int r, MATRIX *m)
 	// correct Psy-Q implementation
 	int s0 = rsin(r);
 	int c0 = rcos(r);
-	int t1, t2;
-	t1 = m->m[0][0];
-	t2 = m->m[1][0];
+	int t1 = m->m[0][0];
+	int t2 = m->m[1][0];
 	m->m[0][0] = FIXED(t1 * c0 - t2 * s0);
 	m->m[1][0] = FIXED(t1 * s0 + t2 * c0);
 	t1 = m->m[0][1];
@@ -910,10 +901,9 @@ int ratan2(int y, int x)
 {
 	int v;
 	u32 ang;
-	int xlt0, ylt0;
 
-	xlt0 = x < 0;
-	ylt0 = y < 0;
+	int xlt0 = x < 0;
+	int ylt0 = y < 0;
 
 	if (x == 0 && y == 0)
 	{
@@ -974,8 +964,7 @@ int SquareRoot0(int a)
 {
 	// correct Psy-Q implementation
 	int idx;
-	int lzcs;
-	lzcs = gte_leadingzerocount(a);
+	int lzcs = gte_leadingzerocount(a);
 
 	if (lzcs == 32)
 	{

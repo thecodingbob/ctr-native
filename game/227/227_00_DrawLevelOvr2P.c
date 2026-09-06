@@ -238,24 +238,23 @@ void DrawLevelOvr2P(void *LevRenderList, struct PushBuffer *pb, struct BSP *bspL
 	u8 *clipCursors[2] = {data.PtrClipBuffer[0], data.PtrClipBuffer[1]};
 	u32 hostStackAnchor;
 
-	// NOTE(aalhendi): ASM-audited against NTSC-U 926 227 entry/setup
-	// 0x800a0cbc-0x800a1010. Native keeps explicit host pointers while
-	// preserving the retail scratch ownership and two-viewport ordering.
-	DrawLevelOvr1P_Scratch()->savedStackPtr32 = (u32)(uintptr_t)&hostStackAnchor;
-	DrawLevelOvr1P_Scratch()->primMemEndPtr32 = (u32)(uintptr_t)primMem->end;
-	DrawLevelOvr1P_Scratch()->visFaceListArgPtr32[0] = (u32)(uintptr_t)visFaceList0;
-	DrawLevelOvr1P_Scratch()->visFaceListArgPtr32[1] = (u32)(uintptr_t)visFaceList1;
+	// NOTE(aalhendi): Native keeps explicit host pointers while preserving retail scratch
+	// ownership and two-viewport ordering.
+	DrawLevelOvr1P_Scratch()->savedStackPtr32 = (u32)(u32)&hostStackAnchor;
+	DrawLevelOvr1P_Scratch()->primMemEndPtr32 = (u32)(u32)primMem->end;
+	DrawLevelOvr1P_Scratch()->visFaceListArgPtr32[0] = (u32)(u32)visFaceList0;
+	DrawLevelOvr1P_Scratch()->visFaceListArgPtr32[1] = (u32)(u32)visFaceList1;
 
 	if ((visFaceList0 == NULL) || (visFaceList1 == NULL))
 	{
 		return;
 	}
 
-	DrawLevelOvr1P_Scratch()->waterEnvMapPtr32 = (u32)(uintptr_t)waterEnvMap;
-	DrawLevelOvr1P_Scratch()->pushBufferPtr32[0] = (u32)(uintptr_t)&pb[0];
-	DrawLevelOvr1P_Scratch()->pushBufferPtr32[1] = (u32)(uintptr_t)&pb[1];
-	DrawLevelOvr1P_Scratch()->playerClipCursorPtr32[0] = (u32)(uintptr_t)clipCursors[0];
-	DrawLevelOvr1P_Scratch()->playerClipCursorPtr32[1] = (u32)(uintptr_t)clipCursors[1];
+	DrawLevelOvr1P_Scratch()->waterEnvMapPtr32 = (u32)(u32)waterEnvMap;
+	DrawLevelOvr1P_Scratch()->pushBufferPtr32[0] = (u32)(u32)&pb[0];
+	DrawLevelOvr1P_Scratch()->pushBufferPtr32[1] = (u32)(u32)&pb[1];
+	DrawLevelOvr1P_Scratch()->entry.clip.playerClipCursorPtr32[0] = (u32)(u32)clipCursors[0];
+	DrawLevelOvr1P_Scratch()->entry.clip.playerClipCursorPtr32[1] = (u32)(u32)clipCursors[1];
 
 	if (mesh->ptrQuadBlockArray == NULL)
 	{
@@ -273,8 +272,8 @@ void DrawLevelOvr2P(void *LevRenderList, struct PushBuffer *pb, struct BSP *bspL
 		return;
 	}
 
-	DrawLevelOvr1P_Scratch()->playerClipCursorPtr32[0] = (u32)(uintptr_t)clipCursors[0];
-	DrawLevelOvr1P_Scratch()->playerClipCursorPtr32[1] = (u32)(uintptr_t)clipCursors[1];
+	DrawLevelOvr1P_Scratch()->entry.clip.playerClipCursorPtr32[0] = (u32)(u32)clipCursors[0];
+	DrawLevelOvr1P_Scratch()->entry.clip.playerClipCursorPtr32[1] = (u32)(u32)clipCursors[1];
 
 	if (!DrawLevelOvr2P_ConsumeClipRecordsForViewport(&pb[0], primMem, clipCursors[0], 0))
 	{

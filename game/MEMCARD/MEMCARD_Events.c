@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003d9ec-0x8003da68.
 u8 MEMCARD_GetNextSwEvent(void)
 {
 	// IOE = IO End, meaning "finished without error"
@@ -24,7 +23,6 @@ u8 MEMCARD_GetNextSwEvent(void)
 	return MC_RETURN_PENDING;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003da68-0x8003dae4.
 u8 MEMCARD_GetNextHwEvent(void)
 {
 	// IOE = IO End, meaning "finished without error"
@@ -48,7 +46,6 @@ u8 MEMCARD_GetNextHwEvent(void)
 	return MC_RETURN_PENDING;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003dae4-0x8003db54.
 u8 MEMCARD_WaitForHwEvent(void)
 {
 	while (1)
@@ -77,7 +74,6 @@ u8 MEMCARD_WaitForHwEvent(void)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003db54-0x8003db98.
 void MEMCARD_SkipEvents(void)
 {
 	// Flush all "previous" Events until everything shows PENDING

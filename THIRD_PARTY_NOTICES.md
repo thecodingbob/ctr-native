@@ -91,3 +91,52 @@ freely, subject to the following restrictions:
 2. Altered source versions must be plainly marked as such, and must not be
    misrepresented as being the original software.
 3. This notice may not be removed or altered from any source distribution.
+
+## maspsx
+
+Source: <https://github.com/mkst/maspsx>
+
+Path: `externals/maspsx`
+
+CTR Native vendors `maspsx` at commit
+`42b862c988fe7a13fe4e7ac0ebec90ed6b9fb763` for its PSYQ ASPSX-compatible
+assembly transformation.
+
+License: MIT
+
+The full license is retained in `externals/maspsx/LICENSE`.
+
+## GNU GCC 2.8.1 PSX toolchain
+
+Sources:
+
+- <https://github.com/decompals/old-gcc>
+- <https://ftp.gnu.org/gnu/gcc/gcc-2.8.1.tar.gz>
+
+Path: `externals/old-gcc`
+
+CTR Native vendors the Decompals build recipes at tag `0.17`, the corresponding
+GCC 2.8.1 source archive, and the tested Linux i386 PSX compiler release.
+
+License: GNU GPL v2
+
+The license is retained in `externals/old-gcc/GCC-COPYING`; exact source,
+release, commit, and binary hashes are recorded in
+`externals/old-gcc/UPSTREAM.md`.
+
+## GNU Binutils 2.40
+
+Sources:
+
+- <https://github.com/Lameguy64/PSn00bSDK/releases/tag/v0.24>
+- <https://ftp.gnu.org/gnu/binutils/binutils-2.40.tar.xz>
+
+Path: `externals/psx-binutils`
+
+CTR Native retains the four MIPS ELF programs used by the matching pipeline
+from the PSn00bSDK v0.24 Linux toolchain distribution, together with the
+corresponding GNU Binutils 2.40 source archive.
+
+The applicable GNU licenses are retained in `externals/psx-binutils/COPYING`
+and `externals/psx-binutils/COPYING3`; exact archive and binary hashes are
+recorded in `externals/psx-binutils/UPSTREAM.md`.

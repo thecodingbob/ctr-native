@@ -1,18 +1,11 @@
 #include <common.h>
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800426f8-0x80042910.
 void PushBuffer_Init(struct PushBuffer *pb, int id, int total)
 {
-#if BUILD == EurRetail
-#define SIZEY_TOP 0x74
-#define SIZEY_1P  0xEC
-#define STARTY_2P 0x78
-#else
 #define SIZEY_TOP 0x6a
 #define SIZEY_1P  0xD8
 #define STARTY_2P 0x6e
-#endif
 
 	pb->fade_step = 0x88;
 	pb->matrix_Proj.m[0][0] = 0x1c71;
@@ -150,7 +143,6 @@ void PushBuffer_Init(struct PushBuffer *pb, int id, int total)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80042910-0x80042974.
 void PushBuffer_SetPsyqGeom(struct PushBuffer *pb)
 {
 	gte_SetGeomOffset(pb->rect.w / 2, pb->rect.h / 2);
@@ -159,7 +151,6 @@ void PushBuffer_SetPsyqGeom(struct PushBuffer *pb)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80042974-0x80042a8c for the retail path.
 void PushBuffer_SetDrawEnv_DecalMP(void *ot, struct DB *backBuffer, RECT *viewport, s16 offsetX, s16 offsetY, u8 dtd, u8 dfe, u8 isbg, u8 tpageUpper,
                                    u8 tpageLower)
 {
@@ -235,7 +226,6 @@ void PushBuffer_SetDrawEnv_DecalMP(void *ot, struct DB *backBuffer, RECT *viewpo
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80042a8c-0x80042c04.
 void PushBuffer_SetDrawEnv_Normal(void *ot, struct PushBuffer *pb, struct DB *backBuffer, s16 *copyDrawEnvNULL, int isbg)
 {
 	DRAWENV newDrawEnv;
@@ -283,7 +273,6 @@ void PushBuffer_SetDrawEnv_Normal(void *ot, struct PushBuffer *pb, struct DB *ba
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80042c04-0x80042e50.
 void PushBuffer_SetMatrixVP(struct PushBuffer *pb)
 {
 	// CameraMatrix
@@ -389,24 +378,15 @@ void PushBuffer_SetMatrixVP(struct PushBuffer *pb)
 	*(int *)((int)&pb->matrix_ViewProj + 0xC) = viewC;
 	*(s16 *)((int)&pb->matrix_ViewProj + 0x10) = sVar7;
 
-	// NTSC:
 	// 0x360/0x600 = 9/16 aspect,
 	// 9/16 * 512/216 = 4/3
-
-	// PAL:
-	// 0x3B0/0x600 = 59/96 aspect,
-	// 59/96 * 512/236 = 4/3
 
 	// Do NOT set to 0x480
 	// to change 4/3 to 16/9,
 	// it will zoom "in" instead of "out"
 	// because of stretching Y instead of X
 
-#if BUILD == EurRetail
-#define r360 0x3B0
-#else
 #define r360 0x360
-#endif
 
 // constant denomenator
 #define r600 0x600
@@ -451,8 +431,6 @@ void PushBuffer_SetMatrixVP(struct PushBuffer *pb)
 	return;
 }
 
-
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80042e50-0x800430f0.
 
 static void PushBuffer_SetFrustumPlane_LoadAxisVector(int x, int y, int z)
 {
@@ -550,8 +528,6 @@ int PushBuffer_SetFrustumPlane(struct PushBufferFrustumPlane *frustumPlane, stru
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800430f0-0x80043928.
-
 static void PushBuffer_UpdateFrustum_LoadV0(int xy, int z)
 {
 	MTC2((u32)xy, 0);
@@ -584,7 +560,7 @@ void PushBuffer_UpdateFrustum(struct PushBuffer *pb)
 	int val_Y;
 
 	// Retail packs screen-space corner x/y into a single GTE VXY word.
-	union FrustumCornerIN frustumCorner[4];
+	struct FrustumCornerIN frustumCorner[4];
 
 	int iVar19;
 
@@ -660,7 +636,7 @@ void PushBuffer_UpdateFrustum(struct PushBuffer *pb)
 		// multiply corner of screen,
 		// by view-projection matrix,
 		// to get frustum plane world-pos
-		PushBuffer_UpdateFrustum_LoadV0(frustumCorner[i].self, pb->distanceToScreen_PREV);
+		PushBuffer_UpdateFrustum_LoadV0(CTR_PackS16Pair(frustumCorner[i].x, frustumCorner[i].y), pb->distanceToScreen_PREV);
 		gte_llv0();
 
 		// this is ViewProj matrix, loaded into GTE
@@ -886,7 +862,6 @@ void PushBuffer_UpdateFrustum(struct PushBuffer *pb)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80043928-0x80043ab8.
 void PushBuffer_FadeOneWindow(struct PushBuffer *pb)
 {
 	typedef struct
@@ -985,7 +960,6 @@ void PushBuffer_FadeOneWindow(struct PushBuffer *pb)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80043ab8-0x80043b30.
 void PushBuffer_FadeAllWindows()
 {
 	struct GameTracker *gGT = sdata->gGT;

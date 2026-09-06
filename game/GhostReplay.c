@@ -10,7 +10,6 @@ internal s16 Ghost_LerpRot12(s16 curr, s16 next, u16 t)
 	return (curr + ((delta * t) >> 0xC)) & 0xFFF;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80026ed8-0x80027838.
 void GhostReplay_ThTick(struct Thread *t)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -41,13 +40,10 @@ void GhostReplay_ThTick(struct Thread *t)
 		return;
 	}
 
-	if (d->reserves > 0)
+	d->reserves = (s16)CTR_MipsSubLo((u16)d->reserves, gGT->elapsedTimeMS);
+	if (d->reserves < 0)
 	{
-		d->reserves -= gGT->elapsedTimeMS;
-		if (d->reserves < 0)
-		{
-			d->reserves = 0;
-		}
+		d->reserves = 0;
 	}
 
 	if ((gGT->trafficLightsTimer < 1) && (d->ghostBoolStarted == 0))
@@ -106,7 +102,7 @@ void GhostReplay_ThTick(struct Thread *t)
 					for (s32 i = 0; i < 3; ++i)
 					{
 						u16 rawValue = Ghost_ReadBE16(&packetPtr[1 + i * 2]);
-						tmpPos.v[i] = (s16)(((s32)((u32)rawValue << 0x10)) >> 0xd);
+						CTR_VECTOR_DATA(&(tmpPos))[i] = (s16)(((s32)((u32)rawValue << 0x10)) >> 0xd);
 					}
 					packet->pos = tmpPos;
 
@@ -163,7 +159,7 @@ void GhostReplay_ThTick(struct Thread *t)
 			{
 				for (s32 i = 0; i < 3; ++i)
 				{
-					tmpPos.v[i] += (s16)((s8)packetPtr[i]) * 8;
+					CTR_VECTOR_DATA(&(tmpPos))[i] += (s16)((s8)packetPtr[i]) * 8;
 				}
 				packet->pos = tmpPos;
 
@@ -282,11 +278,11 @@ void GhostReplay_ThTick(struct Thread *t)
 				}
 				else if (maxFrame > 0)
 				{
-					inst->animFrame = maxFrame;
+					inst->animFrame = 0;
 				}
 				else
 				{
-					inst->animFrame = 0;
+					inst->animFrame = maxFrame;
 				}
 
 				buffer += GHOST_SIZE_ANIMATION;
@@ -325,7 +321,6 @@ void GhostReplay_ThTick(struct Thread *t)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80027838-0x80027b88.
 void GhostReplay_Init1(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -425,7 +420,6 @@ void GhostReplay_Init1(void)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80027b88-0x80027df4.
 void GhostReplay_Init2(void)
 {
 	struct GameTracker *gGT = sdata->gGT;

@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80030778-0x8003086c.
 void INSTANCE_Birth(struct Instance *inst, struct Model *model, const char *name, struct Thread *th, int flags)
 {
 	int i;
@@ -35,7 +34,7 @@ void INSTANCE_Birth(struct Instance *inst, struct Model *model, const char *name
 
 	inst->model = model;
 
-	inst->scale = (SVec3){{0x1000, 0x1000, 0x1000}};
+	inst->scale = (SVec3){0x1000, 0x1000, 0x1000};
 
 	inst->alphaScale = 0;
 	inst->colorRGBA = 0;
@@ -60,7 +59,6 @@ void INSTANCE_Birth(struct Instance *inst, struct Model *model, const char *name
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003086c-0x800308e4.
 struct Instance *INSTANCE_Birth3D(struct Model *model, const char *name, struct Thread *th)
 {
 	struct Instance *inst = (struct Instance *)JitPool_Add(&sdata->gGT->JitPools.instance);
@@ -74,7 +72,6 @@ struct Instance *INSTANCE_Birth3D(struct Model *model, const char *name, struct 
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800308e4-0x800309a4.
 struct Instance *INSTANCE_Birth2D(struct Model *model, const char *name, struct Thread *th)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -101,7 +98,34 @@ struct Instance *INSTANCE_Birth2D(struct Model *model, const char *name, struct 
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800309a4-0x80030a50.
+#if defined(CTR_NATIVE)
+static void INSTANCE_RollbackThreadBirth(struct Thread *t, struct Thread *relativeTh)
+{
+	struct GameTracker *gGT = sdata->gGT;
+
+	if (relativeTh == NULL)
+	{
+		gGT->threadBuckets[t->flags & 0xff].thread = t->siblingThread;
+	}
+	else if ((t->flags & SELF_SIBLING) != 0)
+	{
+		relativeTh->siblingThread = t->siblingThread;
+	}
+	else if ((t->flags & CHILD_BETWEEN) != 0)
+	{
+		relativeTh->childThread = t->childThread;
+	}
+	else
+	{
+		relativeTh->childThread = t->siblingThread;
+	}
+
+	PROC_DestroyObject(t->object, t->flags);
+	LIST_AddFront(&gGT->JitPools.thread.free, (struct Item *)t);
+}
+#endif
+
+// CTR_NATIVE only adds allocation-failure rollback.
 struct Instance *INSTANCE_BirthWithThread(int modelID, const char *name, int poolType, int bucket, void *funcThTick, int objSize, struct Thread *parent)
 {
 	struct GameTracker *gGT;
@@ -115,9 +139,6 @@ struct Instance *INSTANCE_BirthWithThread(int modelID, const char *name, int poo
 
 	if (m == NULL)
 	{
-		// June 1999
-		// printf("INSTANCE_BirthWithThread: object type %d not found!\n",param_1);
-
 		return NULL;
 	}
 
@@ -144,6 +165,15 @@ struct Instance *INSTANCE_BirthWithThread(int modelID, const char *name, int poo
 	    parent      // thread relative
 	);
 
+#if defined(CTR_NATIVE)
+	// NOTE(aalhendi): Retail assumes the thread and instance pools have capacity.
+	// Native returns failure instead of writing through PS1 low memory.
+	if (t == NULL)
+	{
+		return NULL;
+	}
+#endif
+
 	/*
 
 	June 1999
@@ -158,6 +188,14 @@ struct Instance *INSTANCE_BirthWithThread(int modelID, const char *name, int poo
 
 	t->modelIndex = modelID;
 	inst = INSTANCE_Birth3D(m, name, t);
+
+#if defined(CTR_NATIVE)
+	if (inst == NULL)
+	{
+		INSTANCE_RollbackThreadBirth(t, parent);
+		return NULL;
+	}
+#endif
 
 	/*
 
@@ -176,7 +214,6 @@ struct Instance *INSTANCE_BirthWithThread(int modelID, const char *name, int poo
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80030a50-0x80030aa8.
 // used for every explosion
 struct Instance *INSTANCE_BirthWithThread_Stack(int *spArr)
 {
@@ -186,7 +223,6 @@ struct Instance *INSTANCE_BirthWithThread_Stack(int *spArr)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80030aa8-0x80030ad4.
 void INSTANCE_Death(struct Instance *inst)
 {
 	JitPool_Remove(&sdata->gGT->JitPools.instance, (struct Item *)inst);
@@ -217,9 +253,6 @@ void INSTANCE_LevInitAll(struct InstDef *levInstDef, int numInst)
 		// if allocation failed
 		if (inst == NULL)
 		{
-			// June 1999
-			// printf("OOPS! more instdefs than instances");
-			// quit
 			return;
 		}
 
@@ -267,7 +300,7 @@ void INSTANCE_LevInitAll(struct InstDef *levInstDef, int numInst)
 		ConvertRotToMatrix(&inst->matrix, &levInstDef->rot);
 
 		// instance posX and posY
-		CTR_COPY_VEC3(inst->matrix.t, levInstDef->pos.v);
+		CTR_COPY_VEC3(inst->matrix.t, CTR_VECTOR_DATA(&(levInstDef->pos)));
 
 		inst->thread = NULL;
 		struct InstDrawPerPlayer *idpp = INST_GETIDPP(inst);
@@ -302,31 +335,27 @@ void INSTANCE_LevInitAll(struct InstDef *levInstDef, int numInst)
 
 		b32 boolRelicOnly = ((((u32)modelID - STATIC_TIME_CRATE_02) < 2) || (modelID == STATIC_TIME_CRATE_01));
 
-		if ((gGT->gameMode1 & TIME_TRIAL) != 0)
+		if (((gGT->gameMode1 & TIME_TRIAL) != 0) && (boolArcadeOnly || boolRelicOnly))
 		{
-			if (boolArcadeOnly || boolRelicOnly)
-			{
-				inst->flags &= ~DRAW_COLLISION_MASK;
-			}
+			inst->flags &= ~DRAW_COLLISION_MASK;
 		}
-
 		else if ((gGT->gameMode1 & RELIC_RACE) != 0)
 		{
-			if (boolArcadeOnly)
-			{
-				inst->flags &= ~DRAW_COLLISION_MASK;
-			}
-
 			if (boolRelicOnly)
 			{
 				gGT->timeCratesInLEV++;
-
-				// temporary, until timebox thread is ready
-				inst->flags |= 1;
+			}
+			else if (boolArcadeOnly)
+			{
+				inst->flags &= ~DRAW_COLLISION_MASK;
 			}
 		}
+		else if (boolRelicOnly)
+		{
+			inst->flags &= ~DRAW_COLLISION_MASK;
+		}
 
-		else if ((gGT->gameMode1 & CRYSTAL_CHALLENGE) != 0)
+		if ((gGT->gameMode1 & CRYSTAL_CHALLENGE) != 0)
 		{
 			if (modelID == STATIC_CRYSTAL)
 			{
@@ -365,7 +394,6 @@ void INSTANCE_LevInitAll(struct InstDef *levInstDef, int numInst)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80030ed4-0x80030f58.
 void INSTANCE_LevDelayedLInBs(struct InstDef *instDef, int numInstances)
 {
 	for (int i = 0; i < numInstances; i++)
@@ -385,7 +413,6 @@ void INSTANCE_LevDelayedLInBs(struct InstDef *instDef, int numInstances)
 /// @brief Obtain number of actual animation data frames in the first lod entry of the passed model.
 /// @param pInstance - pointer to Instance
 /// @param animIndex - animation index to check
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80030f58-0x80030fdc.
 u16 INSTANCE_GetNumAnimFrames(struct Instance *pInstance, int animIndex)
 {
 	struct Model *pModel;

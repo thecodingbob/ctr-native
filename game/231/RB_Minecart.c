@@ -1,7 +1,6 @@
 #include <common.h>
 
 // budget: 2132 bytes
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b7338-0x800b7b8c.
 
 extern s16 minecartArr[50];
 
@@ -32,18 +31,18 @@ void RB_Minecart_CheckColl(struct Instance *minecartInst, struct Thread *minecar
 
 void RB_Minecart_NewPoint(struct Instance *minecartInst, struct Minecart *minecartObj, struct SpawnType2 *spawnType2)
 {
-	const SVec3 *start = &spawnType2->positions[minecartObj->posIndex - 1];
-	const SVec3 *end = &spawnType2->positions[minecartObj->posIndex];
+	const SVec3 *start = &spawnType2->coords.positions[minecartObj->posIndex - 1];
+	const SVec3 *end = &spawnType2->coords.positions[minecartObj->posIndex];
 
 	for (int i = 0; i < 3; i++)
 	{
-		int startValue = start->v[i];
-		int endValue = end->v[i];
+		int startValue = CTR_VECTOR_DATA(start)[i];
+		int endValue = CTR_VECTOR_DATA(end)[i];
 
-		minecartObj->posStart.v[i] = startValue;
-		minecartObj->posEnd.v[i] = endValue;
+		CTR_VECTOR_DATA(&(minecartObj->posStart))[i] = startValue;
+		CTR_VECTOR_DATA(&(minecartObj->posEnd))[i] = endValue;
 		minecartInst->matrix.t[i] = startValue;
-		minecartObj->dir.v[i] = startValue - endValue;
+		CTR_VECTOR_DATA(&(minecartObj->dir))[i] = startValue - endValue;
 	}
 
 #if defined(CTR_NATIVE)
@@ -119,7 +118,7 @@ void RB_Minecart_ThTick(struct Thread *t)
 		{
 			for (i = 0; i < 3; i++)
 			{
-				minecartObj->rotCurr.v[i] = minecartObj->rotDesired.v[i];
+				CTR_VECTOR_DATA(&(minecartObj->rotCurr))[i] = CTR_VECTOR_DATA(&(minecartObj->rotDesired))[i];
 			}
 		}
 	}
@@ -130,8 +129,8 @@ void RB_Minecart_ThTick(struct Thread *t)
 
 	for (i = 0; i < 3; i++)
 	{
-		minecartInst->matrix.t[i] =
-		    minecartObj->posStart.v[i] - ((minecartObj->betweenPoints_currFrame * minecartObj->dir.v[i]) / minecartObj->betweenPoints_numFrames);
+		minecartInst->matrix.t[i] = CTR_VECTOR_DATA(&(minecartObj->posStart))[i] -
+		                            ((minecartObj->betweenPoints_currFrame * CTR_VECTOR_DATA(&(minecartObj->dir))[i]) / minecartObj->betweenPoints_numFrames);
 	}
 
 	minecartObj->rotCurr.y = RB_Hazard_InterpolateValue(minecartObj->rotCurr.y, minecartObj->rotDesired.y, minecartObj->rotSpeed);

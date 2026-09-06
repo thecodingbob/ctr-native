@@ -190,9 +190,7 @@ internal void NativeInput_WritePadPacket(u8 *dst, const struct PlatformInputPadS
 
 internal s32 NativeInput_UseMultitapBus(void)
 {
-	s32 slot;
-
-	for (slot = NATIVE_INPUT_PHYSICAL_SLOT_COUNT; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
+	for (s32 slot = NATIVE_INPUT_PHYSICAL_SLOT_COUNT; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
 	{
 		if (s_controllers[slot].snapshot.connected != 0)
 		{
@@ -245,9 +243,7 @@ internal void NativeInput_WritePadBus(void)
 
 internal void NativeInput_WriteInstalledSnapshots(void)
 {
-	s32 slot;
-
-	for (slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
+	for (s32 slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
 	{
 		s_controllers[slot].snapshot = s_installedSnapshots[slot];
 	}
@@ -362,10 +358,6 @@ internal void NativeInput_ApplyController(s32 slot)
 	const struct NativeInputControllerMapping *mapping = &s_controllerMapping;
 	SDL_Gamepad *controller = nativeController->controller;
 	u16 buttons = 0xffff;
-	s32 rightX;
-	s32 rightY;
-	s32 leftX;
-	s32 leftY;
 
 	if ((controller == NULL) || (SDL_GamepadConnected(controller) == 0))
 	{
@@ -441,10 +433,10 @@ internal void NativeInput_ApplyController(s32 slot)
 		buttons &= ~0x8;
 	}
 
-	rightX = NativeInput_ControllerButtonState(controller, mapping->gc_axis_right_x);
-	rightY = NativeInput_ControllerButtonState(controller, mapping->gc_axis_right_y);
-	leftX = NativeInput_ControllerButtonState(controller, mapping->gc_axis_left_x);
-	leftY = NativeInput_ControllerButtonState(controller, mapping->gc_axis_left_y);
+	s32 rightX = NativeInput_ControllerButtonState(controller, mapping->gc_axis_right_x);
+	s32 rightY = NativeInput_ControllerButtonState(controller, mapping->gc_axis_right_y);
+	s32 leftX = NativeInput_ControllerButtonState(controller, mapping->gc_axis_left_x);
+	s32 leftY = NativeInput_ControllerButtonState(controller, mapping->gc_axis_left_y);
 
 	if ((buttons != 0xffff) || NativeInput_AxisIsActive(rightX) || NativeInput_AxisIsActive(rightY) || NativeInput_AxisIsActive(leftX) ||
 	    NativeInput_AxisIsActive(leftY))
@@ -564,7 +556,6 @@ internal s32 NativeInput_KeyboardSuppressed(void)
 internal void NativeInput_ApplyKeyboard(s32 slot, u16 keyboardButtons)
 {
 	struct PlatformInputPadSnapshot *snapshot = &s_controllers[slot].snapshot;
-	u16 buttons;
 
 	if (slot != s_keyboardControllerSlot)
 	{
@@ -578,20 +569,18 @@ internal void NativeInput_ApplyKeyboard(s32 slot, u16 keyboardButtons)
 		snapshot->id = NATIVE_INPUT_PAD_DIGITAL;
 	}
 
-	buttons = NativeInput_GetSnapshotButtons(snapshot);
+	u16 buttons = NativeInput_GetSnapshotButtons(snapshot);
 	NativeInput_SetSnapshotButtons(snapshot, buttons & keyboardButtons);
 }
 
 internal s32 NativeInput_FindActiveControllerSlot(void)
 {
-	s32 slot;
-
 	if (NativeInput_IsValidControllerSlot(s_lastActiveControllerSlot) && (s_controllers[s_lastActiveControllerSlot].controller != NULL))
 	{
 		return s_lastActiveControllerSlot;
 	}
 
-	for (slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
+	for (s32 slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
 	{
 		if (s_controllers[slot].controller != NULL)
 		{
@@ -604,19 +593,16 @@ internal s32 NativeInput_FindActiveControllerSlot(void)
 
 internal void NativeInput_SwapControllerSlots(s32 slotA, s32 slotB)
 {
-	struct NativeInputController controller;
-	s32 mapping;
-
 	if (!NativeInput_IsValidControllerSlot(slotA) || !NativeInput_IsValidControllerSlot(slotB) || (slotA == slotB))
 	{
 		return;
 	}
 
-	controller = s_controllers[slotA];
+	struct NativeInputController controller = s_controllers[slotA];
 	s_controllers[slotA] = s_controllers[slotB];
 	s_controllers[slotB] = controller;
 
-	mapping = s_controllerToSlotMapping[slotA];
+	s32 mapping = s_controllerToSlotMapping[slotA];
 	s_controllerToSlotMapping[slotA] = s_controllerToSlotMapping[slotB];
 	s_controllerToSlotMapping[slotB] = mapping;
 
@@ -655,14 +641,12 @@ internal s32 NativeInput_FindSlotForDeviceIndex(Sint32 deviceIndex)
 
 internal void NativeInput_CloseController(s32 slot)
 {
-	struct NativeInputController *controller;
-
 	if ((slot < 0) || (slot >= NATIVE_INPUT_MAX_CONTROLLERS))
 	{
 		return;
 	}
 
-	controller = &s_controllers[slot];
+	struct NativeInputController *controller = &s_controllers[slot];
 	if (controller->controller != NULL)
 	{
 		SDL_CloseGamepad(controller->controller);
@@ -681,9 +665,6 @@ internal void NativeInput_CloseController(s32 slot)
 
 internal void NativeInput_OpenController(SDL_JoystickID instanceId, s32 slot)
 {
-	struct NativeInputController *controller;
-	SDL_Joystick *joystick;
-
 	if ((slot < 0) || (slot >= NATIVE_INPUT_MAX_CONTROLLERS))
 	{
 		return;
@@ -694,7 +675,7 @@ internal void NativeInput_OpenController(SDL_JoystickID instanceId, s32 slot)
 		return;
 	}
 
-	controller = &s_controllers[slot];
+	struct NativeInputController *controller = &s_controllers[slot];
 	if (controller->controller != NULL)
 	{
 		return;
@@ -706,7 +687,7 @@ internal void NativeInput_OpenController(SDL_JoystickID instanceId, s32 slot)
 		return;
 	}
 
-	joystick = SDL_GetGamepadJoystick(controller->controller);
+	SDL_Joystick *joystick = SDL_GetGamepadJoystick(controller->controller);
 	controller->instanceId = joystick != NULL ? SDL_GetJoystickID(joystick) : instanceId;
 	controller->analogEnabled = 1;
 	controller->switchingAnalog = 0;
@@ -715,12 +696,10 @@ internal void NativeInput_OpenController(SDL_JoystickID instanceId, s32 slot)
 
 internal void NativeInput_OpenKnownControllers(void)
 {
-	SDL_JoystickID *gamepads;
 	s32 count = 0;
-	s32 i;
 
-	gamepads = SDL_GetGamepads(&count);
-	for (i = 0; i < count; i++)
+	SDL_JoystickID *gamepads = SDL_GetGamepads(&count);
+	for (s32 i = 0; i < count; i++)
 	{
 		s32 slot = NativeInput_FindSlotForDeviceIndex(gamepads[i]);
 
@@ -734,8 +713,6 @@ internal void NativeInput_OpenKnownControllers(void)
 
 int Platform_InputInit(void)
 {
-	s32 slot;
-
 	if (s_inputInitialized != 0)
 	{
 		return 1;
@@ -743,7 +720,7 @@ int Platform_InputInit(void)
 
 	memset(s_controllers, 0, sizeof(s_controllers));
 	memset(s_padSlotData, 0, sizeof(s_padSlotData));
-	for (slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
+	for (s32 slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
 	{
 		s_controllers[slot].instanceId = -1;
 		NativeInput_ResetSnapshot(slot);
@@ -771,9 +748,7 @@ int Platform_InputInit(void)
 
 void Platform_InputShutdown(void)
 {
-	s32 slot;
-
-	for (slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
+	for (s32 slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
 	{
 		NativeInput_CloseController(slot);
 	}
@@ -793,9 +768,6 @@ void Platform_InputShutdown(void)
 
 void Platform_InputUpdate(void)
 {
-	u16 keyboardButtons;
-	s32 slot;
-
 	if (s_inputInitialized == 0)
 	{
 		return;
@@ -815,9 +787,9 @@ void Platform_InputUpdate(void)
 	}
 
 	SDL_PumpEvents();
-	keyboardButtons = NativeInput_KeyboardSuppressed() ? 0xffff : NativeInput_ReadKeyboard();
+	u16 keyboardButtons = NativeInput_KeyboardSuppressed() ? 0xffff : NativeInput_ReadKeyboard();
 
-	for (slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
+	for (s32 slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
 	{
 		NativeInput_ResetSnapshot(slot);
 		NativeInput_ApplyController(slot);
@@ -828,14 +800,12 @@ void Platform_InputUpdate(void)
 
 void Platform_InputControllerAdded(int deviceIndex)
 {
-	s32 slot;
-
 	if (s_inputInitialized == 0)
 	{
 		return;
 	}
 
-	slot = NativeInput_FindSlotForDeviceIndex(deviceIndex);
+	s32 slot = NativeInput_FindSlotForDeviceIndex(deviceIndex);
 	if (slot >= 0)
 	{
 		NativeInput_OpenController(deviceIndex, slot);
@@ -844,9 +814,7 @@ void Platform_InputControllerAdded(int deviceIndex)
 
 void Platform_InputControllerRemoved(int instanceId)
 {
-	s32 slot;
-
-	for (slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
+	for (s32 slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
 	{
 		if (s_controllers[slot].instanceId == (SDL_JoystickID)instanceId)
 		{
@@ -865,14 +833,13 @@ int Platform_InputCycleKeyboardController(void)
 int Platform_InputCycleGamepadController(void)
 {
 	s32 slot = NativeInput_FindActiveControllerSlot();
-	s32 nextSlot;
 
 	if (slot < 0)
 	{
 		return 0;
 	}
 
-	nextSlot = NativeInput_NextControllerSlot(slot);
+	s32 nextSlot = NativeInput_NextControllerSlot(slot);
 	NativeInput_SwapControllerSlots(slot, nextSlot);
 	NativeInput_WritePadBus();
 	return nextSlot + 1;
@@ -922,14 +889,12 @@ int Platform_InputPadGetState(int port)
 
 int Platform_InputCapturePadSnapshots(struct PlatformInputPadSnapshot *dst, int count)
 {
-	s32 slot;
-
 	if ((dst == NULL) || (count < NATIVE_INPUT_MAX_CONTROLLERS))
 	{
 		return 0;
 	}
 
-	for (slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
+	for (s32 slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
 	{
 		dst[slot] = s_controllers[slot].snapshot;
 	}
@@ -939,14 +904,12 @@ int Platform_InputCapturePadSnapshots(struct PlatformInputPadSnapshot *dst, int 
 
 int Platform_InputInstallPadSnapshots(const struct PlatformInputPadSnapshot *src, int count)
 {
-	s32 slot;
-
 	if ((src == NULL) || (count < NATIVE_INPUT_MAX_CONTROLLERS))
 	{
 		return 0;
 	}
 
-	for (slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
+	for (s32 slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
 	{
 		s_installedSnapshots[slot] = src[slot];
 	}
@@ -969,7 +932,6 @@ int Platform_InputGetStateSize(void)
 int Platform_InputCaptureState(void *dst, int dstSize)
 {
 	struct NativeInputStateSnapshot *snapshot = (struct NativeInputStateSnapshot *)dst;
-	s32 slot;
 
 	if ((dst == NULL) || (dstSize < (int)sizeof(*snapshot)))
 	{
@@ -984,7 +946,7 @@ int Platform_InputCaptureState(void *dst, int dstSize)
 	snapshot->lastActiveControllerSlot = s_lastActiveControllerSlot;
 	snapshot->installedSnapshotsActive = s_installedSnapshotsActive;
 
-	for (slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
+	for (s32 slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
 	{
 		snapshot->installedSnapshots[slot] = s_installedSnapshots[slot];
 		snapshot->controllers[slot].snapshot = s_controllers[slot].snapshot;
@@ -1059,9 +1021,6 @@ void Platform_InputPadVibrate(int port, unsigned char *table, int len)
 	s32 physicalSlot = (port >> 4) & 1;
 	s32 tap = port & 3;
 	s32 slot;
-	struct NativeInputController *controller;
-	u16 freqHigh;
-	u16 freqLow;
 
 	if (NativeInput_UseMultitapBus() != 0)
 	{
@@ -1085,14 +1044,14 @@ void Platform_InputPadVibrate(int port, unsigned char *table, int len)
 		return;
 	}
 
-	controller = &s_controllers[slot];
+	struct NativeInputController *controller = &s_controllers[slot];
 	if (controller->controller == NULL)
 	{
 		return;
 	}
 
-	freqHigh = table[0] * 255;
-	freqLow = len > 1 ? table[1] * 255 : 0;
+	u16 freqHigh = table[0] * 255;
+	u16 freqLow = len > 1 ? table[1] * 255 : 0;
 
 	if ((freqLow != 0) && (freqLow < 4096))
 	{

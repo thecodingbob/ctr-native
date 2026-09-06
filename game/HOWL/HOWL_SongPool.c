@@ -6,7 +6,6 @@ static struct CseqSongHeader *GetCseqSongHeader(u16 songID)
 	return (struct CseqSongHeader *)&sdata->ptrCseqSongData[sdata->ptrCseqSongStartOffset[songID]];
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002a63c-0x8002a678
 struct SongSeq *SongPool_FindFreeChannel(void)
 {
 	struct SongSeq *seq;
@@ -23,7 +22,6 @@ struct SongSeq *SongPool_FindFreeChannel(void)
 	return 0;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002a678-0x8002a6cc
 u32 SongPool_CalculateTempo(s16 const60, s16 tpqn, s16 bpm)
 {
 	s32 ticksPerMinute = CTR_MipsMulLo(bpm, tpqn);
@@ -32,7 +30,6 @@ u32 SongPool_CalculateTempo(s16 const60, s16 tpqn, s16 bpm)
 	return CTR_MipsDivU((u32)CTR_MipsSll((s32)ticksPerSecond, 16), (u32)(s32)const60);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002a6cc-0x8002a730
 void SongPool_ChangeTempo(struct Song *song, s16 deltaBPM)
 {
 	struct CseqSongHeader *csh = GetCseqSongHeader(song->id);
@@ -42,7 +39,6 @@ void SongPool_ChangeTempo(struct Song *song, s16 deltaBPM)
 	song->tempo = SongPool_CalculateTempo(60, song->tpqn, song->bpm);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002a730-0x8002a9d8
 void SongPool_Start(struct Song *song, u16 songID, s16 deltaBPM, b32 boolLoopAtEnd, struct SongSet *songSet, int songSetActiveBits)
 {
 	int i;
@@ -111,11 +107,11 @@ void SongPool_Start(struct Song *song, u16 songID, s16 deltaBPM, b32 boolLoopAtE
 	cnhFirst = (char *)&seqOffsetArr[numSeqs];
 
 	// align up by 4
-	if (((uintptr_t)cnhFirst & 1) != 0)
+	if (((u32)cnhFirst & 1) != 0)
 	{
 		cnhFirst += 1;
 	}
-	if (((uintptr_t)cnhFirst & 2) != 0)
+	if (((u32)cnhFirst & 2) != 0)
 	{
 		cnhFirst += 2;
 	}
@@ -184,7 +180,6 @@ void SongPool_Start(struct Song *song, u16 songID, s16 deltaBPM, b32 boolLoopAtE
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002a9d8-0x8002a9f0
 void SongPool_Volume(struct Song *song, int newVol, int newStep, b32 boolImm)
 {
 	// if immediate change request,
@@ -198,7 +193,6 @@ void SongPool_Volume(struct Song *song, int newVol, int newStep, b32 boolImm)
 	song->vol_StepRate = newStep;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002a9f0-0x8002aa44
 void SongPool_AdvHub1(struct Song *song, int seqID, int vol, b32 boolImm)
 {
 	struct SongSeq *seq;
@@ -221,7 +215,6 @@ void SongPool_AdvHub1(struct Song *song, int seqID, int vol, b32 boolImm)
 	seq->vol_New = vol;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002aa44-0x8002ab18
 void SongPool_AdvHub2(struct Song *song, struct SongSet *songSet, int songSetActiveBits)
 {
 	int i;
@@ -254,7 +247,6 @@ void SongPool_AdvHub2(struct Song *song, struct SongSet *songSet, int songSetAct
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002ab18-0x8002ac0c
 void SongPool_StopCseq(struct SongSeq *seq)
 {
 	struct ChannelStats *curr, *backupNext;
@@ -262,7 +254,7 @@ void SongPool_StopCseq(struct SongSeq *seq)
 
 	for (curr = (struct ChannelStats *)sdata->channelTaken.first; curr != NULL; curr = backupNext)
 	{
-		backupNext = curr->next;
+		backupNext = curr->link.links.next;
 
 		if (curr->type != HOWL_CHANNEL_TYPE_MUSIC)
 		{
@@ -290,7 +282,6 @@ void SongPool_StopCseq(struct SongSeq *seq)
 	seq->flags &= ~(1);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002ac0c-0x8002ac94
 void SongPool_StopAllCseq(struct Song *song)
 {
 	int i;

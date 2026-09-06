@@ -2,7 +2,6 @@
 
 static char s_teeth[] = "teeth";
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b9df0-0x800ba2c0.
 void RB_Teeth_LInB(struct Instance *inst)
 {
 	inst->depthBiasNormal += 2;

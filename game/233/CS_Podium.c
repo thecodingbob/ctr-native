@@ -88,7 +88,6 @@ enum PodiumPrizeConstants
 	PODIUM_MUSIC_TINY = 0xc,
 };
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac714-0x800ac840
 void CS_DestroyPodium_StartDriving(void)
 {
 	struct Instance *inst;
@@ -136,7 +135,6 @@ void CS_DestroyPodium_StartDriving(void)
 	gGT->pushBuffer[0].distanceToScreen_CURR = PODIUM_CAMERA_DISTANCE_TO_SCREEN;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b021c-0x800b0248
 void CS_Podium_Stand_ThTick(struct Thread *t)
 {
 	if (D233.isCutsceneOver != 0)
@@ -145,7 +143,6 @@ void CS_Podium_Stand_ThTick(struct Thread *t)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b0248-0x800b0300
 void CS_Podium_Stand_Init(struct CsThreadInitData *podiumData)
 {
 	struct Instance *inst = INSTANCE_BirthWithThread(STATIC_PODIUM, R233.s_podium, SMALL, OTHER, CS_Podium_Stand_ThTick, 0, 0);
@@ -170,10 +167,9 @@ void CS_Podium_Stand_Init(struct CsThreadInitData *podiumData)
 	podiumData->derivedRot.y = podiumData->rot.y;
 	podiumData->derivedRot.z = podiumData->rot.z;
 
-	ConvertRotToMatrix(&inst->matrix, &podiumData->derivedRot.vec);
+	ConvertRotToMatrix(&inst->matrix, SVec3Slot_AsVec3(&podiumData->derivedRot));
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800af7c0-0x800af994
 void CS_Podium_Prize_Spin(struct Instance *inst, struct Prize *prize)
 {
 	struct GamepadSystem *gGS;
@@ -267,7 +263,6 @@ void CS_Podium_Prize_Spin(struct Instance *inst, struct Prize *prize)
 	Vector_SpecLightSpin3D(inst, prizeRot, &lightDir);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800af994-0x800afbc8
 void CS_Podium_Prize_ThTick3(struct Thread *th)
 {
 	struct GameTracker *gGT;
@@ -319,7 +314,7 @@ void CS_Podium_Prize_ThTick3(struct Thread *th)
 
 	if (!CS_Camera_BoolGotoBoss())
 	{
-		u32 rewards = sdata->advProgress.hintFlags;
+		u32 rewards = sdata->advProgress.rewards[ADV_PROGRESS_WORD_HINT];
 		s16 hintID = 0;
 
 		if ((rewards & ADV_REWARD_HINT_MAP_INFORMATION_MASK) == 0)
@@ -368,7 +363,6 @@ void CS_Podium_Prize_ThTick3(struct Thread *th)
 
 // Make the trophy bounce 3 times
 // Then start ThTick3
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800afbc8-0x800afcc4
 void CS_Podium_Prize_ThTick2(struct Thread *th)
 {
 	int currScale;
@@ -422,7 +416,6 @@ void CS_Podium_Prize_ThTick2(struct Thread *th)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800afcc4-0x800afe58
 void CS_Podium_Prize_ThTick1(struct Thread *th)
 {
 	struct Instance *inst = th->inst;
@@ -480,7 +473,6 @@ void CS_Podium_Prize_ThTick1(struct Thread *th)
 	ThTick_SetAndExec(th, CS_Podium_Prize_ThTick2);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800afe58-0x800afe90
 void CS_Podium_Prize_ThDestroy(struct Thread *t)
 {
 	// remove bits
@@ -488,7 +480,6 @@ void CS_Podium_Prize_ThDestroy(struct Thread *t)
 	PROC_DestroyInstance(t);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800afe90-0x800b021c
 void CS_Podium_Prize_Init(u32 prizeModel, const char *prizeName, const SVec3Slot *podiumPos)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -633,7 +624,6 @@ void CS_Podium_Prize_Init(u32 prizeModel, const char *prizeName, const SVec3Slot
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b0300-0x800b06ac
 void CS_Podium_FullScene_Init(void)
 {
 	struct Instance *driverInstSelf;
@@ -694,7 +684,7 @@ void CS_Podium_FullScene_Init(void)
 
 	// position and rotation of podium scene
 	// Y coordinate (podiumPos.y) has added height
-	posRot = gGT->level1->ptrSpawnType2_PosRot[1].posRot;
+	posRot = gGT->level1->ptrSpawnType2_PosRot[1].coords.posRot;
 	InitData.podiumPos.x = posRot->pos.x;
 	InitData.podiumPos.y = posRot->pos.y + PODIUM_SCENE_SPAWN_Y_OFFSET;
 	InitData.podiumPos.z = posRot->pos.z;
@@ -703,7 +693,7 @@ void CS_Podium_FullScene_Init(void)
 	InitData.rot.z = posRot->rot.z;
 
 	// convert 3 rotation shorts into rotation matrix
-	ConvertRotToMatrix(&podiumMatrix, &InitData.rot.vec);
+	ConvertRotToMatrix(&podiumMatrix, SVec3Slot_AsVec3(&InitData.rot));
 	// Move position of trophy girl
 	gte_SetLightMatrix(&podiumMatrix);
 

@@ -60,10 +60,6 @@ enum
 	MASK_HEAD_ROT_WORLD_SPACE = 0x1,
 };
 
-CTR_STATIC_ASSERT(MASK_HEAD_DURATION_NORMAL == 0x1e00);
-CTR_STATIC_ASSERT(MASK_HEAD_DURATION_JUICED == 0x2d00);
-CTR_STATIC_ASSERT(MASK_HEAD_SCALE_NORMAL == 0x1000);
-CTR_STATIC_ASSERT(MASK_HEAD_ROT_WORLD_SPACE == 0x1);
 
 typedef u16 TrackerWeaponFlags;
 
@@ -82,7 +78,6 @@ enum
 	TRACKER_FLAG_WARPBALL_TARGET_REFRESH_BLOCKED = TRACKER_FLAG_WARPBALL_TARGET_PATH | TRACKER_FLAG_WARPBALL_BACKTRACKING,
 };
 
-CTR_STATIC_ASSERT(TRACKER_FLAG_WARPBALL_MASK_REPATH == 0x0010);
 
 // bomb, missile, warpball
 // yes, the bomb chases you and steers towards targets
@@ -158,15 +153,7 @@ struct TrackerWeapon
 	int timeAlive;
 
 	// 0x4c
-	union
-	{
-		struct
-		{
-			s16 savedPosX;
-			s16 savedPosY;
-		};
-		u32 savedPosXY;
-	};
+	u32 savedPosXY;
 
 	// 0x50
 	s16 savedPosZ;
@@ -271,18 +258,8 @@ struct MineWeapon;
 
 struct WeaponSlot231
 {
-	union
-	{
-		// 0x0
-		struct Item item;
-
-		struct
-		{
-			// 0x0
-			struct WeaponSlot231 *next;
-			struct WeaponSlot231 *prev;
-		};
-	};
+	// 0x0
+	struct Item item;
 
 	// 0x8
 	struct MineWeapon *mineWeapon;

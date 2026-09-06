@@ -1,7 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b8c00-0x800b92ac.
-
 
 // one seal can not collide with more than one other thread,
 // then quits, it was like that in the original game too,
@@ -127,7 +125,7 @@ void RB_Seal_ThTick_TurnAround(struct Thread *t)
 
 		for (int i = 0; i < 3; i++)
 		{
-			sealObj->rotDesired.v[i] = sealObj->rotCurr.v[i];
+			CTR_VECTOR_DATA(&(sealObj->rotDesired))[i] = CTR_VECTOR_DATA(&(sealObj->rotCurr))[i];
 		}
 
 		ConvertRotToMatrix(&sealInst->matrix, &sealObj->rotCurr);
@@ -184,7 +182,7 @@ void RB_Seal_ThTick_Move(struct Thread *t)
 	// move seal
 	for (i = 0; i < 3; i++)
 	{
-		sealInst->matrix.t[i] = (int)sealObj->spawnPos.v[i] - (sealObj->distFromSpawn * (int)sealObj->vel.v[i]) / 0x2d;
+		sealInst->matrix.t[i] = (int)CTR_VECTOR_DATA(&(sealObj->spawnPos))[i] - (sealObj->distFromSpawn * (int)CTR_VECTOR_DATA(&(sealObj->vel))[i]) / 0x2d;
 	}
 
 	// moving towards spawn (0)
@@ -277,14 +275,14 @@ void RB_Seal_LInB(struct Instance *inst)
 	{
 		spawnType2 = &sdata->gGT->level1->ptrSpawnType2[sealObj->sealID];
 
-		sealObj->spawnPos = spawnType2->positions[0];
-		sealObj->endPos = spawnType2->positions[1];
+		sealObj->spawnPos = spawnType2->coords.positions[0];
+		sealObj->endPos = spawnType2->coords.positions[1];
 	}
 
 	// distance between points
 	for (int i = 0; i < 3; i++)
 	{
-		sealObj->vel.v[i] = sealObj->spawnPos.v[i] - sealObj->endPos.v[i];
+		CTR_VECTOR_DATA(&(sealObj->vel))[i] = CTR_VECTOR_DATA(&(sealObj->spawnPos))[i] - CTR_VECTOR_DATA(&(sealObj->endPos))[i];
 	}
 
 	// rotCurr
@@ -295,7 +293,7 @@ void RB_Seal_LInB(struct Instance *inst)
 
 	for (int i = 0; i < 3; i++)
 	{
-		sealObj->rotDesired.v[i] = sealObj->rotCurr.v[i];
+		CTR_VECTOR_DATA(&(sealObj->rotDesired))[i] = CTR_VECTOR_DATA(&(sealObj->rotCurr))[i];
 	}
 
 	sealObj->numFramesSpinning = 0;

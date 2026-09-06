@@ -30,36 +30,9 @@ enum UIWeaponConstants
 	UI_WEAPON_BG_SHINE_TRANSPARENCY_BASE = 2,
 };
 
-CTR_STATIC_ASSERT(UI_WEAPON_ITEM_TURBO == 0);
-CTR_STATIC_ASSERT(UI_WEAPON_ITEM_BOMB == 1);
-CTR_STATIC_ASSERT(UI_WEAPON_ITEM_TNT == 3);
-CTR_STATIC_ASSERT(UI_WEAPON_ITEM_POTION == 4);
-CTR_STATIC_ASSERT(UI_WEAPON_ITEM_SPRING == 5);
-CTR_STATIC_ASSERT(UI_WEAPON_ITEM_SHIELD == 6);
-CTR_STATIC_ASSERT(UI_WEAPON_ITEM_MASK == 7);
-CTR_STATIC_ASSERT(UI_WEAPON_ITEM_CLOCK == 8);
-CTR_STATIC_ASSERT(UI_WEAPON_ITEM_WARPBALL == 9);
-CTR_STATIC_ASSERT(UI_WEAPON_ITEM_NONE == 0xf);
-CTR_STATIC_ASSERT(UI_WEAPON_ITEM_ROULETTE == 0x10);
-CTR_STATIC_ASSERT(UI_WEAPON_ICON_BASE == 5);
-CTR_STATIC_ASSERT(UI_WEAPON_JUICED_ICON_BASE == 0x11);
-CTR_STATIC_ASSERT(UI_WEAPON_MASK_GOOD_CHARACTER_BITS == 0xc9);
-CTR_STATIC_ASSERT(UI_WEAPON_MASK_UKA_ICON == 0x32);
-CTR_STATIC_ASSERT(UI_WEAPON_ROULETTE_RACING_COUNT == 0xc);
-CTR_STATIC_ASSERT(UI_WEAPON_ROULETTE_BATTLE_COUNT == 0xe);
-CTR_STATIC_ASSERT(UI_WEAPON_QUANTITY_FONT == 2);
-CTR_STATIC_ASSERT(UI_WEAPON_QUANTITY_FLAGS == 4);
-CTR_STATIC_ASSERT(UI_WEAPON_ROULETTE_LERP_FRAMES == 5);
-CTR_STATIC_ASSERT(UI_WEAPON_BG_SHINE_THETA_STEP == 0x100);
-CTR_STATIC_ASSERT(UI_WEAPON_BG_SHINE_SCALE_MUL == 0xd000);
-CTR_STATIC_ASSERT(UI_WEAPON_BG_SHINE_SCALE_SHIFT == 0x10);
-CTR_STATIC_ASSERT(UI_WEAPON_BG_SHINE_ICON_INDEX == 0x31);
-CTR_STATIC_ASSERT(UI_WEAPON_BG_SHINE_COUNT == 2);
-CTR_STATIC_ASSERT(UI_WEAPON_BG_SHINE_TRANSPARENCY_BASE == 2);
 
 static const u32 UI_WEAPON_BG_SHINE_COLOR = 0xff0000u;
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800507e0-0x80050af8.
 // Draw weapon and wumpa fruit in HUD
 void UI_Weapon_DrawSelf(s16 posX, s16 posY, s16 scale, struct Driver *d)
 
@@ -82,6 +55,7 @@ void UI_Weapon_DrawSelf(s16 posX, s16 posY, s16 scale, struct Driver *d)
 	if (itemID != UI_WEAPON_ITEM_ROULETTE)
 	{
 		iconID = itemID + UI_WEAPON_ICON_BASE;
+		sdata->s_spacebar[0] = d->numHeldItems + '0';
 
 		// character ID
 		characterID = data.characterIDs[d->driverID];
@@ -120,10 +94,6 @@ void UI_Weapon_DrawSelf(s16 posX, s16 posY, s16 scale, struct Driver *d)
 		// If this weapon has a quantity (3 missiles)
 		if (d->numHeldItems != 0)
 		{
-			// Get the ascii character to represent the quantity
-			// of weapon that you have (3 missiles)
-			sdata->s_spacebar[0] = d->numHeldItems + '0';
-
 			// Draw the number near the weapon icon to show how many
 			DecalFont_DrawLine(sdata->s_spacebar, (int)posX, (int)posY, UI_WEAPON_QUANTITY_FONT, UI_WEAPON_QUANTITY_FLAGS);
 		}
@@ -186,7 +156,7 @@ void UI_Weapon_DrawSelf(s16 posX, s16 posY, s16 scale, struct Driver *d)
 		// if timer is not finished
 		if (d->PickupTimeboxHUD.cooldown != 0)
 		{
-			UI_Lerp2D_HUD(pos.v, d->PickupTimeboxHUD.startX, d->PickupTimeboxHUD.startY, (int)posX, (int)posY, d->PickupTimeboxHUD.cooldown,
+			UI_Lerp2D_HUD(CTR_VECTOR_DATA(&(pos)), d->PickupTimeboxHUD.startX, d->PickupTimeboxHUD.startY, (int)posX, (int)posY, d->PickupTimeboxHUD.cooldown,
 			              UI_WEAPON_ROULETTE_LERP_FRAMES);
 
 			// subtract one from timer
@@ -216,7 +186,6 @@ void UI_Weapon_DrawSelf(s16 posX, s16 posY, s16 scale, struct Driver *d)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80050af8-0x80050c20.
 void UI_Weapon_DrawBG(s16 posX, s16 posY, s16 scale, struct Driver *d)
 {
 	struct GameTracker *gGT = sdata->gGT;

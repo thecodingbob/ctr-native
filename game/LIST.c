@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80031734-0x80031744.
 void LIST_Clear(struct LinkedList *L)
 {
 	L->first = 0;
@@ -8,7 +7,6 @@ void LIST_Clear(struct LinkedList *L)
 	L->count = 0;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80031744-0x80031788.
 void LIST_AddFront(struct LinkedList *L, struct Item *I)
 {
 	if (I == 0)
@@ -34,7 +32,6 @@ void LIST_AddFront(struct LinkedList *L, struct Item *I)
 	L->count = L->count + 1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80031788-0x800317cc.
 void LIST_AddBack(struct LinkedList *L, struct Item *I)
 {
 	if (I == 0)
@@ -60,19 +57,16 @@ void LIST_AddBack(struct LinkedList *L, struct Item *I)
 	L->count = L->count + 1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800317cc-0x800317d8.
 void *LIST_GetNextItem(struct Item *I)
 {
 	return I->next;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800317d8-0x800317e4.
 void *LIST_GetFirstItem(struct LinkedList *L)
 {
 	return L->first;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800317e4-0x8003186c.
 struct Item *LIST_RemoveMember(struct LinkedList *L, struct Item *I)
 {
 	if (I == 0)
@@ -109,7 +103,6 @@ struct Item *LIST_RemoveMember(struct LinkedList *L, struct Item *I)
 	return I;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003186c-0x800318ec.
 struct Item *LIST_RemoveFront(struct LinkedList *L)
 {
 	struct Item *I = L->first;
@@ -144,7 +137,6 @@ struct Item *LIST_RemoveFront(struct LinkedList *L)
 	return I;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800318ec-0x8003197c.
 struct Item *LIST_RemoveBack(struct LinkedList *L)
 {
 	struct Item *I = L->last;
@@ -183,7 +175,6 @@ struct Item *LIST_RemoveBack(struct LinkedList *L)
 	return I;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003197c-0x800319e8.
 void LIST_Init(struct LinkedList *L, struct Item *item, int itemSize, int numItems)
 {
 	while (numItems > 0)

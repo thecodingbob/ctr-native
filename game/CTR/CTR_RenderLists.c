@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80021bbc-0x80021c2c
 void CTR_ClearRenderLists_1P2P(struct GameTracker *gGT, int numPlyrCurrGame)
 {
 	if (numPlyrCurrGame <= 0)
@@ -23,7 +22,6 @@ void CTR_ClearRenderLists_1P2P(struct GameTracker *gGT, int numPlyrCurrGame)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80021c2c-0x80021c8c
 void CTR_ClearRenderLists_3P4P(struct GameTracker *gGT, int numPlyrCurrGame)
 {
 	if (numPlyrCurrGame <= 0)
@@ -45,7 +43,6 @@ void CTR_ClearRenderLists_3P4P(struct GameTracker *gGT, int numPlyrCurrGame)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80021c8c-0x80021c94.
 void CTR_EmptyFunc_MainFrame_ResetDB(void)
 {
 }

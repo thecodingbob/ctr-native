@@ -130,106 +130,18 @@ enum
 	VOICELINE_WEAPON_PRIORITY = 0x10,
 };
 
-CTR_STATIC_ASSERT(MASK_GOOD_GUY_CHARACTER_BITS == 0x20c9);
-CTR_STATIC_ASSERT(MASK_MODEL_COUNT == 2);
-CTR_STATIC_ASSERT(MASK_SOUND_ID_OFFSET_FROM_MODEL == 0x1a);
-CTR_STATIC_ASSERT(MASK_BEAM_MODEL_STRIDE == 2);
-CTR_STATIC_ASSERT(MASK_INITIAL_ROT_X == 0x40);
 CTR_STATIC_ASSERT((s32)STATIC_UKAUKA - 1 == (s32)STATIC_AKUAKU);
 CTR_STATIC_ASSERT((s32)STATIC_AKUAKU + MASK_SOUND_ID_OFFSET_FROM_MODEL == 0x53);
 CTR_STATIC_ASSERT((s32)STATIC_UKAUKA + MASK_SOUND_ID_OFFSET_FROM_MODEL == 0x54);
-CTR_STATIC_ASSERT(POTION_THROW_RANDOM == 0x1);
-CTR_STATIC_ASSERT(POTION_THROW_BACKWARD == 0x2);
-CTR_STATIC_ASSERT(POTION_THROW_FORWARD == 0x4);
-CTR_STATIC_ASSERT(POTION_THROW_RANDOM_MASK == 0x1f);
-CTR_STATIC_ASSERT(POTION_THROW_RANDOM_BIAS == 0x10);
-CTR_STATIC_ASSERT(POTION_THROW_SPEED == 0x78);
-CTR_STATIC_ASSERT(POTION_THROW_Y_VELOCITY == 0x30);
-CTR_STATIC_ASSERT(POTION_THROW_MATRIX_SHIFT == 12);
-CTR_STATIC_ASSERT(MISSILE_TARGET_DRIVER_COUNT == 8);
 CTR_STATIC_ASSERT(MISSILE_TARGET_DRIVER_COUNT == len(((struct GameTracker *)0)->drivers));
-CTR_STATIC_ASSERT(MISSILE_TARGET_DISTANCE_SENTINEL == 0x7fffffff);
-CTR_STATIC_ASSERT(MISSILE_TARGET_POS_SHIFT == 8);
-CTR_STATIC_ASSERT(MISSILE_TARGET_GTE_RTPS_OVERFLOW == 0x40000);
-CTR_STATIC_ASSERT(MISSILE_TARGET_SCREEN_LEFT == 0x1f);
-CTR_STATIC_ASSERT(MISSILE_TARGET_SCREEN_RIGHT_MARGIN == 0x1e);
-CTR_STATIC_ASSERT(MISSILE_TARGET_SCREEN_TOP == 0x15);
-CTR_STATIC_ASSERT(MISSILE_TARGET_SCREEN_BOTTOM_MARGIN == 0x14);
-CTR_STATIC_ASSERT(WEAPON_ID_TURBO == 0);
-CTR_STATIC_ASSERT(WEAPON_ID_BOMB_MISSILE == 2);
-CTR_STATIC_ASSERT(WEAPON_ID_MINE == 3);
-CTR_STATIC_ASSERT(WEAPON_ID_BEAKER == 4);
-CTR_STATIC_ASSERT(WEAPON_ID_SHIELD == 6);
-CTR_STATIC_ASSERT(WEAPON_ID_MASK == 7);
-CTR_STATIC_ASSERT(WEAPON_ID_CLOCK == 8);
-CTR_STATIC_ASSERT(WEAPON_ID_WARPBALL == 9);
-CTR_STATIC_ASSERT(WEAPON_ID_INVISIBILITY == 0xc);
-CTR_STATIC_ASSERT(WEAPON_ID_SUPER_ENGINE == 0xd);
-CTR_STATIC_ASSERT(SHOOT_NOW_NO_FLAGS == 0);
-CTR_STATIC_ASSERT(SHOOT_NOW_BACKWARD == 0x2);
 CTR_STATIC_ASSERT((s32)SHOOT_NOW_BACKWARD == (s32)POTION_THROW_BACKWARD);
-CTR_STATIC_ASSERT(TURBO_ITEM_BOOST_NORMAL == 0x80);
-CTR_STATIC_ASSERT(TURBO_ITEM_BOOST_JUICED == 0x100);
-CTR_STATIC_ASSERT(TURBO_ITEM_RESERVES == 0x960);
-CTR_STATIC_ASSERT(TURBO_ITEM_FIRE_FLAGS == 9);
-CTR_STATIC_ASSERT(WEAPON_GAMEPAD_RUMBLE_FRAMES == 8);
-CTR_STATIC_ASSERT(WEAPON_GAMEPAD_RUMBLE_FORCE == 0x7f);
-CTR_STATIC_ASSERT(ACTIVE_MISSILE_LIMIT == 12);
-CTR_STATIC_ASSERT(MISSILE_RACE_FALLBACK_EVENT_MASK == 1);
-CTR_STATIC_ASSERT(MISSILE_TRACKER_VELOCITY_NUMERATOR == 5);
-CTR_STATIC_ASSERT(MISSILE_TRACKER_VELOCITY_SHIFT == 8);
-CTR_STATIC_ASSERT(TRACKER_LAUNCH_VELOCITY_NUMERATOR == 3);
-CTR_STATIC_ASSERT(TRACKER_LAUNCH_VELOCITY_SHIFT == 7);
-CTR_STATIC_ASSERT(TRACKER_PARENT_SAFETY_FRAMES == 60);
-CTR_STATIC_ASSERT(MINE_PARENT_SAFETY_FRAMES == 10);
-CTR_STATIC_ASSERT(MINE_COLL_PROBE_TOP_Y_OFFSET == -400);
-CTR_STATIC_ASSERT(MINE_COLL_PROBE_BOTTOM_Y_OFFSET == 64);
-CTR_STATIC_ASSERT(MINE_COLL_SEARCH_PLAYER_THRESHOLD == 3);
-CTR_STATIC_ASSERT(MINE_COLL_CALLBACK_FLAGS == 0x40);
-CTR_STATIC_ASSERT(MINE_COLL_SCRATCH_OFFSET == 0x108);
 CTR_STATIC_ASSERT((s32)MINE_HITBOX_FRUIT_MODEL == (s32)PU_FRUIT_CRATE);
 CTR_STATIC_ASSERT((s32)MINE_HITBOX_RANDOM_MODEL == (s32)PU_RANDOM_CRATE);
-CTR_STATIC_ASSERT(BEAKER_MODEL_HEADER_CAMERA_FLAG == 0x2);
 CTR_STATIC_ASSERT((s32)SHIELD_DARK_MODEL == (s32)DYNAMIC_SHIELD_DARK);
-CTR_STATIC_ASSERT(SHIELD_SCALE == 0x700);
-CTR_STATIC_ASSERT(SHIELD_HIGHLIGHT_ROT_Y == 0xc00);
-CTR_STATIC_ASSERT(SHIELD_DURATION_NORMAL == 0x2d00);
-CTR_STATIC_ASSERT(SHIELD_ALPHA_SCALE == 0x400);
-CTR_STATIC_ASSERT(CLOCK_HURT_DURATION_NORMAL == 0x1e00);
-CTR_STATIC_ASSERT(CLOCK_HURT_DURATION_JUICED == 0x2d00);
-CTR_STATIC_ASSERT(CLOCK_FLASH_FRAMES == 4);
-CTR_STATIC_ASSERT(CLOCK_SELF_SEND_FRAMES == 0x1e);
-CTR_STATIC_ASSERT(CLOCK_DRIVER_COUNT == 8);
 CTR_STATIC_ASSERT(CLOCK_DRIVER_COUNT == len(((struct GameTracker *)0)->drivers));
-CTR_STATIC_ASSERT(CLOCK_HURT_REASON == 1);
 CTR_STATIC_ASSERT((s32)WARPBALL_MODEL == (s32)DYNAMIC_WARPBALL);
-CTR_STATIC_ASSERT(WARPBALL_MATRIX_IDENTITY_SCALE == 0x1000);
-CTR_STATIC_ASSERT(WARPBALL_POS_SHIFT == 8);
-CTR_STATIC_ASSERT(WARPBALL_PARENT_SAFETY_FRAMES == 10);
-CTR_STATIC_ASSERT(WARPBALL_VELOCITY_NUMERATOR == 7);
-CTR_STATIC_ASSERT(WARPBALL_VELOCITY_SHIFT == 8);
-CTR_STATIC_ASSERT(WARPBALL_PARTICLE_ICON_GROUP == 0);
-CTR_STATIC_ASSERT(WARPBALL_PARTICLE_OT_OFFSET == -6);
 CTR_STATIC_ASSERT((u32)INVISIBILITY_CLEAR_DRAW_FLAGS == 0xfff8ffffu);
-CTR_STATIC_ASSERT(INVISIBILITY_DURATION_NORMAL == 0x1e00);
-CTR_STATIC_ASSERT(INVISIBILITY_DURATION_JUICED == 0x2d00);
-CTR_STATIC_ASSERT(SUPER_ENGINE_DURATION_NORMAL == 0x1e00);
-CTR_STATIC_ASSERT(SUPER_ENGINE_DURATION_JUICED == 0x2d00);
-CTR_STATIC_ASSERT(SOUND_BOMB_LAUNCH == 0x47);
-CTR_STATIC_ASSERT(SOUND_MISSILE_LAUNCH == 0x4a);
-CTR_STATIC_ASSERT(SOUND_MINE_DROP == 0x52);
-CTR_STATIC_ASSERT(SOUND_SHIELD == 0x57);
-CTR_STATIC_ASSERT(SOUND_CLOCK == 0x44);
-CTR_STATIC_ASSERT(SOUND_WARPBALL == 0x4d);
-CTR_STATIC_ASSERT(SOUND_INVISIBILITY == 0x61);
-CTR_STATIC_ASSERT(VOICELINE_BOMB_LAUNCH == 10);
-CTR_STATIC_ASSERT(VOICELINE_MISSILE_LAUNCH == 11);
-CTR_STATIC_ASSERT(VOICELINE_MINE_DROP == 0xf);
-CTR_STATIC_ASSERT(VOICELINE_CLOCK == 0xe);
-CTR_STATIC_ASSERT(VOICELINE_WARPBALL == 0xc);
-CTR_STATIC_ASSERT(VOICELINE_WEAPON_PRIORITY == 0x10);
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80064be4-0x80064c38.
 b32 VehPickupItem_MaskBoolGoodGuy(struct Driver *d)
 {
 	s32 charID = data.characterIDs[d->driverID];
@@ -417,11 +329,11 @@ static void VehPickupItem_MissileLoadPlayerView(struct GameTracker *gGT, struct 
 
 static void VehPickupItem_MissileLoadAiView(struct Driver *driver)
 {
-	SVECTOR rot = {driver->rotCurr.x, driver->rotCurr.y, driver->rotCurr.z, 0};
+	SVec3 rot = {.x = driver->rotCurr.x, .y = driver->rotCurr.y, .z = driver->rotCurr.z};
 	MATRIX matrix = {0};
 	MATRIX unusedInverse;
 
-	RotMatrix(&rot, &matrix);
+	ConvertRotToMatrix(&matrix, &rot);
 	matrix.t[0] = CTR_MipsSra(driver->posCurr.x, 8);
 	matrix.t[1] = CTR_MipsSra(driver->posCurr.y, 8);
 	matrix.t[2] = CTR_MipsSra(driver->posCurr.z, 8);
@@ -474,7 +386,6 @@ static b32 VehPickupItem_MissileCandidateVisible(struct PushBuffer *pb, struct D
 	return 1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80064f94-0x800652c8.
 struct Driver *VehPickupItem_MissileGetTargetDriver(struct Driver *driver)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -536,7 +447,6 @@ struct Driver *VehPickupItem_MissileGetTargetDriver(struct Driver *driver)
 	return target;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800652c8-0x8006540c.
 b32 VehPickupItem_PotionThrow(struct MineWeapon *mine, struct Instance *inst, u32 flags)
 {
 	s32 throwVelocity;
@@ -573,7 +483,6 @@ b32 VehPickupItem_PotionThrow(struct MineWeapon *mine, struct Instance *inst, u3
 
 void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 {
-	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006540c-0x800666e4.
 	struct Instance *dInst;
 	struct Thread *weaponTh;
 	struct Instance *weaponInst;
@@ -703,7 +612,7 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 
 		VehPickupItem_CopyMatrix(&weaponInst->matrix, &dInst->matrix);
 
-		VehPhysForce_RotAxisAngle(&weaponInst->matrix, d->AxisAngle1_normalVec.v, d->rotCurr.y);
+		VehPhysForce_RotAxisAngle(&weaponInst->matrix, CTR_VECTOR_DATA(&(d->AxisAngle1_normalVec)), d->rotCurr.y);
 
 		weaponTh = weaponInst->thread;
 		weaponTh->funcThDestroy = PROC_DestroyTracker;
@@ -915,7 +824,7 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 		if (sps->boolDidTouchQuadblock == 0)
 		{
 			fallbackNormal = (SVec3){.x = 0, .y = COLL_FRACTION_ONE, .z = 0};
-			rotationNormal = fallbackNormal.v;
+			rotationNormal = CTR_VECTOR_DATA(&(fallbackNormal));
 
 			mw->stopFallAtY = weaponInst->matrix.t[1];
 		}
@@ -923,12 +832,15 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 		else
 		{
 			mw->stopFallAtY = sps->Union.QuadBlockColl.hitPos.y;
-			rotationNormal = sps->hit.plane.normal.v;
+			rotationNormal = CTR_VECTOR_DATA(&(sps->hit.plane.normal));
 		}
 
 		VehPhysForce_RotAxisAngle(&weaponInst->matrix, rotationNormal, d->angle);
 
-		d->instTntSend = weaponInst;
+		if (weaponID == WEAPON_ID_MINE)
+		{
+			d->instTntSend = weaponInst;
+		}
 
 		// dropped a mine
 		d->actionsFlagSet |= ACTION_DROPPING_MINE;
@@ -1037,7 +949,7 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 			modelID = DYNAMIC_SHIELD;
 		}
 
-		struct Instance *instColor = INSTANCE_Birth3D(gGT->modelPtr[modelID], sdata->s_shield, 0);
+		struct Instance *instColor = INSTANCE_Birth3D(gGT->modelPtr[modelID], sdata->s_shield, weaponTh);
 
 		struct Instance *instHighlight = INSTANCE_Birth3D(gGT->modelPtr[DYNAMIC_HIGHLIGHT], highlightName, weaponTh);
 
@@ -1273,7 +1185,6 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800666e4-0x8006677c.
 void VehPickupItem_ShootOnCirclePress(struct Driver *d)
 {
 	u8 weapon;

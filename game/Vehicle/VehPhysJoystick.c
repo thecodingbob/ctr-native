@@ -11,13 +11,7 @@ enum
 	JOYSTICK_STRENGTH_CURVE_SEGMENTS = 5,
 };
 
-CTR_STATIC_ASSERT(RACING_WHEEL_DEFAULT_CENTER == 0x80);
-CTR_STATIC_ASSERT(RACING_WHEEL_DEFAULT_DEAD_ZONE == 0x30);
-CTR_STATIC_ASSERT(RACING_WHEEL_DEFAULT_RANGE == 0x7f);
-CTR_STATIC_ASSERT(RACING_WHEEL_DEFAULT_STRENGTH_DISTANCE == 0x5e);
-CTR_STATIC_ASSERT(JOYSTICK_STRENGTH_CURVE_SEGMENTS == 5);
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006163c-0x800616b0.
 int VehPhysJoystick_ReturnToRest(int stickVal, int half, struct RacingWheelData *rwd)
 {
 	int center = RACING_WHEEL_DEFAULT_CENTER;
@@ -46,7 +40,6 @@ struct RacingWheelData rwd_default = {
     .range = RACING_WHEEL_DEFAULT_RANGE,
 };
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800616b0-0x800617cc.
 int VehPhysJoystick_GetStrength(int val, int max, struct RacingWheelData *rwd)
 {
 	int dead = RACING_WHEEL_DEFAULT_DEAD_ZONE;
@@ -86,7 +79,6 @@ int VehPhysJoystick_GetStrength(int val, int max, struct RacingWheelData *rwd)
 	return CTR_MipsDiv(dead, dist);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800617cc-0x8006181c.
 int VehPhysJoystick_GetStrengthAbsolute(int stickVal, int maxSteer, struct RacingWheelData *rwd)
 {
 	int center = RACING_WHEEL_DEFAULT_CENTER;

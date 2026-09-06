@@ -1,7 +1,6 @@
 #include <common.h>
 
 // Initialize car engine audio system for one driver
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80028880-0x800289b0
 b32 EngineAudio_InitOnce(u32 soundID, u32 flags)
 {
 	struct EngineFX *ptrEngineFX;
@@ -58,7 +57,6 @@ b32 EngineAudio_InitOnce(u32 soundID, u32 flags)
 	return (channel != 0);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800289b0-0x80028b54
 s16 EngineAudio_Recalculate(u32 soundID, u32 sfx)
 {
 	int splitScreenVolume;
@@ -134,7 +132,6 @@ s16 EngineAudio_Recalculate(u32 soundID, u32 sfx)
 	return 1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002f5f4-0x8002fc28
 void EngineSound_Player(struct Driver *driver)
 {
 	u8 id = driver->driverID;
@@ -319,7 +316,6 @@ void EngineSound_Player(struct Driver *driver)
 	EngineAudio_Recalculate(((engine * 4) + id) & 0xffff, HowlSfx_Pack(lr, distortion, volume, echo));
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002fc28-0x8002fc64
 int EngineSound_VolumeAdjust(int desired, int current, int step)
 {
 	int delta = desired - current;
@@ -463,7 +459,6 @@ static u32 EngineSound_AI_CalculateDistortion(struct Driver *ai, int distanceDel
 	return distortion;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002fc64-0x8002ff28
 void EngineSound_AI(struct Driver *ai, struct Driver *cameraDriver, int slotIndex, int distance, int distanceDelta, u32 lr)
 {
 	u32 volume;
@@ -539,7 +534,6 @@ static int EngineSound_NearestAIs_CalculateLR(s32 *dir)
 	return lr + 0x80;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002ff28-0x80030208
 void EngineSound_NearestAIs(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -547,7 +541,7 @@ void EngineSound_NearestAIs(void)
 	int closestDistances[2];
 	s16 closestPlayers[2];
 
-	if (gGT->numBotsCurrGame == 0)
+	if (gGT->numBotsNextGame == 0)
 	{
 		return;
 	}
@@ -588,7 +582,6 @@ void EngineSound_NearestAIs(void)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80028b54-0x80028bbc
 void EngineAudio_Stop(u32 soundID)
 {
 	if (sdata->boolAudioEnabled == 0)

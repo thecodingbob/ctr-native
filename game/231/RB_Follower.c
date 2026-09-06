@@ -5,7 +5,6 @@ static struct InstDrawPerPlayer *RB_Follower_GetIDPP(struct Instance *inst, int 
 	return (struct InstDrawPerPlayer *)((char *)inst + sizeof(struct Instance) + (playerIndex * sizeof(struct InstDrawPerPlayer)));
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b6d58-0x800b6e10
 void RB_Follower_ProcessBucket(struct Thread *t)
 {
 	int i;
@@ -48,7 +47,6 @@ void RB_Follower_ProcessBucket(struct Thread *t)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b6e10-0x800b6f00.
 void RB_Follower_ThTick(struct Thread *t)
 {
 	int kartState;
@@ -90,7 +88,6 @@ void RB_Follower_ThTick(struct Thread *t)
 	t->flags |= THREAD_FLAG_DEAD;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b6f00-0x800b706c.
 void RB_Follower_Init(struct Driver *d, struct Thread *mineTh)
 {
 	struct Thread *t;
@@ -146,6 +143,6 @@ void RB_Follower_Init(struct Driver *d, struct Thread *mineTh)
 	// backup original position
 	for (int i = 0; i < 3; i++)
 	{
-		fObj->realPos.v[i] = mineInst->matrix.t[i];
+		CTR_VECTOR_DATA(&(fObj->realPos))[i] = mineInst->matrix.t[i];
 	}
 }

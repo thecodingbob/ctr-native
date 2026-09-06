@@ -37,15 +37,7 @@ enum UIRaceFlowConstants
 	UI_RACE_END_SAVE_GHOST_FRAME = 0x3f9,
 };
 
-CTR_STATIC_ASSERT(UI_RACE_END_OPTION_QUIT == 3);
-CTR_STATIC_ASSERT(UI_RACE_END_OPTION_PRESS_TO_CONTINUE == 0xc9);
-CTR_STATIC_ASSERT(UI_RACE_START_TITLE_CENTER_X == 0x100);
-CTR_STATIC_ASSERT(UI_RACE_START_BAR_HEIGHT == 0x1e);
-CTR_STATIC_ASSERT(UI_RACE_END_DRIVER_COUNT == 8);
-CTR_STATIC_ASSERT(UI_RACE_END_ATTACK_RATIO_SHIFT == 0xc);
-CTR_STATIC_ASSERT(UI_RACE_END_SAVE_GHOST_FRAME == 0x3f9);
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005572c-0x80055840.
 void UI_RaceEnd_GetDriverClock(struct Driver *driver)
 {
 	u8 missilesLaunched;
@@ -100,7 +92,6 @@ void UI_RaceEnd_GetDriverClock(struct Driver *driver)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80055840-0x80055c90.
 
 // You see this in 1P mode, right before traffic lights count down
 void UI_RaceStart_IntroText1P(void)
@@ -311,9 +302,9 @@ LAB_80055930:
 		rect.y = gGT->pushBuffer[0].rect.y - (barTransition - UI_RACE_START_DIVIDER_TOP_Y_OFFSET);
 
 		Color color;
-		color.self = colors[0];
+		ColorCode_SetPacked(&color, colors[0]);
 
-		uint32_t *ot = gGT->backBuffer->otMem.uiOT;
+		u32 *ot = gGT->backBuffer->otMem.uiOT;
 
 		CTR_Box_DrawSolidBox(&rect, color, ot);
 
@@ -324,7 +315,7 @@ LAB_80055930:
 		// 30-pixel height
 		// clear RGB, keep alpha (which is zero anyway)
 		colors[0] = colors[0] & UI_RACE_START_BAR_ALPHA_MASK;
-		color.self = colors[0];
+		ColorCode_SetPacked(&color, colors[0]);
 		rect.h = UI_RACE_START_BAR_HEIGHT;
 
 		// draw big black title bar (first)
@@ -338,7 +329,6 @@ LAB_80055930:
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80055c90-0x8005607c.
 void UI_RaceEnd_MenuProc(struct RectMenu *menu)
 {
 	s16 option;
@@ -418,7 +408,6 @@ void UI_RaceEnd_MenuProc(struct RectMenu *menu)
 		// clear backup,
 		// keep music,
 		// destroy "most" fx, let menu fx play to end
-		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80055df0-0x80055e04 for retry stop-audio args.
 		howl_StopAudio(1, 0, 0);
 
 		// if did not improve time, then dont
@@ -473,7 +462,7 @@ void UI_RaceEnd_MenuProc(struct RectMenu *menu)
 		SelectProfile_ToggleMode(SELECT_PROFILE_MODE_GHOST_SAVE);
 
 		// Change active Menu to GhostSelection
-		sdata->ptrActiveMenu = &data.menuGhostSelection;
+		sdata->ptrDesiredMenu = &data.menuGhostSelection;
 		break;
 	}
 
@@ -482,6 +471,8 @@ void UI_RaceEnd_MenuProc(struct RectMenu *menu)
 	{
 		// go to battle setup screen
 		sdata->mainMenuState = MAIN_MENU_BATTLE_SETUP;
+
+		sdata->Loading.OnBegin.AddBitsConfig0 |= MAIN_MENU;
 
 		// load LEV of main menu
 		MainRaceTrack_RequestLoad(MAIN_MENU_LEVEL);

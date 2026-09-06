@@ -1,8 +1,7 @@
 #include <common.h>
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80044ef8-0x80044f90.
-void RECTMENU_DrawPolyGT4(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, uint32_t *ot, u32 color0, u32 color1, u32 color2, u32 color3,
+void RECTMENU_DrawPolyGT4(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, u32 *ot, u32 color0, u32 color1, u32 color2, u32 color3,
                           char transparency, s16 scale)
 {
 	if (!icon)
@@ -14,8 +13,7 @@ void RECTMENU_DrawPolyGT4(struct Icon *icon, s16 posX, s16 posY, struct PrimMem 
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80044f90-0x80044ff8.
-void RECTMENU_DrawOuterRect_Edge(RECT *r, Color color, u32 param_3, uint32_t *otMem)
+void RECTMENU_DrawOuterRect_Edge(RECT *r, Color color, u32 param_3, u32 *otMem)
 {
 	param_3 & 0x20 ? CTR_Box_DrawClearBox(r, &color, TRANS_50_DECAL, otMem) : CTR_Box_DrawSolidBox(r, color, otMem);
 }
@@ -29,7 +27,6 @@ static const char s_rectMenuTimeFormat[] = "%ld:%ld%ld:%ld%ld";
 #define RECTMENU_TIME_FORMAT rdata.s_timeString
 #endif
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80044ff8-0x80045134.
 char *RECTMENU_DrawTime(int milliseconds)
 {
 	// 32 is added to milliseconds every frame,
@@ -59,8 +56,7 @@ char *RECTMENU_DrawTime(int milliseconds)
 #undef RECTMENU_TIME_FORMAT
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80045134-0x80045254.
-void RECTMENU_DrawRwdBlueRect_Subset(s16 *pos, int *color, uint32_t *ot, struct PrimMem *primMem)
+void RECTMENU_DrawRwdBlueRect_Subset(s16 *pos, int *color, u32 *ot, struct PrimMem *primMem)
 {
 	POLY_G4 *p = (POLY_G4 *)primMem->cursor;
 
@@ -73,10 +69,10 @@ void RECTMENU_DrawRwdBlueRect_Subset(s16 *pos, int *color, uint32_t *ot, struct 
 		CtrGpu_WriteColorCode(&p->r2, color[2] & 0xffffff);
 		CtrGpu_WriteColorCode(&p->r3, color[3] & 0xffffff);
 
-		CtrGpu_WritePackedXY(&p->x0, CTR_ReadU32LE(&pos[0]));
-		CtrGpu_WritePackedXY(&p->x1, (pos[0] + pos[2]) | ((u32)pos[1] << 16));
-		CtrGpu_WritePackedXY(&p->x2, pos[0] | ((u32)(pos[1] + pos[3]) << 16));
-		CtrGpu_WritePackedXY(&p->x3, (pos[0] + pos[2]) | ((u32)(pos[1] + pos[3]) << 16));
+		CtrGpu_WritePackedXY(&p->x0, CTR_PackS16Pair(pos[0], pos[1]));
+		CtrGpu_WritePackedXY(&p->x1, CTR_PackS16Pair(pos[0] + pos[2], pos[1]));
+		CtrGpu_WritePackedXY(&p->x2, CTR_PackS16Pair(pos[0], pos[1] + pos[3]));
+		CtrGpu_WritePackedXY(&p->x3, CTR_PackS16Pair(pos[0] + pos[2], pos[1] + pos[3]));
 
 		p->tag = CtrGpu_PackOTTag(*ot, 0x8000000);
 		*ot = CtrGpu_PrimToOTLink24(p);
@@ -84,8 +80,7 @@ void RECTMENU_DrawRwdBlueRect_Subset(s16 *pos, int *color, uint32_t *ot, struct 
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80045254-0x800453e8.
-void RECTMENU_DrawRwdBlueRect(RECT *rect, char *metas, uint32_t *ot, struct PrimMem *primMem)
+void RECTMENU_DrawRwdBlueRect(RECT *rect, char *metas, u32 *ot, struct PrimMem *primMem)
 {
 	s16 pos[4];
 	int gradient[2];
@@ -111,8 +106,7 @@ void RECTMENU_DrawRwdBlueRect(RECT *rect, char *metas, uint32_t *ot, struct Prim
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800453e8-0x80045534.
-void RECTMENU_DrawRwdTriangle(s16 *position, char *color, uint32_t *otMem, struct PrimMem *primMem)
+void RECTMENU_DrawRwdTriangle(s16 *position, char *color, u32 *otMem, struct PrimMem *primMem)
 {
 	POLY_G4 *p;
 	void *primmemCurr;
@@ -165,8 +159,7 @@ void RECTMENU_DrawRwdTriangle(s16 *position, char *color, uint32_t *otMem, struc
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80045534-0x80045650.
-void RECTMENU_DrawOuterRect_LowLevel(RECT *p, s16 xOffset, u16 yOffset, Color color, s16 param_5, uint32_t *otMem)
+void RECTMENU_DrawOuterRect_LowLevel(RECT *p, s16 xOffset, u16 yOffset, Color color, s16 param_5, u32 *otMem)
 {
 	int iVar1;
 	RECT r;
@@ -192,15 +185,13 @@ void RECTMENU_DrawOuterRect_LowLevel(RECT *p, s16 xOffset, u16 yOffset, Color co
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80045650-0x8004568c.
-void RECTMENU_DrawOuterRect_HighLevel(RECT *r, Color color, s16 param_3, uint32_t *otMem)
+void RECTMENU_DrawOuterRect_HighLevel(RECT *r, Color color, s16 param_3, u32 *otMem)
 {
 	RECTMENU_DrawOuterRect_LowLevel(r, 3, 2, color, param_3, otMem);
 	return;
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004568c-0x800457b0.
 void RECTMENU_DrawQuip(char *comment, s16 startX, int startY, u32 sizeX, s16 fontType, int textFlag, s16 boxFlag)
 {
 	int posX = startX;
@@ -217,7 +208,7 @@ void RECTMENU_DrawQuip(char *comment, s16 startX, int startY, u32 sizeX, s16 fon
 	if ((textFlag & 0x8000) != 0)
 	{
 		// posX with text un-centered
-		posX = startX - (sizeX >> 1);
+		posX = startX - ((s16)sizeX / 2);
 	}
 
 	sizeY = (u32)data.PlayerCommentBoxParams[fontType];
@@ -234,8 +225,7 @@ void RECTMENU_DrawQuip(char *comment, s16 startX, int startY, u32 sizeX, s16 fon
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800457b0-0x800459ec.
-void RECTMENU_DrawInnerRect(RECT *r, int type, uint32_t *ot)
+void RECTMENU_DrawInnerRect(RECT *r, int type, u32 *ot)
 {
 	u32 *colorDataNormal;
 	u32 *colorDataSpecial;
@@ -251,7 +241,7 @@ void RECTMENU_DrawInnerRect(RECT *r, int type, uint32_t *ot)
 	if ((type & 2) == 0)
 	{
 		Color color;
-		color.self = *colorDataNormal;
+		ColorCode_SetPacked(&color, *colorDataNormal);
 		RECTMENU_DrawOuterRect_HighLevel(r, color, (int)(s16)(type | 0x20), ot);
 	}
 
@@ -279,7 +269,8 @@ void RECTMENU_DrawInnerRect(RECT *r, int type, uint32_t *ot)
 		}
 		else
 		{
-			Color color = {.self = sdata->DrawSolidBoxData[0]};
+			Color color;
+			ColorCode_SetPacked(&color, sdata->DrawSolidBoxData[0]);
 			CTR_Box_DrawSolidBox(&adjustedRect, color, ot);
 		}
 	}
@@ -308,7 +299,6 @@ void RECTMENU_DrawInnerRect(RECT *r, int type, uint32_t *ot)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800459ec-0x80045b1c.
 void RECTMENU_DrawFullRect(struct RectMenu *menu, RECT *inner)
 {
 	u32 *rgb;
@@ -341,14 +331,13 @@ void RECTMENU_DrawFullRect(struct RectMenu *menu, RECT *inner)
 		outer.w = inner->w - 6;
 
 		Color color;
-		color.self = *rgb;
+		ColorCode_SetPacked(&color, *rgb);
 		RECTMENU_DrawOuterRect_Edge(&outer, color, (menu->drawStyle | 0x20), gGT->backBuffer->otMem.uiOT);
 	}
 	RECTMENU_DrawInnerRect(inner, menu->drawStyle, gGT->backBuffer->otMem.uiOT);
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80045b1c-0x80045c50.
 void RECTMENU_GetHeight(struct RectMenu *m, s16 *height, b32 boolCheckSubmenu)
 {
 	int lineHeight;
@@ -419,7 +408,6 @@ void RECTMENU_GetHeight(struct RectMenu *m, s16 *height, b32 boolCheckSubmenu)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80045c50-0x80045db0.
 void RECTMENU_GetWidth(struct RectMenu *m, s16 *width, b32 boolCheckSubmenu)
 {
 	int fontType;
@@ -479,7 +467,6 @@ void RECTMENU_GetWidth(struct RectMenu *m, s16 *width, b32 boolCheckSubmenu)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80045db0-0x80046404.
 void RECTMENU_DrawSelf(struct RectMenu *menu, int posX, s16 posY, s16 menuWidth)
 {
 	u16 textFlags;
@@ -694,7 +681,6 @@ LAB_80045e94:
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80046404-0x80046458.
 void RECTMENU_ClearInput()
 {
 	int i;
@@ -710,7 +696,6 @@ void RECTMENU_ClearInput()
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80046458-0x80046534.
 void RECTMENU_CollectInput()
 {
 	int i;
@@ -742,7 +727,6 @@ void RECTMENU_CollectInput()
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80046534-0x8004680c
 int RECTMENU_ProcessInput(struct RectMenu *m)
 {
 	struct MenuRow *currMenuRow;
@@ -754,6 +738,19 @@ int RECTMENU_ProcessInput(struct RectMenu *m)
 	int returnVal = 0;
 
 	RngDeadCoed(&sdata->advRng);
+
+	if (((m->state & ONLY_DRAW_TITLE) == 0) && ((m->state & RECTMENU_DRAW_CALLBACK_FLAGS) != RECTMENU_DRAW_CALLBACK_FLAGS))
+	{
+		if (sdata->activeSubMenu != m)
+		{
+			sdata->activeSubMenu = m;
+
+			if ((m->state & KEEP_INPUTS_IN_SUBMENU) == 0)
+			{
+				RECTMENU_ClearInput();
+			}
+		}
+	}
 
 	// button from any player
 	button = sdata->AnyPlayerTap;
@@ -785,17 +782,6 @@ int RECTMENU_ProcessInput(struct RectMenu *m)
 
 		currMenuRow = &m->rows[oldRow];
 
-		if (sdata->activeSubMenu != m)
-		{
-			sdata->activeSubMenu = m;
-
-			// if input should clear upon opening
-			if ((m->state & KEEP_INPUTS_IN_SUBMENU) == 0)
-			{
-				RECTMENU_ClearInput();
-			}
-		}
-
 		// optimized way to check all four button presses:
 		// up, down, left, right, and get new row
 		for (i = 0; i < 4; i++)
@@ -817,11 +803,11 @@ int RECTMENU_ProcessInput(struct RectMenu *m)
 			}
 		}
 
-		if ((button & (BTN_CROSS | BTN_CIRCLE)) == 0)
+		if ((button & (BTN_CROSS_one | BTN_CIRCLE)) == 0)
 		{
 			if (
 			    // if Triangle or Square
-			    ((button & (BTN_TRIANGLE | BTN_SQUARE)) != 0) &&
+			    ((button & (BTN_TRIANGLE | BTN_SQUARE_one)) != 0) &&
 
 			    // if this is not the top of the menu
 			    ((m->state & MENU_CANT_GO_BACK) == 0))
@@ -904,7 +890,6 @@ int RECTMENU_ProcessInput(struct RectMenu *m)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004680c-0x80046990.
 void RECTMENU_ProcessState()
 {
 	struct RectMenu *currMenu;
@@ -950,6 +935,7 @@ void RECTMENU_ProcessState()
 		currMenu->funcPtr(currMenu);
 
 		// check if funcPtr changed "state"
+		currMenu = sdata->ptrActiveMenu;
 		state = currMenu->state;
 	}
 
@@ -960,6 +946,7 @@ void RECTMENU_ProcessState()
 		RECTMENU_ProcessInput(currMenu);
 
 		// check if ProcessInput changed "state"
+		currMenu = sdata->ptrActiveMenu;
 		state = currMenu->state;
 
 		// if Menu border is not invisible
@@ -974,6 +961,9 @@ void RECTMENU_ProcessState()
 		}
 	}
 
+	currMenu = sdata->ptrActiveMenu;
+	state = currMenu->state;
+
 	// not sure what this is
 	if ((state & RECTMENU_UNKNOWN_0x800) == 0)
 	{
@@ -985,6 +975,9 @@ void RECTMENU_ProcessState()
 		sdata->gGT->renderFlags |= RENDER_FLAG_RENDER_BUCKET;
 	}
 
+	currMenu = sdata->ptrActiveMenu;
+	state = currMenu->state;
+
 	// if menu needs to close
 	if ((state & NEEDS_TO_CLOSE) != 0)
 	{
@@ -994,7 +987,6 @@ void RECTMENU_ProcessState()
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80046990-0x800469c8.
 void RECTMENU_Show(struct RectMenu *m)
 {
 	RECTMENU_ClearInput();
@@ -1005,14 +997,12 @@ void RECTMENU_Show(struct RectMenu *m)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800469c8-0x800469dc.
 void RECTMENU_Hide(struct RectMenu *m)
 {
 	m->state |= NEEDS_TO_CLOSE;
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800469dc-0x800469f0.
 b32 RECTMENU_BoolHidden(struct RectMenu *m)
 {
 	return ((m->state & NEEDS_TO_CLOSE) != 0);

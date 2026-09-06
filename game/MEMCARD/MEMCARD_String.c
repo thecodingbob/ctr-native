@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003d6e8-0x8003d730.
 char *MEMCARD_StringInit(int slotIndex, char *dstString)
 {
 	if (!dstString)
@@ -17,7 +16,6 @@ char *MEMCARD_StringInit(int slotIndex, char *dstString)
 	return dstString;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003d730-0x8003d7d8.
 void MEMCARD_StringSet(char *dstString, int slotIdx, char *srcString)
 
 {

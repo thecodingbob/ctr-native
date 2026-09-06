@@ -26,31 +26,8 @@ enum UIMapConstants
 	UI_MAP_ADV_ARROW_SCALE = 0x800,
 };
 
-CTR_STATIC_ASSERT(UI_MAP_NEUTRAL_COLOR == 0x808080);
-CTR_STATIC_ASSERT(UI_MAP_COLOR_MODE_BLACK == 2);
-CTR_STATIC_ASSERT(UI_MAP_COLOR_MODE_BLUE == 3);
-CTR_STATIC_ASSERT(UI_MAP_BLUE_OUTLINE_COLOR == 0x402000);
-CTR_STATIC_ASSERT(UI_MAP_TPAGE_BLEND_MASK == 0xff9f);
-CTR_STATIC_ASSERT(UI_MAP_TPAGE_BLEND_SHIFT == 5);
-CTR_STATIC_ASSERT(UI_MAP_SEMI_TRANS_CODE_BIT == 2);
-CTR_STATIC_ASSERT(UI_MAP_MODE_0_DEGREES == 0);
-CTR_STATIC_ASSERT(UI_MAP_MODE_90_DEGREES == 1);
-CTR_STATIC_ASSERT(UI_MAP_MODE_180_DEGREES == 2);
-CTR_STATIC_ASSERT(UI_MAP_ICON_Y_OFFSET == 0x10);
-CTR_STATIC_ASSERT(UI_MAP_3P_OFFSET_X == 60);
-CTR_STATIC_ASSERT(UI_MAP_3P_OFFSET_Y == 10);
-CTR_STATIC_ASSERT(UI_MAP_PLAYER_ICON_AI == 0x31);
-CTR_STATIC_ASSERT(UI_MAP_PLAYER_ICON_HUMAN == 0x32);
-CTR_STATIC_ASSERT(UI_MAP_WARPBALL_ICON == 0x20);
-CTR_STATIC_ASSERT(UI_MAP_WARPBALL_TARGET_ICON == 0x21);
-CTR_STATIC_ASSERT(UI_MAP_ICON_GROUP == 5);
-CTR_STATIC_ASSERT(UI_MAP_ARROW_ROT_FLIP == 0x800);
-CTR_STATIC_ASSERT(UI_MAP_ARROW_ROT_FLAG == 0x1000);
-CTR_STATIC_ASSERT(UI_MAP_ICON_SCALE == 0x1000);
-CTR_STATIC_ASSERT(UI_MAP_ADV_ARROW_SCALE == 0x800);
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004d614-0x8004d8b4.
-void UI_Map_DrawMap(struct Icon *mapTop, struct Icon *mapBottom, s16 posX, s16 posY, struct PrimMem *primMem, uint32_t *otMem, u32 colorID)
+void UI_Map_DrawMap(struct Icon *mapTop, struct Icon *mapBottom, s16 posX, s16 posY, struct PrimMem *primMem, u32 *otMem, u32 colorID)
 {
 	s16 mapBottomHeight;
 	s16 mapTopHeight;
@@ -84,7 +61,7 @@ void UI_Map_DrawMap(struct Icon *mapTop, struct Icon *mapBottom, s16 posX, s16 p
 		transparency = 0;
 	}
 
-	if (gGT->level1->ptrSpawnType1 != 0)
+	if ((gGT->level1->ptrSpawnType1 != NULL) && (gGT->level1->ptrSpawnType1->count != 0))
 	{
 		void **pointers = ST1_GETPOINTERS(gGT->level1->ptrSpawnType1);
 		mapMetadata = pointers[ST1_MAP];
@@ -131,7 +108,7 @@ void UI_Map_DrawMap(struct Icon *mapTop, struct Icon *mapBottom, s16 posX, s16 p
 	primMem->cursor = p + 1;
 }
 
-void UI_Map_DrawMap_ExtraFunc(struct Icon *icon, POLY_FT4 *p, s16 posX, s16 empty, struct PrimMem *primMem, uint32_t *otMem, u32 transparency)
+void UI_Map_DrawMap_ExtraFunc(struct Icon *icon, POLY_FT4 *p, s16 posX, s16 empty, struct PrimMem *primMem, u32 *otMem, u32 transparency)
 {
 	(void)empty;
 	(void)primMem;
@@ -168,7 +145,6 @@ void UI_Map_DrawMap_ExtraFunc(struct Icon *icon, POLY_FT4 *p, s16 posX, s16 empt
 	AddPrim(otMem, p);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004d8b4-0x8004dbac.
 void UI_Map_GetIconPos(struct UIMap *map, int *posX, int *posY)
 {
 	s16 mode;
@@ -227,7 +203,6 @@ void UI_Map_GetIconPos(struct UIMap *map, int *posX, int *posY)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004dbac-0x8004dc44.
 // Draw dot for Player on 2D Adv Map
 void UI_Map_DrawAdvPlayer(struct UIMap *map, const s32 worldPos[3], int unused1, int unused2, s16 rot, s16 scale)
 {
@@ -253,7 +228,6 @@ void UI_Map_DrawAdvPlayer(struct UIMap *map, const s32 worldPos[3], int unused1,
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004dc44-0x8004dd5c.
 // Draw icon on map
 void UI_Map_DrawRawIcon(struct UIMap *map, const s32 worldPos[3], int iconID, int colorID, int unused, s16 scale)
 {
@@ -279,7 +253,6 @@ void UI_Map_DrawRawIcon(struct UIMap *map, const s32 worldPos[3], int iconID, in
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004dd5c-0x8004dee8.
 void UI_Map_DrawDrivers(struct UIMap *map, struct Thread *bucket, s16 *driverIconCounter)
 {
 	int kartColor;
@@ -287,15 +260,14 @@ void UI_Map_DrawDrivers(struct UIMap *map, struct Thread *bucket, s16 *driverIco
 	struct Driver *d;
 	struct GameTracker *gGT = sdata->gGT;
 
-	// if 2P or 4P
-	if ((gGT->numPlyrCurrGame & 1) == 0)
-	{
-		// quit, no map drawn
-		return;
-	}
-
 	for (/* bucket */; bucket != 0; bucket = bucket->siblingThread, *driverIconCounter = *driverIconCounter + 1)
 	{
+		// if 2P or 4P
+		if ((gGT->numPlyrCurrGame & 1) == 0)
+		{
+			continue;
+		}
+
 		// Player structure
 		d = bucket->object;
 
@@ -337,7 +309,6 @@ void UI_Map_DrawDrivers(struct UIMap *map, struct Thread *bucket, s16 *driverIco
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004dee8-0x8004dffc.
 void UI_Map_DrawGhosts(struct UIMap *map, struct Thread *bucket)
 {
 	int color;
@@ -390,7 +361,6 @@ void UI_Map_DrawGhosts(struct UIMap *map, struct Thread *bucket)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004dffc-0x8004e0e0.
 void UI_Map_DrawTracking(struct UIMap *map, struct Thread *bucket)
 {
 	int targetColor;

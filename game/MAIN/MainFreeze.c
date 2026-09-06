@@ -1,8 +1,7 @@
 #include <common.h>
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800379f4-0x80037bc0.
-void MainFreeze_ConfigDrawNPC105(s16 startX, s16 startY, s16 radius, int angleStep, s16 angle, char *color, uint32_t *otMem, struct PrimMem *primMem)
+void MainFreeze_ConfigDrawNPC105(s16 startX, s16 startY, s16 radius, int angleStep, s16 angle, char *color, u32 *otMem, struct PrimMem *primMem)
 {
 	s16 pos[6];
 	char colors[0xc];
@@ -45,7 +44,6 @@ void MainFreeze_ConfigDrawNPC105(s16 startX, s16 startY, s16 radius, int angleSt
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80037bc0-0x80037da0.
 void MainFreeze_ConfigDrawArrows(s16 offsetX, s16 offsetY, char *str)
 {
 	int lineWidth;
@@ -108,7 +106,6 @@ void MainFreeze_ConfigDrawArrows(s16 offsetX, s16 offsetY, char *str)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80037da0-0x80038b5c.
 static inline void MainFreeze_ConfigDrawWire(s16 x1, s16 y1, s16 x2, s16 y2, u8 r, u8 g, u8 b, void *ot)
 {
 	CTR_Box_DrawWirePrims(MakePoint(x1, y1), MakePoint(x2, y2), MakeColor(r, g, b), ot);
@@ -126,7 +123,7 @@ static inline void MainFreeze_ConfigDrawRaceWheel(int value, struct GameTracker 
 
 		if ((i != 1) && (value == 0x600))
 		{
-			ot = (void *)((intptr_t)ot + 0xc);
+			ot = (void *)((s32)ot + 0xc);
 		}
 
 		s16 y = sdata->analogConfigY[0] + ((sin * (i - 1) * 0x20) >> 0xc) + 0x20;
@@ -297,7 +294,7 @@ void MainFreeze_ConfigSetupEntry(void)
 				sdata->raceWheelConfigPageIndex++;
 				if (!isNamco)
 				{
-					data.rwd[gamepadID].gamepadCenter = controller->analog.rightX;
+					data.rwd[gamepadID].gamepadCenter = controller->payload.analog.rightX;
 				}
 				else
 				{
@@ -355,7 +352,6 @@ void MainFreeze_ConfigSetupEntry(void)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80038b5c-0x80039908.
 
 typedef struct
 {
@@ -367,7 +363,7 @@ typedef struct
 	int menuRowsToRemove;
 } GAMEPAD_MainFreeze_MenuPtrOptions;
 
-force_inline void IDENTIFYGAMEPADS_MainFreeze_MenuPtrOptions(struct RectMenu *menu, GAMEPAD_MainFreeze_MenuPtrOptions *gamepad)
+static void IDENTIFYGAMEPADS_MainFreeze_MenuPtrOptions(struct RectMenu *menu, GAMEPAD_MainFreeze_MenuPtrOptions *gamepad)
 {
 	(void)menu;
 	struct GameTracker *gGT = sdata->gGT;
@@ -423,7 +419,7 @@ force_inline void IDENTIFYGAMEPADS_MainFreeze_MenuPtrOptions(struct RectMenu *me
 	gamepad->menuRowsToRemove = (4 - areBothControllerLabelsNecessary) - gGT->numPlyrCurrGame;
 }
 
-force_inline b32 PROCESSINPUTS_MainFreeze_MenuPtrOptions(struct RectMenu *menu, GAMEPAD_MainFreeze_MenuPtrOptions *gamepad)
+static b32 PROCESSINPUTS_MainFreeze_MenuPtrOptions(struct RectMenu *menu, GAMEPAD_MainFreeze_MenuPtrOptions *gamepad)
 {
 	struct GameTracker *gGT = sdata->gGT;
 	b32 exitMenu = false;
@@ -464,7 +460,7 @@ force_inline b32 PROCESSINPUTS_MainFreeze_MenuPtrOptions(struct RectMenu *menu, 
 			OptionsMenu_TestSound(menu->rowSelected, 1);
 			if (sdata->AnyPlayerHold & (BTN_LEFT | BTN_RIGHT))
 			{
-				int volume = howl_VolumeGet(menu->rowSelected);
+				int volume = howl_VolumeGet(menu->rowSelected) & 0xff;
 
 				if (sdata->AnyPlayerHold & BTN_LEFT)
 				{
@@ -550,7 +546,7 @@ force_inline b32 PROCESSINPUTS_MainFreeze_MenuPtrOptions(struct RectMenu *menu, 
 }
 
 // stuff is drawn last to first
-force_inline void DISPLAYRECTMENU_MainFreeze_MenuPtrOptions(struct RectMenu *menu, GAMEPAD_MainFreeze_MenuPtrOptions *gamepad)
+static void DISPLAYRECTMENU_MainFreeze_MenuPtrOptions(struct RectMenu *menu, GAMEPAD_MainFreeze_MenuPtrOptions *gamepad)
 {
 	struct GameTracker *gGT = sdata->gGT;
 
@@ -615,7 +611,7 @@ force_inline void DISPLAYRECTMENU_MainFreeze_MenuPtrOptions(struct RectMenu *men
 
 	int volumeSliderWidth = 380 - (30 + volumeSliderTriangleLeftMargin);
 
-	uint32_t *ot = gGT->backBuffer->otMem.uiOT;
+	u32 *ot = gGT->backBuffer->otMem.uiOT;
 	struct PrimMem *primMem = &gGT->backBuffer->primMem;
 	Color color;
 
@@ -744,7 +740,7 @@ force_inline void DISPLAYRECTMENU_MainFreeze_MenuPtrOptions(struct RectMenu *men
 
 	RECT titleSeparatorLine = {.x = 66, .y = (menuRowsNegativePadding / 2) + 43, .w = 380, .h = 2};
 
-	color.self = sdata->battleSetup_Color_UI_1;
+	ColorCode_SetPacked(&color, sdata->battleSetup_Color_UI_1);
 	RECTMENU_DrawOuterRect_Edge(&titleSeparatorLine, color, 0x20, ot);
 
 	RECT menuBG = {.x = 56, .y = (menuRowsNegativePadding / 2) + 20, .w = 400, .h = 135 - menuRowsNegativePadding};
@@ -789,7 +785,6 @@ void MainFreeze_MenuPtrOptions(struct RectMenu *menu)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80039908-0x800399fc.
 void MainFreeze_MenuPtrQuit(struct RectMenu *menu)
 {
 	s16 row;
@@ -822,7 +817,7 @@ void MainFreeze_MenuPtrQuit(struct RectMenu *menu)
 
 		if ((row == 1) || (row == -1))
 		{
-			sdata->ptrActiveMenu = MainFreeze_GetMenuPtr();
+			sdata->ptrDesiredMenu = MainFreeze_GetMenuPtr();
 		}
 	}
 	else
@@ -840,7 +835,6 @@ void MainFreeze_MenuPtrQuit(struct RectMenu *menu)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800399fc-0x80039a44.
 void MainFreeze_SafeAdvDestroy(void)
 {
 	// If you're in Adventure Arena
@@ -859,7 +853,6 @@ void MainFreeze_SafeAdvDestroy(void)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80039a44-0x80039dcc.
 void MainFreeze_MenuPtrDefault(struct RectMenu *menu)
 {
 	int levID = 0; // dingo canyon
@@ -1112,7 +1105,6 @@ void MainFreeze_MenuPtrDefault(struct RectMenu *menu)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80039dcc-0x80039e98.
 struct RectMenu *MainFreeze_GetMenuPtr(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -1153,7 +1145,6 @@ struct RectMenu *MainFreeze_GetMenuPtr(void)
 	return &data.menuArcadeRace;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80039e98-0x80039fa8.
 void MainFreeze_IfPressStart(void)
 {
 	struct GameTracker *gGT = sdata->gGT;

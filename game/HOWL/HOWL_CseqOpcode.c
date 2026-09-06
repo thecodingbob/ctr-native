@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029e18-0x80029f1c
 void cseq_opcode01_noteoff(struct SongSeq *seq)
 {
 	struct ChannelStats *curr, *backupNext;
@@ -10,7 +9,7 @@ void cseq_opcode01_noteoff(struct SongSeq *seq)
 
 	for (curr = (struct ChannelStats *)sdata->channelTaken.first; curr != NULL; curr = backupNext)
 	{
-		backupNext = curr->next;
+		backupNext = curr->link.links.next;
 
 		if (curr->type != HOWL_CHANNEL_TYPE_MUSIC)
 		{
@@ -42,7 +41,6 @@ void cseq_opcode01_noteoff(struct SongSeq *seq)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029f1c-0x80029f24
 void cseq_opcode02_empty(struct SongSeq *seq)
 {
 	(void)seq;
@@ -50,7 +48,6 @@ void cseq_opcode02_empty(struct SongSeq *seq)
 }
 
 // "end of song" opcode
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029f24-0x80029f78
 void cseq_opcode03(struct SongSeq *seq)
 {
 	// if song does not loop
@@ -67,14 +64,12 @@ void cseq_opcode03(struct SongSeq *seq)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029f78-0x80029f80
 void cseq_opcode04_empty(struct SongSeq *seq)
 {
 	(void)seq;
 	// left empty by ND
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029f80-0x8002a170
 void howl_InitChannelAttr_Music(struct SongSeq *seq, struct ChannelAttr *attr, int index, int channelVol)
 {
 	int pitch;
@@ -130,7 +125,6 @@ void howl_InitChannelAttr_Music(struct SongSeq *seq, struct ChannelAttr *attr, i
 }
 
 // change volume
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002a170-0x8002a28c
 void cseq_opcode_from06and07(struct SongSeq *seq)
 {
 	struct ChannelStats *curr, *backupNext;
@@ -141,7 +135,7 @@ void cseq_opcode_from06and07(struct SongSeq *seq)
 
 	for (curr = (struct ChannelStats *)sdata->channelTaken.first; curr != NULL; curr = backupNext)
 	{
-		backupNext = curr->next;
+		backupNext = curr->link.links.next;
 
 		if (curr->type != HOWL_CHANNEL_TYPE_MUSIC)
 		{
@@ -161,7 +155,6 @@ void cseq_opcode_from06and07(struct SongSeq *seq)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002a28c-0x8002a3a8
 void cseq_opcode05_noteon(struct SongSeq *seq)
 {
 	u8 *currNote;
@@ -215,7 +208,6 @@ void cseq_opcode05_noteon(struct SongSeq *seq)
 	seq->unk0A = (u8)CTR_MipsAddLo(seq->unk0A, 1);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002a3a8-0x8002a3d4
 void cseq_opcode06(struct SongSeq *seq)
 {
 	u8 *note = seq->currNote;
@@ -223,7 +215,6 @@ void cseq_opcode06(struct SongSeq *seq)
 	cseq_opcode_from06and07(seq);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002a3d4-0x8002a400
 void cseq_opcode07(struct SongSeq *seq)
 {
 	u8 *note = seq->currNote;
@@ -231,7 +222,6 @@ void cseq_opcode07(struct SongSeq *seq)
 	cseq_opcode_from06and07(seq);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002a400-0x8002a494
 void cseq_opcode08(struct SongSeq *seq)
 {
 	struct ChannelStats *curr, *backupNext;
@@ -240,7 +230,7 @@ void cseq_opcode08(struct SongSeq *seq)
 
 	for (curr = (struct ChannelStats *)sdata->channelTaken.first; curr != NULL; curr = backupNext)
 	{
-		backupNext = curr->next;
+		backupNext = curr->link.links.next;
 
 		if (curr->type != HOWL_CHANNEL_TYPE_MUSIC)
 		{
@@ -261,14 +251,12 @@ void cseq_opcode08(struct SongSeq *seq)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002a494-0x8002a4a8
 void cseq_opcode09(struct SongSeq *seq)
 {
 	u8 *currNote = seq->currNote;
 	seq->instrumentID = currNote[1];
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002a4a8-0x8002a63c
 void cseq_opcode0a(struct SongSeq *seq)
 {
 	int pitch;
@@ -280,7 +268,7 @@ void cseq_opcode0a(struct SongSeq *seq)
 
 	for (curr = (struct ChannelStats *)sdata->channelTaken.first; curr != NULL; curr = backupNext)
 	{
-		backupNext = curr->next;
+		backupNext = curr->link.links.next;
 
 		if (curr->type != HOWL_CHANNEL_TYPE_MUSIC)
 		{

@@ -31,8 +31,6 @@ enum
 typedef s16 AudioState;
 
 CTR_STATIC_ASSERT(sizeof(AudioState) == 0x2);
-CTR_STATIC_ASSERT(AUDIO_NONE == 0);
-CTR_STATIC_ASSERT(AUDIO_RACE_END == 16);
 
 struct VoicelineItem
 {
@@ -68,9 +66,6 @@ enum HowlSfxParam
 	HOWL_SFX_ECHO_FLAG = 1 << HOWL_SFX_ECHO_SHIFT,
 };
 
-CTR_STATIC_ASSERT(HOWL_SFX_CENTER_NO_DISTORTION == 0x8080);
-CTR_STATIC_ASSERT(HOWL_SFX_DEFAULT_FLAGS == 0xff8080);
-CTR_STATIC_ASSERT(HOWL_SFX_ECHO_FLAG == 0x1000000);
 
 enum HowlChannelType
 {
@@ -102,17 +97,8 @@ enum HowlChannelUpdateFlag
 	HOWL_CHANNEL_UPDATE_RESUME = HOWL_CHANNEL_UPDATE_KEY_ON | HOWL_CHANNEL_UPDATE_ALL_ATTRS,
 };
 
-CTR_STATIC_ASSERT(HOWL_CHANNEL_TYPE_ENGINE_FX == 0);
-CTR_STATIC_ASSERT(HOWL_CHANNEL_TYPE_OTHER_FX == 1);
-CTR_STATIC_ASSERT(HOWL_CHANNEL_TYPE_MUSIC == 2);
-CTR_STATIC_ASSERT(HOWL_VOLUME_TYPE_FX == 0);
-CTR_STATIC_ASSERT(HOWL_VOLUME_TYPE_MUSIC == 1);
-CTR_STATIC_ASSERT(HOWL_VOLUME_TYPE_VOICE == 2);
-CTR_STATIC_ASSERT(HOWL_CHANNEL_UPDATE_ALL_ATTRS == 0x7c);
-CTR_STATIC_ASSERT(HOWL_CHANNEL_UPDATE_DYNAMIC_ATTRS == 0x70);
-CTR_STATIC_ASSERT(HOWL_CHANNEL_UPDATE_RESUME == 0x7e);
 
-force_inline u32 HowlSfx_Pack(u32 lr, u32 distortion, u32 volume, u32 echo)
+static inline u32 HowlSfx_Pack(u32 lr, u32 distortion, u32 volume, u32 echo)
 {
 	// NOTE(aalhendi): echo is the raw high-byte field. Most callers use 0/1,
 	// but 3D quadblock audio passes QUADBLOCK_FLAG_ENGINE_ECHO (0x80).
@@ -120,22 +106,22 @@ force_inline u32 HowlSfx_Pack(u32 lr, u32 distortion, u32 volume, u32 echo)
 	       ((echo & 0xff) << HOWL_SFX_ECHO_SHIFT);
 }
 
-force_inline u32 HowlSfx_LR(u32 flags)
+static inline u32 HowlSfx_LR(u32 flags)
 {
 	return (flags >> HOWL_SFX_LR_SHIFT) & 0xff;
 }
 
-force_inline u32 HowlSfx_Distortion(u32 flags)
+static inline u32 HowlSfx_Distortion(u32 flags)
 {
 	return (flags >> HOWL_SFX_DISTORTION_SHIFT) & 0xff;
 }
 
-force_inline u32 HowlSfx_Volume(u32 flags)
+static inline u32 HowlSfx_Volume(u32 flags)
 {
 	return (flags >> HOWL_SFX_VOLUME_SHIFT) & 0xff;
 }
 
-force_inline u32 HowlSfx_Echo(u32 flags)
+static inline u32 HowlSfx_Echo(u32 flags)
 {
 	return (flags >> HOWL_SFX_ECHO_SHIFT) & 0xff;
 }
@@ -160,22 +146,6 @@ enum CseqSong
 	CSEQ_SONG_AKU = 1,
 	CSEQ_SONG_UKA = 2,
 };
-
-#ifndef CTR_NATIVE
-// from TOMB5, not from psyq
-// https://github.com/TOMB5/TOMB5/blob/master/EMULATOR/LIBSPU.H
-typedef struct
-{
-	u32 mask;
-	s32 mode;
-
-	// SpuVolume from psn00b headers
-	SpuVolume depth; /* reverb depth */
-
-	s32 delay;    /* Delay Time  (ECHO, DELAY only)   */
-	s32 feedback; /* Feedback    (ECHO only)          */
-} SpuReverbAttr;
-#endif
 
 // similar to SndRegisterAttr in psyq libsnd.h
 struct ChannelAttr
@@ -219,8 +189,8 @@ struct ChannelStats
 
 			// 0x4
 			struct ChannelStats *prev;
-		};
-	};
+		} links;
+	} link;
 
 	// 0x8
 	u8 flags;

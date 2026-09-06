@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80043c10-0x80043d24.
 void RaceConfig_LoadGameOptions(void)
 {
 	if (sdata->boolHasLoadedOptions != 0)
@@ -21,7 +20,6 @@ void RaceConfig_LoadGameOptions(void)
 	howl_ModeSet((u8)sdata->gameOptions.audioMode & 1);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80043d24-0x80043e34.
 void RaceConfig_SaveGameOptions(void)
 {
 	s16 *volumes = &sdata->gameOptions.volFx;

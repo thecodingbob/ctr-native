@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): PSX path ASM-verified NTSC-U 926 0x8003c41c-0x8003c480.
 void MainKillGame_StopCTR(void)
 {
 	EnterCriticalSection();
@@ -21,7 +20,6 @@ void MainKillGame_StopCTR(void)
 	Timer_Destroy();
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003c480-0x8003c508 for the retail shutdown path.
 void MainKillGame_LaunchSpyro2(void)
 {
 	CTR_ErrorScreen(0, 0, 0);

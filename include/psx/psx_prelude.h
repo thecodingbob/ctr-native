@@ -11,13 +11,11 @@
 #include <unistd.h>
 #endif
 #ifndef EnterCriticalSection
-#define EnterCriticalSection(...)
+#define EnterCriticalSection()
 #endif
 #ifndef ExitCriticalSection
 #define ExitCriticalSection()
 #endif
-#else
-#include <psx/psn00b_prelude.h>
 #endif
 
 // PSX SDK-shaped headers used by game code.
@@ -30,10 +28,6 @@
 #include <psx/libspu.h>
 #include <psx/strings.h>
 #include <psx/inline_c.h>
-
-// Supplemental SDK definitions used by game-owned pad state.
-#include <psn00bsdk/include/psxpad.h>
-#include <psn00bsdk/include/sys/fcntl.h>
 
 #ifndef RECT
 #define RECT RECT16

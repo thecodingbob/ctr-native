@@ -11,7 +11,6 @@ CTR_STATIC_ASSERT(offsetof(struct RBDefaultScratch, probeTop) == 0x00);
 CTR_STATIC_ASSERT(offsetof(struct RBDefaultScratch, probeBottom) == 0x08);
 CTR_STATIC_ASSERT(offsetof(struct RBDefaultScratch, sps) == 0x10);
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800b4fe4-0x800b5090.
 
 void RB_Default_LInB(struct Instance *inst)
 {
@@ -35,7 +34,7 @@ void RB_Default_LInB(struct Instance *inst)
 	probeTop->y = inst->matrix.t[1] - 0x180;
 	probeBottom->y = inst->matrix.t[1] + 0x80;
 
-	COLL_SearchBSP_CallbackQUADBLK(&probeTop->vec, &probeBottom->vec, sps, 0);
+	COLL_SearchBSP_CallbackQUADBLK(SVec3Slot_AsVec3(probeTop), SVec3Slot_AsVec3(probeBottom), sps, 0);
 
 	RB_MakeInstanceReflective(sps, inst);
 }

@@ -50,7 +50,6 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 	{
 	case 0:
 	{
-		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003368c-0x80033698 for loading-start volume backup/XA pause.
 		if (!boolPlayMusicDuringLoading)
 		{
 			Cutscene_VolumeBackup();
@@ -174,19 +173,19 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 		// ========== Set LevelLOD variables ================
 
 
-		// default
-		sdata->levelLOD = gGT->numPlyrCurrGame;
-
 		// main menu or adv garage
 		if ((gGT->gameMode1 & MAIN_MENU) != 0)
 		{
 			sdata->levelLOD = LOAD_LEVEL_LOD_1P;
 		}
-
 		// if relic, or time trial
-		if ((gGT->gameMode1 & (TIME_TRIAL | RELIC_RACE)) != 0)
+		else if ((gGT->gameMode1 & (TIME_TRIAL | RELIC_RACE)) != 0)
 		{
 			sdata->levelLOD = LOAD_LEVEL_LOD_RELIC;
+		}
+		else
+		{
+			sdata->levelLOD = gGT->numPlyrCurrGame;
 		}
 
 		gGT->hudFlags |= HUD_FLAG_INIT_UI_INSTANCES;
@@ -217,7 +216,6 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 			return loadingStage;
 		}
 
-		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80033b38-0x80033c00 for end-event overlay selection.
 		if ((gGT->gameMode1 & CRYSTAL_CHALLENGE) != 0)
 		{
 			ovrRegion1 = 0;
@@ -253,13 +251,11 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 	}
 	case 2:
 	{
-		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80033be8-0x80033c00 for LOD overlay selection.
 		LOAD_OvrLOD(gGT->numPlyrCurrGame);
 		break;
 	}
 	case 3:
 	{
-		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80033c0c-0x80033cd4 for thread overlay routing.
 		if ((levelID != ADVENTURE_GARAGE) && ((gGT->gameMode1 & MAIN_MENU) != 0))
 		{
 			ovrRegion3 = 0;
@@ -293,7 +289,6 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 	}
 	case 4:
 	{
-		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80033cf4-0x80033d04 for post-overlay music restart gate.
 		if (!boolPlayMusicDuringLoading)
 		{
 			Music_Restart();
@@ -350,7 +345,6 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 
 		if (!boolPlayMusicDuringLoading)
 		{
-			// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80033eb8-0x80033ed0 for music stop/CSEQ stop/bank reload.
 			Music_Stop();
 			CseqMusic_StopAll();
 			Music_LoadBanks();
@@ -362,7 +356,6 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 	{
 		if (!boolPlayMusicDuringLoading)
 		{
-			// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80033ef8-0x80033f14 for async bank parse and volume restore.
 			int banksReady = Music_AsyncParseBanks();
 
 			if (banksReady == 0)
@@ -374,7 +367,6 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 			Cutscene_VolumeRestore();
 		}
 
-		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80033f1c-0x80033f44; retail converts driver DRAM file headers to model payload pointers here.
 		for (int i = 0; i < LOAD_DRIVER_MODEL_EXTRA_COUNT; i++)
 		{
 			if (data.driverModelExtras[i].fileBase != NULL)
@@ -456,16 +448,15 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 		sdata->load_inProgress = 1;
 
 		// add VRAM to loading queue
-		LOAD_AppendQueue(0, LT_VRAM, LOAD_GetBigfileIndex(gGT->levelID, sdata->levelLOD, LVI_VRAM), NULL, NULL);
+		LOAD_AppendQueue(bigfile, LT_VRAM, LOAD_GetBigfileIndex(gGT->levelID, sdata->levelLOD, LVI_VRAM), NULL, NULL);
 
 		// add LEV to loading queue
-		LOAD_AppendQueue(0, LT_GETADDR, LOAD_GetBigfileIndex(gGT->levelID, sdata->levelLOD, LVI_LEV), NULL, LOAD_Callback_LEV);
+		LOAD_AppendQueue(bigfile, LT_GETADDR, LOAD_GetBigfileIndex(gGT->levelID, sdata->levelLOD, LVI_LEV), NULL, LOAD_Callback_LEV);
 
-		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800340c0-0x80034180; retail queues PTR maps by level-ID ranges.
 		if (((u32)(levelID - GEM_STONE_VALLEY) < LOAD_PTR_MAP_ADV_LEVEL_COUNT) || ((u32)(levelID - CREDITS_CRASH) < LOAD_PTR_MAP_CREDIT_LEVEL_COUNT))
 		{
 			// add PTR file to loading queue
-			LOAD_AppendQueue(0, LT_SETADDR, LOAD_GetBigfileIndex(gGT->levelID, sdata->levelLOD, LVI_PTR), sdata->PatchMem_Ptr, LOAD_Callback_PatchMem);
+			LOAD_AppendQueue(bigfile, LT_SETADDR, LOAD_GetBigfileIndex(gGT->levelID, sdata->levelLOD, LVI_PTR), sdata->PatchMem_Ptr, LOAD_Callback_PatchMem);
 		}
 		break;
 	}
@@ -509,29 +500,14 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 
 		gGT->gameMode1_prevFrame = 1;
 
-		MEMPACK_SwapPacks(LOAD_MAIN_PACK_INDEX);
 		if (((gGT->gameMode1 & (GAME_CUTSCENE | ADVENTURE_ARENA)) == 0) && ((gGT->gameMode2 & CREDITS) == 0))
 		{
 			MainInit_JitPoolsNew(gGT);
 			return loadingStage + 1;
 		}
 
-		if ((gGT->gameMode2 & LEV_SWAP) == 0)
-		{
-			break;
-		}
-
-		// === Assume LEV_SWAP Active ===
-
-		if ((gGT->gameMode1 & ADVENTURE_ARENA) == 0)
-		{
-			break;
-		}
-
-		// === Assume AdventureArena Active ===
-
 		// podium reward
-		if (gGT->podiumRewardID == 0)
+		if (gGT->podiumRewardID == NOFUNC)
 		{
 			break;
 		}
@@ -556,7 +532,7 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 		sdata->load_inProgress = 1;
 
 		// VRAM for podium and all related models
-		LOAD_AppendQueue(0, LT_VRAM, BI_PODIUMVRMS + podiumFileVariant, NULL, NULL);
+		LOAD_AppendQueue(bigfile, LT_VRAM, BI_PODIUMVRMS + podiumFileVariant, NULL, NULL);
 
 		int fileIndex;
 		u8 *ptrIndexArr = &gGT->podium_modelIndex_First;
@@ -567,38 +543,38 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 		if ((ptrIndexArr[0] != 0) && (ptrIndexArr[0] != STATIC_OXIDEDANCE))
 		{
 			fileIndex = BI_DANCEMODELWIN + podiumFileVariant + (ptrIndexArr[0] - STATIC_CRASHDANCE) * LOAD_PODIUM_MODEL_FILE_STRIDE;
-			LOAD_AppendQueue(0, LT_GETADDR, fileIndex, &ptrModelPtrArr[0], setPtrCb);
+			LOAD_AppendQueue(bigfile, LT_GETADDR, fileIndex, &ptrModelPtrArr[0], setPtrCb);
 		}
 
 		// podium second place
 		if (ptrIndexArr[1] != 0)
 		{
 			fileIndex = BI_DANCEMODELLOSE + podiumFileVariant + (ptrIndexArr[1] - STATIC_CRASHDANCE) * LOAD_PODIUM_MODEL_FILE_STRIDE;
-			LOAD_AppendQueue(0, LT_GETADDR, fileIndex, &ptrModelPtrArr[1], setPtrCb);
+			LOAD_AppendQueue(bigfile, LT_GETADDR, fileIndex, &ptrModelPtrArr[1], setPtrCb);
 		}
 
 		// podium third place
 		if (ptrIndexArr[2] != 0)
 		{
 			fileIndex = BI_DANCEMODELLOSE + podiumFileVariant + (ptrIndexArr[2] - STATIC_CRASHDANCE) * LOAD_PODIUM_MODEL_FILE_STRIDE;
-			LOAD_AppendQueue(0, LT_GETADDR, fileIndex, &ptrModelPtrArr[2], setPtrCb);
+			LOAD_AppendQueue(bigfile, LT_GETADDR, fileIndex, &ptrModelPtrArr[2], setPtrCb);
 		}
 
 		// TAWNA
 		fileIndex = BI_DANCETAWNAGIRL + podiumFileVariant + (gGT->podium_modelIndex_tawna - STATIC_TAWNA1) * LOAD_PODIUM_MODEL_FILE_STRIDE;
 
 		// add TAWNA to loading queue
-		LOAD_AppendQueue(0, LT_GETADDR, fileIndex, (void *)&data.podiumModel_tawna, setPtrCb);
+		LOAD_AppendQueue(bigfile, LT_GETADDR, fileIndex, (void *)&data.podiumModel_tawna, setPtrCb);
 
 		// if 0x7e+5 (dingo)
 		if (gGT->podium_modelIndex_First == STATIC_DINGODANCE)
 		{
 			// add "DingoFire" to loading queue
-			LOAD_AppendQueue(0, LT_GETADDR, BI_DINGOFIRE + podiumFileVariant, (void *)&data.podiumModel_dingoFire, setPtrCb);
+			LOAD_AppendQueue(bigfile, LT_GETADDR, BI_DINGOFIRE + podiumFileVariant, (void *)&data.podiumModel_dingoFire, setPtrCb);
 		}
 
 		// add Podium
-		LOAD_AppendQueue(0, LT_GETADDR, BI_PODIUM + podiumFileVariant, NULL, LOAD_Callback_Podiums);
+		LOAD_AppendQueue(bigfile, LT_GETADDR, BI_PODIUM + podiumFileVariant, NULL, LOAD_Callback_Podiums);
 
 		// Disable LEV instances on Adv Hub, for podium scene
 		gGT->gameMode2 = gGT->gameMode2 | NO_LEV_INSTANCE;
@@ -647,7 +623,6 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 		{
 			audioState = AUDIO_GARAGE_ENTRY;
 		LAB_800346b0:
-			// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80034694-0x800346b8 for the retail post-load audio state call.
 #if defined(CTR_NATIVE)
 			LOAD_NativeAudio_SetStateAfterBankReload(audioState);
 #else

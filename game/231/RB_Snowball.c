@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b92ac-0x800b95fc.
 
 void RB_Snowball_ThTick(struct Thread *t)
 {
@@ -44,7 +43,7 @@ void RB_Snowball_ThTick(struct Thread *t)
 			pointIndex = (snowObj->numPoints * 2) - pointIndex;
 		}
 
-		frame = &ptrSpawnType2->posRot[pointIndex];
+		frame = &ptrSpawnType2->coords.posRot[pointIndex];
 
 		ConvertRotToMatrix(&snowInst->matrix, &frame->rot);
 

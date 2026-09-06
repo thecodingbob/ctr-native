@@ -36,34 +36,6 @@ enum
 	VEH_PHYS_CRASH_JOG_DURATION = 0x60,
 };
 
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_FAST_SQRT_ITERATIONS == 0x10);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT == 8);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_MATRIX_FRAC_SHIFT == 0xc);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_UNIT_VECTOR_SCALE == 0x1000);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_BOUNCE_Y_CLAMP == 0x3200);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_BOT_NAV_ROT_SHIFT == 4);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_BOT_SPEED_SHIFT == 8);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_DAMAGE_TYPE_MASK == 2);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_DAMAGE_TYPE_TURBO == 3);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_DAMAGE_REASON_SHIELD == 0);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_DAMAGE_REASON_TURBO == 5);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_DAMAGE_REASON_MASK == 6);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_TURBO_DAMAGE_IMPACT == 0xa00);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_BUBBLE_POP_FX == 0x4f);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_VOICELINE_CRASH == 1);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_VOICELINE_HARD_CRASH == 5);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_VOICELINE_PRIORITY == 0x10);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_FEEDBACK_MIN_IMPACT == 0x200);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_VOLUME_IMPACT_MAX == 0x1900);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_VOLUME_MIN == 0x3f);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_VOLUME_MAX == 0xff);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_HARD_CRASH_VOLUME == 0xdc);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_FEEDBACK_COOLDOWN_FRAMES == 3);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_RUMBLE_CHANNEL == 8);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_RUMBLE_FORCE == 0x7f);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_JOG_TURNING == 0x29);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_JOG_STRAIGHT == 0x19);
-CTR_STATIC_ASSERT(VEH_PHYS_CRASH_JOG_DURATION == 0x60);
 
 static u32 VehPhysCrash_LengthSq2(s32 x, s32 z)
 {
@@ -80,7 +52,6 @@ static s32 VehPhysCrash_Dot3(s32 ax, s32 ay, s32 az, s32 bx, s32 by, s32 bz)
 	return CTR_MipsAddLo(CTR_MipsAddLo(CTR_MipsMulLo(ax, bx), CTR_MipsMulLo(ay, by)), CTR_MipsMulLo(az, bz));
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005cd1c-0x8005cf64.
 void VehPhysCrash_ConvertVecToSpeed(struct Driver *d, Vec3 *vel)
 {
 	int speed2D = VehCalc_FastSqrt(VehPhysCrash_LengthSq2(vel->x, vel->z), VEH_PHYS_CRASH_FAST_SQRT_ITERATIONS);
@@ -129,7 +100,6 @@ static int VehPhysCrash_BounceSelf_Div6Shift9(int value)
 	return CTR_MipsSubLo(CTR_MipsSra(high, 9), CTR_MipsSra(value, 31));
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005cf64-0x8005d0d0.
 int VehPhysCrash_BounceSelf(const SVec3 *normal, const Vec3 *origin, Vec3 *vel, b32 boolOtherDriver)
 {
 	int diffX = CTR_MipsSubLo(vel->x, origin->x);
@@ -179,7 +149,6 @@ int VehPhysCrash_BounceSelf(const SVec3 *normal, const Vec3 *origin, Vec3 *vel, 
 	return 0;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005d0d0-0x8005d218.
 void VehPhysCrash_AI(struct Driver *bot, Vec3 *vel)
 {
 	sdata->botCrashNavRot.x = (s16)CTR_MipsSll(bot->botData.botNavFrame->rot[0], VEH_PHYS_CRASH_BOT_NAV_ROT_SHIFT);
@@ -210,7 +179,6 @@ static void VehPhysCrash_Attack_SetReason(struct Driver *driver, u8 reason)
 	driver->pendingDamageReasonByte = reason;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005d218-0x8005d404.
 int VehPhysCrash_Attack(struct Driver *driver1, struct Driver *driver2, b32 canPlayFeedback, b32 boolPlayBubblePop)
 {
 	if ((driver1->actionsFlagSet & ACTION_MASK_WEAPON) == 0)
@@ -325,8 +293,8 @@ static void VehPhysCrash_PlayHumanFeedback(struct Thread *selfThread, struct Thr
 		{
 			OtherFX_DriverCrashing((selfDriver->actionsFlagSet & ACTION_ENGINE_ECHO) != 0, volume);
 
-			// NOTE(aalhendi): Retail uses DAT_8008d838. This field currently
-			// names the same USA address as the last audioDefaults slot.
+			// NOTE(aalhendi): Retail uses DAT_8008d838, which currently aliases
+			// the final audioDefaults slot.
 			sdata->audioDefaults[8] = sdata->gGT->frameTimer_MainFrame_ResetDB;
 
 			if ((u32)volume > VEH_PHYS_CRASH_HARD_CRASH_VOLUME)
@@ -348,7 +316,6 @@ static void VehPhysCrash_PlayHumanFeedback(struct Thread *selfThread, struct Thr
 	otherDriver->actionsFlagSet |= ACTION_HUMAN_HUMAN_COLLISION;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005d404-0x8005e104
 void VehPhysCrash_AnyTwoCars(struct Thread *thread, struct DriverCollisionSearch *search, Vec3 *selfVel)
 {
 	int distance = VehCalc_FastSqrt(search->bucket.bestDistSq, 0);
@@ -357,11 +324,11 @@ void VehPhysCrash_AnyTwoCars(struct Thread *thread, struct DriverCollisionSearch
 
 	if (distance == 0)
 	{
-		CTR_SET_VEC3(hitDir->v, 0, 0, VEH_PHYS_CRASH_UNIT_VECTOR_SCALE);
+		CTR_SET_VEC3(CTR_VECTOR_DATA(hitDir), 0, 0, VEH_PHYS_CRASH_UNIT_VECTOR_SCALE);
 	}
 	else
 	{
-		CTR_SET_VEC3(hitDir->v, (s16)CTR_MipsDiv(CTR_MipsSll(dist->x, VEH_PHYS_CRASH_MATRIX_FRAC_SHIFT), distance),
+		CTR_SET_VEC3(CTR_VECTOR_DATA(hitDir), (s16)CTR_MipsDiv(CTR_MipsSll(dist->x, VEH_PHYS_CRASH_MATRIX_FRAC_SHIFT), distance),
 		             (s16)CTR_MipsDiv(CTR_MipsSll(dist->y, VEH_PHYS_CRASH_MATRIX_FRAC_SHIFT), distance),
 		             (s16)CTR_MipsDiv(CTR_MipsSll(dist->z, VEH_PHYS_CRASH_MATRIX_FRAC_SHIFT), distance));
 	}

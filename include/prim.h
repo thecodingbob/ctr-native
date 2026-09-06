@@ -17,7 +17,7 @@ typedef union Tag
 	{
 		u32 addr : 24;
 		u32 size : 8;
-	};
+	} bits;
 	u32 self;
 } Tag;
 
@@ -38,7 +38,7 @@ typedef union Texpage
 		u32 texFlipY : 1;         /* bool */
 		u32 unused : 10;
 		u32 code : 8; /* 0xE1 */
-	};
+	} bits;
 	u32 self;
 } Texpage;
 
@@ -92,23 +92,40 @@ typedef union PrimCode
 			u8 rectSize : 2;         /* rect size */
 			u8 renderCode : 3;       /* enum RenderCode */
 		} rect;
-	};
+	} kind;
 	u8 code;
 } PrimCode;
 
-typedef union ColorCode
+typedef struct ColorCode
 {
-	struct
-	{
-		u8 r;
-		u8 g;
-		u8 b;
-		PrimCode code;
-	};
-	u32 self;
+	u8 r;
+	u8 g;
+	u8 b;
+	PrimCode code;
 } ColorCode;
 
 typedef ColorCode Color;
+
+typedef u32 ColorCodePacked CTR_MAY_ALIAS;
+
+static inline u32 ColorCode_GetPacked(const ColorCode *color)
+{
+	return *(const ColorCodePacked *)color;
+}
+
+static inline void ColorCode_SetPacked(ColorCode *color, u32 packed)
+{
+	*(ColorCodePacked *)color = packed;
+}
+
+#define COLOR_CODE_PACKED_INIT(packed)          \
+	{                                           \
+	    .r = (u8)(packed),                      \
+	    .g = (u8)((packed) >> 8),               \
+	    .b = (u8)((packed) >> 16),              \
+	    .code = {.code = (u8)((packed) >> 24)}, \
+	}
+#define MakeColorPacked(red, green, blue) ((u32)(u8)(red) | ((u32)(u8)(green) << 8) | ((u32)(u8)(blue) << 16))
 
 #define MakeColorCode(red, green, blue, renderCode)         \
 	(ColorCode)                                             \
@@ -121,14 +138,10 @@ typedef ColorCode Color;
 		.r = red, .g = green, .b = blue \
 	}
 
-typedef union Point
+typedef struct Point
 {
-	struct
-	{
-		s16 x;
-		s16 y;
-	};
-	s32 self;
+	s16 x;
+	s16 y;
 } Point;
 
 #define MakePoint(px, py) \
@@ -137,14 +150,10 @@ typedef union Point
 		.x = px, .y = py  \
 	}
 
-typedef union UV
+typedef struct UV
 {
-	struct
-	{
-		u8 u;
-		u8 v;
-	};
-	u16 self;
+	u8 u;
+	u8 v;
 } UV;
 
 typedef union PolyTexpage
@@ -159,7 +168,7 @@ typedef union PolyTexpage
 		u16 y_VRAM_EXP : 1; /* ununsed in retail */
 		u16 unused2 : 2;
 		u16 nop : 2;
-	};
+	} bits;
 	u16 self;
 } PolyTexpage;
 
@@ -170,7 +179,7 @@ typedef union CLUT
 		u16 x : 6;   /* X/16  (ie. in 16-halfword steps) */
 		u16 y : 9;   /* 0-511 (ie. in 1-line steps) */
 		u16 nop : 1; /* Should be 0 */
-	};
+	} bits;
 	u16 self;
 } CLUT;
 
@@ -195,7 +204,7 @@ typedef struct FTVertex
 	{
 		CLUT clut;
 		PolyTexpage tpage;
-	};
+	} page;
 } FTVertex;
 
 typedef struct GTVertex
@@ -207,7 +216,7 @@ typedef struct GTVertex
 	{
 		CLUT clut;
 		PolyTexpage tpage;
-	};
+	} page;
 } GTVertex;
 
 /* Primitive types */
@@ -287,10 +296,10 @@ typedef struct PolyFT4
 
 #define fPolyCode colorCode.code
 #define gPolyCode v[0].color.code
-#define polyClut  v[0].clut
-#define polyTpage v[1].tpage
+#define polyClut  v[0].page.clut
+#define polyTpage v[1].page.tpage
 
-void GetPrimitiveMem(void **ppPrim, size_t primSize);
+void GetPrimitiveMem(void **ppPrim, u32 primSize);
 void AddPrimitive(void *pPrim, void *pOt);
 
 #define GetPrimMem(p)                            \

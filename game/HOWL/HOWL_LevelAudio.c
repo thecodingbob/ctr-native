@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002e7bc-0x8002e84c
 int GTE_GetSquaredDistance(s16 *pos1, s16 *pos2)
 {
 	int dx = pos1[0] - pos2[0];
@@ -19,7 +18,6 @@ int GTE_GetSquaredDistance(s16 *pos1, s16 *pos2)
 	return CTR_MipsAddLo(CTR_MipsAddLo(x2, y2), z2);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002e84c-0x8002e994
 void CalculateVolumeFromDistance(u32 *soundIDCount, u32 soundID, int distance)
 {
 	u32 volume;
@@ -75,13 +73,11 @@ void CalculateVolumeFromDistance(u32 *soundIDCount, u32 soundID, int distance)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002e994-0x8002e9c0
 void PlayWarppadSound(u32 distance)
 {
 	CalculateVolumeFromDistance((u32 *)&sdata->SoundFadeInput[0].soundID_soundCount, 0x98, distance);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002e9c0-0x8002ea44
 void Level_SoundLoopSet(int *soundIDCount, u32 soundID, u32 volume)
 {
 	if (volume == 0)
@@ -102,7 +98,6 @@ void Level_SoundLoopSet(int *soundIDCount, u32 soundID, u32 volume)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002ea44-0x8002eab8
 void Level_SoundLoopFade(struct SoundFadeInput *fade, u32 soundID, int desiredVolume, int fadeStep)
 {
 	int currentVolume = fade->currentVolume;
@@ -146,7 +141,6 @@ static u32 Level_RandomFX_NextAudioRNG(void)
 	return sdata->audioRNG;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002eab8-0x8002ebe4
 void Level_RandomFX(int *cooldown, u32 soundID, int baseCooldown, u32 randomRange, int volumeScale)
 {
 	int cooldownValue = *cooldown;
@@ -168,7 +162,6 @@ void Level_RandomFX(int *cooldown, u32 soundID, int baseCooldown, u32 randomRang
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002ebe4-0x8002f0dc
 void Level_AmbientSound(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -266,11 +259,11 @@ void Level_AmbientSound(void)
 
 			for (int coordIndex = 0; coordIndex < spawn->numCoords; coordIndex++)
 			{
-				SVec3 *coord = &spawn->positions[coordIndex];
+				SVec3 *coord = &spawn->coords.positions[coordIndex];
 
 				for (int playerIndex = 0; playerIndex < gGT->numPlyrCurrGame; playerIndex++)
 				{
-					int distance = GTE_GetSquaredDistance(gGT->pushBuffer[playerIndex].pos.v, coord->v);
+					int distance = GTE_GetSquaredDistance(CTR_VECTOR_DATA(&(gGT->pushBuffer[playerIndex].pos)), CTR_VECTOR_DATA(coord));
 
 					if (distance < closestDistance[soundSlot])
 					{
@@ -361,7 +354,6 @@ static u32 PlaySound3D_BuildFlags(struct GameTracker *gGT, int cameraIndex, u32 
 	return HowlSfx_Pack(lr, HOWL_SFX_DISTORTION_NONE, volume, echo);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002f0dc-0x8002f31c
 void PlaySound3D(u32 soundID, struct Instance *inst)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -413,7 +405,6 @@ static u32 PlaySound3D_Flags_BuildFlags(struct GameTracker *gGT, int cameraIndex
 	return HowlSfx_Pack(lr, HOWL_SFX_DISTORTION_NONE, volume, echo);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002f31c-0x8002f5f4
 void PlaySound3D_Flags(u32 *flags, u32 soundID, struct Instance *inst)
 {
 	struct GameTracker *gGT = sdata->gGT;

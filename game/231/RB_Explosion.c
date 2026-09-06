@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800ad92c-0x800ad9ac.
 void RB_Explosion_ThTick(struct Thread *t)
 {
 	struct Instance *inst = t->inst;
@@ -31,7 +30,6 @@ static const u32 s_potionShatterEmitter[] = {
     0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
 };
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b1458-0x800b1630.
 // NOTE(aalhendi): Native uses retail emitter bytes from 0x800b2d58.
 void RB_Explosion_InitPotion(struct Instance *inst)
 {
@@ -61,7 +59,7 @@ void RB_Explosion_InitPotion(struct Instance *inst)
 
 	for (int i = 0; i < 3; i++)
 	{
-		shatterInst->scale.v[i] = 0x800;
+		CTR_VECTOR_DATA(&(shatterInst->scale))[i] = 0x800;
 		shatterInst->matrix.t[i] = inst->matrix.t[i];
 	}
 
@@ -80,7 +78,7 @@ void RB_Explosion_InitPotion(struct Instance *inst)
 		p->axis[1].startVal += shatterInst->matrix.t[1] * 0x100;
 		p->axis[2].startVal += shatterInst->matrix.t[2] * 0x100;
 
-		p->modelID = shatterColor;
+		p->owner.modelID = shatterColor;
 
 		if (shatterColor == STATIC_SHOCKWAVE_GREEN)
 		{
@@ -105,7 +103,6 @@ void RB_Explosion_InitPotion(struct Instance *inst)
 
 static char s_explosion1[] = "explosion1";
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800b1630-0x800b1714.
 void RB_Explosion_InitGeneric(struct Instance *inst)
 {
 	struct Instance *explosion;

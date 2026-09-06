@@ -11,20 +11,40 @@ enum CrystalChallengeEndMenuConstants
 	CC_TOKEN_GROW_LIMIT = 0x2001,
 	CC_TOKEN_GROW_STEP = 0x200,
 	CC_CONFIRM_BUTTON_MASK = BTN_CROSS_one | BTN_CIRCLE,
-	CC_UNMODELED_REWARD_OFFSET = -0x400000, // NOTE(aalhendi): see CC_EndEvent_LogUnmodeledRewardOffset
+	// NOTE(aalhendi): Native sentinel for retail stack residue that has not
+	// been modeled yet.
+	CC_UNMODELED_REWARD_OFFSET = -0x400000,
 };
 
+#define CC_BATTLE_TRACK_PURPLE_TOKEN_OFFSETS 3, 1, -1, 0, -1, 2, -1
+
+#if defined(CTR_NATIVE)
 global_variable const s16 s_battleTrackPurpleTokenOffset[LAB_BASEMENT - NITRO_COURT + 1] = {
-    [NITRO_COURT - NITRO_COURT] = 3,     // Citadel City
-    [RAMPAGE_RUINS - NITRO_COURT] = 1,   // Lost Ruins
-    [PARKING_LOT - NITRO_COURT] = -1,    // not used in any hub
-    [SKULL_ROCK - NITRO_COURT] = 0,      // N. Sanity Beach
-    [THE_NORTH_BOWL - NITRO_COURT] = -1, // not used in any hub
-    [ROCKY_ROAD - NITRO_COURT] = 2,      // Glacier Park
-    [LAB_BASEMENT - NITRO_COURT] = -1,   // not used in any hub
+    CC_BATTLE_TRACK_PURPLE_TOKEN_OFFSETS,
 };
+#endif
 
 extern struct RectMenu menu221;
+
+// NOTE(aalhendi): The overlay-private matching ABI overrides these defaults
+// before compiling the retail artifact.
+#ifndef CC_GAME_TRACKER
+#define CC_GAME_TRACKER            (sdata->gGT)
+#define CC_FRAMES_SINCE_RACE_ENDED (sdata->framesSinceRaceEnded)
+#define CC_HUD_CRYSTAL             (sdata->ptrHudCrystal)
+#define CC_MENU_CRYSTAL            (sdata->ptrMenuCrystal)
+#define CC_TOKEN                   (sdata->ptrToken)
+#define CC_LANGUAGE_STRINGS        (sdata->lngStrings)
+#define CC_MENU_READY              (sdata->menuReadyToPass)
+#define CC_ANY_PLAYER_TAP          (sdata->AnyPlayerTap)
+#define CC_ADV_PROGRESS            (sdata->advProgress)
+#define CC_ADD_CONFIG_0            (sdata->Loading.OnBegin.AddBitsConfig0)
+#define CC_REMOVE_CONFIG_0         (sdata->Loading.OnBegin.RemBitsConfig0)
+#endif
+
+#ifndef CC_READ_GAME_TRACKER
+#define CC_READ_GAME_TRACKER() CC_GAME_TRACKER
+#endif
 
 #if defined(CTR_NATIVE)
 static void CC_EndEvent_LogUnmodeledRewardOffset(const s32 levelID)
@@ -58,14 +78,11 @@ static void CC_EndEvent_LogUnmodeledRewardOffset(const s32 levelID)
 }
 #endif
 
+#if defined(CTR_NATIVE)
 static s32 CC_EndEvent_GetRewardOffset(struct GameTracker *gGT)
 {
 	s32 levelID = gGT->levelID;
-#if defined(CTR_NATIVE)
 	s32 frustumSavedCameraZ = PushBuffer_GetFrustumSavedCameraZ();
-#else
-	s32 frustumSavedCameraZ = gGT->pushBuffer[0].pos.z;
-#endif
 
 	if (levelID == DINGO_CANYON)
 	{
@@ -89,7 +106,6 @@ static s32 CC_EndEvent_GetRewardOffset(struct GameTracker *gGT)
 		return 0;
 	}
 
-#if defined(CTR_NATIVE)
 	if (levelID < NITRO_COURT || levelID > LAB_BASEMENT)
 	{
 		// NOTE(aalhendi): Retail would keep reading the adjacent stack halfwords.
@@ -97,7 +113,6 @@ static s32 CC_EndEvent_GetRewardOffset(struct GameTracker *gGT)
 		CC_EndEvent_LogUnmodeledRewardOffset(levelID);
 		return CC_UNMODELED_REWARD_OFFSET;
 	}
-#endif
 
 	return s_battleTrackPurpleTokenOffset[levelID - NITRO_COURT];
 }
@@ -107,7 +122,6 @@ static u32 CC_EndEvent_GetRewardBitMask(s32 rewardBit)
 	return 1u << ((u32)rewardBit & 0x1f);
 }
 
-#if defined(CTR_NATIVE)
 CTR_STATIC_ASSERT(OFFSETOF(struct sData, gameOptions) + sizeof(struct GameOptions) == OFFSETOF(struct sData, advProgress));
 
 static u8 *CC_EndEvent_GetNativeRewardWordBytes(s32 rewardBit)
@@ -127,11 +141,9 @@ static u8 *CC_EndEvent_GetNativeRewardWordBytes(s32 rewardBit)
 
 	return (u8 *)sdata + (s32)rewardByteOffset;
 }
-#endif
 
 static b32 CC_EndEvent_HasRewardBit(struct AdvProgress *adv, s32 rewardBit)
 {
-#if defined(CTR_NATIVE)
 	(void)adv;
 	u8 *wordBytes = CC_EndEvent_GetNativeRewardWordBytes(rewardBit);
 	if (wordBytes == NULL)
@@ -142,14 +154,10 @@ static b32 CC_EndEvent_HasRewardBit(struct AdvProgress *adv, s32 rewardBit)
 	u32 rewardWord;
 	memcpy(&rewardWord, wordBytes, sizeof(rewardWord));
 	return (rewardWord & CC_EndEvent_GetRewardBitMask(rewardBit)) != 0;
-#else
-	return CHECK_ADV_BIT(adv->rewards, rewardBit);
-#endif
 }
 
 static void CC_EndEvent_UnlockRewardBit(struct AdvProgress *adv, s32 rewardBit)
 {
-#if defined(CTR_NATIVE)
 	(void)adv;
 	u8 *wordBytes = CC_EndEvent_GetNativeRewardWordBytes(rewardBit);
 	if (wordBytes == NULL)
@@ -161,149 +169,196 @@ static void CC_EndEvent_UnlockRewardBit(struct AdvProgress *adv, s32 rewardBit)
 	memcpy(&rewardWord, wordBytes, sizeof(rewardWord));
 	rewardWord |= CC_EndEvent_GetRewardBitMask(rewardBit);
 	memcpy(wordBytes, &rewardWord, sizeof(rewardWord));
-#else
-	UNLOCK_ADV_BIT(adv->rewards, rewardBit);
-#endif
 }
+#endif
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8009f710-0x8009fbec for the retail path.
 void CC_EndEvent_DrawMenu()
 {
-	struct GameTracker *gGT = sdata->gGT;
-	struct Driver *driver = gGT->drivers[0];
-	SVec2 pos;
-	s32 tokenRewardOffset = CC_EndEvent_GetRewardOffset(gGT);
-
-	s32 tokenRewardBit = tokenRewardOffset + ADV_REWARD_FIRST_PURPLE_TOKEN;
-	struct AdvProgress *adv = &sdata->advProgress;
-	b32 didLose = driver->numCrystals < gGT->numCrystalsInLEV;
-	s32 elapsedFrames = sdata->framesSinceRaceEnded;
-
-	if (elapsedFrames < CTR_SECONDS_TO_FRAMES(30))
-	{
-		elapsedFrames++;
-	}
-
-	sdata->framesSinceRaceEnded = elapsedFrames;
+	struct GameTracker *comparisonGT;
+	struct Driver *driver;
+	s16 pos[2];
+	s32 resultStringIndex;
+	b32 didWin;
 #if defined(CTR_NATIVE)
-	// NOTE(aalhendi): Menu-storage can enter this flow in tracks without
-	// crystal HUD instances; keep reward/menu logic and skip missing models.
-	if (sdata->ptrHudCrystal != NULL)
+	register b32 canAward;
+	register s32 currentFrames;
+#else
+	// NOTE(aalhendi): Retail-path register bindings preserve two GCC allocation
+	// and scheduling decisions without embedding instructions.
+	register b32 canAward asm("$2");
+	u32 *rewardWords;
+	register s32 currentFrames asm("$3");
 #endif
+	s32 tokenRewardBit;
+
+	driver = CC_READ_GAME_TRACKER()->drivers[0];
+	comparisonGT = CC_READ_GAME_TRACKER();
+
+#if !defined(CTR_NATIVE)
+	// NOTE(aalhendi): This block lets GCC 2.8.1 declare the retail stack table
+	// after the entry loads while keeping it live through the reward paths.
 	{
-		sdata->ptrHudCrystal->flags |= HIDE_MODEL;
-	}
+		s16 battleTrackPurpleTokenOffset[LAB_BASEMENT - NITRO_COURT + 1] = {CC_BATTLE_TRACK_PURPLE_TOKEN_OFFSETS};
+#endif
 
-	// fly in from left
-	UI_Lerp2D_Linear(pos.v, -0x64, 0x18, 0x100, 0x18, elapsedFrames, CC_FLY_IN_FRAMES);
-	DecalFont_DrawLine(sdata->lngStrings[LNG_TIME_REMAINING], pos.x, pos.y, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
-	UI_DrawLimitClock(pos.x - 0x33, pos.y + 0x11, FONT_BIG);
+		if (driver->numCrystals >= comparisonGT->numCrystalsInLEV)
+		{
+			didWin = true;
+			resultStringIndex = LNG_YOU_WIN;
+		}
+		else
+		{
+			didWin = false;
+			resultStringIndex = LNG_TRY_AGAIN;
+		}
 
-	// fly in from right
-	UI_Lerp2D_Linear(pos.v, 0x264, 0x56, 0xcd, 0x56, elapsedFrames, CC_FLY_IN_FRAMES);
+		if (CC_FRAMES_SINCE_RACE_ENDED < CTR_SECONDS_TO_FRAMES(30))
+		{
+			CC_FRAMES_SINCE_RACE_ENDED++;
+		}
 
-	// Crystal count
 #if defined(CTR_NATIVE)
-	if (sdata->ptrMenuCrystal != NULL)
+		// NOTE(aalhendi): Menu-storage can enter this flow in tracks without
+		// crystal HUD instances; keep reward/menu logic and skip missing models.
+		if (CC_HUD_CRYSTAL != NULL)
 #endif
-	{
-		sdata->ptrMenuCrystal->matrix.t[0] = UI_ConvertX_2(pos.x, CC_SCREEN_DEPTH);
-		sdata->ptrMenuCrystal->matrix.t[1] = UI_ConvertY_2(pos.y, CC_SCREEN_DEPTH);
-	}
-	UI_DrawNumCrystal(pos.x + 0xf, pos.y - 0x10, driver);
+		{
+			CC_HUD_CRYSTAL->flags = CC_HUD_CRYSTAL->flags | HIDE_MODEL;
+		}
 
-	s32 resultStringIndex = LNG_YOU_WIN;
-	if (didLose)
-	{
-		resultStringIndex = LNG_TRY_AGAIN;
-	}
+		currentFrames = CC_FRAMES_SINCE_RACE_ENDED;
 
-	// YOU WIN, or TRY AGAIN
-	DecalFont_DrawLine(sdata->lngStrings[resultStringIndex], pos.x + 0x33, pos.y + 8, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+		// fly in from left
+		UI_Lerp2D_Linear(&pos[0], -0x64, 0x18, 0x100, 0x18, currentFrames, CC_FLY_IN_FRAMES);
+		DecalFont_DrawLine(CC_LANGUAGE_STRINGS[LNG_TIME_REMAINING], pos[0], pos[1], FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+		UI_DrawLimitClock(pos[0] - 0x33, pos[1] + 0x11, FONT_BIG);
 
-	// if a token is not newly-unlocked
-	if (didLose || CC_EndEvent_HasRewardBit(adv, tokenRewardBit))
+		// fly in from right
+		UI_Lerp2D_Linear(&pos[0], 0x264, 0x56, 0xcd, 0x56, CC_FRAMES_SINCE_RACE_ENDED, CC_FLY_IN_FRAMES);
+
+		// Crystal count
+#if defined(CTR_NATIVE)
+		if (CC_MENU_CRYSTAL != NULL)
+#endif
+		{
+			CC_MENU_CRYSTAL->matrix.t[0] = UI_ConvertX_2(pos[0], CC_SCREEN_DEPTH);
+			CC_MENU_CRYSTAL->matrix.t[1] = UI_ConvertY_2(pos[1], CC_SCREEN_DEPTH);
+		}
+		UI_DrawNumCrystal(pos[0] + 0xf, pos[1] - 0x10, driver);
+
+		// YOU WIN, or TRY AGAIN
+		DecalFont_DrawLine(CC_LANGUAGE_STRINGS[resultStringIndex], pos[0] + 0x33, pos[1] + 8, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+
+		canAward = didWin;
+		if (!canAward)
+		{
+			goto DrawAlreadyAwardedMenu;
+		}
+
+#if defined(CTR_NATIVE)
+		tokenRewardBit = CC_EndEvent_GetRewardOffset(CC_GAME_TRACKER) + ADV_REWARD_FIRST_PURPLE_TOKEN;
+		if (CC_EndEvent_HasRewardBit(&CC_ADV_PROGRESS, tokenRewardBit))
+#else
+	// NOTE(aalhendi): Retail intentionally indexes this stack table without
+	// bounds checks.
+	rewardWords = CC_ADV_PROGRESS.rewards;
+	tokenRewardBit = battleTrackPurpleTokenOffset[CC_GAME_TRACKER->levelID - NITRO_COURT] + ADV_REWARD_FIRST_PURPLE_TOKEN;
+	if (CHECK_ADV_BIT(rewardWords, tokenRewardBit))
+#endif
+		{
+			goto DrawAlreadyAwardedMenu;
+		}
+
+		{
+			UI_Lerp2D_Linear(&pos[0], -0x64, 0xA2, 0x100, 0xA2, CC_FRAMES_SINCE_RACE_ENDED, CC_FLY_IN_FRAMES);
+
+			DecalFont_DrawLine(CC_LANGUAGE_STRINGS[LNG_CTR_TOKEN_AWARDED], pos[0], pos[1], FONT_BIG,
+			                   (CC_GAME_TRACKER->timer != 0) ? (s16)(JUSTIFY_CENTER | ORANGE) : (s16)(JUSTIFY_CENTER | WHITE));
+#if defined(CTR_NATIVE)
+			if (CC_TOKEN != NULL)
+#endif
+			{
+				CC_TOKEN->flags &= ~(HIDE_MODEL);
+				CC_TOKEN->matrix.t[0] = UI_ConvertX_2(pos[0], CC_SCREEN_DEPTH);
+				CC_TOKEN->matrix.t[1] = UI_ConvertY_2(pos[1] - 0x18, CC_SCREEN_DEPTH);
+			}
+
+			if (CC_FRAMES_SINCE_RACE_ENDED == CTR_SECONDS_TO_FRAMES(1))
+			{
+				OtherFX_Play(0x67, 1);
+			}
+
+			if (CC_FRAMES_SINCE_RACE_ENDED > CTR_SECONDS_TO_FRAMES(1))
+			{
+				struct Instance *token = CC_TOKEN;
+
+#if defined(CTR_NATIVE)
+				if (token != NULL)
+#endif
+				{
+					if (token->scale.x < CC_TOKEN_GROW_LIMIT)
+					{
+						token->scale.x += CC_TOKEN_GROW_STEP;
+						token->scale.y += CC_TOKEN_GROW_STEP;
+						token->scale.z += CC_TOKEN_GROW_STEP;
+					}
+				}
+			}
+
+			DecalFont_DrawLine(CC_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+
+			// if still waiting to press X/O, quit function
+			if ((CC_ANY_PLAYER_TAP & CC_CONFIRM_BUTTON_MASK) == 0)
+			{
+				return;
+			}
+
+			// if pressed X/O,
+			// unlock token and leave level
+
+			RECTMENU_ClearInput();
+			CC_FRAMES_SINCE_RACE_ENDED = 0;
+
+			{
+				struct GameTracker *returnGT;
+				u32 *addConfig;
+
+				CC_REMOVE_CONFIG_0 |= CRYSTAL_CHALLENGE;
+				returnGT = CC_GAME_TRACKER;
+				addConfig = &CC_ADD_CONFIG_0;
+#if defined(CTR_NATIVE)
+				CC_EndEvent_UnlockRewardBit(&CC_ADV_PROGRESS, tokenRewardBit);
+#else
+			UNLOCK_ADV_BIT(CC_ADV_PROGRESS.rewards, battleTrackPurpleTokenOffset[returnGT->levelID - NITRO_COURT] + ADV_REWARD_FIRST_PURPLE_TOKEN);
+#endif
+				*addConfig |= ADVENTURE_ARENA;
+				MainRaceTrack_RequestLoad(returnGT->prevLEV); // Adventure hub.
+			}
+
+			return;
+		}
+
+	DrawAlreadyAwardedMenu:
 	{
-		// If you pressed X/O to continue, quit function
-		if ((sdata->menuReadyToPass & 1) != 0)
+		if ((CC_MENU_READY & 1) != 0)
 		{
 			return;
 		}
 
-		DecalFont_DrawLine(sdata->lngStrings[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+		DecalFont_DrawLine(CC_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 
-		if ((sdata->AnyPlayerTap & CC_CONFIRM_BUTTON_MASK) == 0)
+		if ((CC_ANY_PLAYER_TAP & CC_CONFIRM_BUTTON_MASK) == 0)
 		{
 			return;
 		}
 
 		RECTMENU_ClearInput();
 		RECTMENU_Show(&menu221); // Retry / Exit To Map menu
-		sdata->menuReadyToPass |= 1;
-		return;
+		CC_MENU_READY |= 1;
 	}
-
-	// == if a token is newly-unlocked ==
-
-	struct Instance *token = sdata->ptrToken;
-	s32 color = (JUSTIFY_CENTER | ORANGE);
-	if (gGT->timer == 0)
-	{
-		color = (JUSTIFY_CENTER | WHITE);
+#if !defined(CTR_NATIVE)
 	}
-
-	UI_Lerp2D_Linear(pos.v, -0x64, 0xA2, 0x100, 0xA2, elapsedFrames, CC_FLY_IN_FRAMES);
-
-	DecalFont_DrawLine(sdata->lngStrings[LNG_CTR_TOKEN_AWARDED], pos.x, pos.y, FONT_BIG, color);
-#if defined(CTR_NATIVE)
-	if (token != NULL)
 #endif
-	{
-		token->flags &= ~(HIDE_MODEL);
-		token->matrix.t[0] = UI_ConvertX_2(pos.x, CC_SCREEN_DEPTH);
-		token->matrix.t[1] = UI_ConvertY_2(0xA2 - 0x18, CC_SCREEN_DEPTH);
-	}
-
-	if (elapsedFrames > CTR_SECONDS_TO_FRAMES(1))
-	{
-#if defined(CTR_NATIVE)
-		if (token != NULL)
-#endif
-		{
-			if (token->scale.x < CC_TOKEN_GROW_LIMIT)
-			{
-				token->scale.x += CC_TOKEN_GROW_STEP;
-				token->scale.y += CC_TOKEN_GROW_STEP;
-				token->scale.z += CC_TOKEN_GROW_STEP;
-			}
-		}
-	}
-	else if (elapsedFrames == CTR_SECONDS_TO_FRAMES(1))
-	{
-		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8009fa24-0x8009fa2c for crystal token unlock SFX.
-		OtherFX_Play(0x67, 1);
-	}
-
-	DecalFont_DrawLine(sdata->lngStrings[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
-
-	// if still waiting to press X/O, quit function
-	if ((sdata->AnyPlayerTap & CC_CONFIRM_BUTTON_MASK) == 0)
-	{
-		return;
-	}
-
-	// if pressed X/O,
-	// unlock token and leave level
-
-	RECTMENU_ClearInput();
-	sdata->framesSinceRaceEnded = 0;
-
-	sdata->Loading.OnBegin.AddBitsConfig0 |= ADVENTURE_ARENA;
-	sdata->Loading.OnBegin.RemBitsConfig0 |= CRYSTAL_CHALLENGE;
-	CC_EndEvent_UnlockRewardBit(adv, tokenRewardBit);
-	MainRaceTrack_RequestLoad(gGT->prevLEV); // NOTE(aalhendi): Adv hub.
-
-	return;
 }
 
 struct MenuRow rows221[3] = {

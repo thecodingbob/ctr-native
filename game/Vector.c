@@ -15,7 +15,6 @@ static void Vector_SpecLightSpin2D_RotMatrixMul(MATRIX *matrix, const SVec3 *inp
 
 void Vector_SpecLightSpin2D(struct Instance *inst, const SVec3 *rot, const SVec3 *lightDir)
 {
-	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800572d0-0x8005741c.
 	MATRIX rotMatrix;
 	VECTOR lightMac;
 	VECTOR viewMac;
@@ -63,11 +62,11 @@ static void Vector_LightMatrixMul(MATRIX *matrix, const SVec3 *input, SVec3 *out
 
 void Vector_SpecLightSpin3D(struct Instance *inst, const SVec3 *rot, const SVec3 *lightDir)
 {
-	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005741c-0x800576b8.
 	MATRIX rotMatrix;
 	SVec3 light = *lightDir;
 	struct GameTracker *gGT = sdata->gGT;
 	struct InstDrawPerPlayer *idpp = INST_GETIDPP(inst);
+	u8 *cameraLightMatrixCursor = (u8 *)gGT + OFFSETOF(struct GameTracker, pushBuffer) + OFFSETOF(struct PushBuffer, matrix_Camera);
 
 	ConvertRotToMatrix_Transpose(&rotMatrix, rot);
 
@@ -80,7 +79,9 @@ void Vector_SpecLightSpin3D(struct Instance *inst, const SVec3 *rot, const SVec3
 		SVec3 viewLocal;
 		SVec3 halfVector;
 
-		Vector_LightMatrixMul(&pb->matrix_Camera, &light, &lightCamera);
+		// NOTE(aalhendi): Retail advances this matrix cursor by two
+		// PushBuffer strides while camera positions advance by one.
+		Vector_LightMatrixMul((MATRIX *)cameraLightMatrixCursor, &light, &lightCamera);
 		Vector_LightMatrixMul(&rotMatrix, &lightCamera, &lightLocal);
 
 		inst->specLightX = (s8)lightLocal.x;
@@ -98,20 +99,20 @@ void Vector_SpecLightSpin3D(struct Instance *inst, const SVec3 *rot, const SVec3
 		MATH_VectorNormalize(&halfVector);
 
 		idpp[i].halfVector = halfVector;
+		cameraLightMatrixCursor += sizeof(struct PushBuffer) * 2;
 	}
 }
 
 
 void Vector_SpecLightNoSpin3D(struct Instance *inst, const SVec3 *rot, const SVec3 *lightDir)
 {
-	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800576b8-0x80057884.
 	MATRIX lightMatrix;
 	SVec3 light = *lightDir;
 	SVec3 lightLocal;
 	struct GameTracker *gGT = sdata->gGT;
 	struct InstDrawPerPlayer *idpp = INST_GETIDPP(inst);
 
-	ConvertRotToMatrix(&lightMatrix, rot);
+	ConvertRotToMatrix_Transpose(&lightMatrix, rot);
 	Vector_LightMatrixMul(&lightMatrix, &light, &lightLocal);
 
 	inst->specLightX = (s8)lightLocal.x;
@@ -164,14 +165,15 @@ static void Vector_BakeMatrixTable_PrepareBlastedFrames(void)
 	for (int i = 0; i < count; i++)
 	{
 		struct MatrixND *entry = &entries[i];
+		MatrixNDAuthored *authored = MatrixND_GetAuthored(entry);
 		s32 angle2000 = (i << 0xd) / count;
 		s32 angle3000 = (i * 0x3000) / count;
 		s32 sin2000 = MATH_Sin((u32)angle2000);
 
-		entry->authoredRot.z = (s16)angle2000;
-		entry->authoredRot.x = (s16)(-MATH_Sin((u32)angle3000) / 7);
-		entry->authoredScale.x = Vector_BakeMatrixTable_Div4TowardZero(sin2000) + 0x1000;
-		entry->authoredScale.z = (s16)(((sin2000 * 6) / 0x28) + 0x1000);
+		authored->authoredRot.z = (s16)angle2000;
+		authored->authoredRot.x = (s16)(-MATH_Sin((u32)angle3000) / 7);
+		authored->authoredScale.x = Vector_BakeMatrixTable_Div4TowardZero(sin2000) + 0x1000;
+		authored->authoredScale.z = (s16)(((sin2000 * 6) / 0x28) + 0x1000);
 	}
 }
 
@@ -193,12 +195,13 @@ static void Vector_BakeMatrixTable_BakeRotScaleEntries(void)
 		for (int j = 0; j < count; j++)
 		{
 			struct MatrixND *entry = &entries[j];
+			MatrixNDAuthored *authored = MatrixND_GetAuthored(entry);
 
-			ConvertRotToMatrix(&rot, &entry->authoredRot.vec);
+			ConvertRotToMatrix(&rot, SVec3Slot_AsVec3(&authored->authoredRot));
 
-			scale.m[0][0] = entry->authoredScale.x;
-			scale.m[1][1] = entry->authoredScale.y;
-			scale.m[2][2] = entry->authoredScale.z;
+			scale.m[0][0] = authored->authoredScale.x;
+			scale.m[1][1] = authored->authoredScale.y;
+			scale.m[2][2] = authored->authoredScale.z;
 
 			// NOTE(aalhendi): Retail writes the 0x14-byte rotated payload
 			// directly into this entry, not a full MATRIX copy.
@@ -221,20 +224,20 @@ static void Vector_BakeMatrixTable_BakeBlastedOffsets(void)
 	for (int i = 0; i < count; i++)
 	{
 		struct MatrixND *entry = &entries[i];
+		MatrixNDAuthored *authored = MatrixND_GetAuthored(entry);
 		MatrixNDOverlapMatrix *matrix = MatrixND_GetOverlapMatrix(entry);
 		s32 x = (matrix->m[0][1] * -0x2000) >> 12;
 		s32 y = ((matrix->m[1][1] * -0x2000) >> 12) + 0x2000;
 		s32 z = (matrix->m[2][1] * -0x2000) >> 12;
 
-		entry->bakedOffset.x = (s16)x;
-		entry->bakedOffset.y = (s16)y;
-		entry->bakedOffset.z = (s16)z;
+		authored->bakedOffset.x = (s16)x;
+		authored->bakedOffset.y = (s16)y;
+		authored->bakedOffset.z = (s16)z;
 	}
 }
 
 void Vector_BakeMatrixTable(void)
 {
-	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80057884-0x80057c44.
 	// Retail bakes authored rot/scale vehicle-animation entries in-place before
 	// VehPhysForce_TranslateMatrix consumes entry+8 as a MATRIX.
 	if (sdata->matrixTableBaked != 0)

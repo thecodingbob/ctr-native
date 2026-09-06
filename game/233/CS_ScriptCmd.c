@@ -21,7 +21,6 @@ static const u8 s_csOpcodeMetaFlags[CS_OPCODE_META_TABLE_SIZE] = {
 
 CTR_STATIC_ASSERT(sizeof(s_csOpcodeMetaFlags) == CS_OPCODE_META_TABLE_SIZE);
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800abf70-0x800abf9c
 static s16 CS_ScriptCmd_ReadOpcode_GetShort(char **cursor)
 {
 	char *bytes = *cursor;
@@ -30,7 +29,6 @@ static s16 CS_ScriptCmd_ReadOpcode_GetShort(char **cursor)
 	return result;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800abf9c-0x800abfd8
 static u32 CS_ScriptCmd_ReadOpcode_GetInt(char **cursor)
 {
 	char *bytes = *cursor;
@@ -38,7 +36,6 @@ static u32 CS_ScriptCmd_ReadOpcode_GetInt(char **cursor)
 	return CTR_ReadU32LE(bytes);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800abfd8-0x800ac014
 static u32 CS_ScriptCmd_ReadOpcode_GetInt_dup(char **cursor)
 {
 	char *bytes = *cursor;
@@ -46,11 +43,10 @@ static u32 CS_ScriptCmd_ReadOpcode_GetInt_dup(char **cursor)
 	return CTR_ReadU32LE(bytes);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac014-0x800ac1c0
 static void CS_ScriptCmd_ReadOpcode_Main(struct CutsceneObj *cs)
 {
 	char *opcodes;
-	union CsOpcodeMeta *decoded;
+	struct CsOpcodeMeta *decoded;
 	s16 *decodedShorts;
 	u8 opcode;
 	u8 metaFlags;
@@ -65,7 +61,7 @@ static void CS_ScriptCmd_ReadOpcode_Main(struct CutsceneObj *cs)
 
 	cursor = opcodes + 1;
 	decoded = &cs->decodedOpcode;
-	decodedShorts = decoded->shorts;
+	decodedShorts = CsOpcodeMeta_Halves(decoded);
 
 	cs->prevOpcode = opcodes;
 	opcode = (u8)opcodes[0];
@@ -120,7 +116,7 @@ static void CS_ScriptCmd_ReadOpcode_Main(struct CutsceneObj *cs)
 
 	if (metaFlags & CS_OPCODE_META_HAS_ALIGNED_ARG1)
 	{
-		while ((uintptr_t)cursor & 3)
+		while ((u32)cursor & 3)
 		{
 			cursor++;
 		}
@@ -150,7 +146,6 @@ static void CS_ScriptCmd_ReadOpcode_Main(struct CutsceneObj *cs)
 	cs->prevOpcode = cursor;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac1c0-0x800ac1ec
 void CS_ScriptCmd_OpcodeNext(struct CutsceneObj *cs)
 {
 	char *prev = cs->prevOpcode;
@@ -159,7 +154,6 @@ void CS_ScriptCmd_OpcodeNext(struct CutsceneObj *cs)
 	CS_ScriptCmd_ReadOpcode_Main(cs);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac1ec-0x800ac214.
 // CTR_NATIVE translates retail bytecode branch targets before the retail body.
 void CS_ScriptCmd_OpcodeAt(struct CutsceneObj *cs, char *opCodeAt)
 {

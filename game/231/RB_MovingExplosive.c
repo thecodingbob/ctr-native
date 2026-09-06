@@ -7,7 +7,6 @@ static void RB_MovingExplosive_CallThCollide(struct Thread *hitTh, struct Thread
 }
 
 // function for moving bomb, shiledbomb, or missile
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800adb50-0x800ae478.
 void RB_MovingExplosive_ThTick(struct Thread *t)
 {
 	s16 desiredRotY;
@@ -332,7 +331,7 @@ LAB_800adc08:;
 			// missile model
 			if (modelID == DYNAMIC_ROCKET)
 			{
-				VehPhysForce_RotAxisAngle(&inst->matrix, sps->hit.plane.normal.v, tw->rotY);
+				VehPhysForce_RotAxisAngle(&inst->matrix, CTR_VECTOR_DATA(&(sps->hit.plane.normal)), tw->rotY);
 			}
 
 			// position
@@ -451,7 +450,6 @@ LAB_800ae42c:
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ae478-0x800ae524.
 void RB_MovingExplosive_Explode(struct Thread *t, struct Instance *inst, struct TrackerWeapon *tw)
 {
 	s16 soundId;

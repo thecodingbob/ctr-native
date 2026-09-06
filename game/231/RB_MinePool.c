@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800abfec-0x800ac0e4.
 void RB_MinePool_Init(void)
 {
 	int i;
@@ -40,7 +39,6 @@ void RB_MinePool_Init(void)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800ac0e4-0x800ac13c.
 void RB_MinePool_Remove(struct MineWeapon *mw)
 {
 	struct WeaponSlot231 *ws = mw->weaponSlot231;
@@ -58,7 +56,6 @@ void RB_MinePool_Remove(struct MineWeapon *mw)
 	mw->weaponSlot231 = NULL;
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800ac13c-0x800ac1b0.
 void RB_MinePool_Add(struct MineWeapon *mw)
 {
 	// if no more items on free list

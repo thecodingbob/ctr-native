@@ -1,13 +1,12 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b3120-0x800b37d4.
 
 static void RB_Baron_SetPathFrame(struct Instance *inst, struct SpawnType2 *spawn, int pointIndex, int offsetX, int offsetZ, int flipRotX)
 {
 	const struct SpawnPosRot *frame;
 	SVec3 rot;
 
-	frame = &spawn->posRot[pointIndex];
+	frame = &spawn->coords.posRot[pointIndex];
 
 	rot = frame->rot;
 
@@ -100,7 +99,6 @@ void RB_Baron_ThTick(struct Thread *t)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b37d4-0x800b38dc.
 
 void RB_Baron_LInB(struct Instance *inst)
 {

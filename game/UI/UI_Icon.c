@@ -27,7 +27,6 @@ enum
 	UI_DRIVER_ICON_FT4_CODE = 0x2c,
 };
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004e0e0-0x8004e37c.
 void UI_WeaponBG_AnimateShine(void)
 {
 	int sine;
@@ -65,9 +64,7 @@ void UI_WeaponBG_AnimateShine(void)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004e37c-0x8004e660.
-void UI_WeaponBG_DrawShine(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, uint32_t *ot, char transparency, s16 angleX, s16 angleY,
-                           int unusedColor)
+void UI_WeaponBG_DrawShine(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, u32 *ot, char transparency, s16 angleX, s16 angleY, int unusedColor)
 {
 	s16 rightX;
 	s16 bottomY;
@@ -186,9 +183,7 @@ void UI_WeaponBG_DrawShine(struct Icon *icon, s16 posX, s16 posY, struct PrimMem
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004e660-0x8004e8d8.
-void UI_TrackerBG(struct Icon *targetIcon, s16 centerX, s16 centerY, struct PrimMem *primMem, uint32_t *ot, char transparency, s16 angleX, s16 angleY,
-                  int color)
+void UI_TrackerBG(struct Icon *targetIcon, s16 centerX, s16 centerY, struct PrimMem *primMem, u32 *ot, char transparency, s16 angleX, s16 angleY, int color)
 {
 	s16 rightX;
 	s16 bottomY;
@@ -273,12 +268,11 @@ void UI_TrackerBG(struct Icon *targetIcon, s16 centerX, s16 centerY, struct Prim
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004e8d8-0x8004eaa8.
-void UI_DrawDriverIcon(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, uint32_t *ot, char transparency, s16 scale, u32 color)
+void UI_DrawDriverIcon(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, u32 *ot, char transparency, s16 scale, u32 color)
 {
 	PolyFT4 *p = primMem->cursor;
-	const PrimCode primCode = {.poly = {.renderCode = RenderCode_Polygon, .quad = 1, .textured = 1}};
-	p->colorCode.self = color;
+	const PrimCode primCode = {.kind.poly = {.renderCode = RenderCode_Polygon, .quad = 1, .textured = 1}};
+	ColorCode_SetPacked(&p->colorCode, color);
 	p->colorCode.code = primCode;
 
 	int width = icon->texLayout.u1 - icon->texLayout.u0;
@@ -287,15 +281,10 @@ void UI_DrawDriverIcon(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *pr
 	int scaledHeight = FP_Mult(height, scale);
 	int topX = posX;
 	int bottomX = topX + scaledWidth;
-#if BUILD != EurRetail
 	int topY = (posY < UI_DRIVER_ICON_NTSC_CLIP_LIMIT) ? posY : UI_DRIVER_ICON_NTSC_CLIP_MAX;
 	int bottomY = ((posY + scaledHeight) < UI_DRIVER_ICON_NTSC_CLIP_LIMIT) ? (posY + scaledHeight) : UI_DRIVER_ICON_NTSC_CLIP_MAX;
-#else
-	int topY = (posY < UI_DRIVER_ICON_EUR_CLIP_LIMIT) ? posY : UI_DRIVER_ICON_EUR_CLIP_MAX;
-	int bottomY = ((posY + scaledHeight) < UI_DRIVER_ICON_EUR_CLIP_LIMIT) ? (posY + scaledHeight) : UI_DRIVER_ICON_EUR_CLIP_MAX;
-#endif
 
-	p->tag.size = (sizeof(*p) - sizeof(p->tag)) / sizeof(u32);
+	p->tag.bits.size = (sizeof(*p) - sizeof(p->tag)) / sizeof(u32);
 	p->colorCode.code.code = UI_DRIVER_ICON_FT4_CODE;
 
 	p->v[0].pos.x = topX;
@@ -311,12 +300,12 @@ void UI_DrawDriverIcon(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *pr
 
 	p->polyClut.self = icon->texLayout.clut;
 	p->polyTpage.self = icon->texLayout.tpage;
-	p->v[2].clut.self = (icon->texLayout.v3 << 8) | icon->texLayout.u3;
+	p->v[2].page.clut.self = (icon->texLayout.v3 << 8) | icon->texLayout.u3;
 
 	if (transparency)
 	{
-		p->polyTpage.semiTransparency = transparency - 1;
-		p->colorCode.code.poly.semiTransparency = 1;
+		p->polyTpage.bits.semiTransparency = transparency - 1;
+		p->colorCode.code.kind.poly.semiTransparency = 1;
 	}
 
 	u8 bottomV = (u8)((icon->texLayout.v0 + bottomY) - posY);

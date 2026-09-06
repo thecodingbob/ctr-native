@@ -52,18 +52,10 @@ CTR_STATIC_ASSERT(sizeof(struct PushBufferSetMatrixVPScratch) == CTR_SCRATCHPAD_
 
 // Let the compiler figure it out,
 // the bitshifting annoys me
-union FrustumCornerIN
+struct FrustumCornerIN
 {
-	struct
-	{
-		s16 x;
-		s16 y;
-	};
-
-	struct
-	{
-		int self;
-	};
+	s16 x;
+	s16 y;
 };
 
 struct PushBuffer
@@ -140,11 +132,11 @@ struct PushBuffer
 	// 0xF4
 	// NOTE(aalhendi): Retail RenderBucket_QueueDraw reuses this field as
 	// PUSHBUFFER_EXISTS OT range-start metadata after DecalMP seeds ptrOT.
-	uint32_t *ptrOT;
+	u32 *ptrOT;
 
 	// 0xF8
 	// RenderBucket PUSHBUFFER_EXISTS range end metadata.
-	uint32_t *renderBucketOTRangeEnd;
+	u32 *renderBucketOTRangeEnd;
 
 	// 0xFC
 	int renderBucketOTByteOffset;
@@ -170,15 +162,15 @@ CTR_STATIC_ASSERT(offsetof(struct PushBuffer, rect) == 0x1c);
 CTR_STATIC_ASSERT(offsetof(RECT, w) == 0x4);
 CTR_STATIC_ASSERT(offsetof(RECT, h) == 0x6);
 CTR_STATIC_ASSERT(offsetof(struct PushBuffer, matrix_ViewProj) == 0x28);
-CTR_STATIC_ASSERT(offsetof(struct PushBuffer, matrix_ViewProj.m[0][0]) == 0x28);
-CTR_STATIC_ASSERT(offsetof(struct PushBuffer, matrix_ViewProj.m[0][2]) == 0x2c);
-CTR_STATIC_ASSERT(offsetof(struct PushBuffer, matrix_ViewProj.m[1][1]) == 0x30);
-CTR_STATIC_ASSERT(offsetof(struct PushBuffer, matrix_ViewProj.m[2][0]) == 0x34);
-CTR_STATIC_ASSERT(offsetof(struct PushBuffer, matrix_ViewProj.m[2][2]) == 0x38);
+CTR_STATIC_ASSERT(offsetof(struct PushBuffer, matrix_ViewProj) + CTR_OFFSET_OF_2D_ARRAY(MATRIX, m, 0, 0) == 0x28);
+CTR_STATIC_ASSERT(offsetof(struct PushBuffer, matrix_ViewProj) + CTR_OFFSET_OF_2D_ARRAY(MATRIX, m, 0, 2) == 0x2c);
+CTR_STATIC_ASSERT(offsetof(struct PushBuffer, matrix_ViewProj) + CTR_OFFSET_OF_2D_ARRAY(MATRIX, m, 1, 1) == 0x30);
+CTR_STATIC_ASSERT(offsetof(struct PushBuffer, matrix_ViewProj) + CTR_OFFSET_OF_2D_ARRAY(MATRIX, m, 2, 0) == 0x34);
+CTR_STATIC_ASSERT(offsetof(struct PushBuffer, matrix_ViewProj) + CTR_OFFSET_OF_2D_ARRAY(MATRIX, m, 2, 2) == 0x38);
 CTR_STATIC_ASSERT(offsetof(struct PushBuffer, matrix_Camera) == 0x68);
-CTR_STATIC_ASSERT(offsetof(struct PushBuffer, matrix_Camera.t[0]) == 0x7c);
-CTR_STATIC_ASSERT(offsetof(struct PushBuffer, matrix_Camera.t[1]) == 0x80);
-CTR_STATIC_ASSERT(offsetof(struct PushBuffer, matrix_Camera.t[2]) == 0x84);
+CTR_STATIC_ASSERT(offsetof(struct PushBuffer, matrix_Camera) + CTR_OFFSET_OF_ARRAY(MATRIX, t, 0) == 0x7c);
+CTR_STATIC_ASSERT(offsetof(struct PushBuffer, matrix_Camera) + CTR_OFFSET_OF_ARRAY(MATRIX, t, 1) == 0x80);
+CTR_STATIC_ASSERT(offsetof(struct PushBuffer, matrix_Camera) + CTR_OFFSET_OF_ARRAY(MATRIX, t, 2) == 0x84);
 CTR_STATIC_ASSERT(offsetof(struct PushBuffer, frustumPlanes) == 0xa8);
 CTR_STATIC_ASSERT(offsetof(struct PushBuffer, RenderListJmpIndex) == 0xd0);
 CTR_STATIC_ASSERT(offsetof(struct PushBuffer, bbox) == 0xe8);

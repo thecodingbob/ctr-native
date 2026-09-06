@@ -177,9 +177,8 @@ internal u16 NativeSTR_NegateMdecCode(u16 code)
 internal u32 NativeSTR_ReadBits(struct NativeSTRBitReader *br, s32 count)
 {
 	u32 value = 0;
-	s32 i;
 
-	for (i = 0; i < count; i++)
+	for (s32 i = 0; i < count; i++)
 	{
 		s32 byteOffset = (br->bitOffset >> 4) * 2;
 		s32 bit = 15 - (br->bitOffset & 0xf);
@@ -208,8 +207,6 @@ internal u32 NativeSTR_PeekBits(struct NativeSTRBitReader *br, s32 count)
 
 internal s32 NativeSTR_ReadAcCode(struct NativeSTRBitReader *br, u16 *outCode)
 {
-	u32 i;
-
 	if (NativeSTR_PeekBits(br, 6) == 0x1)
 	{
 		NativeSTR_ReadBits(br, 6);
@@ -224,13 +221,12 @@ internal s32 NativeSTR_ReadAcCode(struct NativeSTRBitReader *br, u16 *outCode)
 		return 1;
 	}
 
-	for (i = 0; i < sizeof(s_acGroups) / sizeof(s_acGroups[0]); i++)
+	for (u32 i = 0; i < sizeof(s_acGroups) / sizeof(s_acGroups[0]); i++)
 	{
 		const struct NativeSTRAcGroup *group = &s_acGroups[i];
 
 		if (NativeSTR_PeekBits(br, group->prefixBits) == group->prefix)
 		{
-			u16 code;
 			u32 index = 0;
 			u32 sign = 0;
 
@@ -250,7 +246,7 @@ internal s32 NativeSTR_ReadAcCode(struct NativeSTRBitReader *br, u16 *outCode)
 				return 0;
 			}
 
-			code = group->values[index];
+			u16 code = group->values[index];
 			*outCode = (sign != 0) ? NativeSTR_NegateMdecCode(code) : code;
 			return 1;
 		}
@@ -259,24 +255,60 @@ internal s32 NativeSTR_ReadAcCode(struct NativeSTRBitReader *br, u16 *outCode)
 	return 0;
 }
 
+// NOTE(aalhendi): Separable IDCT, kept bit-identical to the old direct 2D sum by
+// preserving unrounded s64 row transforms and applying the same final rounding.
+// Zero coefficient rows are skipped before the column pass.
 internal void NativeSTR_IDCT(const s32 *coefficients, s32 *out)
 {
+	s64 rowPass[64];
+	u8 rowNonZero[8];
 	s32 x;
-	s32 y;
+	s32 u;
+	s32 v;
 
-	for (y = 0; y < 8; y++)
+	for (v = 0; v < 8; v++)
+	{
+		const s32 *row = &coefficients[v * 8];
+
+		rowNonZero[v] = 0;
+		for (u = 0; u < 8; u++)
+		{
+			if (row[u] != 0)
+			{
+				rowNonZero[v] = 1;
+				break;
+			}
+		}
+
+		if (!rowNonZero[v])
+		{
+			continue;
+		}
+
+		for (x = 0; x < 8; x++)
+		{
+			s64 sum = 0;
+
+			for (u = 0; u < 8; u++)
+			{
+				sum += (s64)s_idctBasis[x][u] * row[u];
+			}
+
+			rowPass[v * 8 + x] = sum;
+		}
+	}
+
+	for (s32 y = 0; y < 8; y++)
 	{
 		for (x = 0; x < 8; x++)
 		{
 			s64 sum = 0;
-			s32 u;
-			s32 v;
 
 			for (v = 0; v < 8; v++)
 			{
-				for (u = 0; u < 8; u++)
+				if (rowNonZero[v])
 				{
-					sum += (s64)s_idctBasis[x][u] * s_idctBasis[y][v] * coefficients[v * 8 + u];
+					sum += (s64)s_idctBasis[y][v] * rowPass[v * 8 + x];
 				}
 			}
 
@@ -298,13 +330,12 @@ internal s32 NativeSTR_DecodeBlock(struct NativeSTRBitReader *br, s32 quant, s32
 {
 	s32 coefficients[64];
 	s32 k = 0;
-	s32 target;
 	u16 code;
 
 	memset(coefficients, 0, sizeof(coefficients));
 
 	code = (u16)NativeSTR_ReadBits(br, 10);
-	target = s_mdecZagzig[0];
+	s32 target = s_mdecZagzig[0];
 	coefficients[target] = NativeSTR_Sign10(code) * s_mdecQuantTable[target];
 
 	for (;;)
@@ -345,11 +376,8 @@ internal u16 NativeSTR_YCbCrToRGB555(s32 y, s32 cb, s32 cr)
 internal s32 NativeSTR_DecodeMacroblock(struct NativeSTRBitReader *br, s32 quant, s32 baseX, s32 baseY)
 {
 	s32 blocks[6][64];
-	s32 i;
-	s32 x;
-	s32 y;
 
-	for (i = 0; i < 6; i++)
+	for (s32 i = 0; i < 6; i++)
 	{
 		if (NativeSTR_DecodeBlock(br, quant, blocks[i]) == 0)
 		{
@@ -357,16 +385,13 @@ internal s32 NativeSTR_DecodeMacroblock(struct NativeSTRBitReader *br, s32 quant
 		}
 	}
 
-	for (y = 0; y < 16; y++)
+	for (s32 y = 0; y < 16; y++)
 	{
-		for (x = 0; x < 16; x++)
+		for (s32 x = 0; x < 16; x++)
 		{
 			s32 dstX = baseX + x;
 			s32 dstY = baseY + y;
 			s32 yBlockIndex;
-			s32 luma;
-			s32 cb;
-			s32 cr;
 
 			if ((dstX >= s_str.width) || (dstY >= s_str.height))
 			{
@@ -382,9 +407,9 @@ internal s32 NativeSTR_DecodeMacroblock(struct NativeSTRBitReader *br, s32 quant
 				yBlockIndex = (x < 8) ? 4 : 5;
 			}
 
-			luma = blocks[yBlockIndex][(y & 7) * 8 + (x & 7)];
-			cr = blocks[0][(y >> 1) * 8 + (x >> 1)];
-			cb = blocks[1][(y >> 1) * 8 + (x >> 1)];
+			s32 luma = blocks[yBlockIndex][(y & 7) * 8 + (x & 7)];
+			s32 cr = blocks[0][(y >> 1) * 8 + (x >> 1)];
+			s32 cb = blocks[1][(y >> 1) * 8 + (x >> 1)];
 			s_str.rgb555[dstY * s_str.width + dstX] = NativeSTR_YCbCrToRGB555(luma, cb, cr);
 		}
 	}
@@ -394,20 +419,12 @@ internal s32 NativeSTR_DecodeMacroblock(struct NativeSTRBitReader *br, s32 quant
 
 internal s32 NativeSTR_DecodeFrame(void)
 {
-	u16 mdecSize;
-	u16 bsId;
-	u16 quant;
-	u16 version;
 	struct NativeSTRBitReader br;
-	s32 codedWidth;
-	s32 codedHeight;
-	s32 baseX;
-	s32 baseY;
 
-	mdecSize = NativeSTR_ReadLE16(&s_str.frameData[0]);
-	bsId = NativeSTR_ReadLE16(&s_str.frameData[2]);
-	quant = NativeSTR_ReadLE16(&s_str.frameData[4]);
-	version = NativeSTR_ReadLE16(&s_str.frameData[6]);
+	u16 mdecSize = NativeSTR_ReadLE16(&s_str.frameData[0]);
+	u16 bsId = NativeSTR_ReadLE16(&s_str.frameData[2]);
+	u16 quant = NativeSTR_ReadLE16(&s_str.frameData[4]);
+	u16 version = NativeSTR_ReadLE16(&s_str.frameData[6]);
 
 	(void)mdecSize;
 
@@ -420,12 +437,12 @@ internal s32 NativeSTR_DecodeFrame(void)
 	br.size = s_str.frameSize;
 	br.bitOffset = 8 * 8;
 
-	codedWidth = (s_str.width + 15) & ~15;
-	codedHeight = (s_str.height + 15) & ~15;
+	s32 codedWidth = (s_str.width + 15) & ~15;
+	s32 codedHeight = (s_str.height + 15) & ~15;
 
-	for (baseX = 0; baseX < codedWidth; baseX += 16)
+	for (s32 baseX = 0; baseX < codedWidth; baseX += 16)
 	{
-		for (baseY = 0; baseY < codedHeight; baseY += 16)
+		for (s32 baseY = 0; baseY < codedHeight; baseY += 16)
 		{
 			if (NativeSTR_DecodeMacroblock(&br, quant, baseX, baseY) == 0)
 			{
@@ -515,7 +532,6 @@ internal s32 NativeSTR_ReadNextFrameFromFile(void)
 	u8 sector[NATIVE_STR_EXTRACTED_SECTOR_SIZE];
 	struct NativeSTRSectorHeader firstHeader;
 	s32 copied = 0;
-	s32 chunk;
 
 	if (!NativeSTR_ReadExtractedSector(sector))
 	{
@@ -531,7 +547,7 @@ internal s32 NativeSTR_ReadNextFrameFromFile(void)
 	s_str.height = firstHeader.height;
 	s_str.frameSize = (s32)firstHeader.frameSize;
 
-	for (chunk = 0; chunk < firstHeader.chunkCount; chunk++)
+	for (s32 chunk = 0; chunk < firstHeader.chunkCount; chunk++)
 	{
 		struct NativeSTRSectorHeader header;
 		if (chunk != 0)
@@ -577,7 +593,6 @@ internal s32 NativeSTR_ReadNextFrameFromCdStream(void)
 	u8 sector[NATIVE_STR_MAX_RECORD_SIZE];
 	struct NativeSTRSectorHeader firstHeader;
 	s32 copied = 0;
-	s32 expectedChunk;
 
 	do
 	{
@@ -592,7 +607,7 @@ internal s32 NativeSTR_ReadNextFrameFromCdStream(void)
 	s_str.frameSize = (s32)firstHeader.frameSize;
 	NativeSTR_CopySectorPayload(sector, NATIVE_STR_CD_SUBHEADER_SIZE, &firstHeader, NATIVE_STR_CD_SECTOR_PAYLOAD, &copied);
 
-	for (expectedChunk = 1; expectedChunk < firstHeader.chunkCount; expectedChunk++)
+	for (s32 expectedChunk = 1; expectedChunk < firstHeader.chunkCount; expectedChunk++)
 	{
 		struct NativeSTRSectorHeader header;
 
@@ -639,10 +654,9 @@ internal s32 NativeSTR_RewindFrameSource(void)
 
 internal s32 NativeSTR_ReadNextFrame(void)
 {
-	s32 tries;
 	s32 maxTries = (s_str.loop != 0) ? 2 : 1;
 
-	for (tries = 0; tries < maxTries; tries++)
+	for (s32 tries = 0; tries < maxTries; tries++)
 	{
 		if ((s_str.frameLimit > 0) && (s_str.frameIndex >= s_str.frameLimit))
 		{

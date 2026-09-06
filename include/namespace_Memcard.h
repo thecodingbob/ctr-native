@@ -145,18 +145,9 @@ struct GameProgress
 	// 8008e6e8
 	u32 unknown;
 
-	// 8008e6ec - UsaRetail
-	// 8008eaa0 - EurRetail
+	// 8008e6ec
 	// characters, tracks, cups, scrapbook
-	union
-	{
-		u32 unlocks[GAME_PROGRESS_UNLOCK_WORD_COUNT];
-		struct
-		{
-			u32 unlockFlags;
-			u32 extendedUnlockFlags;
-		};
-	};
+	u32 unlocks[GAME_PROGRESS_UNLOCK_WORD_COUNT];
 
 	// 8008e6f4 -- 0x1488 bytes large
 	struct HighScoreTrack highScoreTracks[MEMCARD_HIGH_SCORE_TRACK_COUNT];
@@ -315,22 +306,20 @@ enum AdvRewardWordMask
 #define CHECK_ADV_BIT(rewards, bitIndex)    CHECK_MEMCARD_BIT(rewards, bitIndex)
 #define UNLOCK_ADV_BIT(rewards, bitIndex)   UNLOCK_MEMCARD_BIT(rewards, bitIndex)
 
+enum AdvProgressWord
+{
+	ADV_PROGRESS_WORD_TROPHY_SAPPHIRE_RELIC = 0,
+	ADV_PROGRESS_WORD_SAPPHIRE_GOLD_RELIC = 1,
+	ADV_PROGRESS_WORD_PLATINUM_CTR_TOKEN = 2,
+	ADV_PROGRESS_WORD_STORY = 3,
+	ADV_PROGRESS_WORD_HINT = 4,
+	ADV_PROGRESS_WORD_RESERVED = 5,
+};
+
 struct AdvProgress
 {
 	// 8008fba4
-	union
-	{
-		u32 rewards[6];
-		struct
-		{
-			u32 trophySapphireRelicFlags;
-			u32 sapphireGoldRelicFlags;
-			u32 platinumCtrTokenFlags;
-			u32 storyFlags;
-			u32 hintFlags;
-			u32 reservedRewardFlags;
-		};
-	};
+	u32 rewards[6];
 
 	/*
 	    // 0x00:
@@ -584,19 +573,12 @@ struct GameOptions
 	// 8008fb9A -- 2-byte padding
 
 
-	// one of these two ints are
-	// in 94426 and beyond, not in sep3
-	// idk which
-
-
 	// 8008fb9c
 	u32 gameMode1_vibrationFlags;
 
-#if BUILD >= UsaRetail
 	// 8008fba0
 	// audio mode (mono/stereo)
 	int audioMode;
-#endif
 };
 
 enum GameOptionsVolume
@@ -627,23 +609,19 @@ struct MemcardProfile
 CTR_STATIC_ASSERT(sizeof(struct HighScoreEntry) == 0x18);
 CTR_STATIC_ASSERT(sizeof(struct HighScoreTrack) == 0x124);
 CTR_STATIC_ASSERT((u16)MEMCARD_PROFILE_VERSION == 0xffee);
-CTR_STATIC_ASSERT(OFFSETOF(struct GameProgress, unlockFlags) == 0x4);
-CTR_STATIC_ASSERT(OFFSETOF(struct GameProgress, extendedUnlockFlags) == 0x8);
+CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct GameProgress, unlocks, 0) == 0x4);
+CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct GameProgress, unlocks, 1) == 0x8);
 CTR_STATIC_ASSERT(OFFSETOF(struct GameProgress, highScoreTracks) == 0xc);
 CTR_STATIC_ASSERT(sizeof(struct GameProgress) == 0x1494);
-CTR_STATIC_ASSERT(OFFSETOF(struct AdvProgress, platinumCtrTokenFlags) == 0x8);
-CTR_STATIC_ASSERT(OFFSETOF(struct AdvProgress, storyFlags) == 0xc);
-CTR_STATIC_ASSERT(OFFSETOF(struct AdvProgress, hintFlags) == 0x10);
-CTR_STATIC_ASSERT(OFFSETOF(struct AdvProgress, reservedRewardFlags) == 0x14);
+CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct AdvProgress, rewards, 2) == 0x8);
+CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct AdvProgress, rewards, 3) == 0xc);
+CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct AdvProgress, rewards, 4) == 0x10);
+CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct AdvProgress, rewards, 5) == 0x14);
 CTR_STATIC_ASSERT(OFFSETOF(struct AdvProgress, name) == 0x18);
 CTR_STATIC_ASSERT(sizeof(struct AdvProgress) == 0x50);
 CTR_STATIC_ASSERT(sizeof(struct GhostProfile) == 0x34);
 CTR_STATIC_ASSERT(OFFSETOF(struct GameOptions, volMusic) == OFFSETOF(struct GameOptions, volFx) + sizeof(s16));
 CTR_STATIC_ASSERT(OFFSETOF(struct GameOptions, volVoice) == OFFSETOF(struct GameOptions, volFx) + sizeof(s16) * 2);
-#if BUILD >= UsaRetail
 CTR_STATIC_ASSERT(sizeof(struct GameOptions) == 0x28);
-#else
-CTR_STATIC_ASSERT(sizeof(struct GameOptions) == 0x24);
-#endif
 
 #endif

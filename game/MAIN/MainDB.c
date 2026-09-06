@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80034960-0x800349c4.
 int MainDB_GetClipSize(u32 levelID, int numPlyrCurrGame)
 {
 	switch (levelID)
@@ -31,7 +30,6 @@ int MainDB_GetClipSize(u32 levelID, int numPlyrCurrGame)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800349c4-0x80034a28.
 void MainDB_PrimMem(struct PrimMem *primMem, u32 size)
 {
 	u32 alignedSize;
@@ -49,7 +47,6 @@ void MainDB_PrimMem(struct PrimMem *primMem, u32 size)
 	primMem->guardEnd = (void *)((int)pvVar1 - 0x100);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80034a28-0x80034a80.
 void MainDB_OTMem(struct OTMem *otMem, u32 size)
 {
 	u32 alignedSize;

@@ -130,13 +130,12 @@ int MEMCARD_HandleEvent(void)
 u8 MEMCARD_Load(int slotIdx, char *name, u8 *ptrMemcard, int memcardFileSize, u32 loadFlags)
 {
 	char nativeName[64];
-	enum NativeMemcardResult nativeResult;
 	int checksumResult;
 
 	(void)loadFlags;
 
 	MEMCARD_StringSet(nativeName, slotIdx, name);
-	nativeResult = NativeMemcard_ReadSaveData(nativeName, ptrMemcard, memcardFileSize, 0x100);
+	enum NativeMemcardResult nativeResult = NativeMemcard_ReadSaveData(nativeName, ptrMemcard, memcardFileSize, 0x100);
 	if (nativeResult == NATIVE_MEMCARD_NOT_FOUND)
 	{
 		return MC_RETURN_NODATA;
@@ -160,16 +159,14 @@ u8 MEMCARD_Load(int slotIdx, char *name, u8 *ptrMemcard, int memcardFileSize, u3
 u8 MEMCARD_Save(int slotIdx, char *name, char *icon, u8 *ptrMemcard, int memcardFileSize, u32 saveFlags)
 {
 	char nativeName[64];
-	enum NativeMemcardResult nativeResult;
-	u8 *cardIcon;
 
 	sdata->crc16_checkpoint_byteIndex = 0;
 	sdata->crc16_checkpoint_status = 0;
 	MEMCARD_ChecksumSave(ptrMemcard, memcardFileSize);
 
-	cardIcon = MEMCARD_NativePrepareIcon(icon, memcardFileSize, saveFlags);
+	u8 *cardIcon = MEMCARD_NativePrepareIcon(icon, memcardFileSize, saveFlags);
 	MEMCARD_StringSet(nativeName, slotIdx, name);
-	nativeResult = NativeMemcard_WriteSaveData(nativeName, cardIcon, sdata->memcardIconSize, ptrMemcard, memcardFileSize);
+	enum NativeMemcardResult nativeResult = NativeMemcard_WriteSaveData(nativeName, cardIcon, sdata->memcardIconSize, ptrMemcard, memcardFileSize);
 	if (nativeResult == NATIVE_MEMCARD_OPEN_FAILED)
 	{
 		return MC_RETURN_FULL;

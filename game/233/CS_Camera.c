@@ -13,7 +13,6 @@ enum CutsceneCameraConstants
 	CS_PODIUM_CONTINUE_TEXT_Y = 0xbe,
 };
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800aed48-0x800aedf8
 b32 CS_Camera_BoolGotoBoss(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -35,13 +34,12 @@ b32 CS_Camera_BoolGotoBoss(void)
 	}
 
 	struct Instance *inst = gGT->drivers[0]->instSelf;
-	const SVec3 *podiumPos = &gGT->level1->ptrSpawnType2_PosRot[1].posRot->pos;
+	const SVec3 *podiumPos = &gGT->level1->ptrSpawnType2_PosRot[1].coords.posRot->pos;
 
 	// TRUE if TeleportSelf did NOT spawn on podium (goto boss door)
 	return (inst->matrix.t[0] != podiumPos->x) || (inst->matrix.t[2] != podiumPos->z);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ae9a8-0x800aed48
 void CS_Camera_ThTick_Boss(struct Thread *t)
 {
 	int cutsceneID;
@@ -226,7 +224,6 @@ void CS_Camera_ThTick_Boss(struct Thread *t)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800aedf8-0x800af328
 void CS_Camera_ThTick_Podium(struct Thread *th)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -293,7 +290,7 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 			D233.podiumCameraFrame = frame;
 			podium->pathFrame32 = frameTime;
 
-			CAM_Path_Move(frame, pos.v, rot.v, camPath);
+			CAM_Path_Move(frame, CTR_VECTOR_DATA(&(pos)), CTR_VECTOR_DATA(&(rot)), camPath);
 
 			gGT->pushBuffer[0].pos = pos;
 			gGT->pushBuffer[0].rot = rot;
@@ -403,19 +400,7 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 
 		MainRaceTrack_RequestLoad(CHECK_ADV_BIT(sdata->advProgress.rewards, ADV_REWARD_BEAT_OXIDE_SECOND) ? OXIDE_TRUE_ENDING : OXIDE_ENDING);
 
-#if defined(CTR_NATIVE)
-		// NOTE(aalhendi): The STATIC_BIG1 path does not kill the podium thread
-		// (unlike the normal-exit path). On the next tick the podium re-enters
-		// with podiumRewardID == NOFUNC and falls into the boss-camera
-		// path. On retail PSX this is invisible: the checkered flag
-		// transition covers the screen, and CD-ROM model loading in CS_LoadBoss
-		// is slow enough that LOADING engages before boss threads can emit audio
-		// or visuals. Native's faster I/O lets the boss camera
-		// spawn threads and play audio before the checkered flag finishes, so kill
-		// the thread here to prevent the re-entry entirely.
-		D233.isCutsceneOver = 1;
 		th->flags |= THREAD_FLAG_DEAD;
-#endif
 		return;
 	}
 

@@ -37,7 +37,8 @@ enum
 	MM_HIGHSCORE_GHOST_STAR_SCALE = 0x1000,
 	MM_HIGHSCORE_TITLE_META_INDEX = 0,
 	MM_HIGHSCORE_BEST_TRACK_META_INDEX = 1,
-	MM_HIGHSCORE_BEST_LAP_META_INDEX = 7,
+	MM_HIGHSCORE_BEST_LAP_LABEL_META_INDEX = 7,
+	MM_HIGHSCORE_BEST_LAP_ENTRY_META_INDEX = 8,
 	MM_HIGHSCORE_BEST_LAP_LABEL_X_OFFSET = 0x124,
 	MM_HIGHSCORE_BEST_LAP_LABEL_Y_OFFSET = 0x2b,
 	MM_HIGHSCORE_BEST_LAP_TEXT_X_OFFSET = 0x160,
@@ -65,7 +66,6 @@ enum
 	MM_HIGHSCORE_MENU_WIDTH = 0xa4,
 };
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 230 0x800b2f0c-0x800b2fbc.
 void MM_HighScore_Text3D(char *string, int posX, int posY, s16 font, u32 flags)
 {
 	// draw a string
@@ -75,7 +75,6 @@ void MM_HighScore_Text3D(char *string, int posX, int posY, s16 font, u32 flags)
 	DecalFont_DrawLine(string, posX + MM_HIGHSCORE_TEXT_SHADOW_X, posY + MM_HIGHSCORE_TEXT_SHADOW_Y, font, (flags & (JUSTIFY_CENTER | JUSTIFY_RIGHT)) | BLACK);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 overlay 230 0x800b2fbc-0x800b3914.
 void MM_HighScore_Draw(u16 trackIndex, u32 rowIndex, u32 posX, u32 posY)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -95,6 +94,8 @@ void MM_HighScore_Draw(u16 trackIndex, u32 rowIndex, u32 posX, u32 posY)
 	struct Icon **iconPtrArray = ICONGROUP_GETICONS(gGT->iconGroup[MM_HIGHSCORE_ARROW_ICON_GROUP]);
 	const struct TransitionMeta *titleMeta = &D230.transitionMeta_HighScores[MM_HIGHSCORE_TITLE_META_INDEX];
 	const struct TransitionMeta *bestTrackMeta = &D230.transitionMeta_HighScores[MM_HIGHSCORE_BEST_TRACK_META_INDEX];
+	const struct TransitionMeta *bestLapLabelMeta = &D230.transitionMeta_HighScores[MM_HIGHSCORE_BEST_LAP_LABEL_META_INDEX];
+	const struct TransitionMeta *bestLapEntryMeta = &D230.transitionMeta_HighScores[MM_HIGHSCORE_BEST_LAP_ENTRY_META_INDEX];
 
 	// Draw arrow pointing Left
 	DecalHUD_Arrow2D(iconPtrArray[MM_HIGHSCORE_ARROW_ICON_ID], titleMeta->currX + (offsetX - lineWidth) + MM_HIGHSCORE_ARROW_LEFT_X_OFFSET,
@@ -149,28 +150,24 @@ void MM_HighScore_Draw(u16 trackIndex, u32 rowIndex, u32 posX, u32 posY)
 		gGT->levelID = prevLevelID;
 		GAMEPROG_GetPtrHighScoreTrack();
 
-		MM_HighScore_Text3D(sdata->lngStrings[LNG_BEST_LAP_TIME],
-		                    D230.transitionMeta_HighScores[MM_HIGHSCORE_BEST_LAP_META_INDEX].currX + offsetX + MM_HIGHSCORE_BEST_LAP_LABEL_X_OFFSET,
-		                    D230.transitionMeta_HighScores[MM_HIGHSCORE_BEST_LAP_META_INDEX].currY + offsetY + MM_HIGHSCORE_BEST_LAP_LABEL_Y_OFFSET, FONT_SMALL,
-		                    0);
+		MM_HighScore_Text3D(sdata->lngStrings[LNG_BEST_LAP_TIME], bestLapLabelMeta->currX + offsetX + MM_HIGHSCORE_BEST_LAP_LABEL_X_OFFSET,
+		                    bestLapLabelMeta->currY + offsetY + MM_HIGHSCORE_BEST_LAP_LABEL_Y_OFFSET, FONT_SMALL, 0);
 
 		// Character Name
-		MM_HighScore_Text3D(entry[0].name,
-		                    D230.transitionMeta_HighScores[MM_HIGHSCORE_BEST_LAP_META_INDEX].currX + offsetX + MM_HIGHSCORE_BEST_LAP_TEXT_X_OFFSET,
-		                    D230.transitionMeta_HighScores[MM_HIGHSCORE_BEST_LAP_META_INDEX].currY + offsetY + MM_HIGHSCORE_BEST_LAP_NAME_Y_OFFSET, FONT_BIG,
+		MM_HighScore_Text3D(entry[0].name, bestLapEntryMeta->currX + offsetX + MM_HIGHSCORE_BEST_LAP_TEXT_X_OFFSET,
+		                    bestLapEntryMeta->currY + offsetY + MM_HIGHSCORE_BEST_LAP_NAME_Y_OFFSET, FONT_BIG,
 		                    entry[0].characterID + MM_HIGHSCORE_DRIVER_COLOR_OFFSET);
 
 		// Draw time string
-		MM_HighScore_Text3D(RECTMENU_DrawTime(entry[0].time),
-		                    D230.transitionMeta_HighScores[MM_HIGHSCORE_BEST_LAP_META_INDEX].currX + offsetX + MM_HIGHSCORE_BEST_LAP_TEXT_X_OFFSET,
-		                    D230.transitionMeta_HighScores[MM_HIGHSCORE_BEST_LAP_META_INDEX].currY + offsetY + MM_HIGHSCORE_BEST_LAP_TIME_Y_OFFSET, FONT_SMALL,
-		                    0);
+		// NOTE(aalhendi): Retail also uses currX as the Y transition base here.
+		MM_HighScore_Text3D(RECTMENU_DrawTime(entry[0].time), bestLapEntryMeta->currX + offsetX + MM_HIGHSCORE_BEST_LAP_TEXT_X_OFFSET,
+		                    bestLapEntryMeta->currX + offsetY + MM_HIGHSCORE_BEST_LAP_TIME_Y_OFFSET, FONT_SMALL, 0);
 
 		// Character Icon
 		RECTMENU_DrawPolyGT4(gGT->ptrIcons[data.MetaDataCharacters[entry[0].characterID].iconID],
-		                     D230.transitionMeta_HighScores[MM_HIGHSCORE_BEST_LAP_META_INDEX].currX + (offsetX + MM_HIGHSCORE_BEST_LAP_ICON_X_OFFSET),
-		                     D230.transitionMeta_HighScores[MM_HIGHSCORE_BEST_LAP_META_INDEX].currY + (offsetY + MM_HIGHSCORE_BEST_LAP_ICON_Y_OFFSET),
-		                     &gGT->backBuffer->primMem, (gGT->pushBuffer_UI).ptrOT, iconColor.self, iconColor.self, iconColor.self, iconColor.self,
+		                     bestLapEntryMeta->currX + offsetX + MM_HIGHSCORE_BEST_LAP_ICON_X_OFFSET,
+		                     bestLapEntryMeta->currY + offsetY + MM_HIGHSCORE_BEST_LAP_ICON_Y_OFFSET, &gGT->backBuffer->primMem, (gGT->pushBuffer_UI).ptrOT,
+		                     ColorCode_GetPacked(&iconColor), ColorCode_GetPacked(&iconColor), ColorCode_GetPacked(&iconColor), ColorCode_GetPacked(&iconColor),
 		                     MM_HIGHSCORE_ICON_TRANSPARENCY, MM_HIGHSCORE_ICON_SCALE);
 	}
 
@@ -186,8 +183,8 @@ void MM_HighScore_Draw(u16 trackIndex, u32 rowIndex, u32 posX, u32 posY)
 		                     D230.transitionMeta_HighScores[metaIndex].currX + offsetX + MM_HIGHSCORE_SCORE_ICON_X_OFFSET,
 		                     D230.transitionMeta_HighScores[metaIndex].currY + offsetY + (scoreRowIndex * MM_HIGHSCORE_SCORE_ROW_Y_STEP) +
 		                         MM_HIGHSCORE_SCORE_NAME_Y_OFFSET,
-		                     &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT, iconColor.self, iconColor.self, iconColor.self, iconColor.self,
-		                     MM_HIGHSCORE_ICON_TRANSPARENCY, MM_HIGHSCORE_ICON_SCALE);
+		                     &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT, ColorCode_GetPacked(&iconColor), ColorCode_GetPacked(&iconColor),
+		                     ColorCode_GetPacked(&iconColor), ColorCode_GetPacked(&iconColor), MM_HIGHSCORE_ICON_TRANSPARENCY, MM_HIGHSCORE_ICON_SCALE);
 
 		// draw the name string
 		MM_HighScore_Text3D(entry[entryIndex].name, D230.transitionMeta_HighScores[metaIndex].currX + offsetX + MM_HIGHSCORE_SCORE_NAME_X_OFFSET,
@@ -211,7 +208,6 @@ void MM_HighScore_Draw(u16 trackIndex, u32 rowIndex, u32 posX, u32 posY)
 	MM_TrackSelect_Video_Draw(&videoBox, &D230.arcadeTracks[0], trackIndex, (D230.highScoreTransition.state == EXITING_MENU), 0);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b3914-0x800b3954.
 void MM_HighScore_Init(void)
 {
 	D230.highScoreTransition.state = ENTERING_MENU;
@@ -223,7 +219,6 @@ void MM_HighScore_Init(void)
 	MM_TrackSelect_Video_SetDefaults();
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 overlay 230 0x800b3954-0x800b3fe4.
 void MM_HighScore_MenuProc(struct RectMenu *menu_unused)
 {
 	(void)menu_unused;
@@ -336,7 +331,6 @@ void MM_HighScore_MenuProc(struct RectMenu *menu_unused)
 	else
 	{
 		videoResetRequested = true;
-		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b3ad8-0x800b3ae4 for high-score back SFX.
 		OtherFX_Play(2, 1);
 		D230.highScoreTransition.state = EXITING_MENU;
 	}

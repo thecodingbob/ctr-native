@@ -113,7 +113,6 @@ enum AHPauseMemberFlags
 	AH_PAUSE_MEMBER_UNLOCKED = 1,
 };
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b1ef8-0x800b1f78.
 void AH_Pause_Destroy(void)
 {
 	s32 i;
@@ -155,7 +154,7 @@ void AH_Pause_Draw(s32 pageID, s32 posX)
 
 	char *titleString = sdata->lngStrings[lngIndex];
 
-	DecalFont_DrawLine(titleString, posX + AH_PAUSE_TITLE_CENTER_X, AH_PAUSE_TITLE_Y, FONT_BIG, 0xffff8000);
+	DecalFont_DrawLine(titleString, posX + AH_PAUSE_TITLE_CENTER_X, AH_PAUSE_TITLE_Y, FONT_BIG, JUSTIFY_CENTER | ORANGE);
 
 	s32 titleWidth = DecalFont_GetLineWidth(titleString, FONT_BIG);
 
@@ -484,7 +483,7 @@ void AH_Pause_Draw(s32 pageID, s32 posX)
 
 		sprintf(totalString, "%s %d", sdata->lngStrings[LNG_TOTAL], relicTotal);
 
-		DecalFont_DrawLine(totalString, posX + AH_PAUSE_TITLE_CENTER_X, AH_PAUSE_TOTAL_TEXT_Y, FONT_BIG, 0xffff8000);
+		DecalFont_DrawLine(totalString, posX + AH_PAUSE_TITLE_CENTER_X, AH_PAUSE_TOTAL_TEXT_Y, FONT_BIG, JUSTIFY_CENTER | ORANGE);
 	}
 
 	s32 titleFrameTextWidth = DecalFont_GetLineWidth(titleString, FONT_BIG);
@@ -503,7 +502,7 @@ void AH_Pause_Draw(s32 pageID, s32 posX)
 	r.h = AH_PAUSE_OUTER_RECT_H;
 
 	Color color;
-	color.self = sdata->battleSetup_Color_UI_1;
+	ColorCode_SetPacked(&color, sdata->battleSetup_Color_UI_1);
 	u32 *ot = gGT->backBuffer->otMem.uiOT;
 	RECTMENU_DrawOuterRect_Edge(&r, color, AH_PAUSE_OUTER_EDGE_ALPHA, ot);
 
@@ -533,7 +532,7 @@ void AH_Pause_Draw(s32 pageID, s32 posX)
 			inst->flags &= ~AH_PAUSE_INSTANCE_DYNAMIC_FLAGS;
 			inst->flags |= D232.advPauseInst[index].instFlags;
 
-			if (member->unlockFlags == 0)
+			if ((member->unlockFlags & AH_PAUSE_MEMBER_UNLOCKED) == 0)
 			{
 				inst->flags &= ~AH_PAUSE_INSTANCE_DYNAMIC_FLAGS;
 				inst->colorRGBA = 0;
@@ -589,7 +588,6 @@ void AH_Pause_Draw(s32 pageID, s32 posX)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b3144-0x800b344c.
 void AH_Pause_Update(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -664,7 +662,6 @@ void AH_Pause_Update(void)
 			}
 		}
 
-		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b3340-0x800b3350 for adventure pause page-turn SFX.
 		OtherFX_Play(0, 1);
 	}
 

@@ -31,30 +31,7 @@ enum
 	VEH_FIRE_INITIAL_INSTANCE_FLAGS = DEPTH_FADE | DRAW_BILLBOARD | HIDE_MODEL,
 };
 
-CTR_STATIC_ASSERT(VEH_FIRE_AUDIO_HIGH_THRESHOLD == 0x80);
-CTR_STATIC_ASSERT(VEH_FIRE_AUDIO_MEDIUM_THRESHOLD == 0x40);
-CTR_STATIC_ASSERT(VEH_FIRE_AUDIO_VOLUME_LOW == 0x80);
-CTR_STATIC_ASSERT(VEH_FIRE_AUDIO_VOLUME_MEDIUM == 0xc0);
-CTR_STATIC_ASSERT(VEH_FIRE_AUDIO_VOLUME_HIGH == 0xff);
-CTR_STATIC_ASSERT(VEH_FIRE_AUDIO_DISTORT_LOW == 0x94);
-CTR_STATIC_ASSERT(VEH_FIRE_AUDIO_DISTORT_HIGH == 0x6c);
-CTR_STATIC_ASSERT(VEH_FIRE_VOICELINE_HIGH_BOOST_ID == 0x10);
-CTR_STATIC_ASSERT(VEH_FIRE_VOICELINE_PRIORITY == 0x10);
-CTR_STATIC_ASSERT(VEH_FIRE_AUDIO_SFX == 0xd);
-CTR_STATIC_ASSERT(VEH_FIRE_AUDIO_COOLDOWN == 0xf0);
-CTR_STATIC_ASSERT(VEH_FIRE_POWER_SLIDE_DISAPPEAR_FRAMES == 2);
-CTR_STATIC_ASSERT(VEH_FIRE_NO_DISAPPEAR == -1);
-CTR_STATIC_ASSERT(VEH_FIRE_VISIBILITY_COOLDOWN == 0x60);
-CTR_STATIC_ASSERT(VEH_FIRE_SPEED_CAP_SHIFT == 8);
-CTR_STATIC_ASSERT(VEH_FIRE_SIZE_SHIFT == 6);
-CTR_STATIC_ASSERT(VEH_FIRE_SIZE_BASE == 5);
-CTR_STATIC_ASSERT(VEH_FIRE_SIZE_MAX == 8);
-CTR_STATIC_ASSERT(VEH_FIRE_CAMERA_SHAKE_FLAG == 0x80);
-CTR_STATIC_ASSERT(VEH_FIRE_RUMBLE_CHANNEL == 8);
-CTR_STATIC_ASSERT(VEH_FIRE_RUMBLE_FORCE == 0x7f);
-CTR_STATIC_ASSERT(VEH_FIRE_INITIAL_INSTANCE_FLAGS == 0x1040080);
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005ab24-0x8005abfc.
 void VehFire_Audio(struct Driver *driver, int speed_cap)
 {
 	// if turbo audio cooldown is not done
@@ -105,7 +82,6 @@ Skip:
 	driver->VehFire_AudioCooldown = VEH_FIRE_AUDIO_COOLDOWN;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005abfc-0x8005b0c4.
 
 // param1 - driver
 // param2 - reserves to add
@@ -189,34 +165,11 @@ void VehFire_Increment(struct Driver *driver, int reserves, u32 type, int fireLe
 	// if no turbo exists, create one
 	if (turboThread == 0)
 	{
-#if BUILD < JpnRetail
-
 		driver->numTurbos = 1;
 
-#else
-
-		// Japan retail gates this through the extra turbo state byte.
-		if (driver->japanTurboUnknown == 0)
-		{
-			driver->numTurbos = 1;
-			if ((driver->numTurbosHighScore < 1) && ((gGT->gameMode1 & END_OF_RACE) == 0))
-			{
-				driver->numTurbosHighScore = 1;
-			}
-		}
-		else
-		{
-			driver->numTurbos = (s16)CTR_MipsAddLo((u16)driver->numTurbos, 1);
-			if ((driver->numTurbosHighScore < driver->numTurbos) && ((gGT->gameMode1 & END_OF_RACE) == 0))
-			{
-				driver->numTurbosHighScore = driver->numTurbos;
-			}
-		}
-
-#endif
 
 #if defined(CTR_NATIVE)
-		turboInst1 = INSTANCE_BirthWithThread(STATIC_TURBO_EFFECT, 0, SMALL, TURBO, VehTurbo_ThTick, sizeof(struct Turbo), 0);
+		turboInst1 = INSTANCE_BirthWithThread(STATIC_TURBO_EFFECT, sdata->s_turbo1, SMALL, TURBO, VehTurbo_ThTick, sizeof(struct Turbo), 0);
 
 		turboObj = 0;
 
@@ -306,12 +259,6 @@ void VehFire_Increment(struct Driver *driver, int reserves, u32 type, int fireLe
 			if ((driver->actionsFlagSetPrevFrame & ACTION_NEW_BOOST) == 0)
 			{
 				driver->numTurbos = (s16)CTR_MipsAddLo((u16)driver->numTurbos, 1);
-
-#if BUILD == JpnRetail
-				// the japanese version of the game keeps track of your highest turbo chain in a race
-				if (driver->numTurbosHighScore < driver->numTurbos && (gGT->gameMode1 & END_OF_RACE) == 0)
-					driver->numTurbosHighScore = driver->numTurbos;
-#endif
 			}
 		}
 
@@ -324,11 +271,6 @@ void VehFire_Increment(struct Driver *driver, int reserves, u32 type, int fireLe
 
 			turboObj->fireVisibilityCooldown = VEH_FIRE_VISIBILITY_COOLDOWN;
 			driver->numTurbos = (s16)CTR_MipsAddLo((u16)driver->numTurbos, 1);
-#if BUILD == JpnRetail
-			// the japanese version of the game keeps track of your highest turbo chain in a race
-			if (driver->numTurbosHighScore < driver->numTurbos && (gGT->gameMode1 & END_OF_RACE) == 0)
-				driver->numTurbosHighScore = driver->numTurbos;
-#endif
 		}
 
 		turboObj->fireDisappearCountdown = VEH_FIRE_NO_DISAPPEAR;

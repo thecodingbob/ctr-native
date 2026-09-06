@@ -32,12 +32,7 @@ enum CreditsRuntimeConstants
 	CS_CREDITS_GHOST_TRAIL_ALPHA_STEP = 0x9d,
 };
 
-CTR_STATIC_ASSERT(CS_CREDITS_RELIC_TRACK_COUNT == 0x12);
-CTR_STATIC_ASSERT(CS_CREDITS_THREAD_FLAGS == 0x30d);
-CTR_STATIC_ASSERT(CS_CREDITS_NAME_DIRECTIVE_STYLE_52_FLAG == 0x2000);
-CTR_STATIC_ASSERT(CS_CREDITS_NAME_DIRECTIVE_STYLE_53_FLAG == 0x1000);
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b8810-0x800b885c
 char *CS_Credits_GetNextString(char *str)
 {
 #if defined(CTR_NATIVE)
@@ -67,7 +62,6 @@ char *CS_Credits_GetNextString(char *str)
 	return str + 1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b885c-0x800b88c8
 void CS_Credits_DestroyCreditGhost(void)
 {
 	for (int i = 0; i < CS_CREDITS_GHOST_COUNT; i++)
@@ -78,7 +72,6 @@ void CS_Credits_DestroyCreditGhost(void)
 	MEMPACK_ClearHighMem();
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b8668-0x800b8810
 void CS_Credits_AnimateCreditGhost(struct Instance *dst, struct Instance *src, int index)
 {
 	struct CreditsObj *co = &creditsBSS.creditsObj;
@@ -160,7 +153,6 @@ static void CS_Credits_ThDestroy_NoOp(struct Thread *self)
 	(void)self;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b8f8c-0x800b92a0
 void CS_Credits_Init(void)
 {
 	int i;
@@ -260,7 +252,6 @@ void CS_Credits_Init(void)
 	creditsObj->creditsTopString = ptrStrings[CS_CREDITS_TEXT_START_STRING_INDEX];
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b92a0-0x800b92cc
 b32 CS_Credits_IsTextValid(void)
 {
 	struct CreditsObj *creditsObj = &creditsBSS.creditsObj;
@@ -274,7 +265,6 @@ b32 CS_Credits_IsTextValid(void)
 	return 1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b92cc-0x800b9398
 void CS_Credits_NewDancer(struct Thread *dancerTh, int dancerModelID)
 {
 	struct CreditsObj *creditsObj = &creditsBSS.creditsObj;
@@ -317,7 +307,6 @@ void CS_Credits_NewDancer(struct Thread *dancerTh, int dancerModelID)
 	creditsObj->epiloguePosX_unused = CS_CREDITS_EPILOGUE_UNUSED_POS_X;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b9398-0x800b93f4
 int CS_Credits_NewCreditGhosts(void)
 {
 	struct Model *model = creditsBSS.dancerInst_invisible->model;
@@ -354,7 +343,6 @@ static void CS_Credits_RestorePodiumAudioForNativeHandoff(void)
 }
 #endif
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b93f4-0x800b9488
 void CS_Credits_End(void)
 {
 	int levID;
@@ -391,7 +379,6 @@ void CS_Credits_End(void)
 	gGT->renderFlags &= ~RENDER_FLAG_CONFETTI;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b88c8-0x800b8bd0
 void CS_Credits_DrawNames(struct CreditsObj *co)
 {
 	if (co->creditsTopString == 0)
@@ -511,7 +498,6 @@ void CS_Credits_DrawNames(struct CreditsObj *co)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b8bd0-0x800b8dc8
 void CS_Credits_DrawEpilogue(struct CreditsObj *co)
 {
 	if (co->epilogueTopString == 0)
@@ -588,7 +574,6 @@ void CS_Credits_DrawEpilogue(struct CreditsObj *co)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b8dc8-0x800b8f8c
 void CS_Credits_ThTick(void)
 {
 	struct CreditsObj *co = &creditsBSS.creditsObj;

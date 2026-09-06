@@ -16,7 +16,6 @@ static void RB_Burst_CopyDrawState(struct Instance *dstInst, struct Instance *sr
 	dst->depthOffset[1] = src->depthOffset[1];
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b1bd8-0x800b1d2c
 void RB_Burst_ProcessBucket(struct Thread *thread)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -27,9 +26,9 @@ void RB_Burst_ProcessBucket(struct Thread *thread)
 
 		for (int i = 0; i < gGT->numPlyrCurrGame; i++)
 		{
-			struct Instance *shockwaveInst = (struct Instance *)(uintptr_t)burst[0];
-			struct Instance *burstInst = (struct Instance *)(uintptr_t)burst[1];
-			struct Instance *warpedBurstInst = (struct Instance *)(uintptr_t)burst[2];
+			struct Instance *shockwaveInst = (struct Instance *)(u32)burst[0];
+			struct Instance *burstInst = (struct Instance *)(u32)burst[1];
+			struct Instance *warpedBurstInst = (struct Instance *)(u32)burst[2];
 
 			if (burstInst == NULL)
 			{
@@ -71,7 +70,6 @@ static void RB_Burst_UpdateSlot(int *slot)
 	*slot = 0;
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800b1d2c-0x800b1e90.
 void RB_Burst_ThTick(struct Thread *t)
 {
 	int *burst;
@@ -87,7 +85,6 @@ void RB_Burst_ThTick(struct Thread *t)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800b1e90-0x800b20a4.
 void RB_Burst_CollThBucket(struct ScratchpadStruct *sps, void *hitObject)
 {
 	struct Thread *t = hitObject;
@@ -189,7 +186,6 @@ void RB_Burst_CollThBucket(struct ScratchpadStruct *sps, void *hitObject)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b20a4-0x800b2154.
 void RB_Burst_CollLevInst(struct ScratchpadStruct *sps, void *hitObject)
 {
 	struct BSP *bspHitbox = hitObject;
@@ -248,7 +244,6 @@ static char s_burst_explosion1[] = "explosion1";
 static char s_burst_explosion2[] = "explosion2";
 static char s_burst_shockwave1[] = "shockwave1";
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800b2154-0x800b25b8.
 void RB_Burst_Init(struct Instance *weaponInst)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -443,10 +438,9 @@ static void RB_Burst_DrawAll_SetPushBuffer(struct Instance *inst, int playerInde
 static struct Instance *RB_Burst_DrawAll_GetSlot(u32 *burst, int index)
 {
 	// NOTE(aalhendi): burst thread object is retail-width instance slots.
-	return (struct Instance *)(uintptr_t)burst[index];
+	return (struct Instance *)(u32)burst[index];
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b25b8-0x800b28c0.
 void RB_Burst_DrawAll(struct GameTracker *gGT)
 {
 	struct Thread *selectedThread[4];
@@ -487,7 +481,7 @@ void RB_Burst_DrawAll(struct GameTracker *gGT)
 			pos.vz = burstInst->matrix.t[2];
 
 			CTR_GteLoadSV0(&pos);
-			gte_mvmva(0, 0, 0, 3, 0);
+			gte_rt();
 			CTR_GteStoreMAC(&transformed.vx);
 
 			absX = transformed.vx;

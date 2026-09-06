@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002dd24-0x8002dd74
 void Music_SetIntro(void)
 {
 	struct Bank thisBank;
@@ -20,7 +19,6 @@ void Music_SetIntro(void)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002dd74-0x8002de48
 void Music_LoadBanks(void)
 {
 	u32 bankID;
@@ -79,7 +77,6 @@ void Music_LoadBanks(void)
 	arr[1] = 3;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002de48-0x8002e338
 u32 Music_AsyncParseBanks(void)
 {
 	u8 bVar1;
@@ -423,7 +420,6 @@ PARSE_FINISH:
 	return (arr[1] == 5);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002e338-0x8002e350
 void Music_SetDefaults(void)
 {
 	// no music playing
@@ -432,7 +428,6 @@ void Music_SetDefaults(void)
 	sdata->cseqTempo = 0;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002e350-0x8002e418
 // param_1 - SongID (playing)
 // param_2 - deltaBPM
 // param_3 - 8008d068 for AdvHub
@@ -473,7 +468,6 @@ void Music_Adjust(u32 songID, int newTempo, struct SongSet *set, u32 songSetActi
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002e418-0x8002e46c
 // happens during "FINAL LAP!"
 void Music_LowerVolume(void)
 {
@@ -494,7 +488,6 @@ void Music_LowerVolume(void)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002e46c-0x8002e4c0
 // after "FINAL LAP!" is done
 void Music_RaiseVolume(void)
 {
@@ -515,7 +508,6 @@ void Music_RaiseVolume(void)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002e4c0-0x8002e4ec
 void Music_Restart(void)
 {
 	// if cseq music is playing
@@ -525,7 +517,6 @@ void Music_Restart(void)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002e4ec-0x8002e524
 void Music_Stop(void)
 {
 	// quit if no music is playing
@@ -540,7 +531,6 @@ void Music_Stop(void)
 	sdata->cseqHighestIndex = -1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002e524-0x8002e53c
 void Music_Start(u32 songID)
 {
 	sdata->cseqBoolPlay = true;
@@ -549,7 +539,6 @@ void Music_Start(u32 songID)
 	sdata->cseqHighestIndex = songID & 0xffff;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002e53c-0x8002e550
 void Music_End(void)
 {
 	sdata->cseqBoolPlay = false;
@@ -558,7 +547,6 @@ void Music_End(void)
 	sdata->cseqHighestIndex = -1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002e550-0x8002e55c
 u32 Music_GetHighestSongPlayIndex(void)
 {
 	// 0xffff - no cseq music

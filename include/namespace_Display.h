@@ -33,17 +33,17 @@ struct OTMem
 	u32 capacityBytes;
 
 	// 0x4
-	uint32_t *start;
+	u32 *start;
 
 	// 0x8
-	uint32_t *end;
+	u32 *end;
 
 	// 0xC
-	uint32_t *cursor;
+	u32 *cursor;
 
 	// 0x10
 	// NOTE(aalhendi): UI ordering-table pointer, also stored in pushBuffer_UI.
-	uint32_t *uiOT;
+	u32 *uiOT;
 };
 
 struct DisplayBlurFlatPacket
@@ -126,13 +126,11 @@ CTR_STATIC_ASSERT(offsetof(struct DisplayBlurTile, dstX) == 0x08);
 CTR_STATIC_ASSERT(offsetof(struct DisplayBlurTile, dstY) == 0x0A);
 CTR_STATIC_ASSERT(offsetof(struct DisplayBlurTile, dstW) == 0x0C);
 CTR_STATIC_ASSERT(offsetof(struct DisplayBlurTile, dstH) == 0x0E);
-#ifndef CTR_NATIVE
 CTR_STATIC_ASSERT(offsetof(struct DB, drawEnv) == 0x0);
 CTR_STATIC_ASSERT(offsetof(struct DB, dispEnv) == 0x5C);
 CTR_STATIC_ASSERT(offsetof(struct DB, blurCameraMask) == 0x70);
 CTR_STATIC_ASSERT(offsetof(struct DB, primMem) == 0x74);
 CTR_STATIC_ASSERT(offsetof(struct DB, otMem) == 0x90);
 CTR_STATIC_ASSERT(sizeof(struct DB) == 0xA4);
-#endif
 
 #endif

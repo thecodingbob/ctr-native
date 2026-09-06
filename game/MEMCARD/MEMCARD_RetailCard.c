@@ -4,7 +4,6 @@
 // People reported "Out of room" error screens
 // even though the memory card was not full
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003dd10-0x8003ddac.
 void MEMCARD_GetFreeBytes(int slotIdx)
 {
 	struct DIRENTRY *firstEntry;
@@ -27,7 +26,6 @@ void MEMCARD_GetFreeBytes(int slotIdx)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003e238-0x8003e29c.
 u8 MEMCARD_GetInfo(int slotIdx)
 {
 	if (sdata->memcard_stage != MC_STAGE_IDLE)
@@ -49,7 +47,6 @@ u8 MEMCARD_GetInfo(int slotIdx)
 	return MC_RETURN_PENDING;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003e51c-0x8003e59c.
 u8 MEMCARD_Format(int slotIdx)
 {
 	if (sdata->memcard_stage != MC_STAGE_IDLE)
@@ -74,7 +71,6 @@ u8 MEMCARD_Format(int slotIdx)
 	return MC_RETURN_PENDING;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003e59c-0x8003e600.
 int MEMCARD_IsFile(int slotIdx, char *save_name)
 {
 	char name[64];
@@ -96,7 +92,6 @@ int MEMCARD_IsFile(int slotIdx, char *save_name)
 	return MC_RETURN_NODATA;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003e600-0x8003e678.
 char *MEMCARD_FindFirstGhost(int slotIdx, char *srcString)
 {
 	if (sdata->memcard_stage != MC_STAGE_IDLE)
@@ -117,7 +112,6 @@ char *MEMCARD_FindFirstGhost(int slotIdx, char *srcString)
 	return &sdata->s_memcardFindGhostFile[0];
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003e678-0x8003e6d4.
 char *MEMCARD_FindNextGhost(void)
 {
 	if (sdata->memcard_stage != MC_STAGE_GHOST_FOUND)
@@ -139,7 +133,6 @@ char *MEMCARD_FindNextGhost(void)
 	return &sdata->s_memcardFindGhostFile[0];
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003e6d4-0x8003e740.
 // called by MC_ACTION_Erase
 u8 MEMCARD_EraseFile(int slotIdx, char *srcString)
 {

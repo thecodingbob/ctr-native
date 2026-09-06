@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80031b50-0x80031bdc.
 void LOAD_GlobalModelPtrs_MPK()
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -28,7 +27,6 @@ void LOAD_GlobalModelPtrs_MPK()
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80031bdc-0x80031c1c.
 void LOAD_HubSwapPtrs(struct GameTracker *gGT)
 {
 	struct Level *oldLev1;

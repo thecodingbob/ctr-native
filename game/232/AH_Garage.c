@@ -20,7 +20,6 @@ enum AHGarageConstants
 	AH_GARAGE_TOP_DEPTH_BIAS = 0xfe,
 };
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ae8a0-0x800ae8e0.
 void AH_Garage_ThDestroy(struct Thread *t)
 {
 	struct BossGarageDoor *garage = t->object;
@@ -34,7 +33,6 @@ void AH_Garage_ThDestroy(struct Thread *t)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ae8e0-0x800ae988.
 void AH_Garage_Open(struct ScratchpadStruct *sps, void *hitObject)
 {
 	struct Thread *otherTh = hitObject;
@@ -80,7 +78,6 @@ void AH_Garage_Open(struct ScratchpadStruct *sps, void *hitObject)
 	sdata->doorAccessFlags |= AH_GARAGE_ACCESS_FLAG;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ae988-0x800af070.
 void AH_Garage_ThTick(struct Thread *t)
 {
 	b32 bossIsOpen = true;
@@ -261,7 +258,7 @@ LAB_800aec34:
 
 		    sdata->lngStrings[data.lng_challenge[R232.bossCharacterIDs[hubID]]],
 
-		    ((view.x + view.w) >> 1), ((view.y + view.h) - 0x1e), 1, 0xffff8000);
+		    view.x + (view.w >> 1), ((view.y + view.h) - 0x1e), FONT_BIG, JUSTIFY_CENTER | ORANGE);
 	}
 
 	if (bossIsOpen)
@@ -368,7 +365,6 @@ LAB_800aede8:
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800af070-0x800af3a4.
 void AH_Garage_LInB(struct Instance *inst)
 {
 	b32 bossIsOpen = true;

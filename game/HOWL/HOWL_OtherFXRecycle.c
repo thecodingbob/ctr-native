@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002e690-0x8002e724
 void OtherFX_RecycleNew(u32 *soundID_Count, u32 newSoundID, u32 modifyFlags)
 {
 	int local = *soundID_Count;
@@ -34,7 +33,6 @@ void OtherFX_RecycleNew(u32 *soundID_Count, u32 newSoundID, u32 modifyFlags)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002e724-0x8002e760
 void OtherFX_RecycleMute(u32 *soundID_Count)
 {
 	if (*soundID_Count != 0)
@@ -44,7 +42,6 @@ void OtherFX_RecycleMute(u32 *soundID_Count)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002e760-0x8002e7bc
 void OtherFX_DriverCrashing(u32 boolEcho, u32 volume)
 {
 	u32 crashID;

@@ -10,18 +10,10 @@ struct NavFrame
 	u8 rot[4];
 
 	// 0xA
-	union
-	{
-		s16 distToNextNav[2];
-		struct
-		{
-			// 0xA
-			s16 distToNextNavXYZ;
+	s16 distToNextNavXYZ;
 
-			// 0xC
-			s16 distToNextNavXZ;
-		};
-	};
+	// 0xC
+	s16 distToNextNavXZ;
 
 	// 0xE - flags
 	// bit 1 (0x1): TurboIncrement(normal turbo)

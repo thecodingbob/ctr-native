@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b5984-0x800b5f50.
 
 
 int RB_Armadillo_ThCollide(struct Thread *armadilloThread, struct Thread *driverTh, void *funcThCollide, struct ScratchpadStruct *sps)

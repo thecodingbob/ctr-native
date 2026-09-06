@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800265c0-0x8002689c.
 void GAMEPROG_AdvPercent(struct AdvProgress *adv)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -115,7 +114,6 @@ void GAMEPROG_AdvPercent(struct AdvProgress *adv)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002689c-0x80026ae4.
 void GAMEPROG_ResetHighScores(struct GameProgress *gameProg)
 {
 	// for every track
@@ -156,7 +154,6 @@ void GAMEPROG_ResetHighScores(struct GameProgress *gameProg)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80026ae4-0x80026bf0
 b32 GAMEPROG_CheckGhostsBeaten(int ghostID)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -183,7 +180,6 @@ b32 GAMEPROG_CheckGhostsBeaten(int ghostID)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80026bf0-0x80026c24.
 void GAMEPROG_NewProfile_OutsideAdv(struct GameProgress *gameProg)
 {
 	// GameOptions is probably a struct "inside"
@@ -196,7 +192,6 @@ void GAMEPROG_NewProfile_OutsideAdv(struct GameProgress *gameProg)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80026c24-0x80026cb8.
 void GAMEPROG_InitFullMemcard(struct MemcardProfile *mcp)
 {
 	// clear
@@ -221,7 +216,6 @@ void GAMEPROG_InitFullMemcard(struct MemcardProfile *mcp)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80026cb8-0x80026cf4.
 void GAMEPROG_NewProfile_InsideAdv(struct AdvProgress *adv)
 {
 	// clear
@@ -235,7 +229,6 @@ void GAMEPROG_NewProfile_InsideAdv(struct AdvProgress *adv)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80026cf4-0x80026d7c.
 void GAMEPROG_SaveCupProgress(void)
 {
 	u32 *prog = &sdata->gameProgress.unlocks[0];
@@ -255,7 +248,6 @@ void GAMEPROG_SaveCupProgress(void)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80026d7c-0x80026e48.
 void GAMEPROG_SyncGameAndCard(struct GameProgress *memcardProg, struct GameProgress *currentProg)
 {
 	// combine progress of cups,
@@ -295,7 +287,6 @@ void GAMEPROG_SyncGameAndCard(struct GameProgress *memcardProg, struct GameProgr
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80026e48-0x80026e80.
 void GAMEPROG_NewGame_OnBoot()
 {
 	GAMEPROG_NewProfile_OutsideAdv(&sdata->gameProgress);
@@ -304,7 +295,6 @@ void GAMEPROG_NewGame_OnBoot()
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80026e80-0x80026ed8
 void GAMEPROG_GetPtrHighScoreTrack(void)
 {
 	struct GameTracker *gGT = sdata->gGT;

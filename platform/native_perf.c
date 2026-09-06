@@ -24,6 +24,7 @@
 #define NATIVE_PERF_PATH_MAX         1024
 #define NATIVE_PERF_DEFAULT_DIR      "debug/perf/perf-latest"
 #define NATIVE_PERF_FRAME_CSV_NAME   "frame_times.csv"
+#define NATIVE_PERF_GPU_CSV_NAME     "gpu_frame_times.csv"
 #define NATIVE_PERF_SUMMARY_NAME     "summary.txt"
 #define NATIVE_PERF_TOP_FRAME_COUNT  20
 #define NATIVE_PERF_FLUSH_INTERVAL   120
@@ -78,19 +79,14 @@ global_variable const struct NativePerfBucketInfo s_bucketInfo[NATIVE_PERF_BUCKE
     {"renderer_vertex_upload_ms", 1},
     {"renderer_draw_triangles_ms", 1},
     {"framebuffer_store_ms", 0},
-    {"framebuffer_resize_ms", 1},
-    {"framebuffer_blit_ms", 1},
-    {"framebuffer_flush_ms", 1},
-    {"framebuffer_alloc_ms", 1},
     {"framebuffer_readback_ms", 1},
-    {"framebuffer_pack_ms", 1},
-    {"framebuffer_vram_upload_ms", 1},
     {"swap_window_ms", 1},
     {"vsync_wait_ms", 0},
     {"audio_vblank_ms", 1},
 };
 
 global_variable FILE *s_csvFile;
+global_variable FILE *s_gpuCsvFile;
 global_variable s32 s_enabled;
 global_variable s32 s_frameOpen;
 global_variable s32 s_rowsSinceFlush;
@@ -103,6 +99,9 @@ global_variable f64 s_totalFrameMs;
 global_variable f64 s_totalWorkMs;
 global_variable f64 s_maxFrameMs;
 global_variable f64 s_maxWorkMs;
+global_variable u32 s_gpuFrameCount;
+global_variable f64 s_totalGpuFrameMs;
+global_variable f64 s_maxGpuFrameMs;
 global_variable f64 s_bucketTotals[NATIVE_PERF_BUCKET_COUNT];
 global_variable f64 s_frameBucketMs[NATIVE_PERF_BUCKET_COUNT];
 global_variable u64 s_frameStartCounter;
@@ -114,6 +113,7 @@ global_variable s32 s_beginOverflowFrames;
 global_variable s32 s_beginQueuedFrames;
 global_variable char s_outputDir[NATIVE_PERF_PATH_MAX];
 global_variable char s_csvPath[NATIVE_PERF_PATH_MAX];
+global_variable char s_gpuCsvPath[NATIVE_PERF_PATH_MAX];
 global_variable char s_summaryPath[NATIVE_PERF_PATH_MAX];
 global_variable struct NativePerfWorstFrame s_worstFrames[NATIVE_PERF_TOP_FRAME_COUNT];
 global_variable s32 s_worstFrameCount;
@@ -175,7 +175,6 @@ internal s32 NativePerf_MakeDir(const char *path)
 internal s32 NativePerf_CreateDirs(const char *path)
 {
 	char copy[NATIVE_PERF_PATH_MAX];
-	char *cursor;
 	s32 ok = 1;
 
 	if ((path == NULL) || (path[0] == '\0'))
@@ -188,7 +187,7 @@ internal s32 NativePerf_CreateDirs(const char *path)
 		return 0;
 	}
 
-	cursor = copy;
+	char *cursor = copy;
 	if (NativePath_IsSeparator((u8)cursor[0]))
 	{
 		cursor++;
@@ -236,6 +235,11 @@ internal s32 NativePerf_SetOutputDir(const char *path)
 	}
 
 	if (!NativePath_Join(s_summaryPath, sizeof(s_summaryPath), NativeStr8_FromCString(s_outputDir), NATIVE_STR8_LIT(NATIVE_PERF_SUMMARY_NAME)))
+	{
+		return 0;
+	}
+
+	if (!NativePath_Join(s_gpuCsvPath, sizeof(s_gpuCsvPath), NativeStr8_FromCString(s_outputDir), NATIVE_STR8_LIT(NATIVE_PERF_GPU_CSV_NAME)))
 	{
 		return 0;
 	}
@@ -319,11 +323,15 @@ internal void NativePerf_WriteSummary(FILE *file)
 	fprintf(file, "average_work_ms=%.3f\n", averageWorkMs);
 	fprintf(file, "max_ms=%.3f\n", s_maxFrameMs);
 	fprintf(file, "max_work_ms=%.3f\n", s_maxWorkMs);
+	fprintf(file, "gpu_frames=%u\n", s_gpuFrameCount);
+	fprintf(file, "average_gpu_ms=%.3f\n", (s_gpuFrameCount == 0) ? 0.0 : s_totalGpuFrameMs / (f64)s_gpuFrameCount);
+	fprintf(file, "max_gpu_ms=%.3f\n", s_maxGpuFrameMs);
 	fprintf(file, "frames_over_33_33ms=%u\n", s_framesOverBudget);
 	fprintf(file, "work_frames_over_33_33ms=%u\n", s_workFramesOverBudget);
 	fprintf(file, "frames_over_40ms=%u\n", s_framesOver40);
 	fprintf(file, "frames_over_50ms=%u\n", s_framesOver50);
 	fprintf(file, "csv_path=%s\n", s_csvPath);
+	fprintf(file, "gpu_csv_path=%s\n", s_gpuCsvPath);
 
 	fprintf(file, "\nbucket_totals_ms:\n");
 	for (s32 bucket = 0; bucket < NATIVE_PERF_BUCKET_COUNT; bucket++)
@@ -410,16 +418,31 @@ int NativePerf_ConfigureFromArgs(int argc, char **argv)
 
 	NativePerf_WriteCsvHeader(s_csvFile);
 	fflush(s_csvFile);
+
+	s_gpuCsvFile = fopen(s_gpuCsvPath, "wb");
+	if (s_gpuCsvFile == NULL)
+	{
+		fprintf(stderr, "[CTR Perf] failed to open GPU frame CSV: %s\n", s_gpuCsvPath);
+		fclose(s_csvFile);
+		s_csvFile = NULL;
+		return 1;
+	}
+	fprintf(s_gpuCsvFile, "renderer_frame_index,gpu_ms\n");
+	fflush(s_gpuCsvFile);
 	s_enabled = 1;
 
 	Platform_Log("[CTR Perf] capturing frame times: %s\n", s_csvPath);
+	Platform_Log("[CTR Perf] capturing GPU frame times: %s\n", s_gpuCsvPath);
 	return 0;
+}
+
+int NativePerf_IsEnabled(void)
+{
+	return s_enabled;
 }
 
 void NativePerf_Shutdown(void)
 {
-	FILE *summaryFile;
-
 	if (!s_enabled)
 	{
 		return;
@@ -437,7 +460,14 @@ void NativePerf_Shutdown(void)
 		s_csvFile = NULL;
 	}
 
-	summaryFile = fopen(s_summaryPath, "wb");
+	if (s_gpuCsvFile != NULL)
+	{
+		fflush(s_gpuCsvFile);
+		fclose(s_gpuCsvFile);
+		s_gpuCsvFile = NULL;
+	}
+
+	FILE *summaryFile = fopen(s_summaryPath, "wb");
 	if (summaryFile != NULL)
 	{
 		NativePerf_WriteSummary(summaryFile);
@@ -454,6 +484,22 @@ void NativePerf_Shutdown(void)
 	Platform_Log("[CTR Perf] summary: %s\n", s_summaryPath);
 
 	s_enabled = 0;
+}
+
+void NativePerf_RecordGpuFrame(u32 frameIndex, f64 gpuMs)
+{
+	if (!s_enabled || (s_gpuCsvFile == NULL))
+	{
+		return;
+	}
+
+	fprintf(s_gpuCsvFile, "%u,%.3f\n", frameIndex, gpuMs);
+	s_gpuFrameCount++;
+	s_totalGpuFrameMs += gpuMs;
+	if (gpuMs > s_maxGpuFrameMs)
+	{
+		s_maxGpuFrameMs = gpuMs;
+	}
 }
 
 void NativePerf_BeginFrame(const struct NativePerfFrameInfo *info)
@@ -480,37 +526,31 @@ void NativePerf_BeginFrame(const struct NativePerfFrameInfo *info)
 
 void NativePerf_EndFrame(const struct NativePerfFrameInfo *info)
 {
-	f64 totalMs;
-	f64 workMs;
-	f64 overBudgetMs;
-	f64 workOverBudgetMs;
 	f64 dominantMs;
-	enum NativePerfBucket dominantBucket;
 	s32 endUnderrunFrames = 0;
 	s32 endOverflowFrames = 0;
 	s32 endQueuedFrames = 0;
 	struct NativePerfWorstFrame worstFrame;
-	const struct NativePerfFrameInfo *rowInfo;
 
 	if (!s_enabled || !s_frameOpen)
 	{
 		return;
 	}
 
-	totalMs = NativePerf_CounterToMs(SDL_GetPerformanceCounter() - s_frameStartCounter);
-	workMs = totalMs - s_frameBucketMs[NATIVE_PERF_BUCKET_VSYNC_WAIT];
+	f64 totalMs = NativePerf_CounterToMs(SDL_GetPerformanceCounter() - s_frameStartCounter);
+	f64 workMs = totalMs - s_frameBucketMs[NATIVE_PERF_BUCKET_VSYNC_WAIT];
 	if (workMs < 0.0)
 	{
 		workMs = 0.0;
 	}
 
-	overBudgetMs = (totalMs > NATIVE_PERF_FRAME_BUDGET_MS) ? (totalMs - NATIVE_PERF_FRAME_BUDGET_MS) : 0.0;
-	workOverBudgetMs = (workMs > NATIVE_PERF_FRAME_BUDGET_MS) ? (workMs - NATIVE_PERF_FRAME_BUDGET_MS) : 0.0;
-	dominantBucket = NativePerf_FindDominantBucket(&dominantMs);
+	f64 overBudgetMs = (totalMs > NATIVE_PERF_FRAME_BUDGET_MS) ? (totalMs - NATIVE_PERF_FRAME_BUDGET_MS) : 0.0;
+	f64 workOverBudgetMs = (workMs > NATIVE_PERF_FRAME_BUDGET_MS) ? (workMs - NATIVE_PERF_FRAME_BUDGET_MS) : 0.0;
+	enum NativePerfBucket dominantBucket = NativePerf_FindDominantBucket(&dominantMs);
 
 	NativeAudio_GetOutputStats(&endUnderrunFrames, &endOverflowFrames, &endQueuedFrames);
 
-	rowInfo = (info != NULL) ? info : &s_frameBeginInfo;
+	const struct NativePerfFrameInfo *rowInfo = (info != NULL) ? info : &s_frameBeginInfo;
 
 	fprintf(s_csvFile, "%u,%.3f,%.3f,%.3f,%.3f,%s,%.3f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", s_frameIndex, totalMs, workMs, overBudgetMs,
 	        workOverBudgetMs, NativePerf_BucketName(dominantBucket), dominantMs, rowInfo->frameCounter, rowInfo->timer, rowInfo->levelID, rowInfo->gameMode1,
