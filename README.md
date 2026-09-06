@@ -226,6 +226,9 @@ format). An example template is at `default_config.ini` in the project root.
 | `fullscreen`               | `true` / `false` | `false` | Borderless fullscreen on startup                                        |
 | `aspect_ratio`             | `4:3`, `16:9`, `16:10`, `21:9` | `4:3`   | Display aspect ratio                                                    |
 | `dithering`                | `true` / `false` | `true`  | Enable color dithering                                                  |
+| `render_scale`             | `Original`, `2X`, `3X`, `4X`, `Native` | `Native` | Internal render resolution; Native follows the presentation viewport |
+| `smooth_scaling`           | `true` / `false` | `true`  | Use linear filtering when presenting scaled output                      |
+| `texture_filtering`        | `true` / `false` | `false` | Enable bilinear filtering for PSX textures                              |
 
 ## Bug Replays
 
