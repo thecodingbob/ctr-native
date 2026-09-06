@@ -24,6 +24,15 @@ static const ConfigEnumValue kAspectRatioValues[] = {
 };
 #define NUM_ASPECT_RATIOS (sizeof(kAspectRatioValues) / sizeof(kAspectRatioValues[0]))
 
+static const ConfigEnumValue kRenderScaleValues[] = {
+    {"Original", 1},
+    {"2X", 2},
+    {"3X", 3},
+    {"4X", 4},
+    {"Native", 0},
+};
+#define NUM_RENDER_SCALES (sizeof(kRenderScaleValues) / sizeof(kRenderScaleValues[0]))
+
 NativeConfig g_config = {
   .skipIntro = false,
   .skipHints = false,
@@ -50,6 +59,9 @@ NativeConfig g_config = {
   .fullscreen = false,
   .aspectRatio = 0,
   .dithering = true,
+  .renderScale = 1,
+  .smoothScaling = true,
+  .textureFiltering = false,
   .saveAnywhere = false,
   .maskMode = MASK_MODE_NORMAL,
   .maskProtectsFromDamage = true,
@@ -308,6 +320,29 @@ const ConfigEntry g_configEntries[] = {
         .valuePtr = &g_config.aspectRatio,
         .enumValues = kAspectRatioValues,
         .numEnumValues = NUM_ASPECT_RATIOS
+    },
+    {
+        .section = "Graphics",
+        .key = "render_scale",
+        .label = "Render Scale",
+        .type = CFG_ENUM,
+        .valuePtr = &g_config.renderScale,
+        .enumValues = kRenderScaleValues,
+        .numEnumValues = NUM_RENDER_SCALES
+    },
+    {
+        .section = "Graphics",
+        .key = "smooth_scaling",
+        .label = "Smooth Scaling",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.smoothScaling
+    },
+    {
+        .section = "Graphics",
+        .key = "texture_filtering",
+        .label = "Texture Filtering",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.textureFiltering
     }
 };
 

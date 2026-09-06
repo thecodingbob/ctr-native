@@ -304,6 +304,9 @@ void Platform_Shutdown(void)
 
 void Platform_BeginFrame(void)
 {
+	// Keep the renderer's live filtering flag synchronized with the persisted option.
+	g_cfg_bilinearFiltering = g_config.textureFiltering ? 1 : 0;
+
 	// Sync g_config.fullscreen with actual window state.
 	bool isFullscreen = (SDL_GetWindowFlags(g_window) & SDL_WINDOW_FULLSCREEN) != 0;
 	if (g_config.fullscreen != isFullscreen)

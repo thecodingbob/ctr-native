@@ -259,4 +259,5 @@ main.c (entrypoint)
 - [CTR-ModSDK](https://github.com/CTR-tools/CTR-ModSDK) — the decompilation project this is built on
 - [PsyCross](https://github.com/OpenDriver2/PsyCross) — original PS1 compatibility code from which parts of CTR Native's owned platform layer and PsyQ facade headers are derived
 - [SDL3](https://github.com/libsdl-org/SDL) — cross-platform multimedia
+- [ctr-native-ap](https://github.com/dowlle/ctr-native-ap) by dowlle — render-scale, scaling-filter, and texture-filtering options
 - Crash Team Racing is a trademark of Sony Computer Entertainment / Naughty Dog

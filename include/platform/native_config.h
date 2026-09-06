@@ -24,6 +24,9 @@ typedef struct {
     bool fullscreen;            // false = windowed, true = borderless fullscreen
     int aspectRatio;            // 0 = 4:3 (default), 1 = 16:9, 2 = 16:10, 3 = 21:10
     bool dithering;             // true = dithering enabled (default), false = disabled
+    int renderScale;            // 1 = original, 2/3/4 = fixed multiples, 0 = native window
+    bool smoothScaling;         // true = linear filtering for direct presentation
+    bool textureFiltering;      // true = bilinear PSX texture sampling
     bool saveAnywhere;          // false = off (default), true = save anywhere in adventure mode by pressing select or from the pause menu
     int missileSpeedMultiplier; // percent, 20%..500%, 100 = 1.0x (default)
     int bombSpeedMultiplier;    // percent, 20%..300%, 100 = 1.0x (default)
