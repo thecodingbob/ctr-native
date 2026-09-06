@@ -179,7 +179,7 @@ format). An example template is at `default_config.ini` in the project root.
 | Key                   | Values                                                   | Default   | Description                                     |
 |-----------------------|----------------------------------------------------------|-----------|-------------------------------------------------|
 | `skip_intro`          | `true` / `false`                                         | `false`   | Skip boot intros and go straight into main menu |
-| `mask_mode            | `Normal` / `Random` / `Inverted` / `All Uka` / `All Aku` | `Normal`  | Mask assignment mode                            |
+| `mask_mode`           | `Normal` / `Random` / `Inverted` / `All Uka` / `All Aku` | `Normal`  | Mask assignment mode                            |
 | `show_reserves_meter` | `true` / `false`                                         | `false`   | Show the in-game reserves meter                 |
 
 ### Adventure
