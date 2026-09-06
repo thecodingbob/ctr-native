@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003d024-0x8003d068.
 void MainStats_ClearBattleVS(void)
 {
 	int i;
@@ -15,7 +14,6 @@ void MainStats_ClearBattleVS(void)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003d068-0x8003d184.
 void MainStats_RestartRaceCountLoss(void)
 {
 	int index;
@@ -70,16 +68,17 @@ void MainStats_RestartRaceCountLoss(void)
 		return;
 	}
 
-	// not in boss
-	index = gGT->levelID;
-	countPtr = &sdata->advProgress.timesLostRacePerLev[0];
-
 	if (IS_BOSS_RACE(gameMode1))
 	{
-		// in boss
-		index = gGT->bossID;
-		countPtr = &sdata->advProgress.timesLostBossRace[0];
+		if (sdata->advProgress.timesLostBossRace[gGT->bossID] < 10)
+		{
+			sdata->advProgress.timesLostBossRace[gGT->bossID]++;
+			return;
+		}
 	}
+
+	index = gGT->levelID;
+	countPtr = &sdata->advProgress.timesLostRacePerLev[0];
 
 	if (countPtr[index] < 10)
 	{

@@ -1,10 +1,9 @@
 #include <common.h>
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80030fdc-0x8003105c.
 void JitPool_Clear(struct JitPool *AP)
 {
-	uintptr_t currSlot = (uintptr_t)AP->ptrPoolData;
+	u32 currSlot = (u32)AP->ptrPoolData;
 
 	// clear list of free and taken
 	LIST_Clear(&AP->free);
@@ -20,7 +19,6 @@ void JitPool_Clear(struct JitPool *AP)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003105c-0x800310d4.
 void JitPool_Init(struct JitPool *AP, int maxItems, int itemSize, char *name)
 {
 	(void)name;
@@ -34,7 +32,6 @@ void JitPool_Init(struct JitPool *AP, int maxItems, int itemSize, char *name)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800310d4-0x8003112c.
 int JitPool_Add(struct JitPool *AP)
 {
 	struct Item *item = AP->free.first;
@@ -49,7 +46,6 @@ int JitPool_Add(struct JitPool *AP)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003112c-0x8003116c.
 void JitPool_Remove(struct JitPool *AP, struct Item *item)
 {
 	LIST_RemoveMember(&AP->taken, item);

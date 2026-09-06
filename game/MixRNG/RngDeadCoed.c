@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006c684-0x8006c6c8
 int RngDeadCoed(struct RngDeadCoedState *state)
 {
 	u32 state0 = state->state0;

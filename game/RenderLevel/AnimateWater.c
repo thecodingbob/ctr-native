@@ -33,7 +33,6 @@ static struct AnimateQuadTrig AnimateQuad_GetTrig(s32 angle)
 
 void AnimateQuadVertex(int timer, struct SCVert *scVert, u32 *visBits)
 {
-	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80069f0c-0x80069f94.
 	u32 bits = *visBits;
 	*visBits = bits >> 1;
 
@@ -72,7 +71,6 @@ void AnimateQuadVertex(int timer, struct SCVert *scVert, u32 *visBits)
 
 void AnimateQuad(int timer, int numSCVert, struct SCVert *scVert, int *visSCVertList)
 {
-	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80069e70-0x80069f0c.
 	u32 *visList = (u32 *)visSCVertList;
 	u32 visBits = *visList++;
 	int bitCount = 32;
@@ -104,7 +102,6 @@ void AnimateQuad(int timer, int numSCVert, struct SCVert *scVert, int *visSCVert
 
 void AnimateWaterVertex(struct WaterVert *waterVert, u16 colorOffset, int firstOffset, int secondOffset, u32 *visBits)
 {
-	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006db7c-0x8006dc30.
 	u32 bits = *visBits;
 	*visBits = bits >> 1;
 
@@ -209,7 +206,6 @@ static void AnimateWater_Common(int timer, int numWaterVertices, struct WaterVer
 
 void AnimateWater1P(int timer, int numWaterVertices, struct WaterVert *waterVert, const struct TextureLayout *waterEnvMap, int *visOVertList)
 {
-	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006d79c-0x8006d864.
 	int *visLists[1] = {visOVertList};
 	AnimateWater_Common(timer, numWaterVertices, waterVert, waterEnvMap, 1, visLists);
 }
@@ -217,7 +213,6 @@ void AnimateWater1P(int timer, int numWaterVertices, struct WaterVert *waterVert
 void AnimateWater2P(int timer, int numWaterVertices, struct WaterVert *waterVert, const struct TextureLayout *waterEnvMap, int *visOVertList0,
                     int *visOVertList1)
 {
-	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006d864-0x8006d948.
 	int *visLists[2] = {visOVertList0, visOVertList1};
 	AnimateWater_Common(timer, numWaterVertices, waterVert, waterEnvMap, 2, visLists);
 }
@@ -225,7 +220,6 @@ void AnimateWater2P(int timer, int numWaterVertices, struct WaterVert *waterVert
 void AnimateWater3P(int timer, int numWaterVertices, struct WaterVert *waterVert, const struct TextureLayout *waterEnvMap, int *visOVertList0,
                     int *visOVertList1, int *visOVertList2)
 {
-	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006d948-0x8006da50.
 	int *visLists[3] = {visOVertList0, visOVertList1, visOVertList2};
 	AnimateWater_Common(timer, numWaterVertices, waterVert, waterEnvMap, 3, visLists);
 }
@@ -233,7 +227,6 @@ void AnimateWater3P(int timer, int numWaterVertices, struct WaterVert *waterVert
 void AnimateWater4P(int timer, int numWaterVertices, struct WaterVert *waterVert, const struct TextureLayout *waterEnvMap, int *visOVertList0,
                     int *visOVertList1, int *visOVertList2, int *visOVertList3)
 {
-	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006da50-0x8006db7c.
 	int *visLists[4] = {visOVertList0, visOVertList1, visOVertList2, visOVertList3};
 	AnimateWater_Common(timer, numWaterVertices, waterVert, waterEnvMap, 4, visLists);
 }

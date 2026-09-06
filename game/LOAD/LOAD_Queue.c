@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80032d30-0x80032d8c.
 void LOAD_AppendQueue(struct BigHeader *bigfile, int type, int fileIndex, void *destinationPtr, void (*callback)(struct LoadQueueSlot *))
 {
 	if (sdata->queueLength >= LOAD_QUEUE_SLOT_COUNT)
@@ -20,7 +19,6 @@ void LOAD_AppendQueue(struct BigHeader *bigfile, int type, int fileIndex, void *
 	sdata->queueLength++;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80032d8c-0x80032dc0.
 void LOAD_CDRequestCallback(struct LoadQueueSlot *lqs)
 {
 	if (lqs->callbackFuncPtr != NULL)
@@ -31,7 +29,6 @@ void LOAD_CDRequestCallback(struct LoadQueueSlot *lqs)
 	sdata->queueReady = 1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 PS1 path 0x80032dc0-0x80032ffc.
 void LOAD_NextQueuedFile()
 {
 	struct LoadQueueSlot *curr = &data.currSlot;
@@ -63,12 +60,12 @@ void LOAD_NextQueuedFile()
 
 		case LT_DRAM:
 			curr->ptrDestination =
-			    LOAD_DramFile(curr->ptrBigfileCdPos_UNUSED, curr->subfileIndex, curr->ptrDestination, &curr->size_UNUSED, (int)(intptr_t)curr->callbackFuncPtr);
+			    LOAD_DramFile(curr->ptrBigfileCdPos_UNUSED, curr->subfileIndex, curr->ptrDestination, &curr->size_UNUSED, (int)(s32)curr->callbackFuncPtr);
 			break;
 
 		case LT_VRAM:
 			curr->ptrDestination =
-			    LOAD_VramFile(curr->ptrBigfileCdPos_UNUSED, curr->subfileIndex, curr->ptrDestination, &curr->size_UNUSED, (int)(intptr_t)curr->callbackFuncPtr);
+			    LOAD_VramFile(curr->ptrBigfileCdPos_UNUSED, curr->subfileIndex, curr->ptrDestination, &curr->size_UNUSED, (int)(s32)curr->callbackFuncPtr);
 			break;
 		}
 

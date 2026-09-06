@@ -31,6 +31,21 @@
 
 #define MAX_CONTROLLERS   4
 
+enum PadTypeID
+{
+	PAD_ID_MOUSE = 0x1,
+	PAD_ID_NEGCON = 0x2,
+	PAD_ID_IRQ10_GUN = 0x3,
+	PAD_ID_DIGITAL = 0x4,
+	PAD_ID_ANALOG_STICK = 0x5,
+	PAD_ID_GUNCON = 0x6,
+	PAD_ID_ANALOG = 0x7,
+	PAD_ID_MULTITAP = 0x8,
+	PAD_ID_JOGCON = 0xe,
+	PAD_ID_CONFIG_MODE = 0xf,
+	PAD_ID_NONE = 0xf
+};
+
 typedef struct PADRAW
 {
 	unsigned char status;     // size=0, offset=0

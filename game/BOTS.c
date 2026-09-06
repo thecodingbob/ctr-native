@@ -65,22 +65,21 @@ enum
 	BOTS_NAV_SPECIAL_INDEX_MASK = 0xf,
 };
 
-force_inline s16 BOTS_PathChangePathID(s16 changeOpcode)
+static s16 BOTS_PathChangePathID(s16 changeOpcode)
 {
 	return (s16)CTR_MipsSra(changeOpcode, BOTS_PATH_CHANGE_PATH_SHIFT);
 }
 
-force_inline s16 BOTS_PathChangeFrameIndex(s16 changeOpcode)
+static s16 BOTS_PathChangeFrameIndex(s16 changeOpcode)
 {
 	return changeOpcode & BOTS_PATH_CHANGE_FRAME_MASK;
 }
 
-force_inline s16 BOTS_PathChangeCap(void)
+static s16 BOTS_PathChangeCap(void)
 {
 	return (s16)CTR_MipsSll(BOTS_NAV_PATH_COUNT, BOTS_PATH_CHANGE_PATH_SHIFT);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80012568-0x80012598.
 int BOTS_Adv_NumTimesLostEvent(int numLost)
 {
 	// if you lost more than 10 times
@@ -94,7 +93,6 @@ int BOTS_Adv_NumTimesLostEvent(int numLost)
 	return data.advDifficulty[numLost];
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800123e0-0x80012440
 void BOTS_SetGlobalNavData(u16 index)
 {
 	sdata->lastPathIndex = index;
@@ -108,7 +106,6 @@ void BOTS_SetGlobalNavData(u16 index)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80012440-0x80012560
 void BOTS_InitNavPath(struct GameTracker *gGT, s16 index)
 {
 	(void)gGT;
@@ -163,7 +160,6 @@ void BOTS_InitNavPath(struct GameTracker *gGT, s16 index)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80012560-0x80012568.
 void BOTS_EmptyFunc(void)
 {
 }
@@ -200,7 +196,6 @@ internal s32 BOTS_GetTrackDistanceToFinish(struct GameTracker *gGT)
 	return CTR_MipsSll(gGT->level1->ptr_restart_points->distToFinish, 3);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80012598-0x80013374.
 void BOTS_Adv_AdjustDifficulty(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -312,10 +307,10 @@ void BOTS_Adv_AdjustDifficulty(void)
 
 	sdata->aiCollisionDelayFrameCount = 0;
 
-	if ((sdata->const_0x30215400 == 0) && (sdata->const_0x493583fe == 0))
+	if ((sdata->advRng.state0 == 0) && (sdata->advRng.state1 == 0))
 	{
-		sdata->const_0x30215400 = 0x30215400;
-		sdata->const_0x493583fe = 0x493583fe;
+		sdata->advRng.state0 = 0x30215400;
+		sdata->advRng.state1 = 0x493583fe;
 	}
 
 	for (s16 i = 0; i < BOTS_NAV_PATH_COUNT; i++)
@@ -445,7 +440,6 @@ void BOTS_Adv_AdjustDifficulty(void)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80013374-0x80013444.
 void BOTS_UpdateGlobals(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -491,54 +485,54 @@ void BOTS_UpdateGlobals(void)
 	sdata->aiCollisionDelayFrameCount++;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80013444-0x800135d8
 void BOTS_SetRotation(struct Driver *bot, int useSpawnYaw)
 {
 	struct NavFrame *nf = bot->botData.botNavFrame;
 
-	CTR_SET_VEC3(bot->botData.aiPhysics.velocity.v, 0, 0, 0);
+	CTR_SET_VEC3(CTR_VECTOR_DATA(&(bot->botData.aiPhysics.velocity)), 0, 0, 0);
 
 	// ======== Get Driver Position =============
 
-	bot->botData.estimatePosition.x = (s16)CTR_MipsSra(bot->posCurr.x, FRACTIONAL_BITS_8);
-	bot->botData.estimatePosition.y = (s16)CTR_MipsSra(bot->posCurr.y, FRACTIONAL_BITS_8);
-	bot->botData.estimatePosition.z = (s16)CTR_MipsSra(bot->posCurr.z, FRACTIONAL_BITS_8);
+	bot->botData.estimateNavFrame.pos.x = (s16)CTR_MipsSra(bot->posCurr.x, FRACTIONAL_BITS_8);
+	bot->botData.estimateNavFrame.pos.y = (s16)CTR_MipsSra(bot->posCurr.y, FRACTIONAL_BITS_8);
+	bot->botData.estimateNavFrame.pos.z = (s16)CTR_MipsSra(bot->posCurr.z, FRACTIONAL_BITS_8);
 
 	// ======== Compare to Nav Position =============
 
-	int deltaNavX = CTR_MipsSubLo(nf->pos.x, bot->botData.estimatePosition.x);
-	int deltaNavY = CTR_MipsSubLo(nf->pos.y, bot->botData.estimatePosition.y);
-	int deltaNavZ = CTR_MipsSubLo(nf->pos.z, bot->botData.estimatePosition.z);
+	int deltaNavX = CTR_MipsSubLo(nf->pos.x, bot->botData.estimateNavFrame.pos.x);
+	int deltaNavY = CTR_MipsSubLo(nf->pos.y, bot->botData.estimateNavFrame.pos.y);
+	int deltaNavZ = CTR_MipsSubLo(nf->pos.z, bot->botData.estimateNavFrame.pos.z);
 
 	// ======== Calculate Distance =============
 
 	// xz dist from driver to nav
 	int xzDist = SquareRoot0_stub(CTR_MipsAddLo(CTR_MipsMulLo(deltaNavX, deltaNavX), CTR_MipsMulLo(deltaNavZ, deltaNavZ)));
-	bot->botData.distToNextNavXZ = xzDist;
+	bot->botData.estimateNavFrame.distToNextNavXZ = xzDist;
 	// xyz distance from driver to nav
 	int xyzDist = SquareRoot0_stub(
 	    CTR_MipsAddLo(CTR_MipsAddLo(CTR_MipsMulLo(deltaNavX, deltaNavX), CTR_MipsMulLo(deltaNavY, deltaNavY)), CTR_MipsMulLo(deltaNavZ, deltaNavZ)));
-	bot->botData.distToNextNavXYZ = xyzDist;
+	bot->botData.estimateNavFrame.distToNextNavXYZ = xyzDist;
 
 	// ======== Calculate Rotation =============
 
-	int rot = ratan2(CTR_MipsSll(deltaNavY, BOTS_RATAN_ARG_SHIFT), CTR_MipsSll(bot->botData.distToNextNavXZ, BOTS_RATAN_ARG_SHIFT));
-	bot->botData.estimateRotCurrY = (u8)CTR_MipsSra(rot, BOTS_ROT_BYTE_SHIFT);
+	int rot = ratan2(CTR_MipsSll(deltaNavY, BOTS_RATAN_ARG_SHIFT), CTR_MipsSll(bot->botData.estimateNavFrame.distToNextNavXZ, BOTS_RATAN_ARG_SHIFT));
+	bot->botData.estimateNavFrame.rot[3] = (u8)CTR_MipsSra(rot, BOTS_ROT_BYTE_SHIFT);
 	bot->botData.navProgressRemainder = 0;
 
 	if (!useSpawnYaw)
 	{
-		bot->botData.estimateRotNav[0] = nf->rot[0];
+		bot->botData.estimateNavFrame.rot[0] = nf->rot[0];
 		rot = ratan2(CTR_MipsNegLo(deltaNavX), CTR_MipsNegLo(deltaNavZ));
-		bot->botData.estimateRotNav[1] = (u8)CTR_MipsSra(CTR_MipsAddLo(rot, BOTS_NAV_REVERSE_YAW_OFFSET), BOTS_ROT_BYTE_SHIFT);
-		bot->botData.estimateRotNav[2] = nf->rot[1];
+		bot->botData.estimateNavFrame.rot[1] = (u8)CTR_MipsSra(CTR_MipsAddLo(rot, BOTS_NAV_REVERSE_YAW_OFFSET), BOTS_ROT_BYTE_SHIFT);
+		bot->botData.estimateNavFrame.rot[2] = nf->rot[2];
 	}
 	else
 	{
-		bot->botData.estimateRotNav[1] = (u8)CTR_MipsSra(CTR_MipsAddLo(sdata->gGT->level1->DriverSpawn[0].rot.y, BOTS_SPAWN_YAW_OFFSET), BOTS_ROT_BYTE_SHIFT);
+		bot->botData.estimateNavFrame.rot[1] =
+		    (u8)CTR_MipsSra(CTR_MipsAddLo(sdata->gGT->level1->DriverSpawn[0].rot.y, BOTS_SPAWN_YAW_OFFSET), BOTS_ROT_BYTE_SHIFT);
 	}
 
-	s16 v = (s16)CTR_MipsSll(bot->botData.estimateRotNav[1], BOTS_ROT_BYTE_SHIFT);
+	s16 v = (s16)CTR_MipsSll(bot->botData.estimateNavFrame.rot[1], BOTS_ROT_BYTE_SHIFT);
 
 	// Keep every AI-facing yaw cache in sync with the nav estimate.
 	bot->botData.ai_rotY_608 = v;
@@ -550,7 +544,6 @@ void BOTS_SetRotation(struct Driver *bot, int useSpawnYaw)
 	bot->botData.botFlags |= BOT_FLAG_ESTIMATE_NAV;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800135d8-0x8001372c.
 void BOTS_LevInstColl(struct Thread *botThread)
 {
 	struct Driver *driver = (struct Driver *)botThread->object;
@@ -602,7 +595,6 @@ void BOTS_LevInstColl(struct Thread *botThread)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001372c-0x80013838.
 void BOTS_ThTick_RevEngine(struct Thread *botThread)
 {
 	struct Driver *botDriver = (struct Driver *)botThread->object;
@@ -641,7 +633,6 @@ void BOTS_ThTick_RevEngine(struct Thread *botThread)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80013838-0x80013a70.
 void BOTS_MaskGrab(struct Thread *botThread)
 {
 	struct Driver *bot = botThread->object;
@@ -683,7 +674,7 @@ void BOTS_MaskGrab(struct Thread *botThread)
 	bot->botData.aiPhysics.reserved_0x5cc = 0;
 	bot->botData.aiPhysics.speedY = 0;
 	bot->botData.aiPhysics.speedLinear = 0;
-	CTR_SET_VEC3(bot->botData.aiPhysics.velocity.v, 0, 0, 0);
+	CTR_SET_VEC3(CTR_VECTOR_DATA(&(bot->botData.aiPhysics.velocity)), 0, 0, 0);
 
 	bot->actionsFlagSet |= ACTION_TOUCH_GROUND;
 
@@ -731,7 +722,6 @@ void BOTS_MaskGrab(struct Thread *botThread)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80013a70-0x80013c18.
 void BOTS_Killplane(struct Thread *botThread)
 {
 	struct Driver *bot = botThread->object;
@@ -823,7 +813,6 @@ void BOTS_Killplane(struct Thread *botThread)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80013c18-0x80016b00 for the retail path.
 
 void BOTS_ThTick_Drive(struct Thread *botThread)
 {
@@ -980,7 +969,7 @@ UpdateTireColorTimer:
 	}
 
 	struct DriverCollisionSearch driverSearch;
-	CTR_SET_VEC3(driverSearch.bucket.pos.v, (s16)CTR_MipsSra(botDriver->posCurr.x, FRACTIONAL_BITS_8),
+	CTR_SET_VEC3(CTR_VECTOR_DATA(&(driverSearch.bucket.pos)), (s16)CTR_MipsSra(botDriver->posCurr.x, FRACTIONAL_BITS_8),
 	             (s16)CTR_MipsSra(botDriver->posCurr.y, FRACTIONAL_BITS_8), (s16)CTR_MipsSra(botDriver->posCurr.z, FRACTIONAL_BITS_8));
 	driverSearch.bucket.th = NULL;
 	driverSearch.bucket.bestDistSq = 0x7fffffff;
@@ -1469,9 +1458,9 @@ UpdateTireColorTimer:
 				botVelocity = 0x6900;
 			}
 
-			int velocityAccountingForTerrain = CTR_MipsSra(CTR_MipsMulLo(botVelocity, botTerrain->botTargetSpeedScale), 8); // iVar4
+			int velocityAccountingForTerrain = CTR_MipsSra(CTR_MipsMulLo(botVelocity, botTerrain->bot.fields.targetSpeedScale), 8); // iVar4
 
-			if ((botTerrain->botSpeedFlags & TERRAIN_BOT_FLAG_DECEL_TO_TARGET_SPEED) == 0)
+			if ((botTerrain->bot.fields.speedFlags & TERRAIN_BOT_FLAG_DECEL_TO_TARGET_SPEED) == 0)
 			{
 			CheckAccelerationTowardTerrainTarget:
 				if (botDriver->botData.aiPhysics.speedLinear < velocityAccountingForTerrain)
@@ -1486,7 +1475,7 @@ UpdateTireColorTimer:
 					{
 						accel = botDriver->const_Accel_Reserves;
 					}
-					botVelocity = CTR_MipsSra(CTR_MipsMulLo(accel, botTerrain->botAccelerationScale), 8);
+					botVelocity = CTR_MipsSra(CTR_MipsMulLo(accel, botTerrain->bot.fields.accelerationScale), 8);
 
 					if (botDriver->botData.botAccel != 0)
 					{
@@ -1732,7 +1721,7 @@ UpdateTireColorTimer:
 	botDriver->actionsFlagSet &= ~(ACTION_ENGINE_ECHO | ACTION_BACK_SKID | ACTION_FRONT_SKID);
 	botDriver->actionsFlagSet |= navActionFlags;
 
-	struct Terrain *terrain = VehAfterColl_GetTerrain(((uint8_t)navFrameCurr->flags) >> 3);
+	struct Terrain *terrain = VehAfterColl_GetTerrain(((u8)navFrameCurr->flags) >> 3);
 
 	botDriver->terrainMeta1 = terrain;
 
@@ -1762,7 +1751,7 @@ UpdateTireColorTimer:
 		botInstance->alphaScale = (s16)CTR_MipsSra(CTR_MipsAddLo(CTR_MipsMulLo((u16)botInstance->alphaScale, 100), transparency), 8);
 	}
 
-	if (((botDriver->actionsFlagSet & ACTION_FRONT_SKID) == 0) || ((navActionFlags & (ACTION_BACK_SKID | ACTION_FRONT_SKID)) == 0))
+	if (((botDriver->actionsFlagSet & ACTION_FRONT_SKID) == 0) || ((navFrameFlags & BOTS_NAV_FLAG_DRIFT_MASK) == 0))
 	{
 		botDriver->turbo_MeterRoomLeft = 0;
 		botDriver->botData.aiPhysics.turboMeter = 0;
@@ -2007,7 +1996,7 @@ UpdateTireColorTimer:
 
 			botDriver->botData.ai_quadblock_checkpointIndex = sps->hit.ptrQuadblock->checkpointIndex;
 
-			VehPhysForce_RotAxisAngle(&botInstance->matrix, sps->hit.plane.normal.v, botDriver->botData.aiRot.y);
+			VehPhysForce_RotAxisAngle(&botInstance->matrix, CTR_VECTOR_DATA(&(sps->hit.plane.normal)), botDriver->botData.aiRot.y);
 
 			botDriver->AxisAngle3_normalVec = sps->hit.plane.normal;
 
@@ -2573,7 +2562,7 @@ UpdateTireColorTimer:
 		botInstance->compressedNormalAndDriverIndex = INST_CompressNormalVectorAndDriverIndex(m.m[0][1], m.m[1][1], m.m[2][1], botDriver->driverID);
 	}
 
-	ConvertRotToMatrix(&botInstance->matrix, &botDriver->rotCurr.vec);
+	ConvertRotToMatrix(&botInstance->matrix, SVec3Slot_AsVec3(&botDriver->rotCurr));
 
 	// c is row-major (i.e., ticking the rightmost indeces has smaller memory address delta vs ticking the leftmost indeces)
 	botDriver->AxisAngle2_normalVec.x = botInstance->matrix.m[0][1];
@@ -2707,7 +2696,7 @@ FinishHazardTimerUpdate:
 
 	VehPhysForce_TranslateMatrix(botThread, botDriver);
 
-	VehPhysForce_RotAxisAngle(&botDriver->matrixMovingDir, botDriver->AxisAngle2_normalVec.v, botDriver->angle);
+	VehPhysForce_RotAxisAngle(&botDriver->matrixMovingDir, CTR_VECTOR_DATA(&(botDriver->AxisAngle2_normalVec)), botDriver->angle);
 
 	VehFrameProc_Driving(botThread, botDriver);
 
@@ -2779,10 +2768,8 @@ FinishHazardTimerUpdate:
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80016b00-0x80016ec8
 u32 BOTS_ChangeState(struct Driver *driverVictim, int damageType, struct Driver *driverAttacker, int reason)
 {
-	(void)reason;
 	driverVictim->pendingDamageType = 0;
 
 	if (driverVictim->kartState == KS_MASK_GRABBED)
@@ -2910,8 +2897,8 @@ u32 BOTS_ChangeState(struct Driver *driverVictim, int damageType, struct Driver 
 
 	if (driverAttacker != NULL && damageType != 0)
 	{
-		driverAttacker->numTimesAttacked++;
-		switch (damageType)
+		driverAttacker->numTimesAttacking++;
+		switch (reason)
 		{
 		case 1:
 			driverAttacker->numTimesBombsHitSomeone++;
@@ -2927,7 +2914,6 @@ u32 BOTS_ChangeState(struct Driver *driverVictim, int damageType, struct Driver 
 	return 1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80016ec8-0x8001702c
 void BOTS_CollideWithOtherAI(struct Driver *robot_1, struct Driver *robot_2)
 {
 	// first determine which driver bumps forward and which bumps backwards
@@ -2968,7 +2954,7 @@ void BOTS_CollideWithOtherAI(struct Driver *robot_1, struct Driver *robot_2)
 		struct NavFrame *navFrameNext = robot_1->botData.botNavFrame;
 
 		// iVar4
-		navSegmentStartPos = &robot_1->botData.estimatePosition;
+		navSegmentStartPos = &robot_1->botData.estimateNavFrame.pos;
 		navSegmentEndPos = &navFrameNext->pos;
 	}
 
@@ -3008,7 +2994,6 @@ void BOTS_CollideWithOtherAI(struct Driver *robot_1, struct Driver *robot_2)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001702c-0x80017164.
 void BOTS_GotoStartingLine(struct Driver *d)
 {
 	sdata->aiCollisionDelayFrameCount = 0;
@@ -3021,8 +3006,8 @@ void BOTS_GotoStartingLine(struct Driver *d)
 	d->botData.aiPhysics.reserved_0x5cc = 0;
 	d->botData.aiPhysics.speedY = 0;
 	d->botData.aiPhysics.speedLinear = 0;
-	CTR_SET_VEC3(d->botData.aiPhysics.accel.v, 0, 0, 0);
-	CTR_SET_VEC3(d->botData.aiPhysics.velocity.v, 0, 0, 0);
+	CTR_SET_VEC3(CTR_VECTOR_DATA(&(d->botData.aiPhysics.accel)), 0, 0, 0);
+	CTR_SET_VEC3(CTR_VECTOR_DATA(&(d->botData.aiPhysics.velocity)), 0, 0, 0);
 
 	d->botData.positionBackup.x = d->posCurr.x;
 	d->botData.positionBackup.y = d->posCurr.y;
@@ -3053,7 +3038,7 @@ void BOTS_GotoStartingLine(struct Driver *d)
 	d->actionsFlagSet |= ACTION_BOT;
 
 	// calculate Y rotation
-	s16 rotY = (s16)CTR_MipsSll((u8)d->botData.estimateRotNav[1], BOTS_ROT_BYTE_SHIFT);
+	s16 rotY = (s16)CTR_MipsSll((u8)d->botData.estimateNavFrame.rot[1], BOTS_ROT_BYTE_SHIFT);
 
 	// every possible Y rotation
 	d->botData.ai_rotY_608 = rotY;
@@ -3070,7 +3055,6 @@ void BOTS_GotoStartingLine(struct Driver *d)
 	d->botData.weaponCooldown = (s16)CTR_MipsAddLo(CTR_MipsSra(rng, 8) & 0xff, 300);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80017164-0x80017318.
 struct Driver *BOTS_Driver_Init(int driverID)
 {
 	s8 initialNavPathIndex = sdata->driver_pathIndexIDs[driverID];
@@ -3125,7 +3109,6 @@ struct Driver *BOTS_Driver_Init(int driverID)
 	return d;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80017318-0x800175cc.
 void BOTS_Driver_Convert(struct Driver *d)
 {
 	// if already AI, quit

@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002c18c-0x8002c1d0
 void Cutscene_VolumeBackup(void)
 {
 	// enter critical section
@@ -19,7 +18,6 @@ void Cutscene_VolumeBackup(void)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002c1d0-0x8002c208
 void Cutscene_VolumeRestore(void)
 {
 	// enter critical section
@@ -37,7 +35,6 @@ void Cutscene_VolumeRestore(void)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002c208-0x8002c34c
 void howl_PlayAudio_Update()
 {
 	u32 *ptrFlag;
@@ -62,7 +59,7 @@ void howl_PlayAudio_Update()
 
 		for (curr = (struct ChannelStats *)sdata->channelTaken.first; curr != NULL; curr = backupNext)
 		{
-			backupNext = curr->next;
+			backupNext = curr->link.links.next;
 
 			// if sound has no timer (plays inf)
 			statFlags = curr->flags;
@@ -94,7 +91,6 @@ void howl_PlayAudio_Update()
 	Channel_UpdateChannels();
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002c34c-0x8002c424
 void howl_InitChannelAttr_EngineFX(struct EngineFX *engineFX, struct ChannelAttr *attr, int vol, int LR, int distort)
 {
 	Channel_SetVolume(attr, (sdata->vol_FX * engineFX->volume * vol) >> 10, LR);
@@ -115,7 +111,6 @@ void howl_InitChannelAttr_EngineFX(struct EngineFX *engineFX, struct ChannelAttr
 	attr->spuStartAddr = (void *)(sdata->howl_spuAddrs[engineFX->spuIndex].spuAddr << 3);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002c424-0x8002c510
 void howl_InitChannelAttr_OtherFX(struct OtherFX *otherFX, struct ChannelAttr *attr, int vol, int LR, int distort)
 {
 	int otherVol;
@@ -145,7 +140,6 @@ void howl_InitChannelAttr_OtherFX(struct OtherFX *otherFX, struct ChannelAttr *a
 	attr->spuStartAddr = (void *)(sdata->howl_spuAddrs[otherFX->spuIndex].spuAddr << 3);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002c510-0x8002c64c
 void howl_PauseAudio()
 {
 	u32 *ptrFlag;
@@ -167,7 +161,7 @@ void howl_PauseAudio()
 	Smart_EnterCriticalSection();
 	for (curr = (struct ChannelStats *)sdata->channelTaken.first; curr != NULL; curr = backupNext)
 	{
-		backupNext = curr->next;
+		backupNext = curr->link.links.next;
 
 		ptrFlag = &sdata->ChannelUpdateFlags[curr->channelID];
 		*ptrFlag |= 1;
@@ -194,7 +188,6 @@ void howl_PauseAudio()
 	Smart_ExitCriticalSection();
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002c64c-0x8002c784
 void howl_UnPauseChannel(struct ChannelStats *stats)
 {
 	int type;
@@ -229,7 +222,6 @@ void howl_UnPauseChannel(struct ChannelStats *stats)
 	memcpy(&sdata->channelAttrNew[stats->channelID], &attr, sizeof(attr));
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002c784-0x8002c8a8
 void howl_UnPauseAudio()
 {
 	int i;
@@ -249,9 +241,14 @@ void howl_UnPauseAudio()
 	Smart_EnterCriticalSection();
 	for (i = 0, curr = (struct ChannelStats *)sdata->channelFree.first; i < sdata->numBackup_ChannelStats; i++, curr = backupNext)
 	{
+		if (curr == NULL)
+		{
+			break;
+		}
+
 		backupID = curr->channelID;
-		backupPrev = curr->prev;
-		backupNext = curr->next;
+		backupPrev = curr->link.links.prev;
+		backupNext = curr->link.links.next;
 
 		int *src = (int *)pausedStats++;
 		int *dest = (int *)curr;
@@ -266,8 +263,8 @@ void howl_UnPauseAudio()
 		dest[6] = src[6];
 		dest[7] = src[7];
 
-		curr->next = backupNext;
-		curr->prev = backupPrev;
+		curr->link.links.next = backupNext;
+		curr->link.links.prev = backupPrev;
 		curr->channelID = backupID;
 
 		LIST_RemoveMember(&sdata->channelFree, (struct Item *)curr);
@@ -282,7 +279,6 @@ void howl_UnPauseAudio()
 	sdata->numBackup_ChannelStats = 0;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002c8a8-0x8002c918
 void howl_StopAudio(b32 boolErasePauseBackup, b32 boolEraseMusic, b32 boolDestroyAllFX)
 {
 	if (boolEraseMusic != 0)

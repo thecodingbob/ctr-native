@@ -1,7 +1,6 @@
 #include <common.h>
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80024464-0x8002451c.
 void DropRain_MakeSound(struct GameTracker *gGT)
 {
 	int i, lev;
@@ -44,7 +43,6 @@ void DropRain_MakeSound(struct GameTracker *gGT)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002451c-0x80024524.
 void DropRain_Reset(struct GameTracker *gGT)
 {
 	gGT->rainSoundID = 0;

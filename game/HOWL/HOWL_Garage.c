@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80030208-0x80030264.
 void Garage_Init(void)
 {
 	struct GarageFX *garageSounds;
@@ -21,7 +20,6 @@ void Garage_Init(void)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80030264-0x80030404.
 void Garage_Enter(int charId)
 {
 	struct GarageFX *garageSounds;
@@ -102,7 +100,6 @@ void Garage_Enter(int charId)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80030404-0x800304b8.
 void Garage_PlayFX(u32 soundId, int charId)
 {
 	if (charId < PINSTRIPE)
@@ -119,7 +116,6 @@ void Garage_PlayFX(u32 soundId, int charId)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800304b8-0x80030694.
 void Garage_LerpFX(void)
 {
 	struct GarageFX *garageSounds = sdata->garageSoundPool;
@@ -194,7 +190,6 @@ void Garage_LerpFX(void)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80030694-0x8003074c.
 void Garage_MoveLR(int desiredId)
 {
 	struct GarageFX *garageSounds;
@@ -252,7 +247,6 @@ void Garage_MoveLR(int desiredId)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003074c-0x80030778.
 void Garage_Leave(void)
 {
 	int i;

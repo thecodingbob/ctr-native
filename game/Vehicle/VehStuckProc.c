@@ -69,71 +69,6 @@ enum
 	VEH_TUMBLE_RUMBLE_DURATION = 0x60,
 };
 
-CTR_STATIC_ASSERT(VEH_STUCK_MASK_BSP_PROBE_HEIGHT == 0x100);
-CTR_STATIC_ASSERT(VEH_STUCK_RESPAWN_Y_OFFSET == 0x80);
-CTR_STATIC_ASSERT(VEH_STUCK_RESPAWN_PLAYER_CLEARANCE_XZ == 0x2000);
-CTR_STATIC_ASSERT(VEH_STUCK_MASK_HEAD_Y_OFFSET == 0x140);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_MASK_RELEASE_HEIGHT == 0x4000);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_MASK_GRAB_HEIGHT_TRIGGER == 0x1000);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_SMALL_BOOST_FIRE_LEVEL == 0x20);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_BIG_BOOST_FIRE_LEVEL == 0x80);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_START_BOOST_RESERVES == 960);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_MASK_DESCENT_STEP == 0x200);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_CAMERA_HEIGHT_OFFSET == 0x40);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_OVERREV_FX == 0xf);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_FILL_STEP_MAX == 5000);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_STEP_MIN == 0x100);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_OVERREV_TIMEOUT == 192);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_RELEASE_COOLDOWN == 0x100);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_DECAY_STEP_MAX_NORMAL == 1000);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_DECAY_STEP_MAX_LOCKED == 3000);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_EMPTY_COOLDOWN == 0xc0);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_TURBO_ROOM_SHIFT == 5);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_SQUISH_SHIFT == 6);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_SQUISH_LIMIT == 0x401);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_SQUISH_MAX == 0x400);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_MODEL_BASE_SCALE == 3276);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_MODEL_WIDTH_SQUISH_NUMERATOR == 6);
-CTR_STATIC_ASSERT(VEH_STUCK_REV_MODEL_WIDTH_SQUISH_DENOMINATOR == 10);
-CTR_STATIC_ASSERT(VEH_STUCK_MASK_GRAB_WHISTLE_FX == 0x55);
-CTR_STATIC_ASSERT(VEH_STUCK_MASK_GRAB_WHISTLE_TIME == 960);
-CTR_STATIC_ASSERT(VEH_STUCK_MASK_GRAB_CRASH_TIME == 1296);
-CTR_STATIC_ASSERT(VEH_STUCK_MASK_GRAB_SQUISH_DECREASE_LIMIT == 0x3c1);
-CTR_STATIC_ASSERT(VEH_STUCK_MASK_GRAB_SQUISH_DECREASE_STEP == 800);
-CTR_STATIC_ASSERT(VEH_STUCK_MASK_GRAB_SQUISH_INCREASE_STEP == 0x2d0);
-CTR_STATIC_ASSERT(VEH_STUCK_MASK_GRAB_SQUISH_MAX == 8000);
-CTR_STATIC_ASSERT(VEH_STUCK_MASK_GRAB_LIFT_SHIFT == 7);
-CTR_STATIC_ASSERT(VEH_STUCK_MASK_GRAB_SCALE_FULL_TIME == 721);
-CTR_STATIC_ASSERT(VEH_STUCK_MASK_GRAB_SCALE_START_TIME == 960);
-CTR_STATIC_ASSERT(VEH_STUCK_MASK_GRAB_SCALE_RAMP_TIME == 0xf0);
-CTR_STATIC_ASSERT(VEH_STUCK_MASK_GRAB_INITIAL_TIMER == 1440);
-CTR_STATIC_ASSERT(VEH_STUCK_MASK_GRAB_FALL_HEIGHT_THRESHOLD == 0x8000);
-CTR_STATIC_ASSERT(VEH_STUCK_MASK_GRAB_CRASH_ANIM_INDEX == 2);
-CTR_STATIC_ASSERT(VEH_STUCK_MASK_GRAB_CRASH_FRAME_THRESHOLD == 3);
-CTR_STATIC_ASSERT(VEH_STUCK_MASK_GRAB_CRASH_FRAME_OFFSET == 5);
-CTR_STATIC_ASSERT(VEH_STUCK_MASK_GRAB_CRASH_FRAME_CLAMP == 7);
-CTR_STATIC_ASSERT(VEH_STUCK_MASK_GRAB_CRASH_FREEZE_FRAME == 12);
-CTR_STATIC_ASSERT(VEH_STUCK_PLANT_CAMERA_INIT_TIME == 2880);
-CTR_STATIC_ASSERT(VEH_STUCK_PLANT_CAMERA_SIDE_OFFSET == 250);
-CTR_STATIC_ASSERT(VEH_STUCK_PLANT_CAMERA_FORWARD_OFFSET == 750);
-CTR_STATIC_ASSERT(VEH_STUCK_PLANT_CAMERA_Y_OFFSET == 0xc0);
-CTR_STATIC_ASSERT(VEH_STUCK_PLANT_CAMERA_PITCH_BASE == 0x800);
-CTR_STATIC_ASSERT(VEH_TUMBLE_FORCED_JUMP_MS == 0x60);
-CTR_STATIC_ASSERT(VEH_TUMBLE_JUMP_VELOCITY_TIMER_SHIFT == 1);
-CTR_STATIC_ASSERT(VEH_TUMBLE_JUMP_VELOCITY_BASE == 6000);
-CTR_STATIC_ASSERT(VEH_TUMBLE_STEERING_FRAME_SENTINEL == 10000);
-CTR_STATIC_ASSERT(VEH_TUMBLE_ANGULAR_DAMP_SHIFT == 3);
-CTR_STATIC_ASSERT(VEH_TUMBLE_TURN_WRAP_BIAS == 0x800);
-CTR_STATIC_ASSERT(VEH_TUMBLE_TURN_MASK == 0xfff);
-CTR_STATIC_ASSERT(VEH_TUMBLE_SPIN_RATE_SHIFT == 0xd);
-CTR_STATIC_ASSERT(VEH_TUMBLE_ROT_W_INTERP_SHIFT == 5);
-CTR_STATIC_ASSERT(VEH_TUMBLE_ANIM_FRAME_TIME_SHIFT == 5);
-CTR_STATIC_ASSERT(VEH_TUMBLE_ANIM_REVERSE_OFFSET == 1);
-CTR_STATIC_ASSERT(VEH_TUMBLE_WUMPA_PENALTY == 3);
-CTR_STATIC_ASSERT(VEH_TUMBLE_BACKWARDS_RNG_MASK == 4);
-CTR_STATIC_ASSERT(VEH_TUMBLE_RUMBLE_WEAK == 0x19);
-CTR_STATIC_ASSERT(VEH_TUMBLE_RUMBLE_STRONG == 0x29);
-CTR_STATIC_ASSERT(VEH_TUMBLE_RUMBLE_DURATION == 0x60);
 
 static void VehStuckProc_MaskGrab_SearchBsp(struct Driver *d, struct ScratchpadStruct *sps)
 {
@@ -174,7 +109,6 @@ static void VehStuckProc_MaskGrab_SearchBsp(struct Driver *d, struct ScratchpadS
 	COLL_SearchBSP_CallbackPARAM(sps->ptr_mesh_info->bspRoot, &sps->bbox, COLL_FIXED_BSPLEAF_TestQuadblocks, sps);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006677c-0x80066cb0.
 void VehStuckProc_MaskGrab_FindDestPos(struct Driver *d, struct QuadBlock *quad)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -270,7 +204,6 @@ void VehStuckProc_MaskGrab_FindDestPos(struct Driver *d, struct QuadBlock *quad)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80066cb0-0x80066d4c.
 void VehStuckProc_MaskGrab_Particles(struct Driver *d)
 {
 	struct Particle *p;
@@ -293,7 +226,6 @@ void VehStuckProc_MaskGrab_Particles(struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80066d4c-0x80066e3c.
 void VehStuckProc_MaskGrab_Update(struct Thread *t, struct Driver *d)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -337,7 +269,6 @@ void VehStuckProc_MaskGrab_Update(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80066e3c-0x80066e8c.
 void VehStuckProc_MaskGrab_PhysLinear(struct Thread *t, struct Driver *d)
 {
 	VehPhysProc_Driving_PhysLinear(t, d);
@@ -354,7 +285,6 @@ void VehStuckProc_MaskGrab_PhysLinear(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80066e8c-0x800671b0.
 void VehStuckProc_MaskGrab_Animate(struct Thread *t, struct Driver *d)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -554,7 +484,6 @@ void VehStuckProc_MaskGrab_Animate(struct Thread *t, struct Driver *d)
 
 extern DriverFunc PlayerMaskGrabFuncTable[DRIVER_FUNC_COUNT];
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800671b0-0x8006749c.
 void VehStuckProc_MaskGrab_Init(struct Thread *t, struct Driver *d)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -605,7 +534,7 @@ void VehStuckProc_MaskGrab_Init(struct Thread *t, struct Driver *d)
 				}
 
 				p->otIndexOffset = d->instSelf->depthBiasNormal;
-				p->driverInst = d->instSelf;
+				p->owner.driverInst = d->instSelf;
 				p->driverID = d->driverID;
 			}
 		}
@@ -659,7 +588,6 @@ DriverFunc PlayerMaskGrabFuncTable[DRIVER_FUNC_COUNT] = {NULL,
                                                          VehEmitter_DriverMain};
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006749c-0x80067554.
 void VehStuckProc_PlantEaten_Update(struct Thread *t, struct Driver *d)
 {
 	d->NoInputTimer = (s16)CTR_MipsSubLo((u16)d->NoInputTimer, (u16)sdata->gGT->elapsedTimeMS);
@@ -682,7 +610,6 @@ void VehStuckProc_PlantEaten_Update(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80067554-0x800675c0.
 void VehStuckProc_PlantEaten_PhysLinear(struct Thread *t, struct Driver *d)
 {
 	VehPhysProc_Driving_PhysLinear(t, d);
@@ -705,7 +632,6 @@ void VehStuckProc_PlantEaten_PhysLinear(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800675c0-0x800677d0.
 void VehStuckProc_PlantEaten_Animate(struct Thread *t, struct Driver *d)
 {
 	(void)t;
@@ -773,7 +699,6 @@ void VehStuckProc_PlantEaten_Animate(struct Thread *t, struct Driver *d)
 
 extern DriverFunc PlayerEatenFuncTable[DRIVER_FUNC_COUNT];
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800677d0-0x80067930.
 // when eaten by plant on papu pyramid
 void VehStuckProc_PlantEaten_Init(struct Thread *t, struct Driver *d)
 {
@@ -840,13 +765,12 @@ DriverFunc PlayerEatenFuncTable[DRIVER_FUNC_COUNT] = {
     NULL,
     NULL,
     NULL,
-    VehPhysForce_TranslateMatrix,
+    NULL,
     VehStuckProc_PlantEaten_Animate,
     NULL,
 };
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80067930-0x80067960.
 void VehStuckProc_RIP_Init(struct Thread *t, struct Driver *d)
 {
 	VehStuckProc_PlantEaten_Init(t, d);
@@ -856,7 +780,6 @@ void VehStuckProc_RIP_Init(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80067960-0x80067a74.
 void VehStuckProc_RevEngine_Update(struct Thread *t, struct Driver *d)
 {
 	int revFireLevel;
@@ -923,7 +846,6 @@ void VehStuckProc_RevEngine_Update(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80067a74-0x80067b7c.
 void VehStuckProc_RevEngine_PhysLinear(struct Thread *t, struct Driver *d)
 {
 	u32 cooldownTimer;
@@ -967,7 +889,6 @@ void VehStuckProc_RevEngine_PhysLinear(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80067b7c-0x80067f4c.
 void VehStuckProc_RevEngine_Animate(struct Thread *t, struct Driver *d)
 {
 	struct Instance *inst = t->inst;
@@ -1184,7 +1105,6 @@ LAB_80067dec:;
 
 extern DriverFunc PlayerRevEngineFuncTable[DRIVER_FUNC_COUNT];
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80067f4c-0x8006809c.
 void VehStuckProc_RevEngine_Init(struct Thread *t, struct Driver *d)
 {
 	(void)t;
@@ -1225,7 +1145,7 @@ void VehStuckProc_RevEngine_Init(struct Thread *t, struct Driver *d)
 	d->KartStates.RevEngine.chargeState = REV_ENGINE_CHARGE_IDLE;
 	d->KartStates.RevEngine.lockoutFlags = 0;
 
-	d->KartStates.RevEngine.boostMeter = CTR_MipsAddLo(d->const_AccelSpeed_ClassStat, d->const_AccelSpeed_ClassStat / 3);
+	d->KartStates.RevEngine.boostMeter = CTR_MipsAddLo(d->const_AccelSpeed_ClassStat, d->const_SacredFireSpeed / 3);
 }
 
 DriverFunc PlayerRevEngineFuncTable[DRIVER_FUNC_COUNT] = {
@@ -1234,7 +1154,6 @@ DriverFunc PlayerRevEngineFuncTable[DRIVER_FUNC_COUNT] = {
 };
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006809c-0x800680d0.
 void VehStuckProc_Tumble_Update(struct Thread *thread, struct Driver *driver)
 {
 	if (driver->NoInputTimer != 0)
@@ -1248,7 +1167,6 @@ void VehStuckProc_Tumble_Update(struct Thread *thread, struct Driver *driver)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800680d0-0x80068150.
 void VehStuckProc_Tumble_PhysLinear(struct Thread *thread, struct Driver *driver)
 {
 	driver->NoInputTimer = (s16)CTR_MipsSubLo((u16)driver->NoInputTimer, (u16)sdata->gGT->elapsedTimeMS);
@@ -1268,7 +1186,6 @@ void VehStuckProc_Tumble_PhysLinear(struct Thread *thread, struct Driver *driver
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80068150-0x80068244.
 void VehStuckProc_Tumble_PhysAngular(struct Thread *thread, struct Driver *driver)
 {
 	(void)thread;
@@ -1294,11 +1211,10 @@ void VehStuckProc_Tumble_PhysAngular(struct Thread *thread, struct Driver *drive
 	(driver->rotCurr).w = VehCalc_InterpBySpeed((int)(driver->rotCurr).w,
 	                                            CTR_MipsSra(CTR_MipsSll(elapsedTimeMS, VEH_TUMBLE_ROT_W_INTERP_SHIFT), VEH_TUMBLE_ROT_W_INTERP_SHIFT), 0);
 
-	VehPhysForce_RotAxisAngle(&driver->matrixMovingDir, driver->AxisAngle1_normalVec.v, driver->angle);
+	VehPhysForce_RotAxisAngle(&driver->matrixMovingDir, CTR_VECTOR_DATA(&(driver->AxisAngle1_normalVec)), driver->angle);
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80068244-0x800682a4.
 void VehStuckProc_Tumble_Animate(struct Thread *thread, struct Driver *driver)
 {
 	(void)thread;
@@ -1339,7 +1255,6 @@ DriverFunc PlayerBlastedFuncTable[DRIVER_FUNC_COUNT] = {NULL,
                                                         VehStuckProc_Tumble_Animate,
                                                         VehEmitter_DriverMain};
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800682a4-0x800683f4.
 void VehStuckProc_Tumble_Init(struct Thread *thread, struct Driver *driver)
 {
 	(void)thread;
@@ -1423,45 +1338,6 @@ enum
 	VEH_WARP_POSITION_SHIFT = FRACTIONAL_BITS_8,
 };
 
-CTR_STATIC_ASSERT(VEH_WARP_DUST_SEGMENTS == 16);
-CTR_STATIC_ASSERT(VEH_WARP_DUST_POINT_STRIDE_SHORTS == 4);
-CTR_STATIC_ASSERT(VEH_WARP_DUST_RANDOM_MASK == 0xfff);
-CTR_STATIC_ASSERT(VEH_WARP_DUST_RANDOM_SHIFT == 0xc);
-CTR_STATIC_ASSERT(VEH_WARP_DUST_RECURSION_MIN_SPAN == 2);
-CTR_STATIC_ASSERT(VEH_WARP_DUST_RADIUS_DECAY == 0xc00);
-CTR_STATIC_ASSERT(VEH_WARP_DUST_SPAWN_TIMER_BIT == 1);
-CTR_STATIC_ASSERT(VEH_WARP_DUST_JITTER_SCALE_SHIFT == 5);
-CTR_STATIC_ASSERT(VEH_WARP_DUST_CAMERA_OFFSET_SHIFT == 10);
-CTR_STATIC_ASSERT(VEH_WARP_DUST_POSITION_SHIFT == 8);
-CTR_STATIC_ASSERT(VEH_WARP_DUST_RING_COUNT == 6);
-CTR_STATIC_ASSERT(VEH_WARP_DUST_RING_ANGLE_SHIFT == 12);
-CTR_STATIC_ASSERT(VEH_WARP_DUST_HIDDEN_BASE_OFFSET_SHIFT == 5);
-CTR_STATIC_ASSERT(VEH_WARP_DUST_VISIBLE_BASE_OFFSET_SHIFT == 6);
-CTR_STATIC_ASSERT(VEH_WARP_DUST_VISIBLE_ENDPOINT_OFFSET_SHIFT == 8);
-CTR_STATIC_ASSERT(VEH_WARP_DUST_MOVE_RADIUS == 0x100);
-CTR_STATIC_ASSERT(VEH_WARP_DUST_WAVE_ANGLE_SHIFT == 7);
-CTR_STATIC_ASSERT(VEH_WARP_DUST_WAVE_HEIGHT_SHIFT == 7);
-CTR_STATIC_ASSERT(VEH_WARP_DUST_OT_DEPTH_SHIFT == 6);
-CTR_STATIC_ASSERT(VEH_WARP_BEAM_HEIGHT_OFFSET == 0x100);
-CTR_STATIC_ASSERT(VEH_WARP_DUST_ANGLE_STEP == 100);
-CTR_STATIC_ASSERT(VEH_WARP_TIMER_STEP == 26);
-CTR_STATIC_ASSERT(VEH_WARP_TIMER_MAX == 800);
-CTR_STATIC_ASSERT(VEH_WARP_EXPAND_SCALE_SPEED == 120);
-CTR_STATIC_ASSERT(VEH_WARP_EXPAND_SCALE_TARGET_XZ == 4800);
-CTR_STATIC_ASSERT(VEH_WARP_LIFT_HEIGHT_LIMIT == 0x8000);
-CTR_STATIC_ASSERT(VEH_WARP_LIFT_STEP == 0x800);
-CTR_STATIC_ASSERT(VEH_WARP_LAUNCH_REV_STATE == 2);
-CTR_STATIC_ASSERT(VEH_WARP_SHRINK_SCALE_SPEED_XZ == 600);
-CTR_STATIC_ASSERT(VEH_WARP_SHRINK_SCALE_SPEED_Y == 3200);
-CTR_STATIC_ASSERT(VEH_WARP_SHRINK_SCALE_TARGET_Y == 24000);
-CTR_STATIC_ASSERT(VEH_WARP_FLARE_HEIGHT_OFFSET == 0x40);
-CTR_STATIC_ASSERT(VEH_WARP_HEIGHT_OFFSET_STEP == 0x1800);
-CTR_STATIC_ASSERT(VEH_WARP_TURN_WRAP_BIAS == 0x800);
-CTR_STATIC_ASSERT(VEH_WARP_TURN_MASK == 0xfff);
-CTR_STATIC_ASSERT(VEH_WARP_INITIAL_TIMER == 0x3c);
-CTR_STATIC_ASSERT(VEH_WARP_SOUND_ID == 0x97);
-CTR_STATIC_ASSERT(VEH_WARP_ENGINE_AUDIO_STRIDE == 4);
-CTR_STATIC_ASSERT(VEH_WARP_POSITION_SHIFT == 8);
 CTR_STATIC_ASSERT(sizeof(SVECTOR) == VEH_WARP_DUST_POINT_STRIDE_SHORTS * sizeof(s16));
 
 static const u32 VEH_WARP_DUST_DRAW_MODE = 0xe1000a20u;
@@ -1469,7 +1345,6 @@ static const u32 VEH_WARP_DUST_POLY_G4_CODE = 0x3a000000u;
 static const u32 VEH_WARP_DUST_EDGE_COLOR = 0x007f1f3fu;
 static const u32 VEH_WARP_DUST_PACKET_TAG = 0x11000000u;
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800683f4-0x800685b0.
 void VehStuckProc_Warp_MoveDustPuff(s16 *points, int span, int radius, s16 *jitterScale)
 {
 	int radiusHalf = CTR_MipsSra(radius, 1);
@@ -1512,7 +1387,6 @@ void VehStuckProc_Warp_MoveDustPuff(s16 *points, int span, int radius, s16 *jitt
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800685b0-0x80068644.
 void VehStuckProc_Warp_AddDustPuff1(struct ScratchpadStruct *sps)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -1533,7 +1407,7 @@ void VehStuckProc_Warp_AddDustPuff1(struct ScratchpadStruct *sps)
 	// position variables
 	for (s32 i = 0; i < 3; i++)
 	{
-		p->axis[i].startVal = CTR_MipsAddLo(p->axis[i].startVal, CTR_MipsSll(sps->Input1.pos.v[i], FRACTIONAL_BITS_8));
+		p->axis[i].startVal = CTR_MipsAddLo(p->axis[i].startVal, CTR_MipsSll(CTR_VECTOR_DATA(&(sps->Input1.pos))[i], FRACTIONAL_BITS_8));
 	}
 }
 
@@ -1655,7 +1529,6 @@ static void VehWarpDust_EmitSegment(u32 **primCursor, struct PushBuffer *pb, con
 	*primCursor = (u32 *)(packet + 1);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80068644-0x80068be8.
 void VehStuckProc_Warp_AddDustPuff2(struct Driver *d, struct DriverWarpState *warp)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -1665,7 +1538,7 @@ void VehStuckProc_Warp_AddDustPuff2(struct Driver *d, struct DriverWarpState *wa
 	struct VehWarpDustScratch *scratch = CTR_SCRATCHPAD_PTR(struct VehWarpDustScratch, 0);
 	SVECTOR *points = scratch->points;
 	SVECTOR *endpoint = &points[VEH_WARP_DUST_SEGMENTS];
-	s16 *jitterScale = scratch->jitterScale.v;
+	s16 *jitterScale = CTR_VECTOR_DATA(&(scratch->jitterScale));
 	int offsetX;
 	int offsetY;
 	int offsetZ;
@@ -1744,7 +1617,6 @@ void VehStuckProc_Warp_AddDustPuff2(struct Driver *d, struct DriverWarpState *wa
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80068be8-0x80068e04.
 void VehStuckProc_Warp_PhysAngular(struct Thread *th, struct Driver *d)
 {
 	(void)th;
@@ -1780,7 +1652,8 @@ void VehStuckProc_Warp_PhysAngular(struct Thread *th, struct Driver *d)
 	{
 		for (s32 i = 0; i < 3; i++)
 		{
-			inst->scale.v[i] = VehCalc_InterpBySpeed(inst->scale.v[i], VEH_WARP_EXPAND_SCALE_SPEED, VEH_WARP_EXPAND_SCALE_TARGET_XZ >> (i & 1));
+			CTR_VECTOR_DATA(&(inst->scale))
+			[i] = VehCalc_InterpBySpeed(CTR_VECTOR_DATA(&(inst->scale))[i], VEH_WARP_EXPAND_SCALE_SPEED, VEH_WARP_EXPAND_SCALE_TARGET_XZ >> (i & 1));
 		}
 
 		if (d->posCurr.y < CTR_MipsAddLo(d->quadBlockHeight, VEH_WARP_LIFT_HEIGHT_LIMIT))
@@ -1797,8 +1670,9 @@ void VehStuckProc_Warp_PhysAngular(struct Thread *th, struct Driver *d)
 
 		for (s32 i = 0; i < 3; i++)
 		{
-			inst->scale.v[i] = VehCalc_InterpBySpeed(inst->scale.v[i], (i == 1) ? VEH_WARP_SHRINK_SCALE_SPEED_Y : VEH_WARP_SHRINK_SCALE_SPEED_XZ,
-			                                         VEH_WARP_SHRINK_SCALE_TARGET_Y * (i & 1));
+			CTR_VECTOR_DATA(&(inst->scale))
+			[i] = VehCalc_InterpBySpeed(CTR_VECTOR_DATA(&(inst->scale))[i], (i == 1) ? VEH_WARP_SHRINK_SCALE_SPEED_Y : VEH_WARP_SHRINK_SCALE_SPEED_XZ,
+			                            VEH_WARP_SHRINK_SCALE_TARGET_Y * (i & 1));
 		}
 
 		// if scale shrinks to zero
@@ -1812,7 +1686,7 @@ void VehStuckProc_Warp_PhysAngular(struct Thread *th, struct Driver *d)
 				flarePos.y = (s16)CTR_MipsAddLo(CTR_MipsSra(d->KartStates.Warp.quadHeight, VEH_WARP_POSITION_SHIFT), VEH_WARP_FLARE_HEIGHT_OFFSET);
 				flarePos.z = (s16)CTR_MipsSra(d->posCurr.z, VEH_WARP_POSITION_SHIFT);
 
-				FLARE_Init(flarePos.v);
+				FLARE_Init(CTR_VECTOR_DATA(&(flarePos)));
 			}
 
 			// make invisible
@@ -1841,7 +1715,6 @@ void VehStuckProc_Warp_PhysAngular(struct Thread *th, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80068e04-0x80068f90.
 void VehStuckProc_Warp_Init(struct Thread *th, struct Driver *d)
 {
 	(void)th;

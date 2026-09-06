@@ -14,7 +14,6 @@ static struct ThTickNativeContext *s_thTickContext;
 #endif
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80041dc0-0x80041dfc.
 void PROC_DestroyTracker(struct Thread *t)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -28,14 +27,12 @@ void PROC_DestroyTracker(struct Thread *t)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80041dfc-0x80041e20.
 void PROC_DestroyInstance(struct Thread *t)
 {
 	INSTANCE_Death(t->inst);
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80041e20-0x80041e9c.
 void PROC_DestroyObject(void *object, int threadFlags)
 {
 	struct JitPool *myPool;
@@ -68,7 +65,6 @@ void PROC_DestroyObject(void *object, int threadFlags)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80041e9c-0x80041f04.
 void PROC_DestroySelf(struct Thread *t)
 {
 	// thread must exist
@@ -95,7 +91,6 @@ void PROC_DestroySelf(struct Thread *t)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80041f04-0x80041f58.
 void PROC_DestroyBloodline(struct Thread *t)
 {
 	while (t != 0)
@@ -115,7 +110,6 @@ void PROC_DestroyBloodline(struct Thread *t)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80041f58-0x80041ff4.
 void PROC_CheckBloodlineForDead(struct Thread **replaceSelf, struct Thread *th)
 {
 	while (th != 0)
@@ -165,7 +159,6 @@ void PROC_CheckBloodlineForDead(struct Thread **replaceSelf, struct Thread *th)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80041ff4-0x8004205c.
 void PROC_CheckAllForDead()
 {
 	int i;
@@ -179,7 +172,6 @@ void PROC_CheckAllForDead()
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004205c-0x8004228c.
 struct Thread *PROC_BirthWithObject(int flags, void *funcThTick, const char *name, struct Thread *relativeTh)
 {
 	int bucketID;
@@ -301,7 +293,6 @@ struct Thread *PROC_BirthWithObject(int flags, void *funcThTick, const char *nam
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004228c-0x80042348.
 void PROC_CollidePointWithSelf(struct Thread *th, struct BucketSearchParams *buf)
 {
 	struct Instance *inst;
@@ -352,11 +343,10 @@ void PROC_CollidePointWithSelf(struct Thread *th, struct BucketSearchParams *buf
 	// save the thread collided with
 	buf->th = th;
 
-	CTR_SET_VEC3(buf->dist.v, (s16)distX, (s16)distY, (s16)distZ);
+	CTR_SET_VEC3(CTR_VECTOR_DATA(&(buf->dist)), (s16)distX, (s16)distY, (s16)distZ);
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80042348-0x80042394.
 void PROC_CollidePointWithBucket(struct Thread *th, struct BucketSearchParams *buf)
 {
 	// only used with drivers colliding
@@ -373,7 +363,6 @@ void PROC_CollidePointWithBucket(struct Thread *th, struct BucketSearchParams *b
 
 // search starts with driver thread's child
 // searches for turbo model
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80042394-0x800423fc.
 struct Thread *PROC_SearchForModel(struct Thread *th, s16 modelID)
 {
 	while (th != 0)
@@ -403,7 +392,6 @@ static s32 PROC_PerBspLeaf_MipsSquare(s32 value)
 	return (s32)(u32)((s64)value * (s64)value);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800423fc-0x80042544
 void PROC_PerBspLeaf_CheckInstances(struct BSP *bspLeaf, struct ScratchpadStruct *sps)
 {
 	s32 distX;
@@ -467,7 +455,7 @@ void PROC_PerBspLeaf_CheckInstances(struct BSP *bspLeaf, struct ScratchpadStruct
 			continue;
 		}
 
-		CTR_SET_VEC3(sps->Union.ThBuckColl.centerDelta.v, (s16)distX, (s16)distY, (s16)distZ);
+		CTR_SET_VEC3(CTR_VECTOR_DATA(&(sps->Union.ThBuckColl.centerDelta)), (s16)distX, (s16)distY, (s16)distZ);
 
 		callback = sps->Union.ThBuckColl.funcCallback;
 		callback(sps, bspHitbox);
@@ -475,7 +463,6 @@ void PROC_PerBspLeaf_CheckInstances(struct BSP *bspLeaf, struct ScratchpadStruct
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80042544-0x800425d4
 void PROC_StartSearch_Self(struct ScratchpadStruct *sps)
 {
 	s16 hitRadius;
@@ -502,7 +489,6 @@ static s32 PROC_CollideHitbox_MipsSquare(s32 value)
 	return (s32)(u32)((s64)value * (s64)value);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800425d4-0x800426f8
 void PROC_CollideHitboxWithBucket(struct Thread *collThread, struct ScratchpadStruct *sps, struct Thread *ignoredThread)
 {
 	s32 distX;
@@ -560,7 +546,7 @@ void PROC_CollideHitboxWithBucket(struct Thread *collThread, struct ScratchpadSt
 			continue;
 		}
 
-		CTR_SET_VEC3(sps->Union.ThBuckColl.centerDelta.v, (s16)distX, (s16)distY, (s16)distZ);
+		CTR_SET_VEC3(CTR_VECTOR_DATA(&(sps->Union.ThBuckColl.centerDelta)), (s16)distX, (s16)distY, (s16)distZ);
 
 		callback = sps->Union.ThBuckColl.funcCallback;
 		callback(sps, collThread);
@@ -602,7 +588,6 @@ internal struct Thread *ThTick_RunThreadNative(struct ThTickNativeContext *conte
 }
 #endif
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800715e8-0x80071694 with native SetAndExec bridge.
 void ThTick_RunBucket(struct Thread *thread)
 {
 	struct Thread *pending[THTICK_MAX_PENDING];
@@ -651,13 +636,11 @@ void ThTick_RunBucket(struct Thread *thread)
 #endif
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80071694-0x800716ec as native-equivalent divergence.
 void ThTick_FastRET(struct Thread *thread)
 {
 	(void)thread;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800716ec-0x80071704 with native SetAndExec bridge.
 void ThTick_SetAndExec(struct Thread *thread, void (*funcThTick)(struct Thread *))
 {
 	thread->funcThTick = funcThTick;
@@ -674,7 +657,6 @@ void ThTick_SetAndExec(struct Thread *thread, void (*funcThTick)(struct Thread *
 #endif
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80071704-0x8007170c.
 void ThTick_Set(struct Thread *thread, void (*funcThTick)(struct Thread *))
 {
 	thread->funcThTick = funcThTick;

@@ -233,7 +233,6 @@ static void MATH_Matrix_MulIfNonZero(s32 angle, u32 *r0, u32 *r1, u32 *r2, u32 *
 	MATH_Matrix_MulRotWords(r0, r1, r2, r3, r4);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006c124-0x8006c1d0.
 void ConvertRotToMatrix_InverseTranspose_NoRotY(MATRIX *m, const SVec3 *rot)
 {
 	u32 sine;
@@ -275,13 +274,11 @@ static void MATH_Matrix_InverseTransposeBody(MATRIX *m, s32 rotX, s32 rotZ, s32 
 	MATH_Matrix_StoreWords(m, r0, r1, r2, r3, r4);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006c1d0-0x8006c2a4.
 void ConvertRotToMatrix_InverseTranspose(MATRIX *m, const SVec3 *rot)
 {
 	MATH_Matrix_InverseTransposeBody(m, (s32)rot->x, (s32)rot->z, (s32)rot->y);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006c2a4-0x8006c378.
 void ConvertRotToMatrix(MATRIX *m, const SVec3 *rot)
 {
 	u32 sine;
@@ -304,13 +301,11 @@ void ConvertRotToMatrix(MATRIX *m, const SVec3 *rot)
 	MATH_Matrix_StoreWords(m, r0, r1, r2, r3, r4);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006c378-0x8006c3b0.
 void ConvertRotToMatrix_Transpose(MATRIX *m, const SVec3 *rot)
 {
 	MATH_Matrix_InverseTransposeBody(m, -(s32)rot->x, -(s32)rot->z, -(s32)rot->y);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006c3b0-0x8006c430.
 void MatrixRotate(MATRIX *dst, MATRIX *src, MATRIX *rot)
 {
 	u32 r0 = MATH_Matrix_ReadWord(src, 0x0);
@@ -331,7 +326,6 @@ void MatrixRotate(MATRIX *dst, MATRIX *src, MATRIX *rot)
 	MATH_Matrix_StoreWords(dst, r0, r1, r2, r3, r4);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006c618-0x8006c684.
 s32 SquareRoot0_stub(s32 value)
 {
 	MTC2((u32)value, 30);
@@ -372,7 +366,6 @@ s32 SquareRoot0_stub(s32 value)
 	return (s32)root;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006c6f0-0x8006c778.
 VECTOR *ApplyMatrixLV_stub(VECTOR *input, VECTOR *output)
 {
 	u32 x = (u32)input->vx;
@@ -408,7 +401,6 @@ VECTOR *ApplyMatrixLV_stub(VECTOR *input, VECTOR *output)
 	return output;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006c6c8-0x8006c6f0.
 VECTOR *Unknown_8006c6c8(VECTOR *input, VECTOR *output, MATRIX *matrix)
 {
 	MATH_Matrix_LoadRotWords(MATH_Matrix_ReadWord(matrix, 0x0), MATH_Matrix_ReadWord(matrix, 0x4), MATH_Matrix_ReadWord(matrix, 0x8),

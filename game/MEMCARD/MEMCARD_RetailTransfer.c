@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003e29c-0x8003e344.
 u8 MEMCARD_Load(int slotIdx, char *name, u8 *ptrMemcard, int memcardFileSize, u32 loadFlags)
 {
 	if (sdata->memcard_stage != MC_STAGE_IDLE)
@@ -26,7 +25,6 @@ u8 MEMCARD_Load(int slotIdx, char *name, u8 *ptrMemcard, int memcardFileSize, u3
 	return MEMCARD_ReadFile(0, 0x80);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003e344-0x8003e51c.
 u8 MEMCARD_Save(int slotIdx, char *name, char *param_3, u8 *ptrMemcard, int memcardFileSize, u32 saveFlags)
 
 {

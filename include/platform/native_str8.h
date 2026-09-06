@@ -81,14 +81,12 @@ static inline u8 NativeStr8_ToUpperAscii(u8 byte)
 
 static inline s32 NativeStr8_EqualsIgnoreCaseAscii(NativeStr8 left, NativeStr8 right)
 {
-	size_t i;
-
 	if (left.len != right.len)
 	{
 		return 0;
 	}
 
-	for (i = 0; i < left.len; i++)
+	for (size_t i = 0; i < left.len; i++)
 	{
 		if (NativeStr8_ToLowerAscii(left.ptr[i]) != NativeStr8_ToLowerAscii(right.ptr[i]))
 		{
@@ -116,9 +114,7 @@ static inline s32 NativeStr8_StartsWith(NativeStr8 text, NativeStr8 prefix)
 
 static inline s32 NativeStr8_LastIndexOfAny(NativeStr8 text, u8 first, u8 second, size_t *indexOut)
 {
-	size_t index;
-
-	for (index = text.len; index > 0; index--)
+	for (size_t index = text.len; index > 0; index--)
 	{
 		u8 byte = text.ptr[index - 1u];
 

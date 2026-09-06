@@ -1,7 +1,6 @@
 #include <common.h>
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800469f0-0x80046a74.
 s16 RefreshCard_CountGhostProfilesForLEV(u16 trackID)
 {
 	int i;
@@ -21,14 +20,12 @@ s16 RefreshCard_CountGhostProfilesForLEV(u16 trackID)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80046a74-0x80046a90.
 void RefreshCard_Unknown1(void)
 {
 	sdata->memcardUnk1 = (sdata->memcardUnk1 | 6) & ~8;
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80046a90-0x80046b1c.
 b32 RefreshCard_GetResult(int result)
 {
 	s16 result16 = result;
@@ -60,7 +57,6 @@ b32 RefreshCard_GetResult(int result)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80046b60-0x80046bc0.
 u32 RefreshCard_GhostEncodeByte(int currByte)
 {
 	s16 byte = currByte;
@@ -89,7 +85,6 @@ u32 RefreshCard_GhostEncodeByte(int currByte)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80046b1c-0x80046b60.
 void RefreshCard_NextMemcardAction(int slot, int action, char *fileName, char *fileIconHeader, struct GhostHeader *ptrGhostHeader, int fileSize)
 {
 	sdata->frame4_memcardAction = action;
@@ -119,7 +114,6 @@ static int RefreshCard_GhostProfileNameExists(char *profileName)
 	return 0;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80046c30-0x80047034.
 void RefreshCard_GhostEncodeProfile(u32 slotIndex, u16 characterID, u16 levelID, int time, char *name)
 {
 	char description[0x80];
@@ -158,7 +152,7 @@ void RefreshCard_GhostEncodeProfile(u32 slotIndex, u16 characterID, u16 levelID,
 
 	strcat(&description[strlen(description)], sdata->lngStrings[data.metaDataLEV[(s16)levelID].name_LNG]);
 	strcat(description, sdata->strcatData1_colon);
-	strcat(&description[strlen(description)], sdata->lngStrings[data.MetaDataCharacters[(s16)characterID].name_LNG_long]);
+	strcat(&description[strlen(description)], sdata->lngStrings[data.MetaDataCharacters[(s16)characterID].name_LNG_short]);
 	strcat(description, sdata->strcatData1_colon);
 	strcat(description, (char *)RECTMENU_DrawTime(time));
 
@@ -179,7 +173,6 @@ void RefreshCard_GhostEncodeProfile(u32 slotIndex, u16 characterID, u16 levelID,
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80046bc0-0x80046c30.
 int RefreshCard_GhostDecodeByte(int value)
 {
 	u8 byte = value;
@@ -208,7 +201,6 @@ int RefreshCard_GhostDecodeByte(int value)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80047034-0x80047198.
 void RefreshCard_GhostDecodeProfile(struct GhostProfile *profile, char *fileName)
 {
 	int packed;
@@ -231,7 +223,6 @@ void RefreshCard_GhostDecodeProfile(struct GhostProfile *profile, char *fileName
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80047198-0x800471ac.
 void RefreshCard_StartMemcardAction(int action)
 {
 	sdata->mcStart = action;
@@ -240,7 +231,6 @@ void RefreshCard_StartMemcardAction(int action)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800471ac-0x800471c4.
 void RefreshCard_StopMemcardAction(void)
 {
 	sdata->unk8008d964 = 1;
@@ -248,7 +238,6 @@ void RefreshCard_StopMemcardAction(void)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800471c4-0x800471e8.
 void RefreshCard_SetScreenText(int screenText)
 {
 	sdata->mcScreenText = screenText;
@@ -256,7 +245,6 @@ void RefreshCard_SetScreenText(int screenText)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800471e8-0x80047224.
 void RefreshCard_Unknown2(void)
 {
 	if ((s16)CTR_ReadU16LE(&sdata->boolAdvProfilesChecked) == 0)
@@ -270,14 +258,12 @@ void RefreshCard_Unknown2(void)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80047224-0x80047230.
 void RefreshCard_GetNumGhostsTotal(void)
 {
 	CTR_WriteU16LE(&sdata->numGhostProfilesSaved, 0);
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80047230-0x800472d0.
 void RefreshCard_GameProgressAndOptions(void)
 {
 	struct MemcardProfile *memcard;
@@ -328,7 +314,6 @@ static void RefreshCard_SetScreenAndPoll(int screenText)
 	sdata->boolError = 1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800472d0-0x80047a58.
 void RefreshCard_Unknown3(void)
 {
 	b32 keepPolling = false;
@@ -383,10 +368,10 @@ void RefreshCard_Unknown3(void)
 			{
 				int remaining;
 
-				memcpy(data.s_BASCUS_94426G_Question, sdata->ghostProfile_memcard[sdata->ghostProfile_rowSelect].profile_name,
-				       sizeof(data.s_BASCUS_94426G_Question));
+				memcpy(sdata->ghostFileNameFinal, sdata->ghostProfile_memcard[sdata->ghostProfile_rowSelect].profile_name,
+				       sizeof(sdata->ghostProfile_memcard[0].profile_name));
 				RefreshCard_SetScreenText(MC_SCREEN_SAVING);
-				RefreshCard_NextMemcardAction(0, MC_ACTION_Erase, data.s_BASCUS_94426G_Question, NULL, NULL, 0);
+				RefreshCard_NextMemcardAction(0, MC_ACTION_Erase, sdata->ghostFileNameFinal, NULL, NULL, 0);
 				sdata->boolError = 0;
 
 				remaining = (sdata->numGhostProfilesSaved - 1) - sdata->ghostProfile_rowSelect;
@@ -428,7 +413,6 @@ void RefreshCard_Unknown3(void)
 
 	if (RefreshCard_GetResult(MC_RESULT_FULL))
 	{
-		RefreshCard_Unknown2();
 		RefreshCard_SetScreenAndPoll(MC_SCREEN_ERROR_FULL);
 		keepPolling = false;
 		goto done;
@@ -450,7 +434,7 @@ void RefreshCard_Unknown3(void)
 
 		if ((sdata->memcardAction >= 0) && (sdata->memcardAction < 3))
 		{
-			RefreshCard_SetScreenText(MC_SCREEN_ERROR_NODATA);
+			RefreshCard_SetScreenText((sdata->memcardAction == 0) ? MC_SCREEN_ERROR_NODATA : MC_SCREEN_NULL);
 			RefreshCard_QueueGetInfo();
 			keepPolling = false;
 		}
@@ -594,7 +578,6 @@ done:
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80047a58-0x80047d64.
 void RefreshCard_Unknown4(void)
 {
 	int result = -1;
@@ -722,7 +705,6 @@ try_next_action:
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80047d64-0x80047da8.
 void RefreshCard_Entry(void)
 {
 	if ((sdata->gGT->gameMode1 & DEBUG_MENU) == 0)

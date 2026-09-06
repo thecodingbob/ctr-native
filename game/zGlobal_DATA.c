@@ -1182,7 +1182,7 @@ struct Data
                     // 0x1f - DYNAMIC_SPLINE_FOLLOWER
                     SET_MDM(NULL, NULL, NULL),
 
-                    // 0x20 - DYNAMIC_SNOWBALL (demo blizzard bluff)
+                    // 0x20 - DYNAMIC_SNOWBALL
                     SET_MDM(NULL, NULL, NULL),
 
                     // 0x21 - DYNAMIC_MINE_CART
@@ -1822,11 +1822,9 @@ struct Data
                     {0x28CF28, 0x28CF28, 0x4100, 0x4100},     // FORREST_GREEN
                     {0x28CF28, 0x28CF28, 0x4100, 0x4100},     // CREDITS_FADE (dynamic)
 
-#if BUILD >= UsaRetail
                     {0xFFD207, 0xFFD207, 0xFF6200, 0xFF6200}, // BLUE
                     {0xEE6D, 0xEE6D, 0x8E09, 0x8E09},         // LIME_GREEN
                     {0x40FF, 0x40FF, 0xC0, 0xC0},             // ORANGE_RED
-#endif
                 },
 
             .ptrColor =
@@ -1864,11 +1862,9 @@ struct Data
                     &data.colors[FOREST_GREEN][0],
                     &data.colors[CREDITS_FADE][0],
 
-#if BUILD >= UsaRetail
                     &data.colors[BLUE][0],
                     &data.colors[LIME_GREEN][0],
                     &data.colors[ORANGE_RED][0],
-#endif
                 },
 
             // These numbers have no meaning, just a scrambler table,
@@ -2582,7 +2578,6 @@ struct Data
                     14, // CREDITS
                 },
 
-#if BUILD >= UsaRetail
             .font_charPixHeight =
                 {
                     0,  // DEBUG (removed)
@@ -2590,7 +2585,6 @@ struct Data
                     8,  // SMALL
                     17, // CREDITS
                 },
-#endif
 
             .font_puncPixWidth =
                 {
@@ -2708,9 +2702,8 @@ struct Data
                     0xFF, // ~
                     0xFF, // DEL
 
-#if BUILD != EurRetail
 
-                    // jpn characters
+                    // reserved kana character slots
                     0x80,
                     0x81,
                     0x82,
@@ -2840,7 +2833,6 @@ struct Data
                     0xFF,
                     0xFF,
 
-#endif
                 },
 
             .font_buttonScale =
@@ -3090,13 +3082,11 @@ struct Data
                               0x32CB, 0x35D1, 0x3904, 0x3C68, 0x4000, 0x43CE, 0x47D6, 0x4C1B, 0x50A2, 0x556E, 0x5A82, 0x5FE4, 0x6597, 0x6BA2, 0x7208, 0x78D0,
                               0x8000, 0x879C, 0x8FAC, 0x9837, 0xA145, 0xAADC, 0xB504, 0xBFC8, 0xCB2F, 0xD744, 0xE411, 0xF1A1},
 
-#if BUILD >= UsaRetail
             .distortConst_Music = {0x0000, 0x03B2, 0x0766, 0x0B1A, 0x0ED0, 0x1286, 0x163D, 0x19F5, 0x1DAE, 0x2168, 0x2522, 0x28DD, 0x2C9A,
                                    0x3057, 0x3415, 0x37D4, 0x3B93, 0x3F54, 0x4315, 0x46D8, 0x4A9B, 0x4E5F, 0x5224, 0x55EA, 0x59B0, 0x5D78,
                                    0x6140, 0x650A, 0x68D4, 0x6C9F, 0x706B, 0x7437, 0x7805, 0x7BD4, 0x7FA3, 0x8373, 0x8745, 0x8B17, 0x8EEA,
                                    0x92BD, 0x9692, 0x9A68, 0x9E3E, 0xA216, 0xA5EE, 0xA9C7, 0xADA1, 0xB17C, 0xB558, 0xB935, 0xBD12, 0xC0F1,
                                    0xC4D0, 0xC8B0, 0xCC92, 0xD074, 0xD457, 0xD83B, 0xDC1F, 0xE005, 0xE3EC, 0xE7D3, 0xEBBC, 0xEFA5},
-#endif
 
             .opcodeFunc = {cseq_opcode00_empty, // should remove
                            cseq_opcode01_noteoff,
@@ -4248,21 +4238,14 @@ struct Data
 
             .kartHwlPath = "\\sounds\\kart.hwl;1",
 
-// empty
-//.PtrClipBuffer = {},
+            // empty
+            //.PtrClipBuffer = {},
 
-#if BUILD >= UsaRetail
-#if BUILD <= JpnRetail
             .lngIndex_unused_multiplayerDirections = {0x25, 0x26, 0x27, 0x28, 0x29, 0x2A},
-#endif
 
             .lngIndex_gamepadUnplugged = {0x1F, 0x20, 0x21, 0x22, 0x23, 0x24},
 
             .errorPosY = {0x46, 0x8C, 0x14, 0},
-#endif
-
-// different #IF, dont combine with previous
-#if BUILD >= UsaRetail
 
             .raceConfig_DeadZone =
                 {
@@ -4320,9 +4303,7 @@ struct Data
                     0x04, 0x3a, 0x94, 0x00, 0xb1, 0xcf, 0xff, 0x17, 0xff, 0xff, 0xff, 0x22,
                     0xff, 0xff, 0xff, 0x27, 0xb1, 0xcf, 0xff, 0x37, 0x04, 0x3a, 0x94, 0x64,
                 },
-#endif
 
-#if BUILD <= JpnTrial
             .unkNamcoGamepadRwdTriangleColors = {0x5a, 0x5a, 0x6e, 0x00, 0x82, 0x82, 0x96, 0x00, 0x32, 0x32, 0x46, 0x00},
 
             .unkNamcoGamepad_800842DC =
@@ -4330,7 +4311,6 @@ struct Data
 
                     0x00, 0x00, 0x02, 0x01, -2, -1, 0x03, 0x01, 0x1b, -1, 0x28, 0x01, 0x5a5a, 0x6e, 0x8282, 0x96, 0x3232, 0x46, 0x00, 0x00, -2, -1, 0x02, 0x01,
                 },
-#endif
 
             .gGT_gameMode1_VibPerPlayer = {P1_VIBRATE, P2_VIBRATE, P3_VIBRATE, P4_VIBRATE},
 
@@ -4883,21 +4863,21 @@ struct Data
 
             .MetaDataLoadSave =
                 {
-                    {0x61, 0x400, {{0xF368, 0x99F, 0x232}}, 0x60, 0xA5, 0xFF},
+                    {0x61, 0x400, {0xF368, 0x99F, 0x232}, 0x60, 0xA5, 0xFF},
                     {0x62, 0x600},
-                    {0x63, 0x400, {{0xF368, 0x99F, -0x2d8}}, 0xDC, 0xA6, 0x0},
+                    {0x63, 0x400, {0xF368, 0x99F, -0x2d8}, 0xDC, 0xA6, 0x0},
 
-                    {0x61, 0x400, {{0xF368, 0x99F, 0x232}}, 0x60, 0xA5, 0xFF},
+                    {0x61, 0x400, {0xF368, 0x99F, 0x232}, 0x60, 0xA5, 0xFF},
                     {0x62, 0x600},
-                    {0x63, 0x400, {{0xF368, 0x99F, -0x2d8}}, 0xDC, 0xA6, 0x0},
+                    {0x63, 0x400, {0xF368, 0x99F, -0x2d8}, 0xDC, 0xA6, 0x0},
 
-                    {0x61, 0x400, {{0xF368, 0x99F, 0x232}}, 0x60, 0xA5, 0xFF},
+                    {0x61, 0x400, {0xF368, 0x99F, 0x232}, 0x60, 0xA5, 0xFF},
                     {0x62, 0x600},
-                    {0x63, 0x400, {{0xF368, 0x99F, -0x2d8}}, 0xDC, 0xA6, 0x0},
+                    {0x63, 0x400, {0xF368, 0x99F, -0x2d8}, 0xDC, 0xA6, 0x0},
 
-                    {0x61, 0x400, {{0xF368, 0x99F, 0x232}}, 0x60, 0xA5, 0xFF},
+                    {0x61, 0x400, {0xF368, 0x99F, 0x232}, 0x60, 0xA5, 0xFF},
                     {0x62, 0x600},
-                    {0x63, 0x400, {{0xF368, 0x99F, -0x2d8}}, 0xDC, 0xA6, 0x0},
+                    {0x63, 0x400, {0xF368, 0x99F, -0x2d8}, 0xDC, 0xA6, 0x0},
                 },
 
             .spinOffset_LoadSave = {0x155, 0xF55, 0, 0},
@@ -5077,7 +5057,7 @@ struct Data
 
             .playerIconAdvMap =
                 {
-                    .pos = {{{0, 0xFFF8}}, {{0xFFF8, 8}}, {{8, 8}}},
+                    .pos = {{0, 0xFFF8}, {0xFFF8, 8}, {8, 8}},
 
                     .vertCol1 = {0xFFFF, 0xFF, 0xFF},
                     .vertCol2 = {0xFFFF80, 0xFF, 0xFF},
@@ -6717,7 +6697,13 @@ struct Data
                                                     .accel = 0,
                                                 }}},
 
-                    {.flags = 64, .initOffset = 1, .oscillator = {.flags = PARTICLE_OSC_MODE_SQUARE, .period = 0x9600, .scale = 0x100, .offset = 0x1000, .min = 1, .max = 0x200}},
+                    {.flags = 64,
+                     .initOffset = 1,
+                     .tail.oscillator =
+                         {
+                             .flags = PARTICLE_OSC_MODE_SQUARE,
+                             .range = {.period = 0x9600, .scale = 0x100, .offset = 0x1000, .min = 1, .max = 0x200},
+                         }},
 
                     {.flags = 1,
                      .initOffset = 5,
@@ -6840,7 +6826,13 @@ struct Data
                                                     .accel = 0,
                                                 }}},
 
-                    {.flags = 64, .initOffset = 1, .oscillator = {.flags = PARTICLE_OSC_MODE_SQUARE, .period = 0x9600, .scale = 0x100, .offset = 0x1000, .min = 1, .max = 0x200}},
+                    {.flags = 64,
+                     .initOffset = 1,
+                     .tail.oscillator =
+                         {
+                             .flags = PARTICLE_OSC_MODE_SQUARE,
+                             .range = {.period = 0x9600, .scale = 0x100, .offset = 0x1000, .min = 1, .max = 0x200},
+                         }},
 
                     {.flags = 1,
                      .initOffset = 5,
@@ -7123,14 +7115,10 @@ struct Data
                                           0x0100},
                 },
 
-// one way for this to fail,
-// EurRetail and JpnRetail dont start
-// gravity at offset 0x416, it starts at 0x41a,
-// need to make the offets compatible later on
 #define PHYSWRAP(b, c, d, e, f, g) .unusedDebugStr = 0, .offset = b, .size = c, .value[0] = d, .value[1] = e, .value[2] = f, .value[3] = g
 
 
-            // Each line is one stat with four NTSC-U retail engine-class values.
+            // Each line is one stat with four engine-class values.
             // Layout is: unused debug word, driver offset, size, BALANCED, ACCEL, SPEED, TURN.
             .metaPhys =
                 {

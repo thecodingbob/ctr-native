@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b344c-0x800b351c.
 void AH_HintMenu_FiveArrows(int posY, s16 rotation)
 {
 	u32 *ptrColor = &D232.fiveArrow_col1[0];
@@ -24,7 +23,6 @@ void AH_HintMenu_FiveArrows(int posY, s16 rotation)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b351c-0x800b3594.
 void AH_HintMenu_MaskPosRot(void)
 {
 	struct Instance *mask = sdata->instMaskHints3D;
@@ -42,7 +40,6 @@ void AH_HintMenu_MaskPosRot(void)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 overlay 232 0x800b3594-0x800b3dd8.
 void AH_HintMenu_MenuProc(struct RectMenu *menu)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -107,14 +104,14 @@ void AH_HintMenu_MenuProc(struct RectMenu *menu)
 			VehTalkMask_End();
 		}
 
-		DecalFont_DrawLine(sdata->lngStrings[lngIndex + 0], 0x100, 0x2c, 1, 0xffff8000);
+		DecalFont_DrawLine(sdata->lngStrings[lngIndex + 0], 0x100, 0x2c, FONT_BIG, JUSTIFY_CENTER | ORANGE);
 
 		// height of multiLine
 		int textHeight = DecalFont_DrawMultiLine(sdata->lngStrings[lngIndex + 1], 0x96, 0x3f, 0x14e, 2, 0);
 
 		char *strExit = sdata->lngStrings[LNG_HINT_EXIT];
 
-		DecalFont_DrawLine(strExit, 0x100, textHeight + 0x4f, 1, 0xffff8000);
+		DecalFont_DrawLine(strExit, 0x100, textHeight + 0x4f, FONT_BIG, JUSTIFY_CENTER | ORANGE);
 
 		int exitWidth = DecalFont_GetLineWidth(strExit, 1);
 
@@ -124,7 +121,7 @@ void AH_HintMenu_MenuProc(struct RectMenu *menu)
 		box.y = (s16)textHeight + 0x4e;
 		box.h = 0x11;
 
-		uint32_t *ot = gGT->backBuffer->otMem.uiOT;
+		u32 *ot = gGT->backBuffer->otMem.uiOT;
 		CTR_Box_DrawClearBox(&box, &sdata->menuRowHighlight_Normal, TRANS_50_DECAL, ot);
 
 		box.y = 0x3c;
@@ -132,7 +129,7 @@ void AH_HintMenu_MenuProc(struct RectMenu *menu)
 		box.w = 0x21c;
 		box.h = 2;
 
-		color.self = sdata->battleSetup_Color_UI_1;
+		ColorCode_SetPacked(&color, sdata->battleSetup_Color_UI_1);
 		RECTMENU_DrawOuterRect_Edge(&box, color, 0x20, ot);
 
 		box.y = 0x28;
@@ -166,7 +163,6 @@ void AH_HintMenu_MenuProc(struct RectMenu *menu)
 				if ((tapP1 & AH_HINTMENU_INPUT_BACK) != 0)
 				{
 					// Play sound
-					// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b38b4-0x800b38bc for hint-menu back SFX.
 					OtherFX_Play(2, 1);
 					goto LAB_800b38c0;
 				}
@@ -176,7 +172,6 @@ void AH_HintMenu_MenuProc(struct RectMenu *menu)
 			else
 			{
 				// Play Sound
-				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b3788-0x800b3790 for hint-menu confirm SFX.
 				OtherFX_Play(1, 1);
 
 				if (menu->rowSelected == numHintsFound)
@@ -223,7 +218,6 @@ void AH_HintMenu_MenuProc(struct RectMenu *menu)
 			if (menu->rowSelected < numHintsFound)
 			{
 				// Play Sound
-				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b375c-0x800b3764 for hint-menu down SFX.
 				OtherFX_Play(0, 1);
 
 				// change which row is selected
@@ -239,7 +233,6 @@ void AH_HintMenu_MenuProc(struct RectMenu *menu)
 		if (0 < menu->rowSelected)
 		{
 			// Play Sound
-			// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b3724-0x800b372c for hint-menu up SFX.
 			OtherFX_Play(0, 1);
 
 			// change the row selected
@@ -257,7 +250,7 @@ LAB_800b38cc:
 	isGoodMask = VehPickupItem_MaskBoolGoodGuy(gGT->drivers[0]);
 
 	// Draw the "Hints" string
-	DecalFont_DrawLine(sdata->lngStrings[LNG_AKU_AKU_HINTS_MENU + (isGoodMask == 0)], 0x100, 0x2c, 1, 0xffff8000);
+	DecalFont_DrawLine(sdata->lngStrings[LNG_AKU_AKU_HINTS_MENU + (isGoodMask == 0)], 0x100, 0x2c, FONT_BIG, JUSTIFY_CENTER | ORANGE);
 
 	if (D232.hintMenu_scrollIndex + AH_HINTMENU_VISIBLE_ROWS <= menu->rowSelected)
 	{
@@ -300,7 +293,7 @@ LAB_800b38cc:
 			menuHeight = menuHeight + 0x10;
 
 			// "EXIT"
-			DecalFont_DrawLine(sdata->lngStrings[rowLngIndex], 0x100, rowPosY, 1, 0xffff8000);
+			DecalFont_DrawLine(sdata->lngStrings[rowLngIndex], 0x100, rowPosY, FONT_BIG, JUSTIFY_CENTER | ORANGE);
 
 			visibleRowIndex = visibleRowIndex + 1;
 		} while (visibleRowIndex < visibleRows);
@@ -316,7 +309,7 @@ LAB_800b38cc:
 	box.y = (menu->rowSelected - D232.hintMenu_scrollIndex) * 0x10 + 0x4f;
 	box.h = 0x11;
 
-	uint32_t *ot = gGT->backBuffer->otMem.uiOT;
+	u32 *ot = gGT->backBuffer->otMem.uiOT;
 	CTR_Box_DrawClearBox(&box, &sdata->menuRowHighlight_Normal, TRANS_50_DECAL, ot);
 
 	box.y = 0x3c;
@@ -324,7 +317,7 @@ LAB_800b38cc:
 	box.x = -0x14;
 	box.w = 0x228;
 
-	color.self = sdata->battleSetup_Color_UI_1;
+	ColorCode_SetPacked(&color, sdata->battleSetup_Color_UI_1);
 	RECTMENU_DrawOuterRect_Edge(&box, color, 0x20, ot);
 
 	box.y = 0x28;

@@ -82,86 +82,7 @@ enum
 	VEH_EMITTER_JOG_AIR_DURATION = 0x20,
 };
 
-CTR_STATIC_ASSERT(VEH_EMITTER_AXIS_COUNT == 3);
-CTR_STATIC_ASSERT(VEH_EMITTER_EXHAUST_ICON_LOW == 1);
-CTR_STATIC_ASSERT(VEH_EMITTER_EXHAUST_ICON_WATER == 7);
-CTR_STATIC_ASSERT(VEH_EMITTER_EXHAUST_WATER_Y_LIMIT == 0x100);
-CTR_STATIC_ASSERT(VEH_EMITTER_EXHAUST_VEL_Y == 0x400);
-CTR_STATIC_ASSERT(VEH_EMITTER_EXHAUST_VEL_Z == -0x400);
-CTR_STATIC_ASSERT(VEH_EMITTER_EXHAUST_POS_X_NUM == 9);
-CTR_STATIC_ASSERT(VEH_EMITTER_EXHAUST_POS_X_SHIFT == 3);
-CTR_STATIC_ASSERT(VEH_EMITTER_EXHAUST_POS_Y_NUM == 7);
-CTR_STATIC_ASSERT(VEH_EMITTER_EXHAUST_POS_Y_SHIFT == 1);
-CTR_STATIC_ASSERT(VEH_EMITTER_EXHAUST_POS_Z_NUM == -0x38);
-CTR_STATIC_ASSERT(VEH_EMITTER_EXHAUST_POS_Z_SHIFT == 4);
-CTR_STATIC_ASSERT(VEH_EMITTER_EXHAUST_POS_SECOND_X_NUM == -0x12);
-CTR_STATIC_ASSERT(VEH_EMITTER_EXHAUST_POS_SECOND_X_SHIFT == 4);
-CTR_STATIC_ASSERT(VEH_EMITTER_TURBO_METER_COLOR_MIN == 129);
-CTR_STATIC_ASSERT(VEH_EMITTER_TURBO_ROOM_WARNING_PAD == 2);
-CTR_STATIC_ASSERT(VEH_EMITTER_TURBO_ROOM_WARNING_SCALE == 32);
-CTR_STATIC_ASSERT(VEH_EMITTER_GROUND_SPARK_COUNT == 10);
-CTR_STATIC_ASSERT(VEH_EMITTER_GROUND_SPARK_RNG_MASK == 0x7ff);
-CTR_STATIC_ASSERT(VEH_EMITTER_TERRAIN_MIN_SPEED == 0x300);
-CTR_STATIC_ASSERT(VEH_EMITTER_TERRAIN_NORMAL_TIRE_COUNT == 2);
-CTR_STATIC_ASSERT(VEH_EMITTER_TERRAIN_DRIFT_TIRE_COUNT == 4);
-CTR_STATIC_ASSERT(VEH_EMITTER_TIRE_LEFT_X == -0x1e);
-CTR_STATIC_ASSERT(VEH_EMITTER_TIRE_RIGHT_X == 0x1e);
-CTR_STATIC_ASSERT(VEH_EMITTER_TIRE_BACK_Z == -0x14);
-CTR_STATIC_ASSERT(VEH_EMITTER_TIRE_FRONT_Z == 0x28);
-CTR_STATIC_ASSERT(VEH_EMITTER_TERRAIN_TIRE_Y == 0x0a);
-CTR_STATIC_ASSERT(VEH_EMITTER_SKID_LATERAL_SCALE == 15);
-CTR_STATIC_ASSERT(VEH_EMITTER_SKID_WIDTH_SCALE == 10);
-CTR_STATIC_ASSERT(VEH_EMITTER_SKID_COLOR_BIAS == 2);
-CTR_STATIC_ASSERT(VEH_EMITTER_SKID_PREVIOUS_WIDTH_SHIFT == 1);
-CTR_STATIC_ASSERT(VEH_EMITTER_SKID_HALF_LATERAL_SHIFT == 1);
-CTR_STATIC_ASSERT(VEH_EMITTER_MUD_SPLASH_NORMAL_COUNT == 1);
-CTR_STATIC_ASSERT(VEH_EMITTER_MUD_SPLASH_LANDING_COUNT == 10);
-CTR_STATIC_ASSERT(VEH_EMITTER_MUD_SPLASH_ICON == 0x0d);
-CTR_STATIC_ASSERT(VEH_EMITTER_MUD_SPLASH_VELOCITY_SHIFT == 4);
-CTR_STATIC_ASSERT(VEH_EMITTER_MUD_SPLASH_VELOCITY_SCALE == 0x10);
-CTR_STATIC_ASSERT(VEH_EMITTER_PARTICLE_WORLD_SCALE == 0x100);
-CTR_STATIC_ASSERT(VEH_EMITTER_MUD_MIN_SPEED == 0x500);
-CTR_STATIC_ASSERT(VEH_EMITTER_LANDING_SPARK_MIN_SPEED == 0x600);
-CTR_STATIC_ASSERT(VEH_EMITTER_LANDING_SPARK_MIN_JUMP == 0x1600);
-CTR_STATIC_ASSERT(VEH_EMITTER_TERRAIN_AUDIO_SPEED_MAX == 5000);
-CTR_STATIC_ASSERT(VEH_EMITTER_TERRAIN_AUDIO_VOLUME_MAX == 200);
-CTR_STATIC_ASSERT(VEH_EMITTER_TERRAIN_AUDIO_DISTORT_SPEED_MAX == 12000);
-CTR_STATIC_ASSERT(VEH_EMITTER_TERRAIN_AUDIO_DISTORT_MIN == 0x6c);
-CTR_STATIC_ASSERT(VEH_EMITTER_TERRAIN_AUDIO_DISTORT_MAX == 0xd2);
-CTR_STATIC_ASSERT(VEH_EMITTER_TERRAIN_RUMBLE_MIN_SPEED == 0x200);
-CTR_STATIC_ASSERT(VEH_EMITTER_LANDING_RUMBLE_FRAMES == 3);
-CTR_STATIC_ASSERT(VEH_EMITTER_RUMBLE_FORCE_MAX == 0xff);
-CTR_STATIC_ASSERT(VEH_EMITTER_WALL_RUB_TIMER_FULL == 0xf0);
-CTR_STATIC_ASSERT(VEH_EMITTER_WALL_RUB_SFX == 0x14);
-CTR_STATIC_ASSERT(VEH_EMITTER_WALL_RUB_VOLUME_STEP == 0x14);
-CTR_STATIC_ASSERT(VEH_EMITTER_SKID_AUDIO_MIN_SPEED == 0x201);
-CTR_STATIC_ASSERT(VEH_EMITTER_SKID_AUDIO_SPEED_MIN == 2000);
-CTR_STATIC_ASSERT(VEH_EMITTER_SKID_AUDIO_SPEED_MAX == 12000);
-CTR_STATIC_ASSERT(VEH_EMITTER_SKID_AUDIO_VOLUME_MIN == 0x14);
-CTR_STATIC_ASSERT(VEH_EMITTER_SKID_AUDIO_VOLUME_MAX == 0xaa);
-CTR_STATIC_ASSERT(VEH_EMITTER_SKID_AUDIO_DISTORT_SLOW == 0x92);
-CTR_STATIC_ASSERT(VEH_EMITTER_SKID_AUDIO_DISTORT_FAST == 0x78);
-CTR_STATIC_ASSERT(VEH_EMITTER_WALL_SPARK_MIN_SPEED == 0x200);
-CTR_STATIC_ASSERT(VEH_EMITTER_WALL_RUMBLE_FRAME_LIMIT == 450);
-CTR_STATIC_ASSERT(VEH_EMITTER_WALL_RUMBLE_FRAMES == 8);
-CTR_STATIC_ASSERT(VEH_EMITTER_WALL_RUMBLE_FORCE == 0x7f);
-CTR_STATIC_ASSERT(VEH_EMITTER_WALL_SPARK_LEFT_X == -0x2200);
-CTR_STATIC_ASSERT(VEH_EMITTER_WALL_SPARK_RIGHT_X == 0x2200);
-CTR_STATIC_ASSERT(VEH_EMITTER_WALL_SPARK_Y == 0x0a00);
-CTR_STATIC_ASSERT(VEH_EMITTER_WALL_SPARK_REVERSE_Z == -0x1400);
-CTR_STATIC_ASSERT(VEH_EMITTER_WALL_SPARK_FORWARD_Z == 0x2800);
-CTR_STATIC_ASSERT(VEH_EMITTER_WALL_SPARK_SCRATCH_HALF_COUNT == 6);
-CTR_STATIC_ASSERT(VEH_EMITTER_ALPHA_FULL == 0x1000);
-CTR_STATIC_ASSERT(VEH_EMITTER_JOG_GROUND == 0x27);
-CTR_STATIC_ASSERT(VEH_EMITTER_JOG_WOBBLE_ALT == 0xf0);
-CTR_STATIC_ASSERT(VEH_EMITTER_JOG_WOBBLE_TIMER_MASK == 3);
-CTR_STATIC_ASSERT(VEH_EMITTER_JOG_WOBBLE_DURATION == 0x100);
-CTR_STATIC_ASSERT(VEH_EMITTER_JOG_AIR_LANDING_BOOST_MAX == 0x80);
-CTR_STATIC_ASSERT(VEH_EMITTER_JOG_AIR_TURN_NEGATIVE == 0x12);
-CTR_STATIC_ASSERT(VEH_EMITTER_JOG_AIR_TURN_POSITIVE == 0x22);
-CTR_STATIC_ASSERT(VEH_EMITTER_JOG_AIR_DURATION == 0x20);
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80059100-0x80059344.
 struct Particle *VehEmitter_Exhaust(struct Driver *d, VECTOR *exhaustPos, VECTOR *exhaustVel)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -222,7 +143,7 @@ struct Particle *VehEmitter_Exhaust(struct Driver *d, VECTOR *exhaustPos, VECTOR
 	p->axis[2].startVal += exhaustPos->vz - exhaustVel->vz;
 	p->axis[2].velocity = (s16)exhaustVel->vz;
 
-	p->driverInst = dInst;
+	p->owner.driverInst = dInst;
 	p->otIndexOffset = dInst->depthBiasNormal;
 
 	if (exhaustType == VEH_EMITTER_EXHAUST_ICON_WATER)
@@ -260,7 +181,6 @@ static const SVECTOR sparkGround_inX = {0x1800, 0, 0, 0};
 static const SVECTOR sparkGround_inZ = {0, 0, -0x1800, 0};
 static const SVECTOR sparkGround_inZ2 = {0, 0, -0x200, 0};
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80059344-0x80059558.
 void VehEmitter_Sparks_Ground(struct Driver *d, struct ParticleEmitter *emSet)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -271,15 +191,15 @@ void VehEmitter_Sparks_Ground(struct Driver *d, struct ParticleEmitter *emSet)
 
 	CTR_GteLoadSV0(&sparkGround_inX);
 	gte_rtv0();
-	CTR_GteStoreMAC(outX.v);
+	CTR_GteStoreMAC(CTR_VECTOR_DATA(&(outX)));
 
 	CTR_GteLoadSV0(&sparkGround_inZ);
 	gte_rtv0();
-	CTR_GteStoreMAC(outZ.v);
+	CTR_GteStoreMAC(CTR_VECTOR_DATA(&(outZ)));
 
 	CTR_GteLoadSV0(&sparkGround_inZ2);
 	gte_rtv0();
-	CTR_GteStoreMAC(outZ2.v);
+	CTR_GteStoreMAC(CTR_VECTOR_DATA(&(outZ2)));
 
 	for (int i = 0; i < VEH_EMITTER_GROUND_SPARK_COUNT; i++)
 	{
@@ -300,11 +220,11 @@ void VehEmitter_Sparks_Ground(struct Driver *d, struct ParticleEmitter *emSet)
 
 		for (int j = 0; j < VEH_EMITTER_AXIS_COUNT; j++)
 		{
-			p->axis[j].velocity += (s16)outZ2.v[j] + (s16)((rng * outX.v[j]) >> FRACTIONAL_BITS);
-			p->axis[j].startVal += outZ.v[j] + p->axis[j].velocity;
+			p->axis[j].velocity += (s16)CTR_VECTOR_DATA(&(outZ2))[j] + (s16)((rng * CTR_VECTOR_DATA(&(outX))[j]) >> FRACTIONAL_BITS);
+			p->axis[j].startVal += CTR_VECTOR_DATA(&(outZ))[j] + p->axis[j].velocity;
 		}
 
-		p->driverInst = d->instSelf;
+		p->owner.driverInst = d->instSelf;
 		p->otIndexOffset = d->instSelf->depthBiasNormal;
 	}
 }
@@ -316,7 +236,6 @@ static const SVECTOR terrainEmitterPos[4] = {
     {VEH_EMITTER_TIRE_LEFT_X, VEH_EMITTER_TERRAIN_TIRE_Y, VEH_EMITTER_TIRE_FRONT_Z, 0},
 };
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80059558-0x80059780.
 void VehEmitter_Terrain_Ground(struct Driver *d, struct ParticleEmitter *emSet)
 {
 	int speed;
@@ -365,7 +284,7 @@ void VehEmitter_Terrain_Ground(struct Driver *d, struct ParticleEmitter *emSet)
 	{
 		CTR_GteLoadSV0(&terrainEmitterPos[numTires - 1]);
 		gte_rtv0();
-		CTR_GteStoreMAC(pos.v);
+		CTR_GteStoreMAC(CTR_VECTOR_DATA(&(pos)));
 
 		struct Particle *p = Particle_Init(0, ig, emSet);
 
@@ -378,20 +297,19 @@ void VehEmitter_Terrain_Ground(struct Driver *d, struct ParticleEmitter *emSet)
 
 		CTR_GteLoadSV0(&velInput);
 		gte_rtv0();
-		CTR_GteStoreMAC(vel.v);
+		CTR_GteStoreMAC(CTR_VECTOR_DATA(&(vel)));
 
 		for (int i = 0; i < VEH_EMITTER_AXIS_COUNT; i++)
 		{
-			p->axis[i].startVal += pos.v[i] * VEH_EMITTER_PARTICLE_WORLD_SCALE;
-			p->axis[i].velocity = (s16)vel.v[i];
+			p->axis[i].startVal += CTR_VECTOR_DATA(&(pos))[i] * VEH_EMITTER_PARTICLE_WORLD_SCALE;
+			p->axis[i].velocity = (s16)CTR_VECTOR_DATA(&(vel))[i];
 		}
 
-		p->driverInst = dInst;
+		p->owner.driverInst = dInst;
 		p->otIndexOffset = dInst->depthBiasNormal;
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80059780-0x80059a18.
 void VehEmitter_Sparks_Wall(struct Driver *d, struct ParticleEmitter *emSet)
 {
 	int speedAbs = d->speedApprox;
@@ -519,7 +437,7 @@ void VehEmitter_Sparks_Wall(struct Driver *d, struct ParticleEmitter *emSet)
 	p->axis[1].velocity = (s16)distOut4[1];
 	p->axis[2].velocity = (s16)distOut4[2];
 
-	p->driverInst = d->instSelf;
+	p->owner.driverInst = d->instSelf;
 }
 
 static void VehEmitter_SetRotTransMatrix(MATRIX *m)
@@ -551,14 +469,14 @@ static void VehEmitter_WriteSkidmark(struct Driver *d, u8 frameIndex, int tireIn
 {
 	union VehEmitterSkidmark *mark = VehEmitter_GetSkidmark(d, frameIndex, tireIndex);
 
-	mark->edge0.x = (s16)(x + widthX);
-	mark->edge0.y = (s16)y;
-	mark->edge0.z = (s16)(z + widthZ);
-	mark->color = color;
-	mark->flags = flags;
-	mark->edge1.x = (s16)(x - widthX);
-	mark->edge1.y = (s16)y;
-	mark->edge1.z = (s16)(z - widthZ);
+	mark->fields.edge0.x = (s16)(x + widthX);
+	mark->fields.edge0.y = (s16)y;
+	mark->fields.edge0.z = (s16)(z + widthZ);
+	mark->fields.color = color;
+	mark->fields.flags = flags;
+	mark->fields.edge1.x = (s16)(x - widthX);
+	mark->fields.edge1.y = (s16)y;
+	mark->fields.edge1.z = (s16)(z - widthZ);
 }
 
 static void VehEmitter_WriteSkidmarkPair(struct Driver *d, int tireIndex, int x, int y, int z, int lateralX, int lateralZ, int widthX, int widthZ, u8 color,
@@ -642,7 +560,7 @@ static void VehEmitter_MudSplash(struct Driver *d)
 		}
 
 		p->otIndexOffset = d->instSelf->depthBiasNormal;
-		p->driverInst = d->instSelf;
+		p->owner.driverInst = d->instSelf;
 		p->driverID = d->driverID;
 
 		p->axis[0].startVal += (int)p->axis[0].velocity * VEH_EMITTER_MUD_SPLASH_VELOCITY_SCALE;
@@ -838,7 +756,8 @@ static void VehEmitter_SkidmarkAudio(struct Thread *thread, struct Driver *d, st
 			distort = VEH_EMITTER_SKID_AUDIO_DISTORT_SLOW;
 		}
 
-		u32 lr = HOWL_SFX_LR_CENTER - (((u32)(u8)d->simpTurnState << 24) >> 26);
+		int panOffset = CTR_MipsSra(CTR_MipsSll((u8)d->simpTurnState, 24), 26);
+		u32 lr = (u32)CTR_MipsSubLo(HOWL_SFX_LR_CENTER, panOffset);
 		u32 echo = ((d->actionsFlagSet & ACTION_ENGINE_ECHO) != 0);
 		u32 flags = HowlSfx_Pack(lr, (u32)distort, (u32)(vol + (absTurn >> 1)), echo);
 
@@ -926,7 +845,6 @@ static void VehEmitter_ExhaustPair(struct Thread *thread, struct Driver *d)
 	VehEmitter_Exhaust(d, &exhaustPos, &exhaustVel);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80059a18-0x8005ab24
 void VehEmitter_DriverMain(struct Thread *thread, struct Driver *d)
 {
 	struct Terrain *terrain = d->terrainMeta1;

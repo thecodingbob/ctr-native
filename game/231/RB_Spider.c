@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b95fc-0x800b9848.
 void RB_Spider_DrawWebs(struct Thread *t, struct PushBuffer *pb)
 {
 	typedef struct
@@ -145,7 +144,6 @@ s16 spiderArr[] = {
     // next 13
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b9848-0x800b9bc0.
 
 void RB_Spider_ThTick(struct Thread *t)
 {
@@ -300,7 +298,6 @@ checkCollision:
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b9bc0-0x800b9bd4.
 
 int RB_Spider_ThCollide(struct Thread *spiderThread, struct Thread *driverTh, void *funcThCollide, struct ScratchpadStruct *sps)
 {
@@ -311,7 +308,6 @@ int RB_Spider_ThCollide(struct Thread *spiderThread, struct Thread *driverTh, vo
 	return sps->Input1.modelID == DYNAMIC_PLAYER;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b9bd4-0x800b9dd8.
 
 void RB_Spider_LInB(struct Instance *inst)
 {

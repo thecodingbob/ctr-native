@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80021da0-0x80021e1c.
 void CTR_unknownMaybeThunk1(void *dst, void *src)
 {
 	u8 *out = (u8 *)dst;
@@ -39,7 +38,6 @@ void CTR_unknownMaybeThunk1(void *dst, void *src)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80021e1c-0x80021ea8.
 void CTR_unknownMaybeThunk2(void *dst, void *src)
 {
 	u8 *out = (u8 *)dst;
@@ -78,7 +76,6 @@ void CTR_unknownMaybeThunk2(void *dst, void *src)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80021ea8-0x80021edc.
 void CTR_unknownMaybeThunk3(void *dst, void *src, int byteCount)
 {
 	u32 *out = (u32 *)dst;

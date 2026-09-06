@@ -7,7 +7,7 @@
 #ifndef LIBCD_H
 #define LIBCD_H
 
-#include <stdint.h>
+#include <macros.h>
 
 #define DECODE_BCD(x)    (((x) >> 4) * 10 + ((x) & 0xF))
 #define ENCODE_BCD(x)    ((((x) / 10) << 4) | ((x) % 10))
@@ -80,14 +80,14 @@
  * Library Macros
  */
 #ifndef btoi
-#define btoi(b) ((b) / 16 * 10 + (b) % 16) /* BCD to uint8_t */
+#define btoi(b) ((b) / 16 * 10 + (b) % 16) /* BCD to u8 */
 #endif
 #ifndef itob
-#define itob(i) ((i) / 10 * 16 + (i) % 10) /* uint8_t to BCD */
+#define itob(i) ((i) / 10 * 16 + (i) % 10) /* u8 to BCD */
 #endif
 
-#define CdSeekL(p)   CdControl(CdlSeekL, (uint8_t *)p, 0)
-#define CdSeekP(p)   CdControl(CdlSeekP, (uint8_t *)p, 0)
+#define CdSeekL(p)   CdControl(CdlSeekL, (u8 *)p, 0)
+#define CdSeekP(p)   CdControl(CdlSeekP, (u8 *)p, 0)
 #define CdStandby()  CdControl(CdlStandby, 0, 0)
 #define CdPause()    CdControl(CdlPause, 0, 0)
 #define CdStop()     CdControl(CdlStop, 0, 0)
@@ -105,17 +105,17 @@
  *	Callback
  */
 
-typedef void (*CdlCB)(uint8_t, uint8_t *);
+typedef void (*CdlCB)(u8, u8 *);
 
 /*
  *	Location
  */
 typedef struct
 {
-	uint8_t minute; /* minute (BCD) */
-	uint8_t second; /* second (BCD) */
-	uint8_t sector; /* sector (BCD) */
-	uint8_t track;  /* track (void) */
+	u8 minute; /* minute (BCD) */
+	u8 second; /* second (BCD) */
+	u8 sector; /* sector (BCD) */
+	u8 track;  /* track (void) */
 } CdlLOC;
 
 /*
@@ -123,9 +123,9 @@ typedef struct
  */
 typedef struct
 {
-	uint8_t file; /* file ID (always 1) */
-	uint8_t chan; /* channel ID */
-	uint16_t pad;
+	u8 file; /* file ID (always 1) */
+	u8 chan; /* channel ID */
+	u16 pad;
 } CdlFILTER;
 
 /*
@@ -133,10 +133,10 @@ typedef struct
  */
 typedef struct
 {
-	uint8_t val0; /* volume for CD(L) -> SPU (L) */
-	uint8_t val1; /* volume for CD(L) -> SPU (R) */
-	uint8_t val2; /* volume for CD(R) -> SPU (L) */
-	uint8_t val3; /* volume for CD(R) -> SPU (R) */
+	u8 val0; /* volume for CD(L) -> SPU (L) */
+	u8 val1; /* volume for CD(L) -> SPU (R) */
+	u8 val2; /* volume for CD(R) -> SPU (L) */
+	u8 val3; /* volume for CD(R) -> SPU (R) */
 } CdlATV;
 
 /*
@@ -149,7 +149,7 @@ typedef struct
 typedef struct
 {
 	CdlLOC pos;    /* file location */
-	uint32_t size; /* file size */
+	u32 size;      /* file size */
 	char name[16]; /* file name (body) */
 } CdlFILE;
 
@@ -165,17 +165,17 @@ typedef struct
  */
 typedef struct
 {
-	uint16_t id;
-	uint16_t type;
-	uint16_t secCount;
-	uint16_t nSectors;
-	uint32_t frameCount;
-	uint32_t frameSize;
+	u16 id;
+	u16 type;
+	u16 secCount;
+	u16 nSectors;
+	u32 frameCount;
+	u32 frameSize;
 
-	uint16_t width;
-	uint16_t height;
-	uint32_t dummy1;
-	uint32_t dummy2;
+	u16 width;
+	u16 height;
+	u32 dummy1;
+	u32 dummy2;
 	CdlLOC loc;
 } StHEADER; /* CD-ROM STR structure */
 
@@ -201,29 +201,29 @@ typedef struct
 #define StMOVIE_HEIGHT  0x09
 
 
-void StSetRing(uint32_t *ring_addr, uint32_t ring_size);
+void StSetRing(u32 *ring_addr, u32 ring_size);
 void StClearRing(void);
 void StUnSetRing(void);
-void StSetStream(uint32_t mode, uint32_t start_frame, uint32_t end_frame, void (*func1)(), void (*func2)());
-void StSetEmulate(uint32_t *addr, uint32_t mode, uint32_t start_frame, uint32_t end_frame, void (*func1)(), void (*func2)());
-uint32_t StFreeRing(uint32_t *base);
-uint32_t StGetNext(uint32_t **addr, StHEADER **header);
-uint32_t StGetNextS(uint32_t **addr, StHEADER **header);
-uint16_t StNextStatus(uint32_t **addr, StHEADER **header);
+void StSetStream(u32 mode, u32 start_frame, u32 end_frame, void (*func1)(), void (*func2)());
+void StSetEmulate(u32 *addr, u32 mode, u32 start_frame, u32 end_frame, void (*func1)(), void (*func2)());
+u32 StFreeRing(u32 *base);
+u32 StGetNext(u32 **addr, StHEADER **header);
+u32 StGetNextS(u32 **addr, StHEADER **header);
+u16 StNextStatus(u32 **addr, StHEADER **header);
 void StRingStatus(short *free_sectors, short *over_sectors);
-void StSetMask(uint32_t mask, uint32_t start, uint32_t end);
+void StSetMask(u32 mask, u32 start, u32 end);
 void StCdInterrupt(void);
 int StGetBackloc(CdlLOC *loc);
-int StSetChannel(uint32_t channel);
+int StSetChannel(u32 channel);
 
 void CdFlush(void);
 CdlFILE *CdSearchFile(CdlFILE *fp, char *name);
 CdlLOC *CdIntToPos(int i, CdlLOC *p);
-char *CdComstr(uint8_t com);
-char *CdIntstr(uint8_t intr);
-int CdControl(uint8_t com, uint8_t *param, uint8_t *result);
-int CdControlB(uint8_t com, uint8_t *param, uint8_t *result);
-int CdControlF(uint8_t com, uint8_t *param);
+char *CdComstr(u8 com);
+char *CdIntstr(u8 intr);
+int CdControl(u8 com, u8 *param, u8 *result);
+int CdControlB(u8 com, u8 *param, u8 *result);
+int CdControlF(u8 com, u8 *param);
 int CdGetSector(void *madr, int size);
 int CdGetSector2(void *madr, int size);
 int CdDataSync(int mode);
@@ -231,13 +231,13 @@ int CdGetToc(CdlLOC *loc);
 int CdPlay(int mode, int *track, int offset);
 int CdMix(CdlATV *vol);
 int CdPosToInt(CdlLOC *p);
-int CdRead(int sectors, uint32_t *buf, int mode);
+int CdRead(int sectors, u32 *buf, int mode);
 int CdRead2(int mode);
-int CdReadFile(char *file, uint32_t *addr, int nbyte);
-int CdReadSync(int mode, uint8_t *result);
-int CdReady(int mode, uint8_t *result);
+int CdReadFile(char *file, u32 *addr, int nbyte);
+int CdReadSync(int mode, u8 *result);
+int CdReady(int mode, u8 *result);
 int CdSetDebug(int level);
-int CdSync(int mode, uint8_t *result);
+int CdSync(int mode, u8 *result);
 void(*CdDataCallback(void (*func)()));
 CdlCB CdReadCallback(CdlCB func);
 CdlCB CdReadyCallback(CdlCB func);

@@ -1,15 +1,15 @@
 #include <common.h>
 
-void GetPrimitiveMem(void **ppPrim, size_t primSize)
+void GetPrimitiveMem(void **ppPrim, u32 primSize)
 {
 	struct DB *backBuffer = sdata->gGT->backBuffer;
 	if (backBuffer->primMem.cursor <= backBuffer->primMem.guardEnd)
 	{
 		*ppPrim = backBuffer->primMem.cursor;
 
-		backBuffer->primMem.cursor = (void *)((size_t)backBuffer->primMem.cursor + primSize);
+		backBuffer->primMem.cursor = (void *)((u32)backBuffer->primMem.cursor + primSize);
 
-		((Tag *)*ppPrim)->size = (primSize - sizeof(Tag)) / sizeof(u32);
+		((Tag *)*ppPrim)->bits.size = (primSize - sizeof(Tag)) / sizeof(u32);
 	}
 	else
 	{

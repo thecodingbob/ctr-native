@@ -23,38 +23,21 @@ enum
 static const u32 VEH_GROUND_SKIDS_TPAGE_BLEND_MASK = 0xff9fffff;
 static const u32 VEH_GROUND_SKIDS_COLOR_SENTINEL = 0xffffffffu;
 
-CTR_STATIC_ASSERT(VEH_GROUND_SKIDS_ICON_TIREMARK == 0x2f);
-CTR_STATIC_ASSERT(VEH_GROUND_SKIDS_ALT_TPAGE_FLAG == 0x1);
-CTR_STATIC_ASSERT(VEH_GROUND_SKIDS_TPAGE_BLEND_ALT == 0x00600000);
-CTR_STATIC_ASSERT(VEH_GROUND_SKIDS_TPAGE_BLEND_NORMAL == 0x00400000);
-CTR_STATIC_ASSERT(VEH_GROUND_SKIDS_GPU_TAG_POLY_GT4 == 0x0c000000u);
-CTR_STATIC_ASSERT(VEH_GROUND_SKIDS_OT_DEPTH_SHIFT == 6);
-CTR_STATIC_ASSERT(VEH_GROUND_SKIDS_PROJECT_SCALE_SHIFT == 2);
-CTR_STATIC_ASSERT(VEH_GROUND_SKIDS_CULL_ABS_MAX == 0x1771);
-CTR_STATIC_ASSERT(VEH_GROUND_SKIDS_DEPTH_SHIFT == 2);
-CTR_STATIC_ASSERT(VEH_GROUND_SKIDS_FULL_INTENSITY_DEPTH == 0x180);
-CTR_STATIC_ASSERT(VEH_GROUND_SKIDS_FULL_INTENSITY == 0x7f);
-CTR_STATIC_ASSERT(VEH_GROUND_SKIDS_LZCR_SHIFT_BASE == 0x1a);
-CTR_STATIC_ASSERT(VEH_GROUND_SKIDS_MIN_INTENSITY == 0x10);
-CTR_STATIC_ASSERT(VEH_GROUND_SKIDS_COLOR_PREFIX == 0x3e000000u);
-CTR_STATIC_ASSERT(VEH_GROUND_SKIDS_MIN_VISIBLE_DEPTH == 0x20);
-CTR_STATIC_ASSERT(VEH_GROUND_SKIDS_COLOR_FADE_SHIFT == 1);
 
-static u32 VehGroundSkids_ReadTexWord(const struct TextureLayout *layout, size_t offset)
+static u32 VehGroundSkids_ReadTexWord(const struct TextureLayout *layout, u32 offset)
 {
 	u32 word;
 	memcpy(&word, (const u8 *)layout + offset, sizeof(word));
 	return word;
 }
 
-static u16 VehGroundSkids_ReadTexHalf(const struct TextureLayout *layout, size_t offset)
+static u16 VehGroundSkids_ReadTexHalf(const struct TextureLayout *layout, u32 offset)
 {
 	u16 half;
 	memcpy(&half, (const u8 *)layout + offset, sizeof(half));
 	return half;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005c120-0x8005c278.
 void VehGroundSkids_Subset1(u32 *currXY, u32 *prevXY, int depth, struct VehGroundSkidsScratch *scratch)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -83,7 +66,7 @@ void VehGroundSkids_Subset1(u32 *currXY, u32 *prevXY, int depth, struct VehGroun
 	CtrGpu_WritePackedUVWord(&poly->u0, VehGroundSkids_ReadTexWord(&icon->texLayout, offsetof(struct TextureLayout, u0)));
 
 	u32 tpage = VehGroundSkids_ReadTexWord(&icon->texLayout, offsetof(struct TextureLayout, u1));
-	if ((scratch->segmentFlags & VEH_GROUND_SKIDS_ALT_TPAGE_FLAG) != 0)
+	if ((scratch->segment.segmentFlags & VEH_GROUND_SKIDS_ALT_TPAGE_FLAG) != 0)
 	{
 		tpage = (tpage & VEH_GROUND_SKIDS_TPAGE_BLEND_MASK) | VEH_GROUND_SKIDS_TPAGE_BLEND_ALT;
 	}
@@ -107,7 +90,6 @@ static s16 VehGroundSkids_ScaleRelative(u16 value, u16 origin)
 	return (s16)(u16)(((u32)value - (u32)origin) << VEH_GROUND_SKIDS_PROJECT_SCALE_SHIFT);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005c278-0x8005c354.
 void VehGroundSkids_Subset2(struct VehGroundSkidsScratch *scratch, const SVECTOR *v1, const SVECTOR *v2, const SVECTOR *v3)
 {
 	u16 originX = (u16)scratch->origin.x;
@@ -188,7 +170,7 @@ static int VehGroundSkids_IntensityFromDepth(int depth)
 	return intensity;
 }
 
-force_inline void VehGroundSkids_ProjectTriplet(struct VehGroundSkidsScratch *scratch, const SVECTOR *frame, u32 *sxy, s32 *depth)
+static void VehGroundSkids_ProjectTriplet(struct VehGroundSkidsScratch *scratch, const SVECTOR *frame, u32 *sxy, s32 *depth)
 {
 	VehGroundSkids_Subset2(scratch, &frame[0], &frame[1], &frame[2]);
 	CTR_GteLoadSV3(&scratch->projected[0], &scratch->projected[1], &scratch->projected[2]);
@@ -225,12 +207,11 @@ static void VehGroundSkids_TryEmitSegment(struct VehGroundSkidsScratch *scratch,
 		return;
 	}
 
-	scratch->segmentFlagsLow = mark->flags;
-	int depth = (currDepth[pointIndex] >> VEH_GROUND_SKIDS_DEPTH_SHIFT) + (mark->color << VEH_GROUND_SKIDS_OT_DEPTH_SHIFT);
+	scratch->segment.bytes.segmentFlagsLow = mark->fields.flags;
+	int depth = (currDepth[pointIndex] >> VEH_GROUND_SKIDS_DEPTH_SHIFT) + (mark->fields.color << VEH_GROUND_SKIDS_OT_DEPTH_SHIFT);
 	VehGroundSkids_Subset1(&currXY[pointIndex], &prevXY[pointIndex], depth, scratch);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005c354-0x8005ca24.
 void VehGroundSkids_Main(struct Thread *thread, struct PushBuffer *pb)
 {
 	gte_SetGeomOffset(pb->rect.w >> 1, pb->rect.h >> 1);
@@ -261,7 +242,7 @@ void VehGroundSkids_Main(struct Thread *thread, struct PushBuffer *pb)
 			union VehEmitterSkidmark *frame = d->skidmarks[frameIndex];
 			SVECTOR *framePoints = &frame[0].edge[0];
 
-			if (VehGroundSkids_InitPoint(scratch->projected, &framePoints[0], scratch->origin.v))
+			if (VehGroundSkids_InitPoint(scratch->projected, &framePoints[0], CTR_VECTOR_DATA(&(scratch->origin))))
 			{
 				CTR_GteLoadSV0(&scratch->projected[0]);
 				gte_rtv0();

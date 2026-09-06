@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80032498-0x8003254c
 int LOAD_HowlHeaderSectors(CdlFILE *cdlFileHWL, void *ptrDestination, int firstSector, int numSector)
 {
 	CdlLOC loc;
@@ -32,7 +31,6 @@ int LOAD_HowlHeaderSectors(CdlFILE *cdlFileHWL, void *ptrDestination, int firstS
 	return 1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003254c-0x80032594.
 void LOAD_HowlCallback(u8 result, u8 *unk)
 {
 	(void)unk;
@@ -49,7 +47,6 @@ void LOAD_HowlCallback(u8 result, u8 *unk)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80032594-0x8003266c
 int LOAD_HowlSectorChainStart(CdlFILE *cdlFileHWL, void *ptrDestination, int firstSector, int numSector)
 {
 	CdlLOC loc;
@@ -85,7 +82,6 @@ int LOAD_HowlSectorChainStart(CdlFILE *cdlFileHWL, void *ptrDestination, int fir
 	return (CdRead(numSector, ptrDestination, CdlModeSpeed) != 0);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003266c-0x800326b4.
 int LOAD_HowlSectorChainEnd()
 {
 	int *howlChainParams;

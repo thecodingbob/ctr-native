@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800abcac-0x800ac178.
 void MM_Title_MenuUpdate(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -50,7 +49,7 @@ void MM_Title_MenuUpdate(void)
 		D230.menuMainMenu.state &= ~(DISABLE_INPUT_ALLOW_FUNCPTRS);
 		D230.menuMainMenu.state |= EXECUTE_FUNCPTR;
 
-		MM_TransitionInOut(D230.transitionMeta_Menu, D230.titleMenuTransitionFrame, D230.titleMenuTransitionStep);
+		MM_TransitionInOut(D230.titleTransitions.transitionMeta_Menu, D230.titleMenuTransitionFrame, D230.titleMenuTransitionStep);
 
 		// If the animation ends
 		if (D230.titleMenuTransitionFrame == 0)
@@ -83,7 +82,7 @@ void MM_Title_MenuUpdate(void)
 
 		// assume D230.titleMenuState = TITLE_MENU_STATE_RETURNING
 		// if you are returning from another menu
-		MM_TransitionInOut(D230.transitionMeta_Menu, D230.titleMenuTransitionFrame, D230.titleMenuTransitionStep);
+		MM_TransitionInOut(D230.titleTransitions.transitionMeta_Menu, D230.titleMenuTransitionFrame, D230.titleMenuTransitionStep);
 
 		// If "fade-in" animation from other menu is done
 		if (D230.titleMenuTransitionFrame == 0)
@@ -104,7 +103,7 @@ void MM_Title_MenuUpdate(void)
 	// assume D230.titleMenuState = TITLE_MENU_STATE_EXITING
 	// If you are transitioning out
 
-	MM_TransitionInOut(D230.transitionMeta_Menu, D230.titleMenuTransitionFrame, D230.titleMenuTransitionStep);
+	MM_TransitionInOut(D230.titleTransitions.transitionMeta_Menu, D230.titleMenuTransitionFrame, D230.titleMenuTransitionStep);
 
 	// Increment frame timer, increase time left in "fade-in"
 	// animation, which plays it in reverse, as "fade-out"
@@ -191,7 +190,7 @@ void MM_Title_MenuUpdate(void)
 			gGT->boolDemoMode = 1;
 
 			// set number of players to 1
-			gGT->numPlyrCurrGame = 1;
+			gGT->numPlyrNextGame = 1;
 
 			gGT->demoCountdownTimer = TITLE_DEMO_RACE_FRAMES;
 
@@ -240,26 +239,25 @@ END_FUNCTION:
 	}
 	else
 	{
-		D230.titleCameraPos.x = D230.titleBaseCameraPos.x + D230.titleCameraXYTransition.currX;
-		D230.titleCameraPos.y = D230.titleBaseCameraPos.y + D230.titleCameraXYTransition.currY;
-		D230.titleCameraPos.z = D230.titleBaseCameraPos.z + D230.titleCameraZTransition.currX;
+		D230.titleCameraPos.x = D230.titleBaseCameraPos.x + D230.titleTransitions.named.titleCameraXYTransition.currX;
+		D230.titleCameraPos.y = D230.titleBaseCameraPos.y + D230.titleTransitions.named.titleCameraXYTransition.currY;
+		D230.titleCameraPos.z = D230.titleBaseCameraPos.z + D230.titleTransitions.named.titleCameraZTransition.currX;
 	}
 
-	D230.menuMainMenu.posX_curr = D230.titleMainMenuPos.x + D230.titleMainMenuTransition.currX;
-	D230.menuMainMenu.posY_curr = D230.titleMainMenuPos.y + D230.titleMainMenuTransition.currY;
-	D230.menuAdventure.posX_curr = D230.titleAdventureMenuPos.x + D230.titleAdventureTransition.currX;
-	D230.menuAdventure.posY_curr = D230.titleAdventureMenuPos.y + D230.titleAdventureTransition.currY;
-	D230.menuRaceType.posX_curr = D230.titleRaceTypeMenuPos.x + D230.titleRaceTypeTransition.currX;
-	D230.menuRaceType.posY_curr = D230.titleRaceTypeMenuPos.y + D230.titleRaceTypeTransition.currY;
-	D230.menuPlayers1P2P.posX_curr = D230.titlePlayersMenuPos.x + D230.titlePlayersTransition.currX;
-	D230.menuPlayers1P2P.posY_curr = D230.titlePlayersMenuPos.y + D230.titlePlayersTransition.currY;
-	D230.menuPlayers2P3P4P.posX_curr = D230.titlePlayersMenuPos.x + D230.titlePlayersTransition.currX;
-	D230.menuPlayers2P3P4P.posY_curr = D230.titlePlayersMenuPos.y + D230.titlePlayersTransition.currY;
-	D230.menuDifficulty.posX_curr = D230.titleDifficultyMenuPos.x + D230.titleDifficultyTransition.currX;
-	D230.menuDifficulty.posY_curr = D230.titleDifficultyMenuPos.y + D230.titleDifficultyTransition.currY;
+	D230.menuMainMenu.posX_curr = D230.titleMainMenuPos.x + D230.titleTransitions.named.titleMainMenuTransition.currX;
+	D230.menuMainMenu.posY_curr = D230.titleMainMenuPos.y + D230.titleTransitions.named.titleMainMenuTransition.currY;
+	D230.menuAdventure.posX_curr = D230.titleAdventureMenuPos.x + D230.titleTransitions.named.titleAdventureTransition.currX;
+	D230.menuAdventure.posY_curr = D230.titleAdventureMenuPos.y + D230.titleTransitions.named.titleAdventureTransition.currY;
+	D230.menuRaceType.posX_curr = D230.titleRaceTypeMenuPos.x + D230.titleTransitions.named.titleRaceTypeTransition.currX;
+	D230.menuRaceType.posY_curr = D230.titleRaceTypeMenuPos.y + D230.titleTransitions.named.titleRaceTypeTransition.currY;
+	D230.menuPlayers1P2P.posX_curr = D230.titlePlayersMenuPos.x + D230.titleTransitions.named.titlePlayersTransition.currX;
+	D230.menuPlayers1P2P.posY_curr = D230.titlePlayersMenuPos.y + D230.titleTransitions.named.titlePlayersTransition.currY;
+	D230.menuPlayers2P3P4P.posX_curr = D230.titlePlayersMenuPos.x + D230.titleTransitions.named.titlePlayersTransition.currX;
+	D230.menuPlayers2P3P4P.posY_curr = D230.titlePlayersMenuPos.y + D230.titleTransitions.named.titlePlayersTransition.currY;
+	D230.menuDifficulty.posX_curr = D230.titleDifficultyMenuPos.x + D230.titleTransitions.named.titleDifficultyTransition.currX;
+	D230.menuDifficulty.posY_curr = D230.titleDifficultyMenuPos.y + D230.titleTransitions.named.titleDifficultyTransition.currY;
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 230 0x800ac94c-0x800ac9fc.
 void MM_Title_KillThread(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -284,7 +282,6 @@ void MM_Title_KillThread(void)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 230 0x800ac178-0x800ac1f0.
 void MM_Title_SetTrophyDPP(void)
 {
 	struct Title *title = D230.titleObj;
@@ -315,7 +312,6 @@ void MM_Title_SetTrophyDPP(void)
 	CTR_WriteU32LE(&idpp1->depthOffset[0], depthOffset);
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 230 0x800ac1f0-0x800ac350.
 void MM_Title_CameraMove(struct Title *title, s32 frameIndex)
 {
 	// after frame 0xe6, make the intro models transition from the center
@@ -329,11 +325,13 @@ void MM_Title_CameraMove(struct Title *title, s32 frameIndex)
 	for (s32 axisIndex = 0; axisIndex < 3; axisIndex++)
 	{
 		// position XYZ
-		gGT->pushBuffer[0].pos.v[axisIndex] =
-		    title->cameraPosOffset.v[axisIndex] + cameraFrame->pos.v[axisIndex] + (s16)((D230.titleCameraPos.v[axisIndex] * result) >> 0xc);
+		CTR_VECTOR_DATA(&(gGT->pushBuffer[0].pos))
+		[axisIndex] = CTR_VECTOR_DATA(&(title->cameraPosOffset))[axisIndex] + CTR_VECTOR_DATA(&(cameraFrame->pos))[axisIndex] +
+		              (s16)((CTR_VECTOR_DATA(&(D230.titleCameraPos))[axisIndex] * result) >> 0xc);
 
 		// rotation XYZ
-		gGT->pushBuffer[0].rot.v[axisIndex] = cameraFrame->rot.v[axisIndex] + (s16)((D230.titleCameraRot.v[axisIndex] * result) >> 0xc);
+		CTR_VECTOR_DATA(&(gGT->pushBuffer[0].rot))
+		[axisIndex] = CTR_VECTOR_DATA(&(cameraFrame->rot))[axisIndex] + (s16)((CTR_VECTOR_DATA(&(D230.titleCameraRot))[axisIndex] * result) >> 0xc);
 	}
 }
 
@@ -381,7 +379,6 @@ static void MM_Title_UpdateTrophySpecLight(struct Instance *titleInst)
 	idpp[0].halfVector.z = (s16)((u16)lightMac.vz + (u16)viewMac.vz);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 overlay 230 0x800ac350-0x800ac6dc.
 void MM_Title_ThTick(struct Thread *title)
 {
 	// frame counters
@@ -408,7 +405,6 @@ void MM_Title_ThTick(struct Thread *title)
 	{
 		if (D230.titleSounds[soundIndex].frameToPlay == timer)
 		{
-			// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac3e8-0x800ac400 for title queued SFX.
 			OtherFX_Play(D230.titleSounds[soundIndex].soundID, 1);
 		}
 	}
@@ -488,7 +484,6 @@ void MM_Title_ThTick(struct Thread *title)
 	D230.titleIntroFrame = timer;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac6dc-0x800ac92c.
 void MM_Title_Init(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -565,7 +560,6 @@ void MM_Title_Init(void)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac92c-0x800ac94c.
 void MM_Title_CameraReset(void)
 {
 	struct Title *title = D230.titleObj;

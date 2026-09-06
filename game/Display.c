@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80023a40-0x80023d4c
 u32 *DISPLAY_Blur_SubFunc(u32 *prim, struct DisplayBlurTile *tile)
 {
 	int srcX = tile->srcX;
@@ -98,7 +97,6 @@ u32 *DISPLAY_Blur_SubFunc(u32 *prim, struct DisplayBlurTile *tile)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80023d4c-0x80023ffc
 void DISPLAY_Blur_Main(struct PushBuffer *pb, int strength)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -106,7 +104,7 @@ void DISPLAY_Blur_Main(struct PushBuffer *pb, int strength)
 	u32 *prim = backBuffer->primMem.cursor;
 	u32 *nextPrim;
 	s8 cameraID;
-	uint32_t *ot;
+	u32 *ot;
 
 	cameraID = *(s8 *)&pb->cameraID;
 
@@ -161,7 +159,7 @@ void DISPLAY_Blur_Main(struct PushBuffer *pb, int strength)
 
 		ot = gGT->otSwapchainDB[gGT->swapchainIndex];
 		oldTag = *ot;
-		*ot = (uint32_t)CtrGpu_PrimToOTLink24(prim);
+		*ot = (u32)CtrGpu_PrimToOTLink24(prim);
 
 		tile->dstX = pb->rect.x;
 		tile->dstY = pb->rect.y;
@@ -185,7 +183,6 @@ void DISPLAY_Blur_Main(struct PushBuffer *pb, int strength)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80023ffc-0x8002406c.
 void DISPLAY_Swap(void)
 {
 	struct GameTracker *gGT;

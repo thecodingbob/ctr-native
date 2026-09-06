@@ -1,7 +1,6 @@
 #include <common.h>
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800314e0-0x800315ac. Retail ignores _objTh.
 struct Instance *LinkedCollide_Radius(struct Instance *objInst, struct Thread *_objTh, struct Thread *thBucket, u32 hitRadius)
 {
 	(void)_objTh;
@@ -45,14 +44,12 @@ struct Instance *LinkedCollide_Radius(struct Instance *objInst, struct Thread *_
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800315ac-0x80031608.
 struct Instance *LinkedCollide_Hitbox_Desc(struct HitboxDesc *objBoxDesc)
 {
 	return LinkedCollide_Hitbox(objBoxDesc->inst, objBoxDesc->thread, objBoxDesc->bucket, objBoxDesc->bbox);
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80031608-0x80031734. Retail ignores _objTh.
 struct Instance *LinkedCollide_Hitbox(struct Instance *objInst, struct Thread *_objTh, struct Thread *thBucket, struct BoundingBox bbox)
 {
 	struct Instance *thInst;

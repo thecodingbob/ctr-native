@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac5e8-0x800ac638.
 // Required to make door open when driver hits potion, or potion shatters due to full MinePool.
 void RB_Potion_OnShatter_TeethCallback(struct ScratchpadStruct *sps, void *hitObject)
 {
@@ -22,7 +21,6 @@ void RB_Potion_OnShatter_TeethCallback(struct ScratchpadStruct *sps, void *hitOb
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac638-0x800ac6b4.
 void RB_Potion_OnShatter_TeethSearch(struct Instance *inst)
 {
 	struct ScratchpadStruct *sps = CTR_SCRATCHPAD_PTR(struct ScratchpadStruct, 0x108);
@@ -40,7 +38,6 @@ void RB_Potion_OnShatter_TeethSearch(struct Instance *inst)
 	PROC_StartSearch_Self(sps);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac6b4-0x800aca50.
 void RB_Potion_ThTick_InAir(struct Thread *t)
 {
 	struct GameTracker *gGT;
@@ -116,7 +113,7 @@ void RB_Potion_ThTick_InAir(struct Thread *t)
 	{
 		if (sps->boolDidTouchQuadblock != 0)
 		{
-			VehPhysForce_RotAxisAngle(&inst->matrix, sps->hit.plane.normal.v, 0);
+			VehPhysForce_RotAxisAngle(&inst->matrix, CTR_VECTOR_DATA(&(sps->hit.plane.normal)), 0);
 
 			hitY = sps->Union.QuadBlockColl.hitPos.y;
 			prevY = inst->matrix.t[1];

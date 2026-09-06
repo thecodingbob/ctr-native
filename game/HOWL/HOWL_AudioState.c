@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002d2f4-0x8002d4cc
 void Audio_SetState(u32 state)
 {
 	u8 XA_type;
@@ -116,7 +115,6 @@ void Audio_SetState(u32 state)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002d4cc-0x8002d50c
 void Audio_SetState_Safe(int state)
 {
 	// If this sound isn't already playing
@@ -131,7 +129,6 @@ void Audio_SetState_Safe(int state)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002d50c-0x8002d554
 void Audio_AdvHub_SwapSong(int levelID)
 {
 	if ((sdata->audioState == AUDIO_ADV_HUB) &&
@@ -142,7 +139,6 @@ void Audio_AdvHub_SwapSong(int levelID)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002d554-0x8002d67c
 void Audio_SetMaskSong(u32 tempo)
 {
 	s32 i;
@@ -196,7 +192,6 @@ void Audio_SetMaskSong(u32 tempo)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002d67c-0x8002dc4c; CTR_NATIVE guards demo null-driver reads.
 void Audio_Update1(void)
 {
 	s32 i;
@@ -521,7 +516,6 @@ void Audio_Update1(void)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002dc4c-0x8002dcac
 void Audio_SetDefaults(void)
 {
 	sdata->audioDefaults[0] = 0;
@@ -546,7 +540,6 @@ void Audio_SetDefaults(void)
 	sdata->SoundFadeInput[1].soundID_soundCount = 0;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002dcac-0x8002dd24
 void Audio_SetReverbMode(int levelID, u32 isBossRace, int bossID)
 {
 	u32 reverb;

@@ -42,14 +42,6 @@ struct Driver *RB_CrateAny_GetDriver(struct Thread *t, struct ScratchpadStruct *
 		// get driver that used the weapon
 		driver = ((struct TrackerWeapon *)t->object)->driverParent;
 
-		// if this is an AI, quit
-
-		// it's odd that it casts "1" as struct Driver*, but callers of this function *do* check the return value == 1, so it must be intentional.
-		if ((driver->actionsFlagSet & ACTION_BOT) != 0)
-		{
-			return (struct Driver *)1;
-		}
-
 		return driver;
 	}
 
@@ -65,7 +57,6 @@ struct Driver *RB_CrateAny_GetDriver(struct Thread *t, struct ScratchpadStruct *
 	return (struct Driver *)1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b3d04-0x800b3d7c.
 void RB_CrateAny_ThTick_Explode(struct Thread *t)
 {
 	// this is an "exploded" crate, with
@@ -137,7 +128,6 @@ static void RB_CrateAny_ExplodeInit(struct Instance *crateInst, int color, b32 r
 	PlaySound3D(0x3c, crateInst);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b3d7c-0x800b3e7c.
 void RB_CrateAny_ThTick_Grow(struct Thread *t)
 {
 	struct Instance *crateInst;
@@ -220,7 +210,6 @@ static struct Thread *RB_CrateAny_LInC_Birth(struct Instance *crateInst, void *f
 	return crateThread;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b3e7c-0x800b4278.
 int RB_CrateWeapon_ThCollide(struct Thread *crateThread, struct Thread *collidingTh, void *funcThCollide, struct ScratchpadStruct *sps)
 {
 	(void)funcThCollide;
@@ -235,13 +224,8 @@ int RB_CrateWeapon_ThCollide(struct Thread *crateThread, struct Thread *collidin
 	crateInst = crateThread->inst;
 	crateObj = ((struct Crate *)crateThread->object);
 
-	if (crateObj->cooldown == 0)
+	if ((crateObj->cooldown == 0) && ((crateInst->scale.x == 0) || (crateInst->scale.x == 0x1000)))
 	{
-		if ((crateInst->scale.x != 0) && (crateInst->scale.x != 0x1000))
-		{
-			return 0;
-		}
-
 		crateObj->cooldown = 0x1e;
 
 		if (crateInst->scale.x == 0x1000)
@@ -250,6 +234,10 @@ int RB_CrateWeapon_ThCollide(struct Thread *crateThread, struct Thread *collidin
 
 			driver = RB_CrateAny_GetDriver(collidingTh, sps);
 			if ((int)driver == 1)
+			{
+				return 1;
+			}
+			if ((driver->actionsFlagSet & ACTION_BOT) != 0)
 			{
 				return 1;
 			}
@@ -323,7 +311,6 @@ int RB_CrateWeapon_ThCollide(struct Thread *crateThread, struct Thread *collidin
 	return 0;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b4278-0x800b432c.
 int RB_CrateWeapon_LInC(struct Instance *crateInst, struct Thread *collidingTh, struct ScratchpadStruct *sps)
 {
 	struct Thread *crateThread;
@@ -346,7 +333,6 @@ int RB_CrateWeapon_LInC(struct Instance *crateInst, struct Thread *collidingTh, 
 	return ((ThreadScratchCollideFunc)crateThread->funcThCollide)(crateThread, collidingTh, crateThread->funcThCollide, sps);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b432c-0x800b471c.
 int RB_CrateFruit_ThCollide(struct Thread *crateThread, struct Thread *collidingTh, void *funcThCollide, struct ScratchpadStruct *sps)
 {
 	(void)funcThCollide;
@@ -363,13 +349,8 @@ int RB_CrateFruit_ThCollide(struct Thread *crateThread, struct Thread *colliding
 	crateInst = crateThread->inst;
 	crateObj = ((struct Crate *)crateThread->object);
 
-	if (crateObj->cooldown == 0)
+	if ((crateObj->cooldown == 0) && ((crateInst->scale.x == 0) || (crateInst->scale.x == 0x1000)))
 	{
-		if ((crateInst->scale.x != 0) && (crateInst->scale.x != 0x1000))
-		{
-			return 0;
-		}
-
 		crateObj->cooldown = 0x1e;
 
 		if (crateInst->scale.x == 0x1000)
@@ -416,7 +397,6 @@ int RB_CrateFruit_ThCollide(struct Thread *crateThread, struct Thread *colliding
 	return 0;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b471c-0x800b47d0.
 int RB_CrateFruit_LInC(struct Instance *crateInst, struct Thread *collidingTh, struct ScratchpadStruct *sps)
 {
 	struct Thread *crateThread;
@@ -439,7 +419,6 @@ int RB_CrateFruit_LInC(struct Instance *crateInst, struct Thread *collidingTh, s
 	return ((ThreadScratchCollideFunc)crateThread->funcThCollide)(crateThread, collidingTh, crateThread->funcThCollide, sps);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b47d0-0x800b4ba8.
 int RB_CrateTime_ThCollide(struct Thread *crateThread, struct Thread *driverTh, void *funcThCollide, struct ScratchpadStruct *sps)
 {
 	(void)funcThCollide;
@@ -456,13 +435,8 @@ int RB_CrateTime_ThCollide(struct Thread *crateThread, struct Thread *driverTh, 
 	crateInst = crateThread->inst;
 	crateObj = ((struct Crate *)crateThread->object);
 
-	if (crateObj->cooldown == 0)
+	if ((crateObj->cooldown == 0) && ((crateInst->scale.x == 0) || (crateInst->scale.x == 0x1000)))
 	{
-		if ((crateInst->scale.x != 0) && (crateInst->scale.x != 0x1000))
-		{
-			return 0;
-		}
-
 		crateObj->cooldown = 0x1e;
 
 		if (crateInst->scale.x == 0x1000)
@@ -531,7 +505,6 @@ int RB_CrateTime_ThCollide(struct Thread *crateThread, struct Thread *driverTh, 
 	return 0;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b4ba8-0x800b4c5c.
 int RB_CrateTime_LInC(struct Instance *crateInst, struct Thread *driverTh, struct ScratchpadStruct *sps)
 {
 	struct Thread *crateThread;

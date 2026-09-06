@@ -12,7 +12,6 @@ enum TimerConstants
 	TIMER_WRAP_MILLISECONDS = 0xc7e18,
 };
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004b31c-0x8004b370.
 void Timer_Init()
 {
 	EnterCriticalSection();
@@ -22,7 +21,6 @@ void Timer_Init()
 	ExitCriticalSection();
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004b370-0x8004b3a4.
 void Timer_Destroy()
 {
 	EnterCriticalSection();
@@ -30,7 +28,6 @@ void Timer_Destroy()
 	ExitCriticalSection();
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004b3a4-0x8004b41c.
 int Timer_GetTime_Total()
 {
 	s32 rcntTotal = sdata->rcntTotalUnits;
@@ -48,7 +45,6 @@ int Timer_GetTime_Total()
 // Usage: elapsed(frameStart, &frameStart)
 // will overwrite new frameStart, and return
 // elapsed time since previous frameStart
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8004b41c-0x8004b470.
 int Timer_GetTime_Elapsed(int oldVal, int *retVal)
 {
 	s32 newVal = Timer_GetTime_Total();

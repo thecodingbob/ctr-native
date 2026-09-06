@@ -41,9 +41,8 @@ internal u32 NativeCheckpointFile_Checksum(const void *src, int size)
 {
 	const u8 *bytes = (const u8 *)src;
 	u32 hash = NATIVE_CHECKPOINT_FILE_FNV_OFFSET;
-	int i;
 
-	for (i = 0; i < size; i++)
+	for (int i = 0; i < size; i++)
 	{
 		hash ^= bytes[i];
 		hash *= NATIVE_CHECKPOINT_FILE_FNV_PRIME;
@@ -79,14 +78,12 @@ internal int NativeCheckpointFile_ValidateHeader(const struct NativeCheckpointFi
 
 internal int NativeCheckpointFile_WriteHeader(FILE *file, const struct NativeCheckpointFileHeader *header)
 {
-	long oldPos;
-
 	if ((file == NULL) || (header == NULL))
 	{
 		return 0;
 	}
 
-	oldPos = ftell(file);
+	long oldPos = ftell(file);
 	if (oldPos < 0)
 	{
 		return 0;
@@ -136,7 +133,6 @@ internal int NativeCheckpointFile_ChecksumStream(FILE *file, u32 payloadSize, u3
 	while (remaining != 0)
 	{
 		u32 chunkSize = remaining;
-		u32 i;
 
 		if (chunkSize > sizeof(buffer))
 		{
@@ -148,7 +144,7 @@ internal int NativeCheckpointFile_ChecksumStream(FILE *file, u32 payloadSize, u3
 			return 0;
 		}
 
-		for (i = 0; i < chunkSize; i++)
+		for (u32 i = 0; i < chunkSize; i++)
 		{
 			hash ^= buffer[i];
 			hash *= NATIVE_CHECKPOINT_FILE_FNV_PRIME;
@@ -164,7 +160,6 @@ internal int NativeCheckpointFile_ChecksumStream(FILE *file, u32 payloadSize, u3
 int NativeCheckpointFile_BeginWrite(struct NativeCheckpointFileWriter *writer, const char *path)
 {
 	struct NativeCheckpointFileHeader header;
-	FILE *file;
 
 	if ((writer == NULL) || (path == NULL))
 	{
@@ -174,7 +169,7 @@ int NativeCheckpointFile_BeginWrite(struct NativeCheckpointFileWriter *writer, c
 	memset(writer, 0, sizeof(*writer));
 	NativeCheckpointFile_InitHeader(&header);
 
-	file = fopen(path, "wb+");
+	FILE *file = fopen(path, "wb+");
 	if (file == NULL)
 	{
 		return 0;
@@ -196,22 +191,19 @@ int NativeCheckpointFile_AppendRecord(struct NativeCheckpointFileWriter *writer,
                                       struct NativeCheckpointFileRecordInfo *info)
 {
 	struct NativeCheckpointFileRecordHeader record;
-	FILE *file;
-	long recordOffset;
-	long payloadOffset;
 
 	if ((writer == NULL) || (writer->file == NULL) || (payload == NULL) || (payloadSize <= 0))
 	{
 		return 0;
 	}
 
-	file = (FILE *)writer->file;
-	recordOffset = ftell(file);
+	FILE *file = (FILE *)writer->file;
+	long recordOffset = ftell(file);
 	if (recordOffset < 0)
 	{
 		return 0;
 	}
-	payloadOffset = recordOffset + (long)sizeof(record);
+	long payloadOffset = recordOffset + (long)sizeof(record);
 	// TODO(aalhendi): move replay/checkpoint persistence to 64-bit offsets
 	// before playtester packaging can produce multi-hour reports.
 	if ((payloadOffset < 0) || ((unsigned long)payloadOffset > 0xffffffffUL))
@@ -254,7 +246,6 @@ int NativeCheckpointFile_AppendRecord(struct NativeCheckpointFileWriter *writer,
 int NativeCheckpointFile_EndWrite(struct NativeCheckpointFileWriter *writer)
 {
 	struct NativeCheckpointFileHeader header;
-	FILE *file;
 	int ok = 1;
 
 	if ((writer == NULL) || (writer->file == NULL))
@@ -262,7 +253,7 @@ int NativeCheckpointFile_EndWrite(struct NativeCheckpointFileWriter *writer)
 		return 1;
 	}
 
-	file = (FILE *)writer->file;
+	FILE *file = (FILE *)writer->file;
 	NativeCheckpointFile_InitHeader(&header);
 	header.recordCount = writer->recordCount;
 
@@ -284,8 +275,6 @@ int NativeCheckpointFile_EndWrite(struct NativeCheckpointFileWriter *writer)
 int NativeCheckpointFile_Validate(const char *path, struct NativeCheckpointFileRecordInfo *records, int maxRecords, int *recordCount)
 {
 	struct NativeCheckpointFileHeader header;
-	FILE *file;
-	u32 i;
 	int ok = 0;
 
 	if ((path == NULL) || (maxRecords < 0))
@@ -297,7 +286,7 @@ int NativeCheckpointFile_Validate(const char *path, struct NativeCheckpointFileR
 		return 0;
 	}
 
-	file = fopen(path, "rb");
+	FILE *file = fopen(path, "rb");
 	if (file == NULL)
 	{
 		return 0;
@@ -316,7 +305,7 @@ int NativeCheckpointFile_Validate(const char *path, struct NativeCheckpointFileR
 		goto cleanup;
 	}
 
-	for (i = 0; i < header.recordCount; i++)
+	for (u32 i = 0; i < header.recordCount; i++)
 	{
 		struct NativeCheckpointFileRecordHeader record;
 		long expectedPayloadOffset;
@@ -366,8 +355,6 @@ cleanup:
 int NativeCheckpointFile_ReadRecord(const char *path, u32 checkpointIndex, void *payload, int payloadSize, struct NativeCheckpointFileRecordInfo *info)
 {
 	struct NativeCheckpointFileHeader header;
-	FILE *file;
-	u32 i;
 	int ok = 0;
 
 	if ((path == NULL) || (payload == NULL) || (payloadSize <= 0))
@@ -375,7 +362,7 @@ int NativeCheckpointFile_ReadRecord(const char *path, u32 checkpointIndex, void 
 		return 0;
 	}
 
-	file = fopen(path, "rb");
+	FILE *file = fopen(path, "rb");
 	if (file == NULL)
 	{
 		return 0;
@@ -390,7 +377,7 @@ int NativeCheckpointFile_ReadRecord(const char *path, u32 checkpointIndex, void 
 		goto cleanup;
 	}
 
-	for (i = 0; i < header.recordCount; i++)
+	for (u32 i = 0; i < header.recordCount; i++)
 	{
 		struct NativeCheckpointFileRecordHeader record;
 		long expectedPayloadOffset;
@@ -440,7 +427,6 @@ cleanup:
 int NativeCheckpointFile_WriteSingle(const char *path, const void *payload, int payloadSize, u32 checkpointIndex, u32 replayFrame)
 {
 	struct NativeCheckpointFileWriter writer;
-	int ok;
 
 	if ((path == NULL) || (payload == NULL) || (payloadSize <= 0))
 	{
@@ -448,8 +434,8 @@ int NativeCheckpointFile_WriteSingle(const char *path, const void *payload, int 
 	}
 
 	memset(&writer, 0, sizeof(writer));
-	ok = NativeCheckpointFile_BeginWrite(&writer, path) &&
-	     NativeCheckpointFile_AppendRecord(&writer, payload, payloadSize, checkpointIndex, replayFrame, NULL) && NativeCheckpointFile_EndWrite(&writer);
+	int ok = NativeCheckpointFile_BeginWrite(&writer, path) &&
+	         NativeCheckpointFile_AppendRecord(&writer, payload, payloadSize, checkpointIndex, replayFrame, NULL) && NativeCheckpointFile_EndWrite(&writer);
 
 	if (!ok)
 	{
@@ -464,7 +450,6 @@ int NativeCheckpointFile_ReadSingle(const char *path, void *payload, int payload
 {
 	struct NativeCheckpointFileHeader header;
 	struct NativeCheckpointFileRecordHeader record;
-	FILE *file;
 	int ok = 0;
 
 	if ((path == NULL) || (payload == NULL) || (payloadSize <= 0))
@@ -472,7 +457,7 @@ int NativeCheckpointFile_ReadSingle(const char *path, void *payload, int payload
 		return 0;
 	}
 
-	file = fopen(path, "rb");
+	FILE *file = fopen(path, "rb");
 	if (file == NULL)
 	{
 		return 0;

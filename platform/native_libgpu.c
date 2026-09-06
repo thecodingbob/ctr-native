@@ -44,7 +44,10 @@ int DrawSync(int mode)
 	{
 		DrawAllSplits();
 	}
-	NativeRenderer_ReadFramebufferDataToVRAM();
+	// NOTE(penta3): Real PS1 DrawSync only waits for the GPU; it never copies the
+	// framebuffer back into VRAM. We do the same: no per-frame readback here. The
+	// on-demand consumers that actually sample the framebuffer pull it when needed
+	// (StoreImage/ElimBG pause grab, MoveImage, save-state capture).
 
 	if (drawsync_callback != NULL)
 	{
@@ -64,7 +67,6 @@ int LoadImage2(RECT16 *rect, void *p)
 {
 	LoadImage(rect, p);
 	NativeRenderer_UpdateVRAM();
-	NativeRenderer_ReadFramebufferDataToVRAM();
 	return 0;
 }
 
@@ -263,8 +265,10 @@ void SetDrawMove(DR_MOVE *p, RECT16 *rect, int x, int y)
 
 uint32_t DrawSyncCallback(void (*func)(void))
 {
+	uint32_t old = (uint32_t)(uintptr_t)drawsync_callback;
+
 	drawsync_callback = func;
-	return 0;
+	return old;
 }
 
 void DrawOTag(void *p)

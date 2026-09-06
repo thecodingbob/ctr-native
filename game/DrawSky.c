@@ -3,7 +3,7 @@
 struct DrawSkyContext
 {
 	const struct ShortVertex *verts;
-	uint32_t *ot;
+	u32 *ot;
 	u32 screenBounds;
 };
 
@@ -62,7 +62,7 @@ static void DrawSky_LoadFaceVertices(struct DrawSkyContext *ctx, const struct Sk
 	MTC2(DrawSky_ReadWord(&c->Color, 0x0), 22);
 }
 
-static void DrawSky_EmitPrimitive(u32 **primCursor, uint32_t *ot)
+static void DrawSky_EmitPrimitive(u32 **primCursor, u32 *ot)
 {
 	POLY_G3 *poly = (POLY_G3 *)*primCursor;
 
@@ -77,7 +77,6 @@ static void DrawSky_EmitPrimitive(u32 **primCursor, uint32_t *ot)
 	*primCursor = (u32 *)(poly + 1);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80069cc4-0x80069e70
 static u32 *DrawSky_Piece(struct Skybox *skybox, struct DrawSkyContext *ctx, int faceIndex, int countIndex, u32 *prim)
 {
 	u32 numFaces = (u16)skybox->numFaces[countIndex];
@@ -90,7 +89,7 @@ static u32 *DrawSky_Piece(struct Skybox *skybox, struct DrawSkyContext *ctx, int
 
 	for (u32 i = 0; i < numFaces; i++, face++)
 	{
-		uint32_t *ot = (uint32_t *)(void *)((char *)ctx->ot + (s16)face->D);
+		u32 *ot = (u32 *)(void *)((char *)ctx->ot + (s16)face->D);
 		u32 sxy0;
 		u32 sxy1;
 		u32 sxy2;
@@ -113,7 +112,6 @@ static u32 *DrawSky_Piece(struct Skybox *skybox, struct DrawSkyContext *ctx, int
 	return prim;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80069bb0-0x80069cc4
 void DrawSky_Full(void *skybox, struct PushBuffer *pb, struct PrimMem *primMem)
 {
 	struct Skybox *sky = skybox;

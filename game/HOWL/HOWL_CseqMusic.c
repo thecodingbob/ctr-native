@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80028c78-0x80028d64
 int CseqMusic_Start(u16 songID, int p2, struct SongSet *p3, int p4, int p5)
 {
 	int i;
@@ -41,7 +40,6 @@ int CseqMusic_Start(u16 songID, int p2, struct SongSet *p3, int p4, int p5)
 	return 0;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80028d64-0x80028de0
 // pause all songs
 void CseqMusic_Pause()
 {
@@ -74,7 +72,6 @@ void CseqMusic_Pause()
 	Smart_ExitCriticalSection();
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80028de0-0x80028e5c
 // resume all songs
 void CseqMusic_Resume()
 {
@@ -107,7 +104,6 @@ void CseqMusic_Resume()
 	Smart_ExitCriticalSection();
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80028e5c-0x80028f34
 void CseqMusic_ChangeVolume(u16 songID, int p2, int p3)
 {
 	int i;
@@ -142,7 +138,6 @@ void CseqMusic_ChangeVolume(u16 songID, int p2, int p3)
 	Smart_ExitCriticalSection();
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80028f34-0x80029008
 void CseqMusic_Restart(u16 songID, int p2)
 {
 	int i;
@@ -178,7 +173,6 @@ void CseqMusic_Restart(u16 songID, int p2)
 	Smart_ExitCriticalSection();
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029008-0x800290cc
 void CseqMusic_ChangeTempo(u16 songID, int p2)
 {
 	int i;
@@ -213,7 +207,6 @@ void CseqMusic_ChangeTempo(u16 songID, int p2)
 	Smart_ExitCriticalSection();
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800290cc-0x800291a0
 void CseqMusic_AdvHubSwap(u16 songId, struct SongSet *songSet, int songSetActiveBits)
 {
 	struct Song *song;
@@ -252,7 +245,6 @@ void CseqMusic_AdvHubSwap(u16 songId, struct SongSet *songSet, int songSetActive
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800291a0-0x80029258
 void CseqMusic_Stop(u16 songID)
 {
 	int i;
@@ -287,7 +279,6 @@ void CseqMusic_Stop(u16 songID)
 	Smart_ExitCriticalSection();
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029258-0x800292e0
 void CseqMusic_StopAll()
 {
 	int i;

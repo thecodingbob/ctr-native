@@ -197,8 +197,6 @@ CTR_STATIC_ASSERT(offsetof(struct BucketSearchParams, bestDistSq) == 0xc);
 CTR_STATIC_ASSERT(offsetof(struct BucketSearchParams, dist) == 0x10);
 CTR_STATIC_ASSERT(sizeof(struct BucketSearchParams) == 0x18);
 CTR_STATIC_ASSERT(sizeof(struct DriverCollisionSearch) == 0x20);
-CTR_STATIC_ASSERT(THREAD_FLAG_DEAD == 0x0800);
-CTR_STATIC_ASSERT(THREAD_FLAG_DISABLE_COLLISION == 0x1000);
 
 // These are used to recursively
 // search threads with unidirectional

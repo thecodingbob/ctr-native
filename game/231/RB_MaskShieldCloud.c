@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800afb70-0x800afdbc.
 void RB_MaskWeapon_FadeAway(struct Thread *t)
 {
 	s16 totalTime;
@@ -81,7 +80,6 @@ void RB_MaskWeapon_FadeAway(struct Thread *t)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800afdbc-0x800b0278.
 void RB_MaskWeapon_ThTick(struct Thread *maskTh)
 {
 	u8 numPlyr;
@@ -252,7 +250,6 @@ static const s16 s_shieldPopScale[11][2] = {
     {2150, 1612}, {2419, 1433}, {2508, 1344}, {2329, 1523}, {1792, 1792}, {1254, 2150}, {896, 2419}, {716, 2508}, {537, 2150}, {358, 1254}, {179, 537},
 };
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b0278-0x800b0454.
 // NOTE(aalhendi): Native uses the extracted shield-pop scale table from RDATA 0x800b2d14.
 void RB_ShieldDark_ThTick_Pop(struct Thread *t)
 {
@@ -321,7 +318,6 @@ static const s16 s_shieldPulseScale[6][2] = {
     {1845, 1756}, {1899, 1720}, {1971, 1684}, {1899, 1720}, {1845, 1756}, {1792, 1792},
 };
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b0454-0x800b0dbc.
 // NOTE(aalhendi): Native uses extracted shield scale tables from RDATA 0x800b2cf4 and 0x800b2d40.
 void RB_ShieldDark_ThTick_Grow(struct Thread *th)
 {
@@ -622,7 +618,6 @@ LAB_800b0d6c:
 	th->flags |= THREAD_FLAG_DEAD;
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800b0f1c-0x800b1000.
 void RB_RainCloud_FadeAway(struct Thread *t)
 {
 	struct Instance *inst;
@@ -661,7 +656,6 @@ void RB_RainCloud_FadeAway(struct Thread *t)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800b1000-0x800b1220.
 void RB_RainCloud_ThTick(struct Thread *t)
 {
 	s16 animFrame;
@@ -703,8 +697,8 @@ void RB_RainCloud_ThTick(struct Thread *t)
 	for (int i = 0; i < 3; i++)
 	{
 		// get average between instance and driver
-		inst->scale.v[i] += dInst->scale.v[i];
-		inst->scale.v[i] = inst->scale.v[i] >> 1;
+		CTR_VECTOR_DATA(&(inst->scale))[i] += CTR_VECTOR_DATA(&(dInst->scale))[i];
+		CTR_VECTOR_DATA(&(inst->scale))[i] = CTR_VECTOR_DATA(&(inst->scale))[i] >> 1;
 	}
 
 	// offset upward before averaging
@@ -782,7 +776,6 @@ void RB_RainCloud_ThTick(struct Thread *t)
 
 static char s_cloud1[] = "cloud1";
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800b1220-0x800b1458.
 void RB_RainCloud_Init(struct Driver *d)
 {
 	struct Instance *cloudInst;

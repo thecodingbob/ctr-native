@@ -5,7 +5,6 @@ extern struct MenuRow s_rowsMainMenuBasicConfig[];
 extern struct MenuRow s_rowsMainMenuWithSBConfig[];
 extern struct RectMenu g_configMenu;
 
-// NOTE(aalhendi): ASM-verified against retail 230 0x800abaf0-0x800abcac.
 u8 MM_TransitionInOut(struct TransitionMeta *meta, int framesPassed, int numFrames)
 {
 	u8 allTransitionsDone = 1;
@@ -47,7 +46,6 @@ u8 MM_TransitionInOut(struct TransitionMeta *meta, int framesPassed, int numFram
 	return allTransitionsDone;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800acff4-0x800ad448.
 void MM_MenuProc_Main(struct RectMenu *mainMenu)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -297,7 +295,6 @@ void MM_MenuProc_QuitConfirm(struct RectMenu *menu)
 	menu->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 230 0x800ad448-0x800ad560.
 void MM_ToggleRows_PlayerCount(void)
 {
 	for (s32 rowIndex = 0; rowIndex < MM_PLAYER_1P2P_SELECTABLE_ROWS; rowIndex++)
@@ -329,7 +326,6 @@ void MM_ToggleRows_PlayerCount(void)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 230 0x800ad560-0x800ad5e8.
 void MM_MenuProc_1p2p(struct RectMenu *menu)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -363,7 +359,6 @@ void MM_MenuProc_1p2p(struct RectMenu *menu)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 230 0x800ad5e8-0x800ad678.
 void MM_MenuProc_2p3p4p(struct RectMenu *menu)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -396,7 +391,6 @@ void MM_MenuProc_2p3p4p(struct RectMenu *menu)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 230 0x800ad678-0x800ad7a4.
 void MM_ToggleRows_Difficulty(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -455,7 +449,6 @@ void MM_ToggleRows_Difficulty(void)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 230 0x800ad7a4-0x800ad828.
 void MM_MenuProc_Difficulty(struct RectMenu *menu)
 {
 	s16 row = menu->rowSelected;
@@ -484,7 +477,6 @@ void MM_MenuProc_Difficulty(struct RectMenu *menu)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 230 0x800ad828-0x800ad8f0.
 void MM_MenuProc_SingleCup(struct RectMenu *menu)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -527,7 +519,6 @@ void MM_MenuProc_SingleCup(struct RectMenu *menu)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 230 0x800ad8f0-0x800ad980.
 void MM_MenuProc_NewLoad(struct RectMenu *menu)
 {
 	// row number
@@ -554,14 +545,12 @@ void MM_MenuProc_NewLoad(struct RectMenu *menu)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ad980-0x800ad98c.
 struct RectMenu *MM_AdvNewLoad_GetMenuPtr(void)
 {
 	// menu for new/load
 	return &D230.menuAdventure;
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 230 0x800b42b0-0x800b4334.
 void MM_ResetAllMenus(void)
 {
 	for (s32 menuIndex = 0; menuIndex < MM_MENU_RESET_COUNT; menuIndex++)
@@ -594,7 +583,6 @@ void MM_ResetAllMenus(void)
 	sdata->framesRemainingInMenu = MM_MENU_RESET_DONE_FRAMES;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b4334-0x800b4364.
 void MM_JumpTo_Title_Returning(void)
 {
 	// return to main menu from another menu
@@ -606,7 +594,6 @@ void MM_JumpTo_Title_Returning(void)
 	D230.titleMenuTransitionFrame = D230.titleMenuTransitionDurationFrames;
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 230 0x800b4364-0x800b43f4.
 void MM_JumpTo_Title_FirstTime(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -615,22 +602,8 @@ void MM_JumpTo_Title_FirstTime(void)
 
 	MainStats_ClearBattleVS();
 
-#if BUILD == EurRetail
-	// if you have not chose a language or skipped the language menu
-	if (sdata->boolLangChosen == 0)
-	{
-		sdata->ptrActiveMenu = &D230.menuLngBoot;
-		D230.langMenuTimer = MM_LANGUAGE_MENU_TIMEOUT_FRAMES;
-	}
-	else
-	{
-		// if not set to normal main menu
-		sdata->ptrActiveMenu = &D230.menuMainMenu;
-	}
-#else
 	// open Main Menu for the first time
 	sdata->ptrActiveMenu = &D230.menuMainMenu;
-#endif
 
 	D230.titleIntroFrame = 0;
 
@@ -650,7 +623,6 @@ void MM_JumpTo_Title_FirstTime(void)
 	gGT->gameMode1 &= ~(TIME_TRIAL);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b43f4-0x800b4430.
 void MM_JumpTo_BattleSetup(void)
 {
 	// Go to battle setup
@@ -661,7 +633,6 @@ void MM_JumpTo_BattleSetup(void)
 	MM_Battle_Init();
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b4430-0x800b446c.
 void MM_JumpTo_TrackSelect(void)
 {
 	// return to track selection
@@ -672,7 +643,6 @@ void MM_JumpTo_TrackSelect(void)
 	MM_TrackSelect_Init();
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b446c-0x800b44a8.
 void MM_JumpTo_Characters(void)
 {
 	// return to character selection
@@ -683,7 +653,6 @@ void MM_JumpTo_Characters(void)
 	MM_Characters_RestoreIDs();
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 overlay 230 0x800b44a8-0x800b44e4.
 void MM_JumpTo_Scrapbook(void)
 {
 	// go to scrapbook

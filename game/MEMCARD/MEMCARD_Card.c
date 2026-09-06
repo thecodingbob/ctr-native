@@ -2,7 +2,6 @@
 
 //- creates 8 events (4 per card?)
 //- calls InitCARD and StartCARD
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003d7d8-0x8003d95c.
 void MEMCARD_InitCard(void)
 {
 	// This section was copy/pasted by Naughty Dog,
@@ -40,7 +39,6 @@ void MEMCARD_InitCard(void)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003d95c-0x8003d9ec.
 void MEMCARD_CloseCard(void)
 {
 	// This function was copy/pasted by Naughty Dog,

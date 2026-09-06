@@ -67,12 +67,7 @@ enum
 	MM_TRACK_SELECT_INPUT = BTN_UP | BTN_DOWN | BTN_TRIANGLE | BTN_SQUARE_one | BTN_CROSS_one | BTN_CIRCLE,
 };
 
-CTR_STATIC_ASSERT(MM_TRACK_VIDEO_ICON == 1);
-CTR_STATIC_ASSERT(MM_TRACK_VIDEO_START_STREAM == 2);
-CTR_STATIC_ASSERT(MM_TRACK_VIDEO_PLAYING == 3);
-CTR_STATIC_ASSERT(MM_TRACK_SELECT_INPUT == 0x40073);
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800afa44-0x800afa94.
 void MM_TrackSelect_Video_SetDefaults(void)
 {
 	// clear RECT
@@ -95,7 +90,6 @@ void MM_TrackSelect_Video_SetDefaults(void)
 	D230.trackSelect.videoStatePrev = MM_TRACK_VIDEO_ICON;
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 230 0x800afa94-0x800afaf0.
 void MM_TrackSelect_Video_State(b32 resetPreview)
 {
 	// if viewing new icon this frame
@@ -158,7 +152,6 @@ static void MM_TrackSelect_Video_DrawNativePreview(RECT *r, int srcX, int srcY)
 }
 #endif
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800afaf0-0x800aff58 PSX path.
 void MM_TrackSelect_Video_Draw(RECT *r, struct MainMenu_LevelRow *selectMenu, int trackIndex, int stopVideo, u16 rectFlags)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -269,8 +262,8 @@ void MM_TrackSelect_Video_Draw(RECT *r, struct MainMenu_LevelRow *selectMenu, in
 	{
 		// Draw Video icon
 		RECTMENU_DrawPolyGT4(gGT->ptrIcons[selectMenu->videoThumbnail], (r->x + MM_TRACK_VIDEO_FRAME_SRC_OFFSET_X), (r->y + MM_TRACK_VIDEO_FRAME_SRC_OFFSET_Y),
-		                     &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT, D230.videoCol.self, D230.videoCol.self, D230.videoCol.self,
-		                     D230.videoCol.self, 0, FP(1.0));
+		                     &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT, ColorCode_GetPacked(&D230.videoCol), ColorCode_GetPacked(&D230.videoCol),
+		                     ColorCode_GetPacked(&D230.videoCol), ColorCode_GetPacked(&D230.videoCol), 0, FP(1.0));
 	}
 
 #ifndef CTR_NATIVE
@@ -329,7 +322,6 @@ void MM_TrackSelect_Video_Draw(RECT *r, struct MainMenu_LevelRow *selectMenu, in
 	RECTMENU_DrawInnerRect(r, (s16)(rectFlags | 1), gGT->backBuffer->otMem.uiOT);
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 230 0x800aff58-0x800affd0.
 b32 MM_TrackSelect_boolTrackOpen(struct MainMenu_LevelRow *menuSelect)
 {
 	s16 flag = menuSelect->unlock;
@@ -352,7 +344,6 @@ b32 MM_TrackSelect_boolTrackOpen(struct MainMenu_LevelRow *menuSelect)
 	return CHECK_ADV_BIT(sdata->gameProgress.unlocks, flag);
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 230 0x800affd0-0x800b00d4.
 void MM_TrackSelect_Init(void)
 {
 	struct MainMenu_LevelRow *selectMenu = D230.arcadeTracks;
@@ -403,7 +394,6 @@ void MM_TrackSelect_MenuProc(struct RectMenu *menu)
 	struct GameTracker *gGT = sdata->gGT;
 	s16 elapsedFrames = D230.trackSelect.transition.frame;
 
-	// NOTE(aalhendi): ASM-verified NTSC-U 926 overlay 230 0x800b00d4-0x800b02b0.
 	// if you are not in track selection menu
 	if (D230.trackSelect.transition.state != IN_MENU)
 	{
@@ -422,7 +412,7 @@ void MM_TrackSelect_MenuProc(struct RectMenu *menu)
 				sdata->errorMessagePosIndex = 2;
 			}
 
-			MM_TransitionInOut(D230.transitionMeta_trackSel, elapsedFrames, MM_TRACK_SELECT_SLIDE_FRAMES);
+			MM_TransitionInOut(D230.trackTransitions.transitionMeta_trackSel, elapsedFrames, MM_TRACK_SELECT_SLIDE_FRAMES);
 
 			// ran out of frames
 			if (elapsedFrames == 0)
@@ -438,7 +428,7 @@ void MM_TrackSelect_MenuProc(struct RectMenu *menu)
 		// transitioning out
 		else if (D230.trackSelect.transition.state == EXITING_MENU)
 		{
-			MM_TransitionInOut(D230.transitionMeta_trackSel, elapsedFrames, MM_TRACK_SELECT_SLIDE_FRAMES);
+			MM_TransitionInOut(D230.trackTransitions.transitionMeta_trackSel, elapsedFrames, MM_TRACK_SELECT_SLIDE_FRAMES);
 			elapsedFrames++;
 
 			if (elapsedFrames > MM_TRACK_SELECT_TRANSITION_FRAMES)
@@ -513,7 +503,6 @@ void MM_TrackSelect_MenuProc(struct RectMenu *menu)
 	s16 currTrack = menu->rowSelected;
 	sdata->trackSelBackup = currTrack;
 
-	// NOTE(aalhendi): ASM-verified NTSC-U 926 overlay 230 0x800b02b0-0x800b04c8.
 	// if lap selection menu is closed
 	if (D230.trackSelect.lapBoxOpen == 0)
 	{
@@ -551,7 +540,6 @@ void MM_TrackSelect_MenuProc(struct RectMenu *menu)
 				D230.trackSelect.trackChangeFrames = MM_TRACK_SELECT_TRACK_CHANGE_FRAMES;
 				D230.trackSelect.trackChangeDirection = 1;
 
-				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b034c-0x800b035c for track-select previous SFX.
 				OtherFX_Play(0, 1);
 				break;
 
@@ -575,7 +563,6 @@ void MM_TrackSelect_MenuProc(struct RectMenu *menu)
 				D230.trackSelect.trackChangeFrames = MM_TRACK_SELECT_TRACK_CHANGE_FRAMES;
 				D230.trackSelect.trackChangeDirection = -1;
 
-				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b03bc-0x800b03cc for track-select next SFX.
 				OtherFX_Play(0, 1);
 				break;
 
@@ -583,7 +570,6 @@ void MM_TrackSelect_MenuProc(struct RectMenu *menu)
 			case BTN_CIRCLE:
 
 				// "enter/confirm" sound
-				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b0434-0x800b0444 for track-select confirm SFX.
 				OtherFX_Play(1, 1);
 
 				// if not Battle or Time Trial, open LapSelectMenu
@@ -603,7 +589,6 @@ void MM_TrackSelect_MenuProc(struct RectMenu *menu)
 			case BTN_SQUARE_one:
 
 				// "go back" sound
-				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b0490-0x800b04a4 for track-select back SFX.
 				OtherFX_Play(2, 1);
 
 				D230.trackSelect.transition.startAfterExit = 0;
@@ -632,7 +617,8 @@ void MM_TrackSelect_MenuProc(struct RectMenu *menu)
 			lapSelTransitionState = RECTMENU_ProcessInput(&D230.menuLapSel);
 		}
 
-		RECTMENU_DrawSelf(&D230.menuLapSel, D230.trackSelect_lapMenuTransition.currX, D230.trackSelect_lapMenuTransition.currY, MM_TRACK_SELECT_LAP_MENU_WIDTH);
+		RECTMENU_DrawSelf(&D230.menuLapSel, D230.trackTransitions.named.trackSelect_lapMenuTransition.currX,
+		                  D230.trackTransitions.named.trackSelect_lapMenuTransition.currY, MM_TRACK_SELECT_LAP_MENU_WIDTH);
 
 		// put LapRow back into 8d920
 		sdata->uselessLapRowCopy = D230.menuLapSel.rowSelected;
@@ -732,11 +718,12 @@ void MM_TrackSelect_MenuProc(struct RectMenu *menu)
 		rowRect.h = MM_TRACK_SELECT_ROW_H;
 
 		// posX of track list
-		s32 rowX = (u32)D230.trackSelect_rowListTransition.currX + (MATH_Cos(rowAngle) * MM_TRACK_SELECT_ROW_X_RADIUS >> MM_TRACK_SELECT_ROW_X_SHIFT) +
-		           MM_TRACK_SELECT_ROW_X_OFFSET;
+		s32 rowX = (u32)D230.trackTransitions.named.trackSelect_rowListTransition.currX +
+		           (MATH_Cos(rowAngle) * MM_TRACK_SELECT_ROW_X_RADIUS >> MM_TRACK_SELECT_ROW_X_SHIFT) + MM_TRACK_SELECT_ROW_X_OFFSET;
 
 		// posY of track list
-		s32 rowBaseY = (u32)D230.trackSelect_rowListTransition.currY + (MATH_Sin(rowAngle) * MM_TRACK_SELECT_ROW_Y_RADIUS >> MM_TRACK_SELECT_ROW_Y_SHIFT);
+		s32 rowBaseY = (u32)D230.trackTransitions.named.trackSelect_rowListTransition.currY +
+		               (MATH_Sin(rowAngle) * MM_TRACK_SELECT_ROW_Y_RADIUS >> MM_TRACK_SELECT_ROW_Y_SHIFT);
 
 		s16 rowY = (s16)rowBaseY + MM_TRACK_SELECT_ROW_Y_OFFSET;
 		rowRect.x = (s16)rowX;
@@ -857,15 +844,15 @@ void MM_TrackSelect_MenuProc(struct RectMenu *menu)
 			previewRect.h = MM_TRACK_VIDEO_HEIGHT;
 
 			// posX of "SELECT LEVEL"
-			previewRect.x = D230.trackSelect_previewTransition.currX + MM_TRACK_SELECT_PREVIEW_X;
+			previewRect.x = D230.trackTransitions.named.trackSelect_previewTransition.currX + MM_TRACK_SELECT_PREVIEW_X;
 
 			// posY of "SELECT LEVEL"
 			// near-top if map exists, near-mid if no map
-			previewRect.y = D230.trackSelect_previewTransition.currY + MM_TRACK_SELECT_PREVIEW_Y_NO_MAP;
+			previewRect.y = D230.trackTransitions.named.trackSelect_previewTransition.currY + MM_TRACK_SELECT_PREVIEW_Y_NO_MAP;
 
 			if (-1 < selectMenu[menu->rowSelected].mapTextureID)
 			{
-				previewRect.y = D230.trackSelect_previewTransition.currY + MM_TRACK_SELECT_PREVIEW_Y_WITH_MAP;
+				previewRect.y = D230.trackTransitions.named.trackSelect_previewTransition.currY + MM_TRACK_SELECT_PREVIEW_Y_WITH_MAP;
 			}
 
 			// D230.trackSelect.lapBoxOpen controls the 3/5/7 lap menu.
@@ -873,12 +860,13 @@ void MM_TrackSelect_MenuProc(struct RectMenu *menu)
 			// If the lap selection menu is closed
 			if (D230.trackSelect.lapBoxOpen == 0)
 			{
-				DecalFont_DrawLine(sdata->lngStrings[LNG_SELECT_LEVEL_SELECT], (D230.trackSelect_titleTransition.currX + MM_TRACK_SELECT_TITLE_X),
-				                   (D230.trackSelect_titleTransition.currY + (u32)previewRect.y), FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+				DecalFont_DrawLine(sdata->lngStrings[LNG_SELECT_LEVEL_SELECT],
+				                   (D230.trackTransitions.named.trackSelect_titleTransition.currX + MM_TRACK_SELECT_TITLE_X),
+				                   (D230.trackTransitions.named.trackSelect_titleTransition.currY + (u32)previewRect.y), FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 
-				DecalFont_DrawLine(sdata->lngStrings[LNG_LEVEL], (D230.trackSelect_titleTransition.currX + MM_TRACK_SELECT_TITLE_X),
-				                   (D230.trackSelect_titleTransition.currY + (u32)previewRect.y + MM_TRACK_SELECT_LEVEL_TEXT_Y_STEP), FONT_BIG,
-				                   (JUSTIFY_CENTER | ORANGE));
+				DecalFont_DrawLine(sdata->lngStrings[LNG_LEVEL], (D230.trackTransitions.named.trackSelect_titleTransition.currX + MM_TRACK_SELECT_TITLE_X),
+				                   (D230.trackTransitions.named.trackSelect_titleTransition.currY + (u32)previewRect.y + MM_TRACK_SELECT_LEVEL_TEXT_Y_STEP),
+				                   FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 			}
 
 			// next, draw the map icon, below "SELECT LEVEL",
@@ -921,13 +909,15 @@ void MM_TrackSelect_MenuProc(struct RectMenu *menu)
 
 					    // X
 					    D230.drawMapOffset[mapLayer].offsetX + previewRect.x +
-					        (D230.trackSelect_lapMenuTransition.currX - D230.trackSelect_previewTransition.currX) + (MM_TRACK_VIDEO_WIDTH >> 1) +
-					        (mapWidth >> 1),
+					        (D230.trackTransitions.named.trackSelect_lapMenuTransition.currX -
+					         D230.trackTransitions.named.trackSelect_previewTransition.currX) +
+					        (MM_TRACK_VIDEO_WIDTH >> 1) + (mapWidth >> 1),
 
 					    // Y
 					    D230.drawMapOffset[mapLayer].offsetY + previewRect.y +
-					        (D230.trackSelect_lapMenuTransition.currY - D230.trackSelect_previewTransition.currY) + MM_TRACK_SELECT_MAP_CENTER_Y_OFFSET +
-					        (MM_TRACK_SELECT_MAP_BOX_H >> 1) + (mapHeight >> 1),
+					        (D230.trackTransitions.named.trackSelect_lapMenuTransition.currY -
+					         D230.trackTransitions.named.trackSelect_previewTransition.currY) +
+					        MM_TRACK_SELECT_MAP_CENTER_Y_OFFSET + (MM_TRACK_SELECT_MAP_BOX_H >> 1) + (mapHeight >> 1),
 
 					    // pointer to PrimMem struct
 					    &gGT->backBuffer->primMem,
@@ -950,7 +940,6 @@ void MM_TrackSelect_MenuProc(struct RectMenu *menu)
 	} while (true);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b0eac-0x800b0eb8.
 struct RectMenu *MM_TrackSelect_GetMenuPtr(void)
 {
 	return &D230.menuTrackSelect;

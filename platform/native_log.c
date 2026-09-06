@@ -46,8 +46,6 @@ internal void Platform_LogV(FILE *consoleStream, const char *fmt, va_list args)
 
 int Platform_LogSetPath(const char *path)
 {
-	int written;
-
 	if (s_logStream != NULL)
 	{
 		return 0;
@@ -59,7 +57,7 @@ int Platform_LogSetPath(const char *path)
 		return 1;
 	}
 
-	written = snprintf(s_logPath, sizeof(s_logPath), "%s", path);
+	int written = snprintf(s_logPath, sizeof(s_logPath), "%s", path);
 	if ((written < 0) || ((size_t)written >= sizeof(s_logPath)))
 	{
 		s_logPath[0] = '\0';

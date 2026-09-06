@@ -13,8 +13,6 @@ enum
 typedef s32 CutscenePhase;
 
 CTR_STATIC_ASSERT(sizeof(CutscenePhase) == 0x4);
-CTR_STATIC_ASSERT(CS_CAMERA_PAN == 0);
-CTR_STATIC_ASSERT(CS_WAIT_END == 5);
 
 struct CsThreadInitData
 {
@@ -24,31 +22,16 @@ struct CsThreadInitData
 
 	SVec3Slot rot;
 
-	union
-	{
-		struct
-		{
-			u32 local_30;
-			u32 local_2c;
-			u32 local_28;
-			u32 local_24;
-			u32 local_20;
-		};
-		struct
-		{
-			SVec3Slot derivedRot;
-			u32 local_28_alias;
-			u32 local_24_alias;
-			u32 local_20_alias;
-		};
-	};
+	SVec3Slot derivedRot;
+	u32 local_28_alias;
+	u32 local_24_alias;
+	u32 local_20_alias;
 };
 
 CTR_STATIC_ASSERT(sizeof(struct CsThreadInitData) == 0x2c);
 CTR_STATIC_ASSERT(offsetof(struct CsThreadInitData, podiumPos) == 0x0);
 CTR_STATIC_ASSERT(offsetof(struct CsThreadInitData, characterPos) == 0x8);
 CTR_STATIC_ASSERT(offsetof(struct CsThreadInitData, rot) == 0x10);
-CTR_STATIC_ASSERT(offsetof(struct CsThreadInitData, local_30) == 0x18);
 CTR_STATIC_ASSERT(offsetof(struct CsThreadInitData, derivedRot) == 0x18);
 
 struct CsPodiumCameraThreadObj
@@ -138,23 +121,36 @@ union CsOpcodeArg
 	char *ptr;
 };
 
-union CsOpcodeMeta
+struct CsOpcodeMeta
 {
-	struct
-	{
-		s16 opcode;
-		s16 animIndex;
-		s16 frameStart;
-		s16 frameEnd;
-		union CsOpcodeArg arg0; // shorts 4/5
-		union CsOpcodeArg arg1; // shorts 6/7
-		s16 rotStart;
-		s16 rotEnd;
-	};
-
-	int words[5];
-	s16 shorts[10];
+	s16 opcode;
+	s16 animIndex;
+	s16 frameStart;
+	s16 frameEnd;
+	union CsOpcodeArg arg0; // shorts 4/5
+	union CsOpcodeArg arg1; // shorts 6/7
+	s16 rotStart;
+	s16 rotEnd;
 };
+
+typedef int CsOpcodeWord CTR_MAY_ALIAS;
+typedef s16 CsOpcodeHalf CTR_MAY_ALIAS;
+typedef s16 CsInitMatrixHalf CTR_MAY_ALIAS;
+
+static inline CsOpcodeWord *CsOpcodeMeta_Words(struct CsOpcodeMeta *meta)
+{
+	return (CsOpcodeWord *)meta;
+}
+
+static inline const CsOpcodeWord *CsOpcodeMeta_ConstWords(const struct CsOpcodeMeta *meta)
+{
+	return (const CsOpcodeWord *)meta;
+}
+
+static inline CsOpcodeHalf *CsOpcodeMeta_Halves(struct CsOpcodeMeta *meta)
+{
+	return (CsOpcodeHalf *)meta;
+}
 
 enum CutsceneOpcode
 {
@@ -229,19 +225,6 @@ enum CsOpcodeMetaFlags
 	CS_OPCODE_META_HAS_ROT_END = 0x80,
 };
 
-CTR_STATIC_ASSERT(CS_GAME_MODE_TARGET_GAME_MODE1 == 0);
-CTR_STATIC_ASSERT(CS_GAME_MODE_TARGET_GAME_MODE2 == 1);
-CTR_STATIC_ASSERT(CS_GAME_MODE_TARGET_RENDER_FLAGS_SET == 2);
-CTR_STATIC_ASSERT(CS_GAME_MODE_TARGET_RENDER_FLAGS_CLEAR == 3);
-
-CTR_STATIC_ASSERT(CS_OPCODE_META_HAS_ANIM_INDEX == 0x01);
-CTR_STATIC_ASSERT(CS_OPCODE_META_HAS_FRAME_START == 0x02);
-CTR_STATIC_ASSERT(CS_OPCODE_META_HAS_FRAME_END == 0x04);
-CTR_STATIC_ASSERT(CS_OPCODE_META_HAS_ARG0 == 0x08);
-CTR_STATIC_ASSERT(CS_OPCODE_META_HAS_ARG1 == 0x10);
-CTR_STATIC_ASSERT(CS_OPCODE_META_HAS_ALIGNED_ARG1 == 0x20);
-CTR_STATIC_ASSERT(CS_OPCODE_META_HAS_ROT_START == 0x40);
-CTR_STATIC_ASSERT(CS_OPCODE_META_HAS_ROT_END == 0x80);
 
 enum CutsceneObjFlags
 {
@@ -259,18 +242,6 @@ enum CutsceneObjFlags
 	CS_FLAG_SOUND_ONSCREEN_ONLY = 0x1000,
 };
 
-CTR_STATIC_ASSERT(CS_FLAG_PATH_MOTION_DISABLED == 0x0001);
-CTR_STATIC_ASSERT(CS_FLAG_RANDOM_ALPHA_SCALE == 0x0002);
-CTR_STATIC_ASSERT(CS_FLAG_SKIP_PARENT_FRAME_TRANSFORM == 0x0004);
-CTR_STATIC_ASSERT(CS_FLAG_WRITE_VERT_SPLIT_LINE == 0x0008);
-CTR_STATIC_ASSERT(CS_FLAG_SKIP_PARENT_ROTATION == 0x0010);
-CTR_STATIC_ASSERT(CS_FLAG_CAMERA_DISTANCE_OVERRIDE == 0x0020);
-CTR_STATIC_ASSERT(CS_FLAG_INTERPOLATE_FRAMES_MS == 0x0040);
-CTR_STATIC_ASSERT(CS_FLAG_ADV_CHAR_SELECT_LOGIC == 0x0080);
-CTR_STATIC_ASSERT(CS_FLAG_ADV_CHAR_SELECT_SELECTED == 0x0100);
-CTR_STATIC_ASSERT(CS_FLAG_XA_SYNC_ANIMATION == 0x0200);
-CTR_STATIC_ASSERT(CS_FLAG_XA_PLAYBACK_STARTED == 0x0400);
-CTR_STATIC_ASSERT(CS_FLAG_SOUND_ONSCREEN_ONLY == 0x1000);
 
 struct Ovr233InitMatrixTableEntry;
 
@@ -294,12 +265,7 @@ struct CutsceneObj
 	s16 unk_E;
 
 	// 0x10
-	union
-	{
-		int *metadata;
-		union CsOpcodeMeta *metadataMeta;
-		s16 *metadataShorts;
-	};
+	struct CsOpcodeMeta *metadataMeta;
 
 	// 0x14
 	s16 opcodeDuration;
@@ -357,11 +323,11 @@ struct CutsceneObj
 	struct Ovr233InitMatrixTableEntry *frameOverrideRoot;
 
 	// 0x4c
-	union CsOpcodeMeta decodedOpcode;
+	struct CsOpcodeMeta decodedOpcode;
 };
 
 #ifndef CTR_NATIVE
-CTR_STATIC_ASSERT(sizeof(union CsOpcodeMeta) == 0x14);
+CTR_STATIC_ASSERT(sizeof(struct CsOpcodeMeta) == 0x14);
 CTR_STATIC_ASSERT(OFFSETOF(struct CutsceneObj, rotPad) == 0x26);
 CTR_STATIC_ASSERT(OFFSETOF(struct CutsceneObj, pathProgress32) == 0x28);
 CTR_STATIC_ASSERT(OFFSETOF(struct CutsceneObj, particleID) == 0x44);
@@ -438,7 +404,7 @@ struct CsInitMatrixEntry
 	s16 offset[4];
 	union
 	{
-		s16 rotScaleOrMatrix[10];
+		s16 raw[10];
 		struct
 		{
 			SVec3 rot;
@@ -446,10 +412,15 @@ struct CsInitMatrixEntry
 			SVec3 scale;
 			s16 scalePad;
 			s16 matrixTail[2];
-		};
-	};
+		} fields;
+	} matrix;
 	s16 pad[2];
 };
+
+static inline const CsInitMatrixHalf *CsInitMatrixEntry_ConstHalves(const struct CsInitMatrixEntry *entry)
+{
+	return entry->matrix.raw;
+}
 
 CTR_STATIC_ASSERT(sizeof(struct CsInitMatrixEntry) == 0x20);
 
@@ -688,8 +659,7 @@ CTR_STATIC_ASSERT(sizeof(struct OverlayDATA_233) == 0x1818);
 
 extern struct OverlayDATA_233 D233;
 
-// NOTE(aalhendi): Layout-verified for overlay-233 references used by the audited cutscene thread path.
-// Retail base is NTSC-U 926 0x800ab9f0.
+// Overlay RDATA starts at 0x800ab9f0.
 #define OVR233_LAYOUT_ASSERT(ELEMENT, OFFSET, SIZE)                            \
 	CTR_STATIC_ASSERT(OFFSETOF(struct OverlayRDATA_233, ELEMENT) == (OFFSET)); \
 	CTR_STATIC_ASSERT(sizeof(((struct OverlayRDATA_233 *)0)->ELEMENT) == (SIZE))
@@ -837,8 +807,7 @@ struct OVR233_Garage
 	// Credits RDATA starts next byte
 };
 
-// NOTE(aalhendi): Layout-verified pass 3 for garage data. Retail base is
-// NTSC-U 926 0x800b8598.
+// Garage data starts at 0x800b8598.
 #define OVR233_GARAGE_ASSERT(ELEMENT, OFFSET, SIZE)                         \
 	CTR_STATIC_ASSERT(OFFSETOF(struct OVR233_Garage, ELEMENT) == (OFFSET)); \
 	CTR_STATIC_ASSERT(sizeof(((struct OVR233_Garage *)0)->ELEMENT) == (SIZE))
@@ -996,8 +965,7 @@ struct Ovr233_Credits_BSS
 	struct CreditsObj creditsObj;
 };
 
-// NOTE(aalhendi): Layout-verified pass 3 for credits BSS. Retail base is
-// NTSC-U 926 0x800b9488.
+// Credits BSS starts at 0x800b9488.
 #define OVR233_CREDITS_OBJ_ASSERT(ELEMENT, OFFSET, SIZE)                 \
 	CTR_STATIC_ASSERT(OFFSETOF(struct CreditsObj, ELEMENT) == (OFFSET)); \
 	CTR_STATIC_ASSERT(sizeof(((struct CreditsObj *)0)->ELEMENT) == (SIZE))

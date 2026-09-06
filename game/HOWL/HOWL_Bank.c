@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800292e0-0x800292fc
 void Bank_ResetAllocator()
 {
 	sdata->numAudioBanks = 0;
@@ -8,7 +7,6 @@ void Bank_ResetAllocator()
 	sdata->bankLoadStage = 4; // Stage 4: Finished
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800292fc-0x800293b8
 int Bank_Alloc(int bankID, struct Bank *ptrBank)
 {
 	if (sdata->boolAudioEnabled == 0)
@@ -48,7 +46,6 @@ int Bank_Alloc(int bankID, struct Bank *ptrBank)
 	return 1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800293b8-0x800296c4
 int Bank_AssignSpuAddrs()
 {
 	int i;
@@ -193,7 +190,7 @@ int Bank_AssignSpuAddrs()
 			// start transfer
 			SpuSetTransferStartAddr(spuAddrStart);
 
-			SpuWrite((u8 *)((int)sdata->ptrSampleBlock2 + 0x800), (size_t)sdata->audioAllocSize);
+			SpuWrite((u8 *)((int)sdata->ptrSampleBlock2 + 0x800), (u32)sdata->audioAllocSize);
 		}
 
 		sdata->bankLoadStage++;
@@ -226,7 +223,6 @@ int Bank_AssignSpuAddrs()
 	return 0;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800296c4-0x80029730
 void Bank_Destroy(struct Bank *ptrLastBank)
 {
 	u16 flags;
@@ -250,7 +246,6 @@ void Bank_Destroy(struct Bank *ptrLastBank)
 	ptrLastBank->flags = flags & ~(2);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029730-0x800297a0
 void Bank_ClearInRange(u16 min, u16 max)
 {
 	int i;
@@ -272,7 +267,6 @@ void Bank_ClearInRange(u16 min, u16 max)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800297a0-0x80029824
 int Bank_Load(int bankID, struct Bank *ptrBank)
 {
 	int numBanks = sdata->numAudioBanks;
@@ -301,7 +295,6 @@ int Bank_Load(int bankID, struct Bank *ptrBank)
 	return 1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029824-0x80029870
 int Bank_DestroyLast()
 {
 	if (sdata->numAudioBanks == 0)
@@ -313,7 +306,6 @@ int Bank_DestroyLast()
 	return 1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029870-0x800298e4
 void Bank_DestroyUntilIndex(int index)
 {
 	struct Bank *ptrLastBank;
@@ -332,7 +324,6 @@ void Bank_DestroyUntilIndex(int index)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800298e4-0x8002991c
 void Bank_DestroyAll()
 {
 	while (sdata->numAudioBanks != 0)

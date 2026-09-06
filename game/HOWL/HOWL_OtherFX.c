@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002843c-0x80028468
 int CountSounds(void)
 {
 	// watch it increase when scrolling in main menu
@@ -17,7 +16,6 @@ int CountSounds(void)
 // 0 - play with no duplicates (dont recycle old)
 // 1 - play with no duplicates (recycle old)
 // 2 - play with duplicates
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80028468-0x80028494
 int OtherFX_Play(u32 soundID, int flags)
 {
 	return OtherFX_Play_LowLevel(soundID & 0xffff, flags & 0xff, HOWL_SFX_DEFAULT_FLAGS);
@@ -26,7 +24,6 @@ int OtherFX_Play(u32 soundID, int flags)
 // param_3:
 // 0 - normal
 // 1 - echo
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80028494-0x800284d0
 void OtherFX_Play_Echo(u32 soundID, int flags, int echoFlag)
 {
 	int otherFlags = HOWL_SFX_DEFAULT_FLAGS;
@@ -39,13 +36,12 @@ void OtherFX_Play_Echo(u32 soundID, int flags, int echoFlag)
 	OtherFX_Play_LowLevel(soundID & 0xffff, flags & 0xff, otherFlags);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800284d0-0x80028690
 int OtherFX_Play_LowLevel(u32 soundID, u8 boolAntiSpam, u32 flags)
 {
 	struct GameTracker *gGT = sdata->gGT;
 	struct ChannelStats *channel;
 	int count;
-	s16 id;
+	u16 id;
 	struct OtherFX *ptrOtherFX;
 	u32 LR = HowlSfx_LR(flags);
 	u32 distortion = HowlSfx_Distortion(flags);
@@ -129,7 +125,6 @@ int OtherFX_Play_LowLevel(u32 soundID, u8 boolAntiSpam, u32 flags)
 	return channel->soundID;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80028690-0x80028808
 u32 OtherFX_Modify(u32 soundId, u32 flags)
 {
 	struct ChannelStats *channel;
@@ -201,7 +196,6 @@ u32 OtherFX_Modify(u32 soundId, u32 flags)
 }
 
 // specific instance of soundID
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80028808-0x80028844
 void OtherFX_Stop1(int soundID_count)
 {
 	Smart_EnterCriticalSection();
@@ -213,7 +207,6 @@ void OtherFX_Stop1(int soundID_count)
 }
 
 // all instances of soundID
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80028844-0x80028880
 void OtherFX_Stop2(int soundID_count)
 {
 	Smart_EnterCriticalSection();

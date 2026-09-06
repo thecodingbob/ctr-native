@@ -53,7 +53,6 @@ enum
 /// @brief Copies texture layout data from icon to arbitrary mem address. Particularly used to copy kart shadow textures to scratchpad.
 /// @param dst - destination texture layout
 /// @param iconIndex - icon index to take data from
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005b6b8-0x8005b720.
 b32 VehGroundShadow_Subset1(struct TextureLayout *pDst, int iconIndex)
 {
 	// get pointer to icon
@@ -107,17 +106,17 @@ CTR_STATIC_ASSERT(offsetof(struct VehGroundShadowEntry, pos) == 0x20);
 CTR_STATIC_ASSERT(offsetof(struct VehGroundShadowEntry, instFlags) == 0x26);
 CTR_STATIC_ASSERT(offsetof(struct VehGroundShadowScratch, entries) == 0xa4);
 CTR_STATIC_ASSERT(offsetof(struct VehGroundShadowScratch, sentinelDriver) == 0x1f8);
-CTR_STATIC_ASSERT(offsetof(struct VehGroundShadowScratch, shadowTex[0]) == 0x224);
-CTR_STATIC_ASSERT(offsetof(struct VehGroundShadowScratch, shadowTex[1]) == 0x230);
+CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct VehGroundShadowScratch, shadowTex, 0) == 0x224);
+CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct VehGroundShadowScratch, shadowTex, 1) == 0x230);
 
-static u32 VehGroundShadow_ReadWord(const void *base, size_t offset)
+static u32 VehGroundShadow_ReadWord(const void *base, u32 offset)
 {
 	u32 value;
 	memcpy(&value, (const char *)base + offset, sizeof(value));
 	return value;
 }
 
-static u16 VehGroundShadow_ReadHalf(const void *base, size_t offset)
+static u16 VehGroundShadow_ReadHalf(const void *base, u32 offset)
 {
 	u16 value;
 	memcpy(&value, (const char *)base + offset, sizeof(value));
@@ -226,7 +225,7 @@ static void VehGroundShadow_TransformLocalAxes(struct VehGroundShadowEntry *entr
 		height = VEH_GROUND_SHADOW_HEIGHT_BASE;
 	}
 
-	VehPhysForce_RotAxisAngle(&axisMatrix, driver->AxisAngle3_normalVec.v, driver->rotCurr.y);
+	VehPhysForce_RotAxisAngle(&axisMatrix, CTR_VECTOR_DATA(&(driver->AxisAngle3_normalVec)), driver->rotCurr.y);
 	VehGroundShadow_LoadGteLightMatrix(&axisMatrix);
 
 	localX = (height * VEH_GROUND_SHADOW_LOCAL_X_FACTOR) >> VEH_GROUND_SHADOW_LOCAL_SCALE_SHIFT;
@@ -344,7 +343,6 @@ static void VehGroundShadow_EmitQuad(u32 **primCursor, u32 *otBase, const struct
 	*primCursor = (u32 *)(poly + 1);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005b720-0x8005c120.
 void VehGroundShadow_Main(void)
 {
 	struct GameTracker *gGT = sdata->gGT;

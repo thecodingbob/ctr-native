@@ -2,7 +2,6 @@
 
 // In air, after spamming L1 or R1,
 // will explode on impact with ground
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ad310-0x800ad44c.
 void RB_TNT_ThTick_ThrowOffHead(struct Thread *t)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -74,7 +73,6 @@ static const s16 s_tntSitScale[(0x5a + 1) * 2] = {
     2283, 2283, 1943, 1943, 2331, 2331, 1926, 1926, 2344, 2344, 1899, 1899, 2379, 2379, 1904, 1904, 2327, 2327, 1926, 1926, 2379, 2379, 3072, 3072, 32,   32,
 };
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ad44c-0x800ad710.
 // NOTE(aalhendi): Retail frame 89 indexes one pair into the next RDATA table at 0x800b2ac4.
 void RB_TNT_ThTick_SitOnHead(struct Thread *t)
 {
@@ -221,6 +219,7 @@ LAB_800ad5f8:
 		t->flags |= THREAD_FLAG_DEAD;
 
 		mw->driverTarget->instTntRecv = NULL;
+		return;
 	}
 
 	// set scale of TNT, given frame of animation
@@ -232,7 +231,6 @@ LAB_800ad5f8:
 
 static const s16 s_tntThrowHeadY[0x10] = {32, 32, 64, 32, 32, 48, 32, 32, 48, 64, 32, 48, 56, 24, 32, 56};
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ad710-0x800ad92c.
 // NOTE(aalhendi): Native uses retail character-height table bytes from 0x800b2ac4.
 void RB_TNT_ThTick_ThrowOnHead(struct Thread *t)
 {
@@ -271,8 +269,8 @@ void RB_TNT_ThTick_ThrowOnHead(struct Thread *t)
 			// Set TNT timer to 0, it blows up at 0x5a
 			mw->numFramesOnHead = 0;
 
-			// number of jumps is 7 or 8
-			mw->jumpsRemaining = 8 - (MixRNG_Scramble() & 1);
+			// A negative odd RNG result gives retail a ninth jump.
+			mw->jumpsRemaining = 8 - (MixRNG_Scramble() % 2);
 
 			// play sound that you hit a TNT
 			PlaySound3D(0x51, inst);

@@ -150,9 +150,8 @@ internal u32 NativeReplayScheduler_Fnv1a(const void *data, u32 size)
 {
 	const u8 *bytes = (const u8 *)data;
 	u32 hash = NATIVE_REPLAY_FNV_OFFSET;
-	u32 i;
 
-	for (i = 0; i < size; i++)
+	for (u32 i = 0; i < size; i++)
 	{
 		hash ^= bytes[i];
 		hash *= NATIVE_REPLAY_FNV_PRIME;
@@ -164,9 +163,8 @@ internal u32 NativeReplayScheduler_Fnv1a(const void *data, u32 size)
 internal u32 NativeReplayScheduler_Fnv1aStep(u32 hash, const void *data, u32 size)
 {
 	const u8 *bytes = (const u8 *)data;
-	u32 i;
 
-	for (i = 0; i < size; i++)
+	for (u32 i = 0; i < size; i++)
 	{
 		hash ^= bytes[i];
 		hash *= NATIVE_REPLAY_FNV_PRIME;
@@ -222,8 +220,6 @@ internal const char *NativeReplayScheduler_MetadataStatus(s32 finalMetadata)
 
 internal void NativeReplayScheduler_CopyFixedString(char *dst, u32 dstSize, const char *src)
 {
-	size_t srcLen;
-
 	if ((dst == NULL) || (dstSize == 0))
 	{
 		return;
@@ -235,7 +231,7 @@ internal void NativeReplayScheduler_CopyFixedString(char *dst, u32 dstSize, cons
 		return;
 	}
 
-	srcLen = strlen(src);
+	size_t srcLen = strlen(src);
 	if (srcLen >= dstSize)
 	{
 		srcLen = dstSize - 1u;
@@ -333,9 +329,8 @@ internal void NativeReplayScheduler_LogHeaderIdentityMismatch(const struct Nativ
 internal const char *NativeReplayScheduler_ArgValue(int argc, char **argv, const char *arg)
 {
 	NativeStr8 argText = NativeStr8_FromCString(arg);
-	int i;
 
-	for (i = 1; i < argc - 1; i++)
+	for (int i = 1; i < argc - 1; i++)
 	{
 		if (NativeStr8_Equals(NativeStr8_FromCString(argv[i]), argText))
 		{
@@ -349,9 +344,8 @@ internal const char *NativeReplayScheduler_ArgValue(int argc, char **argv, const
 internal s32 NativeReplayScheduler_ArgPresent(int argc, char **argv, const char *arg)
 {
 	NativeStr8 argText = NativeStr8_FromCString(arg);
-	int i;
 
-	for (i = 1; i < argc; i++)
+	for (int i = 1; i < argc; i++)
 	{
 		if (NativeStr8_Equals(NativeStr8_FromCString(argv[i]), argText))
 		{
@@ -365,9 +359,8 @@ internal s32 NativeReplayScheduler_ArgPresent(int argc, char **argv, const char 
 internal s32 NativeReplayScheduler_ArgMissingValue(int argc, char **argv, const char *arg)
 {
 	NativeStr8 argText = NativeStr8_FromCString(arg);
-	int i;
 
-	for (i = 1; i < argc; i++)
+	for (int i = 1; i < argc; i++)
 	{
 		if (NativeStr8_Equals(NativeStr8_FromCString(argv[i]), argText) &&
 		    ((i + 1 >= argc) || NativeStr8_StartsWith(NativeStr8_FromCString(argv[i + 1]), NATIVE_STR8_LIT("--"))))
@@ -383,7 +376,6 @@ internal char *NativeReplayScheduler_MakeSiblingPath(const char *path, const cha
 {
 	NativeStr8 pathText = NativeStr8_FromCString(path);
 	NativeStr8 filenameText = NativeStr8_FromCString(filename);
-	size_t dirLen;
 	size_t separatorIndex;
 	char *siblingPath;
 
@@ -392,7 +384,7 @@ internal char *NativeReplayScheduler_MakeSiblingPath(const char *path, const cha
 		return NULL;
 	}
 
-	dirLen = NativeStr8_LastIndexOfAny(pathText, '/', '\\', &separatorIndex) ? separatorIndex + 1u : 0u;
+	size_t dirLen = NativeStr8_LastIndexOfAny(pathText, '/', '\\', &separatorIndex) ? separatorIndex + 1u : 0u;
 
 	siblingPath = (char *)malloc(dirLen + filenameText.len + 1u);
 	if (siblingPath == NULL)
@@ -408,14 +400,12 @@ internal char *NativeReplayScheduler_MakeSiblingPath(const char *path, const cha
 
 internal s32 NativeReplayScheduler_FileExists(const char *path)
 {
-	FILE *file;
-
 	if (path == NULL)
 	{
 		return 0;
 	}
 
-	file = fopen(path, "rb");
+	FILE *file = fopen(path, "rb");
 	if (file == NULL)
 	{
 		return 0;
@@ -435,14 +425,13 @@ internal s32 NativeReplayScheduler_PathExists(const char *path)
 internal char *NativeReplayScheduler_DupString(const char *text)
 {
 	NativeStr8 textView = NativeStr8_FromCString(text);
-	char *copy;
 
 	if (text == NULL)
 	{
 		return NULL;
 	}
 
-	copy = (char *)malloc(textView.len + 1u);
+	char *copy = (char *)malloc(textView.len + 1u);
 	if (copy == NULL)
 	{
 		return NULL;
@@ -456,14 +445,13 @@ internal char *NativeReplayScheduler_JoinPath(const char *left, const char *righ
 {
 	NativeStr8 leftText = NativeStr8_FromCString(left);
 	NativeStr8 rightText = NativeStr8_FromCString(right);
-	char *path;
 
 	if ((left == NULL) || (right == NULL))
 	{
 		return NULL;
 	}
 
-	path = (char *)malloc(leftText.len + 1u + rightText.len + 1u);
+	char *path = (char *)malloc(leftText.len + 1u + rightText.len + 1u);
 	if (path == NULL)
 	{
 		return NULL;
@@ -500,8 +488,6 @@ internal s32 NativeReplayScheduler_MakeDir(const char *path)
 
 internal s32 NativeReplayScheduler_CreateDirs(const char *path)
 {
-	char *copy;
-	char *cursor;
 	s32 ok = 1;
 
 	if ((path == NULL) || (path[0] == '\0'))
@@ -509,13 +495,13 @@ internal s32 NativeReplayScheduler_CreateDirs(const char *path)
 		return 0;
 	}
 
-	copy = NativeReplayScheduler_DupString(path);
+	char *copy = NativeReplayScheduler_DupString(path);
 	if (copy == NULL)
 	{
 		return 0;
 	}
 
-	cursor = copy;
+	char *cursor = copy;
 	if (NativePath_IsSeparator(cursor[0]))
 	{
 		cursor++;
@@ -573,12 +559,10 @@ internal void NativeReplayScheduler_FreeReportPaths(void)
 internal s32 NativeReplayScheduler_PrepareReportPaths(const char *root)
 {
 	time_t now;
-	struct tm *localTime;
 	char dateText[16];
 	char runText[32];
 	char runCandidate[40];
 	char *dateDir = NULL;
-	u32 attempt;
 
 	if ((root == NULL) || (root[0] == '\0'))
 	{
@@ -586,7 +570,7 @@ internal s32 NativeReplayScheduler_PrepareReportPaths(const char *root)
 	}
 
 	now = time(NULL);
-	localTime = localtime(&now);
+	struct tm *localTime = localtime(&now);
 	if (localTime == NULL)
 	{
 		return 0;
@@ -604,7 +588,7 @@ internal s32 NativeReplayScheduler_PrepareReportPaths(const char *root)
 	{
 		return 0;
 	}
-	for (attempt = 0; attempt < 100u; attempt++)
+	for (u32 attempt = 0; attempt < 100u; attempt++)
 	{
 		int written;
 
@@ -699,14 +683,12 @@ int NativeReplayScheduler_PrepareReportFromArgs(int argc, char **argv)
 
 internal void NativeReplayScheduler_WriteReportMetadata(s32 finalMetadata)
 {
-	FILE *file;
-
 	if ((s_reportEnabled == 0) || (s_reportMetadataPath == NULL))
 	{
 		return;
 	}
 
-	file = fopen(s_reportMetadataPath, "wb");
+	FILE *file = fopen(s_reportMetadataPath, "wb");
 	if (file == NULL)
 	{
 		Platform_Log("[CTR Replay] failed to write report metadata: %s\n", s_reportMetadataPath);
@@ -809,14 +791,12 @@ internal void NativeReplayScheduler_ResetMemcardSandbox(void)
 
 internal s32 NativeReplayScheduler_ActivateRecordMemcardSandbox(void)
 {
-	enum NativeMemcardResult result;
-
 	if ((s_reportMemcardSeedPath == NULL) || (s_reportMemcardRecordingPath == NULL) || !NativeReplayScheduler_MemcardIdleForRootSwitch())
 	{
 		return 0;
 	}
 
-	result = NativeMemcard_CloneCurrentRoot(s_reportMemcardSeedPath);
+	enum NativeMemcardResult result = NativeMemcard_CloneCurrentRoot(s_reportMemcardSeedPath);
 	if (result != NATIVE_MEMCARD_OK)
 	{
 		Platform_Log("[CTR Replay] failed to clone memcard seed into report: %s\n", s_reportMemcardSeedPath);
@@ -845,10 +825,7 @@ internal s32 NativeReplayScheduler_ActivateRecordMemcardSandbox(void)
 
 internal s32 NativeReplayScheduler_ActivatePlaybackMemcardSandbox(const char *replayPath)
 {
-	char *sourcePath;
-	enum NativeMemcardResult result;
-
-	sourcePath = NativeReplayScheduler_MakeSiblingPath(replayPath, NATIVE_REPLAY_REPORT_MEMCARD_SEED_NAME);
+	char *sourcePath = NativeReplayScheduler_MakeSiblingPath(replayPath, NATIVE_REPLAY_REPORT_MEMCARD_SEED_NAME);
 	s_playbackMemcardPath = NativeReplayScheduler_MakeSiblingPath(replayPath, NATIVE_REPLAY_PLAYBACK_MEMCARD_NAME);
 	if ((sourcePath == NULL) || (s_playbackMemcardPath == NULL))
 	{
@@ -868,7 +845,7 @@ internal s32 NativeReplayScheduler_ActivatePlaybackMemcardSandbox(const char *re
 	// TODO(aalhendi): Per-checkpoint resume needs checkpoint-indexed memcard
 	// snapshots or a deterministic memcard mutation log. This seed only
 	// guarantees frame-0 playback starts from the recorded card state.
-	result = NativeMemcard_CloneRoot(sourcePath, s_playbackMemcardPath);
+	enum NativeMemcardResult result = NativeMemcard_CloneRoot(sourcePath, s_playbackMemcardPath);
 	if (result != NATIVE_MEMCARD_OK)
 	{
 		Platform_Log("[CTR Replay] failed to prepare playback memcard sandbox: %s\n", s_playbackMemcardPath);
@@ -892,14 +869,12 @@ internal s32 NativeReplayScheduler_ActivatePlaybackMemcardSandbox(const char *re
 
 internal s32 NativeReplayScheduler_WriteHeader(void)
 {
-	long oldPos;
-
 	if (s_file == NULL)
 	{
 		return 0;
 	}
 
-	oldPos = ftell(s_file);
+	long oldPos = ftell(s_file);
 	if (oldPos < 0)
 	{
 		return 0;
@@ -1113,8 +1088,6 @@ internal s32 NativeReplayScheduler_PrepareBootstrapCheckpoint(const char *replay
 internal s32 NativeReplayScheduler_RestoreBootstrapCheckpoint(void)
 {
 	struct NativeCheckpointFileRecordInfo info;
-	u8 *payload;
-	int payloadSize;
 	s32 ok = 0;
 
 	if (s_restoreBootstrapCheckpoint == 0)
@@ -1122,14 +1095,14 @@ internal s32 NativeReplayScheduler_RestoreBootstrapCheckpoint(void)
 		return 1;
 	}
 
-	payloadSize = NativeCheckpoint_GetSize();
+	int payloadSize = NativeCheckpoint_GetSize();
 	if (payloadSize <= 0)
 	{
 		Platform_Log("[CTR State] invalid checkpoint size: %d\n", payloadSize);
 		return 0;
 	}
 
-	payload = (u8 *)malloc((size_t)payloadSize);
+	u8 *payload = (u8 *)malloc((size_t)payloadSize);
 	if (payload == NULL)
 	{
 		Platform_Log("[CTR State] failed to allocate checkpoint restore buffer: %d bytes\n", payloadSize);
@@ -1510,8 +1483,6 @@ int NativeReplayScheduler_BeginFrame(const struct NativeReplaySchedulerFrameInfo
 
 	if (s_mode == NATIVE_REPLAY_MODE_PLAYBACK)
 	{
-		u32 checksum;
-
 		if (!NativeReplayScheduler_RestoreBootstrapCheckpoint())
 		{
 			return 1;
@@ -1529,7 +1500,7 @@ int NativeReplayScheduler_BeginFrame(const struct NativeReplaySchedulerFrameInfo
 			return 1;
 		}
 
-		checksum = NativeReplayScheduler_RecordChecksum(&s_pendingRecord);
+		u32 checksum = NativeReplayScheduler_RecordChecksum(&s_pendingRecord);
 		if ((s_pendingRecord.magic != NATIVE_REPLAY_FRAME_MAGIC) || (s_pendingRecord.replayFrame != s_replayFrame) ||
 		    (checksum != s_pendingRecord.recordChecksum) || (NativeReplayScheduler_PadChecksum(s_pendingRecord.pads) != s_pendingRecord.padChecksum))
 		{
@@ -1553,8 +1524,6 @@ int NativeReplayScheduler_BeginFrame(const struct NativeReplaySchedulerFrameInfo
 
 int NativeReplayScheduler_ConsumeVSyncPacket(int requestedVBlanks, int *emittedVBlanks)
 {
-	u32 packet;
-
 	if ((s_mode != NATIVE_REPLAY_MODE_PLAYBACK) || (s_beginOpen == 0) || (emittedVBlanks == NULL))
 	{
 		return 0;
@@ -1572,7 +1541,7 @@ int NativeReplayScheduler_ConsumeVSyncPacket(int requestedVBlanks, int *emittedV
 		return 1;
 	}
 
-	packet = s_pendingRecord.vblankPackets[s_frameVBlankPacketCount];
+	u32 packet = s_pendingRecord.vblankPackets[s_frameVBlankPacketCount];
 	if (packet == 0)
 	{
 		s_vblankPlaybackMismatch = 1;

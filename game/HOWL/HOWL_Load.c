@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002991c-0x80029988
 u32 howl_InstrumentPitch(int basePitch, int pitchIndex, u32 distort)
 {
 	// param_3
@@ -20,7 +19,6 @@ u32 howl_InstrumentPitch(int basePitch, int pitchIndex, u32 distort)
 	return freq & 0xffff;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029988-0x80029a50
 int howl_InitGlobals(char *filename)
 {
 	if (sdata->boolAudioEnabled == 1)
@@ -57,7 +55,6 @@ int howl_InitGlobals(char *filename)
 	return howl_LoadHeader(filename) != 0;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029a50-0x80029ab4
 void howl_ParseHeader(struct HowlHeader *hh)
 {
 	u32 addr = (u32)hh;
@@ -83,7 +80,6 @@ void howl_ParseHeader(struct HowlHeader *hh)
 	sdata->howl_endOfHowl = addr;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029ab4-0x80029b2c
 void howl_ParseCseqHeader(struct CseqHeader *ch)
 {
 	u32 addr = (u32)ch;
@@ -105,7 +101,6 @@ void howl_ParseCseqHeader(struct CseqHeader *ch)
 	sdata->ptrCseqSongData = (char *)addr;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029b2c-0x80029c40
 int howl_LoadHeader(char *filename)
 {
 	struct HowlHeader *alloc;
@@ -160,7 +155,6 @@ int howl_LoadHeader(char *filename)
 	return 0;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029c40-0x80029ca4
 int howl_SetSong(int songID)
 {
 	if (sdata->boolAudioEnabled == 0)
@@ -182,7 +176,6 @@ int howl_SetSong(int songID)
 	return 1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029ca4-0x80029dc0
 // similar to h23_Bank_AssignSpuAddrs, and h34_howl_LoadHeader
 int howl_LoadSong()
 {
@@ -255,14 +248,12 @@ int howl_LoadSong()
 	return 0;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029dc0-0x80029dcc
 void howl_ErasePtrCseqHeader()
 {
 	// can not play a song anymore
 	sdata->ptrCseqHeader = 0;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80029dcc-0x80029e18
 u8 *howl_GetNextNote(u8 *currNote, int *noteLen)
 {
 	int var1;

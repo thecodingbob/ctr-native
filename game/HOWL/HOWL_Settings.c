@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002ac94-0x8002acb8
 int howl_Disable(void)
 {
 	if (sdata->boolAudioEnabled == 0)
@@ -12,13 +11,11 @@ int howl_Disable(void)
 	return 1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002acb8-0x8002ad04
 void UpdateChannelVol_EngineFX(struct EngineFX *engineFX, struct ChannelAttr *attr, int vol, int LR)
 {
 	Channel_SetVolume(attr, (sdata->vol_FX * engineFX->volume * vol) >> 10, LR);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002ad04-0x8002ad70
 void UpdateChannelVol_OtherFX(struct OtherFX *otherFX, struct ChannelAttr *attr, int vol, int LR)
 {
 	int otherVol;
@@ -33,7 +30,6 @@ void UpdateChannelVol_OtherFX(struct OtherFX *otherFX, struct ChannelAttr *attr,
 	Channel_SetVolume(attr, (otherVol * otherFX->volume * vol) >> 10, LR);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002ad70-0x8002ae64
 void UpdateChannelVol_Music(struct SongSeq *songSeq, struct ChannelAttr *attr, int index, int vol)
 {
 	int sampleVol;
@@ -53,12 +49,11 @@ void UpdateChannelVol_Music(struct SongSeq *songSeq, struct ChannelAttr *attr, i
 	Channel_SetVolume(attr, (newVol * sampleVol * vol) >> 0xf, songSeq->LR);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002ae64-0x8002af6c
 void UpdateChannelVol_EngineFX_All()
 {
 	struct ChannelStats *curr;
 
-	for (curr = (struct ChannelStats *)sdata->channelTaken.first; curr != NULL; curr = curr->next)
+	for (curr = (struct ChannelStats *)sdata->channelTaken.first; curr != NULL; curr = curr->link.links.next)
 	{
 		if (curr->type == HOWL_CHANNEL_TYPE_MUSIC)
 		{
@@ -84,14 +79,13 @@ void UpdateChannelVol_EngineFX_All()
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002af6c-0x8002b030
 void UpdateChannelVol_Music_All()
 {
 	struct ChannelStats *curr, *backupNext;
 
 	for (curr = (struct ChannelStats *)sdata->channelTaken.first; curr != NULL; curr = backupNext)
 	{
-		backupNext = curr->next;
+		backupNext = curr->link.links.next;
 
 		if (curr->type != HOWL_CHANNEL_TYPE_MUSIC)
 		{
@@ -105,14 +99,13 @@ void UpdateChannelVol_Music_All()
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002b030-0x8002b0e0
 void UpdateChannelVol_OtherFX_All()
 {
 	struct ChannelStats *curr, *backupNext;
 
 	for (curr = (struct ChannelStats *)sdata->channelTaken.first; curr != NULL; curr = backupNext)
 	{
-		backupNext = curr->next;
+		backupNext = curr->link.links.next;
 
 		if (curr->type != HOWL_CHANNEL_TYPE_OTHER_FX)
 		{
@@ -127,7 +120,6 @@ void UpdateChannelVol_OtherFX_All()
 }
 
 // real Naughty Dog name
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002b0e0-0x8002b130
 int howl_VolumeGet(int type)
 {
 	if (type == HOWL_VOLUME_TYPE_MUSIC)
@@ -148,7 +140,6 @@ int howl_VolumeGet(int type)
 	return 0;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002b130-0x8002b1f0
 void howl_VolumeSet(int type, u8 vol)
 {
 	if (type == HOWL_VOLUME_TYPE_MUSIC)
@@ -199,19 +190,16 @@ void howl_VolumeSet(int type, u8 vol)
 	Smart_ExitCriticalSection();
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002b1f0-0x8002b1fc
 int howl_ModeGet(void)
 {
 	return sdata->boolStereoEnabled;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002b1fc-0x8002b208
 void howl_ModeSet(int newMode)
 {
 	sdata->boolStereoEnabled = newMode;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8002b208-0x8002b4d0
 void OptionsMenu_TestSound(int newRow, int newBoolPlay)
 {
 	int oldRow = sdata->OptionSlider_Index;

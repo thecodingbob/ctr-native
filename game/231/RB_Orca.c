@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b7b8c-0x800b81e8.
 
 struct ParticleEmitter emSet_OrcaSplash[7] = {
     [0] =
@@ -55,7 +54,8 @@ struct ParticleEmitter emSet_OrcaSplash[7] = {
             .initOffset = 5,
             .InitTypes.AxisInit =
                 {
-                    .baseValue = {.startVal = 0x3E8, .velocity = 0x28, .accel = 0x64},
+                    .baseValue = {.startVal = 0x3E8, .velocity = 0x28, .accel = 0},
+                    .rngSeed = {.startVal = 0x64},
                 },
         },
 
@@ -248,8 +248,8 @@ void RB_Orca_LInB(struct Instance *inst)
 	{
 		spawnType2 = &sdata->gGT->level1->ptrSpawnType2[orcaID + 4];
 
-		orcaObj->startPos = spawnType2->positions[0];
-		orcaObj->endPos = spawnType2->positions[1];
+		orcaObj->startPos = spawnType2->coords.positions[0];
+		orcaObj->endPos = spawnType2->coords.positions[1];
 	}
 
 	orcaObj->pathDelta.x = orcaObj->startPos.x - orcaObj->endPos.x;

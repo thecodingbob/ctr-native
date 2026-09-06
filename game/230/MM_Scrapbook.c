@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b3fe4-0x800b4014.
 void MM_Scrapbook_Init(void)
 {
 	D230.scrapbookState = SCRAP_INIT;
@@ -40,7 +39,7 @@ static void MM_Scrapbook_GetNativeSource(s16 *srcX, s16 *srcY, s16 *displayY)
 #endif
 
 #ifndef CTR_NATIVE
-CTR_GCC_OPTIMIZE_O0 int ScrapBookPlayMovie_DecodeFrame()
+int ScrapBookPlayMovie_DecodeFrame()
 {
 	struct GameTracker *gGT = sdata->gGT;
 	DRAWENV *ptrDrawEnv = &gGT->db[1 - gGT->swapchainIndex].drawEnv;
@@ -49,7 +48,6 @@ CTR_GCC_OPTIMIZE_O0 int ScrapBookPlayMovie_DecodeFrame()
 }
 #endif
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 overlay 230 0x800b4014-0x800b42b0 PSX path.
 void MM_Scrapbook_PlayMovie(struct RectMenu *menu)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -69,7 +67,6 @@ void MM_Scrapbook_PlayMovie(struct RectMenu *menu)
 		// go to Load State
 		D230.scrapbookState = SCRAP_LOAD;
 		menu->state &= ~NEEDS_TO_CLOSE;
-		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b4070-0x800b408c for scrapbook audio state handoff.
 		Audio_SetState_Safe(1);
 		break;
 
@@ -83,7 +80,6 @@ void MM_Scrapbook_PlayMovie(struct RectMenu *menu)
 			return;
 		}
 
-		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b40a8-0x800b40b4 for scrapbook CD stream mode.
 		CDSYS_SetMode_StreamData();
 
 #ifdef CTR_NATIVE

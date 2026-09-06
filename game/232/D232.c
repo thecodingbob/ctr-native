@@ -5,26 +5,26 @@ struct OverlayDATA_232
     D232 =
         {
             // 800b4ddc
-            .lightDirGem = {{{0xA0A, 0xF5F6, 0x787}}, {{0xA0A, 0xF5F6, 0x787}}, {{0xA0A, 0xF5F6, 0x787}}, {{0xA0A, 0xF5F6, 0x787}}, {{0xA0A, 0xF5F6, 0x787}}},
+            .lightDirGem = {{0xA0A, 0xF5F6, 0x787}, {0xA0A, 0xF5F6, 0x787}, {0xA0A, 0xF5F6, 0x787}, {0xA0A, 0xF5F6, 0x787}, {0xA0A, 0xF5F6, 0x787}},
 
             // 800b4dfc
             .lightDirRelic =
                 {
-                    {{0x690, 0xD20, 0x690}},
-                    {{0x690, 0xD20, 0x690}},
-                    {{0x690, 0xD20, 0x690}},
-                    {{0x690, 0xD20, 0x690}},
-                    {{0x690, 0xD20, 0x690}},
+                    {0x690, 0xD20, 0x690},
+                    {0x690, 0xD20, 0x690},
+                    {0x690, 0xD20, 0x690},
+                    {0x690, 0xD20, 0x690},
+                    {0x690, 0xD20, 0x690},
                 },
 
             // 800b4e1c
             .lightDirToken =
                 {
-                    {{0xF5F6, 0x787, 0xA0A}},
-                    {{0xF5F6, 0x787, 0xA0A}},
-                    {{0xF5F6, 0x787, 0xA0A}},
-                    {{0xF5F6, 0x787, 0xA0A}},
-                    {{0xF5F6, 0x787, 0xA0A}},
+                    {0xF5F6, 0x787, 0xA0A},
+                    {0xF5F6, 0x787, 0xA0A},
+                    {0xF5F6, 0x787, 0xA0A},
+                    {0xF5F6, 0x787, 0xA0A},
+                    {0xF5F6, 0x787, 0xA0A},
                 },
 
             // 800b4e3c
@@ -67,13 +67,13 @@ struct OverlayDATA_232
                 },
 
             // 800b4ea4
-            .saveObjCameraOffset = {{0x800, 0, 0}},
+            .saveObjCameraOffset = {0x800, 0, 0},
 
             // 800b4eac
-            .loadSavePrimOffset = {{{0, 0}}, {{-2, 0}}, {{2, 0}}, {{0, -1}}, {{0, 1}}},
+            .loadSavePrimOffset = {{0, 0}, {-2, 0}, {2, 0}, {0, -1}, {0, 1}},
 
             // 800b4ec0
-            .hubArrowPrimOffset = {{{0, 0}}, {{-2, 0}}, {{2, 0}}, {{0, -1}}, {{0, 1}}},
+            .hubArrowPrimOffset = {{0, 0}, {-2, 0}, {2, 0}, {0, -1}, {0, 1}},
 
             // 800b4ed4
             .hubItems_hub1 = {{0xB780, 0x3D00, 0, AH_HUB_ITEM_OXIDE_WARPPAD},
@@ -119,22 +119,22 @@ struct OverlayDATA_232
                     &D232.hubItems_hub5[0],
                 },
 
-            .hubArrowInnerOffset = {{{3, 4}}, {{6, 2}}, {{5, 4}}},
+            .hubArrowInnerOffset = {{3, 4}, {6, 2}, {5, 4}},
 
             .hubArrowOuterOffset =
                 {
-                    {{0, 3}},
-                    {{-2, 1}},
-                    {{0, 0}},
-                    {{2, 1}},
+                    {0, 3},
+                    {-2, 1},
+                    {0, 0},
+                    {2, 1},
                 },
 
             .loadSavePos =
                 {
-                    {{-4, -2}},
-                    {{4, -2}},
-                    {{-4, 2}},
-                    {{4, 2}},
+                    {-4, -2},
+                    {4, -2},
+                    {-4, 2},
+                    {4, 2},
                 },
 
             .loadSave_col =
@@ -145,7 +145,7 @@ struct OverlayDATA_232
                     0xBEFFBE,
                 },
 
-            .hubArrowPos = {{{0, 0xFFF8}}, {{0xFFF8, 8}}, {{8, 8}}},
+            .hubArrowPos = {{0, 0xFFF8}, {0xFFF8, 8}, {8, 8}},
 
             .hubArrow_col1 =
                 {
@@ -191,29 +191,29 @@ struct OverlayDATA_232
 
             .advPauseInst =
                 {// gems: red, green, blue, yellow, purple
-                 {0x5F, 0xAF0, 0x8086c, USE_SPECULAR_LIGHT, {{0xfa5b, 0xf0f, 0xfe1f}}},
-                 {0x5F, 0xAF0, 0x86c08, USE_SPECULAR_LIGHT, {{0xfa5b, 0xf0f, 0xfe1f}}},
-                 {0x5F, 0xAF0, 0x808000, USE_SPECULAR_LIGHT, {{0xfa5b, 0xf0f, 0xfe1f}}},
-                 {0x5F, 0xAF0, 0x8080, USE_SPECULAR_LIGHT, {{0xfa5b, 0xf0f, 0xfe1f}}},
-                 {0x5F, 0xAF0, 0x6c086c, USE_SPECULAR_LIGHT, {{0xfa5b, 0xf0f, 0xfe1f}}},
+                 {0x5F, 0xAF0, 0x8086c, USE_SPECULAR_LIGHT, {0xfa5b, 0xf0f, 0xfe1f}},
+                 {0x5F, 0xAF0, 0x86c08, USE_SPECULAR_LIGHT, {0xfa5b, 0xf0f, 0xfe1f}},
+                 {0x5F, 0xAF0, 0x808000, USE_SPECULAR_LIGHT, {0xfa5b, 0xf0f, 0xfe1f}},
+                 {0x5F, 0xAF0, 0x8080, USE_SPECULAR_LIGHT, {0xfa5b, 0xf0f, 0xfe1f}},
+                 {0x5F, 0xAF0, 0x6c086c, USE_SPECULAR_LIGHT, {0xfa5b, 0xf0f, 0xfe1f}},
 
                  // key
-                 {0x63, 0x30D, 0xA6DC, USE_SPECULAR_LIGHT, {{0xf368, 0x99f, 0xfd28}}},
+                 {0x63, 0x30D, 0xA6DC, USE_SPECULAR_LIGHT, {0xf368, 0x99f, 0xfd28}},
 
                  // relic: blue, gold, platinum
-                 {0x61, 0x30D, 0xFFA560, USE_SPECULAR_LIGHT, {{0xf368, 0x99f, 0x232}}},
-                 {0x61, 0x30D, 0x9d2d8, USE_SPECULAR_LIGHT, {{0xf368, 0x99f, 0x232}}},
-                 {0x61, 0x30D, 0xe9edff, USE_SPECULAR_LIGHT, {{0xf368, 0x99f, 0x232}}},
+                 {0x61, 0x30D, 0xFFA560, USE_SPECULAR_LIGHT, {0xf368, 0x99f, 0x232}},
+                 {0x61, 0x30D, 0x9d2d8, USE_SPECULAR_LIGHT, {0xf368, 0x99f, 0x232}},
+                 {0x61, 0x30D, 0xe9edff, USE_SPECULAR_LIGHT, {0xf368, 0x99f, 0x232}},
 
                  // token: red, green, blue, yellow, purple
-                 {0x7d, 0x500, 0x8086c, USE_SPECULAR_LIGHT, {{0xf5f6, 0x787, 0xa0a}}},
-                 {0x7d, 0x500, 0x86c08, USE_SPECULAR_LIGHT, {{0xf5f6, 0x787, 0xa0a}}},
-                 {0x7d, 0x500, 0x800000, USE_SPECULAR_LIGHT, {{0xf5f6, 0x787, 0xa0a}}},
-                 {0x7d, 0x500, 0x8080, USE_SPECULAR_LIGHT, {{0xf5f6, 0x787, 0xa0a}}},
-                 {0x7d, 0x500, 0x6c086c, USE_SPECULAR_LIGHT, {{0xf5f6, 0x787, 0xa0a}}},
+                 {0x7d, 0x500, 0x8086c, USE_SPECULAR_LIGHT, {0xf5f6, 0x787, 0xa0a}},
+                 {0x7d, 0x500, 0x86c08, USE_SPECULAR_LIGHT, {0xf5f6, 0x787, 0xa0a}},
+                 {0x7d, 0x500, 0x800000, USE_SPECULAR_LIGHT, {0xf5f6, 0x787, 0xa0a}},
+                 {0x7d, 0x500, 0x8080, USE_SPECULAR_LIGHT, {0xf5f6, 0x787, 0xa0a}},
+                 {0x7d, 0x500, 0x6c086c, USE_SPECULAR_LIGHT, {0xf5f6, 0x787, 0xa0a}},
 
                  // trophy
-                 {0x62, 0x500, 0x808080, 0, {{0xf368, 0x99f, 0x232}}}},
+                 {0x62, 0x500, 0x808080, 0, {0xf368, 0x99f, 0x232}}},
 
             .menuHintMenu =
                 {
@@ -231,26 +231,26 @@ struct OverlayDATA_232
                     // rest of variables all default zero
                 },
 
-            .fiveArrowPos = {{{0, -5}}, {{-0x18, 6}}, {{0x18, 6}}},
+            .fiveArrowPos = {{0, -5}, {-0x18, 6}, {0x18, 6}},
 
             .fiveArrow_col1 = {0xC8FF, 0xFF, 0xFF},
 
             .fiveArrow_col2 = {0x80c8ff, 0x80ff, 0x80ff},
 
-            .maskPos = {{-0xA0, -0xA, 0x100}},
+            .maskPos = {-0xA0, -0xA, 0x100},
 
-            .maskRot = {{0, 0x180, 0}},
+            .maskRot = {0, 0x180, 0},
 
             .maskScale = 0x1000,
 
-            .maskOffsetPos = {{-0x14, 0, 0x50}},
+            .maskOffsetPos = {-0x14, 0, 0x50},
 
-            .maskOffsetRot = {{0x7AF, 0x258, 0x78}},
+            .maskOffsetRot = {0x7AF, 0x258, 0x78},
 
             .maskHintOffsets =
                 {
-                    .pos = {{{-0x46, 0, 0x140}}, {{-0x3C, 0, 0x118}}},
-                    .rot = {{{0x7af, 0x258, 0x78}}, {{0x800, 0x64, 0}}},
+                    .pos = {{-0x46, 0, 0x140}, {-0x3C, 0, 0x118}},
+                    .rot = {{0x7af, 0x258, 0x78}, {0x800, 0x64, 0}},
                 },
 
             .maskFrameCurr = 0,
@@ -562,9 +562,9 @@ struct OverlayDATA_232
             .hintMenuLngIndex = {0x17d, 0x17f, 0x181, 0x183, 0x185, 0x189, 0x19f, 0x187, 0x197, 0x199, 0x19b,
                                  0x19d, 0x1a7, 0x1a9, 0x1ab, 0x1ad, 0x1af, 0x1b1, 0x1b3, 0x1b5, -1,    0},
 
-            .eyePos = {{0x6d, 0x84, 0x85}},
+            .eyePos = {0x6d, 0x84, 0x85},
 
-            .lookAtPos = {{-0x2E5, -0x12D, -0xF1}}
+            .lookAtPos = {-0x2E5, -0x12D, -0xF1}
 
             // the rest all initialize to zeros
 };

@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80021984-0x80021a20.
 void CTR_CycleTex_LEV(struct AnimTex *animtex, int timer)
 {
 	int frameCurr;
@@ -32,7 +31,6 @@ void CTR_CycleTex_LEV(struct AnimTex *animtex, int timer)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80021a20-0x80021ac0.
 void CTR_CycleTex_Model(struct AnimTex *animtex, int timer)
 {
 	int frameCurr;
@@ -64,7 +62,6 @@ void CTR_CycleTex_Model(struct AnimTex *animtex, int timer)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80021ac0-0x80021b94.
 void CTR_CycleTex_AllModels(u32 numModels, struct Model **pModelArray, int timer)
 {
 	struct Model *pModel;
@@ -109,7 +106,6 @@ void CTR_CycleTex_AllModels(u32 numModels, struct Model **pModelArray, int timer
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80021b94-0x80021bbc.
 void CTR_CycleTex_2p3p4pWumpaHUD(u32 *ptrActiveTex, u32 *ptrArray, int numFrames)
 {
 	ptrArray[0] = ptrActiveTex[0];

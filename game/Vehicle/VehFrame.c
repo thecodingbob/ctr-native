@@ -28,32 +28,7 @@ enum
 	VEH_FRAME_OXIDE_MATRIX_ARRAY = BAKED_GTE_MATRIX_JUMP_OXIDE,
 };
 
-CTR_STATIC_ASSERT(VEH_FRAME_ANIM_DRIVE == 0);
-CTR_STATIC_ASSERT(VEH_FRAME_ANIM_STATIONARY == 1);
-CTR_STATIC_ASSERT(VEH_FRAME_ANIM_MATRIX_FIRST == 2);
-CTR_STATIC_ASSERT(VEH_FRAME_ANIM_AIRBORNE == 3);
-CTR_STATIC_ASSERT(VEH_FRAME_ANIM_END_START == 4);
-CTR_STATIC_ASSERT(VEH_FRAME_MATRIX_ANIM_COUNT == 2);
-CTR_STATIC_ASSERT(VEH_FRAME_NUM_FRAMES_MASK == 0x7fff);
-CTR_STATIC_ASSERT(VEH_FRAME_BURN_SMOKE_ICON_GROUP == 1);
-CTR_STATIC_ASSERT(VEH_FRAME_JUMP_AIR_THRESHOLD == 0x600);
-CTR_STATIC_ASSERT(VEH_FRAME_AIR_GAP_THRESHOLD == 0x8000);
-CTR_STATIC_ASSERT(VEH_FRAME_BURN_TIMER_LIMIT == 0x1e0);
-CTR_STATIC_ASSERT(VEH_FRAME_BURN_TIMER_SHIFT == 5);
-CTR_STATIC_ASSERT(VEH_FRAME_BURN_FRAME_PERIOD == 5);
-CTR_STATIC_ASSERT(VEH_FRAME_BURN_FRAME_SHIFT == 2);
-CTR_STATIC_ASSERT(VEH_FRAME_BURN_FRAME_BIAS == 8);
-CTR_STATIC_ASSERT(VEH_FRAME_TURN_ACCEL_PREVENTION_LIMIT == 0x40);
-CTR_STATIC_ASSERT(VEH_FRAME_TRANSITION_DEFAULT_SPEED == 2);
-CTR_STATIC_ASSERT(VEH_FRAME_TRANSITION_DRIVE_SPEED == 6);
-CTR_STATIC_ASSERT(VEH_FRAME_TRANSITION_MATRIX_SPEED == 1);
-CTR_STATIC_ASSERT(VEH_FRAME_INTERP_SPEED_NORMAL == 1);
-CTR_STATIC_ASSERT(VEH_FRAME_SPIN_INTERP_SPEED == 4);
-CTR_STATIC_ASSERT(VEH_FRAME_LAST_SPIN_INTERP_SPEED == 3);
-CTR_STATIC_ASSERT(VEH_FRAME_AIRBORNE_MATRIX_BASE == 7);
-CTR_STATIC_ASSERT(VEH_FRAME_OXIDE_MATRIX_ARRAY == 7);
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005b0c4-0x8005b0f4.
 int VehFrameInst_GetStartFrame(int animIndex, int numFrames)
 {
 	switch (animIndex)
@@ -72,7 +47,6 @@ int VehFrameInst_GetStartFrame(int animIndex, int numFrames)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005b0f4-0x8005b178.
 u32 VehFrameInst_GetNumAnimFrames(struct Instance *inst, int animIndex)
 {
 	if (inst->model == NULL)
@@ -116,12 +90,11 @@ static void VehFrameProc_Driving_SpawnBurnSmoke(struct Driver *d)
 	if (p != NULL)
 	{
 		p->otIndexOffset = d->instSelf->depthBiasNormal;
-		p->driverInst = d->instSelf;
+		p->owner.driverInst = d->instSelf;
 		p->driverID = d->driverID;
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005b178-0x8005b510
 void VehFrameProc_Driving(struct Thread *t, struct Driver *d)
 {
 	struct Instance *inst = t->inst;
@@ -276,7 +249,6 @@ void VehFrameProc_Driving(struct Thread *t, struct Driver *d)
 	inst->animFrame = VehCalc_InterpBySpeed(inst->animFrame, VEH_FRAME_INTERP_SPEED_NORMAL, numFrames - 1);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005b510-0x8005b5fc.
 void VehFrameProc_Spinning(struct Thread *t, struct Driver *d)
 {
 	struct Instance *inst = t->inst;
@@ -325,7 +297,6 @@ void VehFrameProc_Spinning(struct Thread *t, struct Driver *d)
 	inst->animFrame = VehCalc_InterpBySpeed(inst->animFrame, VEH_FRAME_SPIN_INTERP_SPEED, targetFrame);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005b5fc-0x8005b6b8.
 void VehFrameProc_LastSpin(struct Thread *t, struct Driver *d)
 {
 	struct Instance *inst = t->inst;

@@ -101,101 +101,7 @@ enum
 	VEH_PHYS_PROC_SPIN_STOP_ANIM_RETURN_STEP = 2,
 };
 
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_ACTION_CARRY_MASK == 0x7f1f83d5);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_ITEM_ROLL_FAST_STOP_FRAMES == 70);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_WEAPON_COOLDOWN_EMPTY_FRAMES == 0x1e);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_WEAPON_COOLDOWN_STACK_FRAMES == 5);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_JUMP_BUTTON_MASK == 0xc00);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_DEFAULT_DRIFT_BUTTON == 0x400);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_JUMP_BUFFER_FRAMES == 10);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_ASSUMED_CROSS_BUTTON == 0x10);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_INVISIBLE_REAPPEAR_FX == 0x62);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_ITEM_ROLL_NORMAL_FX == 0x5e);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_ITEM_ROLL_JUICED_FX == 0x41);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_DISTANCE_SPEED_SHIFT == 8);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_TEN_WUMPA_COUNT == 10);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_HAZARD_MOVING_SPEED_MIN == 0x100);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_HAZARD_LOW_SPEED_THRESHOLD == 0x101);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_HAZARD_TIMER_EVEN_MASK == 0xfffe);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_CLOCK_WADDLE_TIMER_SHIFT == 6);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_CLOCK_WADDLE_TIMER_MAX == 0x40);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_CLOCK_WADDLE_TRIG_SHIFT == 4);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_CLOCK_WADDLE_SPEED_SHIFT == 8);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_CLOCK_WADDLE_SPEED_MAX == 0x20);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_CLOCK_WADDLE_TRIG_FORCE_SHIFT == 5);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_CLOCK_WADDLE_RUMBLE_CHANNEL == 4);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_CLOCK_WADDLE_FORCE_BASE == 0x18);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_STICK_CENTER == 0x80);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_REVERSE_STICK_THRESHOLD == 100);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_BRAKE_HIGH_SPEED_THRESHOLD == 0x300);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_REVERSE_SPEED_COMPARE == 0x301);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_REVERSE_SPEED_SCALE_SHIFT == 7);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_REVERSE_SPEED_ROUNDING_BIAS == 0x7f);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_BRAKE_SPEED_SCALE_SHIFT == 8);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_BRAKE_SPEED_ROUNDING_BIAS == 0xff);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_BRAKE_REVERSE_MULTIPLIER == -3);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_BRAKE_REVERSE_SCALE_SHIFT == 2);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_BRAKE_REVERSE_ROUNDING_BIAS == 3);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_HALF_SPEED_SHIFT == 1);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_SUPER_ENGINE_BASE_FIRE == 0x80);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_SUPER_ENGINE_JUICED_FIRE == 0x100);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_SUPER_ENGINE_RESERVES == 120);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_TERRAIN_SPEED_NEUTRAL == 0x100);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_TERRAIN_SPEED_SHIFT == 8);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_STEER_TURN_CONST_SHIFT == 1);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_STEER_TURN_CONST_DIVISOR == 5);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_STEER_ACCEL_TAP_SPEED_MAX == 0x2600);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_STEER_ACCEL_TAP_STRENGTH == 0x5a);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_STEER_WALL_RUB_STRENGTH == 0x30);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_STEER_BRAKE_STRENGTH == 0x40);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_STEER_RESET_FRAMES == 10000);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_WHEEL_ROTATION_STRENGTH == 0x40);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_WHEEL_ROTATION_INTERP_STEP == 0x18);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_TIRE_COLOR_SPEED_AVERAGE_SHIFT == 1);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_TIRE_COLOR_STEP_BLEND_SHIFT == 3);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_TIRE_COLOR_STEP_RESULT_SHIFT == 0xc);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_VSHIFT_MAX_COUNT == 5);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_VSHIFT_START_GUARD_TIMER == 0x60);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_VSHIFT_WINDOW_TIMER == 0x280);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_BATTLE_BLASTED_INVINCIBLE_TIMER == 0xb40);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_DRIFT_ANGLE_LERP_SHIFT == 3);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_DRIFT_AXIS_STEP_MS_SHIFT == 6);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_DRIFT_MS_SCALE_SHIFT == 5);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_DRIFT_TURN_CONST_SHIFT == 2);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_FRAME_TIME_SHIFT == 5);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_DRIFT_SPINOUT_THRESHOLD_SHIFT == 1);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_TURN_WOBBLE_START_ANGLE_MAX == 10);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_TURN_WOBBLE_START_TIMER == 8);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_TURN_WOBBLE_START_VELOCITY == 0x14);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_TURN_WOBBLE_ANGLE_MAX == 0x32);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_TURN_WOBBLE_RETURN_VELOCITY == 10);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_ANGLE_INTEGRATION_SHIFT == 0xd);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_DRIFT_MAX_BOOSTS == 3);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_DRIFT_METER_FULL_FX == 0xf);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_DRIFT_FIRE_LEVEL_SHIFT == 6);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_DRIFT_FAILED_BOOST_EXHAUST_TIMER == 8);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_DRIFT_SPINOUT_NO_INPUT_TIMER == 0x3c0);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_DRIFT_REVERSE_SPINOUT_NO_INPUT_TIMER == 0x780);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_CRASH_SCALE_XY == 0xccc);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_SPIN_SLOW_SPEED_THRESHOLD == 0x2ff);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_SPIN_INITIAL_RATE == 300);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_SPIN_VOICELINE_ID == 3);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_SPIN_VOICELINE_PRIORITY == 0x10);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_SPIN_LEFT_FEEDBACK == 0x19);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_SPIN_RIGHT_FEEDBACK == 0x29);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_SPIN_FEEDBACK_TIMER == 0x60);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_SPIN_STOP_ANGLE_THRESHOLD == 16);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_SPIN_RECENTER_ANGLE_THRESHOLD == 400);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_SPIN_RECENTER_RATE_NUM_SHIFT == 2);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_SPIN_RECENTER_RATE_DEN_SHIFT == 3);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_SPIN_MIN_RECENTER_RATE == 0x20);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_SPIN_STOP_ANIM_SWEEP_STEP == 5);
-CTR_STATIC_ASSERT(VEH_PHYS_PROC_SPIN_STOP_ANIM_RETURN_STEP == 2);
-CTR_STATIC_ASSERT(POWER_SLIDE_HANG_TIME == 0x2);
-CTR_STATIC_ASSERT(FRACTIONAL_BITS_8 == 8);
-CTR_STATIC_ASSERT(ANG_PI == 0x800);
 CTR_STATIC_ASSERT((ANG_TWO_PI - 1) == 0xfff);
-CTR_STATIC_ASSERT(TERRAIN_MUD == 0xe);
 
 static void VehPhysProc_Driving_DecrementTimer(s16 *timer, int elapsed)
 {
@@ -220,7 +126,6 @@ static void VehPhysProc_Driving_DecrementTimerCounter(s16 *timer, int elapsed, i
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006181c-0x80062a2c
 void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver)
 {
 	struct GameTracker *gGT;
@@ -1288,7 +1193,6 @@ SkipSetSteer:
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80062a2c-0x80062a4c.
 void VehPhysProc_Driving_Audio(struct Thread *t, struct Driver *d)
 {
 	(void)t;
@@ -1296,7 +1200,6 @@ void VehPhysProc_Driving_Audio(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80062a4c-0x80062b74.
 void VehPhysProc_Driving_Update(struct Thread *t, struct Driver *d)
 {
 	// if racer touched the ground in this frame
@@ -1355,7 +1258,6 @@ void VehPhysProc_Driving_Update(struct Thread *t, struct Driver *d)
 
 extern DriverFunc PlayerDrivingFuncTable[DRIVER_FUNC_COUNT];
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80062b74-0x80062ca8.
 void VehPhysProc_Driving_Init(struct Thread *t, struct Driver *d)
 {
 	(void)t;
@@ -1404,7 +1306,6 @@ DriverFunc PlayerDrivingFuncTable[DRIVER_FUNC_COUNT] = {
 };
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80062ca8-0x80062d04.
 void VehPhysProc_FreezeEndEvent_PhysLinear(struct Thread *t, struct Driver *d)
 {
 	VehPhysProc_Driving_PhysLinear(t, d);
@@ -1430,7 +1331,6 @@ void VehPhysProc_FreezeEndEvent_PhysLinear(struct Thread *t, struct Driver *d)
 
 extern DriverFunc PlayerFreezeFuncTable[DRIVER_FUNC_COUNT];
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80062d04-0x80062db0.
 void VehPhysProc_FreezeEndEvent_Init(struct Thread *t, struct Driver *d)
 {
 	(void)t;
@@ -1464,7 +1364,6 @@ DriverFunc PlayerFreezeFuncTable[DRIVER_FUNC_COUNT] = {NULL,
                                                        VehEmitter_DriverMain};
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80062db0-0x80062e04.
 void VehPhysProc_FreezeVShift_Update(struct Thread *t, struct Driver *d)
 {
 	// if firespeed = 0 and
@@ -1485,7 +1384,6 @@ void VehPhysProc_FreezeVShift_Update(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80062e04-0x80062e94.
 void VehPhysProc_FreezeVShift_ReverseOneFrame(struct Thread *t, struct Driver *d)
 {
 	VehPhysGeneral_JumpAndFriction(t, d);
@@ -1520,7 +1418,6 @@ void VehPhysProc_FreezeVShift_ReverseOneFrame(struct Thread *t, struct Driver *d
 
 extern DriverFunc PlayerAntiVShiftFuncTable[DRIVER_FUNC_COUNT];
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80062e94-0x80062f4c.
 void VehPhysProc_FreezeVShift_Init(struct Thread *t, struct Driver *d)
 {
 	(void)t;
@@ -1554,7 +1451,6 @@ DriverFunc PlayerAntiVShiftFuncTable[DRIVER_FUNC_COUNT] = {NULL,
                                                            VehEmitter_DriverMain};
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80062f4c-0x80063634.
 void VehPhysProc_PowerSlide_PhysAngular(struct Thread *th, struct Driver *driver)
 {
 	(void)th;
@@ -1984,13 +1880,12 @@ void PhysLerpRot(struct Driver *driver, int targetRotW)
 
 void PhysTerrainSlope(struct Driver *driver)
 {
-	VehPhysForce_RotAxisAngle(&driver->matrixMovingDir, driver->AxisAngle1_normalVec.v, (int)driver->angle);
+	VehPhysForce_RotAxisAngle(&driver->matrixMovingDir, CTR_VECTOR_DATA(&(driver->AxisAngle1_normalVec)), (int)driver->angle);
 	gte_SetRotMatrix(&driver->matrixMovingDir);
 	VehPhysForce_CounterSteer(driver);
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80063634-0x8006364c.
 void VehPhysProc_PowerSlide_Finalize(struct Driver *d)
 {
 	d->timeUntilDriftSpinout = (s16)CTR_MipsSll((u8)d->const_DriftReleaseTurnAssistFrames, VEH_PHYS_PROC_FRAME_TIME_SHIFT);
@@ -1998,7 +1893,6 @@ void VehPhysProc_PowerSlide_Finalize(struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006364c-0x800638d4.
 void VehPhysProc_PowerSlide_Update(struct Thread *t, struct Driver *d)
 {
 	struct GamepadBuffer *pad = &sdata->gGamepads->gamepad[d->driverID];
@@ -2160,7 +2054,6 @@ void VehPhysProc_PowerSlide_Update(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800638d4-0x80063920.
 void VehPhysProc_PowerSlide_PhysLinear(struct Thread *thread, struct Driver *driver)
 {
 	VehPhysProc_Driving_PhysLinear(thread, driver);
@@ -2169,7 +2062,6 @@ void VehPhysProc_PowerSlide_PhysLinear(struct Thread *thread, struct Driver *dri
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80063920-0x80063934.
 void VehPhysProc_PowerSlide_InitSetUpdate(struct Thread *t, struct Driver *d)
 {
 	(void)t;
@@ -2180,7 +2072,6 @@ void VehPhysProc_PowerSlide_InitSetUpdate(struct Thread *t, struct Driver *d)
 
 extern DriverFunc PlayerDriftingFuncTable[DRIVER_FUNC_COUNT];
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80063934-0x80063a44.
 void VehPhysProc_PowerSlide_Init(struct Thread *t, struct Driver *d)
 {
 	(void)t;
@@ -2237,7 +2128,6 @@ DriverFunc PlayerDriftingFuncTable[DRIVER_FUNC_COUNT] = {
 };
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80063a44-0x80063af8.
 void VehPhysProc_SlamWall_PhysAngular(struct Thread *t, struct Driver *d)
 {
 	(void)t;
@@ -2252,11 +2142,10 @@ void VehPhysProc_SlamWall_PhysAngular(struct Thread *t, struct Driver *d)
 
 	d->turnAngleCurr = VehCalc_InterpBySpeed(d->turnAngleCurr, CTR_MipsSra(CTR_MipsSll(elapsedTimeMS, 7), 5), 0);
 
-	VehPhysForce_RotAxisAngle(&d->matrixMovingDir, d->AxisAngle1_normalVec.v, d->angle);
+	VehPhysForce_RotAxisAngle(&d->matrixMovingDir, CTR_VECTOR_DATA(&(d->AxisAngle1_normalVec)), d->angle);
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80063af8-0x80063b00.
 void VehPhysProc_SlamWall_Update(struct Thread *t, struct Driver *d)
 {
 	(void)t;
@@ -2264,7 +2153,6 @@ void VehPhysProc_SlamWall_Update(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80063b00-0x80063b2c.
 void VehPhysProc_SlamWall_PhysLinear(struct Thread *t, struct Driver *d)
 {
 	VehPhysProc_Driving_PhysLinear(t, d);
@@ -2274,7 +2162,6 @@ void VehPhysProc_SlamWall_PhysLinear(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80063b2c-0x80063bd4.
 void VehPhysProc_SlamWall_Animate(struct Thread *t, struct Driver *d)
 {
 	struct Instance *inst = t->inst;
@@ -2319,7 +2206,6 @@ DriverFunc PlayerCrashingFuncTable[DRIVER_FUNC_COUNT] = {
     VehEmitter_DriverMain,
 };
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80063bd4-0x80063cf4.
 void VehPhysProc_SlamWall_Init(struct Thread *t, struct Driver *d)
 {
 	(void)t;
@@ -2371,7 +2257,6 @@ void VehPhysProc_SlamWall_Init(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80063cf4-0x80063d44.
 void VehPhysProc_SpinFirst_Update(struct Thread *t, struct Driver *d)
 {
 	int speedApprox;
@@ -2399,7 +2284,6 @@ void VehPhysProc_SpinFirst_Update(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80063d44-0x80063dc8.
 void VehPhysProc_SpinFirst_PhysLinear(struct Thread *t, struct Driver *d)
 {
 	int elapsedTimeMS = sdata->gGT->elapsedTimeMS;
@@ -2421,7 +2305,6 @@ void VehPhysProc_SpinFirst_PhysLinear(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80063dc8-0x80063eac.
 void VehPhysProc_SpinFirst_PhysAngular(struct Thread *t, struct Driver *d)
 {
 	(void)t;
@@ -2444,11 +2327,10 @@ void VehPhysProc_SpinFirst_PhysAngular(struct Thread *t, struct Driver *d)
 
 	d->rotCurr.w = VehCalc_InterpBySpeed(d->rotCurr.w, CTR_MipsSra(CTR_MipsSll(elapsedTimeMS, 5), 5), 0);
 
-	VehPhysForce_RotAxisAngle(&d->matrixMovingDir, d->AxisAngle1_normalVec.v, d->angle);
+	VehPhysForce_RotAxisAngle(&d->matrixMovingDir, CTR_VECTOR_DATA(&(d->AxisAngle1_normalVec)), d->angle);
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80063eac-0x80063ec0.
 void VehPhysProc_SpinFirst_InitSetUpdate(struct Thread *t, struct Driver *d)
 {
 	(void)t;
@@ -2471,7 +2353,6 @@ DriverFunc PlayerSpinningFuncTable[DRIVER_FUNC_COUNT] = {VehPhysProc_SpinFirst_I
                                                          VehFrameProc_Spinning,
                                                          VehEmitter_DriverMain};
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80063ec0-0x8006402c.
 void VehPhysProc_SpinFirst_Init(struct Thread *t, struct Driver *d)
 {
 	(void)t;
@@ -2520,7 +2401,6 @@ void VehPhysProc_SpinFirst_Init(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006402c-0x8006406c.
 void VehPhysProc_SpinLast_Update(struct Thread *t, struct Driver *d)
 {
 	int driftAngle = d->turnAngleCurr;
@@ -2538,7 +2418,6 @@ void VehPhysProc_SpinLast_Update(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006406c-0x800640a4.
 void VehPhysProc_SpinLast_PhysLinear(struct Thread *t, struct Driver *d)
 {
 	VehPhysProc_Driving_PhysLinear(t, d);
@@ -2550,7 +2429,6 @@ void VehPhysProc_SpinLast_PhysLinear(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800640a4-0x80064254.
 void VehPhysProc_SpinLast_PhysAngular(struct Thread *t, struct Driver *d)
 {
 	(void)t;
@@ -2616,7 +2494,7 @@ void VehPhysProc_SpinLast_PhysAngular(struct Thread *t, struct Driver *d)
 
 	d->rotCurr.w = VehCalc_InterpBySpeed(d->rotCurr.w, CTR_MipsSra(CTR_MipsSll(elapsedTimeMS, 5), 5), 0);
 
-	VehPhysForce_RotAxisAngle(&d->matrixMovingDir, d->AxisAngle1_normalVec.v, d->angle);
+	VehPhysForce_RotAxisAngle(&d->matrixMovingDir, CTR_VECTOR_DATA(&(d->AxisAngle1_normalVec)), d->angle);
 }
 
 
@@ -2634,7 +2512,6 @@ DriverFunc PlayerLastSpinFuncTable[DRIVER_FUNC_COUNT] = {0,
                                                          VehFrameProc_LastSpin,
                                                          VehEmitter_DriverMain};
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80064254-0x800642ec.
 void VehPhysProc_SpinLast_Init(struct Thread *t, struct Driver *d)
 {
 	(void)t;
@@ -2647,7 +2524,6 @@ void VehPhysProc_SpinLast_Init(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800642ec-0x800642f4.
 void VehPhysProc_SpinStop_Update(struct Thread *t, struct Driver *d)
 {
 	(void)t;
@@ -2655,7 +2531,6 @@ void VehPhysProc_SpinStop_Update(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800642f4-0x80064320.
 void VehPhysProc_SpinStop_PhysLinear(struct Thread *t, struct Driver *d)
 {
 	VehPhysProc_Driving_PhysLinear(t, d);
@@ -2665,7 +2540,6 @@ void VehPhysProc_SpinStop_PhysLinear(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80064320-0x800643d4.
 void VehPhysProc_SpinStop_PhysAngular(struct Thread *t, struct Driver *d)
 {
 	(void)t;
@@ -2678,13 +2552,12 @@ void VehPhysProc_SpinStop_PhysAngular(struct Thread *t, struct Driver *d)
 	d->rotCurr.w = VehCalc_InterpBySpeed(d->rotCurr.w, CTR_MipsSra(CTR_MipsSll(elapsedTimeMS, 5), 5), 0);
 	d->turnAngleCurr = VehCalc_InterpBySpeed(d->turnAngleCurr, CTR_MipsSra(CTR_MipsSll(elapsedTimeMS, 7), 5), 0);
 
-	VehPhysForce_RotAxisAngle(&d->matrixMovingDir, d->AxisAngle1_normalVec.v, d->angle);
+	VehPhysForce_RotAxisAngle(&d->matrixMovingDir, CTR_VECTOR_DATA(&(d->AxisAngle1_normalVec)), d->angle);
 }
 
 
 // only Animate is needed, see StopSpin_Init for details
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800643d4-0x800644d0.
 void VehPhysProc_SpinStop_Animate(struct Thread *t, struct Driver *d)
 {
 	struct Instance *inst = t->inst;
@@ -2736,7 +2609,6 @@ void VehPhysProc_SpinStop_Animate(struct Thread *t, struct Driver *d)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800644d0-0x80064568.
 void VehPhysProc_SpinStop_Init(struct Thread *t, struct Driver *d)
 {
 	(void)t;

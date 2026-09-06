@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b0eb8-0x800b0eec.
 void MM_CupSelect_Init(void)
 {
 	// reset transition data
@@ -13,7 +12,6 @@ void MM_CupSelect_Init(void)
 	D230.menuCupSelect.state |= DISABLE_INPUT_ALLOW_FUNCPTRS;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 overlay 230 0x800b0eec-0x800b164c.
 void MM_CupSelect_MenuProc(struct RectMenu *menu)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -110,7 +108,7 @@ void MM_CupSelect_MenuProc(struct RectMenu *menu)
 		if (cupIndex == menu->rowSelected)
 		{
 			// Make text flash
-			if ((sdata->frameCounter & MM_CUP_SELECT_FLASH_FRAME_BIT) != 0)
+			if ((sdata->frameCounter & MM_CUP_SELECT_FLASH_FRAME_BIT) == 0)
 			{
 				txtColor |= MM_CUP_SELECT_FLASH_COLOR_BIT;
 			}
@@ -151,8 +149,8 @@ void MM_CupSelect_MenuProc(struct RectMenu *menu)
 
 			// Draw Icon of each track
 			RECTMENU_DrawPolyGT4(gGT->ptrIcons[data.ArcadeCups[cupIndex].CupTrack[trackIndex].iconID], posX, posY, &gGT->backBuffer->primMem,
-			                     gGT->pushBuffer_UI.ptrOT, D230.cupSel_Color.self, D230.cupSel_Color.self, D230.cupSel_Color.self, D230.cupSel_Color.self, 0,
-			                     FP(0.5));
+			                     gGT->pushBuffer_UI.ptrOT, ColorCode_GetPacked(&D230.cupSel_Color), ColorCode_GetPacked(&D230.cupSel_Color),
+			                     ColorCode_GetPacked(&D230.cupSel_Color), ColorCode_GetPacked(&D230.cupSel_Color), 0, FP(0.5));
 		}
 
 		RECT cupBox;

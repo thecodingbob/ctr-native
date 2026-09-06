@@ -12,23 +12,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef CTR_NATIVE_MEMPACK_RETAIL_PRESSURE
-#define CTR_NATIVE_MEMPACK_RETAIL_PRESSURE 1
-#endif
-
-// TODO(aalhendi): Re-audit LOAD_ReadFile_ex, LOAD_DramFileCallback, LEV/PTR
-// callbacks, hub swapping, MEMPACK size arithmetic + PSX shaped ptr storage before removing the expanded arena escape hatch
-#if CTR_NATIVE_MEMPACK_RETAIL_PRESSURE
-// NOTE(aalhendi): Retail pressure mode exposes the NTSC-U 926 mempack window
-// inside a 2 MiB backing store.
+// Native uses the NTSC-U 926 mempack window inside the retail 2 MiB address
+// space so memory regressions fail here as they would on PSX.
 #define CTR_NATIVE_MEMPACK_BUFFER_SIZE  0x200000u
 #define CTR_NATIVE_MEMPACK_START_OFFSET 0xba9f0u
 #define CTR_NATIVE_MEMPACK_SIZE         0x144e10u
-#else
-#define CTR_NATIVE_MEMPACK_BUFFER_SIZE  (8u * 1024u * 1024u)
-#define CTR_NATIVE_MEMPACK_START_OFFSET 0u
-#define CTR_NATIVE_MEMPACK_SIZE         CTR_NATIVE_MEMPACK_BUFFER_SIZE
-#endif
+
+CTR_STATIC_ASSERT(CTR_NATIVE_MEMPACK_START_OFFSET + CTR_NATIVE_MEMPACK_SIZE + MEMPACK_PS1_END_GUARD_SIZE == CTR_NATIVE_MEMPACK_BUFFER_SIZE);
 
 union NativeScratchpadStorage
 {

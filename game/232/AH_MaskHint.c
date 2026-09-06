@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b3dd8-0x800b3f88.
 void AH_MaskHint_Start(s16 hintId, u16 bool_interruptWarppad)
 {
 	// copy parameters
@@ -42,20 +41,18 @@ void AH_MaskHint_Start(s16 hintId, u16 bool_interruptWarppad)
 
 	int offsetSlot = bool_interruptWarppad & AH_MASKHINT_OFFSET_WARPPAD_INTERRUPT;
 
-	CTR_COPY_VEC3(D232.maskOffsetPos.v, D232.maskHintOffsets.pos[offsetSlot].v);
-	CTR_COPY_VEC3(D232.maskOffsetRot.v, D232.maskHintOffsets.rot[offsetSlot].v);
+	CTR_COPY_VEC3(CTR_VECTOR_DATA(&(D232.maskOffsetPos)), CTR_VECTOR_DATA(&(D232.maskHintOffsets.pos[offsetSlot])));
+	CTR_COPY_VEC3(CTR_VECTOR_DATA(&(D232.maskOffsetRot)), CTR_VECTOR_DATA(&(D232.maskHintOffsets.rot[offsetSlot])));
 
 	for (int i = 0; i < 3; i++)
 	{
 		// 4 bytes for 4 volumes
-		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b3f3c-0x800b3f54 for mask-hint volume backup.
 		D232.audioBackup[i] = howl_VolumeGet(i);
 	}
 
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b3f88-0x800b3f98.
 b32 AH_MaskHint_boolCanSpawn(void)
 {
 	// 0 - aku is gone,
@@ -67,7 +64,6 @@ b32 AH_MaskHint_boolCanSpawn(void)
 	return sdata->AkuAkuHintState == 0;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b3f98-0x800b42b4.
 void AH_MaskHint_SetAnim(int scale)
 {
 	MATRIX *m;
@@ -84,7 +80,7 @@ void AH_MaskHint_SetAnim(int scale)
 	Vec3 posEndInt;
 	SVec3 posEnd;
 
-	CTR_GteStoreMAC(posEndInt.v);
+	CTR_GteStoreMAC(CTR_VECTOR_DATA(&(posEndInt)));
 
 	posEnd.x = posEndInt.x;
 	posEnd.y = posEndInt.y;
@@ -132,7 +128,6 @@ void AH_MaskHint_SetAnim(int scale)
 	mhInst->matrix.t[2] = posCurr.z;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b42b4-0x800b43cc.
 void AH_MaskHint_SpawnParticles(s16 numParticles, struct ParticleEmitter *emSet, int maskAnim)
 
 {
@@ -174,7 +169,6 @@ void AH_MaskHint_SpawnParticles(s16 numParticles, struct ParticleEmitter *emSet,
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b43cc-0x800b4470.
 void AH_MaskHint_LerpVol(int blend)
 {
 	int diff;
@@ -194,7 +188,7 @@ void AH_MaskHint_LerpVol(int blend)
 	}
 }
 
-force_inline void AH_MaskHint_DrawRepeatPrompt(void)
+static void AH_MaskHint_DrawRepeatPrompt(void)
 {
 	int lngIndex = 0;
 	b32 boolFound = false;
@@ -237,12 +231,11 @@ force_inline void AH_MaskHint_DrawRepeatPrompt(void)
 	r.x = -10;
 	r.y = 0xb0;
 	r.w = 0x214;
-	r.h = 8 + DecalFont_DrawMultiLine(sdata->lngStrings[lngIndex], 0x100, 0xb4, 400, 2, 0xffff8000);
+	r.h = 8 + DecalFont_DrawMultiLine(sdata->lngStrings[lngIndex], 0x100, 0xb4, 400, FONT_SMALL, JUSTIFY_CENTER | ORANGE);
 
 	RECTMENU_DrawInnerRect(&r, 4, gGT->backBuffer->otMem.uiOT);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 overlay 232 0x800b4470-0x800b4c80.
 void AH_MaskHint_Update()
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -278,9 +271,9 @@ void AH_MaskHint_Update()
 		{
 			struct CameraDC *cdc = &gGT->cameraDC[0];
 
-			CTR_COPY_VEC3(cdc->driverOffset_CamEyePos.v, D232.eyePos.v);
+			CTR_COPY_VEC3(CTR_VECTOR_DATA(&(cdc->driverOffset_CamEyePos)), CTR_VECTOR_DATA(&(D232.eyePos)));
 
-			CTR_COPY_VEC3(cdc->driverOffset_CamLookAtPos.v, D232.lookAtPos.v);
+			CTR_COPY_VEC3(CTR_VECTOR_DATA(&(cdc->driverOffset_CamLookAtPos)), CTR_VECTOR_DATA(&(D232.lookAtPos)));
 
 			cdc->flags |= 8;
 
@@ -315,7 +308,7 @@ void AH_MaskHint_Update()
 		D232.maskCamRotStart.z = matrixRot.vz & 0xfff;
 		D232.maskCamRotStart.y = matrixRot.vx & 0xfff;
 
-		CTR_COPY_VEC3(D232.maskCamPosStart.v, dInst->matrix.t);
+		CTR_COPY_VEC3(CTR_VECTOR_DATA(&(D232.maskCamPosStart)), dInst->matrix.t);
 
 		((struct MaskHint *)mhInst->thread->object)->scale = 0;
 
@@ -331,7 +324,6 @@ void AH_MaskHint_Update()
 		// first frame "whoosh" sound
 		if (D232.maskFrameCurr == 0)
 		{
-			// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b46d4-0x800b46e4 for mask spawn-start SFX.
 			OtherFX_Play_LowLevel(AH_MASKHINT_SFX_SPAWN, 1, HOWL_SFX_DEFAULT_FLAGS);
 		}
 
@@ -340,22 +332,18 @@ void AH_MaskHint_Update()
 		{
 			if (D232.maskFrameCurr == 10)
 			{
-				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b470c-0x800b4774 for mask spawn pulse 10 SFX.
 				OtherFX_Play_LowLevel(AH_MASKHINT_SFX_SPAWN, 0, 0xd78a80);
 			}
 			else if (D232.maskFrameCurr == 20)
 			{
-				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b4728-0x800b4774 for mask spawn pulse 20 SFX.
 				OtherFX_Play_LowLevel(AH_MASKHINT_SFX_SPAWN, 1, 0xaf9480);
 			}
 			else if (D232.maskFrameCurr == 25)
 			{
-				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b4744-0x800b4774 for mask spawn pulse 25 SFX.
 				OtherFX_Play_LowLevel(AH_MASKHINT_SFX_SPAWN, 0, 0x879e80);
 			}
 			else if (D232.maskFrameCurr == 30)
 			{
-				// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b4760-0x800b4774 for mask spawn pulse 30 SFX.
 				OtherFX_Play_LowLevel(AH_MASKHINT_SFX_SPAWN, 1, 0x5fa880);
 			}
 		}
@@ -441,7 +429,6 @@ void AH_MaskHint_Update()
 		AH_MaskHint_SpawnParticles(AH_MASKHINT_VANISH_PARTICLES, &D232.emSet_maskLeave[0], AH_MASKHINT_FULL_BLEND);
 
 		// vanish sound
-		// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b4b24-0x800b4b2c for mask vanish SFX.
 		OtherFX_Play(AH_MASKHINT_SFX_VANISH, 1);
 
 		VehTalkMask_End();

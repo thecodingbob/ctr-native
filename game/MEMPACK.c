@@ -1,7 +1,6 @@
 #include <common.h>
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 PS1 path 0x8003e740-0x8003e80c; CTR_NATIVE uses host RAM.
 void MEMPACK_Init(int ramSize)
 {
 	(void)ramSize;
@@ -48,14 +47,12 @@ void MEMPACK_Init(int ramSize)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003e80c-0x8003e830.
 void MEMPACK_SwapPacks(int index)
 {
 	sdata->PtrMempack = &sdata->mempack[index];
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003e830-0x8003e85c.
 void MEMPACK_NewPack(void *start, int size)
 {
 	struct Mempack *ptrMempack = sdata->PtrMempack;
@@ -70,7 +67,6 @@ void MEMPACK_NewPack(void *start, int size)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003e85c-0x8003e874.
 int MEMPACK_GetFreeBytes()
 {
 	struct Mempack *ptrMempack = sdata->PtrMempack;
@@ -79,7 +75,6 @@ int MEMPACK_GetFreeBytes()
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003e874-0x8003e8e8.
 void *MEMPACK_AllocMem(int allocSize)
 {
 	struct Mempack *ptrMempack = sdata->PtrMempack;
@@ -102,7 +97,6 @@ void *MEMPACK_AllocMem(int allocSize)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003e8e8-0x8003e938.
 void *MEMPACK_AllocHighMem(int allocSize)
 {
 	while (MEMPACK_GetFreeBytes() < allocSize)
@@ -119,14 +113,12 @@ void *MEMPACK_AllocHighMem(int allocSize)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003e938-0x8003e94c.
 void MEMPACK_ClearHighMem()
 {
 	sdata->PtrMempack->lastFreeByte = sdata->PtrMempack->endOfAllocator;
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003e94c-0x8003e978.
 void *MEMPACK_ReallocMem(int allocSize)
 {
 	struct Mempack *ptrMempack = sdata->PtrMempack;
@@ -139,7 +131,6 @@ void *MEMPACK_ReallocMem(int allocSize)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003e978-0x8003e9b8.
 int MEMPACK_PushState()
 {
 	struct Mempack *ptrMempack = sdata->PtrMempack;
@@ -154,7 +145,6 @@ int MEMPACK_PushState()
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003e9b8-0x8003e9d0.
 void MEMPACK_ClearLowMem()
 {
 	struct Mempack *ptrMempack = sdata->PtrMempack;
@@ -164,7 +154,6 @@ void MEMPACK_ClearLowMem()
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003e9d0-0x8003ea08.
 void MEMPACK_PopState()
 {
 	struct Mempack *ptrMempack = sdata->PtrMempack;
@@ -178,7 +167,6 @@ void MEMPACK_PopState()
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003ea08-0x8003ea28.
 void MEMPACK_PopToState(int id)
 {
 	struct Mempack *ptrMempack = sdata->PtrMempack;

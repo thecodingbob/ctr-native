@@ -3,7 +3,6 @@
 
 void LevInstDef_UnPack(struct mesh_info *ptr_mesh_info)
 {
-	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003116c-0x80031268.
 	int i;
 	int numQuadBlock;
 	struct QuadBlock *ptrQuadBlockArray;
@@ -50,7 +49,6 @@ void LevInstDef_UnPack(struct mesh_info *ptr_mesh_info)
 
 void LevInstDef_RePack(struct mesh_info *ptr_mesh_info, b32 boolAdvHub)
 {
-	// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80031268-0x800313c8.
 	int i;
 	int numQuadBlock;
 	struct QuadBlock *ptrQuadBlockArray;

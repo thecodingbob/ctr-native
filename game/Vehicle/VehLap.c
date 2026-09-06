@@ -10,14 +10,7 @@ enum
 	VEH_LAP_WRONG_WAY_DOT_LIMIT = 0x5a801,
 };
 
-CTR_STATIC_ASSERT(VEH_LAP_INVALID_CHECKPOINT == 0xff);
-CTR_STATIC_ASSERT(VEH_LAP_WORLD_POS_SHIFT == 8);
-CTR_STATIC_ASSERT(VEH_LAP_MOVING_DIR_SHIFT == 5);
-CTR_STATIC_ASSERT(VEH_LAP_TRACK_DISTANCE_SCALE_SHIFT == 3);
-CTR_STATIC_ASSERT(VEH_LAP_PROJECTED_DISTANCE_SHIFT == 0xc);
-CTR_STATIC_ASSERT(VEH_LAP_WRONG_WAY_DOT_LIMIT == 0x5a801);
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005ca24-0x8005cd1c
 void VehLap_UpdateProgress(struct Driver *driver)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -59,7 +52,7 @@ void VehLap_UpdateProgress(struct Driver *driver)
 	nodeDelta.z = (s16)CTR_MipsSubLo((u16)progressNode->pos.z, (u16)nextNode->pos.z);
 	nodeDelta.w = 0;
 
-	MATH_VectorNormalize(&nodeDelta.vec);
+	MATH_VectorNormalize(SVec3Slot_AsVec3(&nodeDelta));
 
 	s16 deltaX = (s16)CTR_MipsSubLo((u16)CTR_MipsSra(driver->posCurr.x, VEH_LAP_WORLD_POS_SHIFT), (u16)progressNode->pos.x);
 	s16 deltaY = (s16)CTR_MipsSubLo((u16)CTR_MipsSra(driver->posCurr.y, VEH_LAP_WORLD_POS_SHIFT), (u16)progressNode->pos.y);

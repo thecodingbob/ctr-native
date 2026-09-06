@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80034a80-0x80034aa4.
 void MainDrawCb_DrawSync()
 {
 	struct GameTracker *gGT;
@@ -14,7 +13,6 @@ void MainDrawCb_DrawSync()
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80034aa4-0x80034b48 for the retail body.
 // NOTE(aalhendi): CTR_NATIVE keeps native input/audio/VRAM bridge work.
 void MainDrawCb_Vsync()
 {

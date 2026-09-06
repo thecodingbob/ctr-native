@@ -31,7 +31,6 @@ static inline void FLARE_WriteColors(POLY_GT4 *poly)
 	CtrGpu_WriteColorCode(&poly->r3, 0x007f7f7f);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80024c4c-0x80025138.
 void FLARE_ThTick(struct Thread *th)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -142,12 +141,12 @@ void FLARE_ThTick(struct Thread *th)
 	FLARE_WriteTexture(p2, icon, texWord1);
 	CtrGpu_WritePackedXY(&p0->x2, MFC2(12));
 	CtrGpu_WritePackedXY(&p0->x3, MFC2(13));
-	CtrGpu_WritePackedXY(&p1->x2, MFC2(13));
-	CtrGpu_WritePackedXY(&p1->x3, MFC2(14));
-	CtrGpu_WritePackedXY(&p2->x0, MFC2(12));
-	CtrGpu_WritePackedXY(&p2->x1, MFC2(13));
-	CtrGpu_WritePackedXY(&p3->x1, MFC2(13));
-	CtrGpu_WritePackedXY(&p3->x0, MFC2(14));
+	CtrGpu_WritePackedXY(&p1->x3, MFC2(13));
+	CtrGpu_WritePackedXY(&p1->x2, MFC2(14));
+	CtrGpu_WritePackedXY(&p2->x2, MFC2(12));
+	CtrGpu_WritePackedXY(&p2->x3, MFC2(13));
+	CtrGpu_WritePackedXY(&p3->x3, MFC2(13));
+	CtrGpu_WritePackedXY(&p3->x2, MFC2(14));
 	s32 depth = MFC2(18);
 
 	FLARE_LoadGridRow(409);
@@ -155,10 +154,10 @@ void FLARE_ThTick(struct Thread *th)
 	FLARE_WriteColors(p2);
 	FLARE_WriteColors(p3);
 	FLARE_WriteTexture(p3, icon, texWord1);
-	CtrGpu_WritePackedXY(&p2->x2, MFC2(12));
-	CtrGpu_WritePackedXY(&p2->x3, MFC2(13));
-	CtrGpu_WritePackedXY(&p3->x2, MFC2(13));
-	CtrGpu_WritePackedXY(&p3->x3, MFC2(14));
+	CtrGpu_WritePackedXY(&p2->x0, MFC2(12));
+	CtrGpu_WritePackedXY(&p2->x1, MFC2(13));
+	CtrGpu_WritePackedXY(&p3->x1, MFC2(13));
+	CtrGpu_WritePackedXY(&p3->x0, MFC2(14));
 
 	depth = (depth >> 8) - 2;
 	if (depth < 0)
@@ -170,7 +169,7 @@ void FLARE_ThTick(struct Thread *th)
 		depth = 0x3ff;
 	}
 
-	uint32_t *ot = &pb->ptrOT[depth];
+	u32 *ot = &pb->ptrOT[depth];
 	p0->tag = CtrGpu_PackOTTag(CtrGpu_PrimToOTLink24(p1), 0x0c000000);
 	p1->tag = CtrGpu_PackOTTag(CtrGpu_PrimToOTLink24(p2), 0x0c000000);
 	p2->tag = CtrGpu_PackOTTag(CtrGpu_PrimToOTLink24(p3), 0x0c000000);
@@ -181,7 +180,6 @@ void FLARE_ThTick(struct Thread *th)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80025138-0x800251ac.
 void FLARE_Init(s16 *pos)
 {
 	// 0xc = size

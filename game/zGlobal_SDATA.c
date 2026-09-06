@@ -5,7 +5,7 @@
 
 #include <common.h>
 
-#if __GNUC__
+#if defined(__GNUC__)
 char memcardBytes[0x1680];
 #endif
 
@@ -32,8 +32,8 @@ struct sData sdata_static = {.langBufferSize = 0x3F04,
 
                              .FirstPersonCamera =
                                  {
-                                     .posOffset = {{0, 0x60, 0}},
-                                     .rotOffset = {{0x800, 0x800, 0}},
+                                     .posOffset = {0, 0x60, 0},
+                                     .rotOffset = {0x800, 0x800, 0},
                                  },
 
                              .s_DCH = "DCH",
@@ -111,17 +111,13 @@ struct sData sdata_static = {.langBufferSize = 0x3F04,
                                                 // padding
                                                 0, 0},
 
-#if BUILD >= UsaRetail
                              .garageSoundIDs = {0xDC, 0xDF, 0, 0xE7, 0, 0xEE, 0xF0, 0},
-#endif
 
                              .ptrMPK = 0,
                              .ptrLevelFile = 0,
                              .PatchMem_Ptr = 0,
 
-#if BUILD >= UsaRetail
                              .PatchMem_Size = 0,
-#endif
 
                              .bookmarkID = 0,
                              .ptrBigfileCdPos_2 = 0,
@@ -136,9 +132,6 @@ struct sData sdata_static = {.langBufferSize = 0x3F04,
 
                              .s_FILE = "FILE",
 
-#if BUILD >= EurRetail
-                             .lngFile = 0,
-#endif
 
                              .levBigLodIndex = {0, 2, 4, 4, 6, 6, 6, 6},
 
@@ -226,13 +219,11 @@ struct sData sdata_static = {.langBufferSize = 0x3F04,
                              .s_proto9 = "proto9",
                              .s_proto8 = "proto8",
 
-// all zeros
-//.finalLapTextTimer = {},
+                             // all zeros
+                             //.finalLapTextTimer = {},
 
-#if BUILD >= UsaRetail
                              .TurboDisplayPos_Only1P = 0,
                              .numPlayersFinishedRace = 0,
-#endif
 
 #if NO_BSS
                              .gGT = (struct GameTracker *)0x80096b20,
@@ -300,9 +291,6 @@ struct sData sdata_static = {.langBufferSize = 0x3F04,
                              .ptrVlcTable = 0,
                              .bool_IsLoaded_VlcTable = 0,
 
-#if BUILD >= JpnTrial
-                             .region = "XXXX",
-#endif
 
                              .memcard_stage = 0,
                              .memcard_ptrStart = 0,
@@ -335,10 +323,8 @@ struct sData sdata_static = {.langBufferSize = 0x3F04,
                              .RaceFlag_DrawOrder = 0,
                              .padding_8008d44e = 0,
 
-#if BUILD >= UsaRetail
                              .RaceFlag_LoadingTextAnimFrame = -1,
                              .RaceFlag_Transition = 0,
-#endif
 
                              .RaceFlag_ElapsedTime = 0,
                              .RaceFlag_CopyLoadStage = -1,
@@ -350,7 +336,7 @@ struct sData sdata_static = {.langBufferSize = 0x3F04,
 #if NO_BSS
                              .ptrToMemcardBuffer1 = (void *)0x800992e4,
                              .ptrToMemcardBuffer2 = (void *)0x800992e4,
-#elif __GNUC__
+#elif defined(__GNUC__)
                              .ptrToMemcardBuffer1 = &memcardBytes[0],
                              .ptrToMemcardBuffer2 = &memcardBytes[0],
 #else
@@ -421,7 +407,7 @@ struct sData sdata_static = {.langBufferSize = 0x3F04,
                                  {
                                      .boolPressX = {0},
 
-                                     .textPos2P = {{{0x100, 0x35}}, {{0x100, 0x43}}},
+                                     .textPos2P = {{0x100, 0x35}, {0x100, 0x43}},
                                  },
 
                              .numIconsEOR = 1,

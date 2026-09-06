@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800af3a4-0x800af3e4.
 void AH_SaveObj_ThDestroy(struct Thread *t)
 {
 	struct SaveObj *save = t->object;
@@ -13,7 +12,6 @@ void AH_SaveObj_ThDestroy(struct Thread *t)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800af3e4-0x800af7f0.
 void AH_SaveObj_ThTick(struct Thread *t)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -63,7 +61,7 @@ void AH_SaveObj_ThTick(struct Thread *t)
 			{
 				SVec3 desiredPos;
 				SVec3 desiredRot;
-				struct SpawnPosRot *saveSpawn = gGT->level1->ptrSpawnType2_PosRot->posRot;
+				struct SpawnPosRot *saveSpawn = gGT->level1->ptrSpawnType2_PosRot->coords.posRot;
 
 				// desired transition position (x,y,z)
 				desiredPos.x = saveSpawn->pos.x + (s16)((int)saveInst->matrix.m[0][0] * AH_SAVEOBJ_CAMERA_FORWARD_OFFSET >> 7);
@@ -207,7 +205,6 @@ LAB_800af72c:
 			}
 
 			// Play save/load screen sound
-			// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800af7a8-0x800af7c0 for save/load screen loop SFX.
 			OtherFX_Play_LowLevel(AH_SAVEOBJ_SCAN_SFX_ID, 1, HowlSfx_Pack(HOWL_SFX_LR_CENTER, HOWL_SFX_DISTORTION_NONE, volume, 0));
 
 			// reset animation
@@ -217,7 +214,6 @@ LAB_800af72c:
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800af7f0-0x800af9f8.
 void AH_SaveObj_LInB(struct Instance *savInst)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -247,16 +243,15 @@ void AH_SaveObj_LInB(struct Instance *savInst)
 
 			savInst->flags |= HIDE_MODEL;
 
-			struct SpawnType2 *spawn = gGT->level1->ptrSpawnType2_PosRot;
-
-			if (spawn == NULL)
+			if (gGT->level1->numSpawnType2_PosRot == 0)
 			{
 				save->inst = NULL;
 			}
 			else
 			{
-				struct SpawnPosRot *saveSpawn = spawn->posRot;
-				struct Instance *inst = INSTANCE_Birth3D(gGT->modelPtr[STATIC_SCAN], R232.s_scan, 0);
+				struct SpawnType2 *spawn = gGT->level1->ptrSpawnType2_PosRot;
+				struct SpawnPosRot *saveSpawn = spawn->coords.posRot;
+				struct Instance *inst = INSTANCE_Birth3D(gGT->modelPtr[STATIC_SCAN], R232.s_scan, t);
 				save->inst = inst;
 
 				// NOTE(aalhendi): Native low-RAM audit candidate only. Retail

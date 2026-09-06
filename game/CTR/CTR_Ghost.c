@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80022234-0x800222e0.
 void CTR_ScrambleGhostString(char *dst, const char *src)
 {
 	u8 inputByte = *src;

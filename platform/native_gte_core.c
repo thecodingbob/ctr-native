@@ -301,8 +301,6 @@ internal int Lm_H(s64 value, int sf)
 
 internal int GTE_RotTransPers(int idx, int lm)
 {
-	int h_over_sz3;
-
 	C2_MAC1 = A1(/*int44*/ (s64)((s64)C2_TRX << 12) + (C2_R11 * VX(idx)) + (C2_R12 * VY(idx)) + (C2_R13 * VZ(idx)));
 	C2_MAC2 = A2(/*int44*/ (s64)((s64)C2_TRY << 12) + (C2_R21 * VX(idx)) + (C2_R22 * VY(idx)) + (C2_R23 * VZ(idx)));
 	C2_MAC3 = A3(/*int44*/ (s64)((s64)C2_TRZ << 12) + (C2_R31 * VX(idx)) + (C2_R32 * VY(idx)) + (C2_R33 * VZ(idx)));
@@ -313,7 +311,7 @@ internal int GTE_RotTransPers(int idx, int lm)
 	C2_SZ1 = C2_SZ2;
 	C2_SZ2 = C2_SZ3;
 	C2_SZ3 = Lm_D(m_mac3, 1);
-	h_over_sz3 = Lm_E(gte_divide(C2_H, C2_SZ3));
+	int h_over_sz3 = Lm_E(gte_divide(C2_H, C2_SZ3));
 	C2_SXY0 = C2_SXY1;
 	C2_SXY1 = C2_SXY2;
 	C2_SX2 = Lm_G1(F((s64)C2_OFX + ((s64)C2_IR1 * h_over_sz3)) >> 16);
@@ -325,12 +323,11 @@ internal int GTE_RotTransPers(int idx, int lm)
 int GTE_operator(int op)
 {
 	int v;
-	int lm;
 	int cv;
 	int mx;
 	int h_over_sz3 = 0;
 
-	lm = GTE_LM(gteop(op));
+	int lm = GTE_LM(gteop(op));
 	m_sf = GTE_SF(gteop(op));
 
 	C2_FLAG = 0;

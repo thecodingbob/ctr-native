@@ -19,8 +19,7 @@ enum
 };
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80022db0-0x80022ec4.
-void DecalHUD_DrawPolyFT4(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, uint32_t *ot, char transparency, s16 scale)
+void DecalHUD_DrawPolyFT4(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, u32 *ot, char transparency, s16 scale)
 {
 	if (!icon)
 	{
@@ -52,15 +51,12 @@ void DecalHUD_DrawPolyFT4(struct Icon *icon, s16 posX, s16 posY, struct PrimMem 
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80022ec4-0x80023054.
-void DecalHUD_DrawWeapon(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, uint32_t *ot, char transparency, s16 scale, char rot)
+void DecalHUD_DrawWeapon(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, u32 *ot, char transparency, s16 scale, char rot)
 {
-#if BUILD > SepReview
 	if (!icon)
 	{
 		return;
 	}
-#endif
 
 	POLY_FT4 *p = (POLY_FT4 *)primMem->cursor;
 	addPolyFT4(ot, p);
@@ -72,31 +68,28 @@ void DecalHUD_DrawWeapon(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *
 	u32 sidewaysX = posX + FP_Mult(height, scale);
 	u32 sidewaysY = posY + FP_Mult(width, scale);
 
-	// instead of psn00bsdk's setXY4, this function uses a custom-made macro that resembles the compiler optimization used in the original code
-	// the X and Y fields of the primitive will be dereferenced as combined 32-bit integers for each vertex
-	// from this, the X and Y coordinates will be added onto these integers using bitwise OR
-	// this originally caused a bug where if X is higher than 0xFFFF (by not being cast as unsigned 16-bits) it will overflow onto Y
-	// for the sake of making this compile under the original file size of the function (0x190 bytes) this macro will be used with the proper variable casts
+	// NOTE(aalhendi): Retail leaves X unmasked while packing XY, allowing its
+	// upper bits to spill into Y for negative or overflowing coordinates.
 	if (!(rot & 1))
 	{
 		if (rot == 0)
 		{
-			setXY4CompilerHack(p, (u16)posX, posY, (u16)rightX, posY, (u16)posX, bottomY, (u16)rightX, bottomY);
+			setXY4CompilerHack(p, posX, posY, rightX, posY, posX, bottomY, rightX, bottomY);
 		}
 		else
 		{
-			setXY4CompilerHack(p, (u16)rightX, bottomY, (u16)posX, bottomY, (u16)rightX, posY, (u16)posX, posY);
+			setXY4CompilerHack(p, rightX, bottomY, posX, bottomY, rightX, posY, posX, posY);
 		}
 	}
 	else
 	{
 		if (rot == 1)
 		{
-			setXY4CompilerHack(p, (u16)posX, sidewaysY, (u16)posX, posY, (u16)sidewaysX, sidewaysY, (u16)sidewaysX, posY);
+			setXY4CompilerHack(p, posX, sidewaysY, posX, posY, sidewaysX, sidewaysY, sidewaysX, posY);
 		}
 		else
 		{
-			setXY4CompilerHack(p, (u16)sidewaysX, posY, (u16)sidewaysX, sidewaysY, (u16)posX, posY, (u16)posX, sidewaysY);
+			setXY4CompilerHack(p, sidewaysX, posY, sidewaysX, sidewaysY, posX, posY, posX, sidewaysY);
 		}
 	}
 
@@ -120,16 +113,13 @@ void DecalHUD_DrawWeapon(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80023054-0x80023190.
-void DecalHUD_DrawPolyGT4(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, uint32_t *ot, u32 color0, u32 color1, u32 color2, u32 color3,
+void DecalHUD_DrawPolyGT4(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, u32 *ot, u32 color0, u32 color1, u32 color2, u32 color3,
                           char transparency, s16 scale)
 {
-#if BUILD > SepReview
 	if (!icon)
 	{
 		return;
 	}
-#endif
 
 	// setInt32RGB4 needs to go before addPolyGT4
 	// for more information check "include/gpu.h"
@@ -155,8 +145,7 @@ void DecalHUD_DrawPolyGT4(struct Icon *icon, s16 posX, s16 posY, struct PrimMem 
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80023190-0x80023488.
-void DecalHUD_Arrow2D(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, uint32_t *otMemPtr, u32 color1, u32 color2, u32 color3, u32 color4,
+void DecalHUD_Arrow2D(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, u32 *otMemPtr, u32 color1, u32 color2, u32 color3, u32 color4,
                       char transparency, int scale, u16 rot)
 {
 	u8 y2;
@@ -179,6 +168,7 @@ void DecalHUD_Arrow2D(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *pri
 	{
 		return;
 	}
+	scale = (s16)scale;
 
 	topRightCornerAndPageXY = CTR_ReadU32LE(&icon->texLayout.u1);
 	topLeftCornerAndPaletteXY = CTR_ReadU32LE(&icon->texLayout.u0);

@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b5090-0x800b5210.
 
 int RB_CtrLetter_ThCollide(struct Thread *letterTh, struct Thread *driverTh, void *funcThCollide, struct ScratchpadStruct *sps)
 {
@@ -39,7 +38,6 @@ int RB_CtrLetter_ThCollide(struct Thread *letterTh, struct Thread *driverTh, voi
 	return 1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b5210-0x800b52dc.
 
 int RB_CtrLetter_LInC(struct Instance *letterInst, struct Thread *driverTh, struct ScratchpadStruct *sps)
 {
@@ -74,9 +72,8 @@ int RB_CtrLetter_LInC(struct Instance *letterInst, struct Thread *driverTh, stru
 	return ((ThreadScratchCollideFunc)letterTh->funcThCollide)(letterTh, driverTh, letterTh->funcThCollide, sps);
 }
 
-SVec3 letterLightDir = {{0x94F, 0x94F, -0x94F}};
+SVec3 letterLightDir = {0x94F, 0x94F, -0x94F};
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b52dc-0x800b5334.
 
 void RB_CtrLetter_ThTick(struct Thread *t)
 {
@@ -93,7 +90,6 @@ void RB_CtrLetter_ThTick(struct Thread *t)
 	Vector_SpecLightSpin3D(letterInst, &letterObj->rot, &letterLightDir);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b5334-0x800b53e0.
 
 void RB_CtrLetter_LInB(struct Instance *inst)
 {

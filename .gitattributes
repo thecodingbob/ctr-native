@@ -1,0 +1,4 @@
+# Vendored upstream snapshots are byte-preserved.
+/externals/maspsx/** -text
+/externals/old-gcc/** -text
+/externals/psx-binutils/** -text

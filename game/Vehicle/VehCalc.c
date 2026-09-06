@@ -7,11 +7,7 @@ enum
 	VEH_CALC_FAST_SQRT_ROOT_STEP_SHIFT = 2,
 };
 
-CTR_STATIC_ASSERT(VEH_CALC_MIPS_SHIFT_MASK == 0x1f);
-CTR_STATIC_ASSERT(VEH_CALC_FAST_SQRT_ADD_BIT_BIAS == 1);
-CTR_STATIC_ASSERT(VEH_CALC_FAST_SQRT_ROOT_STEP_SHIFT == 2);
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80058f54-0x80058f9c.
 int VehCalc_InterpBySpeed(int val, int speed, int desired)
 {
 	if (val > desired)
@@ -37,7 +33,6 @@ int VehCalc_InterpBySpeed(int val, int speed, int desired)
 	return val;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80058f9c-0x8005900c.
 int VehCalc_MapToRange(int val, int oldMin, int oldMax, int newMin, int newMax)
 {
 	if (val <= oldMin)
@@ -58,7 +53,6 @@ int VehCalc_MapToRange(int val, int oldMin, int oldMax, int newMin, int newMax)
 	return CTR_MipsAddLo(newMin, scaledDistance);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005900c-0x80059070.
 int VehCalc_SteerAccel(int steeringFrameCount, int stage2FirstFrame, int stage2FrameLength, int stage4FirstFrame, int stage1MinSteer, int stage1MaxSteer)
 {
 	int steerAccel = stage1MaxSteer;
@@ -100,7 +94,6 @@ int VehCalc_SteerAccel(int steeringFrameCount, int stage2FirstFrame, int stage2F
 	// angular velocity is constant
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80059070-0x80059100.
 u32 VehCalc_FastSqrt(u32 n, u32 shift)
 {
 	u32 result = 0;

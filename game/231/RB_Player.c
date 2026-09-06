@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800abbb4-0x800abefc.
 void RB_Player_KillPlayer(struct Driver *attacker, struct Driver *victim)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -137,7 +136,6 @@ void RB_Player_KillPlayer(struct Driver *attacker, struct Driver *victim)
 	MainGameEnd_Initialize();
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800abefc-0x800abfec.
 void RB_Player_ModifyWumpa(struct Driver *driver, int wumpaDelta)
 {
 	s8 numWumpaOriginal = driver->numWumpas;
@@ -201,7 +199,6 @@ void RB_Player_ModifyWumpa(struct Driver *driver, int wumpaDelta)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800b0dbc-0x800b0e68.
 void RB_Player_ToggleInvisible(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -234,7 +231,6 @@ void RB_Player_ToggleInvisible(void)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800b0e68-0x800b0f1c.
 void RB_Player_ToggleFlicker(void)
 {
 	struct GameTracker *gGT = sdata->gGT;

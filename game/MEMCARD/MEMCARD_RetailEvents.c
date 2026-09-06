@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003ddac-0x8003e238.
 int MEMCARD_HandleEvent(void)
 {
 	int event;

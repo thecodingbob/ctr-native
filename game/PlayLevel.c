@@ -25,10 +25,7 @@ enum PlayLevelConstants
 	PLAYLEVEL_BLASTED_DAMAGE = 2,
 };
 
-CTR_STATIC_ASSERT(PLAYLEVEL_DRIVER_COUNT == 8);
-CTR_STATIC_ASSERT(PLAYLEVEL_FINAL_LAP_TEXT_FRAMES == 90);
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800414f4-0x80041c84
 void PlayLevel_UpdateLapStats(void)
 {
 	int bestDriverIndex;

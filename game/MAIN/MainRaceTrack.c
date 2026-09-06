@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003cf7c-0x8003cfc0.
 void MainRaceTrack_StartLoad(s16 levelID)
 {
 	// clear backup,
@@ -14,7 +13,6 @@ void MainRaceTrack_StartLoad(s16 levelID)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003cfc0-0x8003d024.
 void MainRaceTrack_RequestLoad(s16 levelID)
 {
 	// Turn off HUD

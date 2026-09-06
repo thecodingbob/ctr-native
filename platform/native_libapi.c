@@ -37,11 +37,9 @@ int SetRCnt(int spec, unsigned short target, int mode)
 
 int GetRCnt(int spec)
 {
-	u64 counts;
-
 	(void)spec;
 
-	counts = s_rootCounterValue - s_rootCounterBase;
+	u64 counts = s_rootCounterValue - s_rootCounterBase;
 	if (counts > 0x7fffffff)
 	{
 		return 0x7fffffff;

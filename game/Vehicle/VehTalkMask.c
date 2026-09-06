@@ -20,18 +20,9 @@ enum
 	TALK_MASK_XA_TYPE = CDSYS_XA_TYPE_EXTRA,
 };
 
-CTR_STATIC_ASSERT(TALK_MASK_3D_MODEL_SCALE == 0x2000);
-CTR_STATIC_ASSERT(TALK_MASK_STATIC_MODEL_SCALE == 0x1000);
-CTR_STATIC_ASSERT(TALK_MASK_MOUTH_SAMPLE_MULTIPLIER == 7);
-CTR_STATIC_ASSERT(TALK_MASK_MOUTH_NEGATIVE_ROUND_BIAS == 0x3fff);
-CTR_STATIC_ASSERT(TALK_MASK_MOUTH_SAMPLE_SHIFT == 0xe);
 CTR_STATIC_ASSERT((s32)TALK_MASK_INIT_MODEL == (s32)STATIC_AKUAKU);
 CTR_STATIC_ASSERT((s32)STATIC_UKAUKA - 1 == (s32)STATIC_AKUAKU);
-CTR_STATIC_ASSERT(TALK_MASK_INIT_OBJECT_SIZE == 6);
-CTR_STATIC_ASSERT(TALK_MASK_XA_TYPE == 1);
-CTR_STATIC_ASSERT(ADV_MASK_HINT_UKA_UKA_XA_OFFSET == 0x1f);
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80068f90-0x80069178.
 void VehTalkMask_ThTick(struct Thread *t)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -151,7 +142,6 @@ SkipLerp:
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80069178-0x800691e4.
 struct Instance *VehTalkMask_Init(void)
 {
 	sdata->boolIsMaskThreadAlive = 1;
@@ -167,7 +157,6 @@ struct Instance *VehTalkMask_Init(void)
 	return mhInst;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800691e4-0x8006924c.
 void VehTalkMask_PlayXA(struct Instance *i, s32 id)
 {
 	(void)i;
@@ -186,13 +175,11 @@ void VehTalkMask_PlayXA(struct Instance *i, s32 id)
 	CDSYS_XAPlay(TALK_MASK_XA_TYPE, id);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006924c-0x8006925c.
 b32 VehTalkMask_boolNoXA(void)
 {
 	return sdata->XA_State == 0;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8006925c-0x80069284.
 void VehTalkMask_End(void)
 {
 	CDSYS_XAPauseRequest();

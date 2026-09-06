@@ -11,26 +11,14 @@ enum CameraPathFlags
 	CAM_PATH_FLAG_DISTANCE_TO_SCREEN_0x14D = 0x0040,
 };
 
-CTR_STATIC_ASSERT(CAM_PATH_FLAG_CLOCK_EFFECT == 0x0001);
-CTR_STATIC_ASSERT(CAM_PATH_FLAG_DISTANCE_TO_SCREEN_0x50 == 0x0002);
-CTR_STATIC_ASSERT(CAM_PATH_FLAG_DISTANCE_TO_SCREEN_0x278 == 0x0004);
-CTR_STATIC_ASSERT(CAM_PATH_FLAG_RANDOM_CLEAR_BOX == 0x0010);
-CTR_STATIC_ASSERT(CAM_PATH_FLAG_DISTANCE_TO_SCREEN_0x1EB == 0x0020);
-CTR_STATIC_ASSERT(CAM_PATH_FLAG_DISTANCE_TO_SCREEN_0x14D == 0x0040);
 
 // Camera scratchpad overlay rooted at retail scratchpad 0x1f800108.
 // Camera-owned fields begin at work+0x20c, absolute scratchpad 0x1f800314.
 struct CameraCollisionScratch
 {
-	union
-	{
-		u8 collisionScratch[0x20c];
-		struct
-		{
-			u8 pad_000[0x1e];
-			s16 terrainHeightFloor;
-		};
-	};
+	u8 pad_000[0x1e];
+	s16 terrainHeightFloor;
+	u8 pad_020[0x20c - 0x20];
 };
 
 CTR_STATIC_ASSERT(offsetof(struct CameraCollisionScratch, terrainHeightFloor) == 0x01e);
@@ -55,29 +43,21 @@ CTR_STATIC_ASSERT(sizeof(struct CameraAngleAxisScratchCamera) == 0x4c);
 
 struct CameraScratch
 {
-	union
-	{
-		struct CameraAngleAxisScratchCamera angleAxis;
-		struct
-		{
-			SVec3 rot;
-			s16 _pad0;
-			Vec3 posCopy;
-			MATRIX matrix;
-			Vec3 pos;
-			Vec3 dir;
-		};
-	};
+	SVec3 rot;
+	s16 _pad0;
+	Vec3 posCopy;
+	MATRIX matrix;
+	Vec3 pos;
+	Vec3 dir;
 
 	Vec3 delta; // +0x4C (abs 0x360)
 };
 
-CTR_STATIC_ASSERT(offsetof(struct CameraScratch, angleAxis) == 0x00);
-CTR_STATIC_ASSERT(offsetof(struct CameraScratch, angleAxis.rot) == 0x00);
-CTR_STATIC_ASSERT(offsetof(struct CameraScratch, angleAxis.posCopy) == 0x08);
-CTR_STATIC_ASSERT(offsetof(struct CameraScratch, angleAxis.matrix) == 0x14);
-CTR_STATIC_ASSERT(offsetof(struct CameraScratch, angleAxis.pos) == 0x34);
-CTR_STATIC_ASSERT(offsetof(struct CameraScratch, angleAxis.dir) == 0x40);
+CTR_STATIC_ASSERT(offsetof(struct CameraScratch, rot) == 0x00);
+CTR_STATIC_ASSERT(offsetof(struct CameraScratch, posCopy) == 0x08);
+CTR_STATIC_ASSERT(offsetof(struct CameraScratch, matrix) == 0x14);
+CTR_STATIC_ASSERT(offsetof(struct CameraScratch, pos) == 0x34);
+CTR_STATIC_ASSERT(offsetof(struct CameraScratch, dir) == 0x40);
 CTR_STATIC_ASSERT(offsetof(struct CameraScratch, delta) == 0x4C);
 CTR_STATIC_ASSERT(sizeof(struct CameraScratch) == 0x58);
 
@@ -94,25 +74,8 @@ CTR_STATIC_ASSERT(sizeof(struct CameraAngleAxisScratch) == 0x258);
 
 struct CameraScratchWork
 {
-	union
-	{
-		struct CameraAngleAxisScratch angleAxis;
-		struct
-		{
-			union
-			{
-				struct CameraCollisionScratch collision;
-				u8 collisionScratch[0x20c];
-				struct
-				{
-					u8 pad_000[0x1e];
-					s16 terrainHeightFloor;
-				};
-			};
-
-			struct CameraScratch camera;
-		};
-	};
+	struct CameraCollisionScratch collision;
+	struct CameraScratch camera;
 
 	u8 pad_264[0x18];
 	Vec3 sideOffset;
@@ -123,12 +86,15 @@ struct CameraScratchWork
 
 CTR_STATIC_ASSERT(offsetof(struct CameraScratchWork, collision) == 0x0);
 CTR_STATIC_ASSERT(offsetof(struct CameraScratchWork, collision.terrainHeightFloor) == 0x01e);
-CTR_STATIC_ASSERT(offsetof(struct CameraScratchWork, angleAxis) == 0x0);
 CTR_STATIC_ASSERT(offsetof(struct CameraScratchWork, camera) == 0x20c);
-CTR_STATIC_ASSERT(offsetof(struct CameraScratchWork, camera.angleAxis) == 0x20c);
 CTR_STATIC_ASSERT(offsetof(struct CameraScratchWork, sideOffset) == 0x27c);
 CTR_STATIC_ASSERT(offsetof(struct CameraScratchWork, trackPathPos) == 0x288);
 CTR_STATIC_ASSERT(offsetof(struct CameraScratchWork, trackPathLookaheadPos) == 0x290);
+
+static inline struct CameraAngleAxisScratch *CameraScratchWork_AsAngleAxis(struct CameraScratchWork *work)
+{
+	return (struct CameraAngleAxisScratch *)work;
+}
 
 struct ZoomData
 {
@@ -207,7 +173,6 @@ enum CameraMode
 	CAMERA_MODE_FREECAM = 3,
 };
 
-CTR_STATIC_ASSERT(CAMERA_MODE_FREECAM == 3);
 
 struct CameraDC
 {
@@ -365,14 +330,6 @@ struct CameraDC
 	// 0xc0
 	struct CameraHeightSmoothing heightSmoothing;
 
-// Sep3
-#if BUILD < UsaRetail
-
-	// 0xc6
-	s16 paddingC6;
-
-#else // >= UsaRetail
-
 	// Store data on first frame of BLASTED,
 	// Use data on first frame of NOT BLASTED,
 	// 8-frame lerp to bring camera back to kart
@@ -396,29 +353,11 @@ struct CameraDC
 
 	} BlastedLerp;
 
-// 0xdc - end of struct
-#endif
-
-	// 0xC8 bytes large in sep3
-	// 0xDC bytes large in usaRetail
+	// 0xdc - end of struct
 };
 
 CTR_STATIC_ASSERT(sizeof(struct ZoomData) == 0x12);
 CTR_STATIC_ASSERT(sizeof(CameraFlags) == 0x4);
-CTR_STATIC_ASSERT(CAMERA_FLAG_RESET_RAIN_POS == 0x1);
-CTR_STATIC_ASSERT(CAMERA_FLAG_BATTLE_END_OF_RACE == 0x4);
-CTR_STATIC_ASSERT(CAMERA_FLAG_DIRECTION_CHANGED == 0x8);
-CTR_STATIC_ASSERT(CAMERA_FLAG_MASK_GRAB == 0x10);
-CTR_STATIC_ASSERT(CAMERA_FLAG_ARCADE_END_OF_RACE_REQUESTED == 0x20);
-CTR_STATIC_ASSERT(CAMERA_FLAG_TRACK_PATH_FACE_DRIVER == 0x40);
-CTR_STATIC_ASSERT(CAMERA_FLAG_FIRE_SPEED_ZOOM == 0x80);
-CTR_STATIC_ASSERT(CAMERA_FLAG_TRACK_PATH_ALT_BRANCH == 0x100);
-CTR_STATIC_ASSERT(CAMERA_FLAG_TRANSITION_AWAY == 0x200);
-CTR_STATIC_ASSERT(CAMERA_FLAG_TRANSITION_BACK == 0x400);
-CTR_STATIC_ASSERT(CAMERA_FLAG_TRANSITION_HOLD == 0x800);
-CTR_STATIC_ASSERT(CAMERA_FLAG_ARCADE_END_OF_RACE_ACTIVE == 0x1000);
-CTR_STATIC_ASSERT(CAMERA_FLAG_FROZEN == 0x8000);
-CTR_STATIC_ASSERT(CAMERA_FLAG_REVERSE == 0x10000);
 CTR_STATIC_ASSERT(sizeof(struct CameraFireSpeedZoom) == 0x8);
 CTR_STATIC_ASSERT(offsetof(struct CameraFireSpeedZoom, distanceOffset) == 0x0);
 CTR_STATIC_ASSERT(offsetof(struct CameraFireSpeedZoom, timer) == 0x4);
@@ -453,10 +392,6 @@ CTR_STATIC_ASSERT(offsetof(struct CameraDC, eorModeData.pointPath.speed) == 0xb6
 CTR_STATIC_ASSERT(sizeof(((struct CameraDC *)0)->eorModeData) == 0x8);
 CTR_STATIC_ASSERT(offsetof(struct CameraDC, fireSpeedZoom) == 0xb8);
 CTR_STATIC_ASSERT(offsetof(struct CameraDC, heightSmoothing) == 0xc0);
-#if BUILD >= UsaRetail
 CTR_STATIC_ASSERT(sizeof(struct CameraDC) == 0xDC);
-#else
-CTR_STATIC_ASSERT(sizeof(struct CameraDC) == 0xC8);
-#endif
 
 #endif

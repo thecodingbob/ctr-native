@@ -16,7 +16,6 @@ static void RB_Blowup_CopyDrawState(struct Instance *dstInst, struct Instance *s
 	dst->depthOffset[1] = src->depthOffset[1];
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b1714-0x800b17f0
 void RB_Blowup_ProcessBucket(struct Thread *thread)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -27,8 +26,8 @@ void RB_Blowup_ProcessBucket(struct Thread *thread)
 
 		for (int i = 0; i < gGT->numPlyrCurrGame; i++)
 		{
-			struct Instance *shockwaveInst = (struct Instance *)(uintptr_t)blowup[0];
-			struct Instance *explosionInst = (struct Instance *)(uintptr_t)blowup[1];
+			struct Instance *shockwaveInst = (struct Instance *)(u32)blowup[0];
+			struct Instance *explosionInst = (struct Instance *)(u32)blowup[1];
 
 			if (shockwaveInst == NULL || explosionInst == NULL)
 			{
@@ -62,7 +61,6 @@ static void RB_Blowup_UpdateSlot(int *slot)
 	*slot = 0;
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800b17f0-0x800b18f8.
 void RB_Blowup_ThTick(struct Thread *t)
 {
 	int *blowup;
@@ -79,7 +77,7 @@ void RB_Blowup_ThTick(struct Thread *t)
 	ThTick_FastRET(t);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b18f8-0x800b1bd8.
+// CTR_NATIVE only adds allocation-failure handling.
 void RB_Blowup_Init(struct Instance *weaponInst)
 {
 	struct Thread *explosionTh;
@@ -93,13 +91,22 @@ void RB_Blowup_Init(struct Instance *weaponInst)
 	// initialize thread for blowup
 	explosionInst = INSTANCE_BirthWithThread(STATIC_CRATE_EXPLOSION, 0, SMALL, BLOWUP, RB_Blowup_ThTick, 0xc, 0);
 
+#if defined(CTR_NATIVE)
+	// NOTE(aalhendi): Retail assumes the thread and instance pools have capacity. Native
+	// preserves the explosion damage when either optional visual cannot spawn.
+	if (explosionInst == NULL)
+	{
+		goto ApplyDamage;
+	}
+#endif
+
 	explosionInst->flags |= (VISIBLE_DURING_GAMEPLAY | DRAW_BILLBOARD);
 
 	explosionTh = explosionInst->thread;
 	blowup = explosionTh->object;
 
 	// set explosion instance
-	blowup[1] = (s32)(uintptr_t)explosionInst;
+	blowup[1] = (s32)(u32)explosionInst;
 
 	// copy position and rotation from weapon to explosion
 	CTR_MatrixCopyRot(&explosionInst->matrix, &weaponInst->matrix);
@@ -134,7 +141,14 @@ void RB_Blowup_Init(struct Instance *weaponInst)
 	shockwaveInst = INSTANCE_Birth3D(gGT->modelPtr[modelID], 0, explosionTh);
 
 	// set shockwave instance
-	blowup[0] = (s32)(uintptr_t)shockwaveInst;
+	blowup[0] = (s32)(u32)shockwaveInst;
+
+#if defined(CTR_NATIVE)
+	if (shockwaveInst == NULL)
+	{
+		goto ApplyDamage;
+	}
+#endif
 
 	shockwaveInst->flags |= PIXEL_LOD;
 
@@ -151,6 +165,9 @@ void RB_Blowup_Init(struct Instance *weaponInst)
 
 	// ======== End Of Instance ==========
 
+#if defined(CTR_NATIVE)
+ApplyDamage:;
+#endif
 	struct ScratchpadStruct *sps = CTR_SCRATCHPAD_PTR(struct ScratchpadStruct, 0x108);
 
 	// put weapon position on scratchpad

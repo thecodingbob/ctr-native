@@ -4,7 +4,6 @@
 #include <platform/native_audio.h>
 #endif
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001c360-0x8001c420.
 b32 CDSYS_Init(b32 boolUseDisc)
 {
 	sdata->boolUseDisc = boolUseDisc;
@@ -66,7 +65,6 @@ b32 CDSYS_Init(b32 boolUseDisc)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001c420-0x8001c470.
 u32 CDSYS_GetFilePosInt(char *fileString, int *filePos)
 {
 	CdlFILE cdlFile;
@@ -81,7 +79,6 @@ u32 CDSYS_GetFilePosInt(char *fileString, int *filePos)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001c470-0x8001c4f4.
 void CDSYS_SetMode_StreamData()
 {
 	u8 buf[8];
@@ -139,7 +136,6 @@ void CDSYS_SetMode_StreamData()
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001c4f4-0x8001c56c.
 void CDSYS_SetMode_StreamAudio()
 {
 	u8 buf[8];
@@ -177,7 +173,6 @@ void CDSYS_SetMode_StreamAudio()
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001c56c-0x8001c7a4.
 int CDSYS_SetXAToLang(int lang)
 {
 	char *xaLang;
@@ -218,7 +213,6 @@ int CDSYS_SetXAToLang(int lang)
 		return 0;
 	}
 
-	// Aug5=100, Sep3=101, Retail=102
 	if (xnf->version != CDSYS_XNF_VERSION_RETAIL)
 	{
 		return 0;
@@ -262,7 +256,6 @@ int CDSYS_SetXAToLang(int lang)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001c7a4-0x8001c7fc.
 void CDSYS_XaCallbackCdSync(u8 result, u8 *unk) //+unk to adhere to *CdlCB
 {
 	(void)unk;
@@ -285,7 +278,6 @@ void CDSYS_XaCallbackCdSync(u8 result, u8 *unk) //+unk to adhere to *CdlCB
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001c7fc-0x8001c8e4.
 void CDSYS_XaCallbackCdReady(u8 result, u8 *unk) //+unk to adhere to *CdlCB
 {
 	(void)unk;
@@ -323,7 +315,6 @@ void CDSYS_XaCallbackCdReady(u8 result, u8 *unk) //+unk to adhere to *CdlCB
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001c8e4-0x8001c984.
 void CDSYS_SpuCallbackIRQ()
 {
 	// disable IRQ, now that it's finished
@@ -368,7 +359,6 @@ half.
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001c984-0x8001c9e4.
 void CDSYS_SpuCallbackTransfer()
 {
 	if (sdata->irqAddr == 0)
@@ -389,7 +379,6 @@ void CDSYS_SpuCallbackTransfer()
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001c9e4-0x8001ca64.
 void CDSYS_SpuEnableIRQ()
 {
 	for (int i = 0; i < CDSYS_SPU_DECODED_BUFFER_SAMPLES; i++)
@@ -412,7 +401,6 @@ void CDSYS_SpuEnableIRQ()
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001ca64-0x8001ca98.
 void CDSYS_SpuDisableIRQ()
 {
 	SpuSetIRQ(0);
@@ -497,7 +485,6 @@ void CDSYS_SpuGetMaxSampleAtOffset(int xaCurrOffset)
 }
 #endif
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001ca98-0x8001cbe0.
 void CDSYS_SpuGetMaxSample(void)
 {
 	s16 sample;
@@ -573,7 +560,6 @@ void CDSYS_SpuGetMaxSample(void)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001cbe0-0x8001cc18.
 int CDSYS_XAGetNumTracks(int categoryID)
 {
 	if (sdata->boolUseDisc == 0)
@@ -589,7 +575,6 @@ int CDSYS_XAGetNumTracks(int categoryID)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001cc18-0x8001cd20.
 int CDSYS_XASeek(b32 boolCdControl, int categoryID, int xaID)
 {
 	CdlLOC loc;
@@ -639,7 +624,6 @@ int CDSYS_XASeek(b32 boolCdControl, int categoryID, int xaID)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001cd20-0x8001cdb4
 int CDSYS_XAGetTrackLength(int categoryID, int xaID)
 {
 	if (sdata->boolUseDisc == 0)
@@ -671,7 +655,6 @@ int CDSYS_XAGetTrackLength(int categoryID, int xaID)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001cdb4-0x8001cf98
 int CDSYS_XAPlay(int categoryID, int xaID)
 {
 	u8 buf1[8];
@@ -788,7 +771,6 @@ int CDSYS_XAPlay(int categoryID, int xaID)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001cf98-0x8001cfec.
 void CDSYS_XAPauseRequest()
 {
 	if (sdata->boolUseDisc == 0)
@@ -820,7 +802,6 @@ void CDSYS_XAPauseRequest()
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001cfec-0x8001d06c.
 void CDSYS_XAPauseForce()
 {
 	if (sdata->boolUseDisc == 0)
@@ -854,7 +835,6 @@ void CDSYS_XAPauseForce()
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8001d06c-0x8001d094.
 void CDSYS_XAPauseAtEnd()
 {
 	if (sdata->boolUseDisc == 0)

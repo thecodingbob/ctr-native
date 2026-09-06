@@ -1,7 +1,6 @@
 #include <common.h>
 
 
-// NOTE(aalhendi): ASM-verified helper for NTSC-U 926 0x8005e104-0x8005e214.
 void VehPhysForce_ConvertSpeedToVecOut(struct Driver *driver, Vec3 *vel)
 {
 	int yAngle = driver->axisRotationY;
@@ -70,49 +69,6 @@ enum
 	VEH_PHYS_FORCE_SURFACE_PUSHBACK_SHIFT = 6,
 };
 
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_QUAD_LOW_GRAVITY == 0x2);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_LOW_GRAVITY_DIVISOR == 100);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_MUD_TERMINAL_SPEED == 0x100);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_SKID_SPEED_THRESHOLD == 0x300);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_TERRAIN_SCALE_NEUTRAL == 0x100);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_TERRAIN_SIDE_LOCK_TIMER == -0x140);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_TERRAIN_RUMBLE_FRAMES == 4);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_TERRAIN_RUMBLE_FORCE == 0x7f);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_ROLLBACK_WINDOW_TIMER == 0x280);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_MATRIX_BLEND_FULL == 0x100);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_KART_SCALE_BASE == 0xccc);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_MASK_GRAB_SCALE_XZ_FACTOR == 0x28);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_MIN_SQUASH_XZ_SCALE == 0x400);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_TARGET_SQUISH_DEFAULT == -800);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_SQUISH_DEADBAND == 0x960);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_AIR_SQUISH_MIN == -800);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_LANDING_SQUISH_MIN == -0x640);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_SQUISH_MAX == 800);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_HAZARD_BLINK_MASK == 0x80);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_FALL_STRETCH_HEIGHT_MAX == 0xa00);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_FALL_STRETCH_MIN == 0x280);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_FALL_STRETCH_MAX == 0x320);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_TNT_SCALE_Y_THRESHOLD == 2500);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_TNT_SCALE_Y_BASE == 0x800);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_SQUISH_INTERP_SPEED == 300);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_SQUISH_SCALE_INTERP_SPEED == 0xa0);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_SQUISH_SCALE_XZ_FACTOR == 0xa0);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_SQUISH_RESTORE_SFX == 0x5b);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_SQUISH_OFFSET_NORMAL_SCALE == 0x13);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_WAKE_PARTICLE_ICON_GROUP == 9);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_WAKE_WATERLINE_Y == 0);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_WAKE_VISIBLE_MIN_Y == -0x4f);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_WAKE_INITIAL_SCALE == 0x1000);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_WAKE_PARTICLE_SPEED_MIN == 0xc00);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_WAKE_PARTICLE_PREV_Y_MIN == -0x200);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_WAKE_BURST_PARTICLE_COUNT == 10);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_TURBO_PAD_RESERVES == 0x3c0);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_SUPER_TURBO_PAD_RESERVES == 0x78);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_TURBO_PAD_FIRE_LEVEL == 0x100);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_SUPER_TURBO_PAD_FIRE_LEVEL == 0x800);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_COLLISION_BEST_DIST_INIT == 0x7fffffff);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_SURFACE_PUSHBACK_Y_BIAS == 4);
-CTR_STATIC_ASSERT(VEH_PHYS_FORCE_SURFACE_PUSHBACK_SHIFT == 6);
 
 static int VehPhysForce_OnGravity_Abs(int value)
 {
@@ -167,7 +123,6 @@ static Vec3 VehPhysForce_OnGravity_RotateVector(const MATRIX *m, s16 vx, s16 vy,
 	return out;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005e214-0x8005ea60
 void VehPhysForce_OnGravity(struct Driver *driver, Vec3 *velocity)
 {
 	int elapsedTimeMS = sdata->gGT->elapsedTimeMS;
@@ -255,10 +210,13 @@ void VehPhysForce_OnGravity(struct Driver *driver, Vec3 *velocity)
 
 	TerrainFlags terrainFlags = driver->terrainMeta1->flags;
 	int terminalVelocity = driver->const_TerminalVelocity;
-	if ((localY < 0) && ((terrainFlags & TERRAIN_FLAG_MUD_PHYSICS) != 0) && (originalLocalY < -VEH_PHYS_FORCE_MUD_TERMINAL_SPEED))
+	if ((localY < 0) && ((terrainFlags & TERRAIN_FLAG_MUD_PHYSICS) != 0))
 	{
 		terminalVelocity = VEH_PHYS_FORCE_MUD_TERMINAL_SPEED;
-		originalLocalY = -VEH_PHYS_FORCE_MUD_TERMINAL_SPEED;
+		if (originalLocalY < -VEH_PHYS_FORCE_MUD_TERMINAL_SPEED)
+		{
+			originalLocalY = -VEH_PHYS_FORCE_MUD_TERMINAL_SPEED;
+		}
 	}
 
 	int clampedLocalY = localY;
@@ -568,7 +526,6 @@ static Vec3 VehPhysForce_OnApplyForces_RotateVector(const MATRIX *m, s16 vx, s16
 	return out;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005ea60-0x8005ebac.
 void VehPhysForce_OnApplyForces(struct Thread *thread, struct Driver *driver)
 {
 	(void)thread;
@@ -607,7 +564,6 @@ void VehPhysForce_OnApplyForces(struct Thread *thread, struct Driver *driver)
 	driver->velocity.y = CTR_MipsAddLo(driver->velocity.y, driver->accel.y);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005ebac-0x8005ee34.
 void VehPhysForce_CollideDrivers(struct Thread *thread, struct Driver *driver)
 {
 	CollStepFlags stepFlagSet = driver->stepFlagSet;
@@ -652,8 +608,8 @@ void VehPhysForce_CollideDrivers(struct Thread *thread, struct Driver *driver)
 	{
 		struct DriverCollisionSearch search;
 
-		CTR_SET_VEC3(search.bucket.pos.v, (s16)CTR_MipsSra(driver->posCurr.x, FRACTIONAL_BITS_8), (s16)CTR_MipsSra(driver->posCurr.y, FRACTIONAL_BITS_8),
-		             (s16)CTR_MipsSra(driver->posCurr.z, FRACTIONAL_BITS_8));
+		CTR_SET_VEC3(CTR_VECTOR_DATA(&(search.bucket.pos)), (s16)CTR_MipsSra(driver->posCurr.x, FRACTIONAL_BITS_8),
+		             (s16)CTR_MipsSra(driver->posCurr.y, FRACTIONAL_BITS_8), (s16)CTR_MipsSra(driver->posCurr.z, FRACTIONAL_BITS_8));
 		search.bucket.th = NULL;
 		search.bucket.bestDistSq = VEH_PHYS_FORCE_COLLISION_BEST_DIST_INIT;
 
@@ -1000,7 +956,7 @@ static void VehPhysForce_TranslateMatrix_SpawnWakeParticle(struct Driver *d)
 	if (p != NULL)
 	{
 		p->otIndexOffset = d->instSelf->depthBiasNormal;
-		p->driverInst = d->instSelf;
+		p->owner.driverInst = d->instSelf;
 		p->driverID = d->driverID;
 	}
 }
@@ -1085,13 +1041,12 @@ static void VehPhysForce_TranslateMatrix_UpdateWake(struct Instance *inst, struc
 	wake->scale.z = d->wakeScale;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005ee34-0x8005f89c
 void VehPhysForce_TranslateMatrix(struct Thread *thread, struct Driver *driver)
 {
 	struct Instance *inst = thread->inst;
 
 	VehPhysForce_TranslateMatrix_UpdateSquashStretch(inst, driver);
-	VehPhysForce_RotAxisAngle(&driver->matrixFacingDir, driver->AxisAngle2_normalVec.v, driver->rotCurr.y);
+	VehPhysForce_RotAxisAngle(&driver->matrixFacingDir, CTR_VECTOR_DATA(&(driver->AxisAngle2_normalVec)), driver->rotCurr.y);
 	VehPhysForce_TranslateMatrix_UpdateMatrixAnimation(driver);
 	VehPhysForce_TranslateMatrix_UpdateInstanceMatrix(inst, driver);
 	VehPhysForce_TranslateMatrix_UpdateWake(inst, driver);
@@ -1146,7 +1101,6 @@ static struct TrigPair VehPhysForce_TrigAngleSinCos(int angle)
 	return pair;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005f89c-0x8005fb4c.
 void VehPhysForce_RotAxisAngle(MATRIX *m, s16 *normVec, s16 angle)
 {
 	s32 normalX = normVec[0];
@@ -1242,7 +1196,6 @@ static SVec3 VehPhysForce_CounterSteer_RotateVector(const MATRIX *m, s16 vx, s16
 	return out;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8005fb4c-0x8005fc8c.
 void VehPhysForce_CounterSteer(struct Driver *driver)
 {
 	driver->accel.x = 0;

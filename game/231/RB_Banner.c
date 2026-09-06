@@ -77,7 +77,6 @@ static inline u32 RB_Banner_RewriteCommandX(u32 command, int xQuarter, int reuse
 	return (command & mask) | ((u32)xQuarter << 9);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b53e0-0x800b56c4.
 int RB_Banner_Animate_Init(struct ModelHeader *mh)
 {
 	u32 *cmd;
@@ -159,7 +158,6 @@ int RB_Banner_Animate_Init(struct ModelHeader *mh)
 	return count;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b56c4-0x800b57b4.
 void RB_Banner_Animate_Play(struct ModelHeader *mh, s16 numVertices)
 {
 	u32 *colors = mh->ptrColors;
@@ -197,7 +195,6 @@ void RB_Banner_Animate_Play(struct ModelHeader *mh, s16 numVertices)
 	}
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b57b4-0x800b57f8.
 void RB_Banner_ThTick(struct Thread *t)
 {
 	struct StartBanner *banner = t->object;
@@ -210,7 +207,6 @@ void RB_Banner_ThTick(struct Thread *t)
 
 static char s_startbanner[] = "startbanner";
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b57f8-0x800b5968.
 void RB_Banner_LInB(struct Instance *inst)
 {
 	struct GameTracker *gGT = sdata->gGT;

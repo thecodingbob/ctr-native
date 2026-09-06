@@ -3,11 +3,11 @@
 struct HitboxDesc fjBoxDesc = {.inst = (struct Instance *)0,
                                .thread = (struct Thread *)0,
                                .bucket = (struct Thread *)0,
-                               .bbox = {.min = {{0xFFC0, 0xFFC0, 0}}, .max = {{0x40, 0x80, 0x140}}},
+                               .bbox = {.min = {0xFFC0, 0xFFC0, 0}, .max = {0x40, 0x80, 0x140}},
                                .threadHit = (struct Thread *)0,
                                .funcThCollide = (void *)0};
 
-SVec3 fjLightDir = {{0x8B8, 0xD6A, 0}};
+SVec3 fjLightDir = {0x8B8, 0xD6A, 0};
 
 struct ParticleEmitter emSet_fjHeat[0xb] = {[0] =
                                                 {
@@ -224,7 +224,6 @@ struct ParticleEmitter emSet_fjFire[0x8] = {[0] =
                                             // null terminator
                                             {0}};
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b64c0-0x800b6728.
 void RB_FlameJet_Particles(struct Instance *inst, struct FlameJet *fjObj)
 {
 	int result;
@@ -316,7 +315,6 @@ void RB_FlameJet_ThTick(struct Thread *t)
 	fjInst = t->inst;
 	fjObj = (struct FlameJet *)t->object;
 
-	// NOTE(aalhendi): ASM-verified audio/lifecycle path for NTSC-U 926 0x800b6728-0x800b6938.
 	if (fjObj->cooldown != 0)
 	{
 		fjObj->cooldown--;
@@ -399,7 +397,6 @@ EndFjThTick:
 	Vector_SpecLightNoSpin3D(fjInst, &fjInst->instDef->rot, &fjLightDir);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800b6938-0x800b6d58.
 void RB_FlameJet_LInB(struct Instance *inst)
 {
 	int fjID;

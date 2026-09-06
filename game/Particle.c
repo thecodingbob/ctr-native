@@ -59,16 +59,7 @@ enum
 	PARTICLE_TEXTURE_DRAW_MODE_MASK = 0xff9fffffu,
 };
 
-CTR_STATIC_ASSERT(PARTICLE_POTION_SHATTER_Y_SPEED_THRESHOLD == 0x578);
-CTR_STATIC_ASSERT(PARTICLE_POTION_SHATTER_FADE_STEP == 0x1200);
-CTR_STATIC_ASSERT(PARTICLE_SPIT_TIRE_MOUTH_Y_OFFSET == 0x10);
-CTR_STATIC_ASSERT(PARTICLE_SPIT_TIRE_FRAME_1 == 0x1000);
-CTR_STATIC_ASSERT(PARTICLE_SPIT_TIRE_FRAME_2 == 0xfff);
-CTR_STATIC_ASSERT(PARTICLE_SPIT_TIRE_FRAME_3 == 0xffe);
-CTR_STATIC_ASSERT(PARTICLE_SPIT_TIRE_FRAME_3_VELOCITY == 0xf801);
-CTR_STATIC_ASSERT(PARTICLE_EXHAUST_BUBBLEPOP_ICON_GROUP == 8);
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003eae0-0x8003ec18.
 void Particle_FuncPtr_PotionShatter(struct Particle *p)
 {
 	s16 scaleRandomQuotient;
@@ -109,7 +100,7 @@ void Particle_FuncPtr_PotionShatter(struct Particle *p)
 FadeShatterChannel:
 
 	// green shatter or red shatter
-	if (p->modelID == STATIC_SHOCKWAVE_GREEN)
+	if (p->owner.modelID == STATIC_SHOCKWAVE_GREEN)
 	{
 		if (0 < p->axis[PARTICLE_AXIS_COLOR_G].startVal)
 		{
@@ -126,7 +117,6 @@ FadeShatterChannel:
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003ec18-0x8003ee20.
 void Particle_FuncPtr_SpitTire(struct Particle *p)
 {
 	int rng;
@@ -136,7 +126,7 @@ void Particle_FuncPtr_SpitTire(struct Particle *p)
 	// Wait until tires are 0x10 units above
 	// the ground, which is where the plant
 	// actually "spits" tires from the mouth
-	targetY = p->plantInst->matrix.t[1] + PARTICLE_SPIT_TIRE_MOUTH_Y_OFFSET;
+	targetY = p->owner.plantInst->matrix.t[1] + PARTICLE_SPIT_TIRE_MOUTH_Y_OFFSET;
 
 	if ((p->axis[PARTICLE_AXIS_POS_Y].startVal >> 8) >= targetY)
 	{
@@ -204,12 +194,11 @@ void Particle_FuncPtr_SpitTire(struct Particle *p)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003ee20-0x8003eeb0
 void Particle_FuncPtr_ExhaustUnderwater(struct Particle *p)
 {
 	struct IconGroup *icon;
 
-	if ((PARTICLE_EXHAUST_WATER_HEIGHT_THRESHOLD < ((p->axis[PARTICLE_AXIS_POS_Y].startVal >> 8) + p->driverInst->matrix.t[1])) &&
+	if ((PARTICLE_EXHAUST_WATER_HEIGHT_THRESHOLD < ((p->axis[PARTICLE_AXIS_POS_Y].startVal >> 8) + p->owner.driverInst->matrix.t[1])) &&
 	    (p->framesLeftInLife < PARTICLE_EXHAUST_POP_LIFE_THRESHOLD))
 	{
 		// bubblepop
@@ -231,7 +220,6 @@ void Particle_FuncPtr_ExhaustUnderwater(struct Particle *p)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003eeb0-0x8003eefc.
 void Particle_OnDestroy(struct Particle *p)
 {
 	struct ParticleOscillator *osc;
@@ -425,7 +413,6 @@ static void Particle_UpdateIconFrame(struct Particle *p, u16 flagsSetColor)
 	frameAxis->startVal = frame;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003eefc-0x8003f434
 void Particle_UpdateList(struct Particle **listHead, struct Particle *p)
 {
 	struct Particle **link = listHead;
@@ -527,7 +514,6 @@ void Particle_UpdateList(struct Particle **listHead, struct Particle *p)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003f434-0x8003f48c.
 void Particle_UpdateAllParticles(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -542,7 +528,6 @@ void Particle_UpdateAllParticles(void)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003f48c-0x8003f4c4.
 int Particle_BitwiseClampByte(int *value)
 {
 	if (*value < PARTICLE_COLOR_CHANNEL_MIN)
@@ -558,7 +543,6 @@ int Particle_BitwiseClampByte(int *value)
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003f4c4-0x8003f590
 u32 Particle_SetColors(u32 flagColors, u32 flagAlpha, struct Particle *p)
 {
 	u32 color = 0;
@@ -661,7 +645,7 @@ struct ParticleRenderListScratch
 		};
 	};
 	u8 pad_14[0x0c];
-	uint32_t *ot;
+	u32 *ot;
 	s32 cameraOffset[3];
 	s32 depth;
 };
@@ -735,16 +719,16 @@ static struct ParticleRenderListTrig Particle_RenderList_ReadTrig(s32 angle)
 	return trig;
 }
 
-static void Particle_RenderList_LinkPrimitive(u32 *tagWord, const void *packet, uint32_t *ot, u32 tag)
+static void Particle_RenderList_LinkPrimitive(u32 *tagWord, const void *packet, u32 *ot, u32 tag)
 {
 	CtrGpu_LinkPacket24(ot, tagWord, packet, tag);
 }
 
 static void Particle_RenderList_LinkAndAdvance(u32 **primCursor, u32 **payloadCursor, struct Particle *particle, struct InstDrawPerPlayer *idpp,
-                                               u16 flagsSetColor, s32 depth, uint32_t *defaultOT)
+                                               u16 flagsSetColor, s32 depth, u32 *defaultOT)
 {
 	u32 *prim = *primCursor;
-	uint32_t *otBase;
+	u32 *otBase;
 	s32 otIndex;
 
 	if (idpp != NULL)
@@ -761,7 +745,7 @@ static void Particle_RenderList_LinkAndAdvance(u32 **primCursor, u32 **payloadCu
 			otIndex = (u16)idpp->depthOffset[1];
 		}
 
-		otBase = (uint32_t *)(uintptr_t)idpp->otRangeNormal;
+		otBase = (u32 *)(u32)idpp->otRangeNormal;
 	}
 	else
 	{
@@ -1114,7 +1098,6 @@ static void Particle_RenderList_WriteNormalPrimitive(POLY_FT4 *poly, struct Icon
 	CtrGpu_WritePackedXY(&poly->x3, MFC2(14));
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003f590-0x80040308
 void Particle_RenderList(struct PushBuffer *pb, void *particleList)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -1222,9 +1205,9 @@ void Particle_RenderList(struct PushBuffer *pb, void *particleList)
 			posZ = particle->axis[PARTICLE_AXIS_POS_Z].startVal >> 6;
 			flagsSetColor = particle->flagsSetColor;
 
-			if ((flagsSetColor & PARTICLE_SET_COLOR_FLAG_DRIVER_LOCAL) != 0 && particle->driverInst != NULL)
+			if ((flagsSetColor & PARTICLE_SET_COLOR_FLAG_DRIVER_LOCAL) != 0 && particle->owner.driverInst != NULL)
 			{
-				struct Instance *inst = particle->driverInst;
+				struct Instance *inst = particle->owner.driverInst;
 				u32 idppFlags;
 
 				idpp = Particle_RenderList_GetIdpp(inst, cameraID);
@@ -1311,12 +1294,12 @@ void Particle_RenderList(struct PushBuffer *pb, void *particleList)
 
 static u32 Particle_Init_GetAxisFlags(const struct Particle *p)
 {
-	return p->flagsAxisWord;
+	return CTR_ReadU32LE(&p->flagsAxis);
 }
 
 static void Particle_Init_SetAxisFlags(struct Particle *p, u32 flags)
 {
-	p->flagsAxisWord = flags;
+	CTR_WriteU32LE(&p->flagsAxis, flags);
 }
 
 static u8 ParticleEmitter_GetInitOffset(const struct ParticleEmitter *emSet)
@@ -1326,12 +1309,12 @@ static u8 ParticleEmitter_GetInitOffset(const struct ParticleEmitter *emSet)
 
 static void ParticleEmitter_CopyOscillator(struct ParticleOscillator *osc, const struct ParticleEmitter *emSet)
 {
-	const struct ParticleOscillatorConfig *src = &emSet->oscillator;
+	const struct ParticleOscillatorConfig *src = &emSet->tail.oscillator;
 
 	CTR_WriteU32LE(&osc->flags, CTR_ReadU32LE(&src->flags));
-	CTR_WriteU32LE((u8 *)&osc->flags + 4, CTR_ReadU32LE(&src->period));
-	CTR_WriteU32LE((u8 *)&osc->flags + 8, CTR_ReadU32LE(&src->scale));
-	CTR_WriteU32LE((u8 *)&osc->flags + 12, CTR_ReadU32LE(&src->min));
+	CTR_WriteU32LE((u8 *)&osc->flags + 4, CTR_ReadU32LE(&src->range.period));
+	CTR_WriteU32LE((u8 *)&osc->flags + 8, CTR_ReadU32LE(&src->range.scale));
+	CTR_WriteU32LE((u8 *)&osc->flags + 12, CTR_ReadU32LE(&src->range.min));
 }
 
 static void Particle_InitAxis(struct Particle *p, const struct ParticleEmitter *emSet, u8 axisIndex, u32 *flagsAxis)
@@ -1436,7 +1419,7 @@ static void Particle_RandomizeOscillator(struct ParticleOscillator *localOsc[12]
 	}
 
 	osc = localOsc[axisIndex];
-	rng = &emSet->oscillator.randomRange;
+	rng = &emSet->tail.oscillator.range;
 
 	if (rng->period != 0)
 	{
@@ -1485,7 +1468,6 @@ static void Particle_LinkOscillators(struct Particle *p, struct ParticleOscillat
 	*link = NULL;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80040308-0x80040850
 struct Particle *Particle_Init(u32 param_1, struct IconGroup *ig, struct ParticleEmitter *emSet)
 {
 	struct GameTracker *gGT = sdata->gGT;

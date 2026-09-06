@@ -67,7 +67,6 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 	MAINFRAME_PERF_BEGIN(NATIVE_PERF_BUCKET_MAINFRAME_EFFECTS);
 	RenderAllWeather(gGT);
 	RenderAllConfetti(gGT);
-	// NOTE(aalhendi): ASM-verified NTSC-U 926 subrange 0x800364f8-0x80036538.
 	if (((gGT->renderFlags & RENDER_FLAG_STARS) != 0) && (gGT->stars.numStars != 0))
 	{
 		RenderStars(&gGT->pushBuffer[0], &gGT->backBuffer->primMem, &gGT->stars, gGT->numPlyrCurrGame);
@@ -175,7 +174,7 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 #if defined(CTR_NATIVE)
 			// NOTE(aalhendi): Native menu/adventure-hub LEVs may publish no
 			// restart table. Retail lap stats assume the table exists whenever
-			// this caller reaches them; keep the ASM-verified lap function intact.
+			// this caller reaches them; keep the retail lap path intact.
 			if ((gGT->level1 != NULL) && (gGT->level1->ptr_restart_points != NULL) && (gGT->level1->cnt_restart_points != 0))
 			{
 				PlayLevel_UpdateLapStats();
@@ -378,7 +377,7 @@ void DrawFinalLap(struct GameTracker *gGT)
 
 	DrawFinalLapString:
 
-		UI_Lerp2D_Linear(resultPos.v, (s16)startX, (s16)posY, (s16)endX, (s16)posY, textTimer, 10);
+		UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(resultPos)), (s16)startX, (s16)posY, (s16)endX, (s16)posY, textTimer, 10);
 
 		// need to specify OT, or else "FINAL LAP" will draw on top of character icons,
 		// and by doing this, "FINAL LAP" draws under the character icons instead
@@ -428,8 +427,8 @@ void MenuHighlight()
 	trig = (trig << 6) >> 0xc;
 
 	// sine curve of green, plus base color
-	sdata->menuRowHighlight_Normal.self = ((trig + 0x40) * 0x100) | 0x80;
-	sdata->menuRowHighlight_Green.self = ((trig + 0xA0) * 0x100) | 0x400040;
+	ColorCode_SetPacked(&sdata->menuRowHighlight_Normal, ((trig + 0x40) * 0x100) | 0x80);
+	ColorCode_SetPacked(&sdata->menuRowHighlight_Green, ((trig + 0xA0) * 0x100) | 0x400040);
 }
 
 void RenderAllWeather(struct GameTracker *gGT)
@@ -696,15 +695,6 @@ void RenderBucket_QueueAllInstances(struct GameTracker *gGT)
 
 	RBI = RenderBucket_QueueNonLevInstances(gGT->JitPools.instance.taken.first, &gGT->backBuffer->otMem, (void *)RBI, (u8)sdata->LOD[lod], numPlyrCurrGame,
 	                                        gGT->gameMode1 & PAUSE_ALL);
-
-	// Aug prototype
-#if 0
-		// ptrEnd of otmem is less than ptrCurr otmem
-    if (*(uint32_t *)(*(int *)(PTR_DAT_8008d2ac + 0x10) + 0x98) <
-        *(uint32_t *)(*(int *)(PTR_DAT_8008d2ac + 0x10) + 0x9c)) {
-      printf("OTMEM OVERFLOW!\n");
-    }
-#endif
 
 	// null terminator at end of list
 	*RBI = 0;
@@ -1069,7 +1059,7 @@ void WindowBoxLines(struct GameTracker *gGT)
 	for (i = 0; i < gGT->numPlyrCurrGame; i++)
 	{
 		Color color;
-		color.self = *data.ptrColor[gGT->drivers[i]->BattleHUD.teamID + PLAYER_BLUE];
+		ColorCode_SetPacked(&color, *data.ptrColor[gGT->drivers[i]->BattleHUD.teamID + PLAYER_BLUE]);
 		RECTMENU_DrawOuterRect_LowLevel(
 
 		    // dimensions, thickness
@@ -1202,7 +1192,7 @@ void RenderDispEnv_UI(struct GameTracker *gGT)
 	PushBuffer_SetDrawEnv_Normal(&pb->ptrOT[4], pb, gGT->backBuffer, 0, 0);
 }
 
-CTR_GCC_OPTIMIZE_O0 int ReadyToFlip(struct GameTracker *gGT)
+int ReadyToFlip(struct GameTracker *gGT)
 {
 	return
 	    // two VSYNCs passed, 30fps lock
@@ -1212,7 +1202,7 @@ CTR_GCC_OPTIMIZE_O0 int ReadyToFlip(struct GameTracker *gGT)
 	    (gGT->bool_DrawOTag_InProgress == 0);
 }
 
-CTR_GCC_OPTIMIZE_O0 int ReadyToBreak(struct GameTracker *gGT)
+int ReadyToBreak(struct GameTracker *gGT)
 {
 	return
 

@@ -35,8 +35,6 @@ static inline NativeStr8 NativePath_SkipLeadingSeparators(NativeStr8 path)
 
 static inline s32 NativePath_NormalizeSlashes(char *dst, size_t dstSize, NativeStr8 path)
 {
-	size_t i;
-
 	if ((dst == NULL) || (dstSize == 0) || (path.len >= dstSize))
 	{
 		return 0;
@@ -47,7 +45,7 @@ static inline s32 NativePath_NormalizeSlashes(char *dst, size_t dstSize, NativeS
 		return 0;
 	}
 
-	for (i = 0; i < path.len; i++)
+	for (size_t i = 0; i < path.len; i++)
 	{
 		u8 byte = path.ptr[i];
 		dst[i] = (char)((byte == '\\') ? '/' : byte);
@@ -60,8 +58,6 @@ static inline s32 NativePath_NormalizeSlashes(char *dst, size_t dstSize, NativeS
 static inline s32 NativePath_Join(char *dst, size_t dstSize, NativeStr8 left, NativeStr8 right)
 {
 	NativeStr8 rightPart = NativePath_SkipLeadingSeparators(right);
-	size_t writeAt;
-	s32 needsSeparator;
 
 	if ((dst == NULL) || (dstSize == 0))
 	{
@@ -78,7 +74,7 @@ static inline s32 NativePath_Join(char *dst, size_t dstSize, NativeStr8 left, Na
 		return NativePath_NormalizeSlashes(dst, dstSize, rightPart);
 	}
 
-	needsSeparator = (rightPart.len != 0) && !NativePath_IsSeparator(left.ptr[left.len - 1u]);
+	s32 needsSeparator = (rightPart.len != 0) && !NativePath_IsSeparator(left.ptr[left.len - 1u]);
 	if (left.len + (size_t)needsSeparator + rightPart.len >= dstSize)
 	{
 		return 0;
@@ -89,7 +85,7 @@ static inline s32 NativePath_Join(char *dst, size_t dstSize, NativeStr8 left, Na
 		return 0;
 	}
 
-	writeAt = left.len;
+	size_t writeAt = left.len;
 	if (needsSeparator != 0)
 	{
 		dst[writeAt++] = '/';
@@ -97,9 +93,7 @@ static inline s32 NativePath_Join(char *dst, size_t dstSize, NativeStr8 left, Na
 
 	if (rightPart.len != 0)
 	{
-		size_t i;
-
-		for (i = 0; i < rightPart.len; i++)
+		for (size_t i = 0; i < rightPart.len; i++)
 		{
 			u8 byte = rightPart.ptr[i];
 			dst[writeAt + i] = (char)((byte == '\\') ? '/' : byte);

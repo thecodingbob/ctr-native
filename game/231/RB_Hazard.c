@@ -1,6 +1,5 @@
 #include <common.h>
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800ac1b0-0x800ac220.
 
 int RB_Hazard_HurtDriver(struct Driver *driverVictim, int damageType, struct Driver *driverAttacker, int reason)
 {
@@ -23,7 +22,6 @@ int RB_Hazard_HurtDriver(struct Driver *driverVictim, int damageType, struct Dri
 	return result;
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800ac220-0x800ac350.
 struct Instance *RB_Hazard_CollideWithDrivers(struct Instance *weaponInst, s16 parentSafetyFrames, int hitRadius, struct Instance *mineDriverInst)
 {
 	int j;
@@ -88,7 +86,6 @@ struct Instance *RB_Hazard_CollideWithDrivers(struct Instance *weaponInst, s16 p
 	return 0;
 }
 
-// NOTE(aalhendi): ASM-verified against NTSC-U 926 overlay 231 0x800ac350-0x800ac3f8.
 struct Instance *RB_Hazard_CollideWithBucket(struct Instance *weaponInst, struct Thread *weaponTh, struct Thread *bucket, s16 parentSafetyFrames, int hitRadius,
                                              struct Instance *mineDriverInst)
 {
@@ -125,13 +122,11 @@ struct Instance *RB_Hazard_CollideWithBucket(struct Instance *weaponInst, struct
 }
 
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac3f8-0x800ac42c.
 void RB_Hazard_ThCollide_Generic_Alt(struct Thread **threadSlot)
 {
 	RB_Hazard_ThCollide_Generic(threadSlot[0]);
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac42c-0x800ac4b8.
 // NOTE(aalhendi): Native ThCollide ABI is void; retail returns v0=1.
 void RB_Hazard_ThCollide_Missile(struct Thread *thread)
 {
@@ -163,7 +158,6 @@ void RB_Hazard_ThCollide_Missile(struct Thread *thread)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ac4b8-0x800ac5e8.
 void RB_Hazard_ThCollide_Generic(struct Thread *thread)
 {
 	struct Instance *inst = thread->inst;
@@ -173,11 +167,14 @@ void RB_Hazard_ThCollide_Generic(struct Thread *thread)
 	struct Instance *crateInst = mw->crateInst;
 	if (crateInst != 0)
 	{
-		struct Crate *crateObj = (struct Crate *)crateInst->thread->object;
-
-		if (crateObj != 0)
+		struct Thread *crateThread = crateInst->thread;
+		if (crateThread != NULL)
 		{
-			crateObj->boolPauseCooldown = 0;
+			struct Crate *crateObj = crateThread->object;
+			if (crateObj != NULL)
+			{
+				crateObj->boolPauseCooldown = 0;
+			}
 		}
 	}
 
@@ -241,7 +238,6 @@ void RB_Hazard_ThCollide_Generic(struct Thread *thread)
 	return;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ad9ac-0x800ada90.
 u16 RB_Hazard_CollLevInst(struct ScratchpadStruct *sps, struct Thread *th)
 {
 	struct InstDef *instdef;
@@ -296,7 +292,6 @@ u16 RB_Hazard_CollLevInst(struct ScratchpadStruct *sps, struct Thread *th)
 	return 1;
 }
 
-// NOTE(aalhendi): ASM-verified NTSC-U 926 0x800ada90-0x800adb50.
 int RB_Hazard_InterpolateValue(s16 currRot, s16 desiredRot, s16 rotSpeed)
 {
 	if (currRot == desiredRot)
