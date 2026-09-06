@@ -264,7 +264,7 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 	{
 		RECT sep = {0x20, 0x2C, 0x1C0, 2};
 		Color sepColor;
-		sepColor.self = sdata->battleSetup_Color_UI_1;
+		ColorCode_SetPacked(&sepColor, sdata->battleSetup_Color_UI_1);
 		RECTMENU_DrawOuterRect_Edge(&sep, sepColor, 0x20, ot);
 	}
 

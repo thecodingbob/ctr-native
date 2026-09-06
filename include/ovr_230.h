@@ -573,28 +573,12 @@ struct OverlayDATA_230
 {
 	// =========== Main Menu CONST =============
 
-	// 800b44e4 - UsaRetail
-	// 800b4c4c - EurRetail
-	// 800b7f68 - JpnRetail
-#if BUILD == EurRetail
 	struct MenuRow rowsMainMenuBasic[9];
-#else
-	struct MenuRow rowsMainMenuBasic[9];
-#endif
-
 	char padding800b450E[2];
 
-	// 800b4510 - UsaRetail
-	// 800b4c7c - EurRetail
-	// 800b7f94 - JpnRetail
-#if BUILD == EurRetail
-	struct MenuRow rowsMainMenuWithScrapbook[10];
-	char padding800b4cb2[2];
-#else
 	struct MenuRow rowsMainMenuWithScrapbook[10];
 	struct MenuRow rowsQuitConfirm[3];
 	struct RectMenu menuQuitConfirm;
-#endif
 
 	// 800b4540
 	struct RectMenu menuMainMenu;

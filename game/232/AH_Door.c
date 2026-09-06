@@ -740,7 +740,7 @@ void AH_Door_LInB(struct Instance *inst)
 	    (levelID == THE_LOST_RUINS && ((sdata->advProgress.rewards[ADV_PROGRESS_WORD_STORY] & ADV_REWARD_DOOR_LOST_RUINS_TO_GLACIER_PARK_MASK) != 0)) ||
 
 	    // Level ID is Glacier Park, check door to Citadel City
-	    ((levelID == GLACIER_PARK) && ((sdata->advProgress.rewards[ADV_PROGRESS_WORD_STORY] & ADV_REWARD_DOOR_GLACIER_PARK_TO_CITADEL_CITY_MASK) != 0)))
+	    ((levelID == GLACIER_PARK) && ((sdata->advProgress.rewards[ADV_PROGRESS_WORD_STORY] & ADV_REWARD_DOOR_GLACIER_PARK_TO_CITADEL_CITY_MASK) != 0))))
 	{
 		// rotation = 90 degrees
 		woodDoor->doorRot.y = AH_DOOR_OPEN_ROTATION;
