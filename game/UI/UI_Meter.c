@@ -341,3 +341,57 @@ void UI_DrawSlideMeter(s16 posX, s16 posY, struct Driver *driver)
 		meterLength = barWidth;
 	}
 }
+
+// Ported from ctr-native-ap's CTR-ModSDK ReservesMeter implementation.
+void UI_DrawReservesMeter(s16 posX, s16 posY, struct Driver *driver)
+{
+	const struct GameTracker *gGT = sdata->gGT;
+	const int barWidth = 49;
+	const int barHeight = 3;
+	s16 topX = posX - barWidth;
+	s16 topY = posY - barHeight;
+
+	RECT box = {topX, topY, barWidth, barHeight};
+	Color black = MakeColor(0, 0, 0);
+	CTR_Box_DrawWireBox(&box, &black, gGT->pushBuffer_UI.ptrOT, &gGT->backBuffer->primMem);
+
+	const PrimCode primCode = {.kind.poly = {.quad = 1, .renderCode = RenderCode_Polygon}};
+	ColorCode colorCode = MakeColorCode(0xff, 0, 0, primCode);
+	if (driver->reserves > 1600)
+	{
+		colorCode = driver->reserves < 3840
+		                ? MakeColorCode(0xff, 0xff, 0, primCode)
+		                : MakeColorCode(0, 0xff, 0, primCode);
+	}
+
+	int meterLength = (driver->reserves * 14) / 2400;
+	if (meterLength > barWidth)
+	{
+		meterLength = barWidth;
+		colorCode = MakeColorCode(0, 0, 0xff, primCode);
+	}
+
+	for (int i = 0; i < 2; i++)
+	{
+		PolyF4 *p;
+		GetPrimMem(p);
+		if (p == NULL)
+		{
+			return;
+		}
+
+		p->colorCode = colorCode;
+		p->v[0].pos.y = topY;
+		p->v[1].pos.y = topY;
+		p->v[2].pos.y = posY;
+		p->v[3].pos.y = posY;
+		p->v[0].pos.x = posX - meterLength;
+		p->v[1].pos.x = posX;
+		p->v[2].pos.x = posX - meterLength;
+		p->v[3].pos.x = posX;
+
+		AddPrimitive(p, gGT->pushBuffer_UI.ptrOT);
+		colorCode = MakeColorCode(0x80, 0x80, 0x80, primCode);
+		meterLength = barWidth;
+	}
+}
