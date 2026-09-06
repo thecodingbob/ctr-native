@@ -690,7 +690,7 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 		// and if you are not being effected by Clock Weapon
 		heldItemID = driver->heldItemID;
 		if ((heldItemID != HELD_ITEM_NONE) && (heldItemID != HELD_ITEM_ROULETTE) && (driver->noItemTimer == 0) &&
-		    (rainCloudEffect != RAIN_CLOUD_EFFECT_ITEM_ROLL) && (driver->clockReceive == 0))
+		    (rainCloudEffect != RAIN_CLOUD_EFFECT_ITEM_ROLL) && (driver->clockReceive == 0 || g_config.allowWeaponsDuringClock))
 		{
 			// This driver wants to fire a weapon
 			actionsFlagSetCopy |= ACTION_WEAPON_FIRE_REQUEST;

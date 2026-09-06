@@ -277,7 +277,7 @@ int RB_CrateWeapon_ThCollide(struct Thread *crateThread, struct Thread *collidin
 				}
 			}
 
-			if (driver->clockReceive != 0)
+			if (driver->clockReceive != 0 && !g_config.allowWeaponsDuringClock)
 			{
 				return 1;
 			}

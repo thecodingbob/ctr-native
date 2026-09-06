@@ -105,7 +105,7 @@ static int PickupBots_IsBotWeaponReady(struct Driver *driver)
 
 	return ((driver->actionsFlagSet & ACTION_BOT) != 0) && ((driver->botData.botFlags & BOT_FLAG_DAMAGE_ACTIVE) == 0) &&
 	       ((driver->actionsFlagSet & ACTION_RACE_FINISHED) == 0) && (driver->botData.weaponCooldown == 0) && (driver->instTntRecv == NULL) &&
-	       (driver->clockReceive == 0);
+	       (driver->clockReceive == 0 || g_config.allowWeaponsDuringClock);
 }
 
 static int PickupBots_IsCloseToPlayer(struct Driver *player, struct Driver *bot)
@@ -473,7 +473,7 @@ static void PickupBots_UpdateBoss(void)
 	struct MetaDataBOSS *bossMeta = sdata->bossWeaponMeta;
 
 	if (((boss->botData.botFlags & BOT_FLAG_DAMAGE_ACTIVE) != 0) || ((boss->actionsFlagSet & ACTION_RACE_FINISHED) != 0) || (boss->instTntRecv != NULL) ||
-	    (boss->clockReceive != 0) || (boss->botData.aiPhysics.speedLinear < PICKUPBOTS_BOSS_SPEED_MIN))
+	    ((boss->clockReceive != 0) && !g_config.allowWeaponsDuringClock) || (boss->botData.aiPhysics.speedLinear < PICKUPBOTS_BOSS_SPEED_MIN))
 	{
 		PickupBots_SetBossCooldown(bossMeta);
 		return;
