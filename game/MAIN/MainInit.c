@@ -1,21 +1,20 @@
 #include <common.h>
 
 #ifdef CTR_NATIVE
-static void MainInit_InitVisMemBspListNodes(struct VisMem *visMem, struct mesh_info *mesh)
+static void MainInit_InitVisMemBspListNodes(struct VisMem *visMem, struct mesh_info *mesh, int numPlayers)
 {
 	if (mesh == NULL || mesh->bspRoot == NULL)
 	{
 		return;
 	}
 
-	for (int playerIndex = 0; playerIndex < 4; playerIndex++)
+	for (int playerIndex = 0; playerIndex < numPlayers; playerIndex++)
 	{
-		struct VisMemBspListNode *bspList = visMem->bspList[playerIndex];
-
-		if (bspList == NULL)
-		{
-			continue;
-		}
+		// Retail 4P visibility assets can provide a BSP-list array smaller than
+		// the level's actual BSP tree. Native rewrites every node anyway, so own
+		// an exactly sized array rather than relying on that PS1-era allocation.
+		struct VisMemBspListNode *bspList = MEMPACK_AllocMem(mesh->numBspNodes * sizeof(*bspList));
+		visMem->bspList[playerIndex] = bspList;
 
 		for (int bspIndex = 0; bspIndex < mesh->numBspNodes; bspIndex++)
 		{
@@ -46,7 +45,7 @@ void MainInit_VisMem(struct GameTracker *gGT)
 	}
 
 #ifdef CTR_NATIVE
-	MainInit_InitVisMemBspListNodes(visMem, gGT->level1->ptr_mesh_info);
+	MainInit_InitVisMemBspListNodes(visMem, gGT->level1->ptr_mesh_info, gGT->numPlyrCurrGame);
 #endif
 }
 

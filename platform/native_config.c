@@ -36,6 +36,7 @@ static const ConfigEnumValue kRenderScaleValues[] = {
 NativeConfig g_config = {
   .skipIntro = false,
   .showReservesMeter = false,
+  .allowOxideStationMultiplayer = false,
   .skipHints = false,
   .extendedAdventureCharacterSelect = false,
 
@@ -90,6 +91,13 @@ const ConfigEntry g_configEntries[] = {
         .label = "Show Reserves Meter",
         .type = CFG_BOOL,
         .valuePtr = &g_config.showReservesMeter
+    },
+    {
+        .section = "General",
+        .key = "allow_oxide_station_multiplayer",
+        .label = "Oxide Station Multiplayer",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.allowOxideStationMultiplayer
     },
       {
         .section = "General",

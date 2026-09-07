@@ -247,7 +247,7 @@ struct MainMenu_LevelRow
 
 	// MM_TRACK_UNLOCK_ALWAYS for unlock by default,
 	// otherwise has a flag for what is needed.
-	// MM_TRACK_UNLOCK_1P_ONLY means only show in 1P mode (Oxide Station).
+	// Retail marks Oxide Station as 1P-only; native can lift this restriction.
 	s16 unlock;
 
 
