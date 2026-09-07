@@ -23,7 +23,7 @@ typedef struct {
     bool unlockAllGates;        // false = off, true = all adventure mode wood doors open without keys
     bool unlockAllPortals;      // false = off, true = all warp pads and boss garages unlocked
     bool increaseDrawDistance;  // false = off (default), true = render 3x farther
-    bool disableSplitScreenLod; // false = off (default), true = load hi-res character models in 3+ multiplayer
+    bool disableSplitScreenLod; // false = off (default), true = disable supported split-screen visual reductions
     bool fullscreen;            // false = windowed, true = borderless fullscreen
     int aspectRatio;            // 0 = 4:3 (default), 1 = 16:9, 2 = 16:10, 3 = 21:10
     bool dithering;             // true = dithering enabled (default), false = disabled

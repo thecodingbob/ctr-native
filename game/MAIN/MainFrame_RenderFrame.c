@@ -652,8 +652,8 @@ void RenderAllBeakerRain(struct GameTracker *gGT)
 		return;
 	}
 
-	// only for 1P/2P
-	if (numPlyrCurrGame > 2)
+	// The high-quality option keeps the effect active in every split-screen mode.
+	if ((numPlyrCurrGame > 2) && !g_config.disableSplitScreenLod)
 	{
 		return;
 	}
@@ -685,6 +685,10 @@ void RenderBucket_QueueAllInstances(struct GameTracker *gGT)
 	}
 
 	lod = numPlyrCurrGame - 1;
+	if (g_config.disableSplitScreenLod && (numPlyrCurrGame > 1))
+	{
+		lod = 0;
+	}
 	if ((gGT->gameMode1 & RELIC_RACE) != 0)
 	{
 		lod |= 4;

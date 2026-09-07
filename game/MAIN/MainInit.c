@@ -72,8 +72,11 @@ void MainInit_RainBuffer(struct GameTracker *gGT)
 			dstWords[word + 3] = srcWords[word + 3];
 		}
 
-		dst->numParticles_curr /= numPlyr;
-		dst->numParticles_max = (s16)((u16)dst->numParticles_max / numPlyr);
+		if (!g_config.disableSplitScreenLod)
+		{
+			dst->numParticles_curr /= numPlyr;
+			dst->numParticles_max = (s16)((u16)dst->numParticles_max / numPlyr);
+		}
 	}
 }
 
@@ -601,7 +604,7 @@ void MainInit_FinalizeInit(struct GameTracker *gGT)
 	numPlyr = gGT->numPlyrCurrGame;
 
 	// stars
-	gGT->stars.numStars = (s16)(lev1->stars.numStars / numPlyr);
+	gGT->stars.numStars = g_config.disableSplitScreenLod ? lev1->stars.numStars : (s16)(lev1->stars.numStars / numPlyr);
 	gGT->stars.spread = lev1->stars.spread;
 	gGT->stars.seed = lev1->stars.seed;
 	gGT->stars.distance = lev1->stars.distance;
