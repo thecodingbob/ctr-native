@@ -333,7 +333,7 @@ b32 MM_TrackSelect_boolTrackOpen(struct MainMenu_LevelRow *menuSelect)
 
 	if (flag == MM_TRACK_UNLOCK_1P_ONLY)
 	{
-		return sdata->gGT->numPlyrNextGame == 1;
+		return g_config.allowOxideStationMultiplayer || (sdata->gGT->numPlyrNextGame == 1);
 	}
 
 	if (flag < 0)
