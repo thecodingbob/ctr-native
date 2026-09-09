@@ -509,26 +509,23 @@ static u32 DrawLevelOvr1P_GetProjectedOtSlotWord(const struct DrawLevelOvr1PScra
 static int DrawLevelOvr1P_TryConvertNativeMempackPointerToPsxWord(u32 hostWord, u32 *psxWord)
 {
 	const u32 psxRamBase = 0x80000000u;
-	const u32 psxRamSize = 0x200000u;
 	u32 hostPtr = (u32)hostWord;
 	const struct Mempack *pack = DrawLevelOvr1P_FindMempackContaining(hostPtr);
-	if (pack == NULL || pack->endOfMemory == NULL)
+	const struct PlatformMempackArena *arena = Platform_GetMempackArena();
+	if (pack == NULL || arena == NULL || arena->base == NULL || arena->backingSize <= 0)
 	{
 		return 0;
 	}
 
-	u32 hostEnd = (u32)pack->endOfMemory;
-	if (hostEnd < psxRamSize)
+	u32 hostBase = (u32)arena->base;
+	u32 hostEnd = hostBase + (u32)arena->backingSize;
+	if ((hostEnd < hostBase) || (hostPtr < hostBase) || (hostPtr >= hostEnd))
 	{
 		return 0;
 	}
 
-	u32 hostBase = hostEnd - psxRamSize;
-	if (hostPtr < hostBase || hostPtr >= hostEnd)
-	{
-		return 0;
-	}
-
+	// Preserve the PS1-shaped address bytes even when native allocations use
+	// the arena extension above the original 2 MiB address space.
 	*psxWord = psxRamBase + (u32)(hostPtr - hostBase);
 	return 1;
 }
