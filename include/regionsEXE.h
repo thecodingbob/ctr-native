@@ -5,6 +5,7 @@
 enum
 {
 	MATRIX_ND_BAKED_MATRIX_OFFSET = 0x8,
+	NATIVE_HIGH_DETAIL_RENDERED_QUADBLOCK_CAPACITY = 0x101,
 };
 
 struct MatrixND
@@ -4183,6 +4184,13 @@ struct sData
 
 	// 8009AE28
 	char dataLibFiller[0x30];
+
+#ifdef CTR_NATIVE
+	// Full-detail 1P rendering can retain up to 256 quadblocks. Multiplayer
+	// needs that capacity and a terminator independently for each viewport.
+	b32 highDetailSplitScreenLevel;
+	struct QuadBlock *highDetailQuadBlocksRendered[4][NATIVE_HIGH_DETAIL_RENDERED_QUADBLOCK_CAPACITY];
+#endif
 
 	// after dataLibFiller is 8009AE58,
 	// where psyq allocates globals

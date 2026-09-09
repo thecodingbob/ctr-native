@@ -2,6 +2,12 @@
 
 int MainDB_GetClipSize(u32 levelID, int numPlyrCurrGame)
 {
+	if (sdata->highDetailSplitScreenLevel && (numPlyrCurrGame > 1))
+	{
+		// High-detail LEVs can emit the 1P clipped geometry for every viewport.
+		numPlyrCurrGame = 1;
+	}
+
 	switch (levelID)
 	{
 	case ADVENTURE_GARAGE:

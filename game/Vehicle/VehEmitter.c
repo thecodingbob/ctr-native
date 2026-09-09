@@ -109,7 +109,7 @@ struct Particle *VehEmitter_Exhaust(struct Driver *d, VECTOR *exhaustPos, VECTOR
 	// for human players after BOTS_Driver_Convert is called
 	if (dInst->thread->modelIndex != DYNAMIC_ROBOT_CAR)
 	{
-		if (g_config.disableSplitScreenLod)
+		if (sdata->highDetailSplitScreenLevel)
 		{
 			emSet = &data.emSet_Exhaust_High[0];
 		}
@@ -583,7 +583,7 @@ static void VehEmitter_TerrainEffects(struct Thread *thread, struct Driver *d, s
 	struct Instance *inst = thread->inst;
 	MATRIX *m = &inst->matrix;
 
-	if ((gGT->numPlyrCurrGame >= 2) && !g_config.disableSplitScreenLod)
+	if ((gGT->numPlyrCurrGame >= 2) && !sdata->highDetailSplitScreenLevel)
 	{
 		return;
 	}
@@ -794,7 +794,7 @@ static int VehEmitter_ShouldSkipExhaust(struct Thread *thread, struct Driver *d)
 
 		u32 numPlyr = gGT->numPlyrCurrGame;
 
-		if ((numPlyr > 1) && !g_config.disableSplitScreenLod)
+		if ((numPlyr > 1) && !sdata->highDetailSplitScreenLevel)
 		{
 			if (((numPlyr != 2) || ((gGT->timer & 1) != d->driverID)) && ((gGT->timer & 3) != d->driverID))
 			{

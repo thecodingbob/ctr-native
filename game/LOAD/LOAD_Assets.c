@@ -91,7 +91,7 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 	// 3P/4P
 	if ((u32)(levelLOD - LOAD_LEVEL_LOD_3P) < LOAD_LEVEL_LOD_3P4P_COUNT)
 	{
-	    int racerModel = g_config.disableSplitScreenLod ? BI_RACERMODELHI : BI_RACERMODELLOW;
+	    int racerModel = sdata->highDetailSplitScreenLevel ? BI_RACERMODELHI : BI_RACERMODELLOW;
 		for (i = 0; i < LOAD_DRIVER_MODEL_EXTRA_COUNT; i++)
 		{
 			// low lod CTR model

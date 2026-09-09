@@ -653,7 +653,7 @@ void RenderAllBeakerRain(struct GameTracker *gGT)
 	}
 
 	// The high-quality option keeps the effect active in every split-screen mode.
-	if ((numPlyrCurrGame > 2) && !g_config.disableSplitScreenLod)
+	if ((numPlyrCurrGame > 2) && !sdata->highDetailSplitScreenLevel)
 	{
 		return;
 	}
@@ -685,7 +685,7 @@ void RenderBucket_QueueAllInstances(struct GameTracker *gGT)
 	}
 
 	lod = numPlyrCurrGame - 1;
-	if (g_config.disableSplitScreenLod && (numPlyrCurrGame > 1))
+	if (sdata->highDetailSplitScreenLevel && (numPlyrCurrGame > 1))
 	{
 		lod = 0;
 	}
@@ -856,12 +856,45 @@ static s32 RenderAllLevelGeometry_ScaleDistanceShift8(s32 distToScreen, s32 scal
 	return CTR_MipsSra(product, 8);
 }
 
+static void RenderAllLevelGeometry_Init1PLodScratch(struct GameTracker *gGT)
+{
+	struct MainRenderLevelGeometryScratch *scratch = CTR_SCRATCHPAD_PTR(struct MainRenderLevelGeometryScratch, 0);
+	struct PushBuffer *pushBuffer = &gGT->pushBuffer[0];
+
+	if ((gGT->levelID == ADVENTURE_GARAGE) || (((gGT->gameMode1 & GAME_CUTSCENE) != 0) && (gGT->levelID != INTRO_CRASH)))
+	{
+		scratch->depthScale = 0x1e00;
+		scratch->bspLodDistanceThreshold = 0x640;
+		scratch->textureLodDepthThreshold0 = 0x640;
+		scratch->textureLodDepthThreshold1 = 0x500;
+		scratch->topLevelNearDepthThreshold = 0x280;
+		scratch->recursiveNearDepthThreshold = 0x140;
+		scratch->fullDynamicFadeDepthStart = scratch->bspLodDistanceThreshold + MAIN_RENDER_LEVEL_GEOMETRY_FULL_DYNAMIC_FADE_OFFSET;
+	}
+	else
+	{
+		s32 distToScreen = pushBuffer->distanceToScreen_PREV;
+
+		scratch->depthScale = RenderAllLevelGeometry_ScaleDistanceShift8(distToScreen, 0x2080);
+		scratch->bspLodDistanceThreshold = CTR_MipsMulLo(distToScreen, 0x1a);
+		if (g_config.increaseDrawDistance)
+		{
+			scratch->bspLodDistanceThreshold *= 3;
+		}
+		scratch->textureLodDepthThreshold0 = CTR_MipsMulLo(distToScreen, 0x18);
+		scratch->textureLodDepthThreshold1 = CTR_MipsMulLo(distToScreen, 0xc);
+		scratch->topLevelNearDepthThreshold = CTR_MipsMulLo(distToScreen, 7);
+		scratch->recursiveNearDepthThreshold = RenderAllLevelGeometry_ScaleDistanceShift8(distToScreen, 0x380);
+		scratch->fullDynamicFadeDepthStart = CTR_MipsAddLo(scratch->bspLodDistanceThreshold, MAIN_RENDER_LEVEL_GEOMETRY_FULL_DYNAMIC_FADE_OFFSET);
+	}
+
+	RenderLists_PreInit();
+}
+
 void RenderAllLevelGeometry(struct GameTracker *gGT, struct Level *level1, struct mesh_info *ptr_mesh_info)
 {
 	int i;
-	s32 distToScreen;
 	int numPlyrCurrGame;
-	struct MainRenderLevelGeometryScratch *scratch;
 	struct PushBuffer *pushBuffer;
 
 	if (level1 == 0)
@@ -875,6 +908,10 @@ void RenderAllLevelGeometry(struct GameTracker *gGT, struct Level *level1, struc
 	}
 
 	numPlyrCurrGame = gGT->numPlyrCurrGame;
+	if ((numPlyrCurrGame == 1) || sdata->highDetailSplitScreenLevel)
+	{
+		RenderAllLevelGeometry_Init1PLodScratch(gGT);
+	}
 
 	if (numPlyrCurrGame == 1)
 	{
@@ -899,46 +936,6 @@ void RenderAllLevelGeometry(struct GameTracker *gGT, struct Level *level1, struc
 
 		// camera of player 1
 		pushBuffer = &gGT->pushBuffer[0];
-		scratch = CTR_SCRATCHPAD_PTR(struct MainRenderLevelGeometryScratch, 0);
-
-		if (
-		    // adv character selection screen
-		    (gGT->levelID == ADVENTURE_GARAGE) ||
-
-		    // cutscene that's not Crash Bandicoot intro
-		    // where he's sleeping and snoring on a hill
-		    (((gGT->gameMode1 & GAME_CUTSCENE) != 0) && (gGT->levelID != INTRO_CRASH)))
-		{
-			// relationship between near-clip and far-clip,
-			// for each RenderList LOD set in the level
-			scratch->depthScale = 0x1e00;
-			scratch->bspLodDistanceThreshold = 0x640;
-			scratch->textureLodDepthThreshold0 = 0x640;
-			scratch->textureLodDepthThreshold1 = 0x500;
-			scratch->topLevelNearDepthThreshold = 0x280;
-			scratch->recursiveNearDepthThreshold = 0x140;
-			scratch->fullDynamicFadeDepthStart = scratch->bspLodDistanceThreshold + MAIN_RENDER_LEVEL_GEOMETRY_FULL_DYNAMIC_FADE_OFFSET;
-		}
-
-		// every non-cutscene,
-		// except for Crash Bandicoot intro
-		else
-		{
-			// 0x1c2 in 1P mode
-			distToScreen = pushBuffer->distanceToScreen_PREV;
-
-			scratch->depthScale = RenderAllLevelGeometry_ScaleDistanceShift8(distToScreen, 0x2080);
-			scratch->bspLodDistanceThreshold = CTR_MipsMulLo(distToScreen, 0x1a);
-			if (g_config.increaseDrawDistance)
-				scratch->bspLodDistanceThreshold = scratch->bspLodDistanceThreshold * 3;
-			scratch->textureLodDepthThreshold0 = CTR_MipsMulLo(distToScreen, 0x18);
-			scratch->textureLodDepthThreshold1 = CTR_MipsMulLo(distToScreen, 0xc);
-			scratch->topLevelNearDepthThreshold = CTR_MipsMulLo(distToScreen, 7);
-			scratch->recursiveNearDepthThreshold = RenderAllLevelGeometry_ScaleDistanceShift8(distToScreen, 0x380);
-			scratch->fullDynamicFadeDepthStart = CTR_MipsAddLo(scratch->bspLodDistanceThreshold, MAIN_RENDER_LEVEL_GEOMETRY_FULL_DYNAMIC_FADE_OFFSET);
-		}
-
-		RenderLists_PreInit();
 		gGT->bspLeafsDrawn = 0;
 
 		gGT->bspLeafsDrawn += RenderLists_Init1P2P(ptr_mesh_info->bspRoot, gGT->visMem1->visLeafList[0], pushBuffer, (u32)&gGT->LevRenderLists[0],
@@ -961,6 +958,8 @@ void RenderAllLevelGeometry(struct GameTracker *gGT, struct Level *level1, struc
 
 	if (numPlyrCurrGame == 2)
 	{
+		const int *visFaceLists[2] = {gGT->visMem1->visFaceList[0], gGT->visMem1->visFaceList[1]};
+
 		CTR_ClearRenderLists_1P2P(gGT, 2);
 
 		// if no SCVert
@@ -977,19 +976,35 @@ void RenderAllLevelGeometry(struct GameTracker *gGT, struct Level *level1, struc
 		for (i = 0; i < numPlyrCurrGame; i++)
 		{
 			gGT->bspLeafsDrawn += RenderLists_Init1P2P(ptr_mesh_info->bspRoot, gGT->visMem1->visLeafList[i], &gGT->pushBuffer[i], (u32)&gGT->LevRenderLists[i],
-			                                           gGT->visMem1->bspList[i], numPlyrCurrGame);
+			                                           gGT->visMem1->bspList[i], sdata->highDetailSplitScreenLevel ? 1 : numPlyrCurrGame);
 		}
 
 		// 226-229
-		DrawLevelOvr2P(&gGT->LevRenderLists[0], &gGT->pushBuffer[0], (struct BSP *)ptr_mesh_info, &gGT->backBuffer->primMem, gGT->visMem1->visFaceList[0],
-		               gGT->visMem1->visFaceList[1],
-		               level1->ptr_tex_waterEnvMap); // waterEnvMap?
+		if (sdata->highDetailSplitScreenLevel)
+		{
+			DrawLevelOvr1P_DrawMultiViewport(&gGT->LevRenderLists[0], &gGT->pushBuffer[0], (struct BSP *)ptr_mesh_info, &gGT->backBuffer->primMem,
+			                                  visFaceLists, 2, level1->ptr_tex_waterEnvMap);
+		}
+		else
+		{
+			DrawLevelOvr2P(&gGT->LevRenderLists[0], &gGT->pushBuffer[0], (struct BSP *)ptr_mesh_info, &gGT->backBuffer->primMem, visFaceLists[0],
+			               visFaceLists[1], level1->ptr_tex_waterEnvMap);
+		}
 
 		goto SkyboxGlow;
 	}
 
 	// 3P or 4P
-	CTR_ClearRenderLists_3P4P(gGT, numPlyrCurrGame);
+	const int *visFaceLists[4] = {gGT->visMem1->visFaceList[0], gGT->visMem1->visFaceList[1], gGT->visMem1->visFaceList[2],
+	                              gGT->visMem1->visFaceList[3]};
+	if (sdata->highDetailSplitScreenLevel)
+	{
+		CTR_ClearRenderLists_1P2P(gGT, numPlyrCurrGame);
+	}
+	else
+	{
+		CTR_ClearRenderLists_3P4P(gGT, numPlyrCurrGame);
+	}
 
 	// if no SCVert
 	if ((level1->configFlags & 4) == 0)
@@ -1014,23 +1029,38 @@ void RenderAllLevelGeometry(struct GameTracker *gGT, struct Level *level1, struc
 
 	for (i = 0; i < numPlyrCurrGame; i++)
 	{
-		gGT->bspLeafsDrawn += RenderLists_Init3P4P(ptr_mesh_info->bspRoot, gGT->visMem1->visLeafList[i], &gGT->pushBuffer[i], (u32)&gGT->LevRenderLists[i],
-		                                           gGT->visMem1->bspList[i]);
+		if (sdata->highDetailSplitScreenLevel)
+		{
+			gGT->bspLeafsDrawn += RenderLists_Init1P2P(ptr_mesh_info->bspRoot, gGT->visMem1->visLeafList[i], &gGT->pushBuffer[i],
+			                                           (u32)&gGT->LevRenderLists[i], gGT->visMem1->bspList[i], 1);
+		}
+		else
+		{
+			gGT->bspLeafsDrawn += RenderLists_Init3P4P(ptr_mesh_info->bspRoot, gGT->visMem1->visLeafList[i], &gGT->pushBuffer[i],
+			                                           (u32)&gGT->LevRenderLists[i], gGT->visMem1->bspList[i]);
+		}
+	}
+
+	if (sdata->highDetailSplitScreenLevel)
+	{
+		DrawLevelOvr1P_DrawMultiViewport(&gGT->LevRenderLists[0], &gGT->pushBuffer[0], (struct BSP *)ptr_mesh_info, &gGT->backBuffer->primMem,
+		                                  visFaceLists, numPlyrCurrGame, level1->ptr_tex_waterEnvMap);
+		goto SkyboxGlow;
 	}
 
 	if (numPlyrCurrGame == 3)
 	{
 		// 226-229
-		DrawLevelOvr3P(&gGT->LevRenderLists[0], &gGT->pushBuffer[0], (struct BSP *)ptr_mesh_info, &gGT->backBuffer->primMem, gGT->visMem1->visFaceList[0],
-		               gGT->visMem1->visFaceList[1], gGT->visMem1->visFaceList[2],
+		DrawLevelOvr3P(&gGT->LevRenderLists[0], &gGT->pushBuffer[0], (struct BSP *)ptr_mesh_info, &gGT->backBuffer->primMem, visFaceLists[0],
+		               visFaceLists[1], visFaceLists[2],
 		               level1->ptr_tex_waterEnvMap); // waterEnvMap?
 	}
 
 	else // 4P mode
 	{
 		// 226-229
-		DrawLevelOvr4P(&gGT->LevRenderLists[0], &gGT->pushBuffer[0], (struct BSP *)ptr_mesh_info, &gGT->backBuffer->primMem, gGT->visMem1->visFaceList[0],
-		               gGT->visMem1->visFaceList[1], gGT->visMem1->visFaceList[2], gGT->visMem1->visFaceList[3],
+		DrawLevelOvr4P(&gGT->LevRenderLists[0], &gGT->pushBuffer[0], (struct BSP *)ptr_mesh_info, &gGT->backBuffer->primMem, visFaceLists[0],
+		               visFaceLists[1], visFaceLists[2], visFaceLists[3],
 		               level1->ptr_tex_waterEnvMap); // waterEnvMap?
 	}
 
