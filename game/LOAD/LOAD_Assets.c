@@ -19,7 +19,7 @@ void LOAD_RunPtrMap(char *origin, int *patchArr, int numPtrs)
 	}
 }
 
-void LOAD_Robots2P(struct BigHeader *bigfile, int p1, int p2, void (*callback)(struct LoadQueueSlot *))
+static int LOAD_SelectRobots2P(int p1, int p2)
 {
 	int setIndex;
 	u8 *robotSet;
@@ -48,13 +48,23 @@ void LOAD_Robots2P(struct BigHeader *bigfile, int p1, int p2, void (*callback)(s
 
 	if (setIndex >= LOAD_2P_AI_SET_COUNT)
 	{
-		return;
+		return -1;
 	}
 
 	data.characterIDs[2] = robotSet[0];
 	data.characterIDs[3] = robotSet[1];
 	data.characterIDs[4] = robotSet[2];
 	data.characterIDs[5] = robotSet[3];
+	return setIndex;
+}
+
+void LOAD_Robots2P(struct BigHeader *bigfile, int p1, int p2, void (*callback)(struct LoadQueueSlot *))
+{
+	int setIndex = LOAD_SelectRobots2P(p1, p2);
+	if (setIndex < 0)
+	{
+		return;
+	}
 
 	LOAD_AppendQueue(bigfile, LT_GETADDR, BI_2PARCADEPACK + setIndex, NULL, callback);
 }
@@ -87,15 +97,31 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 	gameMode1 = gGT->gameMode1;
 
 	int lastFileIndexMPK;
+	if (sdata->highDetailSplitScreenLevel)
+	{
+		// The 1P arcade pack contains P1 at player quality. Use the standalone
+		// slots for P2-P4 instead of redundantly loading P1 again.
+		for (i = 1; (i < gGT->numPlyrCurrGame) && (i <= LOAD_DRIVER_MODEL_EXTRA_COUNT); i++)
+		{
+			LOAD_AppendQueue(bigfile, LT_GETADDR, BI_RACERMODELHI + data.characterIDs[i], &data.driverModelExtras[i - 1].fileBase, LOAD_DriverMPK_SetPointer);
+		}
+
+		if ((gGT->numPlyrCurrGame == 2) && (LOAD_SelectRobots2P(data.characterIDs[0], data.characterIDs[1]) < 0))
+		{
+			return sdata->ptrMPK;
+		}
+
+		lastFileIndexMPK = BI_1PARCADEPACK + data.characterIDs[0];
+		goto QueueLastPack;
+	}
 
 	// 3P/4P
 	if ((u32)(levelLOD - LOAD_LEVEL_LOD_3P) < LOAD_LEVEL_LOD_3P4P_COUNT)
 	{
-	    int racerModel = sdata->highDetailSplitScreenLevel ? BI_RACERMODELHI : BI_RACERMODELLOW;
 		for (i = 0; i < LOAD_DRIVER_MODEL_EXTRA_COUNT; i++)
 		{
 			// low lod CTR model
-			LOAD_AppendQueue(bigfile, LT_GETADDR, racerModel + data.characterIDs[i], &data.driverModelExtras[i].fileBase, LOAD_DriverMPK_SetPointer);
+			LOAD_AppendQueue(bigfile, LT_GETADDR, BI_RACERMODELLOW + data.characterIDs[i], &data.driverModelExtras[i].fileBase, LOAD_DriverMPK_SetPointer);
 		}
 
 		// load 4P MPK of fourth player

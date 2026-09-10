@@ -1077,6 +1077,13 @@ void UI_RenderFrame_Wumpa3D_2P3P4P(struct GameTracker *gGT)
 	struct PushBuffer *wumpaPushBuffer;
 	u32 packedRect;
 
+	if (sdata->highDetailSplitScreenLevel)
+	{
+		// Full-detail multiplayer queues the original fruit models directly into
+		// pushBuffer_UI, so no VRAM-backed copy or HUD quad is needed here.
+		return;
+	}
+
 	// NOTE(aalhendi): Retail copies packed RECT halfwords; native unpacks them
 	// explicitly to avoid strict-aliasing UB from writing RECT fields as u32.
 	packedRect = sdata->multiplayerWumpaHudData[0];

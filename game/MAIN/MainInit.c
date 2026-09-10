@@ -5,6 +5,32 @@
 #endif
 
 #ifdef CTR_NATIVE
+static void MainInit_SetRenderedQuadBlockDestinations(int numPlayers)
+{
+	const int playerCount = (int)len(data.ptrRenderedQuadblockDestination_forEachPlayer);
+	const int retailCapacityPerPlayer = (int)len(sdata_static.quadBlocksRendered) / playerCount;
+
+	for (int playerIndex = 0; playerIndex < playerCount; playerIndex++)
+	{
+		struct QuadBlock **retailDestination = &sdata_static.quadBlocksRendered[playerIndex * retailCapacityPerPlayer];
+
+		data.ptrRenderedQuadblockDestination_forEachPlayer[playerIndex] = retailDestination;
+		data.ptrRenderedQuadblockDestination_again[playerIndex] = retailDestination;
+	}
+
+	if (!sdata->highDetailSplitScreenLevel)
+	{
+		return;
+	}
+
+	for (int playerIndex = 0; playerIndex < numPlayers; playerIndex++)
+	{
+		memset(sdata_static.highDetailQuadBlocksRendered[playerIndex], 0, sizeof(sdata_static.highDetailQuadBlocksRendered[playerIndex]));
+		data.ptrRenderedQuadblockDestination_forEachPlayer[playerIndex] = sdata_static.highDetailQuadBlocksRendered[playerIndex];
+		data.ptrRenderedQuadblockDestination_again[playerIndex] = sdata_static.highDetailQuadBlocksRendered[playerIndex];
+	}
+}
+
 static void MainInit_AllocVisLists(int **lists, int numPlayers, int byteCount)
 {
 	if (byteCount == 0)
@@ -37,13 +63,6 @@ static void MainInit_InitHighDetailVisMem(struct VisMem *visMem, struct Level *l
 	MainInit_AllocVisLists(visMem->visFaceList, numPlayers, ((mesh->numQuadBlock + 0x1f) >> 5) << 2);
 	MainInit_AllocVisLists(visMem->visOVertList, numPlayers, ((level->numWaterVertices + 0x1f) >> 5) << 2);
 	MainInit_AllocVisLists(visMem->visSCVertList, numPlayers, ((level->numSCVert + 0x1f) >> 5) << 2);
-
-	for (int playerIndex = 0; playerIndex < numPlayers; playerIndex++)
-	{
-		memset(sdata_static.highDetailQuadBlocksRendered[playerIndex], 0, sizeof(sdata_static.highDetailQuadBlocksRendered[playerIndex]));
-		data.ptrRenderedQuadblockDestination_forEachPlayer[playerIndex] = sdata_static.highDetailQuadBlocksRendered[playerIndex];
-		data.ptrRenderedQuadblockDestination_again[playerIndex] = sdata_static.highDetailQuadBlocksRendered[playerIndex];
-	}
 }
 
 static void MainInit_InitVisMemBspListNodes(struct VisMem *visMem, struct mesh_info *mesh, int numPlayers)
@@ -83,6 +102,10 @@ void MainInit_VisMem(struct GameTracker *gGT)
 	struct Level *level = gGT->level1;
 	struct VisMem *visMem = level->visMem;
 	gGT->visMem1 = visMem;
+
+#ifdef CTR_NATIVE
+	MainInit_SetRenderedQuadBlockDestinations(gGT->numPlyrCurrGame);
+#endif
 
 	if (visMem == NULL)
 	{

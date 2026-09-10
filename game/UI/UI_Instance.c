@@ -370,7 +370,7 @@ void UI_INSTANCE_InitAll(void)
 
 	// used for multiplayer wumpa
 	sdata->ptrPushBufferUI = (int)NULL;
-	if (gGT->numPlyrCurrGame >= 2)
+	if ((gGT->numPlyrCurrGame >= 2) && !sdata->highDetailSplitScreenLevel)
 	{
 		sdata->ptrPushBufferUI = (int)&sdata->pushBuffer_DecalMP;
 	}
