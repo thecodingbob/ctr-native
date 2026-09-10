@@ -318,7 +318,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Graphics",
         .key = "disable_split_screen_lod",
-        .label = "Hi-Res Models in Multiplayer",
+        .label = "High Quality Multiplayer",
         .type = CFG_BOOL,
         .valuePtr = &g_config.disableSplitScreenLod
     },

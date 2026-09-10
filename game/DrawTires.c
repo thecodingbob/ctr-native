@@ -50,7 +50,10 @@ static struct TrigPair DrawTiresSolid_TrigAngleSinCos(int angle)
 
 static int DrawTiresSolid_GetLodThreshold(u8 numPlyr)
 {
-	return (((int)numPlyr - 2) > 0) ? 0 : 2;
+        if (sdata->highDetailSplitScreenLevel) {
+          return 2;
+        }
+	return (int)numPlyr - 2 > 0 ? 0 : 2;
 }
 
 static struct InstDrawPerPlayer *DrawTiresSolid_GetIdpp(struct Instance *inst, int playerIndex)
@@ -661,7 +664,7 @@ struct DrawTiresReflectionProjectedWheel
 
 static int DrawTiresReflection_GetLodThreshold(u8 numPlyr)
 {
-	return (((int)numPlyr - 2) > 0) ? 0 : 2;
+	return (sdata->highDetailSplitScreenLevel && (numPlyr > 1)) ? 2 : ((((int)numPlyr - 2) > 0) ? 0 : 2);
 }
 
 static struct InstDrawPerPlayer *DrawTiresReflection_GetIdpp(struct Instance *inst, int playerIndex)

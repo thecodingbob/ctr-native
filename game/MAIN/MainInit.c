@@ -1,6 +1,70 @@
 #include <common.h>
 
+#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+#include <platform/native_checkpoint.h>
+#endif
+
 #ifdef CTR_NATIVE
+static void MainInit_SetRenderedQuadBlockDestinations(int numPlayers)
+{
+	const int playerCount = (int)len(data.ptrRenderedQuadblockDestination_forEachPlayer);
+	const int retailCapacityPerPlayer = (int)len(sdata_static.quadBlocksRendered) / playerCount;
+
+	for (int playerIndex = 0; playerIndex < playerCount; playerIndex++)
+	{
+		struct QuadBlock **retailDestination = &sdata_static.quadBlocksRendered[playerIndex * retailCapacityPerPlayer];
+
+		data.ptrRenderedQuadblockDestination_forEachPlayer[playerIndex] = retailDestination;
+		data.ptrRenderedQuadblockDestination_again[playerIndex] = retailDestination;
+	}
+
+	if (!sdata->highDetailSplitScreenLevel)
+	{
+		return;
+	}
+
+	for (int playerIndex = 0; playerIndex < numPlayers; playerIndex++)
+	{
+		memset(sdata_static.highDetailQuadBlocksRendered[playerIndex], 0, sizeof(sdata_static.highDetailQuadBlocksRendered[playerIndex]));
+		data.ptrRenderedQuadblockDestination_forEachPlayer[playerIndex] = sdata_static.highDetailQuadBlocksRendered[playerIndex];
+		data.ptrRenderedQuadblockDestination_again[playerIndex] = sdata_static.highDetailQuadBlocksRendered[playerIndex];
+	}
+}
+
+static void MainInit_AllocVisLists(int **lists, int numPlayers, int byteCount)
+{
+	if (byteCount == 0)
+	{
+		return;
+	}
+
+	for (int playerIndex = 0; playerIndex < numPlayers; playerIndex++)
+	{
+		lists[playerIndex] = MEMPACK_AllocMem(byteCount);
+		memset(lists[playerIndex], 0, byteCount);
+#if defined(CTR_INTERNAL)
+		NativeCheckpoint_RegisterPointerSlot(&lists[playerIndex]);
+#endif
+	}
+}
+
+static void MainInit_InitHighDetailVisMem(struct VisMem *visMem, struct Level *level, int numPlayers)
+{
+	struct mesh_info *mesh = level->ptr_mesh_info;
+
+	if (!sdata->highDetailSplitScreenLevel || (numPlayers < 2) || (mesh == NULL))
+	{
+		return;
+	}
+
+	// A 1P LEV does not reserve multiplayer visibility destinations. Allocate
+	// each list from the full-detail object counts before multiplayer updates it.
+	MainInit_AllocVisLists(visMem->visLeafList, numPlayers, ((mesh->numBspNodes + 0x1f) >> 5) << 2);
+	MainInit_AllocVisLists(visMem->visFaceList, numPlayers, ((mesh->numQuadBlock + 0x1f) >> 5) << 2);
+	MainInit_AllocVisLists(visMem->visOVertList, numPlayers, ((level->numWaterVertices + 0x1f) >> 5) << 2);
+	MainInit_AllocVisLists(visMem->visSCVertList, numPlayers, ((level->numSCVert + 0x1f) >> 5) << 2);
+}
+
 static void MainInit_InitVisMemBspListNodes(struct VisMem *visMem, struct mesh_info *mesh, int numPlayers)
 {
 	if (mesh == NULL || mesh->bspRoot == NULL)
@@ -15,12 +79,19 @@ static void MainInit_InitVisMemBspListNodes(struct VisMem *visMem, struct mesh_i
 		// an exactly sized array rather than relying on that PS1-era allocation.
 		struct VisMemBspListNode *bspList = MEMPACK_AllocMem(mesh->numBspNodes * sizeof(*bspList));
 		visMem->bspList[playerIndex] = bspList;
+#if defined(CTR_INTERNAL)
+		NativeCheckpoint_RegisterPointerSlot(&visMem->bspList[playerIndex]);
+#endif
 
 		for (int bspIndex = 0; bspIndex < mesh->numBspNodes; bspIndex++)
 		{
 			// NOTE(aalhendi): Native 226 reads the retained BSP pointer; RenderLists only rewrites the link word.
 			bspList[bspIndex].next = NULL;
 			bspList[bspIndex].bsp = &mesh->bspRoot[bspIndex];
+#if defined(CTR_INTERNAL)
+			NativeCheckpoint_RegisterPointerSlot(&bspList[bspIndex].next);
+			NativeCheckpoint_RegisterPointerSlot(&bspList[bspIndex].bsp);
+#endif
 		}
 	}
 }
@@ -28,8 +99,13 @@ static void MainInit_InitVisMemBspListNodes(struct VisMem *visMem, struct mesh_i
 
 void MainInit_VisMem(struct GameTracker *gGT)
 {
-	struct VisMem *visMem = gGT->level1->visMem;
+	struct Level *level = gGT->level1;
+	struct VisMem *visMem = level->visMem;
 	gGT->visMem1 = visMem;
+
+#ifdef CTR_NATIVE
+	MainInit_SetRenderedQuadBlockDestinations(gGT->numPlyrCurrGame);
+#endif
 
 	if (visMem == NULL)
 	{
@@ -45,7 +121,8 @@ void MainInit_VisMem(struct GameTracker *gGT)
 	}
 
 #ifdef CTR_NATIVE
-	MainInit_InitVisMemBspListNodes(visMem, gGT->level1->ptr_mesh_info, gGT->numPlyrCurrGame);
+	MainInit_InitHighDetailVisMem(visMem, level, gGT->numPlyrCurrGame);
+	MainInit_InitVisMemBspListNodes(visMem, level->ptr_mesh_info, gGT->numPlyrCurrGame);
 #endif
 }
 
@@ -72,8 +149,11 @@ void MainInit_RainBuffer(struct GameTracker *gGT)
 			dstWords[word + 3] = srcWords[word + 3];
 		}
 
-		dst->numParticles_curr /= numPlyr;
-		dst->numParticles_max = (s16)((u16)dst->numParticles_max / numPlyr);
+		if (!sdata->highDetailSplitScreenLevel)
+		{
+			dst->numParticles_curr /= numPlyr;
+			dst->numParticles_max = (s16)((u16)dst->numParticles_max / numPlyr);
+		}
 	}
 }
 
@@ -121,7 +201,10 @@ static int MainInit_GetPrimMemSize(struct GameTracker *gGT)
 	case 2:
 		if (levelID < GEM_STONE_VALLEY)
 		{
-			return data.primMem_SizePerLEV_2P[levelID] << 10;
+			int retailSize = data.primMem_SizePerLEV_2P[levelID] << 10;
+			int highQualitySize = (data.primMem_SizePerLEV_1P[levelID] << 10) * 2;
+
+			return sdata->highDetailSplitScreenLevel && retailSize < highQualitySize ? highQualitySize : retailSize;
 		}
 
 		return 0x1e000;
@@ -130,7 +213,10 @@ static int MainInit_GetPrimMemSize(struct GameTracker *gGT)
 	case 4:
 		if (levelID < GEM_STONE_VALLEY)
 		{
-			return data.primMem_SizePerLEV_4P[levelID] << 10;
+			int retailSize = data.primMem_SizePerLEV_4P[levelID] << 10;
+			int highQualitySize = (data.primMem_SizePerLEV_1P[levelID] << 10) * gGT->numPlyrCurrGame;
+
+			return sdata->highDetailSplitScreenLevel && retailSize < highQualitySize ? highQualitySize : retailSize;
 		}
 
 		return 0x25800;
@@ -601,7 +687,7 @@ void MainInit_FinalizeInit(struct GameTracker *gGT)
 	numPlyr = gGT->numPlyrCurrGame;
 
 	// stars
-	gGT->stars.numStars = (s16)(lev1->stars.numStars / numPlyr);
+	gGT->stars.numStars = sdata->highDetailSplitScreenLevel ? lev1->stars.numStars : (s16)(lev1->stars.numStars / numPlyr);
 	gGT->stars.spread = lev1->stars.spread;
 	gGT->stars.seed = lev1->stars.seed;
 	gGT->stars.distance = lev1->stars.distance;

@@ -1554,6 +1554,13 @@ internal void NativeCheckpoint_RelocateSDataPointers(const struct NativeCheckpoi
 	{
 		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.quadBlocksRendered[i]);
 	}
+	for (u32 playerIndex = 0; playerIndex < len(sdata_static.highDetailQuadBlocksRendered); playerIndex++)
+	{
+		for (u32 quadIndex = 0; quadIndex < len(sdata_static.highDetailQuadBlocksRendered[playerIndex]); quadIndex++)
+		{
+			NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.highDetailQuadBlocksRendered[playerIndex][quadIndex]);
+		}
+	}
 
 	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.ghostProfile_ptrGhostHeader);
 	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.ghostProfile_fileName);

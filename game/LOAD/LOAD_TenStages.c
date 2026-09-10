@@ -188,6 +188,9 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 			sdata->levelLOD = gGT->numPlyrCurrGame;
 		}
 
+		sdata->highDetailSplitScreenLevel =
+		    g_config.disableSplitScreenLod && (gGT->numPlyrCurrGame > 1) && (gGT->levelID < GEM_STONE_VALLEY);
+
 		gGT->hudFlags |= HUD_FLAG_INIT_UI_INSTANCES;
 
 
@@ -354,6 +357,7 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 	}
 	case 6:
 	{
+		int visualLevelLOD;
 		if (!boolPlayMusicDuringLoading)
 		{
 			int banksReady = Music_AsyncParseBanks();
@@ -446,17 +450,24 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 
 		// NOTE(aalhendi): Retail sets the load gate before queueing level files.
 		sdata->load_inProgress = 1;
+		// Keep the multiplayer MPK/driver LOD selection above, but use the 1P
+		// visual bundle when the native high-quality split-screen path is active.
+		visualLevelLOD = sdata->levelLOD;
+		if (sdata->highDetailSplitScreenLevel)
+		{
+			visualLevelLOD = LOAD_LEVEL_LOD_1P;
+		}
 
 		// add VRAM to loading queue
-		LOAD_AppendQueue(bigfile, LT_VRAM, LOAD_GetBigfileIndex(gGT->levelID, sdata->levelLOD, LVI_VRAM), NULL, NULL);
+		LOAD_AppendQueue(bigfile, LT_VRAM, LOAD_GetBigfileIndex(gGT->levelID, visualLevelLOD, LVI_VRAM), NULL, NULL);
 
 		// add LEV to loading queue
-		LOAD_AppendQueue(bigfile, LT_GETADDR, LOAD_GetBigfileIndex(gGT->levelID, sdata->levelLOD, LVI_LEV), NULL, LOAD_Callback_LEV);
+		LOAD_AppendQueue(bigfile, LT_GETADDR, LOAD_GetBigfileIndex(gGT->levelID, visualLevelLOD, LVI_LEV), NULL, LOAD_Callback_LEV);
 
 		if (((u32)(levelID - GEM_STONE_VALLEY) < LOAD_PTR_MAP_ADV_LEVEL_COUNT) || ((u32)(levelID - CREDITS_CRASH) < LOAD_PTR_MAP_CREDIT_LEVEL_COUNT))
 		{
 			// add PTR file to loading queue
-			LOAD_AppendQueue(bigfile, LT_SETADDR, LOAD_GetBigfileIndex(gGT->levelID, sdata->levelLOD, LVI_PTR), sdata->PatchMem_Ptr, LOAD_Callback_PatchMem);
+			LOAD_AppendQueue(bigfile, LT_SETADDR, LOAD_GetBigfileIndex(gGT->levelID, visualLevelLOD, LVI_PTR), sdata->PatchMem_Ptr, LOAD_Callback_PatchMem);
 		}
 		break;
 	}

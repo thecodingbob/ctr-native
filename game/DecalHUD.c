@@ -50,7 +50,6 @@ void DecalHUD_DrawPolyFT4(struct Icon *icon, s16 posX, s16 posY, struct PrimMem 
 	primMem->cursor = p + 1;
 }
 
-
 void DecalHUD_DrawWeapon(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, u32 *ot, char transparency, s16 scale, char rot)
 {
 	if (!icon)

@@ -1234,6 +1234,8 @@ void CAM_LookAtPosition(struct CameraScratchWork *scratchWork, Vec3 *positions, 
 void CAM_FollowDriver_Spin360(struct CameraDC *cDC, struct CameraScratchWork *scratchWork, struct Driver *d, SVec3 *desiredPos, SVec3 *desiredRot);
 void CAM_FollowDriver_AngleAxis(struct CameraDC *cDC, struct Driver *d, struct CameraAngleAxisScratch *scratchWork, SVec3 *pushBufferPos, SVec3 *pushBufferRot);
 int MainDB_GetClipSize(u32 levelID, int numPlyrCurrGame);
+void DrawLevelOvr1P_DrawMultiViewport(void *LevRenderList, struct PushBuffer *pb, struct BSP *bspList, struct PrimMem *primMem,
+                                      const int *const *visFaceLists, int numViewports, const struct TextureLayout *waterEnvMap);
 void MainFreeze_ConfigDrawArrows(s16 offsetX, s16 offsetY, char *str);
 void CAM_StartOfRace(struct CameraDC *cDC);
 void CAM_SkyboxGlow(struct SkyboxGlowGradient *grad, struct PushBuffer *pb, struct PrimMem *primMem, u32 *ptrOT);

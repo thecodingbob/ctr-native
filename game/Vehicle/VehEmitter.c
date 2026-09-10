@@ -109,16 +109,23 @@ struct Particle *VehEmitter_Exhaust(struct Driver *d, VECTOR *exhaustPos, VECTOR
 	// for human players after BOTS_Driver_Convert is called
 	if (dInst->thread->modelIndex != DYNAMIC_ROBOT_CAR)
 	{
-		switch (numPlyr)
+		if (sdata->highDetailSplitScreenLevel)
 		{
-		case 1:
-			// 1P mode, high LOD exhaust
 			emSet = &data.emSet_Exhaust_High[0];
-			break;
-		case 2:
-			// 2P mode, med LOD exhaust
-			emSet = &data.emSet_Exhaust_Med[0];
-			break;
+		}
+		else
+		{
+			switch (numPlyr)
+			{
+			case 1:
+				// 1P mode, high LOD exhaust
+				emSet = &data.emSet_Exhaust_High[0];
+				break;
+			case 2:
+				// 2P mode, med LOD exhaust
+				emSet = &data.emSet_Exhaust_Med[0];
+				break;
+			}
 		}
 	}
 
@@ -576,7 +583,7 @@ static void VehEmitter_TerrainEffects(struct Thread *thread, struct Driver *d, s
 	struct Instance *inst = thread->inst;
 	MATRIX *m = &inst->matrix;
 
-	if (gGT->numPlyrCurrGame >= 2)
+	if ((gGT->numPlyrCurrGame >= 2) && !sdata->highDetailSplitScreenLevel)
 	{
 		return;
 	}
@@ -787,7 +794,7 @@ static int VehEmitter_ShouldSkipExhaust(struct Thread *thread, struct Driver *d)
 
 		u32 numPlyr = gGT->numPlyrCurrGame;
 
-		if (numPlyr > 1)
+		if ((numPlyr > 1) && !sdata->highDetailSplitScreenLevel)
 		{
 			if (((numPlyr != 2) || ((gGT->timer & 1) != d->driverID)) && ((gGT->timer & 3) != d->driverID))
 			{
