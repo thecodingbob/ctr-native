@@ -53,6 +53,7 @@ NativeConfig g_config = {
   .tntExplosionRadiusMultiplier = 100,
 
   .unlockAllCharacters = false,
+  .unlockNitrosOxide = false,
   .unlockAllGates = false,
   .unlockAllPortals = false,
 
@@ -307,6 +308,13 @@ const ConfigEntry g_configEntries[] = {
         .label = "Unlock All Characters",
         .type = CFG_BOOL,
         .valuePtr = &g_config.unlockAllCharacters
+    },
+    {
+        .section = "Unlocks",
+        .key = "unlock_nitros_oxide",
+        .label = "Unlock Nitros Oxide",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.unlockNitrosOxide
     },
     {
         .section = "Graphics",

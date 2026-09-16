@@ -193,6 +193,13 @@ format). An example template is at `default_config.ini` in the project root.
 | `unlock_all_gates`          | `true` / `false`   | `false` | Opens all adventure wood gates bypassing the key requirements                                    |
 | `unlock_all_portals`        | `true` / `false`   | `false` | Unlock all warp pads and boss garages                                                            |
 
+### Unlocks
+
+| Key                      | Values           | Default | Description                                     |
+|--------------------------|------------------|---------|-------------------------------------------------|
+| `unlock_all_characters`  | `true` / `false` | `false` | Unlock all standard characters                  |
+| `unlock_nitros_oxide`    | `true` / `false` | `false` | Add Nitros Oxide to the character select menu   |
+
 ### Vehicle
 
 | Key                         | Values               | Default | Description                                                                                                              |
@@ -266,4 +273,5 @@ main.c (entrypoint)
 - [PsyCross](https://github.com/OpenDriver2/PsyCross) — original PS1 compatibility code from which parts of CTR Native's owned platform layer and PsyQ facade headers are derived
 - [SDL3](https://github.com/libsdl-org/SDL) — cross-platform multimedia
 - [ctr-native-ap](https://github.com/dowlle/ctr-native-ap) by dowlle — render-scale, scaling-filter, and texture-filtering options
+- [OxideFix](https://github.com/CTR-tools/CTR-ModSDK/tree/main/mods/Modules/OxideFix) from CTR-ModSDK — Nitros Oxide character-select implementation and menu model
 - Crash Team Racing is a trademark of Sony Computer Entertainment / Naughty Dog

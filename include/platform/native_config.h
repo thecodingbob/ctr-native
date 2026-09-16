@@ -20,6 +20,7 @@ typedef struct {
     int jumpMultiplier;         // percent, 10%..300%, 100 = 1.0x (default)
     int reserveMultiplier;      // percent, 0%..400%,  100 = 1.0x (default)
     bool unlockAllCharacters;   // false = off (normal unlock logic), true = all characters already unlocked
+    bool unlockNitrosOxide;     // false = off, true = Nitros Oxide is selectable
     bool unlockAllGates;        // false = off, true = all adventure mode wood doors open without keys
     bool unlockAllPortals;      // false = off, true = all warp pads and boss garages unlocked
     bool increaseDrawDistance;  // false = off (default), true = render 3x farther

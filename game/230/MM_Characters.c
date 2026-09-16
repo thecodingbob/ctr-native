@@ -9,7 +9,7 @@ enum
 	MM_CHARACTER_SELECT_MODEL_MOVE_FP_SHIFT = 0xc,
 	MM_CHARACTER_SELECT_MODEL_MOVE_NEXT = 1,
 	MM_CHARACTER_SELECT_MODEL_MOVE_PREV = -1,
-	MM_CHARACTER_SELECT_ICON_COUNT = 0xf,
+	MM_CHARACTER_SELECT_ICON_COUNT = 0x10,
 	MM_CHARACTER_SELECT_EXPANSION_ICON_FIRST = 0xc,
 	MM_CHARACTER_SELECT_DEFAULT_DRIVER_COUNT = 8,
 	MM_CHARACTER_SELECT_MAX_PLAYERS = 4,
@@ -24,8 +24,8 @@ enum
 	MM_CHARACTER_SELECT_LAYOUT_4P = 3,
 	MM_CHARACTER_SELECT_LAYOUT_1P_LIMITED = 4,
 	MM_CHARACTER_SELECT_LAYOUT_2P_LIMITED = 5,
-	MM_CHARACTER_SELECT_TITLE_TRANSITION_INDEX = 15,
-	MM_CHARACTER_SELECT_DRIVER_WINDOW_TRANSITION_FIRST = 0x10,
+	MM_CHARACTER_SELECT_TITLE_TRANSITION_INDEX = 16,
+	MM_CHARACTER_SELECT_DRIVER_WINDOW_TRANSITION_FIRST = 0x11,
 	MM_CHARACTER_SELECT_3P_TITLE_X = 0x9c,
 	MM_CHARACTER_SELECT_3P_SELECT_Y = 0x14,
 	MM_CHARACTER_SELECT_3P_CHARACTER_Y = 0x26,
@@ -42,6 +42,7 @@ enum
 	MM_CHARACTER_SELECT_ICON_DECAL_OFFSET_Y = 4,
 	MM_CHARACTER_SELECT_ICON_RECT_W = 0x34,
 	MM_CHARACTER_SELECT_ICON_RECT_H = 0x21,
+	MM_CHARACTER_SELECT_WHEEL_SIZE = 0xccc,
 	MM_CHARACTER_SELECT_CURSOR_LABEL_OFFSET_X = -6,
 	MM_CHARACTER_SELECT_CURSOR_LABEL_OFFSET_Y = -3,
 	MM_CHARACTER_SELECT_HIGHLIGHT_OFFSET_X = 3,
@@ -63,6 +64,41 @@ enum
 	MM_CHARACTER_SELECT_COLOR_PULSE_SCALE_SHIFT = 7,
 	MM_CHARACTER_SELECT_COLOR_PULSE_FP_SHIFT = 0xc,
 };
+
+extern unsigned char oxideModel[];
+
+static struct Model *MM_Characters_GetOxideModel(void)
+{
+	static b32 initialized;
+	struct Model *model = (struct Model *)&oxideModel[4];
+
+	if (!initialized)
+	{
+		u32 pointerMapOffset;
+		u32 pointerCount;
+		u8 *pointerMap;
+
+		memcpy(&pointerMapOffset, oxideModel, sizeof(pointerMapOffset));
+		pointerMap = (u8 *)model + pointerMapOffset;
+		memcpy(&pointerCount, pointerMap, sizeof(pointerCount));
+		LOAD_RunPtrMap((char *)model, (int *)(pointerMap + sizeof(pointerCount)), pointerCount >> 2);
+		initialized = true;
+	}
+
+	return model;
+}
+
+static b32 MM_Characters_IsUnlocked(const struct CharacterSelectMeta *character)
+{
+ 	if (character->characterID == NITROS_OXIDE)
+	{
+		return g_config.unlockNitrosOxide;
+	}
+
+	return (s16)character->unlockFlags == MM_CHARACTER_UNLOCK_ALWAYS ||
+	       CHECK_ADV_BIT(sdata->gameProgress.unlocks, character->unlockFlags) ||
+	       g_config.unlockAllCharacters;
+}
 
 void MM_Characters_AnimateColors(u8 *colorData, s16 playerID, s16 flag)
 {
@@ -114,7 +150,7 @@ void MM_Characters_AnimateColors(u8 *colorData, s16 playerID, s16 flag)
 int MM_Characters_GetNextDriver(s16 direction, s16 characterID)
 {
 	u8 nextIcon = D230.activeCharacterSelectMeta[(s32)characterID].nextIconByDirection[direction];
-	s16 unlocked = D230.activeCharacterSelectMeta[(s32)nextIcon].unlockFlags;
+	struct CharacterSelectMeta *nextCharacter = &D230.activeCharacterSelectMeta[(s32)nextIcon];
 
 	// set new driver to the driver
 	// you'd get when pressing Up button
@@ -122,10 +158,7 @@ int MM_Characters_GetNextDriver(s16 direction, s16 characterID)
 
 	if (
 	    // if desired driver is not unlocked by default
-	    (unlocked != MM_CHARACTER_UNLOCK_ALWAYS) &&
-
-	    !CHECK_ADV_BIT(sdata->gameProgress.unlocks, unlocked) &&
-	    !g_config.unlockAllCharacters)
+	    !MM_Characters_IsUnlocked(nextCharacter))
 	{
 		// set new driver to the driver you already have
 		newDriver = characterID;
@@ -187,6 +220,10 @@ struct Model *MM_Characters_GetModelByName(const char *name)
 			// found it
 			return model;
 		}
+	}
+	if (strcmp(name, data.MetaDataCharacters[NITROS_OXIDE].name_Debug) == 0)
+	{
+		return MM_Characters_GetOxideModel();
 	}
 	return NULL;
 }
@@ -297,6 +334,10 @@ void MM_Characters_DrawWindows(b32 boolShowDrivers)
 		idpp[playerIndex].pushBuffer = pb;
 
 		s16 *currCharacterID = &D230.characterSelectPlayerState.currentCharacterID[playerIndex];
+		struct Driver *driver = gGT->drivers[playerIndex];
+
+		// Preview drivers are born as Crash and retain his wheel size after a model swap.
+		driver->wheelSize = (*currCharacterID == NITROS_OXIDE) ? 0 : VEH_BIRTH_WHEEL_SIZE;
 
 		driverInst->animFrame = 0;
 		driverInst->animIndex = 0;
@@ -387,17 +428,14 @@ void MM_Characters_SetMenuLayout(void)
 
 	// Loop through bottom characters,
 	// if any are unlocked, use expanded
-    if (g_config.unlockAllCharacters)
+    if (g_config.unlockAllCharacters || g_config.unlockNitrosOxide)
     {
         expandRoster = 1;
     }
     else {
       for (s32 iconIndex = MM_CHARACTER_SELECT_EXPANSION_ICON_FIRST; iconIndex < MM_CHARACTER_SELECT_ICON_COUNT; iconIndex++)
       {
-        // OG game code
-        u16 unlocked = D230.characterSelectMeta1P2P[iconIndex].unlockFlags;
-
-        if (CHECK_ADV_BIT(sdata->gameProgress.unlocks, unlocked))
+        if (MM_Characters_IsUnlocked(&D230.characterSelectMeta1P2P[iconIndex]))
         {
           expandRoster = true;
           break;
@@ -539,14 +577,9 @@ void MM_Characters_RestoreIDs(void)
 		s16 *currID = &data.characterIDs[playerIndex];
 
 		// get unlock requirement for this character
-		s16 unlocked = D230.activeCharacterSelectMeta[(s32)*currID].unlockFlags;
+		struct CharacterSelectMeta *character = &D230.activeCharacterSelectMeta[(s32)*currID];
 
-		if (
-		    // If Icon has an unlock requirement
-		    (unlocked != MM_CHARACTER_UNLOCK_ALWAYS) &&
-
-		    // If Character is Locked
-		    !CHECK_ADV_BIT(sdata->gameProgress.unlocks, unlocked))
+		if (!MM_Characters_IsUnlocked(character))
 		{
 			// change character to Crash
 			*currID = CRASH_BANDICOOT;
@@ -1003,16 +1036,7 @@ dontDrawSelectCharacter:
 	// loop through character icons
 	for (s32 iconIndex = 0; iconIndex < MM_CHARACTER_SELECT_ICON_COUNT; iconIndex++)
 	{
-		s16 unlockRequirement = iconDrawMeta->unlockFlags;
-		if (
-		    // If Icon is unlocked by default,
-		    (unlockRequirement == MM_CHARACTER_UNLOCK_ALWAYS) ||
-
-		    // if character is unlocked
-		    // from the global unlock bitfield
-		    // also the variable written by cheats
-		    CHECK_ADV_BIT(sdata->gameProgress.unlocks, unlockRequirement) ||
-		    g_config.unlockAllCharacters)
+		if (MM_Characters_IsUnlocked(iconDrawMeta))
 		{
 			Color iconColor = D230.characterSelect_NeutralColor;
 
@@ -1128,17 +1152,7 @@ dontDrawSelectCharacter:
 	// loop through all icons
 	for (s32 iconIndex = 0; iconIndex < MM_CHARACTER_SELECT_ICON_COUNT; iconIndex++)
 	{
-		s16 unlockRequirement = activeCharacterSelectMeta[iconIndex].unlockFlags;
-
-		if (
-		    // If Icon is unlocked (from array of icons)
-		    (unlockRequirement == MM_CHARACTER_UNLOCK_ALWAYS) ||
-
-		    // if character is unlocked
-		    // from the global unlock bitfield
-		    // also the variable written by cheats
-		    CHECK_ADV_BIT(sdata->gameProgress.unlocks, unlockRequirement) ||
-		    g_config.unlockAllCharacters)
+		if (MM_Characters_IsUnlocked(&activeCharacterSelectMeta[iconIndex]))
 		{
 			struct TransitionMeta *iconTransition = &D230.characterSelectTransitionMeta[iconIndex];
 
