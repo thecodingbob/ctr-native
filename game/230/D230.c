@@ -382,13 +382,13 @@ struct OverlayDATA_230 D230 =
              // Papu
              {0x180, 0xA7, {9, 11, 7, 11}, 9, 0x8},
              // Komodo Joe
-             {0xA0, 0xCE, {4, 12, 12, 13}, 11, 0x9},
+             {0x80, 0xCE, {4, 12, 12, 13}, 11, 0x9},
              // Penta
-             {0xE0, 0xCE, {5, 13, 12, 14}, 13, 0x6},
+             {0xC0, 0xCE, {5, 13, 12, 14}, 13, 0x6},
              // Fake Crash
-             {0x120, 0xCE, {6, 15, 13, 15}, 14, 0xB},
+             {0x100, 0xCE, {6, 15, 13, 15}, 14, 0xB},
              // Nitros Oxide
-             {0x160, 0xCE, {7, 15, 14, 11}, NITROS_OXIDE, 0xFFFF}},
+             {0x140, 0xCE, {7, 15, 14, 11}, NITROS_OXIDE, 0xFFFF}},
 
         .characterSelectMeta1P2P =
             {// Crash
@@ -416,13 +416,13 @@ struct OverlayDATA_230 D230 =
              // Papu
              {0x180, 0x87, {9, 11, 7, 11}, 9, 0x8},
              // Komodo Joe
-             {0xA0, 0xAE, {4, 12, 12, 13}, 11, 0x9},
+             {0x80, 0xAE, {4, 12, 12, 13}, 11, 0x9},
              // Penta
-             {0xE0, 0xAE, {5, 13, 12, 14}, 13, 0x6},
+             {0xC0, 0xAE, {5, 13, 12, 14}, 13, 0x6},
              // Fake Crash
-             {0x120, 0xAE, {6, 15, 13, 15}, 14, 0xB},
+             {0x100, 0xAE, {6, 15, 13, 15}, 14, 0xB},
              // Nitros Oxide
-             {0x160, 0xAE, {7, 15, 14, 11}, NITROS_OXIDE, 0xFFFF}},
+             {0x140, 0xAE, {7, 15, 14, 11}, NITROS_OXIDE, 0xFFFF}},
 
         .characterSelectMeta3P =
             {// Crash
@@ -450,11 +450,11 @@ struct OverlayDATA_230 D230 =
              // Papu
              {0xE0, 0x95, {7, 11, 10, 11}, 9, 0x8},
              // Komodo Joe
-             {0x40, 0x20, {12, 1, 12, 13}, 11, 0x9},
+             {0x20, 0x20, {12, 1, 12, 13}, 11, 0x9},
              // Penta
-             {0x80, 0x20, {13, 2, 12, 14}, 13, 0x6},
+             {0x60, 0x20, {13, 2, 12, 14}, 13, 0x6},
              // Fake Crash
-             {0xC0, 0x20, {14, 3, 13, 15}, 14, 0xB},
+             {0xA0, 0x20, {14, 3, 13, 15}, 14, 0xB},
              // Nitros Oxide
              {0xE0, 0x20, {15, 3, 14, 15}, NITROS_OXIDE, 0xFFFF}},
 
@@ -488,9 +488,9 @@ struct OverlayDATA_230 D230 =
              // Pinstripe
              {0x180, 0x6E, {11, 13, 7, 13}, 8, 0xA},
              // Penta
-             {0xE0, 0x20, {14, 1, 14, 15}, 13, 0x6},
+             {0xC0, 0x20, {14, 1, 14, 15}, 13, 0x6},
              // Nitros Oxide
-             {0x140, 0x20, {15, 2, 14, 15}, NITROS_OXIDE, 0xFFFF}},
+             {0x100, 0x20, {15, 2, 14, 15}, NITROS_OXIDE, 0xFFFF}},
 
         .characterSelectMetaByLayout = {&D230.characterSelectMeta1P2P[0], &D230.characterSelectMeta1P2P[0], &D230.characterSelectMeta3P[0],
                                         &D230.characterSelectMeta4P[0], &D230.characterSelectMeta1P2PLimited[0], &D230.characterSelectMeta1P2PLimited[0]},
