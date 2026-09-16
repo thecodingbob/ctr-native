@@ -195,9 +195,10 @@ format). An example template is at `default_config.ini` in the project root.
 
 ### Unlocks
 
-| Key                    | Values           | Default | Description                                    |
-|------------------------|------------------|---------|------------------------------------------------|
-| `unlock_nitros_oxide`  | `true` / `false` | `false` | Add Nitros Oxide to the character select menu |
+| Key                      | Values           | Default | Description                                     |
+|--------------------------|------------------|---------|-------------------------------------------------|
+| `unlock_all_characters`  | `true` / `false` | `false` | Unlock all standard characters                  |
+| `unlock_nitros_oxide`    | `true` / `false` | `false` | Add Nitros Oxide to the character select menu   |
 
 ### Vehicle
 
