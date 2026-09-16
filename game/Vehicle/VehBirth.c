@@ -629,7 +629,14 @@ void VehBirth_TireSprites(struct Thread *t)
 	struct Icon **tire = ICONGROUP_GETICONS(tireAnim);
 	d->wheelSprites = tire;
 
-	d->wheelSize = VEH_BIRTH_WHEEL_SIZE;
+        // if character ID is oxide
+        if (data.characterIDs[driverID] == NITROS_OXIDE && (gGT->levelID != MAIN_MENU_LEVEL))
+        {
+            d->wheelSize = 0;
+        } else
+        {
+            d->wheelSize = VEH_BIRTH_WHEEL_SIZE;
+        }
 
 	// compiler might reuse these registers in the IF,
 	// first set item to "none" and driverID, then
@@ -637,13 +644,6 @@ void VehBirth_TireSprites(struct Thread *t)
 
 	d->heldItemID = HELD_ITEM_NONE;
 	d->BattleHUD.teamID = driverID;
-
-	if (
-	    // if character ID is oxide
-	    (data.characterIDs[driverID] == NITROS_OXIDE) && (gGT->levelID != MAIN_MENU_LEVEL))
-	{
-		d->wheelSize = 0;
-	}
 
 	d->tireColor = DRIVER_TIRE_COLOR_DEFAULT;
 	d->tireColorCycleTimer = DRIVER_TIRE_COLOR_TIMER_INITIAL;

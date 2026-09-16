@@ -42,6 +42,7 @@ enum
 	MM_CHARACTER_SELECT_ICON_DECAL_OFFSET_Y = 4,
 	MM_CHARACTER_SELECT_ICON_RECT_W = 0x34,
 	MM_CHARACTER_SELECT_ICON_RECT_H = 0x21,
+	MM_CHARACTER_SELECT_WHEEL_SIZE = 0xccc,
 	MM_CHARACTER_SELECT_CURSOR_LABEL_OFFSET_X = -6,
 	MM_CHARACTER_SELECT_CURSOR_LABEL_OFFSET_Y = -3,
 	MM_CHARACTER_SELECT_HIGHLIGHT_OFFSET_X = 3,
@@ -333,6 +334,10 @@ void MM_Characters_DrawWindows(b32 boolShowDrivers)
 		idpp[playerIndex].pushBuffer = pb;
 
 		s16 *currCharacterID = &D230.characterSelectPlayerState.currentCharacterID[playerIndex];
+		struct Driver *driver = gGT->drivers[playerIndex];
+
+		// Preview drivers are born as Crash and retain his wheel size after a model swap.
+		driver->wheelSize = (*currCharacterID == NITROS_OXIDE) ? 0 : VEH_BIRTH_WHEEL_SIZE;
 
 		driverInst->animFrame = 0;
 		driverInst->animIndex = 0;
