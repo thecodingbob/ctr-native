@@ -247,7 +247,7 @@ struct MainMenu_LevelRow
 
 	// MM_TRACK_UNLOCK_ALWAYS for unlock by default,
 	// otherwise has a flag for what is needed.
-	// MM_TRACK_UNLOCK_1P_ONLY means only show in 1P mode (Oxide Station).
+	// Retail marks Oxide Station as 1P-only; native can lift this restriction.
 	s16 unlock;
 
 
@@ -623,12 +623,12 @@ struct OverlayDATA_230
 {
 	// =========== Main Menu CONST =============
 
-	// 800b44e4
-	struct MenuRow rowsMainMenuBasic[7];
+	struct MenuRow rowsMainMenuBasic[9];
 	char padding800b450E[2];
 
-	// 800b4510
-	struct MenuRow rowsMainMenuWithScrapbook[8];
+	struct MenuRow rowsMainMenuWithScrapbook[10];
+	struct MenuRow rowsQuitConfirm[3];
+	struct RectMenu menuQuitConfirm;
 
 	// 800b4540
 	struct RectMenu menuMainMenu;
@@ -745,16 +745,16 @@ struct OverlayDATA_230
 	struct CharacterSelectLayoutTables characterSelectLayout;
 
 	// 800b4dcc
-	struct CharacterSelectMeta characterSelectMeta1P2PLimited[0xF];
+	struct CharacterSelectMeta characterSelectMeta1P2PLimited[0x10];
 
 	// 800b4e80
-	struct CharacterSelectMeta characterSelectMeta1P2P[0xF];
+	struct CharacterSelectMeta characterSelectMeta1P2P[0x10];
 
 	// 800b4f34
-	struct CharacterSelectMeta characterSelectMeta3P[0xF];
+	struct CharacterSelectMeta characterSelectMeta3P[0x10];
 
 	// 800b4fe8
-	struct CharacterSelectMeta characterSelectMeta4P[0xF];
+	struct CharacterSelectMeta characterSelectMeta4P[0x10];
 
 	// 800b509C
 	struct CharacterSelectMeta *characterSelectMetaByLayout[6];
@@ -765,26 +765,26 @@ struct OverlayDATA_230
 	// each member of the array corresponds to the character order used in the rest of the game, see enum Characters
 	s16 characterMenuID[0x10];
 
-	// 0x15 for transition meta array:
-	// 14 character icons + title text + 4 kart screens + 2 more?
+	// 0x16 for transition meta array:
+	// 16 character icons + title text + 4 kart screens + one terminator.
 
 	// 800b50D4
 	// 1P/2P mode
-	struct TransitionMeta characterSelectTransition1P2P[0x15];
+	struct TransitionMeta characterSelectTransition1P2P[0x16];
 
 	// 0x2 byte padding
 	s16 padding800b51A6;
 
 	// 3P mode
 	// 800b51A8
-	struct TransitionMeta characterSelectTransition3P[0x15];
+	struct TransitionMeta characterSelectTransition3P[0x16];
 
 	// 0x2 byte padding
 	s16 padding800B527A;
 
 	// 4P mode
 	// 800b527c
-	struct TransitionMeta characterSelectTransition4P[0x15];
+	struct TransitionMeta characterSelectTransition4P[0x16];
 
 	// 0x2 byte padding
 	s16 padding800B534E;

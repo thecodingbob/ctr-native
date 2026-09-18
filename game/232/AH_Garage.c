@@ -199,7 +199,11 @@ checkRewards:
 {
 	s32 hubLevel = GAME_TRACKER->levelID;
 	i = 0;
-	if (hubLevel == GEM_STONE_VALLEY)
+	if (g_config.unlockAllPortals)
+	{
+		bossIsOpen = true;
+	}
+	else if (hubLevel == GEM_STONE_VALLEY)
 	{
 		for (; i < AH_BOSS_KEY_COUNT; i++)
 		{
@@ -426,7 +430,11 @@ void AH_Garage_LInB(struct Instance *inst)
 
 	levelID = GAME_TRACKER->levelID;
 	i = 0;
-	if (levelID == GEM_STONE_VALLEY)
+	if (g_config.unlockAllPortals)
+	{
+		bossIsOpen = true;
+	}
+	else if (levelID == GEM_STONE_VALLEY)
 	{
 		// ripper roo boss key
 		// check all boss keys

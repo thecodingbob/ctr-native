@@ -659,6 +659,30 @@ void VehBirth_SetConsts(struct Driver *driver)
 		int driverFieldOffset;
 		u8 *metaPhysValue;
 		u8 *driverField;
+		u32 engineID = characterMetadata[characterIDs[driver->driverID]].engineID;
+
+		u32 metaPhysSize = metaPhys->size;
+		u32 rawValue = (u32)metaPhys->value[engineID];
+
+		switch (metaPhys->offset)
+		{
+		case SPEED_CLASS_STAT_OFFSET:
+			rawValue = rawValue * g_config.speedMultiplier / 100;
+			break;
+		case GRAVITY_OFFSET:
+			rawValue = rawValue * g_config.gravityMultiplier / 100;
+			break;
+		case TURN_RATE_OFFSET:
+			rawValue = rawValue * g_config.turnMultiplier / 100;
+			break;
+		case JUMP_OFFSET:
+			rawValue = rawValue * g_config.jumpMultiplier / 100;
+			break;
+		case TURBO_FULL_BAR_RESERVE_GAIN_OFFSET:
+		        rawValue = rawValue * g_config.reserveMultiplier / 100;
+		default:
+			break;
+		}
 
 		switch ((u32)metaPhys->size)
 		{
@@ -668,7 +692,7 @@ void VehBirth_SetConsts(struct Driver *driver)
 			engineValueOffset += metaPhysByteOffset;
 			metaPhysValue = (u8 *)((size_t)engineValueOffset + (size_t)metaPhysBase);
 			driverField = (u8 *)driver + driverFieldOffset;
-			driverField[0] = metaPhysValue[offsetof(struct MetaPhys, value)];
+			driverField[0] = (u8)rawValue;
 			break;
 
 		case 2:
@@ -677,7 +701,7 @@ void VehBirth_SetConsts(struct Driver *driver)
 			engineValueOffset += metaPhysByteOffset;
 			metaPhysValue = (u8 *)((size_t)engineValueOffset + (size_t)metaPhysBase);
 			driverField = (u8 *)driver + driverFieldOffset;
-			*(VehBirthHalfword *)driverField = *(VehBirthHalfword *)(metaPhysValue + offsetof(struct MetaPhys, value));
+			*(VehBirthHalfword *)driverField = (VehBirthHalfword)rawValue;
 			break;
 
 		case 4:
@@ -686,7 +710,7 @@ void VehBirth_SetConsts(struct Driver *driver)
 			engineValueOffset += metaPhysByteOffset;
 			metaPhysValue = (u8 *)((size_t)engineValueOffset + (size_t)metaPhysBase);
 			driverField = (u8 *)driver + driverFieldOffset;
-			*(VehBirthWord *)driverField = *(VehBirthWord *)(metaPhysValue + offsetof(struct MetaPhys, value));
+			*(VehBirthWord *)driverField = (VehBirthWord)rawValue;
 			break;
 		}
 	}
@@ -728,8 +752,6 @@ void VehBirth_TireSprites(struct Thread *t)
 
 	struct Icon **tire = ICONGROUP_GETICONS(tireAnim);
 	d->wheelSprites = tire;
-
-	d->wheelSize = VEH_BIRTH_WHEEL_SIZE;
 
 	if (
 	    // if character ID is oxide
@@ -861,6 +883,9 @@ struct Driver *VehBirth_Player(int index)
 	t = PROC_BirthWithObject(VEH_BIRTH_PLAYER_THREAD_FLAGS, 0, VEH_PLAYER_THREAD_NAME, 0);
 	d = t->object;
 	memset(d, 0, DRIVER_NTSC_RETAIL_SIZE);
+
+	d->maskIsAku = -1;
+	d->boolHadMaskBeforeOOB = 0;
 
 	VehBirth_NonGhost(t, index);
 

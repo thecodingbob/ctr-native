@@ -16,28 +16,32 @@ struct OverlayDATA_230 D230 CTR_PSX_MATCH_SECTION(".D230") =
     {
         // MAIN MENU CONSTS
 
-        .rowsMainMenuBasic =
-            {
-                {0x4C, 0, 1, 0, 0},
-                {0x4D, 0, 2, 1, 1},
-                {0x4E, 1, 3, 2, 2},
-                {0x4F, 2, 4, 3, 3},
-                {0x50, 3, 5, 4, 4},
-                {0x51, 4, 5, 5, 5},
-                {RECTMENU_STRING_NONE},
-            },
+    .rowsMainMenuBasic =
+        {
+            {0x4C, 7, 1, 0, 0},
+            {0x4D, 0, 2, 1, 1},
+            {0x4E, 1, 3, 2, 2},
+            {0x4F, 2, 4, 3, 3},
+            {0x50, 3, 5, 4, 4},
+            {0x51, 4, 6, 5, 5},
+            {0x0E, 5, 7, 6, 6},
+            {0x003, 6, 0, 7, 7},
+            {RECTMENU_STRING_NONE},
+        },
 
-        .rowsMainMenuWithScrapbook =
-            {
-                {0x4C, 0, 1, 0, 0},
-                {0x4D, 0, 2, 1, 1},
-                {0x4E, 1, 3, 2, 2},
-                {0x4F, 2, 4, 3, 3},
-                {0x50, 3, 5, 4, 4},
-                {0x51, 4, 6, 5, 5},
-                {0x234, 5, 6, 6, 6},
-                {RECTMENU_STRING_NONE},
-            },
+    .rowsMainMenuWithScrapbook =
+        {
+            {0x4C, 8, 1, 0, 0},
+            {0x4D, 0, 2, 1, 1},
+            {0x4E, 1, 3, 2, 2},
+            {0x4F, 2, 4, 3, 3},
+            {0x50, 3, 5, 4, 4},
+            {0x51, 4, 6, 5, 5},
+            {0x234, 5, 7, 6, 6},
+            {0x0E, 6, 8, 7, 7},
+            {0x003, 7, 0, 8, 8},
+            {RECTMENU_STRING_NONE},
+        },
 
         .menuMainMenu =
             {
@@ -374,7 +378,7 @@ struct OverlayDATA_230 D230 CTR_PSX_MATCH_SECTION(".D230") =
              // Polar
              {0x100, 0xA7, {2, 14, 5, 7}, 6, 0xFFFF},
              // Pura
-             {0x140, 0xA7, {3, 14, 6, 11}, 7, 0xFFFF},
+             {0x140, 0xA7, {3, 15, 6, 11}, 7, 0xFFFF},
              // N. Tropy
              {0x40, 0x80, {8, 10, 8, 0}, 12, 0x5},
              // Pinstripe
@@ -384,11 +388,13 @@ struct OverlayDATA_230 D230 CTR_PSX_MATCH_SECTION(".D230") =
              // Papu
              {0x180, 0xA7, {9, 11, 7, 11}, 9, 0x8},
              // Komodo Joe
-             {0xA0, 0xCE, {4, 12, 12, 13}, 11, 0x9},
+             {0x80, 0xCE, {4, 12, 12, 13}, 11, 0x9},
              // Penta
-             {0xE0, 0xCE, {5, 13, 12, 14}, 13, 0x6},
+             {0xC0, 0xCE, {5, 13, 12, 14}, 13, 0x6},
              // Fake Crash
-             {0x120, 0xCE, {6, 14, 13, 14}, 14, 0xB}},
+             {0x100, 0xCE, {6, 15, 13, 15}, 14, 0xB},
+             // Nitros Oxide
+             {0x140, 0xCE, {7, 15, 14, 11}, NITROS_OXIDE, 0xFFFF}},
 
         .characterSelectMeta1P2P =
             {// Crash
@@ -406,7 +412,7 @@ struct OverlayDATA_230 D230 CTR_PSX_MATCH_SECTION(".D230") =
              // Polar
              {0x100, 0x87, {2, 14, 5, 7}, 6, 0xFFFF},
              // Pura
-             {0x140, 0x87, {3, 14, 6, 11}, 7, 0xFFFF},
+             {0x140, 0x87, {3, 15, 6, 11}, 7, 0xFFFF},
              // N. Tropy
              {0x40, 0x60, {8, 10, 8, 0}, 12, 0x5},
              // Pinstripe
@@ -416,11 +422,13 @@ struct OverlayDATA_230 D230 CTR_PSX_MATCH_SECTION(".D230") =
              // Papu
              {0x180, 0x87, {9, 11, 7, 11}, 9, 0x8},
              // Komodo Joe
-             {0xA0, 0xAE, {4, 12, 12, 13}, 11, 0x9},
+             {0x80, 0xAE, {4, 12, 12, 13}, 11, 0x9},
              // Penta
-             {0xE0, 0xAE, {5, 13, 12, 14}, 13, 0x6},
+             {0xC0, 0xAE, {5, 13, 12, 14}, 13, 0x6},
              // Fake Crash
-             {0x120, 0xAE, {6, 14, 13, 14}, 14, 0xB}},
+             {0x100, 0xAE, {6, 15, 13, 15}, 14, 0xB},
+             // Nitros Oxide
+             {0x140, 0xAE, {7, 15, 14, 11}, NITROS_OXIDE, 0xFFFF}},
 
         .characterSelectMeta3P =
             {// Crash
@@ -430,7 +438,7 @@ struct OverlayDATA_230 D230 CTR_PSX_MATCH_SECTION(".D230") =
              // Tiny
              {0xA0, 0x47, {14, 6, 1, 3}, 2, 0xFFFF},
              // Coco
-             {0xE0, 0x47, {14, 7, 2, 3}, 3, 0xFFFF},
+             {0xE0, 0x47, {15, 7, 2, 3}, 3, 0xFFFF},
              // N. Gin
              {0x20, 0x6E, {0, 8, 4, 5}, 4, 0xFFFF},
              // Dingo
@@ -448,11 +456,13 @@ struct OverlayDATA_230 D230 CTR_PSX_MATCH_SECTION(".D230") =
              // Papu
              {0xE0, 0x95, {7, 11, 10, 11}, 9, 0x8},
              // Komodo Joe
-             {0x40, 0x20, {12, 1, 12, 13}, 11, 0x9},
+             {0x20, 0x20, {12, 1, 12, 13}, 11, 0x9},
              // Penta
-             {0x80, 0x20, {13, 2, 12, 14}, 13, 0x6},
+             {0x60, 0x20, {13, 2, 12, 14}, 13, 0x6},
              // Fake Crash
-             {0xC0, 0x20, {14, 3, 13, 14}, 14, 0xB}},
+             {0xA0, 0x20, {14, 3, 13, 15}, 14, 0xB},
+             // Nitros Oxide
+             {0xE0, 0x20, {15, 3, 14, 15}, NITROS_OXIDE, 0xFFFF}},
 
         .characterSelectMeta4P =
             {// Crash
@@ -460,7 +470,7 @@ struct OverlayDATA_230 D230 CTR_PSX_MATCH_SECTION(".D230") =
              // Cortex
              {0xC0, 0x47, {14, 5, 0, 2}, 1, 0xFFFF},
              // Tiny
-             {0x100, 0x47, {14, 6, 1, 3}, 2, 0xFFFF},
+             {0x100, 0x47, {15, 6, 1, 3}, 2, 0xFFFF},
              // Coco
              {0x140, 0x47, {3, 7, 2, 11}, 3, 0xFFFF},
              // N. Gin
@@ -484,7 +494,9 @@ struct OverlayDATA_230 D230 CTR_PSX_MATCH_SECTION(".D230") =
              // Pinstripe
              {0x180, 0x6E, {11, 13, 7, 13}, 8, 0xA},
              // Penta
-             {0xE0, 0x20, {14, 1, 14, 14}, 13, 0x6}},
+             {0xC0, 0x20, {14, 1, 14, 15}, 13, 0x6},
+             // Nitros Oxide
+             {0x100, 0x20, {15, 2, 14, 15}, NITROS_OXIDE, 0xFFFF}},
 
         .characterSelectMetaByLayout = {&D230.characterSelectMeta1P2P[0], &D230.characterSelectMeta1P2P[0], &D230.characterSelectMeta3P[0],
                                         &D230.characterSelectMeta4P[0], &D230.characterSelectMeta1P2PLimited[0], &D230.characterSelectMeta1P2PLimited[0]},
@@ -513,21 +525,21 @@ struct OverlayDATA_230 D230 CTR_PSX_MATCH_SECTION(".D230") =
             {
                 {0, 0xC8, 6, 0, 0}, {0, 0xC8, 5, 0, 0}, {0, 0xC8, 4, 0, 0}, {0, 0xC8, 3, 0, 0}, {0, 0xC8, 5, 0, 0}, {0, 0xC8, 4, 0, 0}, {0, 0xC8, 3, 0, 0},
                 {0, 0xC8, 2, 0, 0}, {0, 0xC8, 7, 0, 0}, {0, 0xC8, 1, 0, 0}, {0, 0xC8, 6, 0, 0}, {0, 0xC8, 0, 0, 0}, {0, 0xC8, 4, 0, 0}, {0, 0xC8, 3, 0, 0},
-                {0, 0xC8, 2, 0, 0}, {-512, 0, 0, 0, 0}, {512, 0, 3, 0, 0},  {512, 0, 1, 0, 0},  {512, 0, 7, 0, 0},  {512, 0, 5, 0, 0},  {0, 0, -1, 0, 0},
+                {0, 0xC8, 2, 0, 0}, {0, 0xC8, 1, 0, 0}, {-512, 0, 0, 0, 0}, {512, 0, 3, 0, 0},  {512, 0, 1, 0, 0},  {512, 0, 7, 0, 0},  {512, 0, 5, 0, 0},  {0, 0, -1, 0, 0},
             },
 
         .characterSelectTransition3P =
             {
                 {-512, 0, 2, 0, 0}, {-512, 0, 3, 0, 0}, {-512, 0, 4, 0, 0}, {-512, 0, 5, 0, 0}, {-512, 0, 1, 0, 0}, {-512, 0, 2, 0, 0}, {-512, 0, 3, 0, 0},
                 {-512, 0, 4, 0, 0}, {-512, 0, 0, 0, 0}, {-512, 0, 1, 0, 0}, {-512, 0, 2, 0, 0}, {-512, 0, 3, 0, 0}, {-512, 0, 2, 0, 0}, {-512, 0, 3, 0, 0},
-                {-512, 0, 4, 0, 0}, {-512, 0, 0, 0, 0}, {512, 0, 5, 0, 0},  {512, 0, 3, 0, 0},  {512, 0, 1, 0, 0},  {512, 0, 5, 0, 0},  {0, 0, -1, 0, 0},
+                {-512, 0, 4, 0, 0}, {-512, 0, 0, 0, 0}, {-512, 0, 1, 0, 0}, {512, 0, 5, 0, 0},  {512, 0, 3, 0, 0},  {512, 0, 1, 0, 0},  {512, 0, 5, 0, 0},  {0, 0, -1, 0, 0},
             },
 
         .characterSelectTransition4P =
             {
                 {-512, 0, 1, 0, 0}, {-512, 0, 2, 0, 0}, {-512, 0, 3, 0, 0}, {-512, 0, 4, 0, 0}, {-512, 0, 2, 0, 0}, {-512, 0, 3, 0, 0}, {-512, 0, 4, 0, 0},
                 {-512, 0, 5, 0, 0}, {-512, 0, 3, 0, 0}, {-512, 0, 4, 0, 0}, {-512, 0, 0, 0, 0}, {-512, 0, 5, 0, 0}, {-512, 0, 1, 0, 0}, {-512, 0, 6, 0, 0},
-                {-512, 0, 2, 0, 0}, {-512, 0, 0, 0, 0}, {512, 0, 3, 0, 0},  {512, 0, 1, 0, 0},  {512, 0, 7, 0, 0},  {512, 0, 5, 0, 0},  {0, 0, -1, 0, 0},
+                {-512, 0, 2, 0, 0}, {-512, 0, 0, 0, 0}, {-512, 0, 1, 0, 0}, {512, 0, 3, 0, 0},  {512, 0, 1, 0, 0},  {512, 0, 7, 0, 0},  {512, 0, 5, 0, 0},  {0, 0, -1, 0, 0},
             },
 
         .characterSelectTransitionByPlayerCount = {&D230.characterSelectTransition1P2P[0], &D230.characterSelectTransition1P2P[0],
@@ -792,6 +804,20 @@ struct OverlayDATA_230 D230 CTR_PSX_MATCH_SECTION(".D230") =
                 .currentTrack = 0,
                 .currentRow = 0,
             },
+    .rowsQuitConfirm =
+        {
+            {0xd2, 1, 1, 0, 0},
+            {0xd3, 0, 0, 1, 1},
+            {-1},
+        },
+
+    .menuQuitConfirm =
+        {
+            .stringIndexTitle = -1,
+            .state = 0x09,
+            .rows = &D230.rowsQuitConfirm[0],
+            .funcPtr = MM_MenuProc_QuitConfirm,
+        },
 
 #if 0
 

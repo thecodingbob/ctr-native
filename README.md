@@ -1,6 +1,6 @@
-# CTR Native
+# CTR Native Expanded
 
-A native PC port of Crash Team Racing (PS1, 1999), built on top of the [CTR-ModSDK](https://github.com/CTR-tools/CTR-ModSDK) decompilation project.
+A native PC port of Crash Team Racing (PS1, 1999) with extra additions. It builds on [CTR-tools/ctr-native](https://github.com/CTR-tools/ctr-native) and adds optional quality-of-life and customization features.
 
 ## Philosophy
 
@@ -168,6 +168,81 @@ The full extracted asset list is:
 `BIGFILE.BIG` and `SOUNDS/KART.HWL` are required. Missing XA/XNF files or
 `TEST.STR` produce a startup warning: the game can continue without the affected streamed audio or Scrapbook video. Files available in `ctr-u.bin` still provide the fallback for missing extracted files. A present but invalid XA manifest remains a startup error.
 
+## Configuration
+
+All settings can be changed at runtime from the in-game config menu
+(Options → Config). This is the recommended way — changes take effect
+immediately and are saved automatically.
+
+For reference, the settings are persisted to `build/config.ini` (standard INI
+format). An example template is at `default_config.ini` in the project root.
+
+### General
+
+| Key                               | Values                                                   | Default   | Description                                     |
+|-----------------------------------|----------------------------------------------------------|-----------|-------------------------------------------------|
+| `skip_intro`                      | `true` / `false`                                         | `false`   | Skip boot intros and go straight into main menu |
+| `mask_mode`                       | `Normal` / `Random` / `Inverted` / `All Uka` / `All Aku` | `Normal`  | Mask assignment mode                            |
+| `show_reserves_meter`             | `true` / `false`                                         | `false`   | Show the in-game reserves meter                 |
+| `allow_oxide_station_multiplayer` | `true` / `false`                                         | `false`   | Allow selecting Oxide Station in multiplayer    |
+
+### Adventure
+
+| Key                         | Values             | Default | Description                                                                                      |
+|-----------------------------|--------------------|---------|--------------------------------------------------------------------------------------------------|
+| `skip_hints`                | `true` / `false`   | `false` | Skip mask hints in adventure mode                                                                |
+| `extended_character_select` | `true` / `false`   | `false` | Use the classic screen to select any unlocked character when starting a new Adventure            |
+| `save_anywhere`             | `true` / `false`   | `false` | Allows to save/load anywhere in the adventure mode hubs by pressing select or the equivalent key |
+| `unlock_all_gates`          | `true` / `false`   | `false` | Opens all adventure wood gates bypassing the key requirements                                    |
+| `unlock_all_portals`        | `true` / `false`   | `false` | Unlock all warp pads and boss garages                                                            |
+
+### Unlocks
+
+| Key                      | Values           | Default | Description                                     |
+|--------------------------|------------------|---------|-------------------------------------------------|
+| `unlock_all_characters`  | `true` / `false` | `false` | Unlock all standard characters                  |
+| `unlock_nitros_oxide`    | `true` / `false` | `false` | Add Nitros Oxide to the character select menu   |
+
+### Vehicle
+
+| Key                         | Values               | Default | Description                                                                                                              |
+|-----------------------------|----------------------|---------|--------------------------------------------------------------------------------------------------------------------------|
+| `speed_stat_multiplier`     | `10`–`200` (percent) | `100`  | Kart top-speed multiplier                                                                                                |
+| `gravity_stat_multiplier`   | `10`–`300` (percent) | `100`  | Kart gravity multiplier. The lower the value, the more you'll spend in the air when jumping or dropping.                 |
+| `turn_stat_multiplier`      | `10`–`400` (percent) | `100`  | Kart turn-rate multiplier. Higher values makes turning easier.                                                           |
+| `jump_stat_multiplier`      | `10`–`300` (percent) | `100`  | Kart jump-height multiplier                                                                                              |
+| `turbo_reserves_multiplier` | `0`–`400`  (percent) | `100`  | Reserve accumulation multiplier. The higher the value, the more reserve your kart will get when executing a turbo drift. |
+
+### Weapons
+
+| Key                                | Values                                                   | Default  | Description                           |
+|------------------------------------|----------------------------------------------------------|----------|---------------------------------------|
+| `missile_speed_multiplier`         | `20`–`500` (percent)                                     | `100`    | Missile speed multiplier              |
+| `bomb_speed_multiplier`            | `20`–`300` (percent)                                     | `100`    | Bomb speed multiplier                 |
+| `warpball_speed_multiplier`        | `20`–`300` (percent)                                     | `100`    | Warpball speed multiplier             |
+| `bomb_explosion_radius_multiplier` | `50`–`600` (percent)                                     | `100`    | Bomb explosion radius multiplier      |
+| `tnt_explosion_radius_multiplier`  | `50`–`600` (percent)                                     | `100`    | TNT/Nitro explosion radius multiplier |
+| `mask_protects_from_damage`        | `true` / `false`                                         | `true`   | Mask makes driver immune to damage    |
+| `mask_damages_others`              | `true` / `false`                                         | `true`   | Mask damages other drivers on contact |
+| `mask_persists_after_oob`          | `true` / `false`                                         | `false`  | Mask stays active after falling OOB   |
+| `mask_duration_multiplier`         | `20`–`250` (percent)                                     | `100`    | Mask weapon duration multiplier       |
+| `mask_extra_speed_multiplier`      | `0`–`300` (percent)                                      | `100`    | Mask extra speed multiplier           |
+| `clock_duration_multiplier`        | `20`–`250` (percent)                                     | `100`    | Clock slowdown duration multiplier    |
+| `allow_weapons_during_clock`       | `true` / `false`                                         | `false`  | Allow weapon usage while clocked       |
+
+### Graphics
+
+| Key                        | Values  | Default | Description                                                             |
+|----------------------------|---------|---------|-------------------------------------------------------------------------|
+| `increase_draw_distance`   | `true` / `false` | `false` | Renders farther objects and uses higher poly models at higher distances |
+| `disable_split_screen_lod` | `true` / `false` | `false` | Use full-detail tracks, models, and effects in split-screen               |
+| `fullscreen`               | `true` / `false` | `false` | Borderless fullscreen on startup                                        |
+| `aspect_ratio`             | `4:3`, `16:9`, `16:10`, `21:9` | `4:3`   | Display aspect ratio                                                    |
+| `dithering`                | `true` / `false` | `true`  | Enable color dithering                                                  |
+| `render_scale`             | `Original`, `2X`, `3X`, `4X`, `Native` | `Native` | Internal render resolution; Native follows the presentation viewport |
+| `smooth_scaling`           | `true` / `false` | `true`  | Use linear filtering when presenting scaled output                      |
+| `texture_filtering`        | `true` / `false` | `false` | Enable bilinear filtering for PSX textures                              |
+
 ## Bug Replays
 
 Internal builds can record a small bug report folder. See `docs/REPLAYS.md`.
@@ -200,4 +275,6 @@ main.c (entrypoint)
 - [CTR-ModSDK](https://github.com/CTR-tools/CTR-ModSDK) — the decompilation project this is built on
 - [PsyCross](https://github.com/OpenDriver2/PsyCross) — original PS1 compatibility code from which parts of CTR Native's owned platform layer and PsyQ facade headers are derived
 - [SDL3](https://github.com/libsdl-org/SDL) — cross-platform multimedia
+- [ctr-native-ap](https://github.com/dowlle/ctr-native-ap) by dowlle — render-scale, scaling-filter, and texture-filtering options
+- [OxideFix](https://github.com/CTR-tools/CTR-ModSDK/tree/main/mods/Modules/OxideFix) from CTR-ModSDK — Nitros Oxide character-select implementation and menu model
 - Crash Team Racing is a trademark of Sony Computer Entertainment / Naughty Dog

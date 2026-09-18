@@ -858,7 +858,7 @@ itemRollDone:
 		{
 			goto CheckItemRollTimer;
 		}
-		if (driver->clockReceive != 0)
+		if (driver->clockReceive != 0 && !g_config.allowWeaponsDuringClock)
 		{
 			goto CheckItemRollTimer;
 		}

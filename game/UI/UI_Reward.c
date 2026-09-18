@@ -26,6 +26,21 @@ enum
 
 static const u32 UI_REWARD_PICKUP_COLOR = 0xffff0000u;
 
+static struct Driver *UI_Reward_FindFruitDriver(struct GameTracker *gGT, struct Instance *inst)
+{
+	for (int playerIndex = 0; playerIndex < gGT->numPlyrCurrGame; playerIndex++)
+	{
+		struct Driver *driver = gGT->drivers[playerIndex];
+
+		if ((driver != NULL) && (driver->instFruitDisp == inst))
+		{
+			return driver;
+		}
+	}
+
+	return NULL;
+}
+
 void UI_SaveLapTime(int numLaps, int lapTime, s16 driverID)
 {
 	int playerLapIndex = ((int)driverID * UI_LAP_TIME_LAPS_PER_PLAYER) + numLaps;
@@ -55,14 +70,30 @@ void UI_ThTick_CountPickup(struct Thread *bucket)
 	struct UiElement3D *obj = bucket->object;
 	struct Instance *inst = bucket->inst;
 	b32 isTimeCrate = inst->model->id == STATIC_TIME_CRATE_01;
+	struct Driver *fruitDriver = NULL;
+	b32 hideFinishedFruit = false;
 
 	inst->colorRGBA = UI_REWARD_PICKUP_COLOR;
 
-	if ((gGT->numPlyrCurrGame == 1) && !isTimeCrate)
+	if (!isTimeCrate)
 	{
-		inst->alphaScale = (gGT->drivers[0]->numWumpas < DRIVER_WUMPA_JUICED_COUNT)
-		                       ? 0
-		                       : ((s16)sdata->wumpaShineResult - UI_REWARD_WUMPA_SHINE_CENTER) << UI_REWARD_WUMPA_SHINE_SHIFT;
+		if (sdata->highDetailSplitScreenLevel)
+		{
+			fruitDriver = UI_Reward_FindFruitDriver(gGT, inst);
+			hideFinishedFruit = (fruitDriver == NULL) || ((fruitDriver->actionsFlagSet & ACTION_RACE_FINISHED) != 0) ||
+			                    ((gGT->gameMode1 & END_OF_RACE) != 0);
+		}
+		else if (gGT->numPlyrCurrGame == 1)
+		{
+			fruitDriver = gGT->drivers[0];
+		}
+
+		if (fruitDriver != NULL)
+		{
+			inst->alphaScale = (fruitDriver->numWumpas < DRIVER_WUMPA_JUICED_COUNT)
+			                       ? 0
+			                       : ((s16)sdata->wumpaShineResult - UI_REWARD_WUMPA_SHINE_CENTER) << UI_REWARD_WUMPA_SHINE_SHIFT;
+		}
 	}
 
 	obj->rot.y += isTimeCrate ? UI_REWARD_PICKUP_ROT_SLOW : UI_REWARD_PICKUP_ROT_FAST;
@@ -74,7 +105,7 @@ void UI_ThTick_CountPickup(struct Thread *bucket)
 	MatrixRotate(mat, &obj->m, mat);
 
 	u32 drawOtagState = CTR_ReadU32LE(&gGT->bool_DrawOTag_InProgress);
-	if ((drawOtagState & UI_REWARD_HUD_VISIBLE_WORD_MASK) == UI_REWARD_HUD_VISIBLE_WORD_VALUE)
+	if (((drawOtagState & UI_REWARD_HUD_VISIBLE_WORD_MASK) == UI_REWARD_HUD_VISIBLE_WORD_VALUE) && !hideFinishedFruit)
 	{
 		inst->flags &= ~HIDE_MODEL;
 	}

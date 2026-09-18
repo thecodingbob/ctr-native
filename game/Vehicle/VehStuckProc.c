@@ -633,6 +633,7 @@ void VehStuckProc_MaskGrab_Init(struct Thread *t, struct Driver *d)
 	d->KartStates.MaskGrab.boolWhistle = false;
 	d->KartStates.MaskGrab.boolStillFalling = false;
 
+	d->boolHadMaskBeforeOOB = (d->actionsFlagSet & ACTION_MASK_WEAPON) != 0;
 	d->KartStates.MaskGrab.maskObj = VehPickupItem_MaskUseWeapon(d, true);
 
 	d->turbo_MeterRoomLeft = 0;
@@ -961,7 +962,7 @@ void VehStuckProc_RevEngine_Update(struct Thread *t, struct Driver *d)
 	// frozen, and into driving, last iteration of
 	// this function
 
-	if ((d->KartStates.RevEngine.boolMaskGrab != false) && (d->KartStates.RevEngine.maskObj != NULL))
+	if ((d->KartStates.RevEngine.boolMaskGrab == true) && (d->KartStates.RevEngine.maskObj != NULL) && !(g_config.maskPersistsAfterOOB && d->boolHadMaskBeforeOOB))
 	{
 		d->KartStates.RevEngine.maskObj->duration = 0;
 	}

@@ -1,4 +1,9 @@
 #include <common.h>
+#include <stdlib.h>
+
+extern struct MenuRow s_rowsMainMenuBasicConfig[];
+extern struct MenuRow s_rowsMainMenuWithSBConfig[];
+extern struct RectMenu g_configMenu;
 
 s32 MM_TransitionInOut(struct TransitionMeta *meta, s32 framesPassed, s32 numFrames)
 {
@@ -48,7 +53,6 @@ s32 MM_TransitionInOut(struct TransitionMeta *meta, s32 framesPassed, s32 numFra
 	}
 	return allTransitionsDone ? 1 : (negativeTransitionState ? -1 : 0);
 }
-
 void MM_MenuProc_Main(struct RectMenu *menu)
 {
 	register u32 timeTrialSetupTracker CTR_PSX_REGISTER("$3");
@@ -58,10 +62,14 @@ void MM_MenuProc_Main(struct RectMenu *menu)
 
 	mainMenu = menu;
 
-	// if scrapbook is unlocked, change "rows" to extended array
+	// Select the configuration-aware menu rows while preserving the scrapbook gate.
 	if ((MM_GAME_UNLOCKS[MEMCARD_BIT_WORD(GAME_UNLOCK_BIT_SCRAPBOOK)] & MEMCARD_BIT_MASK(GAME_UNLOCK_BIT_SCRAPBOOK)) != 0)
 	{
-		MM_MENU_MAIN.rows = MM_ROWS_MAIN_WITH_SCRAPBOOK;
+		mainMenu->rows = &s_rowsMainMenuWithSBConfig[0];
+	}
+	else
+	{
+		mainMenu->rows = &s_rowsMainMenuBasicConfig[0];
 	}
 
 	MM_ParseCheatCodes();
@@ -280,6 +288,39 @@ void MM_MenuProc_Main(struct RectMenu *menu)
 	default:
 		return;
 	}
+
+	// Config / Options
+	if (choose == 0x0E)
+	{
+		sdata->ptrDesiredMenu = &g_configMenu;
+		return;
+	}
+
+	// Quit
+	if (choose == 0x003)
+	{
+		mainMenu->ptrNextBox_InHierarchy = &D230.menuQuitConfirm;
+		mainMenu->state |= DRAW_NEXT_MENU_IN_HIERARCHY;
+		return;
+	}
+}
+
+void MM_MenuProc_QuitConfirm(struct RectMenu *menu)
+{
+	if (menu->rowSelected < 0)
+	{
+		menu->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
+		return;
+	}
+	// Called every frame from RECTMENU_ProcessState with funcState=1;
+	// only act on actual button presses (funcState=0 from ProcessInput).
+	if (menu->funcState != 0)
+		return;
+
+	if (menu->rowSelected == 0) // YES
+		exit(0);
+	// NO - go back
+	menu->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
 }
 
 void MM_ToggleRows_PlayerCount(void)

@@ -150,7 +150,7 @@ struct Particle *VehEmitter_Exhaust(struct Driver *d, VECTOR *exhaustPos, VECTOR
 
 	emSet = &data.emSet_Exhaust_High[0];
 	numPlyr = GAME_TRACKER->numPlyrCurrGame;
-	if (numPlyr >= 3)
+	if (numPlyr >= 3 && !g_config.disableSplitScreenLod)
 	{
 		CTR_PSX_FORGET_VALUE(emSet);
 		emSet = &data.emSet_Exhaust_Low[0];
@@ -158,7 +158,7 @@ struct Particle *VehEmitter_Exhaust(struct Driver *d, VECTOR *exhaustPos, VECTOR
 	else
 	{
 		CTR_PSX_FORGET_VALUE(emSet);
-		if (numPlyr >= 2)
+		if (numPlyr >= 2 && !g_config.disableSplitScreenLod)
 		{
 			emSet = &data.emSet_Exhaust_Med[0];
 		}
@@ -1153,7 +1153,6 @@ void VehEmitter_DriverMain(struct Thread *thread, struct Driver *driverArg)
 	register struct Driver *jogDriver CTR_PSX_REGISTER("$4");
 	register int initialModelIndex CTR_PSX_REGISTER("$2");
 	register int playerModelIndex CTR_PSX_REGISTER("$3");
-
 	{
 		register u32 skidHistory CTR_PSX_REGISTER("$3");
 		register u32 skidIndex CTR_PSX_REGISTER("$2");
@@ -1624,7 +1623,7 @@ skidAudioDone:
 
 		gGT = GAME_TRACKER;
 		numPlyr = gGT->numPlyrCurrGame;
-		if (numPlyr >= 2)
+		if (numPlyr >= 2 && !g_config.disableSplitScreenLod)
 		{
 			if (numPlyr == 2)
 			{

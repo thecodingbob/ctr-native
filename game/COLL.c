@@ -1189,7 +1189,7 @@ internal void COLL_FIXED_PlayerSearch_SetupSearch(struct ScratchpadStruct *sps, 
 	sps->Union.QuadBlockColl.quadFlagsWanted = QUADBLOCK_FLAG_GROUND | QUADBLOCK_FLAG_COLLISION_SURFACE;
 
 	sps->Union.QuadBlockColl.searchFlags = 0;
-	if (gGT->numPlyrCurrGame < 3)
+	if ((gGT->numPlyrCurrGame < 3) || sdata->highDetailSplitScreenLevel)
 	{
 		sps->Union.QuadBlockColl.searchFlags = COLL_SEARCH_HIGH_LOD;
 	}
@@ -2259,7 +2259,7 @@ void COLL_MOVED_PlayerSearch(struct Thread *t, struct Driver *d)
 	sps->Union.QuadBlockColl.searchFlags = COLL_SEARCH_TEST_INSTANCES;
 	sps->ptr_mesh_info = gGT->level1->ptr_mesh_info;
 
-	if (gGT->numPlyrCurrGame < 3)
+	if ((gGT->numPlyrCurrGame < 3) || sdata->highDetailSplitScreenLevel)
 	{
 		sps->Union.QuadBlockColl.searchFlags = COLL_SEARCH_TEST_INSTANCES | COLL_SEARCH_HIGH_LOD;
 	}

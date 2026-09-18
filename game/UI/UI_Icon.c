@@ -162,6 +162,8 @@ void UI_WeaponBG_DrawShine(struct Icon *icon, s16 posX, s16 posY, struct PrimMem
 			break;
 		}
 
+	        Widescreen_CompressGT4(p);
+
 		CtrGpu_WriteColorCode(&p->r0, CTR_ReadU32LE(&shineColors[UI_WEAPON_SHINE_COLOR_DARK_ROW * sizeof(u32)]));
 		CtrGpu_WriteColorCode(&p->r1, CTR_ReadU32LE(&shineColors[UI_WEAPON_SHINE_COLOR_MID_ROW * sizeof(u32)]));
 		CtrGpu_WriteColorCode(&p->r2, CTR_ReadU32LE(&shineColors[UI_WEAPON_SHINE_COLOR_MID_ROW * sizeof(u32)]));
@@ -293,6 +295,8 @@ void UI_DrawDriverIcon(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *pr
 	p->v[2].pos.y = bottomY;
 	p->v[3].pos.x = bottomX;
 	p->v[3].pos.y = bottomY;
+
+	Widescreen_CompressNative(p);
 
 	p->polyClut.self = icon->texLayout.clut;
 	p->polyTpage.self = icon->texLayout.tpage;

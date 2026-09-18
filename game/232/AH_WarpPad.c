@@ -621,10 +621,10 @@ void AH_WarpPad_ThTick(struct Thread *t)
 
 		if (destination >= AH_WP_ID_SLIDE_COLISEUM)
 			goto WarpPad_OtherTrack;
-		if (!(CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, destination + ADV_REWARD_FIRST_TROPHY)))
+		if (!g_config.unlockAllPortals && !(CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, destination + ADV_REWARD_FIRST_TROPHY)))
 			goto WarpPad_DefaultEnter;
 		// Token/relic selection is unlocked by the hub's key requirement.
-		if (GAME_TRACKER->currAdvProfile.numKeys < AH_HUB_REQUIRED_KEYS[AH_LEVEL_METADATA[destination].hubID])
+		if (!g_config.unlockAllPortals && GAME_TRACKER->currAdvProfile.numKeys < AH_HUB_REQUIRED_KEYS[AH_LEVEL_METADATA[destination].hubID])
 			goto WarpPad_OtherTrack;
 		if (warppadObj->framesWarping < AH_WP_WARP_LOAD_FRAMES)
 		{
@@ -1044,7 +1044,6 @@ void AH_WarpPad_LInB(struct Instance *inst)
 		unlockItem_numOwned = (s32)CTR_ReadU32AlignedLE(arrTokenCount + sizeof(s32) + (s16)(warppadObj->levelID - AH_WP_ID_FIRST_GEM_CUP) * sizeof(s32));
 	}
 
-
 	if (unlockItem_numNeeded < 0)
 	{
 		if (unlockItem_modelID == STATIC_TOKEN)
@@ -1054,7 +1053,7 @@ void AH_WarpPad_LInB(struct Instance *inst)
 		else
 			unlockItem_numNeeded = AH_LEVEL_METADATA[warppadObj->levelID].numTrophiesToOpen;
 	}
-	if (unlockItem_numOwned < unlockItem_numNeeded)
+	if (!g_config.unlockAllPortals && unlockItem_numOwned < unlockItem_numNeeded)
 	{
 		// NOTE(aalhendi): Pool objects are not zeroed. Each visual path initializes
 		// its unused slots; the destroy callback may later visit all ten.

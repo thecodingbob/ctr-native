@@ -55,6 +55,39 @@ void AH_Door_ThDestroy(struct Thread *t)
 	return;
 }
 
+static b32 AH_Door_IsOpenByRewards(s16 levelID, AdventureHubDoorID doorID)
+{
+	if (g_config.unlockAllGates)
+	{
+		return true;
+	}
+	if ((levelID == N_SANITY_BEACH) && (doorID == AH_DOOR_BEACH_TO_GLACIER_PARK))
+	{
+		return (sdata->advProgress.rewards[ADV_PROGRESS_WORD_STORY] & ADV_REWARD_DOOR_BEACH_TO_GLACIER_PARK_MASK) != 0;
+	}
+
+	if ((levelID == N_SANITY_BEACH) && (doorID == AH_DOOR_BEACH_TO_GEMSTONE_VALLEY))
+	{
+		return (sdata->advProgress.rewards[ADV_PROGRESS_WORD_STORY] & ADV_REWARD_DOOR_BEACH_TO_GEMSTONE_VALLEY_MASK) != 0;
+	}
+
+	if (levelID == GEM_STONE_VALLEY)
+	{
+		return (sdata->advProgress.rewards[ADV_PROGRESS_WORD_STORY] & ADV_REWARD_DOOR_GEMSTONE_VALLEY_TO_CUPS_MASK) != 0;
+	}
+
+	if (levelID == THE_LOST_RUINS)
+	{
+		return (sdata->advProgress.rewards[ADV_PROGRESS_WORD_STORY] & ADV_REWARD_DOOR_LOST_RUINS_TO_GLACIER_PARK_MASK) != 0;
+	}
+
+	if (levelID == GLACIER_PARK)
+	{
+		return (sdata->advProgress.rewards[ADV_PROGRESS_WORD_STORY] & ADV_REWARD_DOOR_GLACIER_PARK_TO_CITADEL_CITY_MASK) != 0;
+	}
+
+	return false;
+}
 void AH_Door_ThTick(struct Thread *t)
 {
 	b32 doorIsOpen;
@@ -494,19 +527,8 @@ void AH_Door_LInB(struct Instance *inst)
 	inst->model->headers->flags |= 2;
 	door->otherDoor->model->headers->flags |= 2;
 
-	if (GAME_TRACKER->levelID == N_SANITY_BEACH && door->doorID == AH_DOOR_BEACH_TO_GLACIER_PARK &&
-	    (AH_STORY_REWARDS & ADV_REWARD_DOOR_BEACH_TO_GLACIER_PARK_MASK))
-		doorIsOpen = true;
-	else if (GAME_TRACKER->levelID == N_SANITY_BEACH && door->doorID == AH_DOOR_BEACH_TO_GEMSTONE_VALLEY &&
-	         (AH_STORY_REWARDS & ADV_REWARD_DOOR_BEACH_TO_GEMSTONE_VALLEY_MASK))
-		doorIsOpen = true;
-	else if (GAME_TRACKER->levelID == GEM_STONE_VALLEY && (AH_STORY_REWARDS & ADV_REWARD_DOOR_GEMSTONE_VALLEY_TO_CUPS_MASK))
-		doorIsOpen = true;
-	else if (GAME_TRACKER->levelID == THE_LOST_RUINS && (AH_STORY_REWARDS & ADV_REWARD_DOOR_LOST_RUINS_TO_GLACIER_PARK_MASK))
-		doorIsOpen = true;
-	else if (GAME_TRACKER->levelID == GLACIER_PARK && (AH_STORY_REWARDS & ADV_REWARD_DOOR_GLACIER_PARK_TO_CITADEL_CITY_MASK))
-		doorIsOpen = true;
-	if ((s16)doorIsOpen)
+	doorIsOpen = AH_Door_IsOpenByRewards(GAME_TRACKER->levelID, door->doorID);
+	if (doorIsOpen)
 	{
 		door->doorRot.y = AH_DOOR_OPEN_ROTATION;
 

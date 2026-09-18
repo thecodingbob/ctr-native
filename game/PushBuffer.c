@@ -403,6 +403,18 @@ void PushBuffer_SetMatrixVP(struct PushBuffer *pb)
 	// scale Y axis (3)
 	pb->matrix_ViewProj.m[1][2] = pb->matrix_ViewProj.m[1][2] * r360 / r600;
 
+	// widescreen: scale X by ws/r800 to widen horizontal FOV
+	if (g_config.aspectRatio != 0)
+	{
+		int ws = Widescreen_GetFactor() * 0x800 / 1000;
+#define r800 0x800
+		pb->matrix_ViewProj.t[0] = pb->matrix_ViewProj.t[0] * ws / r800;
+		pb->matrix_ViewProj.m[0][0] = pb->matrix_ViewProj.m[0][0] * ws / r800;
+		pb->matrix_ViewProj.m[0][1] = pb->matrix_ViewProj.m[0][1] * ws / r800;
+		pb->matrix_ViewProj.m[0][2] = pb->matrix_ViewProj.m[0][2] * ws / r800;
+#undef r800
+	}
+
 	// store camera matrix,
 	// otherwise oxide intro cutscene bugs out,
 	// when crash is sleeping on the grassy hill
@@ -586,6 +598,12 @@ void PushBuffer_UpdateFrustum(struct PushBuffer *pb)
 	val_X = pb->rect.w;
 	val_X = val_X / 2;
 
+	if (g_config.aspectRatio != 0)
+	{
+		int ws = Widescreen_GetFactor() * 0x800 / 1000;
+		val_X = val_X * 0x800 / ws;
+	}
+
 	val_Y = ((pb->rect.h * 0x600) / 0x360);
 	val_Y = val_Y / 2;
 
@@ -611,6 +629,8 @@ void PushBuffer_UpdateFrustum(struct PushBuffer *pb)
 
 	struct FrustumCornerOUT *fcOUT = &spf->fc[3];
 
+	int farClip = g_config.increaseDrawDistance ? 0x200 : 0x100;
+
 	for (int i = 0; i < 4; i++)
 	{
 		// multiply corner of screen,
@@ -623,10 +643,10 @@ void PushBuffer_UpdateFrustum(struct PushBuffer *pb)
 		// from end of PushBuffer_SetMatrixVP (called earlier)
 		PushBuffer_UpdateFrustum_ReadMAC(&tx, &ty, &tz);
 
-		// far clip: pos + dir*100
-		posX = tx * 0x100 + cameraPosX;
-		posY = ty * 0x100 + cameraPosY;
-		posZ = tz * 0x100 + cameraPosZ;
+		// far clip: pos + dir*farClip
+		posX = tx * farClip + cameraPosX;
+		posY = ty * farClip + cameraPosY;
+		posZ = tz * farClip + cameraPosZ;
 
 		iVar19 = 0x1000;
 

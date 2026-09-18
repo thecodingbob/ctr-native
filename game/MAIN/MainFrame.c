@@ -27,6 +27,9 @@ static void MainFrame_RegisterGpuLinkRanges(struct GameTracker *gGT)
 }
 #endif
 
+static b32 s_selectOpenedSaveMenu = 0;
+
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80034b48-0x80034bbc.
 void MainFrame_TogglePauseAudio(b32 bool_pause)
 {
 	if (bool_pause == 0)
@@ -226,8 +229,8 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 					if (iVar4 < 0)
 					{
 						gGT->frozenTimeRemaining = 0;
-					}
-					else
+			}
+			else
 					{
 						uVar3 = gGT->timer;
 						if (uVar3 == (uVar3 / 6) * 6)
@@ -410,6 +413,11 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 			{
 				gGT->cooldownfromPauseUntilUnpause--;
 			}
+			if (s_selectOpenedSaveMenu && sdata->ptrActiveMenu == NULL)
+			{
+				s_selectOpenedSaveMenu = 0;
+				gGT->gameMode1 &= ~PAUSE_1;
+			}
 		}
 		else if (gGT->cooldownFromUnpauseUntilPause == 0)
 		{
@@ -436,6 +444,20 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 
 									MainFreeze_IfPressStart();
 
+									gGT->cooldownfromPauseUntilUnpause = 5;
+								}
+
+								if (g_config.saveAnywhere &&
+								    (gGT->gameMode1 & ADVENTURE_ARENA) != 0 &&
+								    (gGamepads->gamepad[iVar4].buttonsTapped & BTN_SELECT) != 0 &&
+								    gGT->overlayIndex_Threads != OVERLAY_INDEX_NONE)
+								{
+									s_selectOpenedSaveMenu = 1;
+									SelectProfile_GetTrackID();
+									gGT->gameMode1 |= PAUSE_1;
+									gGT->gameModeEnd = (gGT->gameMode1 & GAME_MODE_END_RETAINED_MODE_MASK) | PAUSE_1;
+									RECTMENU_Show(&data.menuGreenLoadSave);
+									OtherFX_Play(1, 1);
 									gGT->cooldownfromPauseUntilUnpause = 5;
 								}
 							}
@@ -782,16 +804,17 @@ void MainFrame_VisMemFullFrame(struct GameTracker *gGT, struct Level *level)
 // 	0x01 - interrupting (CTR, Relic, or Crystal hints)
 void MainFrame_RequestMaskHint(s16 hintId, s16 interruptWarpPad)
 {
-	struct GameTracker *gGT = sdata->gGT;
+	if (!g_config.skipHints) {
+		struct GameTracker *gGT = sdata->gGT;
+		if (((gGT->gameMode1 & PAUSE_ALL) == 0) && (sdata->AkuHint_RequestedHint == -1))
+		{
+			sdata->AkuAkuHintState = 1;
 
-	if (((gGT->gameMode1 & PAUSE_ALL) == 0) && (sdata->AkuHint_RequestedHint == -1))
-	{
-		sdata->AkuAkuHintState = 1;
+			gGT->drivers[0]->funcPtrs[DRIVER_FUNC_INIT] = VehPhysProc_FreezeEndEvent_Init;
 
-		gGT->drivers[0]->funcPtrs[DRIVER_FUNC_INIT] = VehPhysProc_FreezeEndEvent_Init;
-
-		sdata->AkuHint_RequestedHint = hintId;
-		sdata->AkuHint_boolInterruptWarppad = interruptWarpPad;
+			sdata->AkuHint_RequestedHint = hintId;
+			sdata->AkuHint_boolInterruptWarppad = interruptWarpPad;
+		}
 	}
 	return;
 }

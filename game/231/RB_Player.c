@@ -152,8 +152,10 @@ void RB_Player_ModifyWumpa(struct Driver *driver, int wumpaDelta)
 	    // if wumpa is being subtracted
 	    (wumpaDelta < 0) &&
 
-	    // using mask weapon
-	    ((driver->actionsFlagSet & ACTION_MASK_WEAPON) != 0))
+	    // using mask weapon that protects from damage
+	    ((driver->actionsFlagSet & ACTION_MASK_WEAPON) != 0) &&
+
+	    g_config.maskProtectsFromDamage)
 	{
 		// quit, dont lose wumpa
 		return;

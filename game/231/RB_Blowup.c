@@ -159,6 +159,11 @@ ApplyDamage:;
 	sps->Union.ThBuckColl.funcCallback = RB_Burst_CollThBucket;
 	sps->Union.ThBuckColl.thread = weaponInst->thread;
 	sps->Input1.modelID = weaponInst->model->id;
+	if (weaponInst->model->id == STATIC_CRATE_TNT)
+	{
+		sps->Input1.hitRadius = sps->Input1.hitRadius * g_config.tntExplosionRadiusMultiplier / 100;
+		sps->Input1.hitRadiusSquared = sps->Input1.hitRadius * sps->Input1.hitRadius;
+	}
 
 	PROC_StartSearch_Self(sps);
 
@@ -176,7 +181,6 @@ ApplyDamage:;
 		sps->Input1.hitRadiusSquared = 0x4000;
 		PROC_CollideHitboxWithBucket(GAME_TRACKER->threadBuckets[PLAYER].thread, sps, 0);
 	}
-
 	sps->Union.ThBuckColl.funcCallback = RB_Burst_CollLevInst;
 	return;
 }

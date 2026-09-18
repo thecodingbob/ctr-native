@@ -9,7 +9,7 @@ enum
 	MM_CHARACTER_SELECT_MODEL_MOVE_FP_SHIFT = 0xc,
 	MM_CHARACTER_SELECT_MODEL_MOVE_NEXT = 1,
 	MM_CHARACTER_SELECT_MODEL_MOVE_PREV = -1,
-	MM_CHARACTER_SELECT_ICON_COUNT = 0xf,
+	MM_CHARACTER_SELECT_ICON_COUNT = 0x10,
 	MM_CHARACTER_SELECT_EXPANSION_ICON_FIRST = 0xc,
 	MM_CHARACTER_SELECT_DEFAULT_DRIVER_COUNT = 8,
 	MM_CHARACTER_SELECT_MAX_PLAYERS = 4,
@@ -26,8 +26,8 @@ enum
 	MM_CHARACTER_SELECT_LAYOUT_4P = 3,
 	MM_CHARACTER_SELECT_LAYOUT_1P_LIMITED = 4,
 	MM_CHARACTER_SELECT_LAYOUT_2P_LIMITED = 5,
-	MM_CHARACTER_SELECT_TITLE_TRANSITION_INDEX = 15,
-	MM_CHARACTER_SELECT_DRIVER_WINDOW_TRANSITION_FIRST = 0x10,
+	MM_CHARACTER_SELECT_TITLE_TRANSITION_INDEX = 16,
+	MM_CHARACTER_SELECT_DRIVER_WINDOW_TRANSITION_FIRST = 0x11,
 	MM_CHARACTER_SELECT_3P_TITLE_X = 0x9c,
 	MM_CHARACTER_SELECT_3P_SELECT_Y = 0x14,
 	MM_CHARACTER_SELECT_3P_CHARACTER_Y = 0x26,
@@ -44,6 +44,7 @@ enum
 	MM_CHARACTER_SELECT_ICON_DECAL_OFFSET_Y = 4,
 	MM_CHARACTER_SELECT_ICON_RECT_W = 0x34,
 	MM_CHARACTER_SELECT_ICON_RECT_H = 0x21,
+	MM_CHARACTER_SELECT_WHEEL_SIZE = 0xccc,
 	MM_CHARACTER_SELECT_CURSOR_LABEL_OFFSET_X = -6,
 	MM_CHARACTER_SELECT_CURSOR_LABEL_OFFSET_Y = -3,
 	MM_CHARACTER_SELECT_HIGHLIGHT_OFFSET_X = 3,
@@ -105,6 +106,41 @@ enum
 	                 : "=r"(gameTracker), "=r"(transitionY)                               \
 	                 : "1"(transitionY), "r"(metadataY), "m"(GAME_TRACKER))
 #endif
+
+extern unsigned char oxideModel[];
+
+static struct Model *MM_Characters_GetOxideModel(void)
+{
+	static b32 initialized;
+	struct Model *model = (struct Model *)&oxideModel[4];
+
+	if (!initialized)
+	{
+		u32 pointerMapOffset;
+		u32 pointerCount;
+		u8 *pointerMap;
+
+		memcpy(&pointerMapOffset, oxideModel, sizeof(pointerMapOffset));
+		pointerMap = (u8 *)model + pointerMapOffset;
+		memcpy(&pointerCount, pointerMap, sizeof(pointerCount));
+		LOAD_RunPtrMap((char *)model, (int *)(pointerMap + sizeof(pointerCount)), pointerCount >> 2);
+		initialized = true;
+	}
+
+	return model;
+}
+
+static b32 MM_Characters_IsUnlocked(const struct CharacterSelectMeta *character)
+{
+	if (character->characterID == NITROS_OXIDE)
+	{
+		return g_config.unlockNitrosOxide;
+	}
+
+	return (s16)character->unlockFlags == MM_CHARACTER_UNLOCK_ALWAYS ||
+	       CHECK_ADV_BIT(sdata->gameProgress.unlocks, character->unlockFlags) ||
+	       g_config.unlockAllCharacters;
+}
 
 void MM_Characters_AnimateColors(u8 *colorData, s16 playerID, s16 flag)
 {
@@ -173,10 +209,7 @@ s32 MM_Characters_GetNextDriver(s32 direction, s16 characterID)
 	unlocked = MM_ACTIVE_CHARACTER_SELECT_META[(s32)nextIcon].unlockFlags;
 
 	if (
-	    // if desired driver is not unlocked by default
-	    (unlocked != MM_CHARACTER_UNLOCK_ALWAYS) &&
-
-	    !CHECK_ADV_BIT(GAME_PROGRESS.unlocks, unlocked))
+	    !MM_Characters_IsUnlocked(&MM_ACTIVE_CHARACTER_SELECT_META[(s32)nextIcon]))
 	{
 		// set new driver to the driver you already have
 		nextIcon = characterID;
@@ -245,6 +278,10 @@ struct Model *MM_Characters_GetModelByName(const char *name)
 				}
 			}
 		}
+	}
+	if (strcmp(name, data.MetaDataCharacters[NITROS_OXIDE].name_Debug) == 0)
+	{
+		return MM_Characters_GetOxideModel();
 	}
 
 	return model;
@@ -605,10 +642,7 @@ void MM_Characters_SetMenuLayout(void)
 	// if any are unlocked, use expanded
 	for (; iconIndex < MM_CHARACTER_SELECT_ICON_COUNT; iconIndex++)
 	{
-		unlocked = meta1P2P[iconIndex].unlockFlags;
-		unlockWord = (u32 *)((u32)((unlocked >> 5) * sizeof(*unlockWord)) + (u32)progress);
-
-		if ((unlockWord[1] >> (unlocked & 0x1f)) & 1)
+		if (MM_Characters_IsUnlocked(&meta1P2P[iconIndex]))
 		{
 			expandRoster = true;
 			MM_CHARACTER_SELECT_ROSTER_EXPANDED = true;
@@ -921,7 +955,6 @@ void MM_Characters_MenuProc(struct RectMenu *unused)
 
 			// if returning to main menu
 			MM_JumpTo_Title_Returning();
-			MM_Characters_HideDrivers();
 			return;
 		}
 		break;
@@ -1538,14 +1571,7 @@ outerPlayerLoopComplete:
 		iconMetaTail = &preInputCharacterMeta->posY;
 		unlockRequirement = ((u16 *)iconMetaTail)[4];
 
-		if (
-		    // If Icon is unlocked (from array of icons)
-		    (unlockRequirement == MM_CHARACTER_UNLOCK_ALWAYS) ||
-
-		    // if character is unlocked
-		    // from the global unlock bitfield
-		    // also the variable written by cheats
-		    CHECK_ADV_BIT(GAME_PROGRESS.unlocks, unlockRequirement))
+		if (MM_Characters_IsUnlocked(preInputCharacterMeta))
 		{
 			iconRect.x = MM_CHARACTER_SELECT_TRANSITION_META[playerIndex].currX + preInputCharacterMeta->posX;
 			iconRect.y = MM_CHARACTER_SELECT_TRANSITION_META[playerIndex].currY + (s16)iconMetaTail[0];

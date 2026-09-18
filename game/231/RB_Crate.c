@@ -190,8 +190,8 @@ int RB_CrateWeapon_ThCollide(struct Thread *crateThread, struct Thread *collidin
 				}
 			}
 
-			// A received clock suppresses the roulette reward, but still consumes the crate.
-			if (driver->clockReceive == 0)
+			// A received clock suppresses the roulette reward unless configured otherwise.
+			if (driver->clockReceive == 0 || g_config.allowWeaponsDuringClock)
 			{
 				driver->heldItemID = HELD_ITEM_ROULETTE;
 				driver->numTimesHitWeaponBox++;

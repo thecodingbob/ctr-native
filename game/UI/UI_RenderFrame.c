@@ -193,6 +193,11 @@ void UI_RenderFrame_Racing()
 				{
 					// Draw powerslide meter
 					UI_DrawSlideMeter(hudStructPtr[UI_HUD_SLOT_SLIDE_METER].x + offset, hudStructPtr[UI_HUD_SLOT_SLIDE_METER].y, playerStruct);
+					if (g_config.showReservesMeter && (numPlyr == 1))
+					{
+						UI_DrawReservesMeter(hudStructPtr[UI_HUD_SLOT_SLIDE_METER].x + offset,
+						                     hudStructPtr[UI_HUD_SLOT_SLIDE_METER].y + 5, playerStruct);
+					}
 				}
 
 				// If you are not in Time Trial or Relic Race
@@ -917,6 +922,10 @@ void UI_RenderFrame_CrystChall(void)
 	UI_JumpMeter_Draw(hudStructPtr[UI_HUD_SLOT_JUMP_METER].x, hudStructPtr[UI_HUD_SLOT_JUMP_METER].y, player);
 
 	UI_DrawSlideMeter(hudStructPtr[UI_HUD_SLOT_SLIDE_METER].x, hudStructPtr[UI_HUD_SLOT_SLIDE_METER].y, player);
+	if (g_config.showReservesMeter)
+	{
+		UI_DrawReservesMeter(hudStructPtr[UI_HUD_SLOT_SLIDE_METER].x, hudStructPtr[UI_HUD_SLOT_SLIDE_METER].y + 5, player);
+	}
 
 	UI_DrawSpeedBG();
 
@@ -1066,6 +1075,13 @@ void UI_RenderFrame_Wumpa3D_2P3P4P(struct GameTracker *gGT)
 	RECT *viewport;
 	struct PushBuffer *wumpaPushBuffer;
 	u32 packedRect;
+
+	if (sdata->highDetailSplitScreenLevel)
+	{
+		// Full-detail multiplayer queues the original fruit models directly into
+		// pushBuffer_UI, so no VRAM-backed copy or HUD quad is needed here.
+		return;
+	}
 
 	// NOTE(aalhendi): Retail copies packed RECT halfwords; native unpacks them
 	// explicitly to avoid strict-aliasing UB from writing RECT fields as u32.

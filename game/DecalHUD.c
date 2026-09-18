@@ -1,4 +1,5 @@
 #include <common.h>
+#include <widescreen.h>
 
 enum
 {
@@ -9,6 +10,7 @@ enum
 };
 
 
+#if 0
 void DecalHUD_DrawPolyFT4(struct Icon *icon, s32 posX, s32 posY, struct PrimMem *primMem, u32 *ot, u8 transparency, s16 scale)
 {
 	// NOTE(aalhendi): Keep the packed UV snapshots in their retail registers across blending.
@@ -33,7 +35,44 @@ void DecalHUD_DrawPolyFT4(struct Icon *icon, s32 posX, s32 posY, struct PrimMem 
 	{
 		p->code = 0x2f;
 
+/* upstream */
 		CtrGpu_WritePackedUVWord(&p->u1, (uvTopRight & DECAL_HUD_TPAGE_TRANSPARENCY_MASK) | (((u32)transparency - 1) << 21));
+/* fork */
+	Widescreen_CompressFT4(p);
+
+	primMem->cursor = p + 1;
+}
+
+void DecalHUD_DrawWeapon(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, u32 *ot, char transparency, s16 scale, char rot)
+{
+	if (!icon)
+	{
+		return;
+	}
+
+	POLY_FT4 *p = (POLY_FT4 *)primMem->cursor;
+	addPolyFT4(ot, p);
+
+	u32 width = icon->texLayout.u1 - icon->texLayout.u0;
+	u32 height = icon->texLayout.v2 - icon->texLayout.v0;
+	u32 rightX = posX + FP_Mult(width, scale);
+	u32 bottomY = posY + FP_Mult(height, scale);
+	u32 sidewaysX = posX + FP_Mult(height, scale);
+	u32 sidewaysY = posY + FP_Mult(width, scale);
+
+	// NOTE(aalhendi): Retail leaves X unmasked while packing XY, allowing its
+	// upper bits to spill into Y for negative or overflowing coordinates.
+	if (!(rot & 1))
+	{
+		if (rot == 0)
+		{
+			setXY4CompilerHack(p, posX, posY, rightX, posY, posX, bottomY, rightX, bottomY);
+		}
+		else
+		{
+			setXY4CompilerHack(p, rightX, bottomY, posX, bottomY, rightX, posY, posX, posY);
+		}
+/* end fork */
 	}
 	else
 	{
@@ -52,8 +91,17 @@ void DecalHUD_DrawPolyFT4(struct Icon *icon, s32 posX, s32 posY, struct PrimMem 
 	CtrGpu_WritePackedXY(&p->x2, posX | (posY + ((u32)height << 16)));
 	CtrGpu_WritePackedXY(&p->x3, ((u32)posX + width) | (posY + ((u32)height << 16)));
 
+/* upstream */
 	p->tag = *ot | 0x09000000;
 	*ot = CtrGpu_PrimToOTLink24(p);
+/* fork */
+	int len = Widescreen_XShift(p->x2 - p->x0);
+	p->x0 += len;
+	p->x1 += len;
+	p->x2 -= len;
+	p->x3 -= len;
+
+/* end fork */
 	primMem->cursor = p + 1;
 }
 
@@ -84,6 +132,53 @@ void DecalHUD_DrawWeapon(struct Icon *icon, s32 posX, s32 posY, struct PrimMem *
 
 		CtrGpu_WritePackedUVWord(&p->u1, (uvTopRight & DECAL_HUD_TPAGE_TRANSPARENCY_MASK) | (((u32)transparency - 1) << 21));
 	}
+/* upstream and fork */
+
+	Widescreen_CompressGT4(p);
+
+	primMem->cursor = p + 1;
+}
+
+
+void DecalHUD_Arrow2D(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, u32 *otMemPtr, u32 color1, u32 color2, u32 color3, u32 color4,
+                      char transparency, int scale, u16 rot)
+{
+	u8 y2;
+	u32 code;
+	int bitshiftTopRightCorner;
+	u32 topRightCornerAndPageXY;
+	int bitshiftPosY;
+	int iVar6;
+	int iVar7;
+	s16 sVar8;
+	u32 bottomMargin;
+	int iVar10;
+	u32 topLeftCornerAndPaletteXY;
+	int iVar12;
+	int iVar13;
+
+	POLY_GT4 *p;
+
+	if (icon == 0)
+	{
+		return;
+	}
+	scale = (s16)scale;
+
+	topRightCornerAndPageXY = CTR_ReadU32LE(&icon->texLayout.u1);
+	topLeftCornerAndPaletteXY = CTR_ReadU32LE(&icon->texLayout.u0);
+	y2 = icon->texLayout.v2;
+	bottomMargin = CTR_ReadU32LE(&icon->texLayout.u2);
+
+	p = (POLY_GT4 *)primMem->cursor;
+
+	if (transparency == 0)
+	{
+		code = DECAL_HUD_GPU_CODE_POLY_GT4;
+		CtrGpu_WritePackedUVWord(&p->u1, topRightCornerAndPageXY);
+	}
+
+/* end fork */
 	else
 	{
 		p->code = 0x2d;
@@ -149,6 +244,45 @@ void DecalHUD_DrawWeapon(struct Icon *icon, s32 posX, s32 posY, struct PrimMem *
 }
 
 
+#endif
+
+void DecalHUD_DrawPolyFT4(struct Icon *icon, s32 posX, s32 posY, struct PrimMem *primMem, u32 *ot, u8 transparency, s16 scale)
+{
+	POLY_FT4 *p;
+	if (!icon)
+		return;
+	p = (POLY_FT4 *)primMem->cursor;
+	addPolyFT4(ot, p);
+	setXY4CompilerHack(p, posX, posY, posX + FP_Mult(icon->texLayout.u1 - icon->texLayout.u0, scale), posY,
+	                  posX, posY + FP_Mult(icon->texLayout.v2 - icon->texLayout.v0, scale),
+	                  posX + FP_Mult(icon->texLayout.u1 - icon->texLayout.u0, scale), posY + FP_Mult(icon->texLayout.v2 - icon->texLayout.v0, scale));
+	setIconUV(p, icon);
+	setShadeTex(p, true);
+	if (transparency)
+		setTransparency(p, transparency);
+	Widescreen_CompressFT4(p);
+	primMem->cursor = p + 1;
+}
+
+void DecalHUD_DrawWeapon(struct Icon *icon, s32 posX, s32 posY, struct PrimMem *primMem, u32 *ot, u8 transparency, s16 scale, s16 rot)
+{
+	POLY_FT4 *p;
+	s32 width, height;
+	if (!icon)
+		return;
+	p = (POLY_FT4 *)primMem->cursor;
+	addPolyFT4(ot, p);
+	width = FP_Mult(icon->texLayout.u1 - icon->texLayout.u0, scale);
+	height = FP_Mult(icon->texLayout.v2 - icon->texLayout.v0, scale);
+	setXY4CompilerHack(p, posX, posY, posX + width, posY, posX, posY + height, posX + width, posY + height);
+	setIconUV(p, icon);
+	setShadeTex(p, true);
+	if (transparency)
+		setTransparency(p, transparency);
+	Widescreen_CompressFT4(p);
+	primMem->cursor = p + 1;
+}
+
 void DecalHUD_DrawPolyGT4(struct Icon *icon, s32 posX, s32 inputY, struct PrimMem *primMem, u32 *ot, Color color0, Color color1, Color color2, Color color3,
                           u8 transparency, s16 scale)
 {
@@ -208,6 +342,7 @@ void DecalHUD_DrawPolyGT4(struct Icon *icon, s32 posX, s32 inputY, struct PrimMe
 	CtrGpu_WriteColorCode(&p->r1, ColorCode_GetPacked(&color1));
 	CtrGpu_WriteColorCode(&p->r2, ColorCode_GetPacked(&color2));
 	CtrGpu_WriteColorCode(&p->r3, ColorCode_GetPacked(&color3));
+	Widescreen_CompressGT4(p);
 
 	p->tag = *ot | DECAL_HUD_GPU_TAG_LENGTH_POLY_GT4;
 	*ot = CtrGpu_PrimToOTLink24(p);

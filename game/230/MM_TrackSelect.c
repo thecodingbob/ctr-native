@@ -396,6 +396,11 @@ b16 MM_TrackSelect_boolTrackOpen(struct MainMenu_LevelRow *menuSelect)
 		unlocked = true;
 	}
 
+	if (flag == MM_TRACK_UNLOCK_1P_ONLY)
+	{
+		return g_config.allowOxideStationMultiplayer || unlocked;
+	}
+
 	return unlocked;
 }
 

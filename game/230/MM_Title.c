@@ -101,6 +101,16 @@ HANDLE_EXITING:
 
 		MM_ADV_PROFILE_INDEX = 0xffff;
 
+		if (g_config.extendedAdventureCharacterSelect)
+		{
+			// The normal Adventure path loads the garage. Keep the main-menu level
+			// active instead so its full character roster can be selected first.
+			gGT->numPlyrNextGame = 1;
+			sdata->ptrDesiredMenu = &D230.menuCharacterSelect;
+			MM_Characters_RestoreIDs();
+			break;
+		}
+
 		// go to adventure character select screen
 		MM_MAIN_MENU_STATE = MAIN_MENU_ADVENTURE;
 

@@ -57,8 +57,6 @@ typedef u32 VehPickupItemMatrixWord CTR_MAY_ALIAS;
 
 enum
 {
-	MASK_GOOD_GUY_CHARACTER_BITS = 0x20c9,
-	MASK_MODEL_COUNT = 2,
 	MASK_SOUND_ID_OFFSET_FROM_MODEL = 0x1a,
 	MASK_BEAM_MODEL_STRIDE = 2,
 	MASK_INITIAL_ROT_X = 0x40,
@@ -189,6 +187,33 @@ b32 VehPickupItem_MaskBoolGoodGuy(struct Driver *d)
 	return isGoodGuy;
 }
 
+b32 VehPickupItem_ApplyMaskMode(struct Driver *driver)
+{
+	b32 maskIsAku;
+
+	switch (g_config.maskMode)
+	{
+	case MASK_MODE_RANDOM:
+		maskIsAku = MixRNG_Scramble() & 1;
+		break;
+	case MASK_MODE_INVERTED:
+		maskIsAku = !VehPickupItem_MaskBoolGoodGuy(driver);
+		break;
+	case MASK_MODE_ALL_UKA:
+		maskIsAku = 0;
+		break;
+	case MASK_MODE_ALL_AKU:
+		maskIsAku = 1;
+		break;
+	case MASK_MODE_NORMAL:
+	default:
+		maskIsAku = VehPickupItem_MaskBoolGoodGuy(driver);
+		break;
+	}
+	return maskIsAku;
+}
+
+// NOTE(aalhendi): ASM-verified NTSC-U 926 0x80064c38-0x80064f94.
 // boolPlaySound only gates sound when refreshing an existing mask object.
 struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, b32 boolPlaySound)
 {
@@ -210,12 +235,31 @@ struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, b32 bo
 	}
 
 	parentThread = driver->instSelf->thread;
+	b32 maskIsAku;
+	if (driver->maskIsAku >= 0)
+	{
+		maskIsAku = driver->maskIsAku;
+	}
+	else
+	{
+		maskIsAku = VehPickupItem_ApplyMaskMode(driver);
+	}
+
+
+	s32 desiredModelID = STATIC_UKAUKA - maskIsAku;
 
 	// check for existing mask
 	for (currThread = parentThread->childThread; currThread != 0; currThread = currThread->siblingThread)
 	{
 		// if thread->modelIndex is NOT Aku or Uka
 		if ((u32)((u16)currThread->modelIndex - STATIC_AKUAKU) >= MASK_MODEL_COUNT)
+		{
+			continue;
+		}
+
+		// If mask type was pre-decided and existing mask doesn't match,
+		// skip it so we fall through to create a new one of the right type
+		if (driver->maskIsAku >= 0 && currThread->modelIndex != desiredModelID)
 		{
 			continue;
 		}
@@ -241,7 +285,9 @@ struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, b32 bo
 			existingMask->duration = (s16)existingDuration;
 		}
 
-		actionsFlagSet = driver->actionsFlagSet;
+			((struct MaskHeadWeapon *)currThread->object)->duration =
+			    (s16)(((struct MaskHeadWeapon *)currThread->object)->duration * g_config.maskDurationMultiplier / 100);
+			actionsFlagSet = driver->actionsFlagSet;
 
 		if (
 		    // If this is human and not AI
@@ -269,16 +315,18 @@ struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, b32 bo
 		// un-kill thread
 		currThread->flags &= ~THREAD_FLAG_DEAD;
 
+		// decouple from last item assignment
+		driver->maskIsAku = -1;
+
 		// return object attached to thread
 		return (struct MaskHeadWeapon *)currThread->object;
 	}
 
-	boolGoodGuy = VehPickupItem_MaskBoolGoodGuy(driver);
+	boolGoodGuy = maskIsAku;
 
 	if ((boolGoodGuy << 16) != 0)
 	{
-		instance =
-		    INSTANCE_BirthWithThread(STATIC_AKUAKU, VEH_PICKUP_DOCTOR_NAME, SMALL, OTHER, RB_MaskWeapon_ThTick, sizeof(struct MaskHeadWeapon), parentThread);
+		instance = INSTANCE_BirthWithThread(STATIC_AKUAKU, VEH_PICKUP_DOCTOR_NAME, SMALL, OTHER, RB_MaskWeapon_ThTick, sizeof(struct MaskHeadWeapon), parentThread);
 
 		actionsFlagSet = driver->actionsFlagSet;
 		if (((actionsFlagSet & ACTION_BOT) == 0) && (OtherFX_Play_Echo(STATIC_AKUAKU + MASK_SOUND_ID_OFFSET_FROM_MODEL, 1, (actionsFlagSet >> 16) & 1),
@@ -342,10 +390,13 @@ struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, b32 bo
 		}
 		maskObj->duration = (s16)finalDuration;
 	}
+	maskObj->duration = (s16)(maskObj->duration * g_config.maskDurationMultiplier / 100);
 	maskObj->rot.x = MASK_INITIAL_ROT_X;
 	maskObj->rot.y = 0;
 	maskObj->scale = MASK_HEAD_SCALE_NORMAL;
 	maskObj->rot.z = 0;
+
+	driver->maskIsAku = -1;
 
 	return maskObj;
 }
@@ -951,6 +1002,57 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 		d->instBubbleHold = weaponInst;
 		break;
 	}
+
+	// Mask
+	case WEAPON_ID_MASK:
+		VehPickupItem_MaskUseWeapon(d, true);
+		break;
+
+	// Clock
+	case WEAPON_ID_CLOCK:
+
+		d->numTimesClockWeaponUsed++;
+
+		OtherFX_Play(SOUND_CLOCK, 1);
+
+		if ((d->actionsFlagSet & ACTION_BOT) == 0)
+		{
+			Voiceline_RequestPlay(VOICELINE_CLOCK, data.characterIDs[d->driverID], VOICELINE_WEAPON_PRIORITY);
+		}
+
+		int hurtVal = CLOCK_HURT_DURATION_NORMAL;
+		if (d->numWumpas >= DRIVER_WUMPA_JUICED_COUNT)
+		{
+			hurtVal = CLOCK_HURT_DURATION_JUICED;
+		}
+		hurtVal = (hurtVal * g_config.clockDurationMultiplier) / 100;
+
+		struct Driver **dptr;
+
+		for (dptr = &gGT->drivers[0]; dptr < &gGT->drivers[CLOCK_DRIVER_COUNT]; dptr++)
+		{
+			struct Driver *victim = *dptr;
+
+			if (victim == 0)
+			{
+				continue;
+			}
+
+			victim->clockFlash = CLOCK_FLASH_FRAMES;
+
+			if (victim == d)
+			{
+				d->clockSend = CLOCK_SELF_SEND_FRAMES;
+				continue;
+			}
+
+			// if spin out driver
+			if (RB_Hazard_HurtDriver(victim, CLOCK_HURT_REASON, 0, 0) != 0)
+			{
+				victim->clockReceive = hurtVal;
+			}
+		}
+		break;
 
 	// Warpball
 	case WEAPON_ID_WARPBALL:

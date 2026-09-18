@@ -140,6 +140,12 @@ void RB_MovingExplosive_ThTick(struct Thread *t)
 				tw->vel.z = -tw->vel.z;
 				tw->vel.x = -tw->vel.x;
 			}
+
+		        if (modelID == DYNAMIC_BOMB)
+		        {
+		                tw->vel.x = tw->vel.x * g_config.bombSpeedMultiplier / 100;
+		                tw->vel.z = tw->vel.z * g_config.bombSpeedMultiplier / 100;
+		        }
 		}
 
 		// Missiles steer and rotate to face their target.
@@ -161,6 +167,9 @@ void RB_MovingExplosive_ThTick(struct Thread *t)
 				tw->vel.x = (u32)(MATH_Sin(tw->rotY) * 5) >> 8;
 				tw->vel.z = (u32)(MATH_Cos(tw->rotY) * 5) >> 8;
 			}
+
+		        tw->vel.x = tw->vel.x * g_config.missileSpeedMultiplier / 100;
+		        tw->vel.z = tw->vel.z * g_config.missileSpeedMultiplier / 100;
 
 			tw->dir.x = 0;
 			tw->dir.z = 0;

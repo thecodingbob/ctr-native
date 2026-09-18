@@ -304,6 +304,12 @@ void RB_Burst_Init(struct Instance *weaponInst)
 		sps->Input1.hitRadiusSquared = 0x19000;
 	}
 
+	if (weaponInst->model->id == DYNAMIC_BOMB)
+	{
+		sps->Input1.hitRadius = sps->Input1.hitRadius * g_config.bombExplosionRadiusMultiplier / 100;
+		sps->Input1.hitRadiusSquared = sps->Input1.hitRadius * sps->Input1.hitRadius;
+	}
+
 	sps->Union.ThBuckColl.funcCallback = RB_Burst_CollThBucket;
 	sps->Union.ThBuckColl.thread = weaponInst->thread;
 	sps->Input1.modelID = weaponInst->model->id;
