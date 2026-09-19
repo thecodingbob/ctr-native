@@ -1,4 +1,4 @@
-#include <common.h>
+#include "RB_Collision.h"
 
 
 int RB_Fireball_ThCollide(struct Thread *fireballThread, struct Thread *driverTh, void *funcThCollide, struct ScratchpadStruct *sps)
@@ -10,142 +10,57 @@ int RB_Fireball_ThCollide(struct Thread *fireballThread, struct Thread *driverTh
 	return sps->Input1.modelID == DYNAMIC_PLAYER;
 }
 
-struct ParticleEmitter emSet_Fireball[10] = {[0] =
-                                                 {
-                                                     .flags = 1,
-
-                                                     // invalid axis, assume FuncInit
-                                                     .initOffset = 0xC,
-
-                                                     .InitTypes.FuncInit =
-                                                         {
-                                                             .particle_funcPtr = 0,
-                                                             .particle_colorFlags = 0x4A1,
-                                                             .particle_lifespan = 0x400,
-                                                             .particle_Type = 0,
-                                                         }
-
-                                                     // last 0x10 bytes are blank
-                                                 },
-
-                                             [1] =
-                                                 {
-                                                     .flags = 1,
-
-                                                     // posX
-                                                     .initOffset = 0,
-
-                                                     .InitTypes.AxisInit.baseValue.startVal = 1,
-
-                                                     // The rest is blank
-
-                                                     // last 0x10 are blank
-                                                 },
-
-                                             [2] =
-                                                 {
-                                                     .flags = 1,
-
-                                                     // posZ
-                                                     .initOffset = 2,
-
-                                                     .InitTypes.AxisInit.baseValue.startVal = 1,
-
-                                                     // The rest is blank
-
-                                                     // last 0x10 are blank
-                                                 },
-
-                                             [3] = {.flags = 3,
-
-                                                    // posY
-                                                    .initOffset = 1,
-
-                                                    .InitTypes.AxisInit = {.baseValue =
-                                                                               {
-                                                                                   .startVal = 1,
-                                                                                   .velocity = 1,
-                                                                                   .accel = 0,
-                                                                               }}},
-
-                                             [4] = {.flags = 9,
-
-                                                    // rotY
-                                                    .initOffset = 4,
-
-                                                    .InitTypes.AxisInit = {.baseValue = {.startVal = 1, .velocity = 0, .accel = 0},
-
-                                                                           .rngSeed = {.startVal = 0x1000, .velocity = 0, .accel = 0}}},
-
-                                             [5] = {.flags = 3,
-
-                                                    // scale
-                                                    .initOffset = 5,
-
-                                                    .InitTypes.AxisInit =
-                                                        {
-                                                            .baseValue = {.startVal = 0xA00, .velocity = -0xB0, .accel = 0},
-                                                        }},
-
-                                             [6] = {.flags = 0xB,
-
-                                                    // colorR
-                                                    .initOffset = 7,
-
-                                                    .InitTypes.AxisInit = {.baseValue = {.startVal = 0xFF00, .velocity = 0xC000, .accel = 0},
-
-                                                                           .rngSeed =
-                                                                               {
-                                                                                   .startVal = 0x5F00,
-                                                                                   .velocity = 0,
-                                                                                   .accel = 0,
-                                                                               }}},
-
-                                             [7] = {.flags = 3,
-
-                                                    // colorG
-                                                    .initOffset = 8,
-
-                                                    .InitTypes.AxisInit = {.baseValue = {.startVal = 0x8000, .velocity = 0xE000, .accel = 0},
-
-                                                                           .rngSeed =
-                                                                               {
-                                                                                   .startVal = 0,
-                                                                                   .velocity = 0,
-                                                                                   .accel = 0,
-                                                                               }}},
-
-                                             [8] = {.flags = 3,
-
-                                                    // colorB
-                                                    .initOffset = 9,
-
-                                                    .InitTypes.AxisInit = {.baseValue = {.startVal = 0x4000, .velocity = 0xF000, .accel = 0}}},
-
-                                             // null terminator
-                                             [9] = {0}};
+struct ParticleEmitter emSet_Fireball[10] = {
+    {
+        .flags = 1,
+        .initOffset = 0xC,
+        .InitTypes = {.FuncInit =
+                          {
+                              .particle_funcPtr = 0,
+                              .particle_colorFlags = 0x4A1,
+                              .particle_lifespan = 4,
+                              .particle_Type = 0,
+                          }},
+    },
+    // Position and rotation.
+    {.flags = 1, .initOffset = 0, .InitTypes = {.AxisInit = {.baseValue = {.startVal = 1}}}},
+    {.flags = 1, .initOffset = 2, .InitTypes = {.AxisInit = {.baseValue = {.startVal = 1}}}},
+    {.flags = 3, .initOffset = 1, .InitTypes = {.AxisInit = {.baseValue = {.startVal = 1, .velocity = 1}}}},
+    {.flags = 9,
+     .initOffset = 4,
+     .InitTypes = {.AxisInit =
+                       {
+                           .baseValue = {.startVal = 1},
+                           .rngSeed = {.startVal = 0x1000},
+                       }}},
+    // Shrinking scale and fading RGB channels.
+    {.flags = 3, .initOffset = 5, .InitTypes = {.AxisInit = {.baseValue = {.startVal = 0xA00, .velocity = -0xB0}}}},
+    {.flags = 0xB,
+     .initOffset = 7,
+     .InitTypes = {.AxisInit =
+                       {
+                           .baseValue = {.startVal = 0xFF00, .velocity = 0xC000},
+                           .rngSeed = {.startVal = 0x5F00},
+                       }}},
+    {.flags = 3, .initOffset = 8, .InitTypes = {.AxisInit = {.baseValue = {.startVal = 0x8000, .velocity = 0xE000}}}},
+    {.flags = 3, .initOffset = 9, .InitTypes = {.AxisInit = {.baseValue = {.startVal = 0x4000, .velocity = 0xF000}}}},
+    {0},
+};
 
 void RB_Fireball_ThTick(struct Thread *t)
 {
 	struct Instance *fireInst;
 	struct Fireball *fireObj;
 	struct Particle *particle;
-	int velY;
-	int oldVelY;
-	int resetPosY;
+	s32 particleVelY;
+	s16 oldVelY = 0;
 
-	struct GameTracker *gGT;
-	int elapsedTimeMS;
-
-	gGT = sdata->gGT;
-	elapsedTimeMS = gGT->elapsedTimeMS;
-
-	fireInst = t->inst;
 	fireObj = t->object;
+	fireInst = t->inst;
 
 	if (fireObj->cooldown != 0)
 	{
-		fireObj->cooldown -= elapsedTimeMS;
+		fireObj->cooldown -= GAME_TRACKER->elapsedTimeMS;
 
 		if (fireObj->cooldown < 0)
 		{
@@ -157,32 +72,25 @@ void RB_Fireball_ThTick(struct Thread *t)
 
 	fireInst->flags |= HIDE_MODEL;
 
-	oldVelY = 0;
-	resetPosY = fireInst->instDef->pos.y - 0x440;
-
 	// if fireball isn't below the lava,
 	// handle all particle spawning
-	if (fireInst->matrix.t[1] >= resetPosY)
+	if (fireInst->matrix.t[1] >= fireInst->instDef->pos.y - 0x440)
 	{
 		// move based on velocity
-		velY = fireObj->velY;
-		oldVelY = velY;
-		fireInst->matrix.t[1] += (velY * elapsedTimeMS) >> 5;
+		oldVelY = fireObj->velY;
+		fireInst->matrix.t[1] += (fireObj->velY * GAME_TRACKER->elapsedTimeMS) >> 5;
 
 		// reduce velocity (gravity)
-		velY -= ((elapsedTimeMS * 10) >> 5);
+		fireObj->velY -= ((GAME_TRACKER->elapsedTimeMS * 10) >> 5);
 
 		// terminal velocity
-		if (velY < -200)
+		if (fireObj->velY < -200)
 		{
-			velY = -200;
+			fireObj->velY = -200;
 		}
 
-		// set new velY
-		fireObj->velY = velY;
-
 		// fire particles
-		particle = Particle_Init(0, gGT->iconGroup[0xA], &emSet_Fireball[0]);
+		particle = Particle_Init(0, GAME_TRACKER->iconGroup[0xA], &emSet_Fireball[0]);
 
 		if (particle != 0)
 		{
@@ -194,29 +102,32 @@ void RB_Fireball_ThTick(struct Thread *t)
 
 			particle->renderDepthLimit = 0x1e00;
 
-			// reuse "velY" variable for particles
-			velY *= -0x180;
+			// Launch particles against the fireball's current vertical motion.
+			particleVelY = -fireObj->velY * 0x180;
 
 			// range check
-			if (velY < -0x7fff)
+			if (particleVelY < -0x7fff)
 			{
-				velY = -0x7fff;
+				particleVelY = -0x7fff;
 			}
-			if (velY > 0x7fff)
+			if (particleVelY > 0x7fff)
 			{
-				velY = 0x7fff;
+				particleVelY = 0x7fff;
 			}
-			velY = (s16)velY;
-
-			particle->axis[1].velocity = (int)velY;
+			particle->axis[1].velocity = particleVelY;
 		}
 
-		Seal_CheckColl(fireInst, t, 4, 0x10000, 0);
+		RB_CheckHazardCollisions(fireInst, t, 4, 0x10000, 0);
 	}
 
 	// === rest of movement behavior ===
 
-	fireObj->cycleTimer -= elapsedTimeMS;
+	fireObj->cycleTimer -= GAME_TRACKER->elapsedTimeMS;
+
+	if ((oldVelY >= 0) && (fireObj->velY < 0))
+	{
+		fireObj->direction = 1;
+	}
 
 	// if animation is not over
 	if ((fireInst->animFrame + 1) < INSTANCE_GetNumAnimFrames(fireInst, 0))
@@ -232,28 +143,20 @@ void RB_Fireball_ThTick(struct Thread *t)
 		fireInst->animFrame = 0;
 	}
 
-	if ((oldVelY >= 0) && (fireObj->velY < 0))
-	{
-		fireObj->direction = 1;
-	}
-
 	// if cycle is over
 	if (fireObj->cycleTimer < 1)
 	{
 		// == first frame of fireball rising ==
 
-		// reset timer
-		fireObj->cycleTimer = 0xb40;
+		// reset position under lava
+		fireInst->matrix.t[1] = fireInst->instDef->pos.y - 0x440;
 
 		// upward velocity
 		fireObj->velY = 200;
-		fireObj->direction = 0;
-
-		// reset position under lava
-		fireInst->matrix.t[1] = resetPosY;
-
 		// reset animation
 		fireInst->animFrame = 0;
+		fireObj->direction = 0;
+		fireObj->cycleTimer = 0xb40;
 
 		// fwooooossssssssshhhh
 		PlaySound3D(0x81, fireInst);
@@ -264,7 +167,7 @@ void RB_Fireball_LInB(struct Instance *inst)
 {
 	struct Fireball *fireObj;
 	struct Thread *t;
-	int fireballID;
+	u32 fireballID;
 
 	if (inst->thread != 0)
 	{
@@ -280,11 +183,12 @@ void RB_Fireball_LInB(struct Instance *inst)
 	    0                   // thread relative
 	);
 
+	inst->thread = t;
 	if (t == 0)
 	{
 		return;
 	}
-	inst->thread = t;
+	fireObj = t->object;
 	t->inst = inst;
 	t->funcThCollide = (void *)RB_Fireball_ThCollide;
 
@@ -292,23 +196,23 @@ void RB_Fireball_LInB(struct Instance *inst)
 	inst->scale.y = 0x4000;
 	inst->scale.z = 0x4000;
 
-	inst->animFrame = 0;
 	inst->animIndex = 0;
 
-	fireObj = ((struct Fireball *)t->object);
-	fireObj->cycleTimer = 0;
-	fireObj->cooldown = 0;
+	fireObj->fireballID = inst->name[strlen(inst->name) - 1] - '0';
+	fireballID = (u16)fireObj->fireballID;
 	fireObj->rot_unused.x = 0;
 	fireObj->velY = 96;
 	fireObj->direction = 0;
-
-	fireballID = inst->name[strlen(inst->name) - 1] - '0';
-	fireObj->fireballID = fireballID;
+	fireObj->cycleTimer = 0;
 
 	if ((fireballID & 1) != 0)
 	{
 		// 1.44s, this is a ms-based timer, not a frame-based
 		// counter, so t->cooldownFrameCount is not allowed
 		fireObj->cooldown = 1440;
+	}
+	else
+	{
+		fireObj->cooldown = 0;
 	}
 }

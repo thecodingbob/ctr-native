@@ -20,6 +20,7 @@ char *strncpy(char *dst, const char *src, u32 count);
 int strcmp(const char *lhs, const char *rhs);
 int strncmp(const char *lhs, const char *rhs, u32 count);
 u32 strlen(const char *text);
+int sprintf(char *dst, const char *format, ...);
 int tolower(int value);
 #endif
 

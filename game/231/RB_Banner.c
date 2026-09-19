@@ -8,12 +8,12 @@ union RBBannerScratchVertex
 		s16 z;
 		s16 y;
 		s16 residue;
-	};
+	} components;
 	struct
 	{
 		u32 xz;
 		u32 yResidue;
-	};
+	} words;
 };
 
 enum
@@ -22,12 +22,6 @@ enum
 };
 
 CTR_STATIC_ASSERT(sizeof(union RBBannerScratchVertex) == 0x8);
-CTR_STATIC_ASSERT(offsetof(union RBBannerScratchVertex, x) == 0x0);
-CTR_STATIC_ASSERT(offsetof(union RBBannerScratchVertex, z) == 0x2);
-CTR_STATIC_ASSERT(offsetof(union RBBannerScratchVertex, y) == 0x4);
-CTR_STATIC_ASSERT(offsetof(union RBBannerScratchVertex, residue) == 0x6);
-CTR_STATIC_ASSERT(offsetof(union RBBannerScratchVertex, xz) == 0x0);
-CTR_STATIC_ASSERT(offsetof(union RBBannerScratchVertex, yResidue) == 0x4);
 
 static inline u8 *RB_Banner_FirstVertex(struct ModelHeader *mh)
 {
@@ -44,172 +38,178 @@ static inline union RBBannerScratchVertex *RB_Banner_TempVertex(void)
 	return RB_Banner_VertexSlot(RB_BANNER_TEMP_VERTEX_SCRATCH_OFFSET);
 }
 
-static inline void RB_Banner_SaveVertex(u8 stackIndex, const u8 *vertex)
-{
-	union RBBannerScratchVertex *temp = RB_Banner_TempVertex();
-	union RBBannerScratchVertex *slot = RB_Banner_VertexSlot((u32)stackIndex * sizeof(*slot));
-
-	// NOTE(aalhendi): Retail stages X/Z/Y at scratch 0x300, then copies both
-	// words into the slot. The upper halfword at 0x306 is scratch residue.
-	temp->x = vertex[0];
-	temp->z = vertex[2];
-	temp->y = vertex[1];
-	slot->xz = temp->xz;
-	slot->yResidue = temp->yResidue;
-}
-
-static inline int RB_Banner_LoadSavedX(u32 command, u8 stackIndex)
-{
-	union RBBannerScratchVertex *temp = RB_Banner_TempVertex();
-	union RBBannerScratchVertex *saved = RB_Banner_VertexSlot((command >> 13) & 0x7f8);
-	union RBBannerScratchVertex *slot = RB_Banner_VertexSlot((u32)stackIndex * sizeof(*slot));
-
-	temp->xz = saved->xz;
-	temp->yResidue = slot->yResidue;
-
-	return (s32)((u32)(u16)temp->x << 16) >> 18;
-}
-
-static inline u32 RB_Banner_RewriteCommandX(u32 command, int xQuarter, int reusedVertex)
-{
-	u32 mask = reusedVertex ? 0xf7ff01ffU : 0xffff01ffU;
-
-	return (command & mask) | ((u32)xQuarter << 9);
-}
-
 int RB_Banner_Animate_Init(struct ModelHeader *mh)
 {
-	u32 *cmd;
-	u8 *vertex;
-	int count = 0;
+	union RBBannerScratchVertex *temp = RB_Banner_TempVertex();
+	s16 count = 0;
+	u8 *vertex = RB_Banner_FirstVertex(mh);
+	u32 *cmd = (u32 *)mh->ptrCommandList;
+	u16 numColors = CTR_ReadU16AlignedLE(cmd);
 
-	if ((s16)(*(u16 *)(void *)mh->ptrCommandList) < 0x40)
+	cmd++;
+	if ((s16)numColors < 0x40)
 	{
 		return 0;
 	}
 
-	vertex = RB_Banner_FirstVertex(mh);
-	cmd = (u32 *)((u8 *)mh->ptrCommandList + 4);
-
+	// NOTE(aalhendi): Commands cache X/Z/Y in eight-byte scratch slots.
+	// The unused fourth halfword travels with the two-word copy.
 	while (*cmd != 0xffffffffU)
 	{
-		u32 command = *cmd;
-
-		if ((command & 0xffff0000U) == 0)
+		if ((*cmd & 0xffff0000U) != 0)
 		{
-			cmd++;
-			continue;
-		}
-
-		if ((s32)command >= 0)
-		{
-			u8 stackIndex = ((u8 *)cmd)[2];
-			int xQuarter;
-
-			if ((command & 0x04000000U) == 0)
+			if ((s32)*cmd < 0)
 			{
-				RB_Banner_SaveVertex(stackIndex, vertex);
-				xQuarter = vertex[0] >> 2;
-				vertex += 3;
-				count++;
-				*cmd = RB_Banner_RewriteCommandX(command, xQuarter, 0);
+				s16 i = 0;
+				u8 *yz = vertex + 1;
+
+				// A negative command starts a three-vertex group.
+				for (; i < 3; i++, cmd++)
+				{
+					s32 xQuarter;
+
+					if ((*cmd & 0x04000000U) == 0)
+					{
+						temp->components.x = vertex[0];
+						temp->components.z = yz[1];
+						temp->components.y = yz[0];
+						RB_Banner_VertexSlot((u8)(*cmd >> 16) * 8)->words.xz = temp->words.xz;
+						*CTR_SCRATCHPAD_PTR(u32, 4 + (u8)(*cmd >> 16) * 8) = temp->words.yResidue;
+						*cmd &= 0xffff01ffU;
+						xQuarter = vertex[0] >> 2;
+						vertex += 3;
+						yz += 3;
+						count++;
+						*cmd |= (u32)xQuarter << 9;
+					}
+					else
+					{
+						temp->words.xz = RB_Banner_VertexSlot((*cmd >> 13) & 0x7f8)->words.xz;
+						temp->words.yResidue = *CTR_SCRATCHPAD_PTR(u32, 4 + (u8)(*cmd >> 16) * 8);
+						*cmd &= 0xf7ff01ffU;
+						xQuarter = (s32)((u32)(u16)temp->components.x << 16) >> 18;
+						*cmd |= (u32)xQuarter << 9;
+					}
+				}
 			}
 			else
 			{
-				xQuarter = RB_Banner_LoadSavedX(command, stackIndex);
-				*cmd = RB_Banner_RewriteCommandX(command, xQuarter, 1);
-			}
+				s32 xQuarter;
 
-			cmd++;
-			continue;
+				if ((*cmd & 0x04000000U) == 0)
+				{
+					temp->components.x = vertex[0];
+					temp->components.z = vertex[2];
+					temp->components.y = vertex[1];
+					RB_Banner_VertexSlot((u8)(*cmd >> 16) * 8)->words.xz = temp->words.xz;
+					*CTR_SCRATCHPAD_PTR(u32, 4 + (u8)(*cmd >> 16) * 8) = temp->words.yResidue;
+					*cmd &= 0xffff01ffU;
+					xQuarter = vertex[0] >> 2;
+					vertex += 3;
+					count++;
+					*cmd |= (u32)xQuarter << 9;
+					cmd++;
+				}
+				else
+				{
+					temp->words.xz = RB_Banner_VertexSlot((*cmd >> 13) & 0x7f8)->words.xz;
+					temp->words.yResidue = *CTR_SCRATCHPAD_PTR(u32, 4 + (u8)(*cmd >> 16) * 8);
+					*cmd &= 0xf7ff01ffU;
+					xQuarter = (s32)((u32)(u16)temp->components.x << 16) >> 18;
+					*cmd |= (u32)xQuarter << 9;
+					cmd++;
+				}
+			}
 		}
-
-		for (int i = 0; i < 3; i++, cmd++)
+		else
 		{
-			command = *cmd;
-			u8 stackIndex = ((u8 *)cmd)[2];
-			int xQuarter;
-
-			if ((command & 0x04000000U) == 0)
-			{
-				RB_Banner_SaveVertex(stackIndex, vertex);
-				xQuarter = vertex[0] >> 2;
-				vertex += 3;
-				count++;
-				*cmd = RB_Banner_RewriteCommandX(command, xQuarter, 0);
-			}
-			else
-			{
-				xQuarter = RB_Banner_LoadSavedX(command, stackIndex);
-				*cmd = RB_Banner_RewriteCommandX(command, xQuarter, 1);
-			}
+			cmd++;
 		}
 	}
 
-	if (sdata->gGT->numPlyrCurrGame >= 4)
+	if (GAME_TRACKER->numPlyrCurrGame >= 4)
 	{
+		u32 end;
+
 		vertex = RB_Banner_FirstVertex(mh);
-		for (int i = 0; i < count; i++, vertex += 3)
+		end = (u32)vertex + (s32)count * 3;
+		for (; (u32)vertex < end; vertex += 3)
 		{
 			vertex[1] = 0x80;
 		}
 	}
-
 	return count;
 }
 
 void RB_Banner_Animate_Play(struct ModelHeader *mh, s16 numVertices)
 {
-	u32 *colors = mh->ptrColors;
-	u32 firstColor = colors[0];
-	u8 *vertex;
+	u32 *colors;
+	u32 *palette = mh->ptrColors;
+	s16 i;
+	u8 *cursor = (u8 *)(palette + 1);
+	u32 firstColor = palette[0];
+	u32 end;
 
-	for (int i = 0; i < 0x3f; i++)
+	for (i = 0; i < 0x3f; i++)
 	{
-		colors[i] = colors[i + 1];
+		*palette++ = CTR_ReadU32AlignedLE(cursor);
+		cursor += 4;
 	}
-	colors[0x3f] = firstColor;
+	*palette = firstColor;
 
-	if (numVertices <= 0)
+	// NOTE(aalhendi): Reuse the read cursor only after palette rotation has finished.
+	cursor = RB_Banner_FirstVertex(mh);
+	colors = mh->ptrColors;
+	end = (u32)cursor + (s32)numVertices * 3;
+	for (; (u32)cursor < end; cursor += 3)
 	{
-		return;
-	}
+		s16 x = cursor[0];
+		u8 color = ((u8 *)colors)[(((x >> 2) + 10) & 0x3f) * 4];
+		s32 wave = (s32)color - 0x80;
+		s32 factor;
+		b32 nearLeftPole = x < 0x40;
+		s32 scaled = wave;
 
-	vertex = (u8 *)mh->ptrFrameData + mh->ptrFrameData->vertexOffset;
-	for (int i = 0; i < numVertices; i++, vertex += 3)
-	{
-		u8 x = vertex[0];
-		u8 color = ((u8 *)mh->ptrColors)[(((x >> 2) + 10) & 0x3f) * 4];
-		int wave = (int)color - 0x80;
-
-		if (x < 0x40)
+		// Taper the outer quarters toward the poles; the middle keeps full amplitude.
+		if (nearLeftPole)
 		{
-			wave = (wave * ((int)x << 2)) >> 8;
+			factor = x * 4;
 		}
 		else if (x > 0xc0)
 		{
-			wave = (wave * ((0x100 - (int)x) << 2)) >> 8;
+			factor = (0x100 - x) * 4;
+		}
+		else
+		{
+			goto store_height;
+		}
+		// NOTE(aalhendi): Discard the eight fractional bits before narrowing to the stored Y byte.
+		{
+			u32 product = wave * factor;
+			scaled = product >> 8;
 		}
 
-		vertex[1] = (u8)(wave + 0x80);
+	store_height:
+		cursor[1] = (u8)(scaled - 0x80);
 	}
 }
 
 void RB_Banner_ThTick(struct Thread *t)
 {
 	struct StartBanner *banner = t->object;
+	s16 numVertices = banner->numVertices;
+	struct Instance *inst = t->inst;
 
-	if (banner->numVertices != 0)
+	if (numVertices != 0)
 	{
-		RB_Banner_Animate_Play(t->inst->model->headers, banner->numVertices);
+		RB_Banner_Animate_Play(inst->model->headers, numVertices);
 	}
 }
 
-static char s_startbanner[] = "startbanner";
+static const char s_startbanner[] = "startbanner";
 
 void RB_Banner_LInB(struct Instance *inst)
 {
-	struct GameTracker *gGT = sdata->gGT;
 	struct Thread *t;
 	struct StartBanner *banner;
 	struct Model *model;
@@ -226,7 +226,7 @@ void RB_Banner_LInB(struct Instance *inst)
 		return;
 	}
 
-	if (gGT->numPlyrCurrGame >= 4)
+	if (GAME_TRACKER->numPlyrCurrGame >= 4)
 	{
 		t->funcThTick = NULL;
 	}
@@ -236,7 +236,7 @@ void RB_Banner_LInB(struct Instance *inst)
 	banner->unused = 0;
 	banner->numVertices = 0;
 
-	model = gGT->modelPtr[STATIC_STARTBANNERWAVE];
+	model = GAME_TRACKER->modelPtr[STATIC_STARTBANNERWAVE];
 	if (model == NULL)
 	{
 		return;
@@ -249,18 +249,38 @@ void RB_Banner_LInB(struct Instance *inst)
 		return;
 	}
 
-	for (int i = 0; i < 0x40; i++)
 	{
-		u8 *color = (u8 *)&model->headers->ptrColors[i];
-		int value = (MATH_Sin((u32)i << 7) >> 6) + 0x80;
+		s16 i;
+		u8 *color = (u8 *)inst->model->headers->ptrColors;
 
-		if (gGT->numPlyrCurrGame >= 4)
+		// The palette carries two sine cycles; animation rotates it one sample per tick.
+		for (i = 0; i < 0x40;)
 		{
-			value = 0x80;
-		}
+			s32 phase = i;
+			u32 packed = CTR_ReadU32AlignedLE(&data.trigApprox[(phase * 128) & ANG_QUADRANT_MASK]);
+			s32 value;
 
-		color[0] = (u8)value;
-		color[1] = (u8)value;
-		color[2] = (u8)value;
+			if (((phase * 128) & ANG_QUADRANT_BIT) == 0)
+			{
+				packed <<= 16;
+			}
+			value = (s32)packed >> 16;
+			if (((phase * 128) & ANG_SIGN_BIT) != 0)
+			{
+				value = -value;
+			}
+			value = (value >> 6) + 0x80;
+
+			if (GAME_TRACKER->numPlyrCurrGame >= 4)
+			{
+				value = 0x80;
+			}
+
+			i++;
+			color[2] = (u8)value;
+			color[1] = (u8)value;
+			color[0] = (u8)value;
+			color += 4;
+		}
 	}
 }

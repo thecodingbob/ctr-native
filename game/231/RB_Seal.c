@@ -1,88 +1,4 @@
-#include <common.h>
-
-
-// one seal can not collide with more than one other thread,
-// then quits, it was like that in the original game too,
-// but one seal likely-wont collide with two threads at the same time
-void Seal_CheckColl(struct Instance *sealInst, struct Thread *sealTh, int damage, int radius, int sound)
-{
-	struct GameTracker *gGT;
-	struct Instance *hitInst;
-	struct Driver *hitDriver;
-	b32 boolHurt;
-	u8 kartStatePrev;
-
-	gGT = sdata->gGT;
-
-	// check players
-	hitInst = (struct Instance *)LinkedCollide_Radius(sealInst, sealTh, gGT->threadBuckets[PLAYER].thread, radius);
-
-	// if hit a player
-	if (hitInst != 0)
-	{
-		// get driver from instance
-		hitDriver = (struct Driver *)hitInst->thread->object;
-
-		// backup
-		kartStatePrev = hitDriver->kartState;
-
-		// attempt to harm driver (spin out)
-		boolHurt = RB_Hazard_HurtDriver(hitDriver, damage, 0, 0);
-
-		// if failed, due to mask grab or mask weapon
-		if (boolHurt == 0)
-		{
-			return;
-		}
-
-		// if driver was already spinning out
-		if (kartStatePrev == KS_SPINNING)
-		{
-			return;
-		}
-
-		if (sound == 0)
-		{
-			return;
-		}
-
-		// play seal sound, with echo if driver is on an echo quadblock
-		OtherFX_Play_Echo(sound, 1, hitDriver->actionsFlagSet & ACTION_ENGINE_ECHO);
-
-		// dont check other buckets
-		return;
-	}
-
-	// check robots
-	hitInst = (struct Instance *)LinkedCollide_Radius(sealInst, sealTh, gGT->threadBuckets[ROBOT].thread, radius);
-
-	// if hit a robot
-	if (hitInst != 0)
-	{
-		// get driver from instance
-		hitDriver = (struct Driver *)hitInst->thread->object;
-
-		// attempt to harm driver (spin out)
-		RB_Hazard_HurtDriver(hitDriver, damage, 0, 0);
-
-		// dont check other buckets
-		return;
-	}
-
-	// check mines
-	hitInst = (struct Instance *)LinkedCollide_Radius(sealInst, sealTh, gGT->threadBuckets[MINE].thread, radius);
-
-	// if hit a mine
-	if (hitInst != 0)
-	{
-		// all mine ThCollide functions only take one parameter,
-		// all other ThCollide functions are erased due to redundancy
-		((ThreadSimpleCollideFunc)hitInst->thread->funcThCollide)(hitInst->thread);
-
-		// dont check other bucket
-		return;
-	}
-}
+#include "RB_Collision.h"
 
 int RB_Seal_ThCollide(struct Thread *sealThread, struct Thread *driverTh, void *funcThCollide, struct ScratchpadStruct *sps)
 {
@@ -118,23 +34,7 @@ void RB_Seal_ThTick_TurnAround(struct Thread *t)
 		PlaySound3D(0x77, sealInst);
 	}
 
-	// if rotation is finished
-	if (sealObj->rotCurr.y == sealObj->turnAroundRot.y)
-	{
-		sealObj->numFramesSpinning = 0;
-
-		for (int i = 0; i < 3; i++)
-		{
-			CTR_VECTOR_DATA(&(sealObj->rotDesired))[i] = CTR_VECTOR_DATA(&(sealObj->rotCurr))[i];
-		}
-
-		ConvertRotToMatrix(&sealInst->matrix, &sealObj->rotCurr);
-
-		ThTick_SetAndExec(t, RB_Seal_ThTick_Move);
-		return;
-	}
-
-	else
+	if (sealObj->rotCurr.y != sealObj->turnAroundRot.y)
 	{
 		// spin rotCurrY 180 degrees (turn around)
 		sealObj->rotCurr.y = RB_Hazard_InterpolateValue(sealObj->rotCurr.y, sealObj->turnAroundRot.y, 0x80);
@@ -147,18 +47,27 @@ void RB_Seal_ThTick_TurnAround(struct Thread *t)
 
 		sealObj->numFramesSpinning++;
 
-		// converted to TEST in rebuildPS1
 		ConvertRotToMatrix(&sealInst->matrix, &sealObj->rotCurr);
 	}
+	else
+	{
+		// Retain the new slant as the starting orientation for the next turn.
+		sealObj->numFramesSpinning = 0;
+		sealObj->rotDesired.x = sealObj->rotCurr.x;
+		sealObj->rotDesired.y = sealObj->rotCurr.y;
+		sealObj->rotDesired.z = sealObj->rotCurr.z;
+		ConvertRotToMatrix(&sealInst->matrix, &sealObj->rotCurr);
+		ThTick_SetAndExec(t, RB_Seal_ThTick_Move);
+	}
 
-	Seal_CheckColl(sealInst, t, 1, 0x4000, 0x78);
+	RB_CheckHazardCollisions(sealInst, t, 1, 0x4000, 0x78);
 }
 
 void RB_Seal_ThTick_Move(struct Thread *t)
 {
 	struct Instance *sealInst;
 	struct Seal *sealObj;
-	int i;
+	s32 turnRot;
 
 	sealInst = t->inst;
 	sealObj = (struct Seal *)t->object;
@@ -179,66 +88,60 @@ void RB_Seal_ThTick_Move(struct Thread *t)
 		// no sound here
 	}
 
-	// move seal
-	for (i = 0; i < 3; i++)
-	{
-		sealInst->matrix.t[i] = (int)CTR_VECTOR_DATA(&(sealObj->spawnPos))[i] - (sealObj->distFromSpawn * (int)CTR_VECTOR_DATA(&(sealObj->vel))[i]) / 0x2d;
-	}
+	// Interpolate the three position axes along the 45-frame path.
+	sealInst->matrix.t[0] = sealObj->spawnPos.x - (sealObj->distFromSpawn * sealObj->vel.x) / 0x2d;
+	sealInst->matrix.t[1] = sealObj->spawnPos.y - (sealObj->distFromSpawn * sealObj->vel.y) / 0x2d;
+	sealInst->matrix.t[2] = sealObj->spawnPos.z - (sealObj->distFromSpawn * sealObj->vel.z) / 0x2d;
 
-	// moving towards spawn (0)
-	if (sealObj->direction == 0)
-	{
-		if (sealObj->distFromSpawn > 0)
-		{
-			sealObj->distFromSpawn--;
-			Seal_CheckColl(sealInst, t, 1, 0x4000, 0x78);
-			return;
-		}
-
-		if (sealObj->distFromSpawn != 0)
-		{
-			Seal_CheckColl(sealInst, t, 1, 0x4000, 0x78);
-			return;
-		}
-
-		sealObj->direction = 1;
-	}
-
-	// moving away from spawn (1)
-	else
+	// Moving away from spawn.
+	if (sealObj->direction != 0)
 	{
 		if (sealObj->distFromSpawn < 0x2d)
 		{
 			sealObj->distFromSpawn++;
-			Seal_CheckColl(sealInst, t, 1, 0x4000, 0x78);
-			return;
+			goto CheckCollisions;
 		}
 
 		if (sealObj->distFromSpawn != 0x2d)
 		{
-			Seal_CheckColl(sealInst, t, 1, 0x4000, 0x78);
-			return;
+			goto CheckCollisions;
 		}
 
+		turnRot = sealObj->rotCurr.y;
 		sealObj->direction = 0;
 	}
 
-	// === end of Move state ===
+	// Moving towards spawn.
+	else
+	{
+		if (sealObj->distFromSpawn > 0)
+		{
+			sealObj->distFromSpawn--;
+			goto CheckCollisions;
+		}
 
-	// flip Y 180 degrees (turn around)
-	sealObj->turnAroundRot.y = (sealObj->rotCurr.y + 0x800) & 0xfff;
+		if (sealObj->distFromSpawn != 0)
+		{
+			goto CheckCollisions;
+		}
 
-	// turn around
+		turnRot = sealObj->rotCurr.y;
+		sealObj->direction = 1;
+	}
+
+	// Turn through half a revolution at either endpoint.
+	sealObj->turnAroundRot.y = (turnRot + 0x800) % 0x1000;
 	ThTick_SetAndExec(t, RB_Seal_ThTick_TurnAround);
-	return;
+
+CheckCollisions:
+	RB_CheckHazardCollisions(sealInst, t, 1, 0x4000, 0x78);
 }
 
 void RB_Seal_LInB(struct Instance *inst)
 {
 	struct Seal *sealObj;
-	struct SpawnType2 *spawnType2;
-	struct InstDef *instDef;
 	struct Thread *t;
+	s32 sealID;
 
 	if (inst->thread != 0)
 	{
@@ -254,11 +157,12 @@ void RB_Seal_LInB(struct Instance *inst)
 	    0                    // thread relative
 	);
 
+	inst->thread = t;
 	if (t == 0)
 	{
 		return;
 	}
-	inst->thread = t;
+	sealObj = t->object;
 	t->inst = inst;
 	t->funcThCollide = (void *)RB_Seal_ThCollide;
 
@@ -266,39 +170,32 @@ void RB_Seal_LInB(struct Instance *inst)
 	inst->scale.y = 0x2000;
 	inst->scale.z = 0x2000;
 
-	sealObj = ((struct Seal *)t->object);
 	sealObj->distFromSpawn = 0;
 	sealObj->direction = 1;
-	sealObj->sealID = inst->name[strlen(inst->name) - 1] - '0';
+	sealID = inst->name[strlen(inst->name) - 1] - '0';
+	sealObj->sealID = sealID;
 
-	if (sdata->gGT->level1->numSpawnType2 != 0)
+	if (GAME_TRACKER->level1->numSpawnType2 != 0)
 	{
-		spawnType2 = &sdata->gGT->level1->ptrSpawnType2[sealObj->sealID];
-
-		sealObj->spawnPos = spawnType2->coords.positions[0];
-		sealObj->endPos = spawnType2->coords.positions[1];
+		sealObj->spawnPos = GAME_TRACKER->level1->ptrSpawnType2[sealID].coords.positions[0];
+		sealObj->endPos = GAME_TRACKER->level1->ptrSpawnType2[sealObj->sealID].coords.positions[1];
 	}
 
 	// distance between points
-	for (int i = 0; i < 3; i++)
-	{
-		CTR_VECTOR_DATA(&(sealObj->vel))[i] = CTR_VECTOR_DATA(&(sealObj->spawnPos))[i] - CTR_VECTOR_DATA(&(sealObj->endPos))[i];
-	}
+	sealObj->vel.x = sealObj->spawnPos.x - sealObj->endPos.x;
+	sealObj->vel.y = sealObj->spawnPos.y - sealObj->endPos.y;
+	sealObj->vel.z = sealObj->spawnPos.z - sealObj->endPos.z;
 
 	// rotCurr
-	instDef = inst->instDef;
-	sealObj->rotCurr.x = instDef->rot.x;
-	sealObj->rotCurr.y = instDef->rot.y;
-	sealObj->rotCurr.z = instDef->rot.z;
-
-	for (int i = 0; i < 3; i++)
-	{
-		CTR_VECTOR_DATA(&(sealObj->rotDesired))[i] = CTR_VECTOR_DATA(&(sealObj->rotCurr))[i];
-	}
+	sealObj->rotCurr.x = inst->instDef->rot.x;
+	sealObj->rotCurr.z = inst->instDef->rot.z;
+	sealObj->rotCurr.y = inst->instDef->rot.y;
+	sealObj->rotDesired.x = sealObj->rotCurr.x;
+	sealObj->rotDesired.y = sealObj->rotCurr.y;
+	sealObj->rotDesired.z = sealObj->rotCurr.z;
 
 	sealObj->numFramesSpinning = 0;
 
-	// converted to TEST in rebuildPS1
 	ConvertRotToMatrix(&inst->matrix, &sealObj->rotCurr);
 
 	// dont call RB_Default_LInB(inst),

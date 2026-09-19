@@ -652,7 +652,7 @@ void UI_CupStandings_InputAndDraw(void)
 
 							// unlock Roo, Papu, Joe, Pinstripe, FCrash
 							bitIndex = GAME_UNLOCK_BIT_BOSS_CHARACTER_FIRST + i;
-							UNLOCK_ADV_BIT(sdata->gameProgress.unlocks, bitIndex);
+							UNLOCK_ADV_BIT(sdata->gameSave.progress.unlocks, bitIndex);
 
 							// Set podium reward model to Gem
 							gGT->podiumRewardID = STATIC_GEM;
@@ -691,7 +691,7 @@ void UI_CupStandings_InputAndDraw(void)
 							difficulty = UI_CUP_STANDINGS_MAX_ARCADE_DIFFICULTY;
 						}
 
-						u32 *rewardsSet = &sdata->gameProgress.unlocks[0];
+						u32 *rewardsSet = &sdata->gameSave.progress.unlocks[0];
 
 						int baseIndex = sdata->UnlockBitIndex.CupCompletion_prev[difficulty];
 

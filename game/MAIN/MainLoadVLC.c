@@ -23,7 +23,7 @@ void MainLoadVLC(void)
 	bigfile = sdata->ptrBigfileCdPos_2;
 	entry = BIG_GETENTRY(bigfile);
 	size = (entry[BI_VLCTABLE].size + 0x7ff) & 0xfffff800;
-	sdata->ptrVlcTable = MEMPACK_AllocMem(size);
+	sdata->ptrVlcTable = MEMPACK_AllocMem(size, NULL);
 
 	// This table is passed as parameter to DecDCTvlc2
 	LOAD_AppendQueue(bigfile, LT_SETADDR, BI_VLCTABLE, sdata->ptrVlcTable, MainLoadVLC_Callback);

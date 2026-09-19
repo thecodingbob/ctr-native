@@ -1,15 +1,24 @@
 #include <common.h>
+#include <ctr_gte_transfer.h>
 
 void AH_MaskHint_Start(s16 hintId, u16 bool_interruptWarppad)
 {
+	struct AdvProgress *adv;
+	int bitIndex;
+	struct Driver *d;
+	int offsetSlot;
+	const SVec3 *offset;
+	s16 i;
 	// copy parameters
-	D232.maskWarppadBoolInterrupt = bool_interruptWarppad;
-	D232.maskHintID = hintId;
+	AH_HINT_VISIBLE = 1;
+	AH_HINT_INTERRUPTS_WARPPAD = bool_interruptWarppad;
+	AH_HINT_ID = hintId;
 
-	sdata->boolDraw3D_AdvMask = 1;
+	d = GAME_TRACKER->drivers[0];
+	d->funcPtrs[DRIVER_FUNC_INIT] = VehPhysProc_FreezeEndEvent_Init;
 
-	struct AdvProgress *adv = &sdata->advProgress;
-	int bitIndex = (int)hintId + ADV_REWARD_FIRST_HINT;
+	adv = &GAME_ADV_PROGRESS;
+	bitIndex = (int)hintId + ADV_REWARD_FIRST_HINT;
 	UNLOCK_ADV_BIT(adv->rewards, bitIndex);
 
 	// If this is "welcome to adventure arena"
@@ -20,34 +29,40 @@ void AH_MaskHint_Start(s16 hintId, u16 bool_interruptWarppad)
 		UNLOCK_ADV_BIT(adv->rewards, ADV_REWARD_HINT_MAP_INFORMATION);
 	}
 
-	struct Driver *d = sdata->gGT->drivers[0];
-	d->funcPtrs[DRIVER_FUNC_INIT] = VehPhysProc_FreezeEndEvent_Init;
-
 	// If Aku / Uka model pointer is nullptr
-	if (sdata->modelMaskHints3D == NULL)
+	if (AH_HINT_MODEL == NULL)
 	{
-		LOAD_TalkingMask(LOAD_GetAdvPackIndex(), !VehPickupItem_MaskBoolGoodGuy(d));
+		s32 pack = LOAD_GetAdvPackIndex();
+		LOAD_TalkingMask(pack, !(s16)VehPickupItem_MaskBoolGoodGuy(d));
 
 		// 3.0s to spawn mask
-		D232.maskSpawnFrame = AH_MASKHINT_LONG_SPAWN_FRAMES;
+		AH_MASK_SPAWN_FRAME = AH_MASKHINT_LONG_SPAWN_FRAMES;
 	}
 
 	// if model is not nullptr
 	else
 	{
 		// 0.667s to spawn mask
-		D232.maskSpawnFrame = AH_MASKHINT_SHORT_SPAWN_FRAMES;
+		AH_MASK_SPAWN_FRAME = AH_MASKHINT_SHORT_SPAWN_FRAMES;
 	}
 
-	int offsetSlot = bool_interruptWarppad & AH_MASKHINT_OFFSET_WARPPAD_INTERRUPT;
+	offsetSlot = bool_interruptWarppad & AH_MASKHINT_OFFSET_WARPPAD_INTERRUPT;
 
-	CTR_COPY_VEC3(CTR_VECTOR_DATA(&(D232.maskOffsetPos)), CTR_VECTOR_DATA(&(D232.maskHintOffsets.pos[offsetSlot])));
-	CTR_COPY_VEC3(CTR_VECTOR_DATA(&(D232.maskOffsetRot)), CTR_VECTOR_DATA(&(D232.maskHintOffsets.rot[offsetSlot])));
+	offset = &AH_MASK_HINT_POSITIONS[offsetSlot];
+	AH_MASK_OFFSET_POS.x = offset->x;
+	AH_MASK_OFFSET_POS.y = offset->y;
+	AH_MASK_OFFSET_POS.z = offset->z;
+	offset = &AH_MASK_HINT_ROTATIONS[offsetSlot];
+	AH_MASK_OFFSET_ROT.x = offset->x;
+	AH_MASK_OFFSET_ROT.y = offset->y;
+	AH_MASK_OFFSET_ROT.z = offset->z;
 
-	for (int i = 0; i < 3; i++)
 	{
-		// 4 bytes for 4 volumes
-		D232.audioBackup[i] = howl_VolumeGet(i);
+		for (i = 0; i < 3; i++)
+		{
+			// 4 bytes for 4 volumes
+			AH_MASK_AUDIO_BACKUP[i] = howl_VolumeGet(i);
+		}
 	}
 
 	return;
@@ -66,66 +81,118 @@ b32 AH_MaskHint_boolCanSpawn(void)
 
 void AH_MaskHint_SetAnim(int scale)
 {
-	MATRIX *m;
-	struct GameTracker *gGT = sdata->gGT;
-	struct PushBuffer *pb = &gGT->pushBuffer[0];
-
-	m = &pb->matrix_Camera;
-	gte_SetRotMatrix(m);
-	gte_SetTransMatrix(m);
-
-	CTR_GteLoadSVec3V0(&D232.maskOffsetPos);
-	gte_rt();
-
-	Vec3 posEndInt;
 	SVec3 posEnd;
+	SVec3 rotEnd;
+	SVec3 posCurr;
+	SVec3 rotCurr;
+	Vec3 posEndInt;
+	int rot;
+	s32 radius;
+	s32 frameCurrent;
+	s32 frameSpawn;
+	int angle;
+	int sin;
+	int cos;
+	struct GameTracker *gGT = GAME_TRACKER;
+	const MATRIX *cameraMatrix = &gGT->pushBuffer[0].matrix_Camera;
 
-	CTR_GteStoreMAC(CTR_VECTOR_DATA(&(posEndInt)));
+	CTR_GteSetRotMatrix(cameraMatrix);
+	CTR_GteSetTransMatrix(cameraMatrix);
+	MTC2((u16)AH_MASK_OFFSET_POS.x | ((u32)AH_MASK_OFFSET_POS.y << 16), 0);
+	MTC2((u16)AH_MASK_OFFSET_POS.z, 1);
+	CTR_GteLoadDelay();
+	gte_rt();
+	{
+		s32 mac;
+		CTR_GteReadDataDelayed(posEndInt.x, 25);
+		CTR_GteReadDataDelayed(posEndInt.y, 26);
+		mac = MFC2_S(27);
+		posEndInt.z = mac;
+	}
 
 	posEnd.x = posEndInt.x;
 	posEnd.y = posEndInt.y;
 	posEnd.z = posEndInt.z;
 
-	SVec3 rotEnd;
-	rotEnd.x = pb->rot.x - D232.maskOffsetRot.x;
-	rotEnd.y = pb->rot.y + D232.maskOffsetRot.y;
-	rotEnd.z = pb->rot.z - D232.maskOffsetRot.z;
 
-	SVec3 posCurr;
-	SVec3 rotCurr;
-	CAM_ProcessTransition(&posCurr, &rotCurr, &D232.maskCamPosStart, &D232.maskCamRotStart, &posEnd, &rotEnd, scale);
+	rotEnd.x = gGT->pushBuffer[0].rot.x - AH_MASK_OFFSET_ROT.x;
+	rotEnd.y = gGT->pushBuffer[0].rot.y + AH_MASK_OFFSET_ROT.y;
+	rotEnd.z = gGT->pushBuffer[0].rot.z - AH_MASK_OFFSET_ROT.z;
 
-	int rot = AH_MASKHINT_FULL_BLEND;
-	if (D232.maskSpawnFrame - AH_MASKHINT_SPAWN_RING_FRAMES < D232.maskFrameCurr)
+
+	CAM_ProcessTransition(&posCurr, &rotCurr, &AH_MASK_CAM_POS_START, &AH_MASK_CAM_ROT_START, &posEnd, &rotEnd, scale);
+
+	frameCurrent = AH_MASK_FRAME_CURR;
+	frameSpawn = AH_MASK_SPAWN_FRAME;
+	if (frameSpawn - AH_MASKHINT_SPAWN_RING_FRAMES < frameCurrent)
 	{
-		rot = ((D232.maskSpawnFrame - D232.maskFrameCurr) * rot) / AH_MASKHINT_SPAWN_RING_FRAMES;
+		rot = ((frameSpawn - frameCurrent) * AH_MASKHINT_FULL_BLEND) / AH_MASKHINT_SPAWN_RING_FRAMES;
+	}
+	else
+	{
+		rot = AH_MASKHINT_FULL_BLEND;
 	}
 
-	// 4096->50
-	rot = (rot * AH_MASKHINT_SPAWN_SPIRAL_RADIUS) >> 0xc;
+	angle = CTR_MipsSll(scale, 15) >> 12;
+	{
+		const struct TrigTable *table = AH_TRIG_TABLE;
+		sin = CTR_ReadU32AlignedLE(&table[angle & 0x3ff]);
+	}
+	AH_MASK_ANGLE = angle;
+	if (angle & 0x400)
+	{
+		cos = (s16)sin;
+		sin >>= 16;
+		if (angle & 0x800)
+			sin = -sin;
+		else
+			cos = -cos;
+	}
+	else
+	{
+		cos = sin >> 16;
+		sin = (s32)((u32)sin << 16);
+		sin >>= 16;
+		if (angle & 0x800)
+		{
+			cos = -cos;
+			sin = -sin;
+		}
+	}
+	radius = (rot * AH_MASKHINT_SPAWN_SPIRAL_RADIUS) >> 0xc;
+	rotCurr.y += AH_MASK_ANGLE;
+	posCurr.x += (s16)((sin * radius) >> 0xc);
+	posCurr.z += (s16)((cos * radius) >> 0xc);
+	ConvertRotToMatrix(&AH_HINT_MASK->matrix, &rotCurr);
 
-	int angle = (scale << 0xf) >> 0xc;
-	D232.maskAngle = angle;
+	((struct MaskHint *)AH_HINT_MASK->thread->object)->scale = scale * 4 - 1;
 
-	int sin = MATH_Sin(angle);
-	int cos = MATH_Cos(angle);
+	angle = ((s16)AH_FRAME_COUNTER + GAME_TRACKER->timer) * 0x20;
+	{
+		const struct TrigTable *table = AH_TRIG_TABLE;
+		sin = CTR_ReadU32AlignedLE(&table[angle & 0x3ff]);
+	}
+	// NOTE(aalhendi): Keep sign extension in each branch; factoring it out
+	// changes GCC 2.8.1's reuse of the mask pointer across this calculation.
+	if (!(angle & 0x400))
+	{
+		sin = (s32)((u32)sin << 16);
+		sin >>= 16;
+	}
+	else
+	{
+		sin >>= 16;
+	}
+	if (angle & 0x800)
+		sin = -sin;
+	posCurr.y += (s16)((CTR_MipsSll(sin, 4) >> 12) * scale >> 12);
 
-	struct Instance *mhInst = sdata->instMaskHints3D;
-	posCurr.x += (s16)((sin * rot) >> 0xc);
-	posCurr.z += (s16)((cos * rot) >> 0xc);
-
-	rotCurr.y += angle;
-	ConvertRotToMatrix(&mhInst->matrix, &rotCurr);
-
-	((struct MaskHint *)mhInst->thread->object)->scale = scale * 4 - 1;
-
-	angle = (sdata->frameCounter + gGT->timer) * 0x20;
-	sin = MATH_Sin(angle);
-	posCurr.y += (s16)(((sin << 4) >> 0xc) * scale >> 0xc);
-
-	mhInst->matrix.t[0] = posCurr.x;
-	mhInst->matrix.t[1] = posCurr.y;
-	mhInst->matrix.t[2] = posCurr.z;
+	{
+		struct Instance *mhInst = AH_HINT_MASK;
+		mhInst->matrix.t[0] = posCurr.x;
+		mhInst->matrix.t[1] = posCurr.y;
+		mhInst->matrix.t[2] = posCurr.z;
+	}
 }
 
 void AH_MaskHint_SpawnParticles(s16 numParticles, struct ParticleEmitter *emSet, int maskAnim)
@@ -133,7 +200,9 @@ void AH_MaskHint_SpawnParticles(s16 numParticles, struct ParticleEmitter *emSet,
 {
 	struct Particle *particle;
 	struct Instance *maskInst;
-	int i, j;
+	s16 i;
+	s32 scale;
+	s32 velocity;
 
 	maskAnim = maskAnim + AH_MASKHINT_FULL_BLEND;
 	if (maskAnim > 0x3fff)
@@ -141,28 +210,22 @@ void AH_MaskHint_SpawnParticles(s16 numParticles, struct ParticleEmitter *emSet,
 		maskAnim = 0x3fff;
 	}
 
-	// "hubdustpuff"
-	struct IconGroup *ig = sdata->gGT->iconGroup[0x10];
-
-	// talking mask instance
-	maskInst = sdata->instMaskHints3D;
-
 	for (i = 0; i < numParticles; i++)
 	{
-		particle = Particle_Init(0, ig, emSet);
+		particle = Particle_Init(0, GAME_TRACKER->iconGroup[0x10], emSet);
 		if (particle == NULL)
 		{
 			continue;
 		}
 
-		for (j = 0; j < 3; j++)
-		{
-			particle->axis[j].startVal += maskInst->matrix.t[j] * 0x100;
-		}
-
-		particle->axis[5].startVal = (particle->axis[5].startVal * maskAnim) >> 0xc;
-		particle->axis[5].velocity = (particle->axis[5].velocity * maskAnim) >> 0xc;
-
+		scale = particle->axis[5].startVal * maskAnim;
+		velocity = particle->axis[5].velocity * maskAnim;
+		maskInst = AH_HINT_MASK;
+		particle->axis[0].startVal += maskInst->matrix.t[0] * 0x100;
+		particle->axis[1].startVal += maskInst->matrix.t[1] * 0x100;
+		particle->axis[2].startVal += maskInst->matrix.t[2] * 0x100;
+		particle->axis[5].startVal = scale >> 0xc;
+		particle->axis[5].velocity = velocity >> 0xc;
 		particle->otIndexOffset -= 5;
 	}
 
@@ -173,91 +236,100 @@ void AH_MaskHint_LerpVol(int blend)
 {
 	int diff;
 	int volume;
-	u8 backup;
+	s32 backup;
 
-	for (s32 i = 0; i < 3; i++)
 	{
-		backup = D232.audioBackup[i];
+		s16 i;
+		for (i = 0; i < 3; i++)
+		{
+			backup = AH_MASK_AUDIO_BACKUP[i];
 
-		diff = D232.maskAudioTargetVolume[i] - backup;
-		volume = backup + ((diff * blend) >> 12);
+			diff = AH_MASK_AUDIO_TARGET[i] - backup;
+			volume = backup + ((diff * blend) >> 12);
 
-		// restore backups of Volume settings,
-		// that were originally saved in AH_MaskHint_Start
-		howl_VolumeSet(i, volume & 0xFF);
+			// restore backups of Volume settings,
+			// that were originally saved in AH_MaskHint_Start
+			howl_VolumeSet(i, volume & 0xFF);
+		}
 	}
 }
 
-static void AH_MaskHint_DrawRepeatPrompt(void)
+static inline b32 AH_MaskHint_IsListed(void)
 {
-	int lngIndex = 0;
-	b32 boolFound = false;
-
-	if (sdata->AkuAkuHintState != AH_MASKHINT_STATE_REPEAT_PROMPT)
+	s16 i;
+	b32 found = 0;
+	for (i = 0; AH_MASK_HINT_INDICES[i] >= 0; i++)
 	{
-		return;
-	}
-
-	const s16 *ptrLngID = &D232.hintMenuLngIndex[0];
-	struct GameTracker *gGT = sdata->gGT;
-	struct Driver *d = gGT->drivers[0];
-
-	for (/**/; *ptrLngID > -1; ptrLngID++)
-	{
-		if (D232.maskHintID == (ptrLngID[0] - AH_HINTMENU_HINT_LNG_FIRST) / 2)
+		if (AH_HINT_ID == (AH_MASK_HINT_INDICES[i] - AH_HINTMENU_HINT_LNG_FIRST) / 2)
 		{
-			boolFound = true;
+			found = 1;
 			break;
 		}
 	}
-
-	if (!boolFound)
-	{
-		return;
-	}
-
-	// Retail finds the hint subtitle entry above, but the shipped path draws a
-	// generic "press start to repeat" prompt instead of that hint text.
-	if (VehPickupItem_MaskBoolGoodGuy(d))
-	{
-		lngIndex = LNG_AKU_HINT_REPEAT_INSTRUCTIONS;
-	}
-	else
-	{
-		lngIndex = LNG_TO_HEAR_THIS_HINT_AGAIN_PRESS_THE_START;
-	}
-
-	RECT r;
-	r.x = -10;
-	r.y = 0xb0;
-	r.w = 0x214;
-	r.h = 8 + DecalFont_DrawMultiLine(sdata->lngStrings[lngIndex], 0x100, 0xb4, 400, FONT_SMALL, JUSTIFY_CENTER | ORANGE);
-
-	RECTMENU_DrawInnerRect(&r, 4, gGT->backBuffer->otMem.uiOT);
+	return found;
 }
 
-void AH_MaskHint_Update()
+static inline s32 AH_MaskHint_DrawPromptText(void)
 {
-	struct GameTracker *gGT = sdata->gGT;
-	struct Driver *d = gGT->drivers[0];
-	struct CameraAngleAxisScratch angleAxisWork;
+	char **message;
+	if ((s16)VehPickupItem_MaskBoolGoodGuy(GAME_TRACKER->drivers[0]))
+		message = &GAME_LANGUAGE_STRINGS[LNG_AKU_HINT_REPEAT_INSTRUCTIONS];
+	else
+		message = &GAME_LANGUAGE_STRINGS[LNG_TO_HEAR_THIS_HINT_AGAIN_PRESS_THE_START];
+	return DecalFont_DrawMultiLine(*message, 0x100, 0xb4, 400, FONT_SMALL, (s16)(JUSTIFY_CENTER | ORANGE));
+}
+
+#if defined(CTR_NATIVE)
+// NOTE(aalhendi): Native submits the prompt before DrawOTag; state and audio
+// progression still run later through AH_MaskHint_Update.
+static void AH_MaskHint_DrawRepeatPrompt(void)
+{
+	RECT r;
+	s32 height;
+	if (AH_HINT_STATE != AH_MASKHINT_STATE_REPEAT_PROMPT || !AH_MaskHint_IsListed())
+		return;
+	height = AH_MaskHint_DrawPromptText();
+	r.x = -10;
+	r.w = 0x214;
+	r.y = 0xb0;
+	r.h = height + 8;
+	RECTMENU_DrawInnerRect(&r, 4, GAME_TRACKER->backBuffer->otMem.uiOT);
+}
+#endif
+
+void AH_MaskHint_Update(void)
+{
+	struct Driver *d = GAME_TRACKER->drivers[0];
+	struct CameraDC *cdc = &GAME_TRACKER->cameraDC[0];
+
+	// NOTE(aalhendi): These states are mutually exclusive. The camera work,
+	// extracted rotation and prompt rectangle reuse the same stack workspace.
+	union
+	{
+		struct CameraScratchWork camera;
+		struct
+		{
+			SVECTOR matrixRot;
+			RECT r;
+		} ui;
+	} work;
 	SVec3 pos;
 	SVec3 rot;
-
-	switch (sdata->AkuAkuHintState - 1)
+	switch ((s16)(AH_HINT_STATE - 1))
 	{
+		s32 timer4096;
 	case 0:
-		if (sdata->XA_State != 0)
+		if (AH_MASK_XA_STATE != 0)
 		{
 			return;
 		}
 
-		sdata->AkuAkuHintState++;
+		AH_HINT_STATE++;
 		break;
 
 	case 1:
 	{
-		int absSpeedApprox = d->speedApprox;
+		s32 absSpeedApprox = d->speedApprox;
 		if (absSpeedApprox < 0)
 		{
 			absSpeedApprox = -absSpeedApprox;
@@ -267,197 +339,195 @@ void AH_MaskHint_Update()
 			return;
 		}
 
-		if ((D232.maskWarppadBoolInterrupt & 1) == 0)
+		if ((AH_HINT_INTERRUPTS_WARPPAD & 1) == 0)
 		{
-			struct CameraDC *cdc = &gGT->cameraDC[0];
-
-			CTR_COPY_VEC3(CTR_VECTOR_DATA(&(cdc->driverOffset_CamEyePos)), CTR_VECTOR_DATA(&(D232.eyePos)));
-
-			CTR_COPY_VEC3(CTR_VECTOR_DATA(&(cdc->driverOffset_CamLookAtPos)), CTR_VECTOR_DATA(&(D232.lookAtPos)));
-
-			cdc->flags |= 8;
+			struct GameTracker *gGT = GAME_TRACKER;
+			SVec3 *dst;
+			dst = &gGT->cameraDC[0].driverOffset_CamEyePos;
+			dst->x = AH_MASK_EYE.x;
+			dst->y = AH_MASK_EYE.y;
+			dst->z = AH_MASK_EYE.z;
+			dst = &gGT->cameraDC[0].driverOffset_CamLookAtPos;
+			dst->x = AH_MASK_LOOK.x;
+			dst->y = AH_MASK_LOOK.y;
+			dst->z = AH_MASK_LOOK.z;
+			gGT->cameraDC[0].flags |= 8;
 
 			// NOTE(aalhendi): Retail passes a stack work buffer here, not 0x1f800108.
-			CAM_FollowDriver_AngleAxis(cdc, d, &angleAxisWork, &pos, &rot);
-			CAM_SetDesiredPosRot(cdc, &pos, &rot);
+			CAM_FollowDriver_AngleAxis(&gGT->cameraDC[0], gGT->drivers[0], CameraScratchWork_AsAngleAxis(&work.camera), &pos, &rot);
+			CAM_SetDesiredPosRot(&GAME_TRACKER->cameraDC[0], &pos, &rot);
 		}
 
-		D232.maskWarppadDelayFrames = AH_MASKHINT_CAMERA_DELAY_FRAMES;
+		AH_MASK_DELAY = AH_MASKHINT_CAMERA_DELAY_FRAMES;
 
-		sdata->AkuAkuHintState++;
+		AH_HINT_STATE++;
 	}
 	break;
 
 	case 2:
-
-		if (((D232.maskWarppadBoolInterrupt & 1) == 0) && ((gGT->cameraDC[0].flags & CAMERA_FLAG_TRANSITION_HOLD) == 0) &&
-		    (D232.maskSpawnFrame != AH_MASKHINT_SHORT_SPAWN_FRAMES))
+	{
+		if (((AH_HINT_INTERRUPTS_WARPPAD & 1) == 0) && ((cdc->flags & CAMERA_FLAG_TRANSITION_HOLD) == 0) &&
+		    (AH_MASK_SPAWN_FRAME != AH_MASKHINT_SHORT_SPAWN_FRAMES))
 		{
 			return;
 		}
 
-		struct Instance *dInst = d->instSelf;
-		sdata->instMaskHints3D = VehTalkMask_Init();
-		struct Instance *mhInst = sdata->instMaskHints3D;
+		AH_HINT_MASK = VehTalkMask_Init();
 
-		SVECTOR matrixRot;
-		CTR_MatrixToRot(&matrixRot, &dInst->matrix, 0x11);
 
-		// not a typo
-		D232.maskCamRotStart.x = matrixRot.vy & 0xfff;
-		D232.maskCamRotStart.z = matrixRot.vz & 0xfff;
-		D232.maskCamRotStart.y = matrixRot.vx & 0xfff;
+		CTR_MatrixToRot(&work.ui.matrixRot, &d->instSelf->matrix, 0x11);
 
-		CTR_COPY_VEC3(CTR_VECTOR_DATA(&(D232.maskCamPosStart)), dInst->matrix.t);
+		// NOTE(aalhendi): Camera pitch and yaw use the opposite matrix axes.
+		AH_MASK_CAM_ROT_START.x = work.ui.matrixRot.vy & 0xfff;
+		AH_MASK_CAM_ROT_START.y = work.ui.matrixRot.vx & 0xfff;
+		AH_MASK_CAM_ROT_START.z = work.ui.matrixRot.vz & 0xfff;
 
-		((struct MaskHint *)mhInst->thread->object)->scale = 0;
+		AH_MASK_CAM_POS_START.x = d->instSelf->matrix.t[0];
+		AH_MASK_CAM_POS_START.y = d->instSelf->matrix.t[1];
+		AH_MASK_CAM_POS_START.z = d->instSelf->matrix.t[2];
+
+		((struct MaskHint *)AH_HINT_MASK->thread->object)->scale = 0;
 
 		AH_MaskHint_SetAnim(0);
 
-		D232.maskFrameCurr = 0;
+		AH_MASK_FRAME_CURR = 0;
 
-		sdata->AkuAkuHintState++;
+		AH_HINT_STATE++;
 		break;
-
+	}
 	case 3:
+	{
+		s32 *frame = &AH_MASK_FRAME_CURR;
 
 		// first frame "whoosh" sound
-		if (D232.maskFrameCurr == 0)
+		if ((*frame) == 0)
 		{
 			OtherFX_Play_LowLevel(AH_MASKHINT_SFX_SPAWN, 1, HOWL_SFX_DEFAULT_FLAGS);
 		}
 
 		// if 3-second spawn, play more sounds
-		if (D232.maskSpawnFrame == AH_MASKHINT_LONG_SPAWN_FRAMES)
+		if (AH_MASK_SPAWN_FRAME == AH_MASKHINT_LONG_SPAWN_FRAMES)
 		{
-			if (D232.maskFrameCurr == 10)
+			if ((*frame) == 10)
 			{
 				OtherFX_Play_LowLevel(AH_MASKHINT_SFX_SPAWN, 0, 0xd78a80);
 			}
-			else if (D232.maskFrameCurr == 20)
+			else if ((*frame) == 20)
 			{
 				OtherFX_Play_LowLevel(AH_MASKHINT_SFX_SPAWN, 1, 0xaf9480);
 			}
-			else if (D232.maskFrameCurr == 25)
+			else if ((*frame) == 25)
 			{
 				OtherFX_Play_LowLevel(AH_MASKHINT_SFX_SPAWN, 0, 0x879e80);
 			}
-			else if (D232.maskFrameCurr == 30)
+			else if ((*frame) == 30)
 			{
 				OtherFX_Play_LowLevel(AH_MASKHINT_SFX_SPAWN, 1, 0x5fa880);
 			}
 		}
 
-		int timer4096 = (D232.maskFrameCurr << 0xc) / D232.maskSpawnFrame;
+		timer4096 = CTR_MipsSll(AH_MASK_FRAME_CURR, 12) / AH_MASK_SPAWN_FRAME;
 
 		AH_MaskHint_SetAnim(timer4096);
 
-		AH_MaskHint_SpawnParticles(AH_MASKHINT_SPAWN_PARTICLES, &D232.emSet_maskSpawn[0], timer4096);
+		AH_MaskHint_SpawnParticles(AH_MASKHINT_SPAWN_PARTICLES, &AH_MASK_SPAWN_EMITTERS[0], CTR_MipsSll(AH_MASK_FRAME_CURR, 12) / AH_MASK_SPAWN_FRAME);
 
-		// if not finished spawning
-		if (D232.maskFrameCurr < D232.maskSpawnFrame)
-		{
-			D232.maskFrameCurr++;
-
-			timer4096 = (D232.maskFrameCurr << 0xc) / D232.maskSpawnFrame;
-
-			AH_MaskHint_LerpVol(timer4096);
-			break;
-		}
-
-		// NOTE(aalhendi): Retail only waits for the mask model pointer.
-		if (sdata->modelMaskHints3D == 0)
+		if (AH_HINT_MODEL != 0 && AH_MASK_FRAME_CURR >= AH_MASK_SPAWN_FRAME &&
+		    ((cdc->flags & CAMERA_FLAG_TRANSITION_HOLD) != 0 || (AH_HINT_INTERRUPTS_WARPPAD & 1)))
 		{
 			AH_MaskHint_LerpVol(AH_MASKHINT_FULL_BLEND);
+			AH_MaskHint_SpawnParticles(AH_MASKHINT_LEAVE_PARTICLES, &AH_MASK_LEAVE_EMITTERS[0], AH_MASKHINT_FULL_BLEND);
+			VehTalkMask_PlayXA(AH_HINT_MASK, AH_HINT_ID);
+			if ((GAME_TRACKER->gameMode1 & ADVENTURE_ARENA) && AH_HINT_ID != ADV_MASK_HINT_ID_WELCOME_TO_ARENA &&
+			    AH_HINT_ID != ADV_MASK_HINT_ID_MAP_INFORMATION)
+				GAME_TRACKER->hudFlags |= HUD_FLAG_HIDE_ADVENTURE_MAP;
+			AH_HINT_STATE++;
 			break;
 		}
-
-		if (((D232.maskWarppadBoolInterrupt & 1) != 0) || ((gGT->cameraDC[0].flags & CAMERA_FLAG_TRANSITION_HOLD) != 0))
-		{
-			AH_MaskHint_LerpVol(AH_MASKHINT_FULL_BLEND);
-
-			AH_MaskHint_SpawnParticles(AH_MASKHINT_LEAVE_PARTICLES, &D232.emSet_maskLeave[0], AH_MASKHINT_FULL_BLEND);
-
-			VehTalkMask_PlayXA(sdata->instMaskHints3D, D232.maskHintID);
-
-			if (((gGT->gameMode1 & ADVENTURE_ARENA) != 0) &&
-
-			    // Not "Welcome to Adventure" or "You need a Boss Key"
-			    (D232.maskHintID != ADV_MASK_HINT_ID_WELCOME_TO_ARENA) && (D232.maskHintID != ADV_MASK_HINT_ID_MAP_INFORMATION))
-			{
-				// hide UI map
-				gGT->hudFlags |= HUD_FLAG_HIDE_ADVENTURE_MAP;
-			}
-
-			sdata->AkuAkuHintState++;
-			break;
-		}
+		if (AH_MASK_FRAME_CURR < AH_MASK_SPAWN_FRAME)
+			AH_MASK_FRAME_CURR++;
+		AH_MaskHint_LerpVol(CTR_MipsSll(AH_MASK_FRAME_CURR, 12) / AH_MASK_SPAWN_FRAME);
 		break;
-
+	}
 	case 4:
 	{
+		b32 delayComplete;
 		// NOTE(aalhendi): Native draws only this shared prompt earlier from
 		// AH_Map_Main so synchronous DrawOTag sees it; the rest of this state
 		// remains retail-timed here.
 #if !defined(CTR_NATIVE)
-		AH_MaskHint_DrawRepeatPrompt();
+		{
+			b32 found = AH_MaskHint_IsListed();
+			// NOTE(aalhendi): Keep the search result separate from its loop flag.
+			CTR_PSX_KEEP_VALUE_RELAXED(found);
+			if (found)
+			{
+				s32 height = AH_MaskHint_DrawPromptText();
+				work.ui.r.x = -10;
+				work.ui.r.w = 0x214;
+				work.ui.r.y = 0xb0;
+				work.ui.r.h = height + 8;
+				RECTMENU_DrawInnerRect(&work.ui.r, 4, GAME_TRACKER->backBuffer->otMem.uiOT);
+			}
+		}
 #endif
 
 		AH_MaskHint_SetAnim(AH_MASKHINT_FULL_BLEND);
 
-		b32 delayComplete = D232.maskWarppadDelayFrames == 0;
+		delayComplete = AH_MASK_DELAY == 0;
 		if (!delayComplete)
 		{
-			delayComplete = D232.maskWarppadDelayFrames == 1;
-			D232.maskWarppadDelayFrames--;
+			AH_MASK_DELAY--;
+			delayComplete = AH_MASK_DELAY == 0;
 		}
 
-		if ((delayComplete && (VehTalkMask_boolNoXA() || ((sdata->gGamepads->gamepad[0].buttonsTapped & BTN_TRIANGLE) != 0))) &&
-		    (sdata->AkuAkuHintState++,
+		if ((delayComplete && ((s16)VehTalkMask_boolNoXA() || ((GAMEPADS->gamepad[0].buttonsTapped & BTN_TRIANGLE) != 0))) &&
+		    (AH_HINT_STATE++,
 
 		     // If you're in Adventure Arena
-		     ((gGT->gameMode1 & ADVENTURE_ARENA) != 0)))
+		     ((GAME_TRACKER->gameMode1 & ADVENTURE_ARENA) != 0)))
 		{
 			// show map again
-			gGT->hudFlags &= ~HUD_FLAG_HIDE_ADVENTURE_MAP;
+			GAME_TRACKER->hudFlags &= ~HUD_FLAG_HIDE_ADVENTURE_MAP;
 		}
 	}
 	break;
 
 	case 5:
 
-		AH_MaskHint_SpawnParticles(AH_MASKHINT_VANISH_PARTICLES, &D232.emSet_maskLeave[0], AH_MASKHINT_FULL_BLEND);
+		AH_MaskHint_SpawnParticles(AH_MASKHINT_VANISH_PARTICLES, &AH_MASK_LEAVE_EMITTERS[0], AH_MASKHINT_FULL_BLEND);
 
 		// vanish sound
 		OtherFX_Play(AH_MASKHINT_SFX_VANISH, 1);
 
 		VehTalkMask_End();
 
-		if ((D232.maskWarppadBoolInterrupt & 1) == 0)
+		if ((AH_HINT_INTERRUPTS_WARPPAD & 1) == 0)
 		{
 			// transition back to player
-			gGT->cameraDC[0].flags |= CAMERA_FLAG_TRANSITION_BACK;
+			cdc->flags |= CAMERA_FLAG_TRANSITION_BACK;
 		}
 
-		sdata->AkuAkuHintState++;
+		AH_HINT_STATE++;
 		break;
 
 	case 6:
 
-		AH_MaskHint_LerpVol(AH_MASKHINT_FULL_BLEND - gGT->cameraDC[0].transitionBlend);
+		AH_MaskHint_LerpVol(AH_MASKHINT_FULL_BLEND - GAME_TRACKER->cameraDC[0].transitionBlend);
 
-		if (((gGT->cameraDC[0].flags & CAMERA_FLAG_TRANSITION_AWAY) == 0) || ((D232.maskWarppadBoolInterrupt & 1) != 0))
+		if (((cdc->flags & CAMERA_FLAG_TRANSITION_AWAY) == 0) || ((AH_HINT_INTERRUPTS_WARPPAD & 1) != 0))
 		{
 			AH_MaskHint_SetAnim(0);
 			AH_MaskHint_LerpVol(0);
 
-			D232.maskWarppadDelayFrames = 0;
-			if ((D232.maskWarppadBoolInterrupt & 1) != 0)
 			{
-				D232.maskWarppadDelayFrames = AH_MASKHINT_INTERRUPT_DONE_DELAY_FRAMES;
+				s32 delay = 0;
+				if ((AH_HINT_INTERRUPTS_WARPPAD & 1) != 0)
+					delay = AH_MASKHINT_INTERRUPT_DONE_DELAY_FRAMES;
+				AH_MASK_DELAY = delay;
 			}
 
-			sdata->AkuAkuHintState++;
+			AH_HINT_STATE++;
 		}
 		break;
 
@@ -465,16 +535,16 @@ void AH_MaskHint_Update()
 
 		AH_MaskHint_LerpVol(0);
 
-		D232.maskWarppadDelayFrames--;
+		AH_MASK_DELAY--;
 
-		if (D232.maskWarppadDelayFrames < 1)
+		if (AH_MASK_DELAY < 1)
 		{
 			RECTMENU_ClearInput();
 
-			sdata->AkuAkuHintState = 0;
-			sdata->boolDraw3D_AdvMask = 0;
+			AH_HINT_STATE = 0;
+			AH_HINT_VISIBLE = 0;
 
-			gGT->gameMode2 &= ~(VEH_FREEZE_DOOR);
+			GAME_TRACKER->gameMode2 &= ~(VEH_FREEZE_DOOR);
 			d->funcPtrs[DRIVER_FUNC_INIT] = VehPhysProc_Driving_Init;
 		}
 

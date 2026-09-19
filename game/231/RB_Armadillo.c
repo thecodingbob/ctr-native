@@ -1,5 +1,4 @@
-#include <common.h>
-
+#include "RB_Collision.h"
 
 
 int RB_Armadillo_ThCollide(struct Thread *armadilloThread, struct Thread *driverTh, void *funcThCollide, struct ScratchpadStruct *sps)
@@ -16,50 +15,51 @@ void RB_Armadillo_ThTick_TurnAround(struct Thread *t)
 	struct Instance *armInst;
 	struct Armadillo *armObj;
 
+	armObj = t->object;
 	armInst = t->inst;
-	armObj = (struct Armadillo *)t->object;
 
-	if (armObj->rotCurr.y == armObj->rotDesired.y)
+	do
 	{
-		// if animation is not over
-		if ((armInst->animFrame + 1) < INSTANCE_GetNumAnimFrames(armInst, 0))
+		if (armObj->rotCurr.y != armObj->rotDesired.y)
 		{
-			armInst->animFrame = armInst->animFrame + 1;
+			armObj->rotCurr.y = RB_Hazard_InterpolateValue(armObj->rotCurr.y, armObj->rotDesired.y, 0x100);
+			ConvertRotToMatrix(&armInst->matrix, &armObj->rotCurr);
+			armInst->animFrame++;
 		}
-
-		// === End of TurnAround ===
+		else if ((armInst->animFrame + 1) < INSTANCE_GetNumAnimFrames(armInst, 0))
+		{
+			armInst->animFrame++;
+		}
 		else
 		{
+			// Reverse direction when the turn animation finishes.
 			armObj->velX = -armObj->velX;
 			armObj->numFramesSpinning = 0;
 			armObj->velZ = -armObj->velZ;
 
-			armObj->direction = (armObj->direction == 0) ? 1 : 0;
+			if (armObj->direction != 0)
+			{
+				PlaySound3D(0x70, armInst);
+				armObj->direction = 0;
+			}
+			else
+			{
+				PlaySound3D(0x70, armInst);
+				armObj->direction = 1;
+			}
 
-			// play roll sound
-			PlaySound3D(0x70, armInst);
-
-			// rolling animation
 			armInst->animIndex = 1;
 			armInst->animFrame = 0;
-
 			ThTick_SetAndExec(t, RB_Armadillo_ThTick_Rolling);
 		}
-	}
 
-	else
-	{
-		// spin rotCurrY 180 degrees (turn around)
-		armObj->rotCurr.y = RB_Hazard_InterpolateValue(armObj->rotCurr.y, armObj->rotDesired.y, 0x100);
-
-		// converted to TEST in rebuildPS1
-		ConvertRotToMatrix(&armInst->matrix, &armObj->rotCurr);
-
-		// increment frame
-		armInst->animFrame = armInst->animFrame + 1;
-	}
-
-	Seal_CheckColl(armInst, t, 1, 0x2400, 0x71);
+		RB_CheckHazardCollisions(armInst, t, 1, 0x2400, 0x71);
+		ThTick_FastRET(t);
+#ifdef CTR_NATIVE
+		// NOTE(aalhendi): Native ticks return as callbacks; retail yields through FastRET.
+		return;
+#endif
+	} while (1);
 }
 
 void RB_Armadillo_ThTick_Rolling(struct Thread *t)
@@ -68,75 +68,69 @@ void RB_Armadillo_ThTick_Rolling(struct Thread *t)
 	struct Armadillo *armObj;
 	SVECTOR rot;
 
+	armObj = t->object;
 	armInst = t->inst;
-	armObj = (struct Armadillo *)t->object;
 
-	if (armObj->timeAtEdge != 0)
+	do
 	{
-		armObj->timeAtEdge--;
-		return;
-	}
-
-	if (armObj->timeRolling < 0x500)
-	{
-		// 32ms, 30fps
-		armObj->timeRolling += 0x20;
-
-		if (armObj->direction == 0)
+		if (armObj->timeAtEdge != 0)
 		{
-			armObj->distFromSpawn++;
+			armObj->timeAtEdge--;
+		}
+		else if (armObj->timeRolling < 0x500)
+		{
+			// Advance the rolling phase by one 32 ms frame.
+			armObj->timeRolling += 0x20;
+			if (armObj->direction != 0)
+			{
+				armObj->distFromSpawn--;
+			}
+			else
+			{
+				armObj->distFromSpawn++;
+			}
+
+			armInst->matrix.t[0] += armObj->velX;
+			armInst->matrix.t[2] += armObj->velZ;
+
+			if ((armInst->animFrame + 1) < INSTANCE_GetNumAnimFrames(armInst, 1))
+			{
+				armInst->animFrame++;
+			}
+			else
+			{
+				armInst->animFrame = 0;
+			}
+
+			RB_CheckHazardCollisions(armInst, t, 1, 0x2400, 0x71);
 		}
 		else
 		{
-			armObj->distFromSpawn--;
-		}
-
-		armInst->matrix.t[0] += armObj->velX;
-		armInst->matrix.t[2] += armObj->velZ;
-
-		// if animation is not over
-		if ((armInst->animFrame + 1) < INSTANCE_GetNumAnimFrames(armInst, 1))
-		{
-			// increment frame
-			armInst->animFrame = armInst->animFrame + 1;
-		}
-
-		// if animation is done
-		else
-		{
-			// reset animation
+			// Start the turn animation at the end of the rolling phase.
+			CTR_MatrixToRot(&rot, &armInst->matrix, 0x11);
+			armObj->rotCurr.x = rot.vy;
+			armObj->rotCurr.y = rot.vx;
+			armObj->rotCurr.z = rot.vz;
+			armObj->timeRolling = 0;
+			armInst->animIndex = 0;
 			armInst->animFrame = 0;
-
-			// no sound here
+			armObj->rotDesired.y = (armObj->rotCurr.y + 0x800) % 0x1000;
+			ThTick_SetAndExec(t, RB_Armadillo_ThTick_TurnAround);
 		}
 
-		Seal_CheckColl(armInst, t, 1, 0x2400, 0x71);
+		ThTick_FastRET(t);
+#ifdef CTR_NATIVE
+		// NOTE(aalhendi): Native ticks return as callbacks; retail yields through FastRET.
 		return;
-	}
-
-	// == End of Rolling ===
-	CTR_MatrixToRot(&rot, &armInst->matrix, 0x11);
-
-	// reset
-	armObj->rotCurr.x = rot.vy;
-	armObj->rotCurr.y = rot.vx;
-	armObj->rotCurr.z = rot.vz;
-	armObj->timeRolling = 0;
-
-	// jumping animation
-	armInst->animIndex = 0;
-	armInst->animFrame = 0;
-
-	armObj->rotDesired.y = (armObj->rotCurr.y + 0x800) & 0xfff;
-
-	ThTick_SetAndExec(t, RB_Armadillo_ThTick_TurnAround);
+#endif
+	} while (1);
 }
 
 void RB_Armadillo_LInB(struct Instance *inst)
 {
 	struct Armadillo *armObj;
 	SVECTOR rot;
-	s16 *metaArray;
+	u8 *delays;
 	void **pointers;
 	struct Thread *t;
 
@@ -145,53 +139,46 @@ void RB_Armadillo_LInB(struct Instance *inst)
 		return;
 	}
 
-	t = PROC_BirthWithObject(
-	    // creation flags
-	    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Armadillo), NONE, SMALL, STATIC),
+	t = PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Armadillo), NONE, SMALL, STATIC), RB_Armadillo_ThTick_Rolling, "armadillo", NULL);
 
-	    RB_Armadillo_ThTick_Rolling, // behavior
-	    "armadillo",                 // debug name
-	    0                            // thread relative
-	);
-
+	inst->thread = t;
 	if (t == 0)
 	{
 		return;
 	}
-	inst->thread = t;
-	t->inst = inst;
-	t->funcThCollide = (void *)RB_Armadillo_ThCollide;
-
 	// rolling animation
 	inst->animIndex = 1;
-
-	armObj = ((struct Armadillo *)t->object);
+	armObj = t->object;
+	t->inst = inst;
+	t->funcThCollide = (void *)RB_Armadillo_ThCollide;
 	armObj->timeRolling = 0;
 	armObj->numFramesSpinning = 0;
-	armObj->timeAtEdge = 0;
 
 	CTR_MatrixToRot(&rot, &inst->matrix, 0x11);
 	armObj->rotCurr.x = rot.vy;
 	armObj->rotCurr.y = rot.vx;
 	armObj->rotCurr.z = rot.vz;
 
-	armObj->rotDesired.y = (armObj->rotCurr.y + 0x800) & 0xfff;
+	armObj->rotDesired.y = (armObj->rotCurr.y + 0x800) % 0x1000;
 
-	armObj->distFromSpawn = 0;
 	armObj->spawnPosX = inst->matrix.t[0];
 	armObj->spawnPosZ = inst->matrix.t[2];
 	armObj->direction = 0;
+	armObj->distFromSpawn = 0;
 
-	armObj->velX = inst->matrix.m[0][2] >> 7;
-	armObj->velZ = inst->matrix.m[2][2] >> 7;
+	armObj->velX = RB_ShiftRightS16(inst->matrix.m[0][2], 7);
+	armObj->velZ = RB_ShiftRightS16(inst->matrix.m[2][2], 7);
 
-	if (sdata->gGT->level1->ptrSpawnType1->count <= 0)
+	if (GAME_TRACKER->level1->ptrSpawnType1->count <= 0)
 	{
 		return;
 	}
 
-	// puts armadillos on separate cycles
-	pointers = ST1_GETPOINTERS(sdata->gGT->level1->ptrSpawnType1);
-	metaArray = (s16 *)pointers[ST1_SPAWN];
-	armObj->timeAtEdge = metaArray[inst->name[strlen(inst->name) - 1] - '0'];
+	// NOTE(aalhendi): The name's final digit selects a packed halfword delay to stagger instances.
+	{
+		s32 byteOffset = (inst->name[strlen(inst->name) - 1] - '0') * 2;
+		pointers = ST1_GETPOINTERS(GAME_TRACKER->level1->ptrSpawnType1);
+		delays = pointers[ST1_SPAWN];
+		armObj->timeAtEdge = CTR_ReadU16AlignedLE(delays + byteOffset);
+	}
 }

@@ -110,13 +110,35 @@ typedef u32 ColorCodePacked CTR_MAY_ALIAS;
 
 static inline u32 ColorCode_GetPacked(const ColorCode *color)
 {
+#ifdef CTR_NATIVE
+	// NOTE(aalhendi): Color has byte alignment, including native stack locals.
+	return CTR_ReadU32LE(color);
+#else
 	return *(const ColorCodePacked *)color;
+#endif
 }
 
 static inline void ColorCode_SetPacked(ColorCode *color, u32 packed)
 {
+#ifdef CTR_NATIVE
+	CTR_WriteU32LE(color, packed);
+#else
 	*(ColorCodePacked *)color = packed;
+#endif
 }
+
+#ifdef CTR_NATIVE
+// NOTE(aalhendi): Native palettes also live in u32 arrays. Copy their bytes into
+// a real Color before passing it by value; a cast alone violates strict aliasing.
+static inline Color ColorCode_Load(const void *packed)
+{
+	Color color;
+	ColorCode_SetPacked(&color, CTR_ReadU32LE(packed));
+	return color;
+}
+#else
+#define ColorCode_Load(packed) (*(const Color *)(packed))
+#endif
 
 #define COLOR_CODE_PACKED_INIT(packed)          \
 	{                                           \

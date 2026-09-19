@@ -1,54 +1,16 @@
-#include <common.h>
-
-// budget: 2132 bytes
+#include "RB_Collision.h"
 
 extern s16 minecartArr[50];
 
-void RB_Minecart_CheckColl(struct Instance *minecartInst, struct Thread *minecartTh)
+static inline void RB_Minecart_SetDirection(struct Minecart *minecartObj)
 {
-	struct Driver *hitDriver;
-	struct Instance *hitInst;
-	struct GameTracker *gGT = sdata->gGT;
-
-	// check players
-	hitInst = (struct Instance *)LinkedCollide_Radius(minecartInst, minecartTh, gGT->threadBuckets[PLAYER].thread, 0x10000);
-
-	if (hitInst == 0)
-	{
-		// check robots
-		hitInst = (struct Instance *)LinkedCollide_Radius(minecartInst, minecartTh, gGT->threadBuckets[ROBOT].thread, 0x10000);
-	}
-
-	if (hitInst != 0)
-	{
-		// get driver from instance
-		hitDriver = (struct Driver *)hitInst->thread->object;
-
-		// attempt to harm driver (squish or spin-out)
-		RB_Hazard_HurtDriver(hitDriver, (minecartInst->model->id == DYNAMIC_SKUNK) ? 1 : 3, 0, 0);
-	}
-}
-
-void RB_Minecart_NewPoint(struct Instance *minecartInst, struct Minecart *minecartObj, struct SpawnType2 *spawnType2)
-{
-	const SVec3 *start = &spawnType2->coords.positions[minecartObj->posIndex - 1];
-	const SVec3 *end = &spawnType2->coords.positions[minecartObj->posIndex];
-
-	for (int i = 0; i < 3; i++)
-	{
-		int startValue = CTR_VECTOR_DATA(start)[i];
-		int endValue = CTR_VECTOR_DATA(end)[i];
-
-		CTR_VECTOR_DATA(&(minecartObj->posStart))[i] = startValue;
-		CTR_VECTOR_DATA(&(minecartObj->posEnd))[i] = endValue;
-		minecartInst->matrix.t[i] = startValue;
-		CTR_VECTOR_DATA(&(minecartObj->dir))[i] = startValue - endValue;
-	}
-
-#if defined(CTR_NATIVE)
-	minecartObj->rotDesired.x = ratan2(minecartObj->dir.y, SquareRoot0_stub(minecartObj->dir.x * minecartObj->dir.x + minecartObj->dir.z * minecartObj->dir.z));
-#endif
-
+	// NOTE(aalhendi): Keep the narrowed Z difference live through the pitch calculation.
+	s16 dirZ;
+	minecartObj->dir.x = minecartObj->posStart.x - minecartObj->posEnd.x;
+	minecartObj->dir.y = minecartObj->posStart.y - minecartObj->posEnd.y;
+	dirZ = minecartObj->posStart.z - minecartObj->posEnd.z;
+	minecartObj->dir.z = dirZ;
+	minecartObj->rotDesired.x = ratan2(minecartObj->dir.y, SquareRoot0_stub((u32)(minecartObj->dir.x * minecartObj->dir.x) + (u32)(dirZ * dirZ)));
 	minecartObj->rotDesired.y = ratan2(minecartObj->dir.x, minecartObj->dir.z) - 0x800;
 }
 
@@ -56,15 +18,10 @@ void RB_Minecart_ThTick(struct Thread *t)
 {
 	struct Instance *minecartInst;
 	struct Minecart *minecartObj;
-	struct Level *level;
-	struct SpawnType2 *spawnType2;
-	int numCoords;
-
-	s16 i;
+	struct Instance *hitInst;
 
 	minecartInst = t->inst;
-	minecartObj = (struct Minecart *)t->object;
-	level = sdata->gGT->level1;
+	minecartObj = t->object;
 
 	// if animation is not over
 	if ((minecartInst->animFrame + 1) < INSTANCE_GetNumAnimFrames(minecartInst, 0))
@@ -80,14 +37,10 @@ void RB_Minecart_ThTick(struct Thread *t)
 		minecartInst->animFrame = 0;
 	}
 
-	if (level->numSpawnType2 == 0)
+	if (GAME_TRACKER->level1->numSpawnType2 == 0)
 	{
 		return;
 	}
-
-	// path coordinates for minecarts
-	spawnType2 = &level->ptrSpawnType2[0];
-	numCoords = spawnType2->numCoords;
 
 	// between two points
 	if (minecartObj->betweenPoints_currFrame < minecartObj->betweenPoints_numFrames)
@@ -101,25 +54,33 @@ void RB_Minecart_ThTick(struct Thread *t)
 		minecartObj->betweenPoints_currFrame = 1;
 
 		// if not at end of path
-		if (minecartObj->posIndex + 1 < numCoords)
+		if (minecartObj->posIndex + 1 < GAME_TRACKER->level1->ptrSpawnType2->numCoords)
 		{
 			minecartObj->posIndex++;
+			minecartObj->posStart.x = minecartObj->posEnd.x;
+			minecartObj->posStart.y = minecartObj->posEnd.y;
+			minecartObj->posStart.z = minecartObj->posEnd.z;
 		}
 
 		// end of path, reset
 		else
 		{
 			minecartObj->posIndex = 1;
+			minecartInst->matrix.t[0] = minecartObj->posStart.x = GAME_TRACKER->level1->ptrSpawnType2->coords.positions[0].x;
+			minecartInst->matrix.t[1] = minecartObj->posStart.y = GAME_TRACKER->level1->ptrSpawnType2->coords.positions[0].y;
+			minecartInst->matrix.t[2] = minecartObj->posStart.z = GAME_TRACKER->level1->ptrSpawnType2->coords.positions[0].z;
 		}
 
-		RB_Minecart_NewPoint(minecartInst, minecartObj, spawnType2);
+		minecartObj->posEnd.x = GAME_TRACKER->level1->ptrSpawnType2->coords.positions[minecartObj->posIndex].x;
+		minecartObj->posEnd.y = GAME_TRACKER->level1->ptrSpawnType2->coords.positions[minecartObj->posIndex].y;
+		minecartObj->posEnd.z = GAME_TRACKER->level1->ptrSpawnType2->coords.positions[minecartObj->posIndex].z;
+		RB_Minecart_SetDirection(minecartObj);
 
 		if ((minecartObj->posIndex == 1) && (minecartInst->model->id == DYNAMIC_MINE_CART))
 		{
-			for (i = 0; i < 3; i++)
-			{
-				CTR_VECTOR_DATA(&(minecartObj->rotCurr))[i] = CTR_VECTOR_DATA(&(minecartObj->rotDesired))[i];
-			}
+			minecartObj->rotCurr.x = minecartObj->rotDesired.x;
+			minecartObj->rotCurr.y = minecartObj->rotDesired.y;
+			minecartObj->rotCurr.z = minecartObj->rotDesired.z;
 		}
 	}
 
@@ -127,32 +88,30 @@ void RB_Minecart_ThTick(struct Thread *t)
 	minecartInst->depthBiasNormal = minecartArr[minecartObj->posIndex];
 	minecartInst->depthBiasSecondary = minecartArr[minecartObj->posIndex];
 
-	for (i = 0; i < 3; i++)
-	{
-		minecartInst->matrix.t[i] = CTR_VECTOR_DATA(&(minecartObj->posStart))[i] -
-		                            ((minecartObj->betweenPoints_currFrame * CTR_VECTOR_DATA(&(minecartObj->dir))[i]) / minecartObj->betweenPoints_numFrames);
-	}
+	minecartInst->matrix.t[0] = minecartObj->posStart.x - (minecartObj->betweenPoints_currFrame * minecartObj->dir.x) / minecartObj->betweenPoints_numFrames;
+	minecartInst->matrix.t[1] = minecartObj->posStart.y - (minecartObj->betweenPoints_currFrame * minecartObj->dir.y) / minecartObj->betweenPoints_numFrames;
+	minecartInst->matrix.t[2] = minecartObj->posStart.z - (minecartObj->betweenPoints_currFrame * minecartObj->dir.z) / minecartObj->betweenPoints_numFrames;
 
 	minecartObj->rotCurr.y = RB_Hazard_InterpolateValue(minecartObj->rotCurr.y, minecartObj->rotDesired.y, minecartObj->rotSpeed);
 	minecartObj->rotCurr.x = RB_Hazard_InterpolateValue(minecartObj->rotCurr.x, minecartObj->rotDesired.x, minecartObj->rotSpeed);
 
-	// converted to TEST in rebuildPS1
 	ConvertRotToMatrix(&minecartInst->matrix, &minecartObj->rotCurr);
 
 	PlaySound3D_Flags(&minecartObj->soundIDCount,
 	                  0x72, // minecart sound
 	                  minecartInst);
 
-	RB_Minecart_CheckColl(minecartInst, t);
+	hitInst = RB_FindDriverCollision(minecartInst, t);
+	if (hitInst != NULL)
+	{
+		RB_Hazard_HurtDriver(hitInst->thread->object, minecartInst->model->id == DYNAMIC_SKUNK ? 1 : 3, 0, 0);
+	}
 }
 
 void RB_Minecart_LInB(struct Instance *inst)
 {
 	struct Minecart *minecartObj;
-	struct SpawnType2 *spawnType2;
 	struct Thread *t;
-	int minecartID;
-	int startIndex;
 
 	if (inst->thread != 0)
 	{
@@ -168,25 +127,35 @@ void RB_Minecart_LInB(struct Instance *inst)
 	    0                   // thread relative
 	);
 
+	inst->thread = t;
 	if (t == 0)
 	{
 		return;
 	}
-	inst->thread = t;
+	minecartObj = t->object;
 	t->inst = inst;
 
-	// memset is faster than erasing the following
-	// betweenPoints_currFrame, rotDesired[2], soundIDCount,
-	// rotCurr[0], rotCurr[1], rotCurr[2]
-
-	minecartObj = ((struct Minecart *)t->object);
 	memset(minecartObj, 0, sizeof(struct Minecart));
-	minecartObj->betweenPoints_numFrames = 8;
-	minecartObj->rotSpeed = 0x20;
+
+	// stagger the three carts across the shared path
+	if (inst->name[strlen(inst->name) - 1] == '0')
+	{
+		minecartObj->posIndex = 1;
+	}
+	else if (inst->name[strlen(inst->name) - 1] - '0' == 1)
+	{
+		minecartObj->posIndex = GAME_TRACKER->level1->ptrSpawnType2->numCoords / 3;
+	}
+	else
+	{
+		minecartObj->posIndex = (s32)((u32)GAME_TRACKER->level1->ptrSpawnType2->numCoords << 1) / 3;
+	}
 
 	inst->scale.x = 0x1000;
 	inst->scale.y = 0x1000;
 	inst->scale.z = 0x1000;
+	minecartObj->betweenPoints_numFrames = 8;
+	minecartObj->rotSpeed = 0x20;
 
 	if (inst->model->id == DYNAMIC_SKUNK)
 	{
@@ -206,40 +175,16 @@ void RB_Minecart_LInB(struct Instance *inst)
 		minecartObj->rotSpeed = 0x18;
 	}
 
-	// path coordinates for minecarts
-	spawnType2 = &sdata->gGT->level1->ptrSpawnType2[0];
-
-	// from instance
-	minecartID = inst->name[strlen(inst->name) - 1] - '0';
-
-	// minecart#0
-	startIndex = 1;
-
-	// #1 and #2
-	if (minecartID != 0)
-	{
-		// #1
-		// 50 points (0x32)
-		startIndex = spawnType2->numCoords;
-
-		// #2 and any other non-0/non-1 suffix
-		if (minecartID != 1)
-		{
-			startIndex = startIndex << 1;
-		}
-
-		startIndex = startIndex / 3;
-	}
-
-	// #0 = 0%
-	// #1 = 33%
-	// #2 = 66%
-
-	minecartObj->posIndex = startIndex;
-
-	RB_Minecart_NewPoint(inst, minecartObj, spawnType2);
-
-	return;
+	minecartObj->betweenPoints_currFrame = 0;
+	minecartObj->posStart.x = GAME_TRACKER->level1->ptrSpawnType2->coords.positions[minecartObj->posIndex - 1].x;
+	minecartObj->posStart.y = GAME_TRACKER->level1->ptrSpawnType2->coords.positions[minecartObj->posIndex - 1].y;
+	minecartObj->posStart.z = GAME_TRACKER->level1->ptrSpawnType2->coords.positions[minecartObj->posIndex - 1].z;
+	minecartObj->posEnd.x = GAME_TRACKER->level1->ptrSpawnType2->coords.positions[minecartObj->posIndex].x;
+	minecartObj->posEnd.y = GAME_TRACKER->level1->ptrSpawnType2->coords.positions[minecartObj->posIndex].y;
+	minecartObj->posEnd.z = GAME_TRACKER->level1->ptrSpawnType2->coords.positions[minecartObj->posIndex].z;
+	RB_Minecart_SetDirection(minecartObj);
+	minecartObj->rotDesired.z = 0;
+	minecartObj->soundIDCount = 0;
 }
 
 s16 minecartArr[50] = {0xC,  0xC,  0xC,  0xC,  0xC,  0xC,  0x6,  0x6,  0xC,  0xC,  0x9,  0x9,  0xC,  0xC,  0xC, 0x18, 0x18,

@@ -1,4 +1,4 @@
-#include <common.h>
+#include "VehCommon.h"
 
 enum
 {
@@ -49,6 +49,9 @@ int VehFrameInst_GetStartFrame(int animIndex, int numFrames)
 
 u32 VehFrameInst_GetNumAnimFrames(struct Instance *inst, int animIndex)
 {
+	struct ModelHeader *mh;
+	struct ModelAnim *anim;
+
 	if (inst->model == NULL)
 	{
 		return 0;
@@ -62,7 +65,7 @@ u32 VehFrameInst_GetNumAnimFrames(struct Instance *inst, int animIndex)
 		return 0;
 	}
 
-	struct ModelHeader *mh = inst->model->headers;
+	mh = inst->model->headers;
 
 	if (animIndex >= (int)mh->numAnimations)
 	{
@@ -73,7 +76,7 @@ u32 VehFrameInst_GetNumAnimFrames(struct Instance *inst, int animIndex)
 		return 0;
 	}
 
-	struct ModelAnim *anim = mh->ptrAnimations[animIndex];
+	anim = mh->ptrAnimations[animIndex];
 
 	if (anim == NULL)
 	{
@@ -83,9 +86,9 @@ u32 VehFrameInst_GetNumAnimFrames(struct Instance *inst, int animIndex)
 	return anim->numFrames & VEH_FRAME_NUM_FRAMES_MASK;
 }
 
-static void VehFrameProc_Driving_SpawnBurnSmoke(struct Driver *d)
+static inline void VehFrameProc_Driving_SpawnBurnSmoke(struct Driver *d)
 {
-	struct Particle *p = Particle_Init(0, sdata->gGT->iconGroup[VEH_FRAME_BURN_SMOKE_ICON_GROUP], &data.emSet_BurnSmoke[0]);
+	struct Particle *p = Particle_Init(0, GAME_TRACKER->iconGroup[VEH_FRAME_BURN_SMOKE_ICON_GROUP], &data.emSet_BurnSmoke[0]);
 
 	if (p != NULL)
 	{
@@ -98,7 +101,8 @@ static void VehFrameProc_Driving_SpawnBurnSmoke(struct Driver *d)
 void VehFrameProc_Driving(struct Thread *t, struct Driver *d)
 {
 	struct Instance *inst = t->inst;
-	u8 desiredAnim = VEH_FRAME_ANIM_DRIVE;
+	int desiredAnim = VEH_FRAME_ANIM_DRIVE;
+	int numFrames;
 
 	if ((d->instTntRecv == NULL) && (d->kartState != KS_WARP_PAD))
 	{
@@ -114,27 +118,121 @@ void VehFrameProc_Driving(struct Thread *t, struct Driver *d)
 		}
 	}
 
-	int numFrames = VehFrameInst_GetNumAnimFrames(inst, inst->animIndex);
+	numFrames = VehFrameInst_GetNumAnimFrames(inst, inst->animIndex);
 	if (numFrames <= 0)
 	{
 		return;
 	}
 
-	if (desiredAnim != inst->animIndex)
 	{
-		u8 currAnim = inst->animIndex;
-		int startFrame;
+		register int currAnim CTR_PSX_REGISTER("$5") = inst->animIndex;
 
-		if (currAnim == VEH_FRAME_ANIM_MATRIX_FIRST)
+		if (desiredAnim != currAnim)
 		{
-			startFrame = VehFrameInst_GetNumAnimFrames(inst, VEH_FRAME_ANIM_MATRIX_FIRST) - 1;
+			goto TransitionAnimation;
+		}
+
+	ProcessCurrentAnimation:
+		if (desiredAnim == VEH_FRAME_ANIM_DRIVE)
+		{
+			goto DriveAnimation;
+		}
+		if (desiredAnim == VEH_FRAME_ANIM_AIRBORNE)
+		{
+			goto AirborneAnimation;
+		}
+		goto OtherAnimation;
+
+	DriveAnimation:
+	{
+		int targetFrame;
+
+		if (d->instTntRecv != NULL)
+		{
+			targetFrame = numFrames >> 1;
 		}
 		else
 		{
-			startFrame = VehFrameInst_GetStartFrame(currAnim, numFrames);
+			s16 burnTimer = d->burnTimer;
+
+			if ((burnTimer != 0) && (burnTimer < VEH_FRAME_BURN_TIMER_LIMIT))
+			{
+				targetFrame = CTR_MipsAddLo(
+				    CTR_MipsSubLo(CTR_MipsSll((burnTimer >> VEH_FRAME_BURN_TIMER_SHIFT) % VEH_FRAME_BURN_FRAME_PERIOD, VEH_FRAME_BURN_FRAME_SHIFT),
+				                  VEH_FRAME_BURN_FRAME_BIAS),
+				    CTR_MipsSra(numFrames, 1));
+				inst->animFrame = targetFrame;
+				VehFrameProc_Driving_SpawnBurnSmoke(d);
+			}
+			else
+			{
+				if ((d->actionsFlagSet & ACTION_ACCEL_PREVENTION) != 0)
+				{
+					targetFrame =
+					    VehCalc_MapToRange(-d->ampTurnState, -VEH_FRAME_TURN_ACCEL_PREVENTION_LIMIT, VEH_FRAME_TURN_ACCEL_PREVENTION_LIMIT, 0, numFrames - 1);
+				}
+				else
+				{
+					int turnInput = d->simpTurnState;
+					int turnMax = (u8)d->const_TurnRate;
+
+					targetFrame = VehCalc_MapToRange(-turnInput, -turnMax, turnMax, 0, numFrames - 1);
+				}
+			}
 		}
 
-		if (inst->animFrame == startFrame)
+		inst->animFrame = VehCalc_InterpBySpeed(inst->animFrame, VEH_FRAME_INTERP_SPEED_NORMAL, targetFrame);
+		return;
+	}
+
+	AirborneAnimation:
+	{
+		s32 characterID;
+		s32 matrixArray;
+
+		inst->animFrame = VehCalc_InterpBySpeed(inst->animFrame, VEH_FRAME_INTERP_SPEED_NORMAL, numFrames - 1);
+
+		if (d->kartState == KS_MASK_GRABBED)
+		{
+			return;
+		}
+
+		characterID = GAME_CHARACTER_IDS[d->driverID];
+		if (characterID == PENTA_PENGUIN)
+		{
+			characterID = COCO_BANDICOOT;
+		}
+		if (characterID == FAKE_CRASH)
+		{
+			characterID = CRASH_BANDICOOT;
+		}
+
+		if (characterID == NITROS_OXIDE)
+		{
+			characterID = VEH_FRAME_OXIDE_MATRIX_ARRAY - VEH_FRAME_AIRBORNE_MATRIX_BASE;
+		}
+		matrixArray = characterID + VEH_FRAME_AIRBORNE_MATRIX_BASE;
+
+		d->matrixArray = matrixArray;
+		d->matrixIndex = (u8)inst->animFrame;
+		return;
+	}
+
+	OtherAnimation:
+		inst->animFrame = VehCalc_InterpBySpeed(inst->animFrame, VEH_FRAME_INTERP_SPEED_NORMAL, numFrames - 1);
+		return;
+
+	TransitionAnimation:
+		if (currAnim == VEH_FRAME_ANIM_MATRIX_FIRST)
+		{
+			numFrames = VehFrameInst_GetNumAnimFrames(inst, currAnim) - 1;
+		}
+		else
+		{
+			numFrames = VehFrameInst_GetStartFrame(currAnim, numFrames);
+		}
+
+		if (inst->animFrame == numFrames)
 		{
 			numFrames = VehFrameInst_GetNumAnimFrames(inst, desiredAnim);
 			if (numFrames <= 0)
@@ -146,22 +244,28 @@ void VehFrameProc_Driving(struct Thread *t, struct Driver *d)
 			inst->animFrame = VehFrameInst_GetStartFrame(desiredAnim, numFrames);
 			d->matrixArray = BAKED_GTE_MATRIX_NONE;
 			d->matrixIndex = 0;
+			goto ProcessCurrentAnimation;
 		}
 		else
 		{
-			int speed = VEH_FRAME_TRANSITION_DEFAULT_SPEED;
+			int speed;
+			int transitionAnim = inst->animIndex;
 
-			if (currAnim == VEH_FRAME_ANIM_DRIVE)
+			switch (transitionAnim)
 			{
+			case VEH_FRAME_ANIM_DRIVE:
 				speed = VEH_FRAME_TRANSITION_DRIVE_SPEED;
-			}
-			else if (currAnim == VEH_FRAME_ANIM_MATRIX_FIRST)
-			{
-				speed = VEH_FRAME_TRANSITION_MATRIX_SPEED;
+				break;
+			case VEH_FRAME_ANIM_MATRIX_FIRST:
 				d->matrixIndex = inst->animFrame;
+				speed = VEH_FRAME_TRANSITION_MATRIX_SPEED;
+				break;
+			default:
+				speed = VEH_FRAME_TRANSITION_DEFAULT_SPEED;
+				break;
 			}
 
-			inst->animFrame = VehCalc_InterpBySpeed(inst->animFrame, speed, startFrame);
+			inst->animFrame = VehCalc_InterpBySpeed(inst->animFrame, speed, numFrames);
 
 			if ((u32)(inst->animIndex - VEH_FRAME_ANIM_MATRIX_FIRST) < VEH_FRAME_MATRIX_ANIM_COUNT)
 			{
@@ -176,77 +280,6 @@ void VehFrameProc_Driving(struct Thread *t, struct Driver *d)
 			return;
 		}
 	}
-
-	if (desiredAnim == VEH_FRAME_ANIM_DRIVE)
-	{
-		int targetFrame = numFrames >> 1;
-
-		if (d->instTntRecv == NULL)
-		{
-			s16 burnTimer = d->burnTimer;
-
-			if ((burnTimer != 0) && (burnTimer < VEH_FRAME_BURN_TIMER_LIMIT))
-			{
-				targetFrame +=
-				    (((burnTimer >> VEH_FRAME_BURN_TIMER_SHIFT) % VEH_FRAME_BURN_FRAME_PERIOD) << VEH_FRAME_BURN_FRAME_SHIFT) - VEH_FRAME_BURN_FRAME_BIAS;
-				inst->animFrame = targetFrame;
-				VehFrameProc_Driving_SpawnBurnSmoke(d);
-			}
-			else
-			{
-				int turnMin = -VEH_FRAME_TURN_ACCEL_PREVENTION_LIMIT;
-				int turnMax = VEH_FRAME_TURN_ACCEL_PREVENTION_LIMIT;
-				int turnState = d->ampTurnState;
-
-				if ((d->actionsFlagSet & ACTION_ACCEL_PREVENTION) == 0)
-				{
-					turnMax = (u8)d->const_TurnRate;
-					turnMin = -turnMax;
-					turnState = d->simpTurnState;
-				}
-
-				targetFrame = VehCalc_MapToRange(-turnState, turnMin, turnMax, 0, numFrames - 1);
-			}
-		}
-
-		inst->animFrame = VehCalc_InterpBySpeed(inst->animFrame, VEH_FRAME_INTERP_SPEED_NORMAL, targetFrame);
-		return;
-	}
-
-	if (desiredAnim == VEH_FRAME_ANIM_AIRBORNE)
-	{
-		s16 characterID;
-		u8 matrixArray;
-
-		inst->animFrame = VehCalc_InterpBySpeed(inst->animFrame, VEH_FRAME_INTERP_SPEED_NORMAL, numFrames - 1);
-
-		if (d->kartState == KS_MASK_GRABBED)
-		{
-			return;
-		}
-
-		characterID = data.characterIDs[d->driverID];
-		if (characterID == PENTA_PENGUIN)
-		{
-			characterID = COCO_BANDICOOT;
-		}
-		if (characterID == FAKE_CRASH)
-		{
-			characterID = CRASH_BANDICOOT;
-		}
-
-		matrixArray = characterID + VEH_FRAME_AIRBORNE_MATRIX_BASE;
-		if (characterID == NITROS_OXIDE)
-		{
-			matrixArray = VEH_FRAME_OXIDE_MATRIX_ARRAY;
-		}
-
-		d->matrixArray = matrixArray;
-		d->matrixIndex = (u8)inst->animFrame;
-		return;
-	}
-
-	inst->animFrame = VehCalc_InterpBySpeed(inst->animFrame, VEH_FRAME_INTERP_SPEED_NORMAL, numFrames - 1);
 }
 
 void VehFrameProc_Spinning(struct Thread *t, struct Driver *d)
@@ -300,6 +333,8 @@ void VehFrameProc_Spinning(struct Thread *t, struct Driver *d)
 void VehFrameProc_LastSpin(struct Thread *t, struct Driver *d)
 {
 	struct Instance *inst = t->inst;
+	int numFrames;
+	int targetFrame;
 
 	if (inst->animIndex != VEH_FRAME_ANIM_DRIVE)
 	{
@@ -307,13 +342,13 @@ void VehFrameProc_LastSpin(struct Thread *t, struct Driver *d)
 		return;
 	}
 
-	int numFrames = VehFrameInst_GetNumAnimFrames(inst, VEH_FRAME_ANIM_DRIVE);
+	numFrames = VehFrameInst_GetNumAnimFrames(inst, VEH_FRAME_ANIM_DRIVE);
 	if (numFrames <= 0)
 	{
 		return;
 	}
 
-	int targetFrame = inst->animFrame;
+	targetFrame = inst->animFrame;
 
 	if (d->turnAngleCurr > 0)
 	{

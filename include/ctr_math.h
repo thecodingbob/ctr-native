@@ -56,7 +56,8 @@ typedef struct Vec2
 	s32 y;
 } Vec2;
 
-typedef struct Vec3
+// NOTE(aalhendi): Vec3 can also view the SDK's three contiguous translation words.
+typedef struct CTR_MAY_ALIAS Vec3
 {
 	s32 x;
 	s32 y;
@@ -128,22 +129,34 @@ static inline int FP_Mult(int x, int y)
 }
 
 // MIPS R3000 integer helpers keep overflow, shifts, multiply-low, divide traps,
-// and truncation points explicit.
+// and truncation points explicit. Native-only masks and guards avoid ISO C
+// undefined behavior; retail expressions remain visible to GCC 2.8.1 codegen.
 static inline s32 CTR_MipsSll(s32 value, u32 shift)
 {
-	return (s32)((u32)value << (shift & 0x1f));
+#if defined(CTR_NATIVE)
+	shift &= 0x1f;
+#endif
+
+	return (s32)((u32)value << shift);
 }
 
 static inline s32 CTR_MipsSra(s32 value, u32 shift)
 {
+#if defined(CTR_NATIVE)
 	shift &= 0x1f;
-
 	return (s32)(((u32)value >> shift) | ((value < 0) ? ~(0xffffffffu >> shift) : 0));
+#else
+	return value >> shift;
+#endif
 }
 
 static inline u32 CTR_MipsSrl(s32 value, u32 shift)
 {
-	return (u32)value >> (shift & 0x1f);
+#if defined(CTR_NATIVE)
+	shift &= 0x1f;
+#endif
+
+	return (u32)value >> shift;
 }
 
 static inline s32 CTR_MipsMulLo(s32 lhs, s32 rhs)
@@ -178,22 +191,26 @@ static inline u32 CTR_PackS16Pair(s32 lo, s32 hi)
 
 static inline s32 CTR_MipsDiv(s32 dividend, s32 divisor)
 {
+#if defined(CTR_NATIVE)
 	const s32 minS32 = (-2147483647 - 1);
 
 	if ((divisor == 0) || ((divisor == -1) && (dividend == minS32)))
 	{
 		CTR_TRAP();
 	}
+#endif
 
 	return dividend / divisor;
 }
 
 static inline u32 CTR_MipsDivU(u32 dividend, u32 divisor)
 {
+#if defined(CTR_NATIVE)
 	if (divisor == 0)
 	{
 		CTR_TRAP();
 	}
+#endif
 
 	return dividend / divisor;
 }

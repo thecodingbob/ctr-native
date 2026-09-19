@@ -195,7 +195,7 @@ struct TitleInstanceMeta
 	// Stored as TITLE_INTRO_MENU_READY_FRAME for every row; no use site is known.
 	s16 unusedMenuReadyFrame;
 
-	u16 isTrophy;
+	s16 isTrophy;
 };
 
 CTR_STATIC_ASSERT(sizeof(struct TitleInstanceMeta) == 0x8);
@@ -255,7 +255,8 @@ struct MainMenu_LevelRow
 	s32 previewVideoFileIndex;
 
 	// how long preview video plays before looping
-	s32 previewVideoFrameCount;
+	s16 previewVideoFrameCount;
+	s16 pad;
 
 	// Complete 0x10-byte structure
 };
@@ -467,6 +468,14 @@ struct TrackSelectRuntimeState
 	s16 videoStatePrev;
 };
 
+struct TrackSelectMapOffset
+{
+	s16 offsetX;
+	s16 offsetY;
+	u8 type;
+	u8 pad;
+};
+
 struct TransitionMeta
 {
 	s16 distX;
@@ -481,10 +490,51 @@ struct TransitionMeta
 	// 0xA -- size
 };
 
+enum TitleMenuPositionIndex
+{
+	TITLE_MENU_POS_MAIN = 0,
+	TITLE_MENU_POS_ADVENTURE = 1,
+	TITLE_MENU_POS_RACE_TYPE = 2,
+	TITLE_MENU_POS_PLAYERS = 3,
+	TITLE_MENU_POS_DIFFICULTY = 4,
+	TITLE_MENU_POS_COUNT = 5,
+};
+
+enum TitleTransitionIndex
+{
+	TITLE_TRANSITION_MAIN = 0,
+	TITLE_TRANSITION_ADVENTURE = 1,
+	TITLE_TRANSITION_RACE_TYPE = 2,
+	TITLE_TRANSITION_PLAYERS = 3,
+	TITLE_TRANSITION_DIFFICULTY = 4,
+	TITLE_TRANSITION_CAMERA_XY = 5,
+	TITLE_TRANSITION_CAMERA_Z = 6,
+	TITLE_TRANSITION_END = 7,
+	TITLE_TRANSITION_COUNT = 8,
+};
+
+struct TitleMenuPositionLayout
+{
+	SVec2 menuPos[TITLE_MENU_POS_COUNT];
+	SVec3 baseCameraPos;
+	s16 pad_baseCameraPos;
+};
+
+struct TitleTransitionLayout
+{
+	s32 durationFrames;
+	s16 step;
+	s16 pad_step;
+	struct TitleMenuPositionLayout menuLayout;
+	struct TransitionMeta transition[TITLE_TRANSITION_COUNT];
+	char padding[0x10];
+};
+
 struct BattleWeaponMenuItem
 {
 	u32 enabledWeaponFlag;
-	s32 iconID;
+	s16 iconID;
+	s16 pad_iconID;
 };
 
 CTR_STATIC_ASSERT(sizeof(struct BattleWeaponMenuItem) == 0x8);
@@ -492,7 +542,7 @@ CTR_STATIC_ASSERT(sizeof(struct BattleWeaponMenuItem) == 0x8);
 struct TitleSoundCue
 {
 	s16 frameToPlay;
-	s16 soundID;
+	u16 soundID;
 };
 
 CTR_STATIC_ASSERT(sizeof(struct TitleSoundCue) == 0x4);
@@ -565,7 +615,7 @@ struct OverlayRDATA_230
 	char s_teststr1[12];
 
 	// 800aba94
-	u32 ptr_MM_TrackSelect_boolTrackOpen;
+	u32 jmpPtrs_Scrapbook_PlayMovie[5];
 };
 
 // 800b44e4
@@ -667,49 +717,7 @@ struct OverlayDATA_230
 	// Full block is 0x84 bytes
 
 	// 800B4840
-	s32 titleMenuTransitionDurationFrames;
-
-	// 800B4844
-	s32 titleMenuTransitionStep;
-
-	// 800B4848
-	SVec2 titleMainMenuPos;
-
-	// 800B484c
-	SVec2 titleAdventureMenuPos;
-
-	// 800B4850
-	SVec2 titleRaceTypeMenuPos;
-
-	// 800B4854
-	SVec2 titlePlayersMenuPos;
-
-	// 800B4858
-	SVec2 titleDifficultyMenuPos;
-
-	// 800B485c
-	SVec3 titleBaseCameraPos;
-	s16 _pad_titleBaseCameraPos;
-
-	// 800B4864
-	union
-	{
-		struct TransitionMeta transitionMeta_Menu[8];
-		struct
-		{
-			struct TransitionMeta titleMainMenuTransition;
-			struct TransitionMeta titleAdventureTransition;
-			struct TransitionMeta titleRaceTypeTransition;
-			struct TransitionMeta titlePlayersTransition;
-			struct TransitionMeta titleDifficultyTransition;
-			struct TransitionMeta titleCameraXYTransition;
-			struct TransitionMeta titleCameraZTransition;
-			struct TransitionMeta titleTransitionEnd;
-		} named;
-	} titleTransitions;
-
-	// 800B48B4
-	char padding_afterTitleTransitions[0x10];
+	struct TitleTransitionLayout titleTransition;
 
 
 	// 800b48c4
@@ -850,12 +858,7 @@ struct OverlayDATA_230
 
 
 	// 800b55cc
-	struct
-	{
-		s16 offsetX;
-		s16 offsetY;
-		s16 type;
-	} drawMapOffset[6];
+	struct TrackSelectMapOffset drawMapOffset[6];
 
 	// ============== Cup Select ==================
 
@@ -1021,13 +1024,15 @@ struct OverlayDATA_230
 	b32 characterSelectRosterExpanded;
 
 	// 800b5a30
-	s32 characterSelectWindowWidth;
+	u16 characterSelectWindowWidth;
+	u16 padding800b5a32;
 
 	// 800b5a34
 	struct TitleCameraPathFrame *titleIntroCameraPath;
 
 	// 800b5a38
-	s32 characterSelectNameTextY;
+	s16 characterSelectNameTextY;
+	u16 padding800b5a3a;
 
 	// 800b5a3c
 	struct TransitionMeta *characterSelectTransitionMeta;
@@ -1057,33 +1062,34 @@ struct OVR_230_VideoBSS
 	s32 cdRetryState;
 
 	// 800b67bc
-	s16 finalSliceIndex;
+	u16 finalSliceIndex;
 
 	// 800b67be
-	s16 sliceIndex;
+	u16 sliceIndex;
 
 	// 800b67c0
-	s16 dctMode;
+	u16 dctMode;
 
 	// 800b67c2
-	s16 drawNextFrame;
+	u16 drawNextFrame;
 
 	// 800b67c4
-	s16 endOfStream;
+	u16 endOfStream;
 	s16 decodeState;
 
 	// 800b67c8
-	s16 vlcBufferIndex;
+	u16 vlcBufferIndex;
 
 	// 800b67ca
-	s16 dctOutBufferIndex;
+	u16 dctOutBufferIndex;
 
 	// 800b67cc
 	s16 cdKickState;
-	s16 stalledBacklocFrames;
+	u16 stalledBacklocFrames;
 
 	// 800b67d0
-	s32 stallRecoveryFrames;
+	u16 stallRecoveryFrames;
+	u16 pad_stallRecoveryFrames;
 
 	// 800b67d4
 	s32 streamFrameCount;
@@ -1105,7 +1111,7 @@ struct OVR_230_VideoBSS
 	s32 ringSectorCount;
 
 	// 800b67f0
-	u32 dctOutputDone;
+	volatile u32 dctOutputDone;
 
 	s32 vlcBufferSize;
 
@@ -1165,6 +1171,7 @@ CTR_STATIC_ASSERT(offsetof(struct MainMenu_LevelRow, previewVideoFrameCount) == 
 CTR_STATIC_ASSERT(offsetof(struct OverlayRDATA_230, overlayTag) == 0x0);
 CTR_STATIC_ASSERT(offsetof(struct OverlayRDATA_230, s_title) == 0x1c);
 CTR_STATIC_ASSERT(offsetof(struct OverlayRDATA_230, packedDefaultCharacterIDWords) == 0x24);
+CTR_STATIC_ASSERT(sizeof(struct OverlayRDATA_230) == 0xb8);
 CTR_STATIC_ASSERT(sizeof(struct CharacterSelectMeta) == 0xC);
 CTR_STATIC_ASSERT(offsetof(struct CharacterSelectMeta, nextIconByDirection) == 0x4);
 CTR_STATIC_ASSERT(offsetof(struct CharacterSelectMeta, characterID) == 0x8);
@@ -1236,5 +1243,6 @@ CTR_STATIC_ASSERT(offsetof(struct TrackSelectRuntimeState, videoMemAllocated) ==
 CTR_STATIC_ASSERT(offsetof(struct TrackSelectRuntimeState, videoStateCurr) == 0x14);
 CTR_STATIC_ASSERT(offsetof(struct TrackSelectRuntimeState, videoStatePrev) == 0x16);
 CTR_STATIC_ASSERT(sizeof(struct TransitionMeta) == 0xA);
-
+CTR_STATIC_ASSERT(sizeof(struct TitleMenuPositionLayout) == 0x1c);
+CTR_STATIC_ASSERT(sizeof(struct TitleTransitionLayout) == 0x84);
 #endif

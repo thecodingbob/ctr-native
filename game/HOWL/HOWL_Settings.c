@@ -1,339 +1,372 @@
 #include <common.h>
 
-int howl_Disable(void)
+#ifndef HOWL_AUDIO_ENABLED
+#define HOWL_AUDIO_ENABLED   sdata->boolAudioEnabled
+#define HOWL_STEREO          sdata->boolStereoEnabled
+#define HOWL_VOLUME_FX       sdata->vol_FX
+#define HOWL_VOLUME_MUSIC    sdata->vol_Music
+#define HOWL_VOLUME_VOICE    sdata->vol_Voice
+#define HOWL_CHANNELS        sdata->channelTaken
+#define HOWL_CHANNEL_UPDATES sdata->ChannelUpdateFlags
+#define HOWL_CHANNEL_ATTRS   sdata->channelAttrNew
+#define HOWL_SONG_SEQUENCES  sdata->songSeq
+#define HOWL_SONGS           sdata->songPool
+#define HOWL_SLIDER_PLAYING  sdata->OptionSlider_BoolPlay
+#define HOWL_SLIDER_ROW      sdata->OptionSlider_Index
+#define HOWL_SLIDER_SOUND    sdata->OptionSlider_soundID
+#endif
+
+b32 howl_Disable(void)
 {
-	if (sdata->boolAudioEnabled == 0)
+	if (HOWL_AUDIO_ENABLED == 0)
 	{
 		return 0;
 	}
 
-	sdata->boolAudioEnabled = 0;
+	HOWL_AUDIO_ENABLED = 0;
 	return 1;
 }
 
-void UpdateChannelVol_EngineFX(struct EngineFX *engineFX, struct ChannelAttr *attr, int vol, int LR)
+void UpdateChannelVol_EngineFX(struct EngineFX *engineFX, struct ChannelAttr *attr, u32 vol, s32 LR)
 {
-	Channel_SetVolume(attr, (sdata->vol_FX * engineFX->volume * vol) >> 10, LR);
+	u32 fxVolume = HOWL_VOLUME_FX;
+	Channel_SetVolume(attr, (fxVolume * engineFX->volume * vol) >> 10, LR);
 }
 
-void UpdateChannelVol_OtherFX(struct OtherFX *otherFX, struct ChannelAttr *attr, int vol, int LR)
+void UpdateChannelVol_OtherFX(struct OtherFX *otherFX, struct ChannelAttr *attr, u32 vol, s32 LR)
 {
-	int otherVol;
-
-	otherVol = sdata->vol_FX;
+	register struct ChannelAttr *output CTR_PSX_REGISTER("$8") = attr;
+	u32 otherVol;
+	u32 finalVolume;
 
 	if ((otherFX->flags & 4) != 0)
 	{
-		otherVol = sdata->vol_Voice;
+		otherVol = HOWL_VOLUME_VOICE;
 	}
-
-	Channel_SetVolume(attr, (otherVol * otherFX->volume * vol) >> 10, LR);
-}
-
-void UpdateChannelVol_Music(struct SongSeq *songSeq, struct ChannelAttr *attr, int index, int vol)
-{
-	int sampleVol;
-
-	int newVol = (sdata->vol_Music * sdata->songPool[songSeq->songPoolIndex].vol_Curr * songSeq->vol_Curr) >> 10;
-
-	if ((songSeq->flags & 4) == 0)
-	{
-		sampleVol = sdata->ptrCseqLongSamples[songSeq->instrumentID].volume;
-	}
-
 	else
 	{
-		sampleVol = sdata->ptrCseqShortSamples[index].volume;
+		otherVol = HOWL_VOLUME_FX;
 	}
 
-	Channel_SetVolume(attr, (newVol * sampleVol * vol) >> 0xf, songSeq->LR);
+	// NOTE(aalhendi): Retail finishes the wrapping gain before preparing call arguments.
+	finalVolume = (otherVol * otherFX->volume * vol) >> 10;
+	CTR_PSX_OBSERVE_VALUE(finalVolume);
+	Channel_SetVolume(output, finalVolume, LR);
 }
 
-void UpdateChannelVol_EngineFX_All()
+void UpdateChannelVol_Music(struct SongSeq *seq, struct ChannelAttr *attr, s32 index, u32 vol)
+{
+	register struct ChannelAttr *output CTR_PSX_REGISTER("$9") = attr;
+	struct Song *song = &HOWL_SONGS[seq->songPoolIndex];
+	register u32 product CTR_PSX_REGISTER("$10");
+	register s32 mix CTR_PSX_REGISTER("$5");
+	s32 sampleVol;
+	u32 finalVolume;
+
+	// NOTE(aalhendi): Keep the shift between sequence and sample gain: moving it
+	// changes rounding. The bindings preserve retail's sample-load scheduling;
+	// their constraints emit no instructions and are inert on native.
+	if ((seq->flags & 4) != 0)
+	{
+		register s32 master CTR_PSX_REGISTER("$3");
+		register s32 level CTR_PSX_REGISTER("$2");
+		register struct SampleDrums *sample CTR_PSX_REGISTER("$2");
+
+		master = HOWL_VOLUME_MUSIC;
+		level = song->vol_Curr;
+		product = master * level;
+		level = seq->vol_Curr;
+		product *= level;
+		sample = sdata->ptrCseqShortSamples;
+		sample += index;
+		CTR_PSX_DEPEND_VALUE(sample, product);
+		sampleVol = sample->volume;
+		mix = (s32)product >> 10;
+	}
+	else
+	{
+		register s32 master CTR_PSX_REGISTER("$3");
+		register s32 level CTR_PSX_REGISTER("$2");
+		register struct SampleInstrument *sample CTR_PSX_REGISTER("$3");
+		register s32 offset CTR_PSX_REGISTER("$2");
+		register s32 instrument CTR_PSX_REGISTER("$3");
+
+		master = HOWL_VOLUME_MUSIC;
+		level = song->vol_Curr;
+		product = master * level;
+		level = seq->vol_Curr;
+		product *= level;
+		instrument = seq->instrumentID;
+		CTR_PSX_KEEP_VALUE_RELAXED(instrument);
+		offset = instrument * ((s32)sizeof(struct SampleInstrument) / (s32)sizeof(u32));
+		CTR_PSX_KEEP_VALUE_RELAXED(offset);
+		sample = sdata->ptrCseqLongSamples;
+		offset *= (s32)sizeof(u32);
+		sample = (struct SampleInstrument *)((u8 *)sample + offset);
+		CTR_PSX_DEPEND_VALUE(sample, product);
+		sampleVol = sample->volume;
+		CTR_PSX_ORDER_VALUES(product, sampleVol);
+		mix = (s32)product >> 10;
+	}
+
+	// The final channel gain is a wrapping 32-bit product.
+	product = mix * sampleVol;
+	product *= vol;
+	finalVolume = product >> 15;
+	CTR_PSX_OBSERVE_VALUE(finalVolume);
+	Channel_SetVolume(output, finalVolume, seq->LR);
+}
+
+void UpdateChannelVol_EngineFX_All(void)
 {
 	struct ChannelStats *curr;
 
-	for (curr = (struct ChannelStats *)sdata->channelTaken.first; curr != NULL; curr = curr->link.links.next)
+	for (curr = (struct ChannelStats *)HOWL_CHANNELS.first; curr != NULL; curr = curr->link.links.next)
 	{
-		if (curr->type == HOWL_CHANNEL_TYPE_MUSIC)
-		{
-			continue;
-		}
-
-		// update volume
-		sdata->ChannelUpdateFlags[curr->channelID] |= HOWL_CHANNEL_UPDATE_VOLUME;
-
-		// just the sound, not the instance of sound
-		int soundID = curr->soundID & 0xffff;
-
 		if (curr->type == HOWL_CHANNEL_TYPE_ENGINE_FX)
 		{
-			UpdateChannelVol_EngineFX(&sdata->howl_metaEngineFX[soundID], &sdata->channelAttrNew[curr->channelID], curr->vol, curr->LR);
+			HOWL_CHANNEL_UPDATES[curr->channelID] |= HOWL_CHANNEL_UPDATE_VOLUME;
+			UpdateChannelVol_EngineFX(&sdata->howl_metaEngineFX[curr->soundID & 0xffff], &HOWL_CHANNEL_ATTRS[curr->channelID], curr->vol, curr->LR);
 		}
-
-		// type == OtherFX
-		else
+		else if (curr->type == HOWL_CHANNEL_TYPE_OTHER_FX)
 		{
-			UpdateChannelVol_OtherFX(&sdata->howl_metaOtherFX[soundID], &sdata->channelAttrNew[curr->channelID], curr->vol, curr->LR);
+			HOWL_CHANNEL_UPDATES[curr->channelID] |= HOWL_CHANNEL_UPDATE_VOLUME;
+			UpdateChannelVol_OtherFX(&sdata->howl_metaOtherFX[curr->soundID & 0xffff], &HOWL_CHANNEL_ATTRS[curr->channelID], curr->vol, curr->LR);
 		}
 	}
 }
 
-void UpdateChannelVol_Music_All()
+void UpdateChannelVol_Music_All(void)
 {
-	struct ChannelStats *curr, *backupNext;
+	struct ChannelStats *curr;
+	struct ChannelAttr *attr;
 
-	for (curr = (struct ChannelStats *)sdata->channelTaken.first; curr != NULL; curr = backupNext)
+	for (curr = (struct ChannelStats *)HOWL_CHANNELS.first; curr != NULL; curr = curr->link.links.next)
 	{
-		backupNext = curr->link.links.next;
-
 		if (curr->type != HOWL_CHANNEL_TYPE_MUSIC)
 		{
 			continue;
 		}
 
 		// update volume
-		sdata->ChannelUpdateFlags[curr->channelID] |= HOWL_CHANNEL_UPDATE_VOLUME;
+		HOWL_CHANNEL_UPDATES[curr->channelID] |= HOWL_CHANNEL_UPDATE_VOLUME;
 
-		UpdateChannelVol_Music(&sdata->songSeq[curr->soundID & 0xffff], &sdata->channelAttrNew[curr->channelID], curr->drumIndex_pitchIndex, curr->vol);
+		attr = &HOWL_CHANNEL_ATTRS[curr->channelID];
+		UpdateChannelVol_Music(&HOWL_SONG_SEQUENCES[curr->soundID], attr, curr->drumIndex_pitchIndex, curr->vol);
 	}
 }
 
-void UpdateChannelVol_OtherFX_All()
+void UpdateChannelVol_OtherFX_All(void)
 {
-	struct ChannelStats *curr, *backupNext;
+	struct ChannelStats *curr;
+	struct ChannelAttr *attr;
 
-	for (curr = (struct ChannelStats *)sdata->channelTaken.first; curr != NULL; curr = backupNext)
+	for (curr = (struct ChannelStats *)HOWL_CHANNELS.first; curr != NULL; curr = curr->link.links.next)
 	{
-		backupNext = curr->link.links.next;
-
 		if (curr->type != HOWL_CHANNEL_TYPE_OTHER_FX)
 		{
 			continue;
 		}
 
 		// update volume
-		sdata->ChannelUpdateFlags[curr->channelID] |= HOWL_CHANNEL_UPDATE_VOLUME;
+		HOWL_CHANNEL_UPDATES[curr->channelID] |= HOWL_CHANNEL_UPDATE_VOLUME;
 
-		UpdateChannelVol_OtherFX(&sdata->howl_metaOtherFX[curr->soundID & 0xffff], &sdata->channelAttrNew[curr->channelID], curr->vol, curr->LR);
+		attr = &HOWL_CHANNEL_ATTRS[curr->channelID];
+		UpdateChannelVol_OtherFX(&sdata->howl_metaOtherFX[curr->soundID & 0xffff], attr, curr->vol, curr->LR);
 	}
 }
 
 // real Naughty Dog name
-int howl_VolumeGet(int type)
+s32 howl_VolumeGet(s32 type)
 {
-	if (type == HOWL_VOLUME_TYPE_MUSIC)
+	switch ((u32)type)
 	{
-		return sdata->vol_Music;
-	}
-
-	if (type == HOWL_VOLUME_TYPE_FX)
+	case HOWL_VOLUME_TYPE_FX:
 	{
-		return sdata->vol_FX;
+		return HOWL_VOLUME_FX;
 	}
-
-	if (type == HOWL_VOLUME_TYPE_VOICE)
+	case HOWL_VOLUME_TYPE_MUSIC:
 	{
-		return sdata->vol_Voice;
+		return HOWL_VOLUME_MUSIC;
 	}
-
+	case HOWL_VOLUME_TYPE_VOICE:
+	{
+		return HOWL_VOLUME_VOICE;
+	}
+	}
 	return 0;
 }
 
-void howl_VolumeSet(int type, u8 vol)
+void howl_VolumeSet(s32 type, u8 vol)
 {
-	if (type == HOWL_VOLUME_TYPE_MUSIC)
+	// Only changed sliders refresh active channels; store the new gain before
+	// entering the audio critical section, and leave it once after the walk.
+	switch ((u32)type)
 	{
-		if (sdata->vol_Music == vol)
+	case HOWL_VOLUME_TYPE_FX:
+	{
+		if (HOWL_VOLUME_FX == vol)
 		{
 			return;
 		}
-
-		sdata->vol_Music = vol;
-
+		HOWL_VOLUME_FX = vol;
 		Smart_EnterCriticalSection();
-
-		UpdateChannelVol_Music_All();
-	}
-	else if (type == HOWL_VOLUME_TYPE_FX)
-	{
-		if (sdata->vol_FX == vol)
-		{
-			return;
-		}
-
-		sdata->vol_FX = vol;
-
-		Smart_EnterCriticalSection();
-
 		UpdateChannelVol_EngineFX_All();
+		break;
 	}
-	else
+	case HOWL_VOLUME_TYPE_MUSIC:
 	{
-		if (type != HOWL_VOLUME_TYPE_VOICE)
+		if (HOWL_VOLUME_MUSIC == vol)
 		{
 			return;
 		}
-
-		if (sdata->vol_Voice == vol)
-		{
-			return;
-		}
-
-		sdata->vol_Voice = vol;
-
+		HOWL_VOLUME_MUSIC = vol;
 		Smart_EnterCriticalSection();
-
+		UpdateChannelVol_Music_All();
+		break;
+	}
+	case HOWL_VOLUME_TYPE_VOICE:
+	{
+		if (HOWL_VOLUME_VOICE == vol)
+		{
+			return;
+		}
+		HOWL_VOLUME_VOICE = vol;
+		Smart_EnterCriticalSection();
 		UpdateChannelVol_OtherFX_All();
+		break;
+	}
+	default:
+	{
+		return;
+	}
 	}
 
 	Smart_ExitCriticalSection();
 }
 
-int howl_ModeGet(void)
+s32 howl_ModeGet(void)
 {
-	return sdata->boolStereoEnabled;
+	return HOWL_STEREO;
 }
 
-void howl_ModeSet(int newMode)
+void howl_ModeSet(s32 newMode)
 {
-	sdata->boolStereoEnabled = newMode;
+	HOWL_STEREO = newMode;
 }
 
-void OptionsMenu_TestSound(int newRow, int newBoolPlay)
+void OptionsMenu_TestSound(s32 newRow, b32 newBoolPlay)
 {
-	int oldRow = sdata->OptionSlider_Index;
-	int oldBoolPlay = sdata->OptionSlider_BoolPlay;
-
-	if ((oldBoolPlay != 0) && (oldRow != newRow))
+	// Stop the previous row's preview before changing the slider selection.
+	if (HOWL_SLIDER_PLAYING && newRow != HOWL_SLIDER_ROW)
 	{
-		// FX row
-		if (oldRow == 0)
+		switch (HOWL_SLIDER_ROW)
+		{
+		case HOWL_VOLUME_TYPE_FX:
 		{
 			OtherFX_Stop2(0x48);
+			break;
 		}
-
-		// Music row
-		else if (oldRow == 1)
+		case HOWL_VOLUME_TYPE_MUSIC:
 		{
-			// end Aku or Uka song
-			// 0=level, 1=aku, 2=uka
-
 			if (Music_GetHighestSongPlayIndex() == 1)
 			{
 				CseqMusic_Stop(CSEQ_SONG_UKA);
 			}
-
 			else
 			{
 				CseqMusic_Stop(CSEQ_SONG_AKU);
 			}
+			break;
 		}
-
-		// Voice row
-		else if (oldRow == 2)
+		case HOWL_VOLUME_TYPE_VOICE:
 		{
-			if (sdata->OptionSlider_soundID != 0)
+			if (HOWL_SLIDER_SOUND)
 			{
-				OtherFX_Stop1(sdata->OptionSlider_soundID);
-				sdata->OptionSlider_soundID = 0;
+				OtherFX_Stop1(HOWL_SLIDER_SOUND);
+				HOWL_SLIDER_SOUND = 0;
 			}
+			break;
+		}
 		}
 	}
-
-	if ((newBoolPlay != oldBoolPlay) || (oldRow != newRow))
+	// NOTE(aalhendi): Re-read preview state after stop calls; retail does not
+	// cache the playing flag or selected row across those calls.
+	if (newBoolPlay != HOWL_SLIDER_PLAYING || newRow != HOWL_SLIDER_ROW)
 	{
-		if (newBoolPlay != 0)
+		if (newBoolPlay)
 		{
-			// FX row
-			if (newRow == 0)
+			switch (newRow)
+			{
+			case HOWL_VOLUME_TYPE_FX:
 			{
 				OtherFX_Play(0x48, 0);
+				break;
 			}
-
-			// Music row
-			else if (newRow == 1)
+			case HOWL_VOLUME_TYPE_MUSIC:
 			{
-				// end Aku or Uka song
-				// 0=level, 1=aku, 2=uka
-
-				int val = 1;
 				if (Music_GetHighestSongPlayIndex() == 1)
 				{
-					val = 2;
+					CseqMusic_Start(CSEQ_SONG_UKA, 0, NULL, 0, 1);
 				}
-
-				CseqMusic_Start(val, 0, NULL, 0, 1);
+				else
+				{
+					CseqMusic_Start(CSEQ_SONG_AKU, 0, NULL, 0, 1);
+				}
+				break;
+			}
 			}
 		}
 		else
 		{
-			// FX row
-			if (oldRow == 0)
+			switch (HOWL_SLIDER_ROW)
+			{
+			case HOWL_VOLUME_TYPE_FX:
 			{
 				OtherFX_Stop2(0x48);
+				break;
 			}
-
-			// Music row
-			else if (oldRow == 1)
+			case HOWL_VOLUME_TYPE_MUSIC:
 			{
-				// end Aku or Uka song
-				// 0=level, 1=aku, 2=uka
-
 				if (Music_GetHighestSongPlayIndex() == 1)
 				{
 					CseqMusic_Stop(CSEQ_SONG_UKA);
 				}
-
 				else
 				{
 					CseqMusic_Stop(CSEQ_SONG_AKU);
 				}
+				break;
 			}
-
-			// Voice row
-			else if (oldRow == 2)
+			case HOWL_VOLUME_TYPE_VOICE:
 			{
-				if (sdata->OptionSlider_soundID != 0)
+				if (HOWL_SLIDER_SOUND)
 				{
-					OtherFX_Stop1(sdata->OptionSlider_soundID);
-					sdata->OptionSlider_soundID = 0;
+					OtherFX_Stop1(HOWL_SLIDER_SOUND);
+					HOWL_SLIDER_SOUND = 0;
 				}
+				break;
+			}
 			}
 		}
-
-		sdata->OptionSlider_BoolPlay = newBoolPlay;
-		sdata->OptionSlider_Index = newRow;
+		HOWL_SLIDER_PLAYING = newBoolPlay;
+		HOWL_SLIDER_ROW = newRow;
 	}
-
-	// Voice row
-	if ((sdata->OptionSlider_BoolPlay != 0) && (sdata->OptionSlider_Index == 2))
+	// Voice preview alternates the followed driver's clips every 25 frames.
+	if (HOWL_SLIDER_PLAYING && HOWL_SLIDER_ROW == HOWL_VOLUME_TYPE_VOICE)
 	{
-		// OG game does this, instead of gGT->drivers[0]?
-		int driverID = sdata->gGT->cameraDC[0].driverToFollow->driverID;
-
-		int characterID = data.characterIDs[driverID];
-
-		int frameCount = sdata->gGT->frameTimer_MainFrame_ResetDB;
-
-		int sampleVoiceID;
-
-		// every 25th frame
-		if (frameCount == (frameCount / 25) * 25)
+		struct GameTracker *gGT = GAME_TRACKER;
+		u32 frames = gGT->frameTimer_MainFrame_ResetDB;
+		if (frames == (frames / 25) * 25)
 		{
-			// every 50th frame (0, 50, 100, 150)
-			if (frameCount == (frameCount / 50) * 50)
+			if (frames == (frames / 50) * 50)
 			{
-				sampleVoiceID = characterID + 0x1c;
+				HOWL_SLIDER_SOUND = OtherFX_Play((u16)((u16)GAME_CHARACTER_IDS[gGT->cameraDC[0].driverToFollow->driverID] + 0x1c), 0);
 			}
-
-			// every 50th frame (25, 75, 125, 175)
 			else
 			{
-				sampleVoiceID = characterID + 0x2c;
+				HOWL_SLIDER_SOUND = OtherFX_Play((u16)((u16)GAME_CHARACTER_IDS[gGT->cameraDC[0].driverToFollow->driverID] + 0x2c), 0);
 			}
-
-			sdata->OptionSlider_soundID = OtherFX_Play(sampleVoiceID, 0);
 		}
 	}
 }

@@ -1,4 +1,4 @@
-#include <common.h>
+#include "VehCommon.h"
 
 enum
 {
@@ -47,16 +47,24 @@ enum
 
 int VehPickState_NewState(struct Driver *victimDriver, int damageType, struct Driver *attackDriver, int reason)
 {
-	int voice;
-
 	int victimState = victimDriver->kartState;
-	victimDriver->pendingDamageType = 0;
+	register int victimID CTR_PSX_REGISTER("$2");
+	register int voiceType CTR_PSX_REGISTER("$4");
+	register u32 characterPage CTR_PSX_REGISTER("$3");
+	register s16 *characterIDs CTR_PSX_REGISTER("$3");
+	struct Thread *victimThread;
+	int battleResultPass;
+	SVec4 worldPosition;
+	SVec2 posScreen;
+	register s16 *screenPosition CTR_PSX_REGISTER("$6");
+	register int one CTR_PSX_REGISTER("$20") = 1;
 
-	int victimCharacter = data.characterIDs[victimDriver->driverID];
+	CTR_PSX_KEEP_VALUE(one);
+	victimDriver->pendingDamageType = 0;
 
 	if (victimState == KS_MASK_GRABBED)
 	{
-		return 0;
+		goto ReturnZero;
 	}
 
 	if (
@@ -65,191 +73,227 @@ int VehPickState_NewState(struct Driver *victimDriver, int damageType, struct Dr
 
 	    (victimDriver->invincibleTimer != 0))
 	{
-	VictimLaugh:
-		Voiceline_RequestPlay(VEH_PICK_VOICELINE_VICTIM_LAUGH, victimCharacter, VEH_PICK_VOICELINE_PRIORITY);
-		return 0;
+		voiceType = VEH_PICK_VOICELINE_VICTIM_LAUGH;
+		characterIDs = GAME_CHARACTER_IDS;
+		victimID = victimDriver->driverID;
+		goto VictimLaugh;
 	}
 
 	if (victimDriver->instBubbleHold != NULL)
 	{
-		struct Shield *shieldObj = victimDriver->instBubbleHold->thread->object;
+		{
+			register struct Shield *shield CTR_PSX_REGISTER("$3");
+			register u32 shieldFlags CTR_PSX_REGISTER("$2");
 
-		shieldObj->flags |= SHIELD_FLAG_POP_ON_DAMAGE;
+			shield = victimDriver->instBubbleHold->thread->object;
+			shieldFlags = shield->flags;
+			CTR_PSX_OBSERVE_VALUE(shieldFlags);
+			voiceType = VEH_PICK_VOICELINE_VICTIM_LAUGH;
+			shield->flags = (u16)(shieldFlags | SHIELD_FLAG_POP_ON_DAMAGE);
+			CTR_PSX_OBSERVE_MEMORY(shield->flags);
+		}
 
-		victimDriver->invincibleTimer = VEH_PICK_SHIELD_DAMAGE_INVINCIBLE_TIMER;
+		{
+			register int shieldTimer CTR_PSX_REGISTER("$2");
 
+			shieldTimer = VEH_PICK_SHIELD_DAMAGE_INVINCIBLE_TIMER;
+			victimDriver->invincibleTimer = shieldTimer;
+		}
+		characterIDs = GAME_CHARACTER_IDS;
+		victimID = victimDriver->driverID;
 		victimDriver->instBubbleHold = NULL;
-
-		goto VictimLaugh;
+	}
+	else
+	{
+		goto CheckDamage;
 	}
 
-	voice = 0;
+VictimLaugh:
+	Voiceline_RequestPlay(voiceType, characterIDs[victimID], VEH_PICK_VOICELINE_PRIORITY);
+ReturnZero:
+	return 0;
 
+CheckDamage:
 	if (damageType == VEH_PICK_DAMAGE_NONE)
 	{
 		return 1;
 	}
 
-	// spinning
-	else if (damageType == VEH_PICK_DAMAGE_SPIN)
-	{
-		// 1.0s
-		victimDriver->NoInputTimer = VEH_PICK_SPIN_NO_INPUT_TIMER;
+	victimThread = victimDriver->instSelf->thread;
 
-		if (victimState != KS_SPINNING)
-		{
-		SPINOUT:
-			victimDriver->funcPtrs[DRIVER_FUNC_INIT] = VehPhysProc_SpinFirst_Init;
-		}
+	if (damageType == VEH_PICK_DAMAGE_SQUISH)
+	{
+		goto Squish;
 	}
 
-	// blasted
-	else if (damageType == VEH_PICK_DAMAGE_BLAST)
+	if (damageType < VEH_PICK_DAMAGE_BURN)
 	{
-		// quit if already blasted
-		if (victimState == KS_BLASTED)
+		if (damageType == VEH_PICK_DAMAGE_BLAST)
 		{
-			return 0;
+			goto Blast;
 		}
 
-		// quit if already blasted
-		if (victimDriver->funcPtrs[DRIVER_FUNC_INIT] == VehStuckProc_Tumble_Init)
+		goto DefaultSpin;
+	}
+
+	if (damageType == VEH_PICK_DAMAGE_BURN)
+	{
+		goto Burn;
+	}
+
+	if (damageType == VEH_PICK_DAMAGE_MASK_GRAB)
+	{
+		goto MaskGrab;
+	}
+
+	goto DefaultSpin;
+
+Blast:
+	if (victimState == KS_BLASTED)
+	{
+		goto ReturnZero;
+	}
+
+	{
+		register u32 tumblePage CTR_PSX_REGISTER("$2");
+		register DriverFunc currentInit CTR_PSX_REGISTER("$3");
+		register DriverFunc tumbleInit CTR_PSX_REGISTER("$5");
+
+		tumblePage = VEH_TUMBLE_INIT_PAGE;
+		CTR_PSX_FORGET_VALUE(tumblePage);
+		currentInit = victimDriver->funcPtrs[DRIVER_FUNC_INIT];
+		tumbleInit = VEH_TUMBLE_INIT_FROM_PAGE(tumblePage);
+		if (currentInit == tumbleInit)
 		{
-			return 0;
+			goto ReturnZero;
 		}
 
-		victimDriver->funcPtrs[DRIVER_FUNC_INIT] = VehStuckProc_Tumble_Init;
+		voiceType = VEH_PICK_VOICELINE_COMMON_DAMAGE;
+		{
+			register int noInputTimer CTR_PSX_REGISTER("$2");
 
-		// 2.4s
-		victimDriver->NoInputTimer = VEH_PICK_BLAST_NO_INPUT_TIMER;
-
+			noInputTimer = VEH_PICK_BLAST_NO_INPUT_TIMER;
+			victimDriver->NoInputTimer = noInputTimer;
+		}
+		VEH_LOAD_CHARACTER_IDS_PAGE(characterPage);
+		victimID = victimDriver->driverID;
+		VEH_ADD_CHARACTER_IDS_LOW(characterIDs, characterPage);
 		victimDriver->squishTimer = 0;
-
-		voice = VEH_PICK_VOICELINE_COMMON_DAMAGE;
+		victimDriver->funcPtrs[DRIVER_FUNC_INIT] = tumbleInit;
+		goto CommonDamageVoice;
 	}
 
-	// squished
-	else if (damageType == VEH_PICK_DAMAGE_SQUISH)
+MaskGrab:
+	voiceType = VEH_PICK_VOICELINE_COMMON_DAMAGE;
 	{
-		if (victimState != KS_SPINNING)
-		{
-			// squish sound
-			OtherFX_Play_Echo(VEH_PICK_SOUND_SQUISH, 1, victimDriver->actionsFlagSet & ACTION_ENGINE_ECHO);
+		register int noInputTimer CTR_PSX_REGISTER("$2");
 
-			voice = VEH_PICK_VOICELINE_SQUISH;
-		}
-
-		// 0.25s
-		victimDriver->NoInputTimer = VEH_PICK_SQUISH_NO_INPUT_TIMER;
-
-		victimDriver->squishTimer = VEH_PICK_SQUISH_TIMER;
-
-		goto SPINOUT;
+		noInputTimer = VEH_PICK_MASK_GRAB_NO_INPUT_TIMER;
+		victimDriver->NoInputTimer = noInputTimer;
+		CTR_PSX_OBSERVE_MEMORY(victimDriver->NoInputTimer);
 	}
-
-	// burned
-	else if (damageType == VEH_PICK_DAMAGE_BURN)
 	{
-		if (victimDriver->burnTimer == 0)
-		{
-			OtherFX_Play(VEH_PICK_SOUND_BURN, 1);
+		register DriverFunc plantEatenInit CTR_PSX_REGISTER("$2");
 
-			voice = VEH_PICK_VOICELINE_COMMON_DAMAGE;
-		}
-
-		// 2.0s
-		victimDriver->NoInputTimer = VEH_PICK_BURN_NO_INPUT_TIMER;
-
-		victimDriver->burnTimer = VEH_PICK_BURN_TIMER;
-
-		goto SPINOUT;
+		plantEatenInit = VehStuckProc_PlantEaten_Init;
+		VEH_LOAD_CHARACTER_IDS_PAGE(characterPage);
+		victimDriver->funcPtrs[DRIVER_FUNC_INIT] = plantEatenInit;
+		CTR_PSX_OBSERVE_MEMORY(victimDriver->funcPtrs[DRIVER_FUNC_INIT]);
 	}
+	victimID = victimDriver->driverID;
+	CTR_PSX_OBSERVE_VALUE(victimID);
+	VEH_ADD_CHARACTER_IDS_LOW(characterIDs, characterPage);
 
-	// mask grab
-	else if (damageType == VEH_PICK_DAMAGE_MASK_GRAB)
+CommonDamageVoice:
+{
+	register s16 *characterEntry CTR_PSX_REGISTER("$2");
+
+	CTR_PSX_ADD_POINTER_OFFSET_OFFSET_FIRST(characterEntry, characterIDs, CTR_MipsSll((u32)victimID, voiceType));
+	Voiceline_RequestPlay(voiceType, *characterEntry, VEH_PICK_VOICELINE_PRIORITY);
+}
+	goto DamageApplied;
+
+Burn:
+	if (victimDriver->burnTimer == 0)
 	{
-		// 3.36s
-		victimDriver->NoInputTimer = VEH_PICK_MASK_GRAB_NO_INPUT_TIMER;
-
-		victimDriver->funcPtrs[DRIVER_FUNC_INIT] = VehStuckProc_PlantEaten_Init;
-
-		voice = VEH_PICK_VOICELINE_COMMON_DAMAGE;
+		OtherFX_Play(VEH_PICK_SOUND_BURN, 1);
+		Voiceline_RequestPlay(VEH_PICK_VOICELINE_COMMON_DAMAGE, GAME_CHARACTER_IDS[victimDriver->driverID], VEH_PICK_VOICELINE_PRIORITY);
 	}
-	else
+
+	victimDriver->burnTimer = VEH_PICK_BURN_TIMER;
+	victimDriver->NoInputTimer = VEH_PICK_BURN_NO_INPUT_TIMER;
+	goto SpinOut;
+
+Squish:
+	if (victimState != KS_SPINNING)
 	{
-		// Retail sends any other nonzero damage type through spinout.
-		victimDriver->NoInputTimer = VEH_PICK_SPIN_NO_INPUT_TIMER;
-
-		if (victimState != KS_SPINNING)
-		{
-			goto SPINOUT;
-		}
+		OtherFX_Play_Echo(VEH_PICK_SOUND_SQUISH, 1, (u16)(victimDriver->actionsFlagSet >> 16) & 1);
+		Voiceline_RequestPlay(VEH_PICK_VOICELINE_SQUISH, GAME_CHARACTER_IDS[victimDriver->driverID], VEH_PICK_VOICELINE_PRIORITY);
 	}
 
-	if (voice != 0)
+	victimDriver->squishTimer = VEH_PICK_SQUISH_TIMER;
+	victimDriver->NoInputTimer = VEH_PICK_SQUISH_NO_INPUT_TIMER;
+	goto SpinOut;
+
+DefaultSpin:
+	victimDriver->NoInputTimer = VEH_PICK_SPIN_NO_INPUT_TIMER;
+	if (victimDriver->kartState == KS_SPINNING)
 	{
-		Voiceline_RequestPlay(voice, victimCharacter, VEH_PICK_VOICELINE_PRIORITY);
+		goto DamageApplied;
 	}
 
+SpinOut:
+	victimDriver->funcPtrs[DRIVER_FUNC_INIT] = VehPhysProc_SpinFirst_Init;
+
+DamageApplied:
 	switch (reason)
 	{
-	// hit by bomb
 	case VEH_PICK_REASON_BOMB:
 		victimDriver->numTimesBombHitYou++;
+		if ((attackDriver != NULL) && (attackDriver != victimDriver))
+		{
+			attackDriver->numTimesBombsHitSomeone++;
+			attackDriver->quip4 |= VEH_PICK_ATTACK_QUIP_BOMB;
+		}
 		break;
 
-	// hit by motionless potion
+	case VEH_PICK_REASON_MISSILE:
+		victimDriver->numTimesMissileHitYou++;
+		if ((attackDriver != NULL) && (attackDriver != victimDriver))
+		{
+			attackDriver->numTimesMissileHitSomeone++;
+			attackDriver->quip4 |= VEH_PICK_ATTACK_QUIP_MISSILE;
+		}
+		break;
+
+	case VEH_PICK_REASON_MOVING_POTION:
+		if ((attackDriver != NULL) && (attackDriver != victimDriver))
+		{
+			attackDriver->numTimesMovingPotionHitSomeone++;
+			attackDriver->quip4 |= VEH_PICK_ATTACK_QUIP_MOVING_POTION;
+		}
+		break;
+
 	case VEH_PICK_REASON_MOTIONLESS_POTION:
 		victimDriver->numTimesMotionlessPotionHitYou++;
 		break;
 
-	// hit by missile
-	case VEH_PICK_REASON_MISSILE:
-		victimDriver->numTimesMissileHitYou++;
+	case VEH_PICK_REASON_TURBO_SQUISH:
+		if ((attackDriver != NULL) && (attackDriver != victimDriver))
+		{
+			attackDriver->numTimesSquishedSomeone++;
+		}
+		break;
+
+	case VEH_PICK_REASON_MASK_WEAPON:
+		if ((attackDriver != NULL) && (attackDriver != victimDriver))
+		{
+			attackDriver->quip4 |= VEH_PICK_ATTACK_QUIP_MASK;
+		}
 		break;
 
 	default:
 		break;
-	}
-
-	if (attackDriver != NULL)
-	{
-		if (attackDriver != victimDriver)
-		{
-			switch (reason)
-			{
-			// hit by bomb
-			case VEH_PICK_REASON_BOMB:
-				attackDriver->numTimesBombsHitSomeone++;
-				attackDriver->quip4 |= VEH_PICK_ATTACK_QUIP_BOMB;
-				break;
-
-			// hit by missile
-			case VEH_PICK_REASON_MISSILE:
-				attackDriver->numTimesMissileHitSomeone++;
-				attackDriver->quip4 |= VEH_PICK_ATTACK_QUIP_MISSILE;
-				break;
-
-			// hit by moving potion
-			case VEH_PICK_REASON_MOVING_POTION:
-				attackDriver->numTimesMovingPotionHitSomeone++;
-				attackDriver->quip4 |= VEH_PICK_ATTACK_QUIP_MOVING_POTION;
-				break;
-
-			// squished by turbo
-			case VEH_PICK_REASON_TURBO_SQUISH:
-				attackDriver->numTimesSquishedSomeone++;
-				break;
-
-			// hit by mask weapon
-			case VEH_PICK_REASON_MASK_WEAPON:
-				attackDriver->quip4 |= VEH_PICK_ATTACK_QUIP_MASK;
-				break;
-
-			default:
-				break;
-			}
-		}
 	}
 
 	victimDriver->kartState = KS_NORMAL;
@@ -261,53 +305,65 @@ int VehPickState_NewState(struct Driver *victimDriver, int damageType, struct Dr
 	GAMEPAD_ShockFreq(victimDriver, VEH_PICK_RUMBLE_FRAMES, 0);
 	GAMEPAD_ShockForce1(victimDriver, VEH_PICK_RUMBLE_FRAMES, VEH_PICK_RUMBLE_FORCE);
 
-	int gameMode1 = sdata->gGT->gameMode1;
-
-	if ((attackDriver != NULL) && ((gameMode1 & END_OF_RACE) == 0))
+	if ((attackDriver != NULL) && ((GAME_TRACKER->gameMode1 & END_OF_RACE) == 0))
 	{
-		struct PushBuffer *pb = &sdata->gGT->pushBuffer[attackDriver->driverID];
-
-		SVec2 posScreen;
-		RB_Fruit_GetScreenCoords(pb, attackDriver->instSelf, CTR_VECTOR_DATA(&(posScreen)));
+		worldPosition.x = (s16)attackDriver->instSelf->matrix.t[0];
+		worldPosition.y = (s16)attackDriver->instSelf->matrix.t[1];
+		worldPosition.z = (s16)attackDriver->instSelf->matrix.t[2];
+		VehGteSetRotTransMatrix(&GAME_TRACKER->pushBuffer[attackDriver->driverID].matrix_ViewProj);
+		CTR_GteLoadPositionV0(&worldPosition);
+		gte_rtps();
+		screenPosition = CTR_VECTOR_DATA(&posScreen);
+		CTR_GteStorePositionXY(screenPosition);
 
 		// screenPosXY
-		attackDriver->BattleHUD.startX = pb->rect.x + posScreen.x;
-		attackDriver->BattleHUD.startY = pb->rect.y + posScreen.y - VEH_PICK_BATTLE_HUD_OFFSET_Y;
+		attackDriver->BattleHUD.startX = screenPosition[0] + GAME_TRACKER->pushBuffer[attackDriver->driverID].rect.x;
+		attackDriver->BattleHUD.startY = screenPosition[1] + GAME_TRACKER->pushBuffer[attackDriver->driverID].rect.y - VEH_PICK_BATTLE_HUD_OFFSET_Y;
 
-		// if-checked for Battle inside the function
-		RB_Player_KillPlayer(attackDriver, victimDriver);
-
-		// NOTE(aalhendi): Retail rechecks END_OF_RACE after RB_Player_KillPlayer,
-		// which can transition battle finish state inside this block.
-		if ((sdata->gGT->gameMode1 & END_OF_RACE) != 0)
+		battleResultPass = 0;
+		if ((GAME_TRACKER->gameMode1 & LIFE_LIMIT) != 0)
 		{
-			attackDriver->quip1 = (s16)reason;
-			victimDriver->quip3 = (s16)reason;
+			one = 1;
+		}
+		while (battleResultPass < one)
+		{
+			RB_Player_KillPlayer(attackDriver, victimDriver);
+
+			// NOTE(aalhendi): Retail rechecks END_OF_RACE after RB_Player_KillPlayer,
+			// which can transition battle finish state inside this one-pass loop.
+			if ((GAME_TRACKER->gameMode1 & END_OF_RACE) != 0)
+			{
+				attackDriver->quip1 = (s16)reason;
+				victimDriver->quip3 = (s16)reason;
+			}
+
+			battleResultPass++;
 		}
 
-		if ((attackDriver == victimDriver) && ((sdata->gGT->gameMode1 & POINT_LIMIT) != 0))
+		if ((attackDriver == victimDriver) && ((GAME_TRACKER->gameMode1 & POINT_LIMIT) != 0))
 		{
 			if (victimDriver->BattleHUD.cooldown == VEH_PICK_BATTLE_HUD_COOLDOWN)
 			{
-				victimDriver->BattleHUD.scoreDelta--;
+				victimDriver->BattleHUD.scoreDelta = CTR_MipsSubLo(victimDriver->BattleHUD.scoreDelta, one);
 			}
 			else
 			{
-				victimDriver->BattleHUD.scoreDelta = -1;
+				victimDriver->BattleHUD.scoreDelta = CTR_MipsNegLo(one);
 			}
 		}
 		else
 		{
 			if (attackDriver->BattleHUD.cooldown == VEH_PICK_BATTLE_HUD_COOLDOWN)
 			{
-				attackDriver->BattleHUD.scoreDelta++;
+				attackDriver->BattleHUD.scoreDelta = CTR_MipsAddLo(attackDriver->BattleHUD.scoreDelta, one);
 			}
 			else
 			{
-				attackDriver->BattleHUD.scoreDelta = 1;
+				attackDriver->BattleHUD.scoreDelta = one;
 			}
 		}
 
+		CTR_PSX_KEEP_VALUE(one);
 		attackDriver->BattleHUD.cooldown = VEH_PICK_BATTLE_HUD_COOLDOWN;
 		victimDriver->numTimesAttackedByPlayer[attackDriver->driverID]++;
 		attackDriver->numTimesAttackingPlayer[victimDriver->driverID]++;
@@ -318,7 +374,7 @@ int VehPickState_NewState(struct Driver *victimDriver, int damageType, struct Dr
 		}
 	}
 
-	victimDriver->instSelf->thread->flags &= ~THREAD_FLAG_DISABLE_COLLISION;
+	victimThread->flags &= ~THREAD_FLAG_DISABLE_COLLISION;
 	victimDriver->instSelf->flags &= ~HIDE_MODEL;
 
 	return 1;

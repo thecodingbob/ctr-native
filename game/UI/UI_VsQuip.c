@@ -648,7 +648,7 @@ void UI_VsWaitForPressX(void)
 
 			memset(&clearColor, 0, sizeof(clearColor));
 			clearRect = *viewport;
-			CTR_Box_DrawClearBox(&clearRect, &clearColor, 0, gGT->backBuffer->otMem.uiOT);
+			CTR_Box_DrawClearBox(&clearRect, &clearColor, 0, gGT->backBuffer->otMem.uiOT, &gGT->backBuffer->primMem);
 
 			// Allow Go-Back option to YouHit/HitYou
 			if ((buttonsTapped & BTN_SQUARE_two) != 0)

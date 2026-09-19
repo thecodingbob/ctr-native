@@ -28,22 +28,9 @@ extern struct RectMenu menu221;
 
 // NOTE(aalhendi): The overlay-private matching ABI overrides these defaults
 // before compiling the retail artifact.
-#ifndef CC_GAME_TRACKER
-#define CC_GAME_TRACKER            (sdata->gGT)
-#define CC_FRAMES_SINCE_RACE_ENDED (sdata->framesSinceRaceEnded)
+#ifndef CC_HUD_CRYSTAL
 #define CC_HUD_CRYSTAL             (sdata->ptrHudCrystal)
 #define CC_MENU_CRYSTAL            (sdata->ptrMenuCrystal)
-#define CC_TOKEN                   (sdata->ptrToken)
-#define CC_LANGUAGE_STRINGS        (sdata->lngStrings)
-#define CC_MENU_READY              (sdata->menuReadyToPass)
-#define CC_ANY_PLAYER_TAP          (sdata->AnyPlayerTap)
-#define CC_ADV_PROGRESS            (sdata->advProgress)
-#define CC_ADD_CONFIG_0            (sdata->Loading.OnBegin.AddBitsConfig0)
-#define CC_REMOVE_CONFIG_0         (sdata->Loading.OnBegin.RemBitsConfig0)
-#endif
-
-#ifndef CC_READ_GAME_TRACKER
-#define CC_READ_GAME_TRACKER() CC_GAME_TRACKER
 #endif
 
 #if defined(CTR_NATIVE)
@@ -122,17 +109,17 @@ static u32 CC_EndEvent_GetRewardBitMask(s32 rewardBit)
 	return 1u << ((u32)rewardBit & 0x1f);
 }
 
-CTR_STATIC_ASSERT(OFFSETOF(struct sData, gameOptions) + sizeof(struct GameOptions) == OFFSETOF(struct sData, advProgress));
+CTR_STATIC_ASSERT(OFFSETOF(struct sData, gameSave.options) + sizeof(struct GameOptions) == OFFSETOF(struct sData, advProgress));
 
 static u8 *CC_EndEvent_GetNativeRewardWordBytes(s32 rewardBit)
 {
 	s32 wordIndex = CTR_MipsSra(rewardBit, 5);
 	s64 rewardByteOffset = (s64)OFFSETOF(struct sData, advProgress.rewards) + (s64)wordIndex * (s64)sizeof(u32);
-	s64 windowStart = (s64)OFFSETOF(struct sData, gameOptions);
+	s64 windowStart = (s64)OFFSETOF(struct sData, gameSave.options);
 	s64 windowEnd = (s64)OFFSETOF(struct sData, advProgress) + (s64)sizeof(struct AdvProgress);
 
 	// NOTE(aalhendi): Retail applies the unchecked residue index to
-	// advProgress.rewards, so Dingo Bingo can touch adjacent gameOptions words.
+	// advProgress.rewards, so Dingo Bingo can touch adjacent saved options words.
 	// Native bounds that retail window without doing host out-of-bounds access.
 	if ((rewardByteOffset < windowStart) || (rewardByteOffset > windowEnd - (s32)sizeof(u32)))
 	{
@@ -191,8 +178,8 @@ void CC_EndEvent_DrawMenu()
 #endif
 	s32 tokenRewardBit;
 
-	driver = CC_READ_GAME_TRACKER()->drivers[0];
-	comparisonGT = CC_READ_GAME_TRACKER();
+	driver = GAME_TRACKER_RELOAD()->drivers[0];
+	comparisonGT = GAME_TRACKER_RELOAD();
 
 #if !defined(CTR_NATIVE)
 	// NOTE(aalhendi): This block lets GCC 2.8.1 declare the retail stack table
@@ -212,9 +199,9 @@ void CC_EndEvent_DrawMenu()
 			resultStringIndex = LNG_TRY_AGAIN;
 		}
 
-		if (CC_FRAMES_SINCE_RACE_ENDED < CTR_SECONDS_TO_FRAMES(30))
+		if (GAME_FRAMES_SINCE_RACE_ENDED < CTR_SECONDS_TO_FRAMES(30))
 		{
-			CC_FRAMES_SINCE_RACE_ENDED++;
+			GAME_FRAMES_SINCE_RACE_ENDED++;
 		}
 
 #if defined(CTR_NATIVE)
@@ -226,15 +213,15 @@ void CC_EndEvent_DrawMenu()
 			CC_HUD_CRYSTAL->flags = CC_HUD_CRYSTAL->flags | HIDE_MODEL;
 		}
 
-		currentFrames = CC_FRAMES_SINCE_RACE_ENDED;
+		currentFrames = GAME_FRAMES_SINCE_RACE_ENDED;
 
 		// fly in from left
 		UI_Lerp2D_Linear(&pos[0], -0x64, 0x18, 0x100, 0x18, currentFrames, CC_FLY_IN_FRAMES);
-		DecalFont_DrawLine(CC_LANGUAGE_STRINGS[LNG_TIME_REMAINING], pos[0], pos[1], FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_TIME_REMAINING], pos[0], pos[1], FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 		UI_DrawLimitClock(pos[0] - 0x33, pos[1] + 0x11, FONT_BIG);
 
 		// fly in from right
-		UI_Lerp2D_Linear(&pos[0], 0x264, 0x56, 0xcd, 0x56, CC_FRAMES_SINCE_RACE_ENDED, CC_FLY_IN_FRAMES);
+		UI_Lerp2D_Linear(&pos[0], 0x264, 0x56, 0xcd, 0x56, GAME_FRAMES_SINCE_RACE_ENDED, CC_FLY_IN_FRAMES);
 
 		// Crystal count
 #if defined(CTR_NATIVE)
@@ -247,7 +234,7 @@ void CC_EndEvent_DrawMenu()
 		UI_DrawNumCrystal(pos[0] + 0xf, pos[1] - 0x10, driver);
 
 		// YOU WIN, or TRY AGAIN
-		DecalFont_DrawLine(CC_LANGUAGE_STRINGS[resultStringIndex], pos[0] + 0x33, pos[1] + 8, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[resultStringIndex], pos[0] + 0x33, pos[1] + 8, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 
 		canAward = didWin;
 		if (!canAward)
@@ -256,41 +243,41 @@ void CC_EndEvent_DrawMenu()
 		}
 
 #if defined(CTR_NATIVE)
-		tokenRewardBit = CC_EndEvent_GetRewardOffset(CC_GAME_TRACKER) + ADV_REWARD_FIRST_PURPLE_TOKEN;
-		if (CC_EndEvent_HasRewardBit(&CC_ADV_PROGRESS, tokenRewardBit))
+		tokenRewardBit = CC_EndEvent_GetRewardOffset(GAME_TRACKER) + ADV_REWARD_FIRST_PURPLE_TOKEN;
+		if (CC_EndEvent_HasRewardBit(&GAME_ADV_PROGRESS, tokenRewardBit))
 #else
 	// NOTE(aalhendi): Retail intentionally indexes this stack table without
 	// bounds checks.
-	rewardWords = CC_ADV_PROGRESS.rewards;
-	tokenRewardBit = battleTrackPurpleTokenOffset[CC_GAME_TRACKER->levelID - NITRO_COURT] + ADV_REWARD_FIRST_PURPLE_TOKEN;
-	if (CHECK_ADV_BIT(rewardWords, tokenRewardBit))
+	    rewardWords = GAME_ADV_PROGRESS.rewards;
+	    tokenRewardBit = battleTrackPurpleTokenOffset[GAME_TRACKER->levelID - NITRO_COURT] + ADV_REWARD_FIRST_PURPLE_TOKEN;
+	    if (CHECK_ADV_BIT(rewardWords, tokenRewardBit))
 #endif
 		{
 			goto DrawAlreadyAwardedMenu;
 		}
 
 		{
-			UI_Lerp2D_Linear(&pos[0], -0x64, 0xA2, 0x100, 0xA2, CC_FRAMES_SINCE_RACE_ENDED, CC_FLY_IN_FRAMES);
+			UI_Lerp2D_Linear(&pos[0], -0x64, 0xA2, 0x100, 0xA2, GAME_FRAMES_SINCE_RACE_ENDED, CC_FLY_IN_FRAMES);
 
-			DecalFont_DrawLine(CC_LANGUAGE_STRINGS[LNG_CTR_TOKEN_AWARDED], pos[0], pos[1], FONT_BIG,
-			                   (CC_GAME_TRACKER->timer != 0) ? (s16)(JUSTIFY_CENTER | ORANGE) : (s16)(JUSTIFY_CENTER | WHITE));
+			DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_CTR_TOKEN_AWARDED], pos[0], pos[1], FONT_BIG,
+			                   (GAME_TRACKER->timer != 0) ? (s16)(JUSTIFY_CENTER | ORANGE) : (s16)(JUSTIFY_CENTER | WHITE));
 #if defined(CTR_NATIVE)
-			if (CC_TOKEN != NULL)
+			if (GAME_TOKEN != NULL)
 #endif
 			{
-				CC_TOKEN->flags &= ~(HIDE_MODEL);
-				CC_TOKEN->matrix.t[0] = UI_ConvertX_2(pos[0], CC_SCREEN_DEPTH);
-				CC_TOKEN->matrix.t[1] = UI_ConvertY_2(pos[1] - 0x18, CC_SCREEN_DEPTH);
+				GAME_TOKEN->flags &= ~(HIDE_MODEL);
+				GAME_TOKEN->matrix.t[0] = UI_ConvertX_2(pos[0], CC_SCREEN_DEPTH);
+				GAME_TOKEN->matrix.t[1] = UI_ConvertY_2(pos[1] - 0x18, CC_SCREEN_DEPTH);
 			}
 
-			if (CC_FRAMES_SINCE_RACE_ENDED == CTR_SECONDS_TO_FRAMES(1))
+			if (GAME_FRAMES_SINCE_RACE_ENDED == CTR_SECONDS_TO_FRAMES(1))
 			{
 				OtherFX_Play(0x67, 1);
 			}
 
-			if (CC_FRAMES_SINCE_RACE_ENDED > CTR_SECONDS_TO_FRAMES(1))
+			if (GAME_FRAMES_SINCE_RACE_ENDED > CTR_SECONDS_TO_FRAMES(1))
 			{
-				struct Instance *token = CC_TOKEN;
+				struct Instance *token = GAME_TOKEN;
 
 #if defined(CTR_NATIVE)
 				if (token != NULL)
@@ -305,10 +292,10 @@ void CC_EndEvent_DrawMenu()
 				}
 			}
 
-			DecalFont_DrawLine(CC_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+			DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 
 			// if still waiting to press X/O, quit function
-			if ((CC_ANY_PLAYER_TAP & CC_CONFIRM_BUTTON_MASK) == 0)
+			if ((GAME_ANY_PLAYER_TAP & CC_CONFIRM_BUTTON_MASK) == 0)
 			{
 				return;
 			}
@@ -317,19 +304,19 @@ void CC_EndEvent_DrawMenu()
 			// unlock token and leave level
 
 			RECTMENU_ClearInput();
-			CC_FRAMES_SINCE_RACE_ENDED = 0;
+			GAME_FRAMES_SINCE_RACE_ENDED = 0;
 
 			{
 				struct GameTracker *returnGT;
 				u32 *addConfig;
 
-				CC_REMOVE_CONFIG_0 |= CRYSTAL_CHALLENGE;
-				returnGT = CC_GAME_TRACKER;
-				addConfig = &CC_ADD_CONFIG_0;
+				GAME_REMOVE_CONFIG_0 |= CRYSTAL_CHALLENGE;
+				returnGT = GAME_TRACKER;
+				addConfig = &GAME_ADD_CONFIG_0;
 #if defined(CTR_NATIVE)
-				CC_EndEvent_UnlockRewardBit(&CC_ADV_PROGRESS, tokenRewardBit);
+				CC_EndEvent_UnlockRewardBit(&GAME_ADV_PROGRESS, tokenRewardBit);
 #else
-			UNLOCK_ADV_BIT(CC_ADV_PROGRESS.rewards, battleTrackPurpleTokenOffset[returnGT->levelID - NITRO_COURT] + ADV_REWARD_FIRST_PURPLE_TOKEN);
+			    UNLOCK_ADV_BIT(GAME_ADV_PROGRESS.rewards, battleTrackPurpleTokenOffset[returnGT->levelID - NITRO_COURT] + ADV_REWARD_FIRST_PURPLE_TOKEN);
 #endif
 				*addConfig |= ADVENTURE_ARENA;
 				MainRaceTrack_RequestLoad(returnGT->prevLEV); // Adventure hub.
@@ -340,21 +327,21 @@ void CC_EndEvent_DrawMenu()
 
 	DrawAlreadyAwardedMenu:
 	{
-		if ((CC_MENU_READY & 1) != 0)
+		if ((GAME_MENU_READY & 1) != 0)
 		{
 			return;
 		}
 
-		DecalFont_DrawLine(CC_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 
-		if ((CC_ANY_PLAYER_TAP & CC_CONFIRM_BUTTON_MASK) == 0)
+		if ((GAME_ANY_PLAYER_TAP & CC_CONFIRM_BUTTON_MASK) == 0)
 		{
 			return;
 		}
 
 		RECTMENU_ClearInput();
 		RECTMENU_Show(&menu221); // Retry / Exit To Map menu
-		CC_MENU_READY |= 1;
+		GAME_MENU_READY |= 1;
 	}
 #if !defined(CTR_NATIVE)
 	}

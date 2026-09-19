@@ -227,7 +227,8 @@ struct MetaDataLEV
 	// lng index of level,
 	// "Gem Stone Valley", "N Sanity Beach", etc,
 	// that is, if it exists for this LEV
-	int name_LNG;
+	s16 name_LNG;
+	s16 padding_0xa;
 
 	// 0xC
 	// this is the amount of time you need
@@ -1341,6 +1342,13 @@ struct Difficulty
 // Last PsyQ function?
 // 80080990 FlushCache
 
+struct AdventureCup
+{
+	s16 lngIndex_CupName;
+	// color of gem and token in portals
+	s16 color[3];
+};
+
 // 800809a0
 struct Data
 {
@@ -1618,14 +1626,7 @@ struct Data
 	s16 advHubTrackIDs[16];
 
 	// 80084114
-	struct
-	{
-		s16 lngIndex_CupName;
-
-		// color of gem and token in portals
-		s16 color[3];
-
-	} AdvCups[5];
+	struct AdventureCup AdvCups[5];
 
 	// 8008413C
 	// 0 - ripper roo's challenge
@@ -2495,7 +2496,8 @@ struct sData
 	u32 audioRNG;
 
 	// 8008D05C
-	int boolAudioEnabled;
+	u8 boolAudioEnabled;
+	u8 _pad_boolAudioEnabled[3];
 
 	// 8008D060
 	char s_HOWL[8];
@@ -2546,10 +2548,7 @@ struct sData
 	char queueRetry;
 
 	// 8008d0a2
-	char queueLength;
-
-	// 8008d0a3
-	char UnusedPadding1;
+	s16 queueLength;
 
 	// 8008d0a4
 	// Original Naughty Dog name
@@ -2823,7 +2822,8 @@ struct sData
 	s16 battleSetupRowHighlighted;
 
 	// 8008d434
-	int battleSetupWeaponHighlighted;
+	s16 battleSetupWeaponHighlighted;
+	s16 padding_8008d436;
 
 	// 8008d438 UI color data
 	u32 battleSetup_Color_UI_1;
@@ -2862,7 +2862,7 @@ struct sData
 	int RaceFlag_CopyLoadStage;
 
 	// 8008d460
-	u32 DrawSolidBoxData[3];
+	Color DrawSolidBoxData[3];
 
 	char strcatData1_colon[4];
 
@@ -3324,7 +3324,8 @@ struct sData
 	int songSectorOffset;
 
 	// 8008d7ac
-	int vol_FX;
+	u8 vol_FX;
+	u8 _pad_vol_FX[3];
 
 	// 8008d7b0
 	struct CseqHeader *ptrCseqHeader;
@@ -3333,10 +3334,12 @@ struct sData
 	s16 *ptrCseqSongStartOffset;
 
 	// 8008d7b8
-	int vol_Music;
+	u8 vol_Music;
+	u8 padding_afterVolMusic[3];
 
 	// 8008d7bc
-	int vol_Voice;
+	u8 vol_Voice;
+	u8 _pad_vol_Voice[3];
 
 	// 8008d7c0
 	struct HowlHeader *ptrHowlHeader;
@@ -3350,7 +3353,8 @@ struct sData
 	char *ptrCseqSongData;
 
 	// 8008d7cc
-	int boolStereoEnabled;
+	u8 boolStereoEnabled;
+	u8 _pad_boolStereoEnabled[3];
 
 	// 8008d7d0
 	struct EngineFX *howl_metaEngineFX;
@@ -3586,7 +3590,7 @@ struct sData
 	char data10_aaaaa[4];
 
 	// 8008d8f0
-	u16 boolHasLoadedOptions;
+	b16 boolHasLoadedOptions;
 
 	u16 typeTimer;
 
@@ -3607,22 +3611,27 @@ struct sData
 
 	// 8008d90c
 	// Never used to detect dead menu
-	int framesRemainingInMenu;
+	s16 framesRemainingInMenu;
+	s16 padding_8008d90e;
 
 	// 8008d910
 	int unk_8008d910;
 
 	// 8008d914
-	int advCharSelectIndex_curr;
+	s16 advCharSelectIndex_curr;
+	s16 padding_8008d916;
 
 	// 8008d918
-	int boolSaveCupProgress;
+	b16 boolSaveCupProgress;
+	s16 _pad_boolSaveCupProgress;
 
 	// 8008d91c
-	int advCharSelectIndex_prev;
+	s16 advCharSelectIndex_prev;
+	s16 padding_8008d91e;
 
 	// 8008d920
-	int uselessLapRowCopy;
+	u16 uselessLapRowCopy;
+	s16 padding_8008d922;
 
 	// 8008d924
 	// Becomes nullptr after ptrActiveMenu is set
@@ -3645,7 +3654,8 @@ struct sData
 	// Must be some unused placeholder,
 	// both 0x236 and 0x237 are the same
 	// "Save your cup progress?"
-	int stringIndexSaveCupProgress;
+	s16 stringIndexSaveCupProgress;
+	s16 _pad_stringIndexSaveCupProgress;
 
 	// 8008d93c
 	int unk_lala[2];
@@ -3668,13 +3678,14 @@ struct sData
 	struct RectMenu *activeSubMenu;
 
 	// 8008d958
-	int boolReplayHumanGhost;
+	b16 boolReplayHumanGhost;
+	s16 padding_8008d95a;
 
 	// 8008d95c
 	int unk8008d95c;
 
 	// 8008d960
-	char teamOfEachPlayer[4];
+	s8 teamOfEachPlayer[4];
 
 	// 8008d964
 	int unk8008d964;
@@ -3844,14 +3855,8 @@ struct sData
 	DISPENV blank_debug_DispEnv;
 
 
-	// size 0x1494
-	// High Score System
-	// 8008e6e8
-	struct GameProgress gameProgress;
-
-	// Placed before advProgress
-	// 8008FB7C
-	struct GameOptions gameOptions;
+	// 8008e6e8: progress (0x1494 bytes), then options at 8008fb7c.
+	struct GameSave gameSave;
 
 	// double-check these, address starts
 	// 0x18 bytes from "name", not 0x20

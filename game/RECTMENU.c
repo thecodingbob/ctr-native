@@ -1,21 +1,22 @@
 #include <common.h>
 
 
-void RECTMENU_DrawPolyGT4(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, u32 *ot, u32 color0, u32 color1, u32 color2, u32 color3,
-                          char transparency, s16 scale)
+void RECTMENU_DrawPolyGT4(struct Icon *icon, s32 posX, s32 posY, struct PrimMem *primMem, u32 *ot, Color color0, Color color1, Color color2, Color color3,
+                          s32 transparency, s32 scale)
 {
 	if (!icon)
 	{
 		return;
 	}
 
-	DecalHUD_DrawPolyGT4(icon, posX, posY, primMem, ot, color0, color1, color2, color3, transparency, scale);
+	DecalHUD_DrawPolyGT4(icon, posX, posY, primMem, ot, color0, color1, color2, color3, (u8)transparency, (s16)scale);
 }
 
 
-void RECTMENU_DrawOuterRect_Edge(RECT *r, Color color, u32 param_3, u32 *otMem)
+void RECTMENU_DrawOuterRect_Edge(RECT *r, const Color *color, u32 param_3, u32 *otMem)
 {
-	param_3 & 0x20 ? CTR_Box_DrawClearBox(r, &color, TRANS_50_DECAL, otMem) : CTR_Box_DrawSolidBox(r, color, otMem);
+	param_3 & 0x20 ? CTR_Box_DrawClearBox(r, color, TRANS_50_DECAL, otMem, &sdata->gGT->backBuffer->primMem)
+	               : CTR_Box_DrawSolidBox(r, color, otMem, &sdata->gGT->backBuffer->primMem);
 }
 
 
@@ -159,7 +160,7 @@ void RECTMENU_DrawRwdTriangle(s16 *position, char *color, u32 *otMem, struct Pri
 }
 
 
-void RECTMENU_DrawOuterRect_LowLevel(RECT *p, s16 xOffset, u16 yOffset, Color color, s16 param_5, u32 *otMem)
+void RECTMENU_DrawOuterRect_LowLevel(RECT *p, s16 xOffset, u16 yOffset, const Color *color, s16 param_5, u32 *otMem)
 {
 	int iVar1;
 	RECT r;
@@ -185,7 +186,7 @@ void RECTMENU_DrawOuterRect_LowLevel(RECT *p, s16 xOffset, u16 yOffset, Color co
 }
 
 
-void RECTMENU_DrawOuterRect_HighLevel(RECT *r, Color color, s16 param_3, u32 *otMem)
+void RECTMENU_DrawOuterRect_HighLevel(RECT *r, const Color *color, s16 param_3, u32 *otMem)
 {
 	RECTMENU_DrawOuterRect_LowLevel(r, 3, 2, color, param_3, otMem);
 	return;
@@ -228,7 +229,8 @@ void RECTMENU_DrawQuip(char *comment, s16 startX, int startY, u32 sizeX, s16 fon
 void RECTMENU_DrawInnerRect(RECT *r, int type, u32 *ot)
 {
 	u32 *colorDataNormal;
-	u32 *colorDataSpecial;
+	Color *colorDataSpecial;
+	Color *color;
 	int drawMode;
 	RECT adjustedRect;
 
@@ -240,9 +242,7 @@ void RECTMENU_DrawInnerRect(RECT *r, int type, u32 *ot)
 
 	if ((type & 2) == 0)
 	{
-		Color color;
-		ColorCode_SetPacked(&color, *colorDataNormal);
-		RECTMENU_DrawOuterRect_HighLevel(r, color, (int)(s16)(type | 0x20), ot);
+		RECTMENU_DrawOuterRect_HighLevel(r, (Color *)colorDataNormal, (int)(s16)(type | 0x20), ot);
 	}
 
 	adjustedRect.x = r->x;
@@ -265,13 +265,11 @@ void RECTMENU_DrawInnerRect(RECT *r, int type, u32 *ot)
 			drawMode = ((type & 0x100) != 0) ? 2 : 0;
 			colorDataSpecial = ((type & 0x100) != 0) ? &sdata->DrawSolidBoxData[1] : &sdata->DrawSolidBoxData[2];
 
-			CTR_Box_DrawClearBox(&adjustedRect, (Color *)colorDataSpecial, drawMode, ot);
+			CTR_Box_DrawClearBox(&adjustedRect, colorDataSpecial, drawMode, ot, &sdata->gGT->backBuffer->primMem);
 		}
 		else
 		{
-			Color color;
-			ColorCode_SetPacked(&color, sdata->DrawSolidBoxData[0]);
-			CTR_Box_DrawSolidBox(&adjustedRect, color, ot);
+			CTR_Box_DrawSolidBox(&adjustedRect, &sdata->DrawSolidBoxData[0], ot, &sdata->gGT->backBuffer->primMem);
 		}
 	}
 
@@ -285,14 +283,14 @@ void RECTMENU_DrawInnerRect(RECT *r, int type, u32 *ot)
 		adjustedRect.w = horizontalOffset;
 		adjustedRect.h = r->h;
 
-		u32 *color = &sdata->DrawSolidBoxData[0];
-		CTR_Box_DrawClearBox(&adjustedRect, (Color *)color, 0, ot);
+		color = &sdata->DrawSolidBoxData[0];
+		CTR_Box_DrawClearBox(&adjustedRect, color, 0, ot, &sdata->gGT->backBuffer->primMem);
 
 		adjustedRect.x = r->x + horizontalOffset;
 		adjustedRect.y = r->y + r->h;
 		adjustedRect.w = r->w - horizontalOffset;
 		adjustedRect.h = verticalOffset;
-		CTR_Box_DrawClearBox(&adjustedRect, (Color *)color, 0, ot);
+		CTR_Box_DrawClearBox(&adjustedRect, color, 0, ot, &sdata->gGT->backBuffer->primMem);
 	}
 
 	return;
@@ -330,9 +328,7 @@ void RECTMENU_DrawFullRect(struct RectMenu *menu, RECT *inner)
 		outer.h = 2;
 		outer.w = inner->w - 6;
 
-		Color color;
-		ColorCode_SetPacked(&color, *rgb);
-		RECTMENU_DrawOuterRect_Edge(&outer, color, (menu->drawStyle | 0x20), gGT->backBuffer->otMem.uiOT);
+		RECTMENU_DrawOuterRect_Edge(&outer, (Color *)rgb, (menu->drawStyle | 0x20), gGT->backBuffer->otMem.uiOT);
 	}
 	RECTMENU_DrawInnerRect(inner, menu->drawStyle, gGT->backBuffer->otMem.uiOT);
 }
@@ -658,7 +654,7 @@ LAB_80045e94:
 		}
 		background.w = menuWidth;
 
-		CTR_Box_DrawClearBox(&background, rgb, 1, gGT->backBuffer->otMem.uiOT);
+		CTR_Box_DrawClearBox(&background, rgb, 1, gGT->backBuffer->otMem.uiOT, &gGT->backBuffer->primMem);
 	}
 	if ((menu->state & DRAW_NEXT_MENU_IN_HIERARCHY) != 0)
 	{

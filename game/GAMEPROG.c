@@ -2,210 +2,248 @@
 
 void GAMEPROG_AdvPercent(struct AdvProgress *adv)
 {
-	struct GameTracker *gGT = sdata->gGT;
-	struct MetaDataLEV *mdLev = &data.metaDataLEV[0];
-
-	// start counter
-	s32 percent = 0;
+	s32 goldBonus = 0;
+	s16 numGems = 0;
+	s16 numPurple = 0;
 	s32 oxidePercent = 0;
-	b32 allGoldOrPlatinumRelics = true;
-	s32 numGems = 0;
+	b16 allGoldOrPlatinumRelics = true;
+	struct GameTracker *gGT;
+	struct MetaDataLEV *mdLev;
+	s32 i;
 
-	// erase counters
-	for (s32 i = 0; i < 9; i++)
+	// NOTE(aalhendi): Separate tracker lifetimes preserve retail's initialization,
+	// reward-counting, and final-sum register allocation.
 	{
-		((int *)&gGT->currAdvProfile.numTrophies)[i] = 0;
+		struct GameTracker *initialGT = GAME_TRACKER;
+		initialGT->currAdvProfile.numRelics = 0;
+		initialGT->currAdvProfile.numTrophies = 0;
+		initialGT->currAdvProfile.numKeys = 0;
+		initialGT->currAdvProfile.numCtrTokens.total = 0;
+		for (i = 0; i < 5; i++)
+		{
+			initialGT->currAdvProfile.numCtrTokens.color[i] = 0;
+		}
 	}
 
-	// check all tracks generically
-	for (s32 i = 0; i < ADV_REWARD_RELIC_TRACK_COUNT; i++)
+	i = 0;
+	gGT = GAME_TRACKER;
+	mdLev = &data.metaDataLEV[0];
+	// Count rewards in retail order, including the separate purple-token bonus.
+	for (; i < ADV_REWARD_RELIC_TRACK_COUNT; i++)
 	{
-		// first bit of blue relic
-		s32 bitIndex = ADV_REWARD_FIRST_SAPPHIRE_RELIC + i;
-		if (CHECK_ADV_BIT(adv->rewards, bitIndex))
+		if (CHECK_ADV_BIT(adv->rewards, ADV_REWARD_FIRST_SAPPHIRE_RELIC + i))
 		{
 			gGT->currAdvProfile.numRelics++;
 		}
 
-		// check 16 trophies
 		if (i < ADV_REWARD_RACE_TRACK_COUNT)
 		{
-			// first bit of trophy
-			bitIndex = ADV_REWARD_FIRST_TROPHY + i;
-			if (CHECK_ADV_BIT(adv->rewards, bitIndex))
+			if (CHECK_ADV_BIT(adv->rewards, ADV_REWARD_FIRST_TROPHY + i))
 			{
 				gGT->currAdvProfile.numTrophies++;
 			}
 
-			// first bit of token
-			bitIndex = ADV_REWARD_FIRST_CTR_TOKEN + i;
-			if (CHECK_ADV_BIT(adv->rewards, bitIndex))
+			if (CHECK_ADV_BIT(adv->rewards, ADV_REWARD_FIRST_CTR_TOKEN + i))
 			{
 				// increment number of tokens, based on
 				// the tokenID of this level (red, green, blue, etc)
-				((int *)&gGT->currAdvProfile.numCtrTokens.red)[mdLev[i].ctrTokenGroupID]++;
+				gGT->currAdvProfile.numCtrTokens.color[mdLev[i].ctrTokenGroupID]++;
 
 				// increment number of total tokens
 				gGT->currAdvProfile.numCtrTokens.total++;
 			}
 		}
 
-		// check 4 keys, and 4 purple tokens
+		// Boss keys
 		if (i < ADV_REWARD_HUB_COUNT)
 		{
-			// first bit of key
-			bitIndex = ADV_REWARD_FIRST_BOSS_KEY + i;
-			if (CHECK_ADV_BIT(adv->rewards, bitIndex))
+			if (CHECK_ADV_BIT(adv->rewards, ADV_REWARD_FIRST_BOSS_KEY + i))
 			{
 				gGT->currAdvProfile.numKeys++;
 			}
-
-			// first bit of purple tokens
-			bitIndex = ADV_REWARD_FIRST_PURPLE_TOKEN + i;
-			if (CHECK_ADV_BIT(adv->rewards, bitIndex))
-			{
-				gGT->currAdvProfile.numCtrTokens.purple++;
-			}
 		}
 
-		// check 5 gems
+		// Gem cups
 		if (i < ADV_REWARD_GEM_COUNT)
 		{
-			// first bit of gem
-			bitIndex = ADV_REWARD_FIRST_GEM + i;
-			if (CHECK_ADV_BIT(adv->rewards, bitIndex))
+			if (CHECK_ADV_BIT(adv->rewards, ADV_REWARD_FIRST_GEM + i))
 			{
 				numGems++;
 			}
 		}
 
-		// first bit is 2%, second bit upgrades the total Oxide bonus to 3%
+		if (i < ADV_REWARD_HUB_COUNT)
+		{
+			if (CHECK_ADV_BIT(adv->rewards, ADV_REWARD_FIRST_PURPLE_TOKEN + i))
+			{
+				numPurple++;
+				// Purple tokens also occupy the fifth color group.
+				gGT->currAdvProfile.numCtrTokens.color[4]++;
+			}
+		}
+
+		// The second Oxide win upgrades the bonus from 2% to 3%.
 		if (i < ADV_REWARD_OXIDE_BEAT_COUNT)
 		{
-			// first bit of beating oxide
-			bitIndex = ADV_REWARD_BEAT_OXIDE_FIRST + i;
-			if (CHECK_ADV_BIT(adv->rewards, bitIndex))
+			if (CHECK_ADV_BIT(adv->rewards, ADV_REWARD_BEAT_OXIDE_FIRST + i))
 			{
-				oxidePercent = (i == 0) ? 2 : 3;
+				if (i == 0)
+				{
+					oxidePercent = 2;
+				}
+				else if (i == 1)
+				{
+					oxidePercent = 3;
+				}
 			}
 		}
 	}
 
-	// check whether all tracks have gold or platinum relic
-	for (s32 i = 0; i < ADV_REWARD_RELIC_TRACK_COUNT; i++)
+	// The final percent requires every track's gold-or-platinum reward bit.
+	for (i = 0; i < ADV_REWARD_RELIC_TRACK_COUNT; i++)
 	{
-		// first bit of gold relic
-		s32 bitIndex = ADV_REWARD_FIRST_GOLD_RELIC + i;
-		if (allGoldOrPlatinumRelics && CHECK_ADV_BIT(adv->rewards, bitIndex))
-		{
-			// check next relic
-			continue;
-		}
-
-		// if relic is not unlocked,
-		// then extra 1% is not earned
-		allGoldOrPlatinumRelics = false;
+		allGoldOrPlatinumRelics = allGoldOrPlatinumRelics && CHECK_ADV_BIT(adv->rewards, ADV_REWARD_FIRST_GOLD_RELIC + i);
 	}
 
-	percent += gGT->currAdvProfile.numRelics * 2 + gGT->currAdvProfile.numTrophies * 2 + gGT->currAdvProfile.numKeys + gGT->currAdvProfile.numCtrTokens.total +
-	           gGT->currAdvProfile.numCtrTokens.purple + numGems + oxidePercent + allGoldOrPlatinumRelics;
-
-	gGT->currAdvProfile.completionPercent = percent;
+	if (allGoldOrPlatinumRelics)
+	{
+		goldBonus = 1;
+	}
+	{
+		struct GameTracker *completedGT = GAME_TRACKER;
+		completedGT->currAdvProfile.completionPercent =
+		    goldBonus + (oxidePercent + ((completedGT->currAdvProfile.numRelics + completedGT->currAdvProfile.numTrophies) * 2 +
+		                                 completedGT->currAdvProfile.numKeys + completedGT->currAdvProfile.numCtrTokens.total + numPurple + numGems));
+	}
 }
 
 
 void GAMEPROG_ResetHighScores(struct GameProgress *gameProg)
 {
-	// for every track
-	for (s32 i = 0; i < MEMCARD_HIGH_SCORE_TRACK_COUNT; i++)
+	struct GameProgress *progress = gameProg;
+	s16 i;
+	u32 modeIndex;
+	s16 j;
+	u8 *entryBase;
+	s16 k;
+	u32 lapOffset;
+	struct HighScoreEntry *lap;
+
+	// Initialize time-trial and relic tables: best lap, then five race times.
+	for (i = 0; i < MEMCARD_HIGH_SCORE_TRACK_COUNT; i++)
 	{
-		struct HighScoreTrack *track = &gameProg->highScoreTracks[i];
+		s32 trackID = i;
+		s32 trackOffset = trackID * (s32)sizeof(struct HighScoreTrack);
+		struct HighScoreTrack *track = &progress->highScoreTracks[trackID];
 
-#if 0
-		// all but two tracks
-		if(i > 1)
+		for (j = 0; j < MEMCARD_HIGH_SCORE_MODE_COUNT; j++)
 		{
-			// temporary test
-			track->timeTrialFlags = 7;
-		}
-#endif
+			// NOTE(aalhendi): Keep the table base in this scope so GCC hoists it
+			// before considering the division constants for either score loop.
+			struct MetaDataCHAR *characters = GAME_CHARACTER_METADATA;
+			s32 mode = j;
+			s32 seed;
+			s32 characterID;
+			register s32 nameSeed CTR_PSX_REGISTER("$6") = trackID + mode;
 
-		// for time trial and relic
-		for (s32 j = 0; j < MEMCARD_HIGH_SCORE_MODE_COUNT; j++)
-		{
-			// for every entry
-			for (s32 k = 0; k < MEMCARD_HIGH_SCORE_ENTRIES_PER_MODE; k++)
+			// Keep the lap calculation separate from the seed carried across strcpy.
+			characterID = nameSeed;
+			characterID %= PENTA_PENGUIN;
+			seed = nameSeed;
+			strcpy(track->scoreEntry[mode][0].name, GAME_LANGUAGE_STRINGS[characters[characterID].name_LNG_short]);
+
+			modeIndex = mode;
+			lapOffset = modeIndex * MEMCARD_HIGH_SCORE_ENTRIES_PER_MODE * (s32)sizeof(struct HighScoreEntry) + trackOffset;
+			lap = (struct HighScoreEntry *)((u8 *)progress + lapOffset + OFFSETOF(struct GameProgress, highScoreTracks));
+			lap->characterID = characterID;
+			lap->time = MEMCARD_HIGH_SCORE_DEFAULT_TIME;
+
+			for (k = 0; k < MEMCARD_HIGH_SCORE_ENTRIES_PER_MODE - 1; k++)
 			{
-				s32 characterID = i + j + k;
-				characterID = characterID - PENTA_PENGUIN * (characterID / PENTA_PENGUIN);
+				s32 characterID = seed + k + 1;
+				characterID %= PENTA_PENGUIN;
+				CTR_PSX_DEPEND_VALUE(modeIndex, k);
 
-				struct HighScoreEntry *entry = &track->scoreEntry[j * MEMCARD_HIGH_SCORE_ENTRIES_PER_MODE + k];
-				entry->time = MEMCARD_HIGH_SCORE_DEFAULT_TIME;
-				entry->characterID = characterID;
-
-				char *name = sdata->lngStrings[data.MetaDataCharacters[characterID].name_LNG_short];
-
-				// can't do an int-copy,
-				// strings in LNG are unaligned
-				strcpy(entry->name, name);
+				strcpy(track->scoreEntry[modeIndex][k + 1].name, GAME_LANGUAGE_STRINGS[characters[characterID].name_LNG_short]);
+				entryBase = (u8 *)progress + (k * (s32)sizeof(struct HighScoreEntry) +
+				                              modeIndex * MEMCARD_HIGH_SCORE_ENTRIES_PER_MODE * (s32)sizeof(struct HighScoreEntry) + trackOffset);
+				// NOTE(aalhendi): Leave the profile-header bias in the field addresses
+				// so GCC folds it into the stores instead of advancing entryBase.
+				((struct HighScoreEntry *)(entryBase + OFFSETOF(struct GameProgress, highScoreTracks)))[1].characterID = characterID;
+				((struct HighScoreEntry *)(entryBase + OFFSETOF(struct GameProgress, highScoreTracks)))[1].time = MEMCARD_HIGH_SCORE_DEFAULT_TIME;
 			}
+			// NOTE(aalhendi): Retain track values through both modes; the name seed,
+			// not either track value, is the temporary spilled across name copies.
+			CTR_PSX_ORDER_VALUES(trackOffset, trackID);
 		}
 	}
 }
 
 
-b32 GAMEPROG_CheckGhostsBeaten(int ghostID)
+b32 GAMEPROG_CheckGhostsBeaten(s32 ghostID)
 {
-	struct GameTracker *gGT = sdata->gGT;
-	b32 result = true;
-	s16 levelID = gGT->levelID;
-	int flagWordIndex = (s16)ghostID >> 5;
+	register s32 ghostBit CTR_PSX_REGISTER("$19") = ghostID;
+	b16 result = true;
+	s16 i = 0;
+	struct GameProgress *progress = &GAME_PROGRESS;
+	s32 wordOffset;
+	s16 levelID;
 
-	for (s32 i = 0; i < MEMCARD_HIGH_SCORE_TRACK_COUNT; i++)
+	// NOTE(aalhendi): Retail keeps the original bit index separate from the
+	// signed-halfword word index, and reuses v0 for the per-track address.
+	CTR_PSX_KEEP_VALUE_RELAXED(ghostBit);
+	wordOffset = ((s16)ghostID >> 5) * (s32)sizeof(u32);
+	levelID = GAME_TRACKER->levelID;
+
+	for (; i < MEMCARD_HIGH_SCORE_TRACK_COUNT; i++)
 	{
-		gGT->levelID = i;
+		register s32 trackOffset CTR_PSX_REGISTER("$2");
+		b16 trackBeaten;
+
+		GAME_TRACKER->levelID = i;
 		GAMEPROG_GetPtrHighScoreTrack();
 
+		trackBeaten = false;
 		if (result)
 		{
-			u32 *timeTrialFlags = &sdata->gameProgress.highScoreTracks[gGT->levelID].timeTrialFlags;
-			result = (timeTrialFlags[flagWordIndex] >> (ghostID & 0x1f)) & 1;
+			trackOffset = GAME_TRACKER->levelID * (s32)sizeof(struct HighScoreTrack);
+			trackOffset = wordOffset + trackOffset;
+			trackBeaten = (CTR_ReadU32AlignedLE((u8 *)(trackOffset + (u32)progress) + OFFSETOF(struct GameProgress, highScoreTracks[0].timeTrialFlags)) >>
+			               (ghostBit & 0x1f)) &
+			              1;
 		}
+		result = trackBeaten;
 	}
 
-	gGT->levelID = levelID;
+	GAME_TRACKER->levelID = levelID;
 	GAMEPROG_GetPtrHighScoreTrack();
 
 	return result;
 }
 
 
-void GAMEPROG_NewProfile_OutsideAdv(struct GameProgress *gameProg)
+void GAMEPROG_NewProfile_OutsideAdv(struct GameSave *save)
 {
-	// GameOptions is probably a struct "inside"
-	// of GameProgress, still working on it
-
-	// GameProgress and GameOptions
-	memset(gameProg, 0, sizeof(struct GameProgress) + sizeof(struct GameOptions));
-
-	GAMEPROG_ResetHighScores(gameProg);
+	memset(save, 0, sizeof(*save));
+	GAMEPROG_ResetHighScores(&save->progress);
 }
 
 
 void GAMEPROG_InitFullMemcard(struct MemcardProfile *mcp)
 {
+	struct GameSave *save = &mcp->gameSave;
+	s16 i;
 	// clear
 	memset(mcp, 0, sizeof(struct MemcardProfile));
+	GAMEPROG_NewProfile_OutsideAdv(save);
+	i = 0;
 
 	// header
 	mcp->header[0] = MEMCARD_PROFILE_VERSION; // version (-18)
 	mcp->header[1] = sizeof(struct MemcardProfile);
 
-	// GameProgress and GameOptions
-	GAMEPROG_NewProfile_OutsideAdv(&mcp->gameProgress);
-
 	// 4 profiles
-	for (s32 i = 0; i < MEMCARD_ADV_PROFILE_COUNT; i++)
+	for (; i < MEMCARD_ADV_PROFILE_COUNT; i++)
 	{
 		// no character selected
 		mcp->advProgress[i].characterID = -1;
@@ -231,18 +269,20 @@ void GAMEPROG_NewProfile_InsideAdv(struct AdvProgress *adv)
 
 void GAMEPROG_SaveCupProgress(void)
 {
-	u32 *prog = &sdata->gameProgress.unlocks[0];
+	s16 i = 0;
+	struct GameProgress *progress = &GAME_PROGRESS;
 
 	// 4 cups, 3 difficulties
-	for (s32 i = 0; i < GAME_PROGRESS_CUP_WIN_COUNT; i++)
+	for (; i < GAME_PROGRESS_CUP_WIN_COUNT; i++)
 	{
 		// if cup is "currently" beaten
 		s32 bitIndex1 = i + GAME_PROGRESS_CUP_CURRENT_WIN_FIRST_BIT;
-		if (CHECK_MEMCARD_BIT(prog, bitIndex1))
+		// NOTE(aalhendi): Index-first addition preserves retail's address operands.
+		if ((*(MEMCARD_BIT_WORD(bitIndex1) + progress->unlocks) >> (bitIndex1 & 0x1f)) & 1)
 		{
 			// set if cup was "previously" beaten
 			s32 bitIndex2 = bitIndex1 + GAME_PROGRESS_CUP_PREVIOUS_WIN_OFFSET;
-			UNLOCK_MEMCARD_BIT(prog, bitIndex2);
+			*(MEMCARD_BIT_WORD(bitIndex2) + progress->unlocks) |= MEMCARD_BIT_MASK(bitIndex2);
 		}
 	}
 }
@@ -250,56 +290,57 @@ void GAMEPROG_SaveCupProgress(void)
 
 void GAMEPROG_SyncGameAndCard(struct GameProgress *memcardProg, struct GameProgress *currentProg)
 {
+	u32 *memcardFlags = memcardProg->unlocks;
+	u32 *currentFlags = currentProg->unlocks;
+	s16 i, j;
 	// combine progress of cups,
 	// characters, track, scrapbook
-	for (s32 i = 0; i < GAME_PROGRESS_UNLOCK_WORD_COUNT; i++)
+	for (i = 0; i < GAME_PROGRESS_UNLOCK_WORD_COUNT; i++)
 	{
-		u32 memcardFlags = memcardProg->unlocks[i];
-		u32 currentFlags = currentProg->unlocks[i];
-
-		u32 joinFlags = memcardFlags | currentFlags;
-
-		memcardProg->unlocks[i] = joinFlags;
-		currentProg->unlocks[i] = joinFlags;
+		u32 joined = *currentFlags | *memcardFlags;
+		*currentFlags++ = joined;
+		*memcardFlags++ = joined;
 	}
 
 	// combine progress of beaten ghosts
-	for (s32 i = 0; i < MEMCARD_HIGH_SCORE_TRACK_COUNT; i++)
+	for (j = 0; j < MEMCARD_HIGH_SCORE_TRACK_COUNT; j++)
 	{
-		u32 memcardFlags = memcardProg->highScoreTracks[i].timeTrialFlags;
-		u32 currentFlags = currentProg->highScoreTracks[i].timeTrialFlags;
-
-		u32 joinFlags = memcardFlags | currentFlags;
-
-		memcardProg->highScoreTracks[i].timeTrialFlags = joinFlags;
-		currentProg->highScoreTracks[i].timeTrialFlags = joinFlags;
+		memcardFlags = &memcardProg->highScoreTracks[j].timeTrialFlags;
+		currentFlags = &currentProg->highScoreTracks[j].timeTrialFlags;
+		// NOTE(aalhendi): Retail retains a one-word loop for each track's flags.
+		for (i = 0; i < 1; i++)
+		{
+			u32 joined = *currentFlags | *memcardFlags;
+			*currentFlags++ = joined;
+			*memcardFlags++ = joined;
+		}
 	}
 
-	// Naughty Dog left this incomplete
-	// What if the game beat half of N Tropy's ghosts
-	// and the new memory card beat the other half?
-	// Now you have all ghosts beaten, but N Tropy
-	// is still locked, and can't possibly be unlocked
-
-	// Need to check cup flags for an unlocked battle track,
-	// and n tropy ghosts for n tropy,
-	// and oxide ghosts for scrapbook
+	// Merging the reward bits does not re-evaluate dependent unlocks, such as
+	// N Tropy when the two saves have complementary sets of beaten ghosts.
 }
 
 
-void GAMEPROG_NewGame_OnBoot()
+void GAMEPROG_NewGame_OnBoot(void)
 {
-	GAMEPROG_NewProfile_OutsideAdv(&sdata->gameProgress);
-	GAMEPROG_NewProfile_InsideAdv(&sdata->advProgress);
+	GAMEPROG_NewProfile_OutsideAdv(&GAME_SAVE);
+	GAMEPROG_NewProfile_InsideAdv(&GAME_ADV_PROGRESS);
 	GAMEPROG_GetPtrHighScoreTrack();
 }
 
 
 void GAMEPROG_GetPtrHighScoreTrack(void)
 {
-	struct GameTracker *gGT = sdata->gGT;
-	s32 gameMode1 = gGT->gameMode1;
+	struct GameTracker *gGT = GAME_TRACKER;
+	s32 relicBits = gGT->gameMode1 & RELIC_RACE;
+	s32 trackOffset = gGT->levelID * (s32)sizeof(struct HighScoreTrack);
+	b32 relicMode = relicBits != 0;
+	u8 *scores = (u8 *)&GAME_PROGRESS.highScoreTracks + relicMode * MEMCARD_HIGH_SCORE_ENTRIES_PER_MODE * (s32)sizeof(struct HighScoreEntry);
+	// NOTE(aalhendi): Both targets use 32-bit addresses. Keeping the track offset
+	// separate from the mode's base address preserves retail's addition order.
+	u32 scoreAddress = trackOffset + (u32)scores;
 
-	sdata->ptrActiveHighScoreEntry =
-	    &sdata->gameProgress.highScoreTracks[gGT->levelID].scoreEntry[MEMCARD_HIGH_SCORE_ENTRIES_PER_MODE * ((gameMode1 & RELIC_RACE) != 0)];
+	sdata->ptrActiveHighScoreEntry = (struct HighScoreEntry *)scoreAddress;
+	// NOTE(aalhendi): Keep the store before the return, outside its delay slot.
+	CTR_PSX_OBSERVE_MEMORY(sdata->ptrActiveHighScoreEntry);
 }

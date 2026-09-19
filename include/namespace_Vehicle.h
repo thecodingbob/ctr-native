@@ -1885,7 +1885,8 @@ struct Driver
 			RevEngineLockoutFlags lockoutFlags;
 
 			// 0x594
-			int boolMaskGrab;
+			u8 boolMaskGrab;
+			u8 padding_0x595[3];
 
 			// == end ==
 

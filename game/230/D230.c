@@ -12,7 +12,7 @@
 #define CHEAT_O BTN_CIRCLE
 #define CHEAT_X BTN_CROSS_one
 
-struct OverlayDATA_230 D230 =
+struct OverlayDATA_230 D230 CTR_PSX_MATCH_SECTION(".D230") =
     {
         // MAIN MENU CONSTS
 
@@ -230,27 +230,33 @@ struct OverlayDATA_230 D230 =
         .titleCameraPos = {0x32, 0xFFE2, 0x64},
         .titleCameraRot = {0, 0xFF9C, 0},
 
-        .titleMenuTransitionDurationFrames = 0xC,
-        .titleMenuTransitionStep = 8,
-
-        .titleMainMenuPos = {0x180, 0x6c},
-        .titleAdventureMenuPos = {0, 0},
-        .titleRaceTypeMenuPos = {0, 0},
-        .titlePlayersMenuPos = {0, 0},
-        .titleDifficultyMenuPos = {0, 0},
-
-        .titleBaseCameraPos = {0x32, 0xFFE2, 0x64},
-
-        .titleTransitions.transitionMeta_Menu =
+        .titleTransition =
             {
-                {512, 0, 0, 0, 0},
-                {0, 0, 1, 0, 0},
-                {0, 0, 1, 0, 0},
-                {0, 0, 2, 0, 0},
-                {0, 0, 3, 0, 0},
-                {0x4B0, 0xFFE2, 0, 0, 0},
-                {0x64, 0xC8, 0, 0, 0},
-                {0, 0, -1, 0, 0},
+                .durationFrames = 0xC,
+                .step = 8,
+                .menuLayout =
+                    {
+                        .menuPos =
+                            {
+                                {0x180, 0x6c},
+                                {0, 0},
+                                {0, 0},
+                                {0, 0},
+                                {0, 0},
+                            },
+                        .baseCameraPos = {0x32, 0xFFE2, 0x64},
+                    },
+                .transition =
+                    {
+                        {512, 0, 0, 0, 0},
+                        {0, 0, 1, 0, 0},
+                        {0, 0, 1, 0, 0},
+                        {0, 0, 2, 0, 0},
+                        {0, 0, 3, 0, 0},
+                        {0x4B0, 0xFFE2, 0, 0, 0},
+                        {0x64, 0xC8, 0, 0, 0},
+                        {0, 0, -1, 0, 0},
+                    },
             },
 
         .titleSounds =
@@ -622,7 +628,7 @@ struct OverlayDATA_230 D230 =
                 {24, 0x4b, 0xFFFF, 0x4, 0x1f8, 0x19a},
             },
 
-        .trackTransitions.transitionMeta_trackSel = {{-512, 0, 1, 0, 0}, {0, -200, 2, 0, 0}, {0, 200, 3, 0, 0}, {512, 0, 4, 0, 0}, {0, 0, -1, 0, 0}},
+        .trackTransitions = {{{-512, 0, 1, 0, 0}, {0, -200, 2, 0, 0}, {0, 200, 3, 0, 0}, {512, 0, 4, 0, 0}, {0, 0, -1, 0, 0}}},
 
         .lapCountByRow = {{3, 0}, {5, 0}, {7, 0}, {0, 0}},
 

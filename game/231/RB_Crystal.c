@@ -1,8 +1,8 @@
-#include <common.h>
+#include "RB_Pickup.h"
 
 SVec3 crystalLightDir = {0x94F, 0x94F, 0x94F};
 
-static void RB_Crystal_RotateStep(struct Instance *crystalInst, struct Crystal *crystalObj)
+static inline void RB_Crystal_RotateStep(struct Instance *crystalInst, struct Crystal *crystalObj)
 {
 	crystalObj->rot.y += 0x40;
 	ConvertRotToMatrix(&crystalInst->matrix, &crystalObj->rot);
@@ -10,12 +10,13 @@ static void RB_Crystal_RotateStep(struct Instance *crystalInst, struct Crystal *
 
 int RB_Crystal_ThCollide(struct Thread *crystalTh, struct Thread *driverTh, void *funcThCollide, struct ScratchpadStruct *sps)
 {
-	(void)funcThCollide;
-	struct PushBuffer *pb;
-	s16 posScreen[2];
+	SVec4 posWorld;
+	union RBPickupScreen posScreen;
 	struct Driver *driver;
 	struct Instance *crystalInst;
 	int modelID;
+	(void)funcThCollide;
+
 
 	modelID = sps->Input1.modelID;
 	crystalInst = crystalTh->inst;
@@ -24,61 +25,65 @@ int RB_Crystal_ThCollide(struct Thread *crystalTh, struct Thread *driverTh, void
 	// by player, or robotcar, and there's no
 	// AIs in Crystal Challenge anyway
 	if (
-	    // not player model
-	    (modelID != DYNAMIC_PLAYER) &&
+	    // player model
+	    (modelID == DYNAMIC_PLAYER) ||
 
-	    // not bot model
-	    (modelID != DYNAMIC_ROBOT_CAR))
+	    // bot model
+	    (modelID == DYNAMIC_ROBOT_CAR))
 	{
-		return 0;
-	}
-
-	// player gets pickup HUD feedback,
-	// bots only erase the crystal/fruit
-	if (modelID == DYNAMIC_PLAYER)
-	{
-		// get driver object, get screen coords
+		// player gets pickup HUD feedback,
+		// bots only erase the crystal/fruit
 		driver = driverTh->object;
-		pb = &sdata->gGT->pushBuffer[driver->driverID];
-		RB_Fruit_GetScreenCoords(pb, crystalInst, &posScreen[0]);
+		if (modelID == DYNAMIC_PLAYER)
+		{
+			posWorld.x = (s16)crystalInst->matrix.t[0];
+			posWorld.y = (s16)crystalInst->matrix.t[1];
+			posWorld.z = (s16)crystalInst->matrix.t[2];
+			RB_Pickup_SetCamera(driver);
+			CTR_GteLoadPositionV0(&posWorld);
+			gte_rtps();
+			CTR_GteStorePositionXY(posScreen.coords);
 
-		// lasts 5 frames, give start position, count numCollected
-		driver->PickupWumpaHUD.startX = pb->rect.x + posScreen[0];
-		driver->PickupWumpaHUD.startY = pb->rect.y + posScreen[1] - 0x14;
-		driver->PickupWumpaHUD.cooldown = 5;
-		driver->PickupWumpaHUD.numCollected++;
+			// lasts 5 frames, give start position, count numCollected
+			driver->PickupWumpaHUD.startX = posScreen.coords[0] + GAME_TRACKER->pushBuffer[driver->driverID].rect.x;
+			driver->PickupWumpaHUD.startY = posScreen.coords[1] + GAME_TRACKER->pushBuffer[driver->driverID].rect.y - 0x14;
+			driver->PickupWumpaHUD.cooldown = 5;
+			driver->PickupWumpaHUD.numCollected++;
+		}
+
+		crystalInst->scale.x = 0;
+		crystalInst->scale.y = 0;
+		crystalInst->scale.z = 0;
+		crystalInst->thread = 0;
+
+		// play sound
+		PlaySound3D(0x43, crystalInst);
+		crystalTh->flags |= THREAD_FLAG_DEAD;
+
+		return 1;
 	}
-
-	CTR_WriteU32LE(&crystalInst->scale.x, 0);
-	crystalInst->scale.z = 0;
-	crystalInst->thread = 0;
-
-	// play sound
-	PlaySound3D(0x43, crystalInst);
-	crystalTh->flags |= THREAD_FLAG_DEAD;
-
-	return 1;
+	return 0;
 }
 
 void RB_Crystal_ThTick(struct Thread *t)
 {
-	int sine;
+	s32 heightOffset;
 	struct Instance *crystalInst;
 	struct Crystal *crystalObj;
 
 	crystalInst = t->inst;
 	crystalObj = t->object;
 
+	// NOTE(aalhendi): Retail advances and rebuilds the rotation twice per tick.
 	RB_Crystal_RotateStep(crystalInst, crystalObj);
 	RB_Crystal_RotateStep(crystalInst, crystalObj);
 
 	// sine curve for vertical bounce
-	sine = MATH_Sin(crystalObj->rot.y);
+	heightOffset = MATH_Sin(crystalObj->rot.y);
+	heightOffset = ((s32)((u32)heightOffset << 4) >> 0xc) + 0x30;
 
 	// set posY
-	crystalInst->matrix.t[1] = crystalInst->instDef->pos.y + // original posY
-	                           ((sine << 4) >> 0xc) +        // sine (bounce up/down)
-	                           0x30;                         // airborne bump
+	crystalInst->matrix.t[1] = crystalInst->instDef->pos.y + heightOffset;
 
 	Vector_SpecLightSpin3D(crystalInst, &crystalObj->rot, &crystalLightDir);
 }
@@ -86,11 +91,12 @@ void RB_Crystal_ThTick(struct Thread *t)
 int RB_Crystal_LInC(struct Instance *crystalInst, struct Thread *driverTh, struct ScratchpadStruct *sps)
 {
 	struct Thread *crystalTh;
+	s32 result;
 
 	crystalTh = crystalInst->thread;
 	if (crystalTh == NULL)
 	{
-		crystalTh = PROC_BirthWithObject(
+		crystalInst->thread = PROC_BirthWithObject(
 		    // creation flags
 		    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Crystal), NONE, SMALL, STATIC),
 
@@ -99,7 +105,7 @@ int RB_Crystal_LInC(struct Instance *crystalInst, struct Thread *driverTh, struc
 		    0                  // thread relative
 		);
 
-		crystalInst->thread = crystalTh;
+		crystalTh = crystalInst->thread;
 		if (crystalTh == NULL)
 		{
 			return 0;
@@ -107,20 +113,28 @@ int RB_Crystal_LInC(struct Instance *crystalInst, struct Thread *driverTh, struc
 
 		crystalTh->inst = crystalInst;
 		crystalTh->funcThCollide = (void *)RB_Crystal_ThCollide;
-		crystalTh = crystalInst->thread;
 	}
+	crystalTh = crystalInst->thread;
 
-	if ((crystalTh == NULL) || (crystalTh->funcThCollide == NULL))
+	if (crystalTh == NULL)
 	{
 		return 0;
 	}
 
-	if (crystalInst->scale.x == 0)
+	if (crystalTh->funcThCollide == NULL)
 	{
 		return 0;
 	}
 
-	return ((ThreadScratchCollideFunc)crystalTh->funcThCollide)(crystalTh, driverTh, crystalTh->funcThCollide, sps);
+	if (crystalInst->scale.x != 0)
+	{
+		result = ((ThreadScratchCollideFunc)crystalTh->funcThCollide)(crystalTh, driverTh, crystalTh->funcThCollide, sps);
+	}
+	else
+	{
+		result = 0;
+	}
+	return result;
 }
 
 void RB_Crystal_LInB(struct Instance *inst)
@@ -150,7 +164,8 @@ void RB_Crystal_LInB(struct Instance *inst)
 		t->funcThCollide = (void *)RB_Crystal_ThCollide;
 
 		// rotX, rotY, rotZ
-		CTR_WriteU32LE(&crystalObj->rot.x, 0);
+		crystalObj->rot.x = 0;
+		crystalObj->rot.y = 0;
 		crystalObj->rot.z = 0;
 
 		inst->colorRGBA = 0xd22fff0;

@@ -53,25 +53,14 @@ extern struct RectMenu menu222_2P;
 // NOTE(aalhendi): The matching build overrides these defaults through its
 // private retail-symbol header. Native code reaches the same state through the
 // canonical aggregates.
-#ifndef gameTrackerPtr
-#define gameTrackerPtr           (sdata->gGT)
-#define gameFramesSinceRaceEnded (sdata->framesSinceRaceEnded)
-#define gameAdvProgress          (sdata->advProgress)
+#ifndef gameHudC
 #define gameHudC                 (sdata->ptrHudC)
 #define gameHudT                 (sdata->ptrHudT)
 #define gameHudR                 (sdata->ptrHudR)
-#define gameToken                (sdata->ptrToken)
-#define languageStrings          (sdata->lngStrings)
 #define gameNumIconsEOR          (sdata->numIconsEOR)
-#define gameAnyPlayerTap         (sdata->AnyPlayerTap)
-#define gameMenuReady            (sdata->menuReadyToPass)
-#define gameAddConfig0           (sdata->Loading.OnBegin.AddBitsConfig0)
-#define gameRemoveConfig0        (sdata->Loading.OnBegin.RemBitsConfig0)
 #define gameAddConfig8           (sdata->Loading.OnBegin.AddBitsConfig8)
 #define gameRemoveConfig8        (sdata->Loading.OnBegin.RemBitsConfig8)
 #define gameHudStructs           (data.hudStructPtr)
-#define gameCharacterMetadata    (data.MetaDataCharacters)
-#define gameCharacterIDs         (data.characterIDs)
 #define gameMenuRetryExit        (data.menuRetryExit)
 #endif
 
@@ -110,18 +99,18 @@ void AA_EndEvent_DrawMenu(void)
 
 	// NOTE(aalhendi): This compiler barrier preserves retail's address-page
 	// allocation across initialization; it does not change game state.
-	CTR_PSX_RELOAD(gameTrackerPtr);
+	CTR_PSX_RELOAD(GAME_TRACKER);
 	timeOffsetFrames = 0;
 	continueDelayOffset = 0;
-	driver = gameTrackerPtr->drivers[0];
-	hudArray = gameHudStructs[gameTrackerPtr->numPlyrCurrGame - 1];
-	pushBuffer = &gameTrackerPtr->pushBuffer[0];
+	driver = GAME_TRACKER->drivers[0];
+	hudArray = gameHudStructs[GAME_TRACKER->numPlyrCurrGame - 1];
+	pushBuffer = &GAME_TRACKER->pushBuffer[0];
 	driverRankString = (char *)&s_driverRankString222;
-	if (gameFramesSinceRaceEnded < AA_RESULT_MAX_FRAMES)
+	if (GAME_FRAMES_SINCE_RACE_ENDED < AA_RESULT_MAX_FRAMES)
 	{
-		gameFramesSinceRaceEnded++;
+		GAME_FRAMES_SINCE_RACE_ENDED++;
 	}
-	CTR_PSX_RELOAD(gameFramesSinceRaceEnded);
+	CTR_PSX_RELOAD(GAME_FRAMES_SINCE_RACE_ENDED);
 
 	if (driver->instBigNum->scale.x != AA_BIG_NUM_TARGET_SCALE)
 	{
@@ -130,7 +119,7 @@ void AA_EndEvent_DrawMenu(void)
 		driver->instFruitDisp->scale.z = 0;
 	}
 
-	adventureGameTracker = gameTrackerPtr;
+	adventureGameTracker = GAME_TRACKER;
 
 	// If adventure mode
 	if ((adventureGameTracker->gameMode1 & ADVENTURE_MODE) != 0)
@@ -138,7 +127,7 @@ void AA_EndEvent_DrawMenu(void)
 		if ((driver->driverRank != 0) || (driver->PickupLetterHUD.numCollected != 3))
 		{
 			// A lost or incomplete token run drops the letters in a six-frame stagger.
-			if (gameFramesSinceRaceEnded < AA_RESULT_MAX_FRAMES)
+			if (GAME_FRAMES_SINCE_RACE_ENDED < AA_RESULT_MAX_FRAMES)
 			{
 				hudC = gameHudC;
 				if (((hudC->flags & HIDE_MODEL) == 0) && (hudC->matrix.t[1] > AA_CTR_LETTER_FALL_MIN_Y))
@@ -155,7 +144,7 @@ void AA_EndEvent_DrawMenu(void)
 				// NOTE(aalhendi): Retail applies T and R horizontal velocity to C
 				// while each letter keeps its own vertical motion.
 				hudT = gameHudT;
-				if (((hudT->flags & HIDE_MODEL) == 0) && (gameFramesSinceRaceEnded > AA_CTR_LETTER_FALL_DELAY_FRAMES) &&
+				if (((hudT->flags & HIDE_MODEL) == 0) && (GAME_FRAMES_SINCE_RACE_ENDED > AA_CTR_LETTER_FALL_DELAY_FRAMES) &&
 				    (hudT->matrix.t[1] > AA_CTR_LETTER_FALL_MIN_Y))
 				{
 					letter = hudT->thread->object;
@@ -168,7 +157,7 @@ void AA_EndEvent_DrawMenu(void)
 				}
 
 				hudT = gameHudR;
-				if (((hudT->flags & HIDE_MODEL) == 0) && (gameFramesSinceRaceEnded > AA_CTR_LETTER_FALL_DELAY_FRAMES * 2) &&
+				if (((hudT->flags & HIDE_MODEL) == 0) && (GAME_FRAMES_SINCE_RACE_ENDED > AA_CTR_LETTER_FALL_DELAY_FRAMES * 2) &&
 				    (hudT->matrix.t[1] > AA_CTR_LETTER_FALL_MIN_Y))
 				{
 					letter = hudT->thread->object;
@@ -190,9 +179,9 @@ void AA_EndEvent_DrawMenu(void)
 			CTR_PSX_CLOBBER("$3");
 			tokenRewardBit = adventureGameTracker->levelID + ADV_REWARD_FIRST_CTR_TOKEN;
 
-			if (CHECK_ADV_BIT(gameAdvProgress.rewards, tokenRewardBit))
+			if (CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, tokenRewardBit))
 			{
-				ctrAnimationFrame = gameFramesSinceRaceEnded;
+				ctrAnimationFrame = GAME_FRAMES_SINCE_RACE_ENDED;
 				ctrUnlockedFlyoutStartFrame = AA_CTR_ALREADY_UNLOCKED_FLYOUT_FRAME;
 				isCtrUnlockedFlyout = ctrUnlockedFlyoutStartFrame < ctrAnimationFrame;
 				if (isCtrUnlockedFlyout)
@@ -234,7 +223,7 @@ void AA_EndEvent_DrawMenu(void)
 
 				pos.x = hudArray[AA_CTR_HUD_SLOT].x;
 				pos.y = hudArray[AA_CTR_HUD_SLOT].y;
-				ctrAnimationFrame = gameFramesSinceRaceEnded;
+				ctrAnimationFrame = GAME_FRAMES_SINCE_RACE_ENDED;
 				letterROffsetX = scaleOffset * 8;
 
 				if (AA_CTR_TEXT_FLYOUT_START_FRAME < ctrAnimationFrame)
@@ -307,13 +296,13 @@ void AA_EndEvent_DrawMenu(void)
 				hudWork = gameHudR;
 				hudWork->depthBiasNormal = 1;
 
-				hudToken = gameToken;
+				hudToken = GAME_TOKEN;
 				hudWork->matrix.t[1] = letterRPositionY;
 				hudToken->flags &= ~HIDE_MODEL;
-				gameToken->matrix.t[0] = UI_ConvertX_2(pos.x + letterTPositionOffsetX, AA_SCREEN_DEPTH);
+				GAME_TOKEN->matrix.t[0] = UI_ConvertX_2(pos.x + letterTPositionOffsetX, AA_SCREEN_DEPTH);
 				tokenPositionY = UI_ConvertY_2(pos.y + 0x18, AA_SCREEN_DEPTH);
-				tokenGrowthDelayed = gameFramesSinceRaceEnded <= AA_CTR_TEXT_FLYIN_START_FRAME;
-				hudWork = gameToken;
+				tokenGrowthDelayed = GAME_FRAMES_SINCE_RACE_ENDED <= AA_CTR_TEXT_FLYIN_START_FRAME;
+				hudWork = GAME_TOKEN;
 				hudWork->matrix.t[1] = tokenPositionY;
 
 				if (!tokenGrowthDelayed && (hudWork->scale.x < AA_TOKEN_GROW_LIMIT))
@@ -323,15 +312,15 @@ void AA_EndEvent_DrawMenu(void)
 					hudWork->scale.z += AA_TOKEN_GROW_STEP;
 				}
 
-				tokenAwardFrame = gameFramesSinceRaceEnded;
+				tokenAwardFrame = GAME_FRAMES_SINCE_RACE_ENDED;
 				if (tokenAwardFrame >= AA_CTR_TEXT_FLYOUT_START_FRAME + 1)
 				{
 					// NOTE(aalhendi): Retail uses frames - 50 here, skipping most of
 					// the text fly-out.
 					UI_Lerp2D_Linear(CTR_VECTOR_DATA(&pos), 0x100, 0xa6, -150, 0xa6, tokenAwardFrame - AA_CTR_TEXT_FLYOUT_AWARD_OFFSET,
 					                 AA_TOKEN_AWARD_TEXT_FLY_FRAMES);
-					DecalFont_DrawLine(languageStrings[LNG_CTR_TOKEN_AWARDED], pos.x, pos.y, FONT_BIG,
-					                   (gameTrackerPtr->timer & 1) ? (s16)(JUSTIFY_CENTER | RED) : (s16)(JUSTIFY_CENTER | WHITE));
+					DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_CTR_TOKEN_AWARDED], pos.x, pos.y, FONT_BIG,
+					                   (GAME_TRACKER->timer & 1) ? (s16)(JUSTIFY_CENTER | RED) : (s16)(JUSTIFY_CENTER | WHITE));
 				}
 				else
 				{
@@ -341,8 +330,8 @@ void AA_EndEvent_DrawMenu(void)
 					}
 					UI_Lerp2D_Linear(CTR_VECTOR_DATA(&pos), 0x264, 0xa6, 0x100, 0xa6, tokenAwardFrame - AA_CTR_TEXT_FLYIN_START_FRAME,
 					                 AA_TOKEN_AWARD_TEXT_FLY_FRAMES);
-					DecalFont_DrawLine(languageStrings[LNG_CTR_TOKEN_AWARDED], pos.x, pos.y, FONT_BIG,
-					                   (gameTrackerPtr->timer & 1) ? (s16)(JUSTIFY_CENTER | RED) : (s16)(JUSTIFY_CENTER | WHITE));
+					DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_CTR_TOKEN_AWARDED], pos.x, pos.y, FONT_BIG,
+					                   (GAME_TRACKER->timer & 1) ? (s16)(JUSTIFY_CENTER | RED) : (s16)(JUSTIFY_CENTER | WHITE));
 				}
 			finish_token_award_text:
 
@@ -352,7 +341,7 @@ void AA_EndEvent_DrawMenu(void)
 		}
 	}
 
-	for (i = 0; i < gameTrackerPtr->numPlyrCurrGame; i++)
+	for (i = 0; i < GAME_TRACKER->numPlyrCurrGame; i++)
 	{
 		// Draw how much time it took to finish laps and race
 		AA_EndEvent_DisplayTime(i, timeOffsetFrames);
@@ -361,7 +350,8 @@ void AA_EndEvent_DrawMenu(void)
 
 	// NOTE(aalhendi): Keep the repeated frame test. GCC 2.8.1 emits the two
 	// retail branches from this source shape.
-	if ((gameFramesSinceRaceEnded >= AA_RESULT_WAIT_FRAMES) && (gameFramesSinceRaceEnded >= AA_RESULT_WAIT_FRAMES) && (gameTrackerPtr->numPlyrCurrGame == 1))
+	if ((GAME_FRAMES_SINCE_RACE_ENDED >= AA_RESULT_WAIT_FRAMES) && (GAME_FRAMES_SINCE_RACE_ENDED >= AA_RESULT_WAIT_FRAMES) &&
+	    (GAME_TRACKER->numPlyrCurrGame == 1))
 	{
 		struct GameTracker *iconGameTracker;
 		register struct MetaDataCHAR *characterMetadata CTR_PSX_REGISTER("$23");
@@ -372,11 +362,11 @@ void AA_EndEvent_DrawMenu(void)
 		s32 driverIconLerpFrame;
 
 		CTR_PSX_KEEP_VALUE(driverRankString);
-		iconGameTracker = gameTrackerPtr;
+		iconGameTracker = GAME_TRACKER;
 		CTR_PSX_CLOBBER("$6");
 
 		// start counting time 1 second after race ends
-		driverIconFrame = (gameFramesSinceRaceEnded & 0xffff) - AA_RESULT_WAIT_FRAMES;
+		driverIconFrame = (GAME_FRAMES_SINCE_RACE_ENDED & 0xffff) - AA_RESULT_WAIT_FRAMES;
 		{
 			register s32 botRacers CTR_PSX_REGISTER("$3");
 
@@ -411,8 +401,8 @@ void AA_EndEvent_DrawMenu(void)
 			CTR_PSX_KEEP_VALUE(lastRacerIndex);
 			// NOTE(aalhendi): Materialize the absolute table address in retail's
 			// two steps so the icon loop keeps the same register allocation.
-			CTR_PSX_LOAD_SYMBOL_PAGE(characterMetadataPage, GAME_CHARACTER_METADATA_ASM_NAME);
-			CTR_PSX_ADD_SYMBOL_LOW(characterMetadata, characterMetadataPage, GAME_CHARACTER_METADATA_ASM_NAME, gameCharacterMetadata);
+			CTR_PSX_LOAD_SYMBOL_PAGE(characterMetadataPage, RETAIL_CHARACTER_METADATA_ASM_NAME);
+			CTR_PSX_ADD_SYMBOL_LOW(characterMetadata, characterMetadataPage, RETAIL_CHARACTER_METADATA_ASM_NAME, GAME_CHARACTER_METADATA);
 			driverIconLerpFrame = driverIconFrame;
 
 			// loop through all the driver icons
@@ -429,7 +419,7 @@ void AA_EndEvent_DrawMenu(void)
 				driverIconTargetX =
 				    (u16)pushBuffer->rect.x + (pushBuffer->rect.w - (loopTotalRacers * 44 + lastRacerIndex * 12)) / 2 + (i * AA_DRIVER_ICON_SPACING);
 
-				driverIconCurrentFrame = gameFramesSinceRaceEnded;
+				driverIconCurrentFrame = GAME_FRAMES_SINCE_RACE_ENDED;
 				if (AA_DRIVER_ICON_EXIT_FRAME - timeOffsetFrames < driverIconCurrentFrame)
 				{
 					s32 driverIconExitFrame;
@@ -452,19 +442,19 @@ void AA_EndEvent_DrawMenu(void)
 
 				iconColor = MakeColorPacked(AA_DRIVER_ICON_GRAY_CHANNEL, AA_DRIVER_ICON_GRAY_CHANNEL, AA_DRIVER_ICON_GRAY_CHANNEL);
 				CTR_PSX_FORGET_VALUE(iconColor);
-				characterIDs = gameCharacterIDs;
-				characterID = characterIDs[gameTrackerPtr->driversInRaceOrder[i]->driverID];
+				characterIDs = GAME_CHARACTER_IDS;
+				characterID = characterIDs[GAME_TRACKER->driversInRaceOrder[i]->driverID];
 				iconID = characterMetadata[characterID].iconID;
 
 				// Draw the driver's character icon
 				UI_DrawDriverIcon(
 
-				    gameTrackerPtr->ptrIcons[iconID],
+				    GAME_TRACKER->ptrIcons[iconID],
 
-				    pos.x, 0x60, &gameTrackerPtr->backBuffer->primMem,
+				    pos.x, 0x60, &GAME_TRACKER->backBuffer->primMem,
 
 				    // pointer to OT mem
-				    gameTrackerPtr->pushBuffer_UI.ptrOT,
+				    GAME_TRACKER->pushBuffer_UI.ptrOT,
 
 				    1, AA_DRIVER_ICON_SCALE, iconColor);
 				i++;
@@ -473,29 +463,29 @@ void AA_EndEvent_DrawMenu(void)
 	}
 
 	// 0x78 + 0x6e = 0xe6 (230) frames waited for Token Race
-	if (gameFramesSinceRaceEnded < continueDelayOffset + AA_CONTINUE_DELAY_FRAMES)
+	if (GAME_FRAMES_SINCE_RACE_ENDED < continueDelayOffset + AA_CONTINUE_DELAY_FRAMES)
 	{
 		return;
 	}
 
 	if (
 	    // If you are in Adventure cup
-	    ((gameTrackerPtr->gameMode1 & ADVENTURE_CUP) != 0) ||
+	    ((GAME_TRACKER->gameMode1 & ADVENTURE_CUP) != 0) ||
 
 	    // If you are in Arcade or VS cup
-	    ((gameTrackerPtr->gameMode2 & CUP_ANY_KIND) != 0))
+	    ((GAME_TRACKER->gameMode2 & CUP_ANY_KIND) != 0))
 	{
-		if (gameTrackerPtr->numPlyrCurrGame == 2)
+		if (GAME_TRACKER->numPlyrCurrGame == 2)
 		{
-			DecalFont_DrawLine(languageStrings[LNG_PRESS_TO_CONTINUE], 0x100, 100, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+			DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], 0x100, 100, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 		}
 		else
 		{
-			DecalFont_DrawLine(languageStrings[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+			DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 		}
 
 		// If you do not "Press X to continue"
-		if ((gameAnyPlayerTap & AA_CONFIRM_BUTTON_MASK) == 0)
+		if ((GAME_ANY_PLAYER_TAP & AA_CONFIRM_BUTTON_MASK) == 0)
 		{
 			return;
 		}
@@ -505,27 +495,27 @@ void AA_EndEvent_DrawMenu(void)
 		// clear gamepad input
 		RECTMENU_ClearInput();
 
-		gameMenuReady = 0;
-		gameFramesSinceRaceEnded = 0;
+		GAME_MENU_READY = 0;
+		GAME_FRAMES_SINCE_RACE_ENDED = 0;
 		gameNumIconsEOR = 1;
 
 		// Disable HUD
-		gameTrackerPtr->hudFlags &= HUD_FLAG_CLEAR_RACE_HUD_MASK;
+		GAME_TRACKER->hudFlags &= HUD_FLAG_CLEAR_RACE_HUD_MASK;
 
 		// Enable Cup Standings
-		gameTrackerPtr->hudFlags |= HUD_FLAG_CUP_STANDINGS;
+		GAME_TRACKER->hudFlags |= HUD_FLAG_CUP_STANDINGS;
 		return;
 	}
 
 	// If you're in Arcade mode
-	if ((gameTrackerPtr->gameMode1 & ARCADE_MODE) != 0)
+	if ((GAME_TRACKER->gameMode1 & ARCADE_MODE) != 0)
 	{
-		if (gameMenuReady & AA_MENU_READY_FLAG)
+		if (GAME_MENU_READY & AA_MENU_READY_FLAG)
 		{
 			return;
 		}
 
-		if (gameTrackerPtr->numPlyrCurrGame == 1)
+		if (GAME_TRACKER->numPlyrCurrGame == 1)
 		{
 			RECTMENU_Show(&menu222);
 		}
@@ -535,13 +525,13 @@ void AA_EndEvent_DrawMenu(void)
 		}
 
 		// record that the menu is drawing
-		gameMenuReady |= AA_MENU_READY_FLAG;
+		GAME_MENU_READY |= AA_MENU_READY_FLAG;
 		return;
 	}
 
 	// Normal Adventure races require first place. Token races also require all
 	// three CTR letters.
-	if ((gameTrackerPtr->gameMode2 & TOKEN_RACE) == 0)
+	if ((GAME_TRACKER->gameMode2 & TOKEN_RACE) == 0)
 	{
 		if (driver->driverRank == 0)
 		{
@@ -555,13 +545,13 @@ void AA_EndEvent_DrawMenu(void)
 	goto race_lost;
 
 race_won:
-	DecalFont_DrawLine(languageStrings[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
-	if ((gameAnyPlayerTap & AA_CONFIRM_BUTTON_MASK) == 0)
+	DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+	if ((GAME_ANY_PLAYER_TAP & AA_CONFIRM_BUTTON_MASK) == 0)
 	{
 		return;
 	}
 	RECTMENU_ClearInput();
-	gameFramesSinceRaceEnded = 0;
+	GAME_FRAMES_SINCE_RACE_ENDED = 0;
 	gameNumIconsEOR = 1;
 	{
 		register u32 arenaConfigMask CTR_PSX_REGISTER("$4");
@@ -571,13 +561,13 @@ race_won:
 		// NOTE(aalhendi): A normal lvalue lets GCC fold this address and changes
 		// the retail register schedule, so keep the read/modify/write page-relative.
 		CTR_PSX_MEMORY_BARRIER();
-		CTR_PSX_LOAD_SYMBOL_PAGE(addConfig0Page, GAME_ADD_CONFIG_0_ASM_NAME);
+		CTR_PSX_LOAD_SYMBOL_PAGE(addConfig0Page, RETAIL_ADD_CONFIG_0_ASM_NAME);
 		CTR_PSX_KEEP_VALUE(addConfig0Page);
 		arenaConfigMask = ADVENTURE_ARENA;
-		gameTrackerSlot = &gameTrackerPtr;
+		gameTrackerSlot = &GAME_TRACKER;
 		raceGameTracker = gameTrackerSlot[0];
-		addConfig0Value = CTR_PSX_PAGE_LVALUE(u32, addConfig0Page, AA_ADD_CONFIG_0_PAGE_OFFSET, gameAddConfig0);
-		CTR_PSX_PAGE_LVALUE(u32, addConfig0Page, AA_ADD_CONFIG_0_PAGE_OFFSET, gameAddConfig0) = addConfig0Value | arenaConfigMask;
+		addConfig0Value = CTR_PSX_PAGE_LVALUE(u32, addConfig0Page, AA_ADD_CONFIG_0_PAGE_OFFSET, GAME_ADD_CONFIG_0);
+		CTR_PSX_PAGE_LVALUE(u32, addConfig0Page, AA_ADD_CONFIG_0_PAGE_OFFSET, GAME_ADD_CONFIG_0) = addConfig0Value | arenaConfigMask;
 	}
 
 	{
@@ -590,58 +580,58 @@ race_won:
 			// Return to Adventure with boss spawning enabled and boss mode removed.
 			bossConfig = &gameAddConfig8;
 			*bossConfig |= SPAWN_AT_BOSS;
-			bossConfig = &gameRemoveConfig0;
+			bossConfig = &GAME_REMOVE_CONFIG_0;
 			*bossConfig |= bossConfigMask;
 
 			// The four area bosses award keys. Oxide records story progress and
 			// uses the empty podium reward.
 			if (raceGameTracker->bossID < AA_KEY_BOSS_COUNT)
 			{
-				if (!CHECK_ADV_BIT(gameAdvProgress.rewards, raceGameTracker->bossID + ADV_REWARD_FIRST_BOSS_KEY))
+				if (!CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, raceGameTracker->bossID + ADV_REWARD_FIRST_BOSS_KEY))
 				{
-					UNLOCK_ADV_BIT(gameAdvProgress.rewards, raceGameTracker->bossID + ADV_REWARD_FIRST_BOSS_KEY);
-					gameTrackerPtr->podiumRewardID = STATIC_KEY;
+					UNLOCK_ADV_BIT(GAME_ADV_PROGRESS.rewards, raceGameTracker->bossID + ADV_REWARD_FIRST_BOSS_KEY);
+					GAME_TRACKER->podiumRewardID = STATIC_KEY;
 				}
 			}
 			else
 			{
-				if (!CHECK_ADV_BIT(gameAdvProgress.rewards, raceGameTracker->bossID + ADV_REWARD_FIRST_BOSS_KEY))
+				if (!CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, raceGameTracker->bossID + ADV_REWARD_FIRST_BOSS_KEY))
 				{
-					UNLOCK_ADV_BIT(gameAdvProgress.rewards, raceGameTracker->bossID + ADV_REWARD_FIRST_BOSS_KEY);
-					UNLOCK_ADV_BIT(gameAdvProgress.rewards, raceGameTracker->bossID + ADV_REWARD_FIRST_PURPLE_TOKEN);
+					UNLOCK_ADV_BIT(GAME_ADV_PROGRESS.rewards, raceGameTracker->bossID + ADV_REWARD_FIRST_BOSS_KEY);
+					UNLOCK_ADV_BIT(GAME_ADV_PROGRESS.rewards, raceGameTracker->bossID + ADV_REWARD_FIRST_PURPLE_TOKEN);
 				}
 
-				gameTrackerPtr->podiumRewardID = STATIC_BIG1;
-				if ((gameAdvProgress.rewards[ADV_PROGRESS_WORD_STORY] & ADV_REWARD_BEAT_OXIDE_FIRST_BOSS_MASK) == 0)
+				GAME_TRACKER->podiumRewardID = STATIC_BIG1;
+				if ((GAME_ADV_PROGRESS.rewards[ADV_PROGRESS_WORD_STORY] & ADV_REWARD_BEAT_OXIDE_FIRST_BOSS_MASK) == 0)
 				{
-					gameAdvProgress.rewards[ADV_PROGRESS_WORD_STORY] |= ADV_REWARD_OXIDE_FIRST_WIN_FLAGS;
+					GAME_ADV_PROGRESS.rewards[ADV_PROGRESS_WORD_STORY] |= ADV_REWARD_OXIDE_FIRST_WIN_FLAGS;
 				}
 			}
 
 			// Pinstripe's key podium is in Gem Stone Valley.
-			if ((gameTrackerPtr->levelID == HOT_AIR_SKYWAY) && (gameTrackerPtr->podiumRewardID == STATIC_KEY))
+			if ((GAME_TRACKER->levelID == HOT_AIR_SKYWAY) && (GAME_TRACKER->podiumRewardID == STATIC_KEY))
 			{
 				MainRaceTrack_RequestLoad(GEM_STONE_VALLEY);
 				return;
 			}
-			MainRaceTrack_RequestLoad(gameTrackerPtr->prevLEV);
+			MainRaceTrack_RequestLoad(GAME_TRACKER->prevLEV);
 			return;
 		}
 	}
 
 	// A normal Adventure win awards the first-time trophy and, when all three
 	// letters were collected, the track's CTR token.
-	rewardBit = gameTrackerPtr->levelID;
+	rewardBit = GAME_TRACKER->levelID;
 	rewardBit += ADV_REWARD_FIRST_TROPHY;
-	if (!CHECK_ADV_BIT(gameAdvProgress.rewards, rewardBit))
+	if (!CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, rewardBit))
 	{
-		UNLOCK_ADV_BIT(gameAdvProgress.rewards, rewardBit);
-		gameTrackerPtr->podiumRewardID = STATIC_TROPHY;
+		UNLOCK_ADV_BIT(GAME_ADV_PROGRESS.rewards, rewardBit);
+		GAME_TRACKER->podiumRewardID = STATIC_TROPHY;
 	}
 
 	if (driver->PickupLetterHUD.numCollected == 3)
 	{
-		UNLOCK_ADV_BIT(gameAdvProgress.rewards, gameTrackerPtr->levelID + ADV_REWARD_FIRST_CTR_TOKEN);
+		UNLOCK_ADV_BIT(GAME_ADV_PROGRESS.rewards, GAME_TRACKER->levelID + ADV_REWARD_FIRST_CTR_TOKEN);
 	}
 
 	{
@@ -655,15 +645,15 @@ race_won:
 	return;
 
 race_lost:
-	if ((gameMenuReady & AA_MENU_READY_FLAG) == 0)
+	if ((GAME_MENU_READY & AA_MENU_READY_FLAG) == 0)
 	{
-		DecalFont_DrawLine(languageStrings[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 
-		if ((gameAnyPlayerTap & AA_CONFIRM_BUTTON_MASK) != 0)
+		if ((GAME_ANY_PLAYER_TAP & AA_CONFIRM_BUTTON_MASK) != 0)
 		{
 			RECTMENU_ClearInput();
 			RECTMENU_Show(&gameMenuRetryExit);
-			gameMenuReady |= AA_MENU_READY_FLAG;
+			GAME_MENU_READY |= AA_MENU_READY_FLAG;
 		}
 	}
 }
@@ -686,9 +676,9 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames)
 
 	// NOTE(aalhendi): Retail materializes both absolute pages before either
 	// lookup. Keeping that order preserves the entry register allocation.
-	CTR_PSX_LOAD_SYMBOL_PAGE(gameTrackerPage, GAME_TRACKER_PTR_ASM_NAME);
+	CTR_PSX_LOAD_SYMBOL_PAGE(gameTrackerPage, RETAIL_GAME_TRACKER_ASM_NAME);
 	CTR_PSX_LOAD_SYMBOL_PAGE(hudStructs, GAME_HUD_STRUCTS_ASM_NAME);
-	CTR_PSX_LOAD_WORD_FROM_PAGE(hudGT, gameTrackerPage, GAME_TRACKER_PTR_ASM_NAME, gameTrackerPtr);
+	CTR_PSX_LOAD_WORD_FROM_PAGE(hudGT, gameTrackerPage, RETAIL_GAME_TRACKER_ASM_NAME, GAME_TRACKER);
 	CTR_PSX_ADD_SYMBOL_LOW(hudStructs, hudStructs, GAME_HUD_STRUCTS_ASM_NAME, gameHudStructs);
 	CTR_PSX_BIND_VALUE_CLOBBER(hudGT, "$31");
 	hudArrayIndex = hudGT->numPlyrCurrGame - 1;
@@ -717,7 +707,7 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames)
 		clockY = 0xc3;
 	}
 
-	gGT = gameTrackerPtr;
+	gGT = GAME_TRACKER;
 	driver = gGT->drivers[driverId];
 
 	// increment counter for number of frames since the player ended the race
@@ -728,14 +718,14 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames)
 	    (driver->framesSinceRaceEnded_forThisDriver < AA_TIME_DISPLAY_SKIP_FRAME) &&
 
 	    // If you press Cross or Circle
-	    ((gameAnyPlayerTap & AA_CONFIRM_BUTTON_MASK) != 0) &&
+	    ((GAME_ANY_PLAYER_TAP & AA_CONFIRM_BUTTON_MASK) != 0) &&
 
 	    // only one player
 	    (gGT->numPlyrCurrGame == 1))
 	{
 		// Assume race ended 110 frames ago
 		driver->framesSinceRaceEnded_forThisDriver = AA_TIME_DISPLAY_SKIP_FRAME;
-		gameFramesSinceRaceEnded = AA_TIME_DISPLAY_SKIP_FRAME;
+		GAME_FRAMES_SINCE_RACE_ENDED = AA_TIME_DISPLAY_SKIP_FRAME;
 
 		gameNumIconsEOR = gGT->numPlyrCurrGame + gGT->numBotsNextGame;
 
@@ -807,13 +797,13 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames)
 
 	UI_DrawRaceClock(pos.x, pos.y, UI_RACE_CLOCK_SHOW_RESULTS, driver);
 
-	timeBoxRect.x = (pos.x - DecalFont_GetLineWidth(languageStrings[LNG_TOTAL], FONT_BIG)) + -6;
+	timeBoxRect.x = (pos.x - DecalFont_GetLineWidth(GAME_LANGUAGE_STRINGS[LNG_TOTAL], FONT_BIG)) + -6;
 	timeBoxRect.y = (pos.y - timeBoxHeight) + 0xd;
-	timeBoxRect.w = DecalFont_GetLineWidth(languageStrings[LNG_TOTAL], FONT_BIG) + 0x94;
+	timeBoxRect.w = DecalFont_GetLineWidth(GAME_LANGUAGE_STRINGS[LNG_TOTAL], FONT_BIG) + 0x94;
 	timeBoxRect.h = timeBoxHeight + 6;
 
 	// Draw 2D Menu rectangle background
-	RECTMENU_DrawInnerRect(&timeBoxRect, 4, gameTrackerPtr->backBuffer->otMem.uiOT);
+	RECTMENU_DrawInnerRect(&timeBoxRect, 4, GAME_TRACKER->backBuffer->otMem.uiOT);
 	return;
 }
 

@@ -135,8 +135,8 @@ void UI_DrawSpeedBG(void)
 		Point pt[2];
 		pt[0] = MakePoint(vertexesExtLine[i].x + xOffset, vertexesExtLine[i].y + yOffset);
 		pt[1] = MakePoint(vertexesExtLine[i + 1].x + xOffset, vertexesExtLine[i + 1].y + yOffset);
-		CTR_Box_DrawWirePrims(pt[0], pt[1], MakeColor(0xff, 0xff, 0xff), sdata->gGT->pushBuffer_UI.ptrOT);
-		CTR_Box_DrawWirePrims(MakePoint(pt[0].x + 1, pt[0].y + 1), MakePoint(pt[1].x + 1, pt[1].y + 1), MakeColor(0, 0, 0), sdata->gGT->pushBuffer_UI.ptrOT);
+		CTR_Box_DrawWirePrims(pt[0].x, pt[0].y, pt[1].x, pt[1].y, 0xff, 0xff, 0xff, sdata->gGT->pushBuffer_UI.ptrOT, &sdata->gGT->backBuffer->primMem);
+		CTR_Box_DrawWirePrims(pt[0].x + 1, pt[0].y + 1, pt[1].x + 1, pt[1].y + 1, 0, 0, 0, sdata->gGT->pushBuffer_UI.ptrOT, &sdata->gGT->backBuffer->primMem);
 	}
 
 	/* Draw the vertical lines and colors */
@@ -148,10 +148,10 @@ void UI_DrawSpeedBG(void)
 		{
 			pt[j] = MakePoint(vertexes[i + j].x + xOffset, vertexes[i + j].y + yOffset);
 		}
-		CTR_Box_DrawWirePrims(pt[0], pt[2], MakeColor(0xff, 0xff, 0xff), sdata->gGT->pushBuffer_UI.ptrOT);
-		CTR_Box_DrawWirePrims(pt[1], pt[3], MakeColor(0xff, 0xff, 0xff), sdata->gGT->pushBuffer_UI.ptrOT);
-		CTR_Box_DrawWirePrims(MakePoint(pt[0].x + 1, pt[0].y + 1), MakePoint(pt[2].x + 1, pt[2].y + 1), MakeColor(0, 0, 0), sdata->gGT->pushBuffer_UI.ptrOT);
-		CTR_Box_DrawWirePrims(MakePoint(pt[1].x + 1, pt[1].y + 1), MakePoint(pt[3].x + 1, pt[3].y + 1), MakeColor(0, 0, 0), sdata->gGT->pushBuffer_UI.ptrOT);
+		CTR_Box_DrawWirePrims(pt[0].x, pt[0].y, pt[2].x, pt[2].y, 0xff, 0xff, 0xff, sdata->gGT->pushBuffer_UI.ptrOT, &sdata->gGT->backBuffer->primMem);
+		CTR_Box_DrawWirePrims(pt[1].x, pt[1].y, pt[3].x, pt[3].y, 0xff, 0xff, 0xff, sdata->gGT->pushBuffer_UI.ptrOT, &sdata->gGT->backBuffer->primMem);
+		CTR_Box_DrawWirePrims(pt[0].x + 1, pt[0].y + 1, pt[2].x + 1, pt[2].y + 1, 0, 0, 0, sdata->gGT->pushBuffer_UI.ptrOT, &sdata->gGT->backBuffer->primMem);
+		CTR_Box_DrawWirePrims(pt[1].x + 1, pt[1].y + 1, pt[3].x + 1, pt[3].y + 1, 0, 0, 0, sdata->gGT->pushBuffer_UI.ptrOT, &sdata->gGT->backBuffer->primMem);
 
 		PolyG4 *p;
 		GetPrimMem(p);

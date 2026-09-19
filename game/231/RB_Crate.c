@@ -1,131 +1,30 @@
-#include <common.h>
+#include "RB_Pickup.h"
 
-// add to buildList, overwrite original
-// RB_CrateAny_ThTick_Explode at 800b3d04,
-// and add new LinCs to zGlobalMetaModels.c
-
-static void RB_CrateAny_CheckBlockage(struct Thread *crateTh, int hitModelIDValue)
-{
-	struct Crate *crateObj;
-
-	crateObj = crateTh->object;
-
-	// if model is on top of crate
-	if ((hitModelIDValue == PU_EXPLOSIVE_CRATE) || // nitro
-	    (hitModelIDValue == STATIC_CRATE_TNT) ||   // tnt
-	    (hitModelIDValue == STATIC_BEAKER_RED) ||  // red beaker
-	    (hitModelIDValue == STATIC_BEAKER_GREEN)   // green beaker
-	)
-	{
-		// prevent crate from growing back
-		crateObj->boolPauseCooldown = 1;
-	}
-}
-
-struct Driver *RB_CrateAny_GetDriver(struct Thread *t, struct ScratchpadStruct *sps)
-{
-	int hitModelID;
-	int hitModelIDValue;
-	struct Driver *driver;
-
-	// get what hit the box
-	hitModelID = sps->Input1.modelID;
-	hitModelIDValue = hitModelID & COLL_MODELID_VALUE_MASK;
-
-	// if moving explosive
-	if ((hitModelIDValue == DYNAMIC_BOMB) ||      // bomb
-	    (hitModelIDValue == DYNAMIC_ROCKET) ||    // missile
-	    (hitModelIDValue == DYNAMIC_SHIELD) ||    // blue shield
-	    (hitModelIDValue == DYNAMIC_SHIELD_GREEN) // green shield
-	)
-	{
-		// get driver that used the weapon
-		driver = ((struct TrackerWeapon *)t->object)->driverParent;
-
-		return driver;
-	}
-
-	// if driver itself
-	else if (hitModelIDValue == DYNAMIC_PLAYER) // //player model
-	{
-		driver = (struct Driver *)t->object;
-
-		return driver;
-	}
-
-	// it's odd that it casts "1" as struct Driver*, but callers of this function *do* check the return value == 1, so it must be intentional.
-	return (struct Driver *)1;
-}
+char rb_crateExplosionName[28] = "explosion1";
 
 void RB_CrateAny_ThTick_Explode(struct Thread *t)
 {
-	// this is an "exploded" crate, with
-	// it's own instance, thread, and object,
-	// separate from "solid" crate
+	// The break-up visual has its own instance and thread, separate from the solid crate.
 	struct Instance *crateExplodeInst = t->inst;
 
-	// if explosion is not over
-	if ((crateExplodeInst->animFrame + 1) < INSTANCE_GetNumAnimFrames(crateExplodeInst, 0))
+	for (;;)
 	{
-		// increment frame
-		crateExplodeInst->animFrame = crateExplodeInst->animFrame + 1;
+		if ((crateExplodeInst->animFrame + 1) < INSTANCE_GetNumAnimFrames(crateExplodeInst, 0))
+		{
+			crateExplodeInst->animFrame++;
+		}
+		else
+		{
+			t->flags |= THREAD_FLAG_DEAD;
+			INSTANCE_Death(crateExplodeInst);
+		}
+
+		ThTick_FastRET(t);
+#ifdef CTR_NATIVE
+		// NOTE(aalhendi): Native ticks return as callbacks; retail resumes after the yield.
 		return;
+#endif
 	}
-
-	// if explosion is over
-	t->flags |= THREAD_FLAG_DEAD;
-	INSTANCE_Death(crateExplodeInst);
-}
-
-static void RB_CrateAny_ExplodeInit(struct Instance *crateInst, int color, b32 randomizeRotation)
-{
-	struct Instance *explosionInst;
-	MATRIX matrix;
-	SVec3 rot;
-
-	// hide crate
-	crateInst->scale.x = 0;
-	crateInst->scale.y = 0;
-	crateInst->scale.z = 0;
-
-	// birth explosion thread
-	explosionInst = INSTANCE_BirthWithThread(
-	    // 0x26 - box explosion model
-	    // 0x0 - debug name
-	    0x26, 0,
-
-	    // pool, bucket, ThTick
-	    SMALL, OTHER, RB_CrateAny_ThTick_Explode,
-
-	    // PushBuffer and threadRelative
-	    0, 0);
-
-	// color
-	explosionInst->colorRGBA = color;
-	explosionInst->alphaScale = 0x1000;
-
-	if (randomizeRotation)
-	{
-		// position
-		explosionInst->matrix.t[0] = crateInst->matrix.t[0];
-		explosionInst->matrix.t[1] = crateInst->matrix.t[1];
-		explosionInst->matrix.t[2] = crateInst->matrix.t[2];
-
-		// rotation matrix
-		rot.x = 0;
-		rot.y = rand() % 0xfff;
-		rot.z = 0;
-		ConvertRotToMatrix(&matrix, &rot);
-
-		// explosion matrix = rotated crate matrix
-		MatrixRotate(&explosionInst->matrix, &crateInst->matrix, &matrix);
-	}
-	else
-	{
-		explosionInst->matrix = crateInst->matrix;
-	}
-
-	PlaySound3D(0x3c, crateInst);
 }
 
 void RB_CrateAny_ThTick_Grow(struct Thread *t)
@@ -134,58 +33,58 @@ void RB_CrateAny_ThTick_Grow(struct Thread *t)
 	struct Crate *crateObj;
 	int modelID;
 
-	crateInst = t->inst;
 	crateObj = (struct Crate *)t->object;
-	modelID = crateInst->model->id;
-
-	if ((modelID == STATIC_TIME_CRATE_01) || (modelID == STATIC_TIME_CRATE_02) || (modelID == STATIC_TIME_CRATE_03))
+	crateInst = t->inst;
+	for (;;)
 	{
-		crateInst->thread = 0;
-		t->flags |= THREAD_FLAG_DEAD;
-	}
+		modelID = crateInst->model->id;
 
-	// if cooldown is not done (about a second long)
-	if (crateObj->cooldown != 0)
-	{
-		// if cooldown not paused,
-		// (no driver or mine, sitting in the way)
-		if (crateObj->boolPauseCooldown == 0)
+		if ((modelID == STATIC_TIME_CRATE_01) || (modelID == STATIC_TIME_CRATE_02) || (modelID == STATIC_TIME_CRATE_03))
 		{
-			// reduce cooldown
-			crateObj->cooldown--;
+			crateInst->thread = 0;
+			t->flags |= THREAD_FLAG_DEAD;
 		}
 
-		// dont procede until cooldown is done
+		// if cooldown is not done (about a second long)
+		if (crateObj->cooldown != 0)
+		{
+			// if cooldown not paused,
+			// (no driver or mine, sitting in the way)
+			if (crateObj->boolPauseCooldown == 0)
+			{
+				// reduce cooldown
+				crateObj->cooldown = (u32)crateObj->cooldown - 1;
+			}
+		}
+		else if (crateInst->scale.x < 0x1000)
+		{
+			crateInst->scale.x += 0x100;
+			crateInst->scale.y += 0x100;
+			crateInst->scale.z += 0x100;
+		}
+		else
+		{
+			crateInst->scale.x = 0x1000;
+			crateInst->scale.y = 0x1000;
+			crateInst->scale.z = 0x1000;
+
+			// kill thread
+			crateInst->thread = 0;
+			crateInst->animFrame++;
+			t->flags |= THREAD_FLAG_DEAD;
+		}
+
+		ThTick_FastRET(t);
+#ifdef CTR_NATIVE
+		// NOTE(aalhendi): Native ticks return as callbacks; retail resumes after the yield.
 		return;
-	}
-
-	// == ready to regrow ==
-
-	if (crateInst->scale.x < 0x1000)
-	{
-		crateInst->scale.x += 0x100;
-		crateInst->scale.y += 0x100;
-		crateInst->scale.z += 0x100;
-	}
-	else
-	{
-		crateInst->scale.x = 0x1000;
-		crateInst->scale.y = 0x1000;
-		crateInst->scale.z = 0x1000;
-
-		// kill thread
-		crateInst->thread = 0;
-		crateInst->animFrame++;
-		t->flags |= THREAD_FLAG_DEAD;
+#endif
 	}
 }
 
-static struct Thread *RB_CrateAny_LInC_Birth(struct Instance *crateInst, void *funcThCollide, char *debugName)
+static inline struct Thread *RB_CrateAny_LInC_Birth(const char *debugName)
 {
-	struct Thread *crateThread;
-	struct Crate *crateObj;
-
-	crateThread = PROC_BirthWithObject(
+	return PROC_BirthWithObject(
 	    // creation flags
 	    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Crate), NONE, SMALL, STATIC),
 
@@ -193,36 +92,33 @@ static struct Thread *RB_CrateAny_LInC_Birth(struct Instance *crateInst, void *f
 	    debugName,               // debug name
 	    0                        // thread relative
 	);
+}
 
-	if (crateThread == 0)
-	{
-		return 0;
-	}
-
-	crateInst->thread = crateThread;
+static inline void RB_CrateAny_LInC_Init(struct Instance *crateInst, struct Thread *crateThread, void *funcThCollide)
+{
+	struct Crate *crateObj = crateThread->object;
 	crateThread->inst = crateInst;
 	crateThread->funcThCollide = funcThCollide;
 
-	crateObj = ((struct Crate *)crateThread->object);
 	crateObj->cooldown = 0;
 	crateObj->boolPauseCooldown = 0;
-
-	return crateThread;
 }
 
 int RB_CrateWeapon_ThCollide(struct Thread *crateThread, struct Thread *collidingTh, void *funcThCollide, struct ScratchpadStruct *sps)
 {
-	(void)funcThCollide;
-	struct PushBuffer *pb;
-	s16 posScreen[2];
+	struct InstanceBirthParams birth;
+	SVec3 rot;
+	MATRIX matrix;
+	SVec4 posWorld;
+	union RBPickupScreen posScreen;
 	struct Instance *crateInst;
+	struct Instance *explosionInst;
 	struct Crate *crateObj;
-	int hitModelID;
-	int hitModelIDValue;
 	struct Driver *driver;
+	(void)funcThCollide;
 
+	crateObj = crateThread->object;
 	crateInst = crateThread->inst;
-	crateObj = ((struct Crate *)crateThread->object);
 
 	if ((crateObj->cooldown == 0) && ((crateInst->scale.x == 0) || (crateInst->scale.x == 0x1000)))
 	{
@@ -230,16 +126,45 @@ int RB_CrateWeapon_ThCollide(struct Thread *crateThread, struct Thread *collidin
 
 		if (crateInst->scale.x == 0x1000)
 		{
-			RB_CrateAny_ExplodeInit(crateInst, 0xfafafa0, true);
+			crateInst->scale.x = 0;
+			crateInst->scale.y = 0;
+			crateInst->scale.z = 0;
+			birth.modelID = STATIC_CRATE_EXPLOSION;
+			birth.name = rb_crateExplosionName;
+			birth.poolType = SMALL;
+			birth.bucket = OTHER;
+			birth.funcThTick = RB_CrateAny_ThTick_Explode;
+			birth.objSize = 0;
+			birth.parent = NULL;
+			explosionInst = INSTANCE_BirthWithThread_Stack(&birth);
+			explosionInst->colorRGBA = 0xfafafa0;
+			explosionInst->alphaScale = 0x1000;
+			rot.x = 0;
+			rot.y = rand() % 0x1000;
+			rot.z = 0;
+			explosionInst->matrix.t[0] = crateInst->matrix.t[0];
+			explosionInst->matrix.t[1] = crateInst->matrix.t[1];
+			explosionInst->matrix.t[2] = crateInst->matrix.t[2];
+			ConvertRotToMatrix(&matrix, &rot);
+			MatrixRotate(&explosionInst->matrix, &crateInst->matrix, &matrix);
+			PlaySound3D(0x3c, crateInst);
 
-			driver = RB_CrateAny_GetDriver(collidingTh, sps);
-			if ((int)driver == 1)
+			if ((sps->Input1.modelID != DYNAMIC_BOMB) && (sps->Input1.modelID != DYNAMIC_ROCKET) && (sps->Input1.modelID != DYNAMIC_PLAYER) &&
+			    (sps->Input1.modelID != DYNAMIC_SHIELD) && (sps->Input1.modelID != DYNAMIC_SHIELD_GREEN))
 			{
 				return 1;
 			}
-			if ((driver->actionsFlagSet & ACTION_BOT) != 0)
+			if (sps->Input1.modelID != DYNAMIC_PLAYER)
 			{
-				return 1;
+				driver = ((struct TrackerWeapon *)collidingTh->object)->driverParent;
+				if ((driver->actionsFlagSet & ACTION_BOT) != 0)
+				{
+					return 1;
+				}
+			}
+			else
+			{
+				driver = collidingTh->object;
 			}
 
 			if ((driver->heldItemID != HELD_ITEM_NONE) && (driver->noItemTimer == 0))
@@ -265,175 +190,232 @@ int RB_CrateWeapon_ThCollide(struct Thread *crateThread, struct Thread *collidin
 				}
 			}
 
-			if (driver->clockReceive != 0 && !g_config.allowWeaponsDuringClock)
+			// A received clock normally suppresses the roulette reward, but still consumes the crate.
+			if (driver->clockReceive == 0 || g_config.allowWeaponsDuringClock)
 			{
-				return 1;
+				driver->heldItemID = HELD_ITEM_ROULETTE;
+				driver->numTimesHitWeaponBox++;
+				driver->itemRollTimer = 90;
+
+				if ((GAME_TRACKER->gameMode1 & ROLLING_ITEM) == 0)
+				{
+					OtherFX_Play(0x5d, 0);
+					GAME_TRACKER->gameMode1 |= ROLLING_ITEM;
+				}
+
+				driver->PickupTimeboxHUD.cooldown = 5;
+				driver->noItemTimer = 0;
+
+				if (driver->numWumpas == DRIVER_WUMPA_JUICED_COUNT)
+				{
+					driver->BattleHUD.juicedUpCooldown = DRIVER_WUMPA_JUICED_HUD_COOLDOWN_FRAMES;
+				}
+
+				posWorld.x = (s16)crateInst->matrix.t[0];
+				posWorld.y = (s16)crateInst->matrix.t[1];
+				posWorld.z = (s16)crateInst->matrix.t[2];
+				RB_Pickup_SetCamera(driver);
+				CTR_GteLoadPositionV0(&posWorld);
+				gte_rtps();
+				CTR_GteStorePositionXY(posScreen.coords);
+
+				driver->PickupTimeboxHUD.startX = posScreen.coords[0] + GAME_TRACKER->pushBuffer[driver->driverID].rect.x;
+				driver->PickupTimeboxHUD.startY = posScreen.coords[1] + GAME_TRACKER->pushBuffer[driver->driverID].rect.y;
 			}
-
-			driver->heldItemID = HELD_ITEM_ROULETTE;
-			driver->numTimesHitWeaponBox++;
-			driver->itemRollTimer = 90;
-
-			if ((sdata->gGT->gameMode1 & ROLLING_ITEM) == 0)
-			{
-				OtherFX_Play(0x5d, 0);
-				sdata->gGT->gameMode1 |= ROLLING_ITEM;
-			}
-
-			driver->PickupTimeboxHUD.cooldown = 5;
-			driver->noItemTimer = 0;
-
-			if (driver->numWumpas == DRIVER_WUMPA_JUICED_COUNT)
-			{
-				driver->BattleHUD.juicedUpCooldown = DRIVER_WUMPA_JUICED_HUD_COOLDOWN_FRAMES;
-			}
-
-			pb = &sdata->gGT->pushBuffer[driver->driverID];
-			RB_Fruit_GetScreenCoords(pb, crateInst, &posScreen[0]);
-
-			driver->PickupTimeboxHUD.startX = pb->rect.x + posScreen[0];
-			driver->PickupTimeboxHUD.startY = pb->rect.y + posScreen[1];
 
 			return 1;
 		}
 	}
 
-	hitModelID = sps->Input1.modelID;
-	hitModelIDValue = hitModelID & COLL_MODELID_VALUE_MASK;
-
-	if ((hitModelID & COLL_MODELID_BLOCKAGE_FLAG) == 0)
+	if ((sps->Input1.modelID & COLL_MODELID_BLOCKAGE_FLAG) != 0)
 	{
-		return 0;
+		s32 blockageModel;
+		sps->Input1.modelID &= COLL_MODELID_VALUE_MASK;
+		blockageModel = sps->Input1.modelID;
+		if ((blockageModel == PU_EXPLOSIVE_CRATE) || (blockageModel == STATIC_CRATE_TNT) || (blockageModel == STATIC_BEAKER_RED) ||
+		    (blockageModel == STATIC_BEAKER_GREEN))
+		{
+			crateObj->boolPauseCooldown = 1;
+		}
 	}
-
-	sps->Input1.modelID = hitModelIDValue;
-	RB_CrateAny_CheckBlockage(crateThread, hitModelIDValue);
 	return 0;
 }
 
 int RB_CrateWeapon_LInC(struct Instance *crateInst, struct Thread *collidingTh, struct ScratchpadStruct *sps)
 {
 	struct Thread *crateThread;
+	s32 result;
 
 	crateThread = crateInst->thread;
 	if (crateThread == NULL)
 	{
-		crateThread = RB_CrateAny_LInC_Birth(crateInst, (void *)RB_CrateWeapon_ThCollide, "crate");
+		crateInst->thread = RB_CrateAny_LInC_Birth("crate");
+		crateThread = crateInst->thread;
 		if (crateThread == NULL)
 		{
 			return 0;
 		}
+		RB_CrateAny_LInC_Init(crateInst, crateThread, (void *)RB_CrateWeapon_ThCollide);
 	}
 
 	if (crateThread->funcThCollide == NULL)
 	{
-		return 0;
+		result = 0;
 	}
 
-	return ((ThreadScratchCollideFunc)crateThread->funcThCollide)(crateThread, collidingTh, crateThread->funcThCollide, sps);
+	else
+	{
+		result = ((ThreadScratchCollideFunc)crateThread->funcThCollide)(crateThread, collidingTh, crateThread->funcThCollide, sps);
+	}
+	return result;
 }
 
 int RB_CrateFruit_ThCollide(struct Thread *crateThread, struct Thread *collidingTh, void *funcThCollide, struct ScratchpadStruct *sps)
 {
-	(void)funcThCollide;
-	struct PushBuffer *pb;
-	s16 posScreen[2];
+	struct InstanceBirthParams birth;
+	SVec4 posWorld;
+	union RBPickupScreen playerScreen;
+	union RBPickupScreen weaponScreen;
 	struct Instance *crateInst;
+	struct Instance *explosionInst;
 	struct Crate *crateObj;
-	int hitModelID;
-	int hitModelIDValue;
+	s32 hitModelID;
 	struct Driver *driver;
-	int random;
-	int newWumpa;
+	s32 newWumpa;
+	s32 random;
+	s32 quotient;
+	// NOTE(aalhendi): A local collision context preserves retail's allocation across the break-up calls.
+	struct ScratchpadStruct *collision = sps;
+	(void)funcThCollide;
 
+	crateObj = crateThread->object;
 	crateInst = crateThread->inst;
-	crateObj = ((struct Crate *)crateThread->object);
 
 	if ((crateObj->cooldown == 0) && ((crateInst->scale.x == 0) || (crateInst->scale.x == 0x1000)))
 	{
 		crateObj->cooldown = 0x1e;
-
 		if (crateInst->scale.x == 0x1000)
 		{
-			RB_CrateAny_ExplodeInit(crateInst, 0xf2953a0, false);
+			crateInst->scale.x = 0;
+			crateInst->scale.y = 0;
+			crateInst->scale.z = 0;
+			birth.modelID = STATIC_CRATE_EXPLOSION;
+			birth.name = rb_crateExplosionName;
+			birth.poolType = SMALL;
+			birth.bucket = OTHER;
+			birth.funcThTick = RB_CrateAny_ThTick_Explode;
+			birth.objSize = 0;
+			birth.parent = NULL;
+			explosionInst = INSTANCE_BirthWithThread_Stack(&birth);
+			explosionInst->colorRGBA = 0xf2953a0;
+			explosionInst->alphaScale = 0x1000;
+			explosionInst->matrix = crateInst->matrix;
+			PlaySound3D(0x3c, crateInst);
 
-			driver = RB_CrateAny_GetDriver(collidingTh, sps);
-			if ((int)driver == 1)
-			{
-				return 1;
-			}
-
+			// NOTE(aalhendi): Breaking the crate advances the RNG even for an unrecognized hitter.
 			random = MixRNG_Scramble();
-			newWumpa = random;
-			if (random < 0)
+			quotient = random / 4;
+			newWumpa = random - quotient * 4 + 5;
+			hitModelID = collision->Input1.modelID;
+			if (hitModelID == DYNAMIC_PLAYER)
 			{
-				newWumpa = random + 3;
+				driver = collidingTh->object;
+
+				driver->PickupWumpaHUD.cooldown = 5;
+				driver->PickupWumpaHUD.numCollected = newWumpa;
+
+				posWorld.x = (s16)driver->instSelf->matrix.t[0];
+				posWorld.y = (s16)driver->instSelf->matrix.t[1];
+				posWorld.z = (s16)driver->instSelf->matrix.t[2];
+				RB_Pickup_SetCamera(driver);
+				CTR_GteLoadPositionV0(&posWorld);
+				gte_rtps();
+				CTR_GteStorePositionXY(playerScreen.coords);
+
+				driver->PickupWumpaHUD.startX = playerScreen.coords[0] + GAME_TRACKER->pushBuffer[driver->driverID].rect.x;
+				driver->PickupWumpaHUD.startY = playerScreen.coords[1] + GAME_TRACKER->pushBuffer[driver->driverID].rect.y - 0x14;
 			}
-			newWumpa = random + (newWumpa >> 2) * -4 + 5;
+			else if ((hitModelID == DYNAMIC_BOMB) || (hitModelID == DYNAMIC_ROCKET) || (hitModelID == DYNAMIC_SHIELD) || (hitModelID == DYNAMIC_SHIELD_GREEN))
+			{
+				driver = ((struct TrackerWeapon *)collidingTh->object)->driverParent;
 
-			driver->PickupWumpaHUD.cooldown = 5;
-			driver->PickupWumpaHUD.numCollected = newWumpa;
+				driver->PickupWumpaHUD.cooldown = 5;
+				driver->PickupWumpaHUD.numCollected = newWumpa;
 
-			pb = &sdata->gGT->pushBuffer[driver->driverID];
-			RB_Fruit_GetScreenCoords(pb, driver->instSelf, &posScreen[0]);
+				posWorld.x = (s16)driver->instSelf->matrix.t[0];
+				posWorld.y = (s16)driver->instSelf->matrix.t[1];
+				posWorld.z = (s16)driver->instSelf->matrix.t[2];
+				RB_Pickup_SetCamera(driver);
+				CTR_GteLoadPositionV0(&posWorld);
+				gte_rtps();
+				CTR_GteStorePositionXY(weaponScreen.coords);
 
-			driver->PickupWumpaHUD.startX = pb->rect.x + posScreen[0];
-			driver->PickupWumpaHUD.startY = pb->rect.y + posScreen[1] - 0x14;
-
+				driver->PickupWumpaHUD.startX = weaponScreen.coords[0] + GAME_TRACKER->pushBuffer[driver->driverID].rect.x;
+				driver->PickupWumpaHUD.startY = weaponScreen.coords[1] + GAME_TRACKER->pushBuffer[driver->driverID].rect.y - 0x14;
+			}
 			return 1;
 		}
 	}
 
-	hitModelID = sps->Input1.modelID;
-	hitModelIDValue = hitModelID & COLL_MODELID_VALUE_MASK;
-
-	if ((hitModelID & COLL_MODELID_BLOCKAGE_FLAG) == 0)
+	if ((collision->Input1.modelID & COLL_MODELID_BLOCKAGE_FLAG) != 0)
 	{
-		return 0;
+		s32 blockageModel;
+		collision->Input1.modelID &= COLL_MODELID_VALUE_MASK;
+		blockageModel = collision->Input1.modelID;
+		if ((blockageModel == PU_EXPLOSIVE_CRATE) || (blockageModel == STATIC_CRATE_TNT) || (blockageModel == STATIC_BEAKER_RED) ||
+		    (blockageModel == STATIC_BEAKER_GREEN))
+		{
+			crateObj->boolPauseCooldown = 1;
+		}
 	}
-
-	sps->Input1.modelID = hitModelIDValue;
-	RB_CrateAny_CheckBlockage(crateThread, hitModelIDValue);
 	return 0;
 }
 
 int RB_CrateFruit_LInC(struct Instance *crateInst, struct Thread *collidingTh, struct ScratchpadStruct *sps)
 {
 	struct Thread *crateThread;
+	s32 result;
 
 	crateThread = crateInst->thread;
 	if (crateThread == NULL)
 	{
-		crateThread = RB_CrateAny_LInC_Birth(crateInst, (void *)RB_CrateFruit_ThCollide, "fruit_crate");
+		crateInst->thread = RB_CrateAny_LInC_Birth("fruit_crate");
+		crateThread = crateInst->thread;
 		if (crateThread == NULL)
 		{
 			return 0;
 		}
+		RB_CrateAny_LInC_Init(crateInst, crateThread, (void *)RB_CrateFruit_ThCollide);
 	}
 
 	if (crateThread->funcThCollide == NULL)
 	{
-		return 0;
+		result = 0;
 	}
 
-	return ((ThreadScratchCollideFunc)crateThread->funcThCollide)(crateThread, collidingTh, crateThread->funcThCollide, sps);
+	else
+	{
+		result = ((ThreadScratchCollideFunc)crateThread->funcThCollide)(crateThread, collidingTh, crateThread->funcThCollide, sps);
+	}
+	return result;
 }
 
 int RB_CrateTime_ThCollide(struct Thread *crateThread, struct Thread *driverTh, void *funcThCollide, struct ScratchpadStruct *sps)
 {
-	(void)funcThCollide;
-	struct PushBuffer *pb;
-	s16 posScreen[2];
+	struct InstanceBirthParams birth;
+	SVec3 rot;
+	MATRIX matrix;
+	SVec4 posWorld;
+	union RBPickupScreen posScreen;
 	struct Instance *crateInst;
+	struct Instance *explosionInst;
 	struct Crate *crateObj;
 	struct Driver *driver;
 	int modelID;
-	int hitModelID;
-	int hitModelIDValue;
-	struct GameTracker *gGT;
+	(void)funcThCollide;
 
+	crateObj = crateThread->object;
 	crateInst = crateThread->inst;
-	crateObj = ((struct Crate *)crateThread->object);
 
 	if ((crateObj->cooldown == 0) && ((crateInst->scale.x == 0) || (crateInst->scale.x == 0x1000)))
 	{
@@ -441,88 +423,128 @@ int RB_CrateTime_ThCollide(struct Thread *crateThread, struct Thread *driverTh, 
 
 		if (crateInst->scale.x == 0x1000)
 		{
-			RB_CrateAny_ExplodeInit(crateInst, 0x80ff000, true);
+			crateInst->scale.x = 0;
+			crateInst->scale.y = 0;
+			crateInst->scale.z = 0;
+			birth.modelID = STATIC_CRATE_EXPLOSION;
+			birth.name = rb_crateExplosionName;
+			birth.poolType = SMALL;
+			birth.bucket = OTHER;
+			birth.funcThTick = RB_CrateAny_ThTick_Explode;
+			birth.objSize = 0;
+			birth.parent = NULL;
+			explosionInst = INSTANCE_BirthWithThread_Stack(&birth);
+			explosionInst->colorRGBA = 0x80ff000;
+			explosionInst->alphaScale = 0x1000;
+			rot.x = 0;
+			rot.y = rand() % 0x1000;
+			rot.z = 0;
+			explosionInst->matrix.t[0] = crateInst->matrix.t[0];
+			explosionInst->matrix.t[1] = crateInst->matrix.t[1];
+			explosionInst->matrix.t[2] = crateInst->matrix.t[2];
+			ConvertRotToMatrix(&matrix, &rot);
+			MatrixRotate(&explosionInst->matrix, &crateInst->matrix, &matrix);
+			PlaySound3D(0x3c, crateInst);
 
-			gGT = sdata->gGT;
-			driver = RB_CrateAny_GetDriver(driverTh, sps);
-			if ((int)driver == 1)
+			if ((sps->Input1.modelID != DYNAMIC_BOMB) && (sps->Input1.modelID != DYNAMIC_ROCKET) && (sps->Input1.modelID != DYNAMIC_PLAYER) &&
+			    (sps->Input1.modelID != DYNAMIC_SHIELD) && (sps->Input1.modelID != DYNAMIC_SHIELD_GREEN))
 			{
-				return 1;
+				// Unknown hitters consume a time crate permanently, without awarding time.
+				goto pauseCooldown;
 			}
-
-			modelID = crateInst->model->id;
-
-			if ((driver->actionsFlagSet & ACTION_BOT) != 0)
+			if (sps->Input1.modelID != DYNAMIC_PLAYER)
 			{
-				return 1;
+				driver = ((struct TrackerWeapon *)driverTh->object)->driverParent;
+				if ((driver->actionsFlagSet & ACTION_BOT) != 0)
+				{
+					return 1;
+				}
+			}
+			else
+			{
+				driver = driverTh->object;
 			}
 
 			driver->numTimeCrates++;
+			modelID = crateInst->model->id;
 
 			if (modelID == STATIC_TIME_CRATE_01)
 			{
-				gGT->frozenTimeRemaining += 0x3C0;
-				gGT->timeCrateTypeSmashed = 1;
+				GAME_TRACKER->frozenTimeRemaining += 0x3C0;
+				GAME_TRACKER->timeCrateTypeSmashed = 1;
 			}
 
 			else if (modelID == STATIC_TIME_CRATE_02)
 			{
-				gGT->frozenTimeRemaining += 0x780;
-				gGT->timeCrateTypeSmashed = 2;
+				GAME_TRACKER->frozenTimeRemaining += 0x780;
+				GAME_TRACKER->timeCrateTypeSmashed = 2;
 			}
 
 			else
 			{
-				gGT->frozenTimeRemaining += 0xb40;
-				gGT->timeCrateTypeSmashed = 3;
-
-				Voiceline_RequestPlay(0x13, data.characterIDs[driver->driverID], 0x10);
+				Voiceline_RequestPlay(0x13, GAME_CHARACTER_IDS[driver->driverID], 0x10);
+				GAME_TRACKER->frozenTimeRemaining += 0xb40;
+				GAME_TRACKER->timeCrateTypeSmashed = 3;
 			}
 
 			driver->PickupTimeboxHUD.cooldown = 10;
 
-			pb = &gGT->pushBuffer[driver->driverID];
-			RB_Fruit_GetScreenCoords(pb, crateInst, &posScreen[0]);
+			posWorld.x = (s16)crateInst->matrix.t[0];
+			posWorld.y = (s16)crateInst->matrix.t[1];
+			posWorld.z = (s16)crateInst->matrix.t[2];
+			RB_Pickup_SetCamera(driver);
+			CTR_GteLoadPositionV0(&posWorld);
+			gte_rtps();
+			CTR_GteStorePositionXY(posScreen.coords);
 
-			driver->PickupTimeboxHUD.startX = pb->rect.x + posScreen[0];
-			driver->PickupTimeboxHUD.startY = pb->rect.y + posScreen[1];
+			driver->PickupTimeboxHUD.startX = posScreen.coords[0] + GAME_TRACKER->pushBuffer[driver->driverID].rect.x;
+			driver->PickupTimeboxHUD.startY = posScreen.coords[1] + GAME_TRACKER->pushBuffer[driver->driverID].rect.y;
 
+		pauseCooldown:
 			crateObj->boolPauseCooldown = 1;
 			return 1;
 		}
 	}
 
-	hitModelID = sps->Input1.modelID;
-	hitModelIDValue = hitModelID & COLL_MODELID_VALUE_MASK;
-
-	if ((hitModelID & COLL_MODELID_BLOCKAGE_FLAG) == 0)
+	if ((sps->Input1.modelID & COLL_MODELID_BLOCKAGE_FLAG) != 0)
 	{
-		return 0;
+		s32 blockageModel;
+		sps->Input1.modelID &= COLL_MODELID_VALUE_MASK;
+		blockageModel = sps->Input1.modelID;
+		if ((blockageModel == PU_EXPLOSIVE_CRATE) || (blockageModel == STATIC_CRATE_TNT) || (blockageModel == STATIC_BEAKER_RED) ||
+		    (blockageModel == STATIC_BEAKER_GREEN))
+		{
+			crateObj->boolPauseCooldown = 1;
+		}
 	}
-
-	sps->Input1.modelID = hitModelIDValue;
-	RB_CrateAny_CheckBlockage(crateThread, hitModelIDValue);
 	return 0;
 }
 
 int RB_CrateTime_LInC(struct Instance *crateInst, struct Thread *driverTh, struct ScratchpadStruct *sps)
 {
 	struct Thread *crateThread;
+	s32 result;
 
 	crateThread = crateInst->thread;
 	if (crateThread == NULL)
 	{
-		crateThread = RB_CrateAny_LInC_Birth(crateInst, (void *)RB_CrateTime_ThCollide, "fruit_crate");
+		crateInst->thread = RB_CrateAny_LInC_Birth("fruit_crate");
+		crateThread = crateInst->thread;
 		if (crateThread == NULL)
 		{
 			return 0;
 		}
+		RB_CrateAny_LInC_Init(crateInst, crateThread, (void *)RB_CrateTime_ThCollide);
 	}
 
 	if (crateThread->funcThCollide == NULL)
 	{
-		return 0;
+		result = 0;
 	}
 
-	return ((ThreadScratchCollideFunc)crateThread->funcThCollide)(crateThread, driverTh, crateThread->funcThCollide, sps);
+	else
+	{
+		result = ((ThreadScratchCollideFunc)crateThread->funcThCollide)(crateThread, driverTh, crateThread->funcThCollide, sps);
+	}
+	return result;
 }

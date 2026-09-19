@@ -1,44 +1,40 @@
 #include <common.h>
 
-void INSTANCE_Birth(struct Instance *inst, struct Model *model, const char *name, struct Thread *th, int flags)
+void INSTANCE_Birth(struct Instance *inst, struct Model *model, const char *name, struct Thread *th, u32 flags)
 {
-	int i;
+	s32 i;
 	struct GameTracker *gGT;
+	char *dst = inst->name;
+	char *last = &inst->name[sizeof(inst->name) - 1];
 
-	gGT = sdata->gGT;
-
-	// copy name
-#ifdef CTR_NATIVE
-	if (name == NULL)
-	{
-		// NOTE(aalhendi): Retail can read PS1 null-space for unnamed instances.
-		for (i = 0; i < 16; i++)
-		{
-			inst->name[i] = '\0';
-		}
-	}
-	else
+#if defined(CTR_NATIVE)
+	// NOTE(aalhendi): Retail copies a fixed 15-byte field. Native also accepts
+	// NULL and short C strings, so stop at their terminator and zero-pad.
+	while (dst < last && name != NULL && *name != '\0')
+#else
+	while (dst < last)
 #endif
 	{
-		for (i = 0; i < 15; i++)
-		{
-			inst->name[i] = name[i];
-		}
-		inst->name[15] = '\0';
+		*dst++ = *name++;
 	}
+	while (dst <= last)
+		*dst++ = '\0';
 
 	inst->depthBiasNormal = 0xfe;
 	inst->depthBiasSecondary = 0xc;
 	inst->animIndex = 0;
 	inst->specLightX = 1;
 
+	gGT = GAME_TRACKER;
 	inst->model = model;
 
-	inst->scale = (SVec3){0x1000, 0x1000, 0x1000};
+	inst->scale.x = 0x1000;
+	inst->scale.y = 0x1000;
+	inst->scale.z = 0x1000;
 
+	inst->flags = flags;
 	inst->alphaScale = 0;
 	inst->colorRGBA = 0;
-	inst->flags = flags;
 	inst->instDef = 0;
 
 	inst->animFrame = 0;
@@ -48,20 +44,18 @@ void INSTANCE_Birth(struct Instance *inst, struct Model *model, const char *name
 	inst->thread = th;
 	inst->compressedNormalAndDriverIndex = 0;
 
-	struct InstDrawPerPlayer *idpp = INST_GETIDPP(inst);
-
 	for (i = 0; i < gGT->numPlyrCurrGame; i++)
 	{
-		idpp[i].pushBuffer = &gGT->pushBuffer[i];
-		idpp[i].mh = 0;
-		idpp[i].instFlags = 0;
+		inst->idpp[i].mh = 0;
+		inst->idpp[i].pushBuffer = &gGT->pushBuffer[i];
+		inst->idpp[i].instFlags = 0;
 	}
 }
 
 
 struct Instance *INSTANCE_Birth3D(struct Model *model, const char *name, struct Thread *th)
 {
-	struct Instance *inst = (struct Instance *)JitPool_Add(&sdata->gGT->JitPools.instance);
+	struct Instance *inst = (struct Instance *)JitPool_Add(&GAME_TRACKER->JitPools.instance);
 
 	if (inst != 0)
 	{
@@ -74,24 +68,39 @@ struct Instance *INSTANCE_Birth3D(struct Model *model, const char *name, struct 
 
 struct Instance *INSTANCE_Birth2D(struct Model *model, const char *name, struct Thread *th)
 {
-	struct GameTracker *gGT = sdata->gGT;
+	struct GameTracker *gGT;
 	struct Instance *inst;
-	struct InstDrawPerPlayer *idpp;
-	int i;
+	s32 i;
 
-	inst = (struct Instance *)JitPool_Add(&gGT->JitPools.instance);
+	inst = (struct Instance *)JitPool_Add(&GAME_TRACKER->JitPools.instance);
 
 	if (inst != NULL)
 	{
 		INSTANCE_Birth(inst, model, name, th, 0x40f);
 	}
-
-	idpp = INST_GETIDPP(inst);
-	idpp[0].pushBuffer = &gGT->pushBuffer_UI;
-
-	for (i = 1; i < gGT->numPlyrCurrGame; i++)
+#if defined(CTR_NATIVE)
+	else
 	{
-		idpp[i].pushBuffer = 0;
+		// NOTE(aalhendi): Retail assumes capacity; native cannot write through
+		// the null instance when the shared pool is exhausted.
+		return NULL;
+	}
+#endif
+
+	gGT = GAME_TRACKER;
+	inst->idpp[0].pushBuffer = &gGT->pushBuffer_UI;
+
+	i = 1;
+	if (i < gGT->numPlyrCurrGame)
+	{
+		// NOTE(aalhendi): Keep retail's separate pre-loop and loop pointer lifetimes.
+		struct GameTracker *loopTracker = gGT;
+
+		do
+		{
+			inst->idpp[i].pushBuffer = 0;
+			i++;
+		} while (i < loopTracker->numPlyrCurrGame);
 	}
 
 	return inst;
@@ -101,7 +110,7 @@ struct Instance *INSTANCE_Birth2D(struct Model *model, const char *name, struct 
 #if defined(CTR_NATIVE)
 static void INSTANCE_RollbackThreadBirth(struct Thread *t, struct Thread *relativeTh)
 {
-	struct GameTracker *gGT = sdata->gGT;
+	struct GameTracker *gGT = GAME_TRACKER;
 
 	if (relativeTh == NULL)
 	{
@@ -125,45 +134,43 @@ static void INSTANCE_RollbackThreadBirth(struct Thread *t, struct Thread *relati
 }
 #endif
 
-// CTR_NATIVE only adds allocation-failure rollback.
-struct Instance *INSTANCE_BirthWithThread(int modelID, const char *name, int poolType, int bucket, void *funcThTick, int objSize, struct Thread *parent)
+struct Instance *INSTANCE_BirthWithThread(s32 modelID, const char *name, s32 poolType, s32 bucket, void *funcThTick, s32 objSize, struct Thread *parent)
 {
-	struct GameTracker *gGT;
-	struct Model *m;
+	struct Model *lookupModel;
+	struct Model *model;
 	struct Thread *t;
 	struct Instance *inst;
+	u32 remainder;
+	register u32 sizeFlags CTR_PSX_REGISTER("$2");
 
-	gGT = sdata->gGT;
+	lookupModel = GAME_TRACKER->modelPtr[modelID];
 
-	m = gGT->modelPtr[modelID];
-
-	if (m == NULL)
+	if (lookupModel == NULL)
 	{
 		return NULL;
 	}
 
-	// talkingMask is unaligned
-	if ((objSize & 3) != 0)
+	// NOTE(aalhendi): Keep the validated lookup separate from the model retained
+	// across allocation, preserving retail's register lifetime at the alignment branch.
+	CTR_PSX_OBSERVE_VALUE(lookupModel);
+	model = lookupModel;
+
+	// Round payloads such as TalkingMask up to a word, then pack the size field.
+	remainder = objSize & 3;
+	if (remainder != 0)
 	{
-		// align down, then add 4 to align up,
-		// no object will exceed 0x670 bytes
-		objSize = (objSize & 0xfffc) + 4;
+		remainder -= 4;
+		sizeFlags = ((u32)objSize - remainder) << 16;
+	}
+	else
+	{
+		sizeFlags = (u32)objSize << 16;
 	}
 
-	t = PROC_BirthWithObject(
-	    // creation flags
-	    SIZE_RELATIVE_POOL_BUCKET(objSize,
-
-	                              // relation not given directly
-	                              NONE,
-
-	                              // relation included in one of these
-	                              poolType, bucket),
-
-	    funcThTick, // behavior
-	    name,       // debug name
-	    parent      // thread relative
-	);
+	// NOTE(aalhendi): Retail combines the pool bits in v0 before the bucket.
+	sizeFlags = poolType | sizeFlags;
+	CTR_PSX_OBSERVE_VALUE(sizeFlags);
+	t = PROC_BirthWithObject(sizeFlags | bucket, funcThTick, name, parent);
 
 #if defined(CTR_NATIVE)
 	// NOTE(aalhendi): Retail assumes the thread and instance pools have capacity.
@@ -174,20 +181,8 @@ struct Instance *INSTANCE_BirthWithThread(int modelID, const char *name, int poo
 	}
 #endif
 
-	/*
-
-	June 1999
-	if (iVar2 == 0) {
-	  printf("%s thread create failed (b)\n",param_2);
-	  do {
-	                // WARNING: Do nothing block with infinite loop
-	  } while( true );
-	}
-
-	*/
-
 	t->modelIndex = modelID;
-	inst = INSTANCE_Birth3D(m, name, t);
+	inst = INSTANCE_Birth3D(model, name, t);
 
 #if defined(CTR_NATIVE)
 	if (inst == NULL)
@@ -197,206 +192,153 @@ struct Instance *INSTANCE_BirthWithThread(int modelID, const char *name, int poo
 	}
 #endif
 
-	/*
-
-	if (iVar3 == 0) {
-	  printf("%s instance create failed (b)\n",param_2);
-	  do {
-	                // WARNING: Do nothing block with infinite loop
-	  } while( true );
-	}
-
-	*/
-
 	t->inst = inst;
 
 	return inst;
 }
 
 
-// used for every explosion
-struct Instance *INSTANCE_BirthWithThread_Stack(int *spArr)
+struct Instance *INSTANCE_BirthWithThread_Stack(const struct InstanceBirthParams *params)
 {
-	// spArr = array on $sp (stack pointer)
-
-	return INSTANCE_BirthWithThread(spArr[0], (char *)spArr[1], spArr[2], spArr[3], (void *)spArr[4], spArr[5], (struct Thread *)spArr[6]);
+	return INSTANCE_BirthWithThread(params->modelID, params->name, params->poolType, params->bucket, params->funcThTick, params->objSize, params->parent);
 }
 
 
 void INSTANCE_Death(struct Instance *inst)
 {
-	JitPool_Remove(&sdata->gGT->JitPools.instance, (struct Item *)inst);
+	JitPool_Remove(&GAME_TRACKER->JitPools.instance, (struct Item *)inst);
 }
 
 
-// param1 - pointer to Instance Descriptions
-// param2 - number of instances
-void INSTANCE_LevInitAll(struct InstDef *levInstDef, int numInst)
+void INSTANCE_LevInitAll(struct InstDef *definitions, s32 count)
 {
-	u16 modelID;
-	int *dst;
-	int *src;
+	struct InstDef *levInstDef = definitions;
 	struct Instance *inst;
 	struct MetaDataMODEL *meta;
-	struct GameTracker *gGT = sdata->gGT;
+	s32 i;
 
-	for (int i = 0; i < numInst; i++)
+	for (i = 0; i < count; i++, levInstDef++)
 	{
-		// get first free item in Instance Pool
-		inst = (struct Instance *)LIST_RemoveFront(&gGT->JitPools.instance.free);
+		struct GameTracker *gGT;
+		s32 j;
 
-		// NOT writing to model
-		// InstDef + 0x10 + 0x1c
-		// InstDef -> 0x2C = ptrInstance
-		levInstDef->ptrInstance = inst;
+		levInstDef->ptrInstance = (struct Instance *)LIST_RemoveFront(&GAME_TRACKER->JitPools.instance.free);
+		inst = levInstDef->ptrInstance;
 
-		// if allocation failed
 		if (inst == NULL)
 		{
 			return;
 		}
 
-		// pointer to InstDef in LEV
-		src = (int *)levInstDef;
+		// NOTE(aalhendi): Retail copies the 44-byte serialized prefix past the
+		// pool links. Its final two words are replaced by instDef and matrix.
+		memcpy((u8 *)inst + offsetof(struct Instance, name), levInstDef, offsetof(struct InstDef, ptrInstance));
 
-		// pointer to instance in pool,
-		// add 8 bytes to skip Prev and Next
-		dst = (int *)((int)inst + 8);
-
-		// copy InstDef data from LEV to instance pool
-		while (src != (int *)((int)levInstDef + 0x20))
-		{
-			dst[0] = src[0];
-			dst[1] = src[1];
-			dst[2] = src[2];
-			dst[3] = src[3];
-			src += 4;
-			dst += 4;
-		}
-
-		dst[0] = src[0];
-		dst[1] = src[1];
-		dst[2] = src[2];
-
-		// 0x10 + (5 * 4) = 0x24
 		inst->depthBiasNormal = levInstDef->unk24 - 2;
 		inst->depthBiasSecondary = levInstDef->unk24 + 12;
 
-		// reflect color
 		inst->reflectionRGBA = 0x7f7f7f;
 
 		inst->animIndex = 0;
 		inst->animFrame = 0;
 
-		// instace -> instDef
-		// the two are now linked on both ends
 		inst->instDef = levInstDef;
 
 		inst->vertSplit = 0;
 		inst->specLightX = 1;
 		inst->compressedNormalAndDriverIndex = 0;
 
-		// converted to TEST in rebuildPS1
 		ConvertRotToMatrix(&inst->matrix, &levInstDef->rot);
 
-		// instance posX and posY
-		CTR_COPY_VEC3(inst->matrix.t, CTR_VECTOR_DATA(&(levInstDef->pos)));
+		// NOTE(aalhendi): Keep the tracker load between position stores for
+		// GCC 2.8.1's retail load-delay scheduling.
+		inst->matrix.t[0] = levInstDef->pos.x;
+		gGT = GAME_TRACKER;
+		inst->matrix.t[1] = levInstDef->pos.y;
+		inst->matrix.t[2] = levInstDef->pos.z;
 
 		inst->thread = NULL;
-		struct InstDrawPerPlayer *idpp = INST_GETIDPP(inst);
 
-		// loop through InstDrawPerPlayer
-		for (s32 j = 0; j < gGT->numPlyrCurrGame; j++)
+		for (j = 0; j < gGT->numPlyrCurrGame; j++)
 		{
-			idpp[j].mh = 0;
-			idpp[j].pushBuffer = &gGT->pushBuffer[j];
+			inst->idpp[j].mh = 0;
+			inst->idpp[j].pushBuffer = &gGT->pushBuffer[j];
 		}
 
-		modelID = levInstDef->model->id;
-
-		// can be -1
-		if ((s16)modelID > 0)
+		// The podium suppresses LEV callbacks; models without one stay static.
+		if ((GAME_TRACKER->gameMode2 & NO_LEV_INSTANCE) == 0)
 		{
-			// Only continue if LEV instances are enabled,
-			// they may be disabled due to podium scene on adv hub
-			if ((gGT->gameMode2 & NO_LEV_INSTANCE) == 0)
+			meta = COLL_LevModelMeta(levInstDef->model->id);
+			if (meta != NULL && meta->LInB != NULL)
 			{
-				meta = COLL_LevModelMeta(modelID);
-
-				if (meta->LInB != NULL)
-				{
-					// call funcLevInstDefBirth, make thread for this instance
-					meta->LInB(inst);
-				}
+				meta->LInB(inst);
 			}
 		}
 
-		b32 boolArcadeOnly = ((((u32)modelID - PU_FRUIT_CRATE) < 2) || (modelID == PU_WUMPA_FRUIT));
-
-		b32 boolRelicOnly = ((((u32)modelID - STATIC_TIME_CRATE_02) < 2) || (modelID == STATIC_TIME_CRATE_01));
-
-		if (((gGT->gameMode1 & TIME_TRIAL) != 0) && (boolArcadeOnly || boolRelicOnly))
+		// Time trials hide pickups and time crates; relic races count time crates.
+		// NOTE(aalhendi): Separate predicates preserve retail's signed loads
+		// and branch sharing; the callback above may also replace the model.
+		if ((GAME_TRACKER->gameMode1 & TIME_TRIAL) != 0 &&
+		    ((u32)((u16)levInstDef->model->id - PU_FRUIT_CRATE) < 2 || levInstDef->model->id == PU_WUMPA_FRUIT ||
+		     levInstDef->model->id == STATIC_TIME_CRATE_01 || levInstDef->model->id == STATIC_TIME_CRATE_02 || levInstDef->model->id == STATIC_TIME_CRATE_03))
 		{
 			inst->flags &= ~DRAW_COLLISION_MASK;
 		}
-		else if ((gGT->gameMode1 & RELIC_RACE) != 0)
+		else if ((GAME_TRACKER->gameMode1 & RELIC_RACE) != 0)
 		{
-			if (boolRelicOnly)
+			if (levInstDef->model->id == STATIC_TIME_CRATE_01 || levInstDef->model->id == STATIC_TIME_CRATE_02 || levInstDef->model->id == STATIC_TIME_CRATE_03)
 			{
-				gGT->timeCratesInLEV++;
+				GAME_TRACKER->timeCratesInLEV++;
 			}
-			else if (boolArcadeOnly)
+			else if ((u16)(levInstDef->model->id - PU_FRUIT_CRATE) < 2 || levInstDef->model->id == PU_WUMPA_FRUIT)
 			{
 				inst->flags &= ~DRAW_COLLISION_MASK;
 			}
 		}
-		else if (boolRelicOnly)
+		else if (levInstDef->model->id == STATIC_TIME_CRATE_01 || levInstDef->model->id == STATIC_TIME_CRATE_02 ||
+		         levInstDef->model->id == STATIC_TIME_CRATE_03)
 		{
 			inst->flags &= ~DRAW_COLLISION_MASK;
 		}
 
-		if ((gGT->gameMode1 & CRYSTAL_CHALLENGE) != 0)
+		if ((GAME_TRACKER->gameMode1 & CRYSTAL_CHALLENGE) != 0)
 		{
-			if (modelID == STATIC_CRYSTAL)
+			if (levInstDef->model->id == STATIC_CRYSTAL)
 			{
-				gGT->numCrystalsInLEV++;
+				GAME_TRACKER->numCrystalsInLEV++;
 			}
-			else if (modelID == PU_FRUIT_CRATE)
+			else if (levInstDef->model->id == PU_FRUIT_CRATE)
 			{
 				inst->flags &= ~DRAW_COLLISION_MASK;
 			}
 		}
 
-		// If NOT crystal challenge
 		else
 		{
-			// Disable LevInst for Crystal, TNT, Nitro
-			if ((modelID == STATIC_CRYSTAL) || (modelID == STATIC_CRATE_TNT) || (modelID == PU_EXPLOSIVE_CRATE))
+			// Crystals, TNT and nitro placements belong to crystal challenges.
+			if (levInstDef->model->id == STATIC_CRYSTAL || levInstDef->model->id == PU_EXPLOSIVE_CRATE || levInstDef->model->id == STATIC_CRATE_TNT)
 			{
 				inst->flags &= ~DRAW_COLLISION_MASK;
 			}
 		}
 
-		if (
-		    // If not in Adventure Mode, or CTR Token Race
-		    ((gGT->gameMode1 & ADVENTURE_MODE) == 0) || ((gGT->gameMode2 & TOKEN_RACE) == 0))
+		if ((GAME_TRACKER->gameMode1 & ADVENTURE_MODE) == 0 || (GAME_TRACKER->gameMode2 & TOKEN_RACE) == 0)
 		{
-			// disable C-T-R letters
-			if ((u32)(modelID - STATIC_C) < 3)
+			// C-T-R letters are only active in adventure token races.
+			if ((u32)((u16)levInstDef->model->id - STATIC_C) < 3)
 			{
 				inst->flags &= ~DRAW_COLLISION_MASK;
 			}
 		}
-
-		// next InstDef
-		levInstDef++;
 	}
 }
 
 
-void INSTANCE_LevDelayedLInBs(struct InstDef *instDef, int numInstances)
+void INSTANCE_LevDelayedLInBs(struct InstDef *instDef, s32 numInstances)
 {
-	for (int i = 0; i < numInstances; i++)
+	s32 i;
+
+	for (i = 0; i < numInstances; i++)
 	{
 		struct MetaDataMODEL *meta = COLL_LevModelMeta(instDef->model->id);
 
@@ -410,43 +352,20 @@ void INSTANCE_LevDelayedLInBs(struct InstDef *instDef, int numInstances)
 }
 
 
-/// @brief Obtain number of actual animation data frames in the first lod entry of the passed model.
-/// @param pInstance - pointer to Instance
-/// @param animIndex - animation index to check
-u16 INSTANCE_GetNumAnimFrames(struct Instance *pInstance, int animIndex)
+s32 INSTANCE_GetNumAnimFrames(struct Instance *pInstance, s32 animIndex)
 {
 	struct Model *pModel;
 	struct ModelHeader *pHeader;
+	struct ModelAnim **animations;
 	struct ModelAnim *pAnim;
 
-	// get model from instance and validate
-	if (pModel = pInstance->model, pModel != NULL)
-	{
-		// if model got headers
-		if (pModel->numHeaders > 0)
-		{
-			// get first header ptr and validate
-			if (pHeader = pModel->headers, pHeader != NULL)
-			{
-				// if header got animations
-				if (pHeader->ptrAnimations != NULL)
-				{
-					// validate anim index param
-					if (animIndex < (int)pHeader->numAnimations)
-					{
-						// get proper animation ptr and validate
-						if (pAnim = *(pHeader->ptrAnimations + animIndex), pAnim != NULL)
-						{
-							// we're finally there, get number of frames
-							// remember it's masked due to interp flag
-							return pAnim->numFrames & 0x7fff;
-						}
-					}
-				}
-			}
-		}
-	}
+	// Animations belong to the model's first LOD header.
+	pModel = pInstance->model;
+	if (pModel == NULL || pModel->numHeaders <= 0 || (pHeader = pModel->headers) == NULL || animIndex >= (s32)pHeader->numAnimations ||
+	    (animations = pHeader->ptrAnimations) == NULL)
+		return 0;
 
-	// any other case
-	return 0;
+	pAnim = animations[animIndex];
+	// The high bit selects interpolation, not an additional frame.
+	return pAnim != NULL ? pAnim->numFrames & 0x7fff : 0;
 }

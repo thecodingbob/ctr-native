@@ -27,7 +27,7 @@ enum UIMapConstants
 };
 
 
-void UI_Map_DrawMap(struct Icon *mapTop, struct Icon *mapBottom, s16 posX, s16 posY, struct PrimMem *primMem, u32 *otMem, u32 colorID)
+void UI_Map_DrawMap(struct Icon *mapTop, struct Icon *mapBottom, s32 posX, s32 posY, struct PrimMem *primMem, u32 *otMem, u32 colorID)
 {
 	s16 mapBottomHeight;
 	s16 mapTopHeight;
@@ -247,8 +247,8 @@ void UI_Map_DrawRawIcon(struct UIMap *map, const s32 worldPos[3], int iconID, in
 
 	struct Icon **iconPtrArray = ICONGROUP_GETICONS(sdata->gGT->iconGroup[UI_MAP_ICON_GROUP]);
 
-	DecalHUD_DrawPolyGT4(iconPtrArray[iconID], posX, posY, &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT, ptrColor[0], ptrColor[1], ptrColor[2],
-	                     ptrColor[3], 0, (int)scale);
+	DecalHUD_DrawPolyGT4(iconPtrArray[iconID], posX, posY, &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT, ColorCode_Load(&ptrColor[0]),
+	                     ColorCode_Load(&ptrColor[1]), ColorCode_Load(&ptrColor[2]), ColorCode_Load(&ptrColor[3]), 0, (int)scale);
 
 	return;
 }
@@ -344,7 +344,7 @@ void UI_Map_DrawGhosts(struct UIMap *map, struct Thread *bucket)
 			color = TROPY_LIGHT_BLUE;
 
 			// if timeTrialFlags for this track show [ n tropy beaten, oxide open ]
-			if ((sdata->gameProgress.highScoreTracks[gGT->levelID].timeTrialFlags & 2) != 0)
+			if ((sdata->gameSave.progress.highScoreTracks[gGT->levelID].timeTrialFlags & 2) != 0)
 			{
 				// oxide flickers
 

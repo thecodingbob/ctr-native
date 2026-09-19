@@ -1,91 +1,91 @@
 #include <common.h>
 
-static void RB_MovingExplosive_CallThCollide(struct Thread *hitTh, struct Thread *sourceTh)
+static inline void RB_MovingExplosive_CollideAndExplode(struct Thread *hit, struct Thread *t, struct Instance *inst, struct TrackerWeapon *tw)
 {
-	void *funcThCollide = hitTh->funcThCollide;
-	((ThreadScratchCollideFunc)funcThCollide)(hitTh, sourceTh, funcThCollide, NULL);
+	((ThreadScratchCollideFunc)hit->funcThCollide)(hit, t, hit->funcThCollide, NULL);
+	// NOTE(aalhendi): The callback can rebind thread state; cleanup uses the tick's original instance and weapon.
+	RB_MovingExplosive_Explode(t, inst, tw);
 }
 
-// function for moving bomb, shiledbomb, or missile
+static inline void RB_MovingExplosive_NotifyCollision(struct Thread *hit, struct Thread *other)
+{
+	((ThreadScratchCollideFunc)hit->funcThCollide)(hit, other, hit->funcThCollide, NULL);
+	// NOTE(aalhendi): Keep this callback site separate from the mine callback.
+	// GCC 2.8.1 otherwise folds their identical tails. This compiler-only boundary
+	// emits no PSX instructions and is a no-op on native; the call stays typed C.
+	CTR_PSX_MEMORY_BARRIER();
+}
+
+// Update a rolling bomb, launched shield, or homing missile.
 void RB_MovingExplosive_ThTick(struct Thread *t)
 {
+	struct Driver *driverTarget;
+	struct ScratchpadStruct *sps;
+	struct Instance *hitInst;
 	s16 desiredRotY;
-	struct GameTracker *gGT = sdata->gGT;
-	s16 modelID;
-	int deltaX;
-	int deltaZ;
-	u16 sound;
+	s32 deltaX;
+	s32 deltaZ;
 	struct TrackerWeapon *tw;
 	struct Instance *inst;
 	SVec3 posA;
 	SVec3 posB;
 
 	inst = t->inst;
-	modelID = inst->model->id;
+	tw = inst->thread->object;
+	tw->timeAlive += GAME_TRACKER->elapsedTimeMS;
+	sps = CTR_SCRATCHPAD_PTR(struct ScratchpadStruct, 0x108);
 
-	tw = t->object;
-	tw->timeAlive += gGT->elapsedTimeMS;
-
-	// NOTE(aalhendi): Retail starts/updates the bomb, missile, and shield loop SFX here.
-	if (modelID == DYNAMIC_ROCKET)
+	// Start or update the weapon's looping sound.
+	if (inst->model->id == DYNAMIC_ROCKET)
 	{
 		if ((t->flags & THREAD_FLAG_DEAD) == 0)
 		{
-			sound = 0x4b;
-			goto LAB_800adc00;
+			PlaySound3D_Flags(&tw->soundIDCount, 0x4b, inst);
 		}
 	}
 	else
 	{
-		if (modelID == DYNAMIC_BOMB)
+		if (inst->model->id == DYNAMIC_BOMB)
 		{
-			sound = 0x48;
+			PlaySound3D_Flags(&tw->soundIDCount, 0x48, inst);
 		}
 		else
 		{
-			if ((modelID != DYNAMIC_SHIELD) && (modelID != DYNAMIC_SHIELD_GREEN))
+			if ((inst->model->id == DYNAMIC_SHIELD) || (inst->model->id == DYNAMIC_SHIELD_GREEN))
 			{
-				goto LAB_800adc08;
+				PlaySound3D_Flags(&tw->soundIDCount, 0x59, inst);
 			}
-
-			// if model is blue or green shield
-			sound = 0x59;
 		}
-	LAB_800adc00:
-		PlaySound3D_Flags(&tw->soundIDCount, sound, inst);
 	}
 
-LAB_800adc08:;
-
-	struct Driver *driverTarget = tw->driverTarget;
-
-	// NOTE(aalhendi): Native guard for retail's PS1 null-space shieldbomb path.
-	// driver not invisible
-	if ((driverTarget != 0) && (driverTarget->invisibleTimer == 0))
 	{
+		struct Driver *visibleTarget = tw->driverTarget;
+
 		if (
-		    // dropped mine previous frame
-		    ((driverTarget->actionsFlagSetPrevFrame & ACTION_DROPPING_MINE) != 0) &&
-
-		    (modelID == DYNAMIC_ROCKET))
+#ifdef CTR_NATIVE
+		    // NOTE(aalhendi): Shieldbombs can have no target; native cannot read PS1 null space.
+		    visibleTarget == NULL ||
+#endif
+		    visibleTarget->invisibleTimer != 0)
 		{
-			tw->framesSeekTargetTnt = 10;
+			tw->driverTarget = NULL;
 		}
-	}
+		else
+		{
+			if (
+			    // A thrown mine distracts an incoming missile for ten frames.
+			    ((visibleTarget->actionsFlagSetPrevFrame & ACTION_DROPPING_MINE) != 0) &&
 
-	// if driver is invisible
-	else
-	{
-		// erase pointer to driver,
-		// cause tracker can't find invisible driver
-		tw->driverTarget = 0;
+			    (inst->model->id == DYNAMIC_ROCKET))
+			{
+				tw->framesSeekTargetTnt = 10;
+			}
+		}
 	}
 
 	driverTarget = tw->driverTarget;
 
-	if (
-	    // if driver is invalid
-	    (driverTarget == 0) || (tw->blindFrames != 0))
+	if ((driverTarget == NULL) || (tw->blindFrames != 0))
 	{
 		if (tw->blindFrames != 0)
 		{
@@ -94,46 +94,46 @@ LAB_800adc08:;
 	}
 	else
 	{
-		if (tw->framesSeekTargetTnt == 0)
+		if (tw->framesSeekTargetTnt != 0)
 		{
-			// get distance between tracker and the driver being chased
-			deltaX = (driverTarget->posCurr.x >> 8) - inst->matrix.t[0];
-			deltaZ = (driverTarget->posCurr.z >> 8) - inst->matrix.t[2];
-			tw->distanceToTarget = deltaX * deltaX + deltaZ * deltaZ;
-
-		LAB_800add14:
-
-			// get direction, given X and Y distance to travel
-			desiredRotY = ratan2(deltaX, deltaZ);
-		}
-
-		// if seeking mine
-		else
-		{
+			struct Instance *instTNT;
 			tw->framesSeekTargetTnt--;
 
 			// if target shot a TNT
-			struct Instance *instTNT = tw->driverTarget->instTntSend;
+			instTNT = tw->driverTarget->instTntSend;
 
 			if (instTNT != 0)
 			{
-				// Get X and Y differences between two instances
+				// Aim at the thrown TNT instead of the driver.
 				deltaX = instTNT->matrix.t[0] - inst->matrix.t[0];
 				deltaZ = instTNT->matrix.t[2] - inst->matrix.t[2];
-				goto LAB_800add14;
+				desiredRotY = ratan2(deltaX, deltaZ);
 			}
+			else
+			{
+				// The target no longer has a thrown TNT to seek.
+				desiredRotY = tw->rotY;
+				tw->framesSeekTargetTnt = 0;
+			}
+		}
+		else
+		{
+			// Get distance and heading to the driver being chased.
+			deltaX = (driverTarget->posCurr.x >> 8) - inst->matrix.t[0];
+			deltaZ = (driverTarget->posCurr.z >> 8) - inst->matrix.t[2];
+			tw->distanceToTarget = (u32)deltaX * deltaX + (u32)deltaZ * deltaZ;
 
-			// if target never used a TNT
-			desiredRotY = tw->rotY;
-			tw->framesSeekTargetTnt = 0;
+			desiredRotY = ratan2(deltaX, deltaZ);
 		}
 
-		if ((modelID == DYNAMIC_BOMB) || (modelID == DYNAMIC_SHIELD))
+		if ((inst->model->id == DYNAMIC_BOMB) || (inst->model->id == DYNAMIC_SHIELD))
 		{
 			tw->rotY = RB_Hazard_InterpolateValue(tw->rotY, (int)desiredRotY, 4);
 
-			tw->vel.x = (MATH_Sin(tw->rotY) * 3) >> 7;
-			tw->vel.z = (MATH_Cos(tw->rotY) * 3) >> 7;
+			// NOTE(aalhendi): The shifted result is stored in a signed halfword;
+			// logical and arithmetic shifts have the same retained low 16 bits here.
+			tw->vel.x = (u32)(MATH_Sin(tw->rotY) * 3) >> 7;
+			tw->vel.z = (u32)(MATH_Cos(tw->rotY) * 3) >> 7;
 
 			if ((tw->flags & TRACKER_FLAG_BOMB_BACKWARD) != 0)
 			{
@@ -148,25 +148,24 @@ LAB_800adc08:;
 		        }
 		}
 
-		// if 0x29 (MISSILE)
+		// Missiles steer and rotate to face their target.
 		else
 		{
-			// if 10 wumpa were not used
-			if ((tw->flags & TRACKER_FLAG_POWERED_UP) == 0)
-			{
-				tw->rotY = RB_Hazard_InterpolateValue(tw->rotY, (int)desiredRotY, 0x40);
-
-				tw->vel.x = (MATH_Sin(tw->rotY) * 5) >> 8;
-				tw->vel.z = (MATH_Cos(tw->rotY) * 5) >> 8;
-			}
-
-			// if 10 wumpa were used
-			else
+			// A powered-up missile turns faster and uses the bomb's speed.
+			if ((tw->flags & TRACKER_FLAG_POWERED_UP) != 0)
 			{
 				tw->rotY = RB_Hazard_InterpolateValue(tw->rotY, (int)desiredRotY, 0x80);
 
-				tw->vel.x = (MATH_Sin(tw->rotY) * 3) >> 7;
-				tw->vel.z = (MATH_Cos(tw->rotY) * 3) >> 7;
+				tw->vel.x = (u32)(MATH_Sin(tw->rotY) * 3) >> 7;
+				tw->vel.z = (u32)(MATH_Cos(tw->rotY) * 3) >> 7;
+			}
+
+			else
+			{
+				tw->rotY = RB_Hazard_InterpolateValue(tw->rotY, (int)desiredRotY, 0x40);
+
+				tw->vel.x = (u32)(MATH_Sin(tw->rotY) * 5) >> 8;
+				tw->vel.z = (u32)(MATH_Cos(tw->rotY) * 5) >> 8;
 			}
 
 		        tw->vel.x = tw->vel.x * g_config.missileSpeedMultiplier / 100;
@@ -181,63 +180,46 @@ LAB_800adc08:;
 		}
 	}
 
-	s16 animFrame = inst->animFrame;
-	int animFrameCount = INSTANCE_GetNumAnimFrames(inst, 0);
-
-	// if instance is not at end of animation
-	if ((int)animFrame + 1 < animFrameCount)
+	// Loop the weapon animation.
+	if (inst->animFrame + 1 < INSTANCE_GetNumAnimFrames(inst, 0))
 	{
-		// increment animation frame
 		inst->animFrame += 1;
 	}
 
-	// if animation finished
 	else
 	{
-		// go back to first frame of animation
 		inst->animFrame = 0;
 	}
 
-#if defined(CTR_NATIVE)
-	if (
-	    // if missile
-	    (modelID == DYNAMIC_ROCKET) &&
-
-	    // numPlyrCurrGame < 2
-	    (sdata->gGT->numPlyrCurrGame < 2))
+	// Missile exhaust is only emitted in single-player.
+	if ((inst->model->id == DYNAMIC_ROCKET) && (GAME_TRACKER->numPlyrCurrGame < 2))
 	{
-		// Make Instane in Particle Pool
 		struct Particle *p;
-		// NOTE(aalhendi): Native uses retail emitter bytes from 0x800b2ae4.
-		p = Particle_Init(0, gGT->iconGroup[0], &R231.emSet_Missile[0]);
+		p = Particle_Init(0, GAME_TRACKER->iconGroup[0], &R231.emSet_Missile[0]);
 
 		if (p != 0)
 		{
-			p->axis[0].startVal = inst->matrix.t[0] << 8;
-			p->axis[1].startVal = inst->matrix.t[1] << 8;
-			p->axis[2].startVal = inst->matrix.t[2] << 8;
+			p->axis[0].startVal = (u32)inst->matrix.t[0] << 8;
+			p->axis[1].startVal = (u32)inst->matrix.t[1] << 8;
+			p->axis[2].startVal = (u32)inst->matrix.t[2] << 8;
 		}
 	}
-#endif
 
-	int elapsedTime = gGT->elapsedTimeMS;
-	inst->matrix.t[0] += (((int)tw->vel.x * elapsedTime) >> 5);
-	inst->matrix.t[1] += (((int)tw->vel.y * elapsedTime) >> 5);
-	inst->matrix.t[2] += (((int)tw->vel.z * elapsedTime) >> 5);
+	inst->matrix.t[0] += (((int)tw->vel.x * GAME_TRACKER->elapsedTimeMS) >> 5);
+	inst->matrix.t[1] += (((int)tw->vel.y * GAME_TRACKER->elapsedTimeMS) >> 5);
+	inst->matrix.t[2] += (((int)tw->vel.z * GAME_TRACKER->elapsedTimeMS) >> 5);
 
-	// If this is bomb
-	if (modelID == DYNAMIC_BOMB)
+	// Roll the bomb in its direction of travel.
+	if (inst->model->id == DYNAMIC_BOMB)
 	{
-		// if bomb is forwards
-		if ((tw->flags & TRACKER_FLAG_BOMB_BACKWARD) == 0)
-		{
-			tw->dir.x += 0x200;
-		}
-
-		// if bomb is backwards
-		else
+		if ((tw->flags & TRACKER_FLAG_BOMB_BACKWARD) != 0)
 		{
 			tw->dir.x -= 0x200;
+		}
+
+		else
+		{
+			tw->dir.x += 0x200;
 		}
 
 		// convert 3 rotation shorts into rotation matrix
@@ -252,18 +234,16 @@ LAB_800adc08:;
 	posB.y = inst->matrix.t[1] + 0x100;
 	posB.z = inst->matrix.t[2];
 
-	struct ScratchpadStruct *sps = CTR_SCRATCHPAD_PTR(struct ScratchpadStruct, 0x108);
-
-	sps->Union.QuadBlockColl.searchFlags = COLL_SEARCH_TEST_INSTANCES | COLL_SEARCH_FORCE_INSTANCE_HIT;
 	sps->Union.QuadBlockColl.quadFlagsWanted = QUADBLOCK_FLAG_GROUND | QUADBLOCK_FLAG_TRIGGER;
 	sps->Union.QuadBlockColl.quadFlagsIgnored = 0;
+	sps->Union.QuadBlockColl.searchFlags = COLL_SEARCH_TEST_INSTANCES | COLL_SEARCH_FORCE_INSTANCE_HIT;
 
-	if (gGT->numPlyrCurrGame < 3)
+	if (GAME_TRACKER->numPlyrCurrGame < 3)
 	{
 		sps->Union.QuadBlockColl.searchFlags = COLL_SEARCH_TEST_INSTANCES | COLL_SEARCH_HIGH_LOD | COLL_SEARCH_FORCE_INSTANCE_HIT;
 	}
 
-	sps->ptr_mesh_info = gGT->level1->ptr_mesh_info;
+	sps->ptr_mesh_info = GAME_TRACKER->level1->ptr_mesh_info;
 
 	COLL_SearchBSP_CallbackQUADBLK(&posA, &posB, sps, 0);
 
@@ -276,20 +256,57 @@ LAB_800adc08:;
 		tw->vel.y = -tw->vel.y;
 		tw->vel.z = -tw->vel.z;
 
-		inst->matrix.t[0] += ((int)tw->vel.x * elapsedTime) >> 5;
-		inst->matrix.t[1] += ((int)tw->vel.y * elapsedTime) >> 5;
-		inst->matrix.t[2] += ((int)tw->vel.z * elapsedTime) >> 5;
+		inst->matrix.t[0] += ((int)tw->vel.x * GAME_TRACKER->elapsedTimeMS) >> 5;
+		inst->matrix.t[1] += ((int)tw->vel.y * GAME_TRACKER->elapsedTimeMS) >> 5;
+		inst->matrix.t[2] += ((int)tw->vel.z * GAME_TRACKER->elapsedTimeMS) >> 5;
 
 		RB_MovingExplosive_Explode(t, inst, tw);
 		return;
 	}
 
-	if (sps->boolDidTouchHitbox == 0)
+	if (sps->boolDidTouchHitbox != 0)
 	{
-		if (sps->boolDidTouchQuadblock == 0)
+		s32 ret;
+		sps->Input1.modelID = inst->model->id;
+
+		ret = RB_Hazard_CollLevInst(sps, t);
+
+		if (ret == 1)
 		{
-			// if no quadblock is under this item,
-			// look again for another quadblock LOWER
+			struct InstDef *instDef;
+			struct BSP *bspHitbox = sps->bspHitbox;
+
+			// Temple teeth open when a weapon hits their level instance.
+			if (((u8)bspHitbox->flag & 0x80) && (instDef = bspHitbox->data.hitbox.instDef) != NULL && instDef->ptrInstance != NULL &&
+			    (s16)instDef->modelID == STATIC_TEETH)
+			{
+				RB_Teeth_OpenDoor(instDef->ptrInstance);
+			}
+			goto explode;
+		}
+	}
+	else
+	{
+		if (sps->boolDidTouchQuadblock != 0)
+		{
+			tw->vel.y = 0;
+
+			// missile model
+			if (inst->model->id == DYNAMIC_ROCKET)
+			{
+				VehPhysForce_RotAxisAngle(&inst->matrix, CTR_VECTOR_DATA(&(sps->hit.plane.normal)), tw->rotY);
+			}
+
+			// position
+			inst->matrix.t[0] = sps->Union.QuadBlockColl.hitPos.x;
+			inst->matrix.t[1] = sps->Union.QuadBlockColl.hitPos.y + 0x30;
+			inst->matrix.t[2] = sps->Union.QuadBlockColl.hitPos.z;
+		}
+
+		else
+		{
+			s32 elapsedTime;
+			// Search farther down before applying gravity; explode if there is no ground.
 
 			inst->vertSplit = 0;
 			posA.x = inst->matrix.t[0];
@@ -301,166 +318,74 @@ LAB_800adc08:;
 			// if still nothing, then explode
 			if (sps->boolDidTouchQuadblock == 0)
 			{
-				goto LAB_800ae42c;
+				goto explode;
 			}
 
-			// if quadblock under,
-			// then set fall rate and fall
-
-			int gravityStep = elapsedTime << 2;
-
-			// if missile
-			if (modelID == DYNAMIC_ROCKET)
-			{
-				gravityStep = elapsedTime << 3;
-			}
-
-			tw->vel.y -= (gravityStep >> 5);
+			elapsedTime = GAME_TRACKER->elapsedTimeMS;
+			tw->vel.y = tw->vel.y - ((inst->model->id == DYNAMIC_ROCKET ? elapsedTime << 3 : elapsedTime << 2) >> 5);
 
 			if (tw->vel.y < -0x60)
 			{
 				tw->vel.y = -0x60;
 			}
 		}
-
-		// if hit quadblock
-		else
-		{
-			tw->vel.y = 0;
-
-			// missile model
-			if (modelID == DYNAMIC_ROCKET)
-			{
-				VehPhysForce_RotAxisAngle(&inst->matrix, CTR_VECTOR_DATA(&(sps->hit.plane.normal)), tw->rotY);
-			}
-
-			// position
-			inst->matrix.t[0] = sps->Union.QuadBlockColl.hitPos.x;
-			inst->matrix.t[1] = sps->Union.QuadBlockColl.hitPos.y + 0x30;
-			inst->matrix.t[2] = sps->Union.QuadBlockColl.hitPos.z;
-		}
 	}
-	else
-	{
-		sps->Input1.modelID = modelID;
-
-		int ret;
-		ret = RB_Hazard_CollLevInst(sps, t);
-
-		// if hit bsp hitbox
-		if (ret == 1)
-		{
-			struct InstDef *instDef;
-			struct BSP *bspHitbox = sps->bspHitbox;
-
-			// copy/paste from Potion_InAir
-			if ((((bspHitbox->flag & 0x80) != 0) && (instDef = bspHitbox->data.hitbox.instDef, instDef != 0)) &&
-
-			    (((instDef->ptrInstance != 0) && (instDef->modelID == STATIC_TEETH))))
-			{
-				RB_Teeth_OpenDoor(instDef->ptrInstance);
-			}
-			goto LAB_800ae42c;
-		}
-	}
-
-	struct Instance *hitInst;
 
 	hitInst = RB_Hazard_CollideWithDrivers(inst, tw->parentSafetyFrames, 0x2400, tw->instParent);
-
-	// if no driver hit
-	if (hitInst == 0)
+	if (hitInst != NULL)
 	{
-		// check Mine threadbucket
-		hitInst = RB_Hazard_CollideWithBucket(inst, t, gGT->threadBuckets[MINE].thread, tw->parentSafetyFrames, 0x2400, tw->instParent);
-
-		// if mine was not hit
-		if (hitInst == 0)
+		((struct Driver *)hitInst->thread->object)->damageColorTimer = 0x1e;
+		if ((struct Driver *)hitInst->thread->object == tw->driverTarget)
 		{
-			// instance -> model -> modelID is not bomb
-			if (modelID != DYNAMIC_BOMB)
-			{
-			LAB_800ae440:
-				if (tw->parentSafetyFrames != 0)
-				{
-					tw->parentSafetyFrames--;
-				}
-
-				return;
-			}
-
-			// === Assume Bomb ===
-
-			// check Tracking threadbucket
-			hitInst = RB_Hazard_CollideWithBucket(inst, t, gGT->threadBuckets[TRACKING].thread, tw->parentSafetyFrames, 0x2400, tw->instParent);
-
-			// if no collision
-			if (hitInst == 0)
-			{
-				if ((tw->flags & 2) == 0)
-				{
-					goto LAB_800ae440;
-				}
-			}
-
-			// if bomb collides with Tracker
-			else
-			{
-				// not a missile
-				if (hitInst->model->id != DYNAMIC_ROCKET)
-				{
-					// quit, warpball collisions dont matter
-					return;
-				}
-
-				// === missile ===
-				struct Thread *hitTh = hitInst->thread;
-
-				RB_MovingExplosive_CallThCollide(hitTh, t);
-			}
-		}
-
-		// if mine was hit
-		else
-		{
-			struct Thread *hitTh = hitInst->thread;
-
-			RB_MovingExplosive_CallThCollide(hitTh, t);
-		}
-	}
-
-	// if driver was hit
-	else
-	{
-		struct Thread *hitTh = hitInst->thread;
-
-		struct Driver *hitD = hitTh->object;
-
-		hitD->damageColorTimer = 0x1e;
-
-		if (hitD == tw->driverTarget)
-		{
-			// flags
 			tw->flags |= 0x10;
 		}
+		goto explode;
 	}
-LAB_800ae42c:
 
-	RB_MovingExplosive_Explode(t, inst, tw);
-	return;
+	hitInst = RB_Hazard_CollideWithBucket(inst, t, GAME_TRACKER->threadBuckets[MINE].thread, tw->parentSafetyFrames, 0x2400, tw->instParent);
+	if (hitInst != NULL)
+	{
+		RB_MovingExplosive_CollideAndExplode(hitInst->thread, t, inst, tw);
+		return;
+	}
+
+	if (inst->model->id == DYNAMIC_BOMB)
+	{
+		hitInst = RB_Hazard_CollideWithBucket(inst, t, GAME_TRACKER->threadBuckets[TRACKING].thread, tw->parentSafetyFrames, 0x2400, tw->instParent);
+		if (hitInst != NULL)
+		{
+			// Bombs hit missiles, but pass through warpballs.
+			if (hitInst->model->id != DYNAMIC_ROCKET)
+			{
+				return;
+			}
+			RB_MovingExplosive_NotifyCollision(hitInst->thread, t);
+			RB_MovingExplosive_Explode(t, inst, tw);
+			return;
+		}
+		if ((tw->flags & 2) != 0)
+		{
+		explode:
+			RB_MovingExplosive_Explode(t, inst, tw);
+			return;
+		}
+	}
+	if (tw->parentSafetyFrames != 0)
+	{
+		tw->parentSafetyFrames--;
+	}
 }
 
 void RB_MovingExplosive_Explode(struct Thread *t, struct Instance *inst, struct TrackerWeapon *tw)
 {
-	s16 soundId;
 	struct Driver *d;
 
 	// bomb
 	if (inst->model->id == DYNAMIC_BOMB)
 	{
 		// bomb explode
-		soundId = 0x49;
 		tw->driverParent->instBombThrow = NULL;
+		PlaySound3D(0x49, inst);
 	}
 
 	// missile
@@ -473,11 +398,8 @@ void RB_MovingExplosive_Explode(struct Thread *t, struct Instance *inst, struct 
 			d->actionsFlagSet &= ~ACTION_TRACKER_TARGETED;
 		}
 		// missile explode
-		soundId = 0x4c;
+		PlaySound3D(0x4c, inst);
 	}
-
-	// play explosion sound
-	PlaySound3D(soundId, inst);
 
 	// stop audio of rolling
 	OtherFX_RecycleMute(&tw->soundIDCount);

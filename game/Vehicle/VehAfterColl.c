@@ -10,25 +10,21 @@ CTR_STATIC_ASSERT(VEH_AFTER_COLL_TERRAIN_COUNT == TERRAIN_SLOWDIRT + 1);
 
 struct Scrub *VehAfterColl_GetSurface(u32 scrubId)
 {
-	struct Scrub *sc = &data.MetaDataScrub[0];
-
-	if (scrubId < VEH_AFTER_COLL_SCRUB_COUNT)
+	if (scrubId >= VEH_AFTER_COLL_SCRUB_COUNT)
 	{
-		return &sc[scrubId];
+		scrubId = 0;
 	}
 
-	return sc;
+	return &data.MetaDataScrub[scrubId];
 }
 
-struct Terrain *VehAfterColl_GetTerrain(u8 terrainType)
+struct Terrain *VehAfterColl_GetTerrain(u32 terrainType)
 {
-	struct Terrain *ter = &data.MetaDataTerrain[0];
-
 	// if terrain is valid, max 20
-	if (terrainType < VEH_AFTER_COLL_TERRAIN_COUNT)
+	if (terrainType >= VEH_AFTER_COLL_TERRAIN_COUNT)
 	{
-		return &ter[terrainType];
+		terrainType = 0;
 	}
 
-	return ter;
+	return &data.MetaDataTerrain[terrainType];
 }

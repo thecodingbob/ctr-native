@@ -29,7 +29,7 @@ int Bank_Alloc(int bankID, struct Bank *ptrBank)
 	// sending data to SPU, then erasing RAM
 	MEMPACK_PushState();
 
-	sdata->ptrSampleBlock2 = MEMPACK_AllocMem(0x800 /*, "SampleBlock"*/);
+	sdata->ptrSampleBlock2 = MEMPACK_AllocMem(0x800, NULL /* "SampleBlock" */);
 
 	if (sdata->ptrSampleBlock2 == 0)
 	{

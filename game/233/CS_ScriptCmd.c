@@ -1,99 +1,84 @@
 #include <common.h>
 
-enum
-{
-	CS_OPCODE_META_TABLE_SIZE = 0x100,
-};
+#ifndef CS_OPCODE_META_TABLE
+// NOTE(aalhendi): Retail indexes the overlay bytes here, including the script
+// bytes following the metadata prefix for otherwise undefined opcode values.
+#define CS_OPCODE_META_TABLE ((const u8 *)&D233 + OFFSETOF(struct OverlayDATA_233, csOpcodeMetaPrefix))
+#endif
 
-// Retail opcode byte -> CsOpcodeMetaFlags decode table.
-static const u8 s_csOpcodeMetaFlags[CS_OPCODE_META_TABLE_SIZE] = {
-    0xdf, 0x20, 0x00, 0x19, 0x28, 0x10, 0x10, 0x18, 0x10, 0x10, 0x10, 0x18, 0x00, 0x10, 0x10, 0x00, 0x10, 0x00, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10,
-    0x00, 0x00, 0x10, 0x10, 0x10, 0x00, 0x00, 0x10, 0x10, 0x00, 0x19, 0x00, 0x2c, 0x10, 0x00, 0x00, 0x00, 0x1e, 0x11, 0xc7, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00,
-    0x2a, 0x30, 0x00, 0x00, 0x28, 0x00, 0xff, 0x00, 0x1c, 0xfc, 0xff, 0xff, 0xff, 0x0d, 0x10, 0x00, 0x00, 0x00, 0x22, 0x22, 0x02, 0x00, 0x00, 0x12, 0x02, 0x00,
-    0x00, 0x00, 0x38, 0x01, 0x00, 0x00, 0x2b, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00, 0x13, 0x20, 0x02, 0x2a, 0x30, 0x00, 0x00,
-    0x28, 0x00, 0xff, 0x00, 0x1c, 0xfc, 0xff, 0xff, 0xff, 0x0d, 0x10, 0x00, 0x00, 0x00, 0x22, 0x22, 0x02, 0x00, 0x00, 0x12, 0x02, 0x00, 0x00, 0x00, 0x39, 0x01,
-    0x00, 0x00, 0x2b, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00, 0x13, 0x21, 0x00, 0x00, 0x00, 0x00, 0x28, 0x2a, 0x30, 0x00, 0x00,
-    0x28, 0x00, 0xff, 0x00, 0x1c, 0xfc, 0xff, 0xff, 0xff, 0x0d, 0x10, 0x00, 0x00, 0x00, 0x22, 0x22, 0x02, 0x00, 0x00, 0x12, 0x02, 0x00, 0x00, 0x00, 0x34, 0x01,
-    0x00, 0x00, 0x2b, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00, 0x13, 0x20, 0x02, 0x2a, 0x30, 0x00, 0x00, 0x28, 0x00, 0xff, 0x00,
-    0x1c, 0xfc, 0xff, 0xff, 0xff, 0x0d, 0x10, 0x00, 0x00, 0x00, 0x22, 0x22, 0x02, 0x00, 0x00, 0x12, 0x02, 0x00, 0x00, 0x00, 0x35, 0x01, 0x00, 0x00, 0x2b, 0x01,
-    0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00, 0x13, 0x20, 0x02, 0x2a, 0x30, 0x00, 0x00, 0x28, 0x00, 0xff, 0x00,
-};
-
-CTR_STATIC_ASSERT(sizeof(s_csOpcodeMetaFlags) == CS_OPCODE_META_TABLE_SIZE);
-
-static s16 CS_ScriptCmd_ReadOpcode_GetShort(char **cursor)
+s16 CS_ScriptCmd_ReadOpcode_GetShort(char **cursor)
 {
 	char *bytes = *cursor;
-	s16 result = (s16)CTR_ReadU16LE(bytes);
+	u32 high = (u8)bytes[1];
+	u32 low = (u8)bytes[0];
 	*cursor = bytes + 2;
-	return result;
+	return (s16)(low | (high << 8));
 }
 
-static u32 CS_ScriptCmd_ReadOpcode_GetInt(char **cursor)
+u32 CS_ScriptCmd_ReadOpcode_GetInt(char **cursor)
 {
 	char *bytes = *cursor;
+	u32 byte3 = (u8)bytes[3];
+	u32 byte2 = (u8)bytes[2];
+	u32 byte1 = (u8)bytes[1];
+	u32 byte0 = (u8)bytes[0];
 	*cursor = bytes + 4;
-	return CTR_ReadU32LE(bytes);
+	return (byte3 << 24) | (byte2 << 16) | (byte1 << 8) | byte0;
 }
 
-static u32 CS_ScriptCmd_ReadOpcode_GetInt_dup(char **cursor)
+u32 CS_ScriptCmd_ReadOpcode_GetInt_dup(char **cursor)
 {
 	char *bytes = *cursor;
+	u32 byte3 = (u8)bytes[3];
+	u32 byte2 = (u8)bytes[2];
+	u32 byte1 = (u8)bytes[1];
+	u32 byte0 = (u8)bytes[0];
 	*cursor = bytes + 4;
-	return CTR_ReadU32LE(bytes);
+	return (byte3 << 24) | (byte2 << 16) | (byte1 << 8) | byte0;
 }
 
-static void CS_ScriptCmd_ReadOpcode_Main(struct CutsceneObj *cs)
+void CS_ScriptCmd_ReadOpcode_Main(struct CutsceneObj *cs)
 {
 	char *opcodes;
-	struct CsOpcodeMeta *decoded;
-	s16 *decodedShorts;
-	u8 opcode;
-	u8 metaFlags;
 	char *cursor;
-
+	struct CsOpcodeMeta *decoded;
+	u8 metaFlags;
 	opcodes = cs->currOpcode[0];
-
 	if (opcodes == cs->prevOpcode)
-	{
 		return;
-	}
-
-	cursor = opcodes + 1;
-	decoded = &cs->decodedOpcode;
-	decodedShorts = CsOpcodeMeta_Halves(decoded);
-
+	cursor = opcodes;
+	decoded = cs->metadataMeta;
 	cs->prevOpcode = opcodes;
-	opcode = (u8)opcodes[0];
-	decodedShorts[0] = opcode;
-
-	metaFlags = s_csOpcodeMetaFlags[opcode];
-
+	decoded->opcode = (u8)*opcodes;
+	cursor = opcodes + 1;
+	// NOTE(aalhendi): The field-address form preserves GCC 2.8.1's opcode
+	// reload after advancing the cursor, without changing the native access.
+	metaFlags = CS_OPCODE_META_TABLE[*(&decoded->opcode)];
 	if (metaFlags & CS_OPCODE_META_HAS_ANIM_INDEX)
 	{
-		decodedShorts[1] = CS_ScriptCmd_ReadOpcode_GetShort(&cursor);
+		decoded->animIndex = CS_ScriptCmd_ReadOpcode_GetShort(&cursor);
 	}
 	else
 	{
-		decodedShorts[1] = 0;
+		decoded->animIndex = 0;
 	}
 
 	if (metaFlags & CS_OPCODE_META_HAS_FRAME_START)
 	{
-		decodedShorts[2] = CS_ScriptCmd_ReadOpcode_GetShort(&cursor);
+		decoded->frameStart = CS_ScriptCmd_ReadOpcode_GetShort(&cursor);
 	}
 	else
 	{
-		decodedShorts[2] = 0;
+		decoded->frameStart = 0;
 	}
 
 	if (metaFlags & CS_OPCODE_META_HAS_FRAME_END)
 	{
-		decodedShorts[3] = CS_ScriptCmd_ReadOpcode_GetShort(&cursor);
+		decoded->frameEnd = CS_ScriptCmd_ReadOpcode_GetShort(&cursor);
 	}
 	else
 	{
-		decodedShorts[3] = 0;
+		decoded->frameEnd = 0;
 	}
 
 	if (metaFlags & CS_OPCODE_META_HAS_ARG0)
@@ -127,20 +112,20 @@ static void CS_ScriptCmd_ReadOpcode_Main(struct CutsceneObj *cs)
 
 	if (metaFlags & CS_OPCODE_META_HAS_ROT_START)
 	{
-		decodedShorts[8] = CS_ScriptCmd_ReadOpcode_GetShort(&cursor);
+		decoded->rotStart = CS_ScriptCmd_ReadOpcode_GetShort(&cursor);
 	}
 	else
 	{
-		decodedShorts[8] = 0;
+		decoded->rotStart = 0;
 	}
 
 	if (metaFlags & CS_OPCODE_META_HAS_ROT_END)
 	{
-		decodedShorts[9] = CS_ScriptCmd_ReadOpcode_GetShort(&cursor);
+		decoded->rotEnd = CS_ScriptCmd_ReadOpcode_GetShort(&cursor);
 	}
 	else
 	{
-		decodedShorts[9] = 0;
+		decoded->rotEnd = 0;
 	}
 
 	cs->prevOpcode = cursor;

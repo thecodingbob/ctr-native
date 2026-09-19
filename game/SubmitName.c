@@ -188,7 +188,7 @@ s16 SubmitName_DrawMenu(u16 string)
 	r.h = 2;
 	Color color;
 	ColorCode_SetPacked(&color, sdata->battleSetup_Color_UI_1);
-	RECTMENU_DrawOuterRect_Edge(&r, color, 0x20, gGT->backBuffer->otMem.uiOT);
+	RECTMENU_DrawOuterRect_Edge(&r, &color, 0x20, gGT->backBuffer->otMem.uiOT);
 
 	r.y = SUBMIT_NAME_PANEL_Y;
 	r.h = SUBMIT_NAME_PANEL_H;

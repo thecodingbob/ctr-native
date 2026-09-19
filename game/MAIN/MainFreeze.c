@@ -81,7 +81,7 @@ void MainFreeze_ConfigDrawArrows(s16 offsetX, s16 offsetY, char *str)
 	    gGT->pushBuffer_UI.ptrOT,
 
 	    // color data
-	    colorPtr[0], colorPtr[1], colorPtr[2], colorPtr[3],
+	    ColorCode_Load(&colorPtr[0]), ColorCode_Load(&colorPtr[1]), ColorCode_Load(&colorPtr[2]), ColorCode_Load(&colorPtr[3]),
 
 	    0, FP(1.0), 0x800);
 
@@ -99,7 +99,7 @@ void MainFreeze_ConfigDrawArrows(s16 offsetX, s16 offsetY, char *str)
 	    gGT->pushBuffer_UI.ptrOT,
 
 	    // color data
-	    colorPtr[0], colorPtr[1], colorPtr[2], colorPtr[3],
+	    ColorCode_Load(&colorPtr[0]), ColorCode_Load(&colorPtr[1]), ColorCode_Load(&colorPtr[2]), ColorCode_Load(&colorPtr[3]),
 
 	    0, FP(1.0), 0);
 
@@ -108,7 +108,7 @@ void MainFreeze_ConfigDrawArrows(s16 offsetX, s16 offsetY, char *str)
 
 static inline void MainFreeze_ConfigDrawWire(s16 x1, s16 y1, s16 x2, s16 y2, u8 r, u8 g, u8 b, void *ot)
 {
-	CTR_Box_DrawWirePrims(MakePoint(x1, y1), MakePoint(x2, y2), MakeColor(r, g, b), ot);
+	CTR_Box_DrawWirePrims(x1, y1, x2, y2, r, g, b, ot, &sdata->gGT->backBuffer->primMem);
 }
 
 static inline void MainFreeze_ConfigDrawRaceWheel(int value, struct GameTracker *gGT)
@@ -645,12 +645,12 @@ static void DISPLAYRECTMENU_MainFreeze_MenuPtrOptions(struct RectMenu *menu, GAM
 
 		RECT volumeSliderBar = {.x = volumeSliderBarPosX + 1, .y = volumeSliderPosY + 48, .w = 3, .h = 10};
 		color = *(Color *)(data.Options_VolumeSlider_Colors + 0xc);
-		CTR_Box_DrawSolidBox(&volumeSliderBar, color, ot);
+		CTR_Box_DrawSolidBox(&volumeSliderBar, &color, ot, primMem);
 
 		RECT volumeSliderBarOutline = {.x = volumeSliderBarPosX, .y = volumeSliderPosY + 47, .w = 5, .h = 12};
 
 		color = *(Color *)(data.Options_VolumeSlider_Colors + 0x10);
-		CTR_Box_DrawSolidBox(&volumeSliderBarOutline, color, ot);
+		CTR_Box_DrawSolidBox(&volumeSliderBarOutline, &color, ot, primMem);
 
 		RECTMENU_DrawRwdTriangle(volumeSliderTriangle, data.Options_VolumeSlider_Colors, ot, primMem);
 
@@ -736,12 +736,12 @@ static void DISPLAYRECTMENU_MainFreeze_MenuPtrOptions(struct RectMenu *menu, GAM
 	               .w = 364,
 	               .h = data.Options_HighlightBar[menu->rowSelected].sizeY};
 
-	CTR_Box_DrawClearBox(&cursor, &sdata->menuRowHighlight_Normal, TRANS_50_DECAL, ot);
+	CTR_Box_DrawClearBox(&cursor, &sdata->menuRowHighlight_Normal, TRANS_50_DECAL, ot, primMem);
 
 	RECT titleSeparatorLine = {.x = 66, .y = (menuRowsNegativePadding / 2) + 43, .w = 380, .h = 2};
 
 	ColorCode_SetPacked(&color, sdata->battleSetup_Color_UI_1);
-	RECTMENU_DrawOuterRect_Edge(&titleSeparatorLine, color, 0x20, ot);
+	RECTMENU_DrawOuterRect_Edge(&titleSeparatorLine, &color, 0x20, ot);
 
 	RECT menuBG = {.x = 56, .y = (menuRowsNegativePadding / 2) + 20, .w = 400, .h = 135 - menuRowsNegativePadding};
 

@@ -480,7 +480,6 @@ void UI_RenderFrame_Racing()
 					iconPtr = gGT->ptrIcons[(int)playerStruct->driverRank + 0x19];
 
 				LAB_80053aec:
-
 					DecalHUD_DrawPolyGT4(
 					    // icon pointer
 					    iconPtr,
@@ -491,7 +490,7 @@ void UI_RenderFrame_Racing()
 					    &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT,
 
 					    // color data
-					    ptrColor[0], ptrColor[1], ptrColor[2], ptrColor[3],
+					    ColorCode_Load(&ptrColor[0]), ColorCode_Load(&ptrColor[1]), ColorCode_Load(&ptrColor[2]), ColorCode_Load(&ptrColor[3]),
 
 					    0, FP(1.0));
 				}
@@ -893,9 +892,9 @@ void UI_RenderFrame_AdvHub(void)
 	gGT = sdata->gGT;
 	hudStructPtr = data.hudStructPtr[gGT->numPlyrCurrGame - 1];
 
-	UI_DrawNumRelic(hudStructPtr[UI_HUD_SLOT_RELIC].x + 0x10, hudStructPtr[UI_HUD_SLOT_RELIC].y - 10);
-	UI_DrawNumKey(hudStructPtr[UI_HUD_SLOT_KEY].x + 0x10, hudStructPtr[UI_HUD_SLOT_KEY].y - 10);
-	UI_DrawNumTrophy(hudStructPtr[UI_HUD_SLOT_TROPHY].x + 0x10, hudStructPtr[UI_HUD_SLOT_TROPHY].y - 10);
+	UI_DrawNumRelic(hudStructPtr[UI_HUD_SLOT_RELIC].x + 0x10, hudStructPtr[UI_HUD_SLOT_RELIC].y - 10, gGT->drivers[0]);
+	UI_DrawNumKey(hudStructPtr[UI_HUD_SLOT_KEY].x + 0x10, hudStructPtr[UI_HUD_SLOT_KEY].y - 10, gGT->drivers[0]);
+	UI_DrawNumTrophy(hudStructPtr[UI_HUD_SLOT_TROPHY].x + 0x10, hudStructPtr[UI_HUD_SLOT_TROPHY].y - 10, gGT->drivers[0]);
 }
 
 void UI_RenderFrame_CrystChall(void)

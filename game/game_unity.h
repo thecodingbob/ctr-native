@@ -247,20 +247,7 @@
 
 #include "PlayLevel.c"
 
-#include "230/R230.c"
-#include "230/D230.c"
-#include "230/MM_Battle.c"
-#include "230/MM_MenuFlow.c"
-#include "230/MM_Title.c"
-#include "230/MM_CheatCodes.c"
-#include "230/MM_Characters.c"
-#include "230/MM_OxideModel.c"
-#include "230/MM_TrackSelect.c"
-#include "230/MM_CupSelect.c"
-#include "230/MM_HighScore.c"
-#include "230/MM_Scrapbook.c"
-#include "230/MM_Video.c"
-#include "230/MM_ConfigMenu.c"
+#include "230.c"
 
 #include "231/R231.c"
 #include "231/D231.c"

@@ -1,44 +1,31 @@
 #include <common.h>
 
-// Symbol tail 0x800b295c-0x800b3120 is overlay data before Baron.
 struct Thread *RB_GetThread_ClosestTracker(struct Driver *d)
 {
-	int distX;
-	int distZ;
-	struct Thread *currThread;
-	struct Thread *closestTh = 0;
-	int smallestDist;
+	s32 smallestDist = 0x3fffffff;
+	struct Thread *currThread = GAME_TRACKER->threadBuckets[TRACKING].thread;
+	struct Instance *driverInst = d->instSelf;
+	struct Thread *closestTh = NULL;
 
-	// assume farthest distance
-	smallestDist = 0x3fffffff;
-
-	// loop through all threads
-	for (currThread = sdata->gGT->threadBuckets[TRACKING].thread; currThread != NULL; currThread = currThread->siblingThread)
+	for (; currThread != NULL; currThread = currThread->siblingThread)
 	{
 		struct TrackerWeapon *tw = currThread->object;
-
-		if (tw->driverTarget != d)
-		{
-			continue;
-		}
-
-		struct Instance *dInst = d->instSelf;
 		struct Instance *currInst = currThread->inst;
 
-		if (
-		    // get distance between posX and posZ of
-		    // driver->instSelf->position, and tracker's position,
-		    distX = dInst->matrix.t[0] - currInst->matrix.t[0], distZ = dInst->matrix.t[2] - currInst->matrix.t[2],
-
-		    // if this is a new closest distance
-		    distX = distX * distX + distZ * distZ, distX < smallestDist)
-
+		if (tw->driverTarget == d)
 		{
-			// save closest distance
-			smallestDist = distX;
-			closestTh = currThread;
+			u32 distX = (u32)driverInst->matrix.t[0] - currInst->matrix.t[0];
+			u32 distZ = (u32)driverInst->matrix.t[2] - currInst->matrix.t[2];
+			s32 distance = distX * distX + distZ * distZ;
+
+			// NOTE(aalhendi): Retail compares the wrapped 32-bit squared distance.
+			// A tie retains the earlier tracker in the bucket.
+			if (distance < smallestDist)
+			{
+				smallestDist = distance;
+				closestTh = currThread;
+			}
 		}
 	}
-	// return thread of closest tracker
 	return closestTh;
 }

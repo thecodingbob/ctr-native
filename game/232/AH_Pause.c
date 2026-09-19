@@ -1,4 +1,5 @@
 #include <common.h>
+#include "AH_UI.h"
 
 enum AHPauseIconGroupID
 {
@@ -66,14 +67,12 @@ enum AHPauseLayout
 	AH_PAUSE_RELIC_TOTAL_NUMBER_X = 0x19,
 	AH_PAUSE_RELIC_TOTAL_X_GLYPH_X = 10,
 	AH_PAUSE_RELIC_TOTAL_X_GLYPH_Y = 0x4e,
-	AH_PAUSE_X_GLYPH = 'X',
 
 	AH_PAUSE_TOTAL_TEXT_Y = 0x6e,
 
 	AH_PAUSE_OUTER_RECT_CENTER_X = 0x10a,
 	AH_PAUSE_OUTER_RECT_Y = 0x20,
 	AH_PAUSE_OUTER_RECT_H = 2,
-	AH_PAUSE_OUTER_EDGE_ALPHA = 0x20,
 	AH_PAUSE_INNER_RECT_CENTER_X = 0x100,
 	AH_PAUSE_INNER_RECT_Y = 10,
 	AH_PAUSE_INNER_RECT_H = 0x82,
@@ -115,10 +114,12 @@ enum AHPauseMemberFlags
 
 void AH_Pause_Destroy(void)
 {
-	s32 i;
+	s16 i;
+	struct Thread *t;
+	u32 memberAddress;
 
 	// global -> register
-	struct PauseObject *ptrPauseObject = D232.ptrPauseObject;
+	struct PauseObject *ptrPauseObject = AH_PAUSE_OBJECT;
 
 	// check register
 	if (ptrPauseObject == 0)
@@ -126,162 +127,107 @@ void AH_Pause_Destroy(void)
 		return;
 	}
 
-	// loop through 14 instances, destroy them
-	for (i = 0; i < AH_PAUSE_MEMBER_COUNT; i++)
+	// NOTE(aalhendi): Both targets use 32-bit addresses. An integer cursor
+	// preserves retail's reverse walk without forming a pointer before the array.
+	memberAddress = (u32)&ptrPauseObject->members[AH_PAUSE_MEMBER_COUNT - 1];
+	i = 0;
+	do
 	{
-		struct AHPauseMember *member = &ptrPauseObject->members[i];
-		INSTANCE_Death(member->inst);
-	}
+		INSTANCE_Death(((struct AHPauseMember *)memberAddress)->inst);
+		memberAddress -= sizeof(struct AHPauseMember);
+		i++;
+	} while (i < AH_PAUSE_MEMBER_COUNT);
 
 	// kill thread
-	D232.ptrPauseObject = 0;
-	ptrPauseObject->t->flags |= THREAD_FLAG_DEAD;
+	t = AH_PAUSE_OBJECT->t;
+	AH_PAUSE_OBJECT = 0;
+	t->flags |= THREAD_FLAG_DEAD;
 }
 
-void AH_Pause_Draw(s32 pageID, s32 posX)
+void AH_Pause_Draw(s32 pageID, s32 inputPosX)
 {
-	RECT r;
-	s32 levelID = D232.advPausePages[pageID].hubID;
-	s32 lngIndex = D232.advPausePages[pageID].titleLng;
+	// NOTE(aalhendi): Keep the title/arrow working coordinate separate from the
+	// saved short used by the sliding page and its reward instances.
+	register s32 posX CTR_PSX_REGISTER("$18") = inputPosX;
+	s16 i;
+	struct AHPauseMember *member;
+	s16 savedPosX = posX;
+	struct AHPausePage *page = &AH_PAUSE_PAGES[(s16)pageID];
+	s16 lngIndex = page->titleLng;
 
-	s32 relicTotal;
-	struct AdvProgress *adv = &sdata->advProgress;
-
-	if (lngIndex < 0)
+	s32 titleX = posX + AH_PAUSE_TITLE_CENTER_X;
+	if (page->titleLng < 0)
+		lngIndex = AH_LEVEL_METADATA[page->hubID].name_LNG;
+	DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[lngIndex], titleX, AH_PAUSE_TITLE_Y, FONT_BIG, JUSTIFY_CENTER | ORANGE);
 	{
-		lngIndex = data.metaDataLEV[levelID].name_LNG;
+		s32 colorIndex = AH_PAUSE_ARROW_COLOR_PRIMARY;
+		s16 titleWidth;
+		s32 titleHalfWidth;
+		if ((AH_FRAME_COUNTER & 4) == 0)
+			colorIndex = AH_PAUSE_ARROW_COLOR_SECONDARY;
+		titleWidth = DecalFont_GetLineWidth(GAME_LANGUAGE_STRINGS[lngIndex], FONT_BIG);
+		titleHalfWidth = titleWidth / 2;
+		posX = (s16)posX;
+		AH_DECALHUD_ARROW_2D((ICONGROUP_GETICONS(GAME_TRACKER->iconGroup[AH_PAUSE_ICON_GROUP_HUD]))[AH_PAUSE_HUD_ICON_PAGE_ARROW],
+		                     posX - titleHalfWidth + AH_PAUSE_ARROW_LEFT_X_OFFSET, AH_PAUSE_ARROW_Y, &GAME_TRACKER->backBuffer->primMem,
+		                     GAME_TRACKER->pushBuffer_UI.ptrOT, ((Color *)AH_COLOR_POINTERS[colorIndex])[0], ((Color *)AH_COLOR_POINTERS[colorIndex])[1],
+		                     ((Color *)AH_COLOR_POINTERS[colorIndex])[2], ((Color *)AH_COLOR_POINTERS[colorIndex])[3], 0, AH_PAUSE_ARROW_SCALE,
+		                     AH_PAUSE_ARROW_LEFT_ROT_Y);
+		AH_DECALHUD_ARROW_2D((ICONGROUP_GETICONS(GAME_TRACKER->iconGroup[AH_PAUSE_ICON_GROUP_HUD]))[AH_PAUSE_HUD_ICON_PAGE_ARROW],
+		                     titleHalfWidth + posX + AH_PAUSE_ARROW_RIGHT_X_OFFSET, AH_PAUSE_ARROW_Y, &GAME_TRACKER->backBuffer->primMem,
+		                     GAME_TRACKER->pushBuffer_UI.ptrOT, ((Color *)AH_COLOR_POINTERS[colorIndex])[0], ((Color *)AH_COLOR_POINTERS[colorIndex])[1],
+		                     ((Color *)AH_COLOR_POINTERS[colorIndex])[2], ((Color *)AH_COLOR_POINTERS[colorIndex])[3], 0, AH_PAUSE_ARROW_SCALE, 0);
 	}
-
-	char *titleString = sdata->lngStrings[lngIndex];
-
-	DecalFont_DrawLine(titleString, posX + AH_PAUSE_TITLE_CENTER_X, AH_PAUSE_TITLE_Y, FONT_BIG, JUSTIFY_CENTER | ORANGE);
-
-	s32 titleWidth = DecalFont_GetLineWidth(titleString, FONT_BIG);
-
-	s32 titleHalfWidth = titleWidth >> 1;
-
-	// orange/red
-	s32 colorIndex = AH_PAUSE_ARROW_COLOR_PRIMARY;
-	if ((sdata->frameCounter & 4) == 0)
+	member = AH_PAUSE_OBJECT->members;
+	for (i = 0; i < AH_PAUSE_MEMBER_COUNT; i++, member++)
 	{
-		colorIndex = AH_PAUSE_ARROW_COLOR_SECONDARY;
-	}
-
-	u32 *arrowColor = data.ptrColor[colorIndex];
-
-	struct GameTracker *gGT = sdata->gGT;
-	struct PrimMem *primMem = &gGT->backBuffer->primMem;
-
-	struct Icon **iconPtrArray = ICONGROUP_GETICONS(gGT->iconGroup[AH_PAUSE_ICON_GROUP_HUD]);
-
-	// Draw arrow pointing Left
-	DecalHUD_Arrow2D(iconPtrArray[AH_PAUSE_HUD_ICON_PAGE_ARROW], (posX - titleHalfWidth) + AH_PAUSE_ARROW_LEFT_X_OFFSET, AH_PAUSE_ARROW_Y,
-
-	                 primMem, gGT->pushBuffer_UI.ptrOT,
-
-	                 arrowColor[0], arrowColor[1], arrowColor[2], arrowColor[3],
-
-	                 0, AH_PAUSE_ARROW_SCALE, AH_PAUSE_ARROW_LEFT_ROT_Y);
-
-	// Draw arrow pointing Right
-	DecalHUD_Arrow2D(iconPtrArray[AH_PAUSE_HUD_ICON_PAGE_ARROW], (posX + titleHalfWidth) + AH_PAUSE_ARROW_RIGHT_X_OFFSET, AH_PAUSE_ARROW_Y,
-
-	                 primMem, gGT->pushBuffer_UI.ptrOT,
-
-	                 arrowColor[0], arrowColor[1], arrowColor[2], arrowColor[3],
-
-	                 0, AH_PAUSE_ARROW_SCALE, 0);
-
-	struct PauseObject *ptrPauseObject = D232.ptrPauseObject;
-
-	// loop through 14 instances
-	for (s32 i = 0; i < AH_PAUSE_MEMBER_COUNT; i++)
-	{
-		struct AHPauseMember *member = &ptrPauseObject->members[i];
-
-		// assume no awards won
-		member->unlockFlags &= ~AH_PAUSE_MEMBER_UNLOCKED;
-
-		// dont draw instance
 		member->iconIndex = AH_PAUSE_ICON_NONE;
+		member->unlockFlags &= ~AH_PAUSE_MEMBER_UNLOCKED;
 	}
-
-	s32 type = D232.advPausePages[pageID].type;
-
-	if (type == AH_PAUSE_PAGE_HUB)
+	member = AH_PAUSE_OBJECT->members;
+	switch (page->type)
 	{
-		s32 hubID = levelID - GEM_STONE_VALLEY;
-		s32 rowIndex = 0;
-		s32 pauseIndex = 0;
-		s32 crystalID = -1;
-		s32 textX = AH_PAUSE_HUB_TEXT_X;
-		s32 iconX = AH_PAUSE_HUB_ICON_X;
-		s32 rowBase = 0;
-
+	case AH_PAUSE_PAGE_HUB:
+	{
+		s16 hubID;
+		s16 crystalID;
+		s16 iconX;
+		s16 textX;
+		s16 rowY = 0;
+		s16 trackID;
+		crystalID = -1;
+		hubID = page->hubID - GEM_STONE_VALLEY;
+		iconX = AH_PAUSE_HUB_ICON_X;
+		textX = AH_PAUSE_HUB_TEXT_X;
 		if (hubID == 0)
 		{
-			textX = AH_PAUSE_HUB_FIRST_TEXT_X;
 			iconX = AH_PAUSE_HUB_FIRST_ICON_X;
-			rowBase = AH_PAUSE_HUB_FIRST_ROW_BASE;
+			rowY = AH_PAUSE_HUB_FIRST_ROW_BASE;
+			textX = AH_PAUSE_HUB_FIRST_TEXT_X;
 		}
-
-		for (s32 trackID = 0; trackID < AH_PAUSE_LEVEL_SCAN_COUNT; trackID++)
+		for (trackID = 0; trackID < AH_PAUSE_LEVEL_SCAN_COUNT; trackID++)
 		{
-			struct MetaDataLEV *mdLev = &data.metaDataLEV[trackID];
-
-			if (mdLev->hubID != hubID)
-			{
+			if (AH_LEVEL_METADATA[trackID].hubID != hubID)
 				continue;
-			}
-
 			if (trackID >= AH_PAUSE_FIRST_CRYSTAL_LEVEL)
 			{
 				crystalID = trackID;
 				continue;
 			}
-
-			s32 rowY = rowBase + rowIndex * AH_PAUSE_ROW_STEP_Y;
-			rowIndex++;
-
-			DecalFont_DrawLine(sdata->lngStrings[mdLev->name_LNG], posX + textX, rowY + AH_PAUSE_ROW_TEXT_Y, FONT_BIG, 0);
-
+			// Set the row's rewards before positioning them through the UI helpers.
 			if (hubID != 0)
 			{
-				for (s32 j = 0; j < AH_PAUSE_HUB_REWARD_ICON_COUNT; j++)
-				{
-					struct AHPauseMember *member = &ptrPauseObject->members[pauseIndex + j];
-					struct Instance *inst = member->inst;
-
-					// Remove SelectProfile with regular UI variant
-					inst->matrix.t[0] = UI_ConvertX_2(posX + iconX + j * AH_PAUSE_ROW_ICON_STEP_X, AH_PAUSE_UI_COORD_SCALE);
-
-					inst->matrix.t[1] = UI_ConvertY_2(rowY + AH_PAUSE_ROW_ICON_Y, AH_PAUSE_UI_COORD_SCALE);
-				}
-
-				struct AHPauseMember *member = &ptrPauseObject->members[pauseIndex];
 				member->iconIndex = AH_PAUSE_ICON_TROPHY;
-				member->unlockFlags |= CHECK_ADV_BIT(adv->rewards, trackID + ADV_REWARD_FIRST_TROPHY);
-				pauseIndex++;
+				if (CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, trackID + ADV_REWARD_FIRST_TROPHY))
+					member->unlockFlags |= AH_PAUSE_MEMBER_UNLOCKED;
+				member++;
 			}
-			else
-			{
-				struct AHPauseMember *member = &ptrPauseObject->members[pauseIndex];
-				struct Instance *inst = member->inst;
-
-				// Remove SelectProfile with regular UI variant
-				inst->matrix.t[0] = UI_ConvertX_2(posX + iconX + AH_PAUSE_ROW_ICON_STEP_X, AH_PAUSE_UI_COORD_SCALE);
-
-				inst->matrix.t[1] = UI_ConvertY_2(rowY + AH_PAUSE_ROW_ICON_Y, AH_PAUSE_UI_COORD_SCALE);
-			}
-
-			struct AHPauseMember *member = &ptrPauseObject->members[pauseIndex];
-
-			if (CHECK_ADV_BIT(adv->rewards, trackID + ADV_REWARD_FIRST_PLATINUM_RELIC))
+			if (CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, trackID + ADV_REWARD_FIRST_PLATINUM_RELIC))
 			{
 				member->unlockFlags |= AH_PAUSE_MEMBER_UNLOCKED;
 				member->iconIndex = AH_PAUSE_ICON_PLATINUM_RELIC;
 			}
-			else if (CHECK_ADV_BIT(adv->rewards, trackID + ADV_REWARD_FIRST_GOLD_RELIC))
+			else if (CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, trackID + ADV_REWARD_FIRST_GOLD_RELIC))
 			{
 				member->unlockFlags |= AH_PAUSE_MEMBER_UNLOCKED;
 				member->iconIndex = AH_PAUSE_ICON_GOLD_RELIC;
@@ -289,414 +235,356 @@ void AH_Pause_Draw(s32 pageID, s32 posX)
 			else
 			{
 				member->iconIndex = AH_PAUSE_ICON_SAPPHIRE_RELIC;
-				member->unlockFlags |= CHECK_ADV_BIT(adv->rewards, trackID + ADV_REWARD_FIRST_SAPPHIRE_RELIC);
+				if (CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, trackID + ADV_REWARD_FIRST_SAPPHIRE_RELIC))
+					member->unlockFlags |= AH_PAUSE_MEMBER_UNLOCKED;
 			}
-
-			pauseIndex++;
-
+			member++;
 			if (hubID != 0)
 			{
-				member = &ptrPauseObject->members[pauseIndex];
-				member->iconIndex = AH_PAUSE_ICON_FIRST_TOKEN + mdLev->ctrTokenGroupID;
-				member->unlockFlags |= CHECK_ADV_BIT(adv->rewards, trackID + ADV_REWARD_FIRST_CTR_TOKEN);
-				pauseIndex++;
+				member->iconIndex = AH_PAUSE_ICON_FIRST_TOKEN + AH_LEVEL_METADATA[trackID].ctrTokenGroupID;
+				if (CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, trackID + ADV_REWARD_FIRST_CTR_TOKEN))
+					member->unlockFlags |= AH_PAUSE_MEMBER_UNLOCKED;
+				member++;
+				for (i = 0; i < AH_PAUSE_HUB_REWARD_ICON_COUNT; i++)
+				{
+					Vec3 *translation = (Vec3 *)member[i - AH_PAUSE_HUB_REWARD_ICON_COUNT].inst->matrix.t;
+					translation->x = SelectProfile_UI_ConvertX(savedPosX + iconX + i * AH_PAUSE_ROW_ICON_STEP_X, AH_PAUSE_UI_COORD_SCALE);
+					translation->y = SelectProfile_UI_ConvertY(rowY + AH_PAUSE_ROW_ICON_Y, AH_PAUSE_UI_COORD_SCALE);
+				}
 			}
+			else
+			{
+				Vec3 *translation = (Vec3 *)member[-1].inst->matrix.t;
+				translation->x = SelectProfile_UI_ConvertX(savedPosX + iconX + AH_PAUSE_ROW_ICON_STEP_X, AH_PAUSE_UI_COORD_SCALE);
+				translation->y = SelectProfile_UI_ConvertY(rowY + AH_PAUSE_ROW_ICON_Y, AH_PAUSE_UI_COORD_SCALE);
+			}
+			DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[AH_LEVEL_METADATA[trackID].name_LNG], savedPosX + textX, rowY + AH_PAUSE_ROW_TEXT_Y, FONT_BIG, 0);
+			rowY += AH_PAUSE_ROW_STEP_Y;
 		}
-
-		s32 bossRowY = rowBase + rowIndex * AH_PAUSE_ROW_STEP_Y;
-		s32 bossID = D232.advPausePages[pageID].characterID_Boss;
-
-		DecalFont_DrawLine(sdata->lngStrings[data.MetaDataCharacters[bossID].name_LNG_long], posX + textX, bossRowY + AH_PAUSE_ROW_TEXT_Y, FONT_BIG, WHITE);
-
+		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[GAME_CHARACTER_METADATA[page->characterID_Boss].name_LNG_long], savedPosX + textX, rowY + AH_PAUSE_ROW_TEXT_Y,
+		                   FONT_BIG, WHITE);
+		if (hubID != 0)
+		{
+			Vec3 *translation;
+			member->iconIndex = AH_PAUSE_ICON_BOSS_KEY;
+			if (CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, AH_BOSS_REWARDS[hubID]))
+				member->unlockFlags |= AH_PAUSE_MEMBER_UNLOCKED;
+			translation = (Vec3 *)member->inst->matrix.t;
+			translation->x = SelectProfile_UI_ConvertX(savedPosX + iconX + AH_PAUSE_ROW_ICON_STEP_X, AH_PAUSE_UI_COORD_SCALE);
+			translation->y = SelectProfile_UI_ConvertY(rowY + AH_PAUSE_ROW_ICON_Y, AH_PAUSE_UI_COORD_SCALE);
+			member++;
+		}
+		else
+		{
+			s16 colorIndex = AH_PAUSE_BOSS_STAR_LOCKED_COLOR;
+			if (CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, AH_BOSS_REWARDS[0]))
+				colorIndex = AH_PAUSE_BOSS_STAR_UNLOCKED_COLOR;
+			AH_DECALHUD_DRAW_POLY_GT4((ICONGROUP_GETICONS(GAME_TRACKER->iconGroup[AH_PAUSE_ICON_GROUP_MISC]))[AH_PAUSE_HUD_ICON_BOSS_STAR],
+			                          savedPosX + iconX + AH_PAUSE_BOSS_STAR_X_OFFSET, rowY + AH_PAUSE_BOSS_STAR_Y_OFFSET, &GAME_TRACKER->backBuffer->primMem,
+			                          GAME_TRACKER->pushBuffer_UI.ptrOT, ((Color *)AH_COLOR_POINTERS[colorIndex])[0],
+			                          ((Color *)AH_COLOR_POINTERS[colorIndex])[1], ((Color *)AH_COLOR_POINTERS[colorIndex])[2],
+			                          ((Color *)AH_COLOR_POINTERS[colorIndex])[3], 0, AH_PAUSE_ARROW_SCALE);
+		}
+		if (crystalID >= 0)
+		{
+			Vec3 *translation;
+			s16 crystalRowY = rowY + AH_PAUSE_ROW_STEP_Y;
+			// NOTE(aalhendi): Both draw calls retain this short row coordinate.
+			CTR_PSX_KEEP_VALUE_RELAXED(crystalRowY);
+			DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[AH_LEVEL_METADATA[crystalID].name_LNG], savedPosX + textX, crystalRowY + AH_PAUSE_ROW_TEXT_Y, FONT_BIG,
+			                   PERIWINKLE);
+			member->iconIndex = AH_PAUSE_ICON_FIRST_TOKEN + AH_LEVEL_METADATA[crystalID].ctrTokenGroupID;
+			if (CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, hubID + ADV_REWARD_PURPLE_TOKEN_HUB_ID_BASE))
+				member->unlockFlags |= AH_PAUSE_MEMBER_UNLOCKED;
+			translation = (Vec3 *)member->inst->matrix.t;
+			translation->x = SelectProfile_UI_ConvertX(savedPosX + iconX + AH_PAUSE_ROW_ICON_STEP_X, AH_PAUSE_UI_COORD_SCALE);
+			translation->y = SelectProfile_UI_ConvertY(crystalRowY + AH_PAUSE_ROW_ICON_Y, AH_PAUSE_UI_COORD_SCALE);
+			member++;
+		}
 		if (hubID == 0)
 		{
-			// === Draw Star ===
-
-			// black
-			s32 bossStarColor = AH_PAUSE_BOSS_STAR_LOCKED_COLOR;
-
-			// set to alternate color slot (if beaten oxide at least once)
-			if (CHECK_ADV_BIT(adv->rewards, data.BeatBossPrize[0]))
+			for (i = 0; i < AH_PAUSE_GEM_ICON_COUNT; i++, member++)
 			{
-				bossStarColor = AH_PAUSE_BOSS_STAR_UNLOCKED_COLOR;
-			}
-
-			u32 *starColor = data.ptrColor[bossStarColor];
-
-			struct Icon **iconPtrArray = ICONGROUP_GETICONS(gGT->iconGroup[AH_PAUSE_ICON_GROUP_MISC]);
-
-			DecalHUD_DrawPolyGT4(iconPtrArray[AH_PAUSE_HUD_ICON_BOSS_STAR],
-
-			                     posX + iconX + AH_PAUSE_BOSS_STAR_X_OFFSET, bossRowY + AH_PAUSE_BOSS_STAR_Y_OFFSET,
-
-			                     &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT,
-
-			                     starColor[0], starColor[1], starColor[2], starColor[3],
-
-			                     0, AH_PAUSE_ARROW_SCALE);
-
-			pauseIndex = rowIndex;
-
-			for (s32 i = 0; i < AH_PAUSE_GEM_ICON_COUNT; i++)
-			{
-				struct AHPauseMember *member = &ptrPauseObject->members[pauseIndex + i];
-				struct Instance *inst = member->inst;
-
-				// Remove SelectProfile with regular UI variant
-				inst->matrix.t[0] = UI_ConvertX_2(posX + AH_PAUSE_TITLE_CENTER_X + (i - AH_PAUSE_GEM_PAGE_CENTER_INDEX) * AH_PAUSE_GEM_PAGE_ICON_SPACING_X,
-				                                  AH_PAUSE_UI_COORD_SCALE);
-
-				inst->matrix.t[1] = UI_ConvertY_2(((i & 1) << AH_PAUSE_GEM_PAGE_Y_ALT_SHIFT) | AH_PAUSE_GEM_PAGE_Y_BASE, AH_PAUSE_UI_COORD_SCALE);
-
-				// gem color
+				Vec3 *translation;
 				member->iconIndex = AH_PAUSE_ICON_FIRST_GEM + i;
-
-				// unlock gem
-				member->unlockFlags |= CHECK_ADV_BIT(adv->rewards, i + ADV_REWARD_FIRST_GEM);
+				if (CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, i + ADV_REWARD_FIRST_GEM))
+					member->unlockFlags |= AH_PAUSE_MEMBER_UNLOCKED;
+				translation = (Vec3 *)member->inst->matrix.t;
+				translation->x = SelectProfile_UI_ConvertX(
+				    savedPosX + AH_PAUSE_TITLE_CENTER_X + (i - AH_PAUSE_GEM_PAGE_CENTER_INDEX) * AH_PAUSE_GEM_PAGE_ICON_SPACING_X, AH_PAUSE_UI_COORD_SCALE);
+				translation->y = SelectProfile_UI_ConvertY(((i & 1) << AH_PAUSE_GEM_PAGE_Y_ALT_SHIFT) | AH_PAUSE_GEM_PAGE_Y_BASE, AH_PAUSE_UI_COORD_SCALE);
 			}
 		}
-		else
-		{
-			struct AHPauseMember *member = &ptrPauseObject->members[pauseIndex];
-			struct Instance *inst = member->inst;
-
-			// Remove SelectProfile with regular UI variant
-			inst->matrix.t[0] = UI_ConvertX_2(posX + iconX + AH_PAUSE_ROW_ICON_STEP_X, AH_PAUSE_UI_COORD_SCALE);
-
-			inst->matrix.t[1] = UI_ConvertY_2(bossRowY + AH_PAUSE_ROW_ICON_Y, AH_PAUSE_UI_COORD_SCALE);
-
-			member->iconIndex = AH_PAUSE_ICON_BOSS_KEY;
-			member->unlockFlags |= CHECK_ADV_BIT(adv->rewards, data.BeatBossPrize[hubID]);
-			pauseIndex++;
-
-			if (crystalID >= 0)
-			{
-				struct MetaDataLEV *mdLev = &data.metaDataLEV[crystalID];
-				s32 crystalRowY = bossRowY + AH_PAUSE_ROW_STEP_Y;
-
-				DecalFont_DrawLine(sdata->lngStrings[mdLev->name_LNG], posX + textX, crystalRowY + AH_PAUSE_ROW_TEXT_Y, FONT_BIG, PERIWINKLE);
-
-				member = &ptrPauseObject->members[pauseIndex];
-				inst = member->inst;
-
-				// Remove SelectProfile with regular UI variant
-				inst->matrix.t[0] = UI_ConvertX_2(posX + iconX + AH_PAUSE_ROW_ICON_STEP_X, AH_PAUSE_UI_COORD_SCALE);
-
-				inst->matrix.t[1] = UI_ConvertY_2(crystalRowY + AH_PAUSE_ROW_ICON_Y, AH_PAUSE_UI_COORD_SCALE);
-
-				member->iconIndex = AH_PAUSE_ICON_FIRST_TOKEN + mdLev->ctrTokenGroupID;
-				member->unlockFlags |= CHECK_ADV_BIT(adv->rewards, hubID + ADV_REWARD_PURPLE_TOKEN_HUB_ID_BASE);
-			}
-		}
+		break;
 	}
-
-	else if (type == AH_PAUSE_PAGE_TOKEN_TOTALS)
+	case AH_PAUSE_PAGE_TOKEN_TOTALS:
 	{
-		s16 tokenTotals[AH_PAUSE_TOKEN_ICON_COUNT] = {0, 0, 0, 0, 0};
-
-		for (s32 i = 0; i < AH_PAUSE_CTR_TOKEN_TRACK_COUNT; i++)
+		s16 totals[AH_PAUSE_TOKEN_ICON_COUNT];
+		for (i = 0; i < AH_PAUSE_TOKEN_ICON_COUNT; i++)
+			totals[i] = 0;
+		for (i = 0; i < AH_PAUSE_CTR_TOKEN_TRACK_COUNT; i++)
+			if (CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, i + ADV_REWARD_FIRST_CTR_TOKEN))
+				totals[AH_LEVEL_METADATA[i].ctrTokenGroupID]++;
+		for (i = 0; i < AH_PAUSE_PURPLE_TOKEN_COUNT; i++)
+			if (CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, i + ADV_REWARD_FIRST_PURPLE_TOKEN))
+				totals[AH_PAUSE_PURPLE_TOKEN_INDEX]++;
+		for (i = 0; i < AH_PAUSE_TOKEN_ICON_COUNT; i++, member++)
 		{
-			if (CHECK_ADV_BIT(adv->rewards, i + ADV_REWARD_FIRST_CTR_TOKEN))
-			{
-				tokenTotals[data.metaDataLEV[i].ctrTokenGroupID]++;
-			}
-		}
-
-		// NOTE(aalhendi): Purple tokens are stored in a separate reward bit range not in ctrTokenGroupID.
-		for (s32 i = 0; i < AH_PAUSE_PURPLE_TOKEN_COUNT; i++)
-		{
-			if (CHECK_ADV_BIT(adv->rewards, i + ADV_REWARD_FIRST_PURPLE_TOKEN))
-			{
-				tokenTotals[AH_PAUSE_PURPLE_TOKEN_INDEX]++;
-			}
-		}
-
-		for (s32 i = 0; i < AH_PAUSE_TOKEN_ICON_COUNT; i++)
-		{
-			s16 instPosX = posX + AH_PAUSE_TOKEN_TOTAL_X_BASE + ((i - AH_PAUSE_TOKEN_TOTAL_CENTER_INDEX) * AH_PAUSE_TOKEN_TOTAL_SPACING_X);
-			s16 instPosY = (i & 1) * AH_PAUSE_TOKEN_TOTAL_ROW_Y_STEP;
-			struct AHPauseMember *member = &ptrPauseObject->members[i];
-
+			Vec3 *translation;
+			s16 instPosX = savedPosX + AH_PAUSE_TOKEN_TOTAL_X_BASE + (i - AH_PAUSE_TOKEN_TOTAL_CENTER_INDEX) * AH_PAUSE_TOKEN_TOTAL_SPACING_X;
+			s32 instPosY = (i & 1) * AH_PAUSE_TOKEN_TOTAL_ROW_Y_STEP;
 			member->iconIndex = AH_PAUSE_ICON_FIRST_TOKEN + i;
 			member->unlockFlags |= AH_PAUSE_MEMBER_UNLOCKED;
-
-			struct Instance *inst = member->inst;
-
-			// Remove SelectProfile with regular UI variant
-			inst->matrix.t[0] = UI_ConvertX_2(instPosX, AH_PAUSE_UI_COORD_SCALE);
-
-			inst->matrix.t[1] = UI_ConvertY_2(instPosY + AH_PAUSE_TOKEN_TOTAL_ICON_Y, AH_PAUSE_UI_COORD_SCALE);
-
-			SelectProfile_PrintInteger(tokenTotals[i], instPosX + AH_PAUSE_TOKEN_TOTAL_NUMBER_X, instPosY + AH_PAUSE_TOKEN_TOTAL_NUMBER_Y, 0, 0);
-
-			s32 strX = AH_PAUSE_X_GLYPH; //"X\0\0" + nullterm
-			DecalFont_DrawLine((char *)&strX, instPosX + AH_PAUSE_TOKEN_TOTAL_X_GLYPH_X, instPosY + AH_PAUSE_TOKEN_TOTAL_X_GLYPH_Y, FONT_SMALL, 0);
+			translation = (Vec3 *)member->inst->matrix.t;
+			translation->x = SelectProfile_UI_ConvertX(instPosX, AH_PAUSE_UI_COORD_SCALE);
+			translation->y = SelectProfile_UI_ConvertY(instPosY + AH_PAUSE_TOKEN_TOTAL_ICON_Y, AH_PAUSE_UI_COORD_SCALE);
+			SelectProfile_PrintInteger(totals[i], (s16)(instPosX + AH_PAUSE_TOKEN_TOTAL_NUMBER_X), instPosY + AH_PAUSE_TOKEN_TOTAL_NUMBER_Y, 0, 0);
+			DecalFont_DrawLine(AH_PAUSE_X_GLYPH, instPosX + AH_PAUSE_TOKEN_TOTAL_X_GLYPH_X, instPosY + AH_PAUSE_TOKEN_TOTAL_X_GLYPH_Y, FONT_SMALL, 0);
 		}
+		break;
 	}
-
-	else if (type == AH_PAUSE_PAGE_RELIC_TOTALS)
+	case AH_PAUSE_PAGE_RELIC_TOTALS:
 	{
-		char totalString[32];
-		s16 relicTotals[AH_PAUSE_RELIC_ICON_COUNT] = {0, 0, 0};
-
-		for (s32 i = 0; i < AH_PAUSE_RELIC_TRACK_COUNT; i++)
+		s16 totals[AH_PAUSE_RELIC_ICON_COUNT];
+		char totalString[100];
+		for (i = 0; i < AH_PAUSE_RELIC_ICON_COUNT; i++)
+			totals[i] = 0;
+		for (i = 0; i < AH_PAUSE_RELIC_TRACK_COUNT; i++)
 		{
-			// platinum
-			if (CHECK_ADV_BIT(adv->rewards, i + ADV_REWARD_FIRST_PLATINUM_RELIC))
-			{
-				relicTotals[2]++;
-			}
-			// gold
-			else if (CHECK_ADV_BIT(adv->rewards, i + ADV_REWARD_FIRST_GOLD_RELIC))
-			{
-				relicTotals[1]++;
-			}
-			// sapphire
-			else if (CHECK_ADV_BIT(adv->rewards, i + ADV_REWARD_FIRST_SAPPHIRE_RELIC))
-			{
-				relicTotals[0]++;
-			}
+			if (CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, i + ADV_REWARD_FIRST_PLATINUM_RELIC))
+				totals[2]++;
+			else if (CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, i + ADV_REWARD_FIRST_GOLD_RELIC))
+				totals[1]++;
+			else if (CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, i + ADV_REWARD_FIRST_SAPPHIRE_RELIC))
+				totals[0]++;
 		}
-
-		for (s32 i = 0; i < AH_PAUSE_RELIC_ICON_COUNT; i++)
+		for (i = 0; i < AH_PAUSE_RELIC_ICON_COUNT; i++, member++)
 		{
-			s16 instPosX = posX + AH_PAUSE_RELIC_TOTAL_X_BASE + ((i - AH_PAUSE_RELIC_TOTAL_CENTER_INDEX) * AH_PAUSE_RELIC_TOTAL_SPACING_X);
-			struct AHPauseMember *member = &ptrPauseObject->members[i];
-
+			Vec3 *translation;
+			s16 instPosX = savedPosX + AH_PAUSE_RELIC_TOTAL_X_BASE + (i - AH_PAUSE_RELIC_TOTAL_CENTER_INDEX) * AH_PAUSE_RELIC_TOTAL_SPACING_X;
 			member->iconIndex = AH_PAUSE_ICON_SAPPHIRE_RELIC + i;
 			member->unlockFlags |= AH_PAUSE_MEMBER_UNLOCKED;
-
-			struct Instance *inst = member->inst;
-
-			// Remove SelectProfile with regular UI variant
-			inst->matrix.t[0] = UI_ConvertX_2(instPosX, AH_PAUSE_UI_COORD_SCALE);
-
-			inst->matrix.t[1] = UI_ConvertY_2(AH_PAUSE_RELIC_TOTAL_Y, AH_PAUSE_UI_COORD_SCALE);
-
-			SelectProfile_PrintInteger(relicTotals[i], instPosX + AH_PAUSE_RELIC_TOTAL_NUMBER_X, AH_PAUSE_RELIC_TOTAL_Y, 0, 0);
-
-			s32 strX = AH_PAUSE_X_GLYPH; //"X\0\0" + nullterm
-			DecalFont_DrawLine((char *)&strX, instPosX + AH_PAUSE_RELIC_TOTAL_X_GLYPH_X, AH_PAUSE_RELIC_TOTAL_X_GLYPH_Y, FONT_SMALL, 0);
+			translation = (Vec3 *)member->inst->matrix.t;
+			translation->x = SelectProfile_UI_ConvertX(instPosX, AH_PAUSE_UI_COORD_SCALE);
+			translation->y = SelectProfile_UI_ConvertY(AH_PAUSE_RELIC_TOTAL_Y, AH_PAUSE_UI_COORD_SCALE);
+			SelectProfile_PrintInteger(totals[i], (s16)(instPosX + AH_PAUSE_RELIC_TOTAL_NUMBER_X), AH_PAUSE_RELIC_TOTAL_Y, 0, 0);
+			DecalFont_DrawLine(AH_PAUSE_X_GLYPH, instPosX + AH_PAUSE_RELIC_TOTAL_X_GLYPH_X, AH_PAUSE_RELIC_TOTAL_X_GLYPH_Y, FONT_SMALL, 0);
 		}
-
-		relicTotal = relicTotals[0] + relicTotals[1] + relicTotals[2];
-
-		sprintf(totalString, "%s %d", sdata->lngStrings[LNG_TOTAL], relicTotal);
-
-		DecalFont_DrawLine(totalString, posX + AH_PAUSE_TITLE_CENTER_X, AH_PAUSE_TOTAL_TEXT_Y, FONT_BIG, JUSTIFY_CENTER | ORANGE);
+		sprintf(totalString, AH_PAUSE_TOTAL_FORMAT, GAME_LANGUAGE_STRINGS[LNG_TOTAL], totals[0] + totals[1] + totals[2]);
+		DecalFont_DrawLine(totalString, savedPosX + AH_PAUSE_TITLE_CENTER_X, AH_PAUSE_TOTAL_TEXT_Y, FONT_BIG, JUSTIFY_CENTER | ORANGE);
+		break;
 	}
-
-	s32 titleFrameTextWidth = DecalFont_GetLineWidth(titleString, FONT_BIG);
-
-	s32 titleFrameWidth = titleFrameTextWidth + AH_PAUSE_TITLE_FRAME_PAD_W;
-	if ((s16)titleFrameTextWidth < AH_PAUSE_TITLE_FRAME_MIN_TEXT_W)
-	{
-		titleFrameWidth = AH_PAUSE_TITLE_FRAME_W;
 	}
-
-	titleHalfWidth = titleFrameWidth >> 1;
-
-	r.x = AH_PAUSE_OUTER_RECT_CENTER_X - titleHalfWidth;
-	r.y = AH_PAUSE_OUTER_RECT_Y;
-	r.w = (s16)titleFrameWidth - AH_PAUSE_TITLE_FRAME_PAD_W;
-	r.h = AH_PAUSE_OUTER_RECT_H;
-
-	Color color;
-	ColorCode_SetPacked(&color, sdata->battleSetup_Color_UI_1);
-	u32 *ot = gGT->backBuffer->otMem.uiOT;
-	RECTMENU_DrawOuterRect_Edge(&r, color, AH_PAUSE_OUTER_EDGE_ALPHA, ot);
-
-	r.x = AH_PAUSE_INNER_RECT_CENTER_X - titleHalfWidth;
-	r.y = AH_PAUSE_INNER_RECT_Y;
-	r.w = (s16)titleFrameWidth;
-	r.h = AH_PAUSE_INNER_RECT_H;
-
-	// Draw 2D Menu rectangle background
-	RECTMENU_DrawInnerRect(&r, AH_PAUSE_INNER_RECT_COLOR, &ot[AH_PAUSE_INNER_RECT_OT_OFFSET]);
-
-	for (s32 i = 0; i < AH_PAUSE_MEMBER_COUNT; i++)
 	{
-		struct AHPauseMember *member = &ptrPauseObject->members[i];
-		s32 index = member->iconIndex;
-
-		struct Instance *inst = member->inst;
-		SVec3 *rot = &member->rot;
-
-		if (index < 0)
-		{
-			// make invisible
-			inst->flags |= HIDE_MODEL;
-		}
+		s32 width = DecalFont_GetLineWidth(GAME_LANGUAGE_STRINGS[lngIndex], FONT_BIG);
+		s32 halfWidth;
+		RECT r;
+		if ((s16)width < AH_PAUSE_TITLE_FRAME_MIN_TEXT_W)
+			width = AH_PAUSE_TITLE_FRAME_W;
 		else
+			width += AH_PAUSE_TITLE_FRAME_PAD_W;
+		halfWidth = (s16)width / 2;
+		r.x = AH_PAUSE_OUTER_RECT_CENTER_X - halfWidth;
+		r.y = AH_PAUSE_OUTER_RECT_Y;
+		r.w = width - AH_PAUSE_TITLE_FRAME_PAD_W;
+		r.h = AH_PAUSE_OUTER_RECT_H;
+		AH_DrawMenuEdge(&r, GAME_TRACKER->backBuffer->otMem.uiOT);
+		r.x = AH_PAUSE_INNER_RECT_CENTER_X - halfWidth;
+		r.y = AH_PAUSE_INNER_RECT_Y;
+		r.w = width;
+		r.h = AH_PAUSE_INNER_RECT_H;
+		RECTMENU_DrawInnerRect(&r, AH_PAUSE_INNER_RECT_COLOR, &GAME_TRACKER->backBuffer->otMem.uiOT[AH_PAUSE_INNER_RECT_OT_OFFSET]);
+	}
+	member = AH_PAUSE_OBJECT->members;
+	for (i = 0; i < AH_PAUSE_MEMBER_COUNT; i++, member++)
+	{
+		s16 index = member->iconIndex;
+		struct Instance *inst = member->inst;
+		if (index >= 0)
 		{
+			struct AHPauseInstance *info = &AH_PAUSE_ICONS[index];
+			s16 scale;
+			register s32 lockedAlpha CTR_PSX_REGISTER("$2");
 			inst->flags &= ~AH_PAUSE_INSTANCE_DYNAMIC_FLAGS;
-			inst->flags |= D232.advPauseInst[index].instFlags;
-
-			if ((member->unlockFlags & AH_PAUSE_MEMBER_UNLOCKED) == 0)
+			inst->flags |= info->instFlags;
+			if (member->unlockFlags & AH_PAUSE_MEMBER_UNLOCKED)
 			{
+				inst->alphaScale = 0;
+				inst->colorRGBA = INST_PackColorRGB(((u8 *)&info->color)[0], ((u8 *)&info->color)[1], ((u8 *)&info->color)[2]);
+			}
+			else
+			{
+				// NOTE(aalhendi): The locked path rereads the flags and reuses the
+				// branch's temporary for alpha; do not fold it into the earlier mask.
+				lockedAlpha = AH_PAUSE_LOCKED_ALPHA;
+				CTR_PSX_DEPEND_MEMORY(&inst->flags, lockedAlpha);
 				inst->flags &= ~AH_PAUSE_INSTANCE_DYNAMIC_FLAGS;
 				inst->colorRGBA = 0;
-				inst->alphaScale = AH_PAUSE_LOCKED_ALPHA;
+				inst->alphaScale = lockedAlpha;
 			}
-
+			if (page->type != AH_PAUSE_PAGE_TOKEN_TOTALS)
+			{
+				if (page->type == AH_PAUSE_PAGE_HUB)
+					scale = info->scale;
+				else
+					scale = info->scale * (1 << AH_PAUSE_NON_HUB_SCALE_SHIFT);
+			}
 			else
-			{
-				u8 *ptrColor = (u8 *)&D232.advPauseInst[index].color;
-
-				inst->alphaScale = 0;
-				inst->colorRGBA = INST_PackColorRGB(ptrColor[0], ptrColor[1], ptrColor[2]);
-			}
-
-			s32 scale = D232.advPauseInst[index].scale;
-
-			if (type == AH_PAUSE_PAGE_TOKEN_TOTALS)
-			{
 				scale = AH_PAUSE_TOKEN_TOTAL_SCALE;
-			}
-			else if (type != AH_PAUSE_PAGE_HUB)
-			{
-				scale = scale << AH_PAUSE_NON_HUB_SCALE_SHIFT;
-			}
-
-			inst->scale.x = scale;
-			inst->scale.y = scale;
 			inst->scale.z = scale;
-
-			s32 modelID = D232.advPauseInst[index].modelID;
-
-			inst->model = gGT->modelPtr[modelID];
-
-			ConvertRotToMatrix(&inst->matrix, rot);
-
+			inst->scale.y = scale;
+			inst->scale.x = scale;
+			inst->model = GAME_TRACKER->modelPtr[info->modelID];
+			ConvertRotToMatrix(&inst->matrix, &member->rot);
 			if ((inst->flags & (DRAW_BILLBOARD | DRAW_TRANSPARENT | USE_SPECULAR_LIGHT)) == USE_SPECULAR_LIGHT)
 			{
-				SVec3 *specArr = &D232.advPauseInst[index].lightDir;
-
-				Vector_SpecLightSpin2D(inst, rot, specArr);
+				SVec3 direction;
+				// Lighting receives a snapshot, not the mutable icon-table entry.
+				direction.x = info->lightDir.x;
+				direction.y = info->lightDir.y;
+				direction.z = info->lightDir.z;
+				Vector_SpecLightSpin2D(inst, &member->rot, &direction);
 			}
-
 			else
-			{
 				inst->colorRGBA = 0;
-			}
 		}
-
-		rot->y = inst->matrix.t[0] * AH_PAUSE_MODEL_ROT_X_WEIGHT + inst->matrix.t[1] * AH_PAUSE_MODEL_ROT_Y_WEIGHT +
-		         sdata->frameCounter * AH_PAUSE_MODEL_ROT_FRAME_WEIGHT;
-
-		rot->y &= AH_PAUSE_MODEL_ROT_MASK;
+		else
+			inst->flags |= HIDE_MODEL;
+		// NOTE(aalhendi): Retail stores the wrapping 16-bit angle, not a 12-bit mask.
+		member->rot.y = (u32)member->inst->matrix.t[0] * AH_PAUSE_MODEL_ROT_X_WEIGHT + (u32)member->inst->matrix.t[1] * AH_PAUSE_MODEL_ROT_Y_WEIGHT +
+		                (s16)AH_FRAME_COUNTER * AH_PAUSE_MODEL_ROT_FRAME_WEIGHT;
 	}
 }
 
 void AH_Pause_Update(void)
 {
-	struct GameTracker *gGT = sdata->gGT;
+	s32 tap;
+	s32 pageID;
+	s32 posX;
 
-	if (D232.ptrPauseObject == 0)
+	if (AH_PAUSE_OBJECT == 0)
 	{
-		struct PauseObject *ptrPauseObject = &D232.pauseObject;
+		struct Thread *t;
+		struct PauseObject *ptrPauseObject;
 
-		D232.pausePageTimer = 0;
-		D232.pausePageCurr = gGT->levelID - GEM_STONE_VALLEY;
-		gGT->advPausePage = D232.pausePageCurr;
+		AH_PAUSE_TIMER = 0;
+		GAME_TRACKER->advPausePage = AH_PAUSE_CURRENT_PAGE = GAME_TRACKER->levelID - GEM_STONE_VALLEY;
 
 		// 0 = size
 		// 0 = no relation to param4
 		// 0x300 = SmallStackPool
 		// 0xd = "other" thread bucket
-		struct Thread *t = PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(0, NONE, SMALL, OTHER), 0, R232.s_PAUSE, 0);
+		t = PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(0, NONE, SMALL, OTHER), 0, AH_PAUSE_THREAD_NAME, 0);
 
-		D232.ptrPauseObject = ptrPauseObject;
+		ptrPauseObject = &AH_PAUSE_STORAGE;
+		AH_PAUSE_OBJECT = ptrPauseObject;
 		ptrPauseObject->t = t;
 
-		for (s32 i = 0; i < AH_PAUSE_MEMBER_COUNT; i++)
 		{
-			struct AHPauseMember *member = &ptrPauseObject->members[i];
-			struct Instance *inst = INSTANCE_Birth3D(gGT->modelPtr[STATIC_GEM], R232.s_pause, t);
-
-			member->iconIndex = AH_PAUSE_ICON_NONE;
-			member->inst = inst;
-			member->rot.x = 0;
-			member->rot.y = 0;
-			member->rot.z = 0;
-
-			inst->flags |= (USE_SPECULAR_LIGHT | SCREENSPACE_INSTANCE | HIDE_MODEL);
-
-			struct InstDrawPerPlayer *idpp = INST_GETIDPP(inst);
-
-			idpp[0].pushBuffer = &gGT->pushBuffer_UI;
-			for (s32 j = 1; j < gGT->numPlyrCurrGame; j++)
+			s16 i;
+			struct AHPauseMember *member = ptrPauseObject->members;
+			for (i = 0; i < AH_PAUSE_MEMBER_COUNT; i++, member++)
 			{
-				idpp[j].pushBuffer = 0;
-			}
+				struct InstDrawPerPlayer *idpp;
+				struct Instance *inst = INSTANCE_Birth3D(GAME_TRACKER->modelPtr[STATIC_GEM], AH_PAUSE_INSTANCE_NAME, t);
 
-			CTR_MatrixSetRotIdentity(&inst->matrix);
-			inst->matrix.t[2] = AH_PAUSE_INSTANCE_DEPTH;
+				member->inst = inst;
+
+				inst->flags |= (USE_SPECULAR_LIGHT | SCREENSPACE_INSTANCE | HIDE_MODEL);
+
+				idpp = INST_GETIDPP(inst);
+
+				idpp[0].pushBuffer = &GAME_TRACKER->pushBuffer_UI;
+				{
+					s16 j;
+					for (j = 1; j < GAME_TRACKER->numPlyrCurrGame; j++)
+					{
+						u32 offset = j * sizeof(struct InstDrawPerPlayer);
+						((struct InstDrawPerPlayer *)((u32)inst + offset + sizeof(struct Instance)))->pushBuffer = 0;
+					}
+				}
+
+				member->rot.x = member->rot.y = member->rot.z = 0;
+				member->iconIndex = AH_PAUSE_ICON_NONE;
+
+				CTR_MatrixSetRotIdentity(&inst->matrix);
+				inst->matrix.t[2] = AH_PAUSE_INSTANCE_DEPTH;
+			}
 		}
 	}
 
-	s32 tap = sdata->buttonTapPerPlayer[0];
+	tap = AH_PAUSE_BUTTON_TAP;
 
 	if ((tap & (BTN_RIGHT | BTN_LEFT)) != 0)
 	{
 		if ((tap & BTN_LEFT) != 0)
 		{
-			D232.pausePageDir = -1;
-			gGT->advPausePage += -1;
+			AH_PAUSE_DIRECTION = -1;
+			GAME_TRACKER->advPausePage += -1;
 
-			if (gGT->advPausePage < 0)
+			if (GAME_TRACKER->advPausePage < 0)
 			{
-				gGT->advPausePage = AH_PAUSE_MENU_PAGE_COUNT - 1;
+				GAME_TRACKER->advPausePage = AH_PAUSE_MENU_PAGE_COUNT - 1;
 			}
 		}
 
-		// assume BTN_RIGHT
+		// Right input
 		else
 		{
-			D232.pausePageDir = 1;
-			gGT->advPausePage += 1;
-
-			if (gGT->advPausePage >= AH_PAUSE_MENU_PAGE_COUNT)
+			if (!(tap & BTN_RIGHT))
 			{
-				gGT->advPausePage = 0;
+				goto noInput;
+			}
+			AH_PAUSE_DIRECTION = 1;
+			GAME_TRACKER->advPausePage += 1;
+
+			if ((u16)GAME_TRACKER->advPausePage >= AH_PAUSE_MENU_PAGE_COUNT)
+			{
+				GAME_TRACKER->advPausePage = 0;
 			}
 		}
 
 		OtherFX_Play(0, 1);
 	}
 
+noInput:
 	// page is flipping
-	if (D232.pausePageTimer > 0)
+	if (AH_PAUSE_TIMER > 0)
 	{
-		D232.pausePageTimer--;
+		AH_PAUSE_TIMER--;
 	}
 	// page is not flipping, flip desired
-	else if (gGT->advPausePage != D232.pausePageCurr)
+	else if (GAME_TRACKER->advPausePage != AH_PAUSE_CURRENT_PAGE)
 	{
-		D232.pausePagePrev = D232.pausePageCurr;
-		D232.pausePageDir_dup = D232.pausePageDir;
+		AH_PAUSE_PREVIOUS_PAGE = AH_PAUSE_CURRENT_PAGE;
 
-		D232.pausePageTimer = AH_PAUSE_PAGE_FLIP_FRAMES;
+		AH_PAUSE_TIMER = AH_PAUSE_PAGE_FLIP_FRAMES;
 
-		D232.pausePageCurr = gGT->advPausePage;
+		AH_PAUSE_CURRENT_PAGE = GAME_TRACKER->advPausePage;
+		AH_PAUSE_FLIP_DIRECTION = AH_PAUSE_DIRECTION;
 	}
 
-	s32 pageID;
-	s32 posX;
 
-	// second half
-	if (D232.pausePageTimer < AH_PAUSE_PAGE_FLIP_SECOND_HALF)
+	pageID = AH_PAUSE_TIMER;
+	if (pageID >= AH_PAUSE_PAGE_FLIP_SECOND_HALF)
 	{
-		pageID = D232.pausePageCurr;
-		posX = D232.pausePageTimer * D232.pausePageDir * -AH_PAUSE_PAGE_FLIP_X_STEP;
+		s32 remaining = AH_PAUSE_PAGE_FLIP_FRAMES - pageID;
+		posX = remaining * CTR_MipsSll(AH_PAUSE_DIRECTION, 7);
+		// NOTE(aalhendi): Keep the page read after the slide product without
+		// forcing an early read of the MIPS multiply result.
+		CTR_PSX_OBSERVE_MEMORY(AH_PAUSE_PREVIOUS_PAGE);
+		pageID = AH_PAUSE_PREVIOUS_PAGE;
 	}
-
-	// first half
 	else
 	{
-		pageID = D232.pausePagePrev;
-		posX = (AH_PAUSE_PAGE_FLIP_FRAMES - D232.pausePageTimer) * D232.pausePageDir * AH_PAUSE_PAGE_FLIP_X_STEP;
+		// NOTE(aalhendi): Retain the signed divide and its input lifetime.
+		// Combining this into timer * -128 changes the retail instruction sequence.
+		s32 shifted = CTR_MipsSll(pageID, 9);
+		register s32 offset CTR_PSX_REGISTER("$5") = -shifted;
+		CTR_PSX_ORDER_VALUES(offset, shifted);
+		pageID = AH_PAUSE_CURRENT_PAGE;
+		posX = (offset / 4) * AH_PAUSE_DIRECTION;
 	}
 
-	AH_Pause_Draw(pageID, posX);
+	AH_Pause_Draw(pageID, (s16)posX);
 }

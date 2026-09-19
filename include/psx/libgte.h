@@ -26,10 +26,11 @@ static inline void CTR_MatrixCopyRot(MATRIX *dst, const MATRIX *src)
 
 static inline void CTR_MatrixSetRotIdentity(MATRIX *m)
 {
-	CTR_WriteU32LE(&m->m[0][0], 0x1000);
-	CTR_WriteU32LE(&m->m[0][2], 0);
-	CTR_WriteU32LE(&m->m[1][1], 0x1000);
-	CTR_WriteU32LE(&m->m[2][0], 0);
+	// NOTE(aalhendi): MATRIX and these four rotation pairs are word-aligned on both targets.
+	CTR_WriteU32AlignedLE(&m->m[0][0], 0x1000);
+	CTR_WriteU32AlignedLE(&m->m[0][2], 0);
+	CTR_WriteU32AlignedLE(&m->m[1][1], 0x1000);
+	CTR_WriteU32AlignedLE(&m->m[2][0], 0);
 	m->m[2][2] = 0x1000;
 }
 

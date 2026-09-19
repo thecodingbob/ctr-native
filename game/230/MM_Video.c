@@ -4,36 +4,37 @@
 
 void MM_Video_DecDCToutCallbackFunc(void)
 {
-#ifndef CTR_NATIVE
-// part of PSYQ BSS
-#define StCdIntrFlag *(u32 *)0x8009ebf8
-
-	if (((V230.flags & MM_VIDEO_FLAG_RGB24) != 0) && (StCdIntrFlag != 0))
+	u32 *ot;
+	register u32 stCdIntrPage CTR_PSX_REGISTER("$16");
+	register RECT *slice CTR_PSX_REGISTER("$17");
+	if ((MM_VIDEO_FLAGS & MM_VIDEO_FLAG_RGB24) != 0)
 	{
-		StCdInterrupt();
+		CTR_PSX_LOAD_SYMBOL_PAGE(stCdIntrPage, MM_VIDEO_ST_CD_INTERRUPT_ASM_NAME);
+		if (CTR_PSX_PAGE_LVALUE(u32, stCdIntrPage, MM_VIDEO_ST_CD_INTERRUPT_PAGE_OFFSET, MM_VIDEO_ST_CD_INTERRUPT) != 0)
+		{
+			StCdInterrupt();
 
-		StCdIntrFlag = 0;
+			CTR_PSX_PAGE_LVALUE(u32, stCdIntrPage, MM_VIDEO_ST_CD_INTERRUPT_PAGE_OFFSET, MM_VIDEO_ST_CD_INTERRUPT) = 0;
+		}
 	}
-#else
-	// NOTE(aalhendi): Native PsyCross does not map PSYQ BSS at 0x8009ebf8.
-#endif
 
-	u32 *ot = BreakDraw();
+	ot = BreakDraw();
 
-	LoadImage(&V230.slice, V230.out_Buf[V230.dctOutBufferIndex]);
+	slice = &MM_VIDEO_SLICE;
+	LoadImage(slice, MM_VIDEO_OUT_BUFFERS[MM_VIDEO_DCT_OUT_BUFFER_INDEX]);
 
 	/* update slice (rectangular strip) area to next one on the right */
-	V230.slice.x += V230.slice.w;
-	V230.dctOutBufferIndex ^= 1;
+	MM_VIDEO_SLICE.x += MM_VIDEO_SLICE.w;
+	MM_VIDEO_DCT_OUT_BUFFER_INDEX ^= 1;
 
-	if (V230.sliceIndex == V230.finalSliceIndex)
+	if (MM_VIDEO_SLICE_INDEX == MM_VIDEO_FINAL_SLICE_INDEX)
 	{
-		V230.dctOutputDone = 1;
+		MM_VIDEO_DCT_OUTPUT_DONE = 1;
 	}
 	else
 	{
-		V230.sliceIndex++;
-		DecDCTout(V230.out_Buf[V230.dctOutBufferIndex], V230.dctOutSliceSize);
+		MM_VIDEO_SLICE_INDEX++;
+		DecDCTout(MM_VIDEO_OUT_BUFFERS[MM_VIDEO_DCT_OUT_BUFFER_INDEX], MM_VIDEO_DCT_OUT_SLICE_SIZE);
 	}
 
 	if (ot != 0)
@@ -44,24 +45,25 @@ void MM_Video_DecDCToutCallbackFunc(void)
 
 void MM_Video_KickCD(CdlLOC *location)
 {
-	int result;
 	int cdlMode;
 	u8 mode[4];
+	int result;
 
-	if ((location != NULL) && (V230.ptrCdLoc != &V230.cdLocation1))
+
+	if ((location != NULL) && (MM_VIDEO_CD_LOCATION_PTR != &MM_VIDEO_CD_LOCATION_1))
 	{
-		V230.cdKickState = 0;
-		V230.ptrCdLoc = location;
+		MM_VIDEO_CD_LOCATION_PTR = location;
+		MM_VIDEO_CD_KICK_STATE = 0;
 	}
 
-	switch (V230.cdKickState)
+	switch (MM_VIDEO_CD_KICK_STATE)
 	{
 	case 0:
-		result = CdControl(CdlSetloc, (u8 *)V230.ptrCdLoc, 0);
+		result = CdControl(CdlSetloc, (u8 *)MM_VIDEO_CD_LOCATION_PTR, 0);
 		if (result == 0)
 			return;
 
-		V230.cdKickState = 1;
+		MM_VIDEO_CD_KICK_STATE = 1;
 
 		// do NOT break,
 		// original code never quit here
@@ -73,11 +75,11 @@ void MM_Video_KickCD(CdlLOC *location)
 		if (result == 0)
 			return;
 
-		V230.cdKickState = 2;
+		MM_VIDEO_CD_KICK_STATE = 2;
 		break;
 
 	case 2:
-		V230.cdKickState = 3;
+		MM_VIDEO_CD_KICK_STATE = 3;
 		break;
 
 	case 3:
@@ -85,269 +87,341 @@ void MM_Video_KickCD(CdlLOC *location)
 
 		// scrapbook
 		// if video contains audio
-		if ((V230.flags & MM_VIDEO_FLAG_HAS_XA_AUDIO) != 0)
+		if ((MM_VIDEO_FLAGS & MM_VIDEO_FLAG_HAS_XA_AUDIO) != 0)
 		{
 			cdlMode = CdlModeStream2 | CdlModeSpeed | CdlModeRT;
 		}
 
-		V230.cdKickState = 0;
+		MM_VIDEO_CD_KICK_STATE = 0;
 
 		result = CdRead2(cdlMode);
 		if (result == 0)
 			return;
 
-		V230.ptrCdLoc = 0;
+		MM_VIDEO_CD_LOCATION_PTR = 0;
 		break;
 	}
 }
 
 void MM_Video_VLC_Decode(void)
 {
-	s16 oldDecodeState;
-	int backloc;
+	register s32 backloc CTR_PSX_REGISTER("$19");
 	int result;
 	u32 size;
-	s16 freeSectors;
-	s16 overSectors;
-	u32 *sectorData;
-	StHEADER *sectorHeader[2];
-	int waitTime;
-	CdlLOC *sectorLoc;
+	struct
+	{
+		s16 freeSectors;
+		s16 overSectors;
+		u32 *sectorData;
+		StHEADER *sectorHeader[2];
+	} ring;
+	register s32 waitTime CTR_PSX_REGISTER("$17");
+	register u32 **inBuffers CTR_PSX_REGISTER("$22");
+	register s32 backlocNone CTR_PSX_REGISTER("$21");
+
 
 	waitTime = MM_VIDEO_VLC_WAIT_FRAMES;
 
 	// free sectors and over sectors
-	StRingStatus(&freeSectors, &overSectors);
+	StRingStatus(&ring.freeSectors, &ring.overSectors);
 
-	backloc = StGetBackloc(&V230.cdLocation2);
+	backloc = StGetBackloc(&MM_VIDEO_CD_LOCATION_2);
+	CTR_PSX_OBSERVE_VALUE(backloc);
 
-	oldDecodeState = V230.decodeState;
-	if ((V230.decodeState == 1) && ((V230.ringSectorCount - (V230.ringSectorCount >> 2)) <= freeSectors))
 	{
-		V230.stallRecoveryFrames++;
+		register u16 oldDecodeState CTR_PSX_REGISTER("$18");
+		register u32 decodeStatePage CTR_PSX_REGISTER("$20");
 
-		if (MM_VIDEO_STALL_RECOVERY_FRAMES < V230.stallRecoveryFrames)
+		CTR_PSX_LOAD_SYMBOL_PAGE(decodeStatePage, MM_VIDEO_DECODE_STATE_ASM_NAME);
+		oldDecodeState = CTR_PSX_PAGE_LVALUE(u16, decodeStatePage, MM_VIDEO_DECODE_STATE_PAGE_OFFSET, MM_VIDEO_DECODE_STATE);
+		if ((oldDecodeState == 1) && ((MM_VIDEO_RING_SECTOR_COUNT - (MM_VIDEO_RING_SECTOR_COUNT >> 2)) <= ring.freeSectors))
 		{
-			V230.stallRecoveryFrames = 0;
-			StClearRing();
-			V230.endOfStream = 0;
-			V230.sectorFrameCount = 0;
-			V230.lastSectorFrameCount = 0;
-			V230.lastBackloc = 0;
-			V230.loopStartBackloc = MM_VIDEO_BACKLOC_NONE;
-			V230.loopEndBackloc = MM_VIDEO_BACKLOC_NONE;
-			V230.loopWrapPending = 0;
-			V230.stalledBacklocFrames = 0;
-			V230.stallRecoveryFrames = 0;
-			V230.unused_0x38 = MM_VIDEO_BACKLOC_NONE;
-			V230.decodeState = oldDecodeState;
+			MM_VIDEO_STALL_RECOVERY_FRAME_COUNT++;
 
-			MM_Video_KickCD(&V230.cdLocation1);
+			if (MM_VIDEO_STALL_RECOVERY_FRAMES < MM_VIDEO_STALL_RECOVERY_FRAME_COUNT)
+			{
+				MM_VIDEO_STALL_RECOVERY_FRAME_COUNT = 0;
+				StClearRing();
+				MM_VIDEO_END_OF_STREAM = 0;
+				MM_VIDEO_SECTOR_FRAME_COUNT = 0;
+				MM_VIDEO_LAST_SECTOR_FRAME_COUNT = 0;
+				MM_VIDEO_LAST_BACKLOC = 0;
+				MM_VIDEO_LOOP_START_BACKLOC = MM_VIDEO_BACKLOC_NONE;
+				MM_VIDEO_LOOP_END_BACKLOC = MM_VIDEO_BACKLOC_NONE;
+				MM_VIDEO_LOOP_WRAP_PENDING = 0;
+				MM_VIDEO_STALLED_BACKLOC_FRAME_COUNT = 0;
+				CTR_PSX_PAGE_LVALUE(u16, decodeStatePage, MM_VIDEO_DECODE_STATE_PAGE_OFFSET, MM_VIDEO_DECODE_STATE) = oldDecodeState;
+				MM_VIDEO_STALL_RECOVERY_FRAME_COUNT = 0;
+				MM_VIDEO_UNUSED_0X38 = MM_VIDEO_BACKLOC_NONE;
+
+				MM_Video_KickCD(&MM_VIDEO_CD_LOCATION_1);
+			}
+
+			MM_VIDEO_DRAW_NEXT_FRAME = 0;
+			return;
 		}
-
-		V230.drawNextFrame = 0;
-		return;
 	}
 
-	V230.stallRecoveryFrames = 0;
+	MM_VIDEO_STALL_RECOVERY_FRAME_COUNT = 0;
 
 	// Scrapbook
-	if (((V230.flags & MM_VIDEO_FLAG_SCRAPBOOK) == 0) && (freeSectors < (V230.ringSectorCount >> 4)))
+	if (((MM_VIDEO_FLAGS & MM_VIDEO_FLAG_SCRAPBOOK) == 0) && (ring.freeSectors < (MM_VIDEO_RING_SECTOR_COUNT >> 4)))
 	{
-		MM_Video_KickCD(&V230.cdLocation2);
+		MM_Video_KickCD(&MM_VIDEO_CD_LOCATION_2);
 	}
 
-	if (backloc == V230.lastBackloc)
+	if (backloc == MM_VIDEO_LAST_BACKLOC)
 	{
-		V230.stalledBacklocFrames++;
-		if (MM_VIDEO_STALLED_BACKLOC_FRAMES < V230.stalledBacklocFrames)
+		MM_VIDEO_STALLED_BACKLOC_FRAME_COUNT++;
+		if ((u32)MM_VIDEO_STALLED_BACKLOC_FRAMES < MM_VIDEO_STALLED_BACKLOC_FRAME_COUNT)
 		{
-			V230.stalledBacklocFrames = 0;
-			V230.drawNextFrame = 0;
+			MM_VIDEO_STALLED_BACKLOC_FRAME_COUNT = 0;
+			MM_VIDEO_DRAW_NEXT_FRAME = 0;
 			StClearRing();
-			V230.lastSectorFrameCount = 0;
-			V230.loopStartBackloc = MM_VIDEO_BACKLOC_NONE;
-			V230.loopEndBackloc = MM_VIDEO_BACKLOC_NONE;
-			V230.loopWrapPending = 0;
-			V230.stallRecoveryFrames = 0;
-			V230.lastBackloc = 0;
-			V230.stalledBacklocFrames = 0;
-			V230.unused_0x38 = MM_VIDEO_BACKLOC_NONE;
+			MM_VIDEO_LAST_SECTOR_FRAME_COUNT = 0;
+			MM_VIDEO_LOOP_START_BACKLOC = MM_VIDEO_BACKLOC_NONE;
+			MM_VIDEO_LOOP_END_BACKLOC = MM_VIDEO_BACKLOC_NONE;
+			MM_VIDEO_LOOP_WRAP_PENDING = 0;
+			MM_VIDEO_STALL_RECOVERY_FRAME_COUNT = 0;
+			MM_VIDEO_LAST_BACKLOC = 0;
+			MM_VIDEO_STALLED_BACKLOC_FRAME_COUNT = 0;
+			MM_VIDEO_UNUSED_0X38 = MM_VIDEO_BACKLOC_NONE;
 
-			MM_Video_KickCD(&V230.cdLocation3);
+			MM_Video_KickCD(&MM_VIDEO_CD_LOCATION_3);
 		}
 	}
 	else
 	{
-		V230.stalledBacklocFrames = 0;
+		MM_VIDEO_STALLED_BACKLOC_FRAME_COUNT = 0;
 	}
 
-	V230.decodeState = 0;
+	MM_VIDEO_DECODE_STATE = 0;
 
 	// if reached end of video,
 	// choose to loop or not loop
-	if ((V230.loopStartBackloc < 0) &&
+	if ((MM_VIDEO_LOOP_START_BACKLOC < 0) &&
 
 	    // length of video
-	    ((V230.streamFrameCount <= backloc ||
+	    ((MM_VIDEO_STREAM_FRAME_COUNT <= backloc ||
 
-	      (backloc < V230.lastBackloc))))
+	      (backloc < MM_VIDEO_LAST_BACKLOC))))
 	{
-		// scrapbook not track select,
-		// if video is not looping
-		if ((V230.flags & MM_VIDEO_FLAG_LOOP) == 0)
+		if ((MM_VIDEO_FLAGS & MM_VIDEO_FLAG_LOOP) == 0)
 		{
-			do
-			{
-				result = CdControl(CdlPause, 0, 0);
-			} while (result == 0);
-			// end of scrapbook
-			V230.endOfStream = 1;
+			goto LAB_Video_PauseAtEnd;
 		}
 
-		// track select, not scrapbook,
-		// if video is looping
-		else
+		// Track-select previews loop back to their first sector.
 		{
-			V230.unused_0x38 = MM_VIDEO_BACKLOC_NONE;
-			if (V230.loopEndBackloc < 1)
-			{
-				MM_Video_KickCD(&V230.cdLocation1);
+			register s32 loopEndBackloc CTR_PSX_REGISTER("$2");
+			register s32 *unusedAddress CTR_PSX_REGISTER("$3");
 
-				if (backloc == V230.streamFrameCount)
+			unusedAddress = &MM_VIDEO_UNUSED_0X38;
+			CTR_PSX_CLOBBER("$18");
+			loopEndBackloc = MM_VIDEO_LOOP_END_BACKLOC;
+			CTR_PSX_CLOBBER("$21");
+			backlocNone = MM_VIDEO_BACKLOC_NONE;
+			*unusedAddress = backlocNone;
+			if (0 < loopEndBackloc)
+			{
+				if (backloc != MM_VIDEO_STREAM_FRAME_COUNT)
 				{
-					V230.loopEndBackloc = CdPosToInt(&V230.cdLocation2);
-				}
-				else
-				{
-					V230.loopStartBackloc = CdPosToInt(&V230.cdLocation2);
-					V230.loopStartBackloc--;
-					V230.loopWrapPending = 0;
+					result = CdPosToInt(&MM_VIDEO_CD_LOCATION_2);
+					if (MM_VIDEO_LOOP_END_BACKLOC < result)
+					{
+						MM_VIDEO_LOOP_START_BACKLOC = CdPosToInt(&MM_VIDEO_CD_LOCATION_2);
+						MM_VIDEO_LOOP_START_BACKLOC--;
+						MM_VIDEO_LOOP_WRAP_PENDING = 0;
+
+						MM_Video_KickCD(&MM_VIDEO_CD_LOCATION_1);
+					}
+					MM_VIDEO_LOOP_END_BACKLOC = backlocNone;
 				}
 			}
 			else
 			{
-				if (backloc != V230.streamFrameCount)
-				{
-					result = CdPosToInt(&V230.cdLocation2);
-					if (V230.loopEndBackloc < result)
-					{
-						V230.loopStartBackloc = CdPosToInt(&V230.cdLocation2);
-						V230.loopStartBackloc = V230.loopStartBackloc + -1;
-						V230.loopWrapPending = 0;
+				MM_Video_KickCD(&MM_VIDEO_CD_LOCATION_1);
 
-						MM_Video_KickCD(&V230.cdLocation1);
-					}
-					V230.loopEndBackloc = MM_VIDEO_BACKLOC_NONE;
+				if (backloc != MM_VIDEO_STREAM_FRAME_COUNT)
+				{
+					MM_VIDEO_LOOP_START_BACKLOC = CdPosToInt(&MM_VIDEO_CD_LOCATION_2);
+					MM_VIDEO_LOOP_START_BACKLOC--;
+					MM_VIDEO_LOOP_WRAP_PENDING = 0;
+				}
+				else
+				{
+					MM_VIDEO_LOOP_END_BACKLOC = CdPosToInt(&MM_VIDEO_CD_LOCATION_2);
 				}
 			}
 		}
+		goto LAB_Video_AfterEnd;
+
+	LAB_Video_PauseAtEnd:
+		do
+		{
+			result = CdControl(CdlPause, 0, 0);
+		} while (result == 0);
+		MM_VIDEO_END_OF_STREAM = 1;
 	}
 
-	V230.lastSectorFrameCount = V230.sectorFrameCount;
-	V230.lastBackloc = backloc;
+LAB_Video_AfterEnd:
+{
+	register u32 loopStartPage CTR_PSX_REGISTER("$16");
+	register u32 loopWrapPage CTR_PSX_REGISTER("$18");
+	register CdlLOC *decodeLoc CTR_PSX_REGISTER("$20");
+	register u32 symbolPage CTR_PSX_REGISTER("$2");
 
-LAB_800b5fec:
-
-	// retrieve data with timeout (10 frames)
+	CTR_PSX_LOAD_SYMBOL_PAGE(loopStartPage, MM_VIDEO_LOOP_START_BACKLOC_ASM_NAME);
+	CTR_PSX_LOAD_SYMBOL_PAGE_AFTER(loopWrapPage, MM_VIDEO_LOOP_WRAP_PENDING_ASM_NAME, loopStartPage);
+	CTR_PSX_CLOBBER("$21");
+	backlocNone = 1;
+	CTR_PSX_LOAD_SYMBOL_PAGE(symbolPage, MM_VIDEO_CD_LOCATION_3_ASM_NAME);
+	decodeLoc = (CdlLOC *)(symbolPage + MM_VIDEO_CD_LOCATION_3_PAGE_OFFSET);
+	CTR_PSX_LOAD_SYMBOL_PAGE(symbolPage, MM_VIDEO_IN_BUFFERS_ASM_NAME);
+	inBuffers = (u32 **)(symbolPage + MM_VIDEO_IN_BUFFERS_PAGE_OFFSET);
 	do
 	{
-		result = StGetNext(&sectorData, sectorHeader);
-		if (result == 0)
+		MM_VIDEO_LAST_BACKLOC = backloc;
+		MM_VIDEO_LAST_SECTOR_FRAME_COUNT = MM_VIDEO_SECTOR_FRAME_COUNT;
+
+		// retrieve data with timeout (10 frames)
+	LAB_Video_GetNext:
+		do
 		{
-			V230.sectorFrameCount = sectorHeader[0]->frameCount;
-
-			if (V230.sectorFrameCount == V230.lastSectorFrameCount)
+			result = StGetNext(&ring.sectorData, ring.sectorHeader);
+			if (result == 0)
 			{
-				StFreeRing(sectorData);
-				goto LAB_800b5fec;
-			}
+				register StHEADER *sectorHeader CTR_PSX_REGISTER("$5");
+				register s32 previousFrame CTR_PSX_REGISTER("$4");
+				register s32 currentFrame CTR_PSX_REGISTER("$3");
+				register u32 sectorFramePage CTR_PSX_REGISTER("$2");
 
-			if (0 < V230.loopStartBackloc)
-			{
-				sectorLoc = &sectorHeader[0]->loc;
-				result = CdPosToInt(sectorLoc);
+				sectorHeader = ring.sectorHeader[0];
+				previousFrame = MM_VIDEO_LAST_SECTOR_FRAME_COUNT;
+				currentFrame = sectorHeader->frameCount;
+				CTR_PSX_LOAD_SYMBOL_PAGE(sectorFramePage, MM_VIDEO_SECTOR_FRAME_COUNT_ASM_NAME);
+				CTR_PSX_PAGE_LVALUE(s32, sectorFramePage, MM_VIDEO_SECTOR_FRAME_COUNT_PAGE_OFFSET, MM_VIDEO_SECTOR_FRAME_COUNT) = currentFrame;
 
-				waitTime = MM_VIDEO_VLC_WAIT_FRAMES;
-
-				if (V230.loopStartBackloc <= result)
+				if (currentFrame == previousFrame)
 				{
-					V230.loopWrapPending = 1;
-					StFreeRing(sectorData);
-					goto LAB_800b5fec;
+					CTR_PSX_ORDER_VALUES(previousFrame, currentFrame);
+					StFreeRing(ring.sectorData);
+					CTR_PSX_CLOBBER("$2");
+					goto LAB_Video_GetNext;
 				}
-				if (V230.loopWrapPending == 1)
+
+				if (0 < CTR_PSX_PAGE_LVALUE(s32, loopStartPage, MM_VIDEO_LOOP_START_BACKLOC_PAGE_OFFSET, MM_VIDEO_LOOP_START_BACKLOC))
 				{
-					V230.loopStartBackloc = MM_VIDEO_BACKLOC_NONE;
-					V230.loopWrapPending = 0;
-					V230.lastBackloc = backloc;
+					result = CdPosToInt(&sectorHeader->loc);
+					waitTime = MM_VIDEO_VLC_WAIT_FRAMES;
+
+					if (CTR_PSX_PAGE_LVALUE(s32, loopStartPage, MM_VIDEO_LOOP_START_BACKLOC_PAGE_OFFSET, MM_VIDEO_LOOP_START_BACKLOC) <= result)
+					{
+						register u32 *sectorData CTR_PSX_REGISTER("$4");
+
+						sectorData = ring.sectorData;
+						CTR_PSX_PAGE_LVALUE(s32, loopWrapPage, MM_VIDEO_LOOP_WRAP_PENDING_PAGE_OFFSET, MM_VIDEO_LOOP_WRAP_PENDING) = backlocNone;
+						StFreeRing(sectorData);
+						goto LAB_Video_GetNext;
+					}
+					if (CTR_PSX_PAGE_LVALUE(s32, loopWrapPage, MM_VIDEO_LOOP_WRAP_PENDING_PAGE_OFFSET, MM_VIDEO_LOOP_WRAP_PENDING) == backlocNone)
+					{
+						CTR_PSX_PAGE_LVALUE(s32, loopStartPage, MM_VIDEO_LOOP_START_BACKLOC_PAGE_OFFSET, MM_VIDEO_LOOP_START_BACKLOC) = MM_VIDEO_BACKLOC_NONE;
+						CTR_PSX_PAGE_LVALUE(s32, loopWrapPage, MM_VIDEO_LOOP_WRAP_PENDING_PAGE_OFFSET, MM_VIDEO_LOOP_WRAP_PENDING) = 0;
+						MM_VIDEO_LAST_BACKLOC = backloc;
+					}
 				}
-			}
 
-			size = DecDCTBufSize(sectorData);
+				size = DecDCTBufSize(ring.sectorData);
 
-			if (size <= V230.vlcBufferSize)
-			{
-				sectorLoc = &sectorHeader[0]->loc;
-				V230.cdLocation3 = *sectorLoc;
+				if (MM_VIDEO_VLC_BUFFER_SIZE < size)
+				{
+					CTR_PSX_CLOBBER("$2");
+					MM_VIDEO_DRAW_NEXT_FRAME = 0;
+					StFreeRing(ring.sectorData);
+					return;
+				}
 
-				// VLC Decode
-				// last parameter is "VLC Table"
-				DecDCTvlc2(sectorData, V230.in_Buf[V230.vlcBufferIndex], sdata->ptrVlcTable);
+				{
+					register u32 symbolPage CTR_PSX_REGISTER("$2");
+					register u32 *sectorData CTR_PSX_REGISTER("$4");
+					register u32 a1Value CTR_PSX_REGISTER("$5");
+					register void *vlcTable CTR_PSX_REGISTER("$6");
+					register u32 v1Value CTR_PSX_REGISTER("$3");
+
+					sectorData = ring.sectorData;
+					a1Value = (u32)ring.sectorHeader[0];
+					vlcTable = MM_VIDEO_VLC_TABLE;
+					v1Value = ((StHEADER *)a1Value)->loc.minute;
+					CTR_PSX_LOAD_SYMBOL_PAGE_AFTER(symbolPage, MM_VIDEO_CD_LOCATION_3_ASM_NAME, v1Value);
+					CTR_PSX_PAGE_LVALUE(u8, symbolPage, MM_VIDEO_CD_LOCATION_3_PAGE_OFFSET, decodeLoc->minute) = v1Value;
+					decodeLoc->second = ((StHEADER *)a1Value)->loc.second;
+					v1Value = a1Value;
+					CTR_PSX_OBSERVE_VALUE(v1Value);
+					decodeLoc->sector = ((StHEADER *)v1Value)->loc.sector;
+					symbolPage = (u32)ring.sectorHeader[0];
+					CTR_PSX_LOAD_SYMBOL_PAGE_AFTER(v1Value, MM_VIDEO_VLC_BUFFER_INDEX_ASM_NAME, symbolPage);
+					a1Value = ((StHEADER *)symbolPage)->loc.track;
+					symbolPage = CTR_PSX_PAGE_LVALUE(u16, v1Value, MM_VIDEO_VLC_BUFFER_INDEX_PAGE_OFFSET, MM_VIDEO_VLC_BUFFER_INDEX);
+					symbolPage = (symbolPage << 2) + (u32)inBuffers;
+					decodeLoc->track = a1Value;
+					a1Value = *(u32 *)symbolPage;
+
+					// VLC Decode
+					// last parameter is "VLC Table"
+					DecDCTvlc2(sectorData, (u32 *)a1Value, vlcTable);
+				}
 
 				// ready to draw next frame
-				V230.drawNextFrame = 1;
+				MM_VIDEO_DRAW_NEXT_FRAME = backlocNone;
 
-				StFreeRing(sectorData);
+				StFreeRing(ring.sectorData);
 				return;
 			}
-			V230.drawNextFrame = 0;
-			StFreeRing(sectorData);
-			return;
-		}
-		waitTime--;
-	} while (waitTime != 0);
+			waitTime--;
+		} while (waitTime != 0);
 
-	V230.drawNextFrame = 0;
+		MM_VIDEO_DRAW_NEXT_FRAME = 0;
+	} while (0);
+}
 }
 
-void MM_Video_StartStream(int cdStartSector, int streamFrameCount)
+void MM_Video_StartStream(s32 cdStartSector, s32 streamFrameCount)
 {
-	V230.cdRetryState = 0;
-	V230.endOfStream = 0;
-	V230.decodeState = 1;
+	MM_VIDEO_CD_RETRY_STATE = 0;
+	MM_VIDEO_END_OF_STREAM = 0;
+	MM_VIDEO_DECODE_STATE = 1;
 
-	V230.dctOutputDone = 0;
+	MM_VIDEO_DCT_OUTPUT_DONE = 0;
 
-	V230.sectorFrameCount = 0;
-	V230.lastSectorFrameCount = 0;
-	V230.lastBackloc = 0;
-	V230.loopStartBackloc = MM_VIDEO_BACKLOC_NONE;
-	V230.loopEndBackloc = MM_VIDEO_BACKLOC_NONE;
-	V230.loopWrapPending = 0;
-	V230.stalledBacklocFrames = 0;
-	V230.stallRecoveryFrames = 0;
-	V230.unused_0x38 = MM_VIDEO_BACKLOC_NONE;
-	V230.drawNextFrame = 0;
+	MM_VIDEO_SECTOR_FRAME_COUNT = 0;
+	MM_VIDEO_LAST_SECTOR_FRAME_COUNT = 0;
+	MM_VIDEO_LAST_BACKLOC = 0;
+	MM_VIDEO_LOOP_START_BACKLOC = MM_VIDEO_BACKLOC_NONE;
+	MM_VIDEO_LOOP_END_BACKLOC = MM_VIDEO_BACKLOC_NONE;
+	MM_VIDEO_LOOP_WRAP_PENDING = 0;
+	MM_VIDEO_STALLED_BACKLOC_FRAME_COUNT = 0;
+	MM_VIDEO_STALL_RECOVERY_FRAME_COUNT = 0;
+	MM_VIDEO_UNUSED_0X38 = MM_VIDEO_BACKLOC_NONE;
+	MM_VIDEO_DRAW_NEXT_FRAME = 0;
 
-	V230.streamFrameCount = streamFrameCount;
+	MM_VIDEO_STREAM_FRAME_COUNT = streamFrameCount;
 
 	// start streaming video
-	CdIntToPos(cdStartSector, &V230.cdLocation1);
+	CdIntToPos(cdStartSector, &MM_VIDEO_CD_LOCATION_1);
 
 	// next parameter (0) = START_FRAME
-	StSetStream((V230.flags & MM_VIDEO_FLAG_RGB24), 0, MM_VIDEO_STREAM_END_FRAME_NONE, 0, 0);
+	StSetStream((MM_VIDEO_FLAGS & MM_VIDEO_FLAG_RGB24), 0, MM_VIDEO_STREAM_END_FRAME_NONE, 0, 0);
 
 	CDSYS_SetMode_StreamData();
 
 	// 800b6814 = Ring_Buf (mempack)
-	StSetRing(V230.out_Buf[2], V230.ringSectorCount);
+	StSetRing(MM_VIDEO_RING_BUFFER, MM_VIDEO_RING_SECTOR_COUNT);
 
 	StClearRing();
 
-	V230.cdKickState = 0;
-
-	V230.ptrCdLoc = &V230.cdLocation1;
+	MM_VIDEO_CD_LOCATION_PTR = &MM_VIDEO_CD_LOCATION_1;
+	MM_VIDEO_CD_KICK_STATE = 0;
 }
 
 void MM_Video_StopStream(void)
@@ -374,55 +448,76 @@ void MM_Video_StopStream(void)
 	// does not affect internal states (libref)
 	DecDCTReset(1);
 
-	V230.drawNextFrame = 0;
+	MM_VIDEO_DRAW_NEXT_FRAME = 0;
 }
 
-void MM_Video_AllocMem(u32 width, u16 height, u32 flags, int ringSectorCount, int vlcBufferShift)
+void MM_Video_AllocMem(s32 width, s16 height, s32 flags, s32 ringSectorCount, s32 vlcBufferShift)
 {
+	s32 bytesPerPixel;
+	register s32 videoWidth CTR_PSX_REGISTER("$19");
+	register s16 videoHeight CTR_PSX_REGISTER("$20");
+	register s32 pixelWidth CTR_PSX_REGISTER("$4");
+	s32 pixelBytes;
+	s32 vlcRowSize;
+	s32 dctRowSize;
+	u32 paddedHeight;
+
+	videoWidth = width;
+	videoHeight = height;
 	MEMPACK_PushState();
 
-	// just in case
-	width &= 0xffff;
-	height &= 0xffff;
+	MM_VIDEO_FLAGS = flags;
 
-	V230.ringSectorCount = ringSectorCount;
-
-	if (ringSectorCount < 1)
+	if (ringSectorCount > 0)
 	{
-		V230.ringSectorCount = MM_VIDEO_DEFAULT_RING_SECTORS;
+		MM_VIDEO_RING_SECTOR_COUNT = ringSectorCount;
+	}
+	else
+	{
+		MM_VIDEO_RING_SECTOR_COUNT = MM_VIDEO_DEFAULT_RING_SECTORS;
 	}
 
-	b32 isRGB24 = (flags & MM_VIDEO_FLAG_RGB24);
+	if ((MM_VIDEO_FLAGS & MM_VIDEO_FLAG_RGB24) != 0)
+	{
+		MM_VIDEO_DCT_MODE = 1;
+		bytesPerPixel = 3;
+	}
+	else
+	{
+		MM_VIDEO_DCT_MODE = 0;
+		bytesPerPixel = 2;
+	}
 
-	int bytesPerPixel = (isRGB24) ? 3 : 2;
+	CTR_PSX_FORGET_VALUE(bytesPerPixel);
+	pixelBytes = (u16)bytesPerPixel;
+	CTR_PSX_KEEP_VALUE(pixelBytes);
+	pixelWidth = (u16)videoWidth;
+	vlcRowSize = pixelWidth * pixelBytes;
+	paddedHeight = ((((s32)(((u16)videoHeight) - 1) >> 4) + 1) * 0x10) & 0xffff;
+	dctRowSize = (pixelBytes << 3) * paddedHeight;
+	MM_VIDEO_FINAL_SLICE_INDEX = (((((pixelWidth)-1) >> 4) + 1) & 0xfff) - 1;
+	MM_VIDEO_DCT_OUT_BUFFER_INDEX = 0;
+	MM_VIDEO_VLC_BUFFER_INDEX = 0;
+	MM_VIDEO_DCT_OUT_SLICE_SIZE = (s32)dctRowSize >> 1;
+	MM_VIDEO_VLC_BUFFER_SIZE = (s32)((vlcRowSize >> 1) * paddedHeight) >> (vlcBufferShift + 1);
 
-	V230.dctMode = (u16)isRGB24;
+	MM_VIDEO_OUT_BUFFERS[0] = MM_VIDEO_ALLOC_MEM(MM_VIDEO_DCT_OUT_SLICE_SIZE << 3, MM_VIDEO_SLICE_BUFFER_NAME);
+	MM_VIDEO_OUT_BUFFERS[1] = (u32 *)(((int)MM_VIDEO_OUT_BUFFERS[0]) + MM_VIDEO_DCT_OUT_SLICE_SIZE * 4);
 
-	u32 paddedHeight = (((height - 1) >> 4) + 1) * 0x10;
-	V230.finalSliceIndex = (((width - 1) >> 4) + 1U) - 1;
-	V230.dctOutBufferIndex = 0;
-	V230.vlcBufferIndex = 0;
-	V230.dctOutSliceSize = (int)(bytesPerPixel * 8 * paddedHeight) >> 1;
-	V230.vlcBufferSize = (int)(((width * bytesPerPixel) >> 1) * paddedHeight) >> (vlcBufferShift + 1U);
-	V230.flags = flags;
+	MM_VIDEO_IN_BUFFERS[0] = MM_VIDEO_ALLOC_MEM(MM_VIDEO_VLC_BUFFER_SIZE << 3, MM_VIDEO_VLC_BUFFER_NAME);
+	MM_VIDEO_IN_BUFFERS[1] = (u32 *)(((int)MM_VIDEO_IN_BUFFERS[0]) + MM_VIDEO_VLC_BUFFER_SIZE * 4);
 
-	V230.out_Buf[0] = MEMPACK_AllocMem(V230.dctOutSliceSize << 3); //, OVR_230.s_SliceBuf);
-	V230.out_Buf[1] = (u32 *)(((int)V230.out_Buf[0]) + V230.dctOutSliceSize * 4);
+	MM_VIDEO_RING_BUFFER = MM_VIDEO_ALLOC_MEM(MM_VIDEO_RING_SECTOR_COUNT << LOAD_CD_DATA_SECTOR_SHIFT, MM_VIDEO_RING_BUFFER_NAME);
 
-	V230.in_Buf[0] = MEMPACK_AllocMem(V230.vlcBufferSize << 3); //, OVR_230.s_VlcBuf);
-	V230.in_Buf[1] = (u32 *)(((int)V230.in_Buf[0]) + V230.vlcBufferSize * 4);
-
-	V230.out_Buf[2] = MEMPACK_AllocMem(V230.ringSectorCount << LOAD_CD_DATA_SECTOR_SHIFT); //, OVR_230.s_RingBuf);
-
-	V230.slice.x = 0;
-	V230.slice.y = 0;
-	V230.slice.w = (s16)(bytesPerPixel << 3);
-	V230.slice.h = height;
+	MM_VIDEO_SLICE.x = 0;
+	MM_VIDEO_SLICE.y = 0;
+	MM_VIDEO_SLICE.w = (s16)(bytesPerPixel << 3);
+	MM_VIDEO_SLICE.h = videoHeight;
 
 	// reinitialize everything
 	DecDCTReset(0);
 
-	DecDCTvlcSize2(V230.vlcBufferSize);
+	DecDCTvlcSize2(MM_VIDEO_VLC_BUFFER_SIZE);
 	EnterCriticalSection();
 	DecDCToutCallback(&MM_Video_DecDCToutCallbackFunc);
 	ExitCriticalSection();
@@ -439,16 +534,17 @@ void MM_Video_ClearMem(void)
 
 b32 MM_Video_DecodeFrame(s16 offsetX, s16 offsetY)
 {
+	u16 canDrawFrame;
 	int cdReady = CdDiskReady(1);
-	b32 canDrawFrame;
 
-	if (V230.cdRetryState == 1)
+
+	if (MM_VIDEO_CD_RETRY_STATE == 1)
 	{
 		if (cdReady == 2)
 		{
-			V230.cdRetryState = 0;
-			V230.drawNextFrame = 0;
-			MM_Video_KickCD(&V230.cdLocation3);
+			MM_VIDEO_CD_RETRY_STATE = 0;
+			MM_VIDEO_DRAW_NEXT_FRAME = 0;
+			MM_Video_KickCD(&MM_VIDEO_CD_LOCATION_3);
 			return 0;
 		}
 	}
@@ -456,21 +552,21 @@ b32 MM_Video_DecodeFrame(s16 offsetX, s16 offsetY)
 	{
 		if (cdReady == CdlStatShellOpen)
 		{
-			V230.decodeState = 1;
-			V230.stallRecoveryFrames = 0;
-			V230.cdRetryState = 1;
-			V230.lastBackloc = V230.sectorFrameCount - 1;
+			MM_VIDEO_DECODE_STATE = 1;
+			MM_VIDEO_STALL_RECOVERY_FRAME_COUNT = 0;
+			MM_VIDEO_CD_RETRY_STATE = 1;
+			MM_VIDEO_LAST_BACKLOC = MM_VIDEO_SECTOR_FRAME_COUNT - 1;
 			StClearRing();
 		}
 	}
-	if (V230.cdRetryState == 1)
+	if (MM_VIDEO_CD_RETRY_STATE == 1)
 	{
-		V230.drawNextFrame = 0;
+		MM_VIDEO_DRAW_NEXT_FRAME = 0;
 		canDrawFrame = false;
 	}
 	else
 	{
-		if (V230.ptrCdLoc != 0)
+		if (MM_VIDEO_CD_LOCATION_PTR != 0)
 		{
 			MM_Video_KickCD(0);
 		}
@@ -479,91 +575,95 @@ b32 MM_Video_DecodeFrame(s16 offsetX, s16 offsetY)
 
 		// if value is zero, return zero,
 		// not ready to draw
-		canDrawFrame = V230.drawNextFrame != 0;
+		canDrawFrame = MM_VIDEO_DRAW_NEXT_FRAME;
 
-		if (V230.drawNextFrame == 1)
+		if (MM_VIDEO_DRAW_NEXT_FRAME == 1)
 		{
-			V230.sliceIndex = 0;
+			MM_VIDEO_SLICE_INDEX = 0;
 
-			V230.slice.x = offsetX;
-			V230.slice.y = offsetY;
+			MM_VIDEO_SLICE.x = offsetX;
+			MM_VIDEO_SLICE.y = offsetY;
 
 			// start decoding video
-			DecDCTin(V230.in_Buf[V230.vlcBufferIndex], V230.dctMode);
+			DecDCTin(MM_VIDEO_IN_BUFFERS[MM_VIDEO_VLC_BUFFER_INDEX], MM_VIDEO_DCT_MODE);
 
-			V230.vlcBufferIndex ^= 1;
+			MM_VIDEO_VLC_BUFFER_INDEX ^= 1;
 
 			// get result of decoding
-			DecDCTout(V230.out_Buf[V230.dctOutBufferIndex], V230.dctOutSliceSize);
+			DecDCTout(MM_VIDEO_OUT_BUFFERS[MM_VIDEO_DCT_OUT_BUFFER_INDEX], MM_VIDEO_DCT_OUT_SLICE_SIZE);
 
 			// return 1, ready to draw
-			canDrawFrame = V230.drawNextFrame != 0;
+			canDrawFrame = MM_VIDEO_DRAW_NEXT_FRAME;
 		}
 	}
 	return canDrawFrame;
 }
 
-b32 MM_Video_CheckIfFinished(b32 pollCdReady)
+b32 MM_Video_CheckIfFinished(s32 pollCdReady)
 {
-	b32 isFinished;
 	int cdReady;
-	int timeoutFrames = MM_VIDEO_DCT_OUTPUT_TIMEOUT_POLLS;
-	int cdPollTimer = MM_VIDEO_CD_READY_POLL_INTERVAL;
+	volatile s32 timeoutFrames;
+	volatile s32 cdPollTimer;
+	register b32 cdReadError CTR_PSX_REGISTER("$16");
 
-	b32 cdReadError = false;
+	timeoutFrames = MM_VIDEO_DCT_OUTPUT_TIMEOUT_POLLS;
+	cdPollTimer = MM_VIDEO_CD_READY_POLL_INTERVAL;
 
-	if (V230.drawNextFrame == 0)
+	if (MM_VIDEO_DRAW_NEXT_FRAME == 0)
 	{
-		isFinished = 0;
+		return 0;
 	}
-	else
+
+	cdReadError = false;
+
+	do
 	{
-		do
+		if (pollCdReady == 1)
 		{
-			if ((pollCdReady == 1) && (cdPollTimer--, cdPollTimer == 0))
+			cdPollTimer--;
+
+			if (cdPollTimer == 0)
 			{
 				cdReady = CdDiskReady(1);
 
 				if (cdReady == CdlStatShellOpen)
 				{
 					cdReadError = true;
-					V230.dctOutputDone = 1;
+					MM_VIDEO_DCT_OUTPUT_DONE = 1;
 				}
 				else
 				{
 					cdPollTimer = MM_VIDEO_CD_READY_POLL_INTERVAL;
 				}
 			}
-
-			timeoutFrames--;
-
-			if (timeoutFrames == 0)
-			{
-				V230.dctOutputDone = 1;
-			}
-
-		} while (!V230.dctOutputDone);
-
-		do
-		{
-			cdReady = IsIdleGPU(MM_VIDEO_GPU_IDLE_TIMEOUT);
-
-		} while (cdReady != 0);
-
-		V230.dctOutputDone = 0;
-
-		V230.drawNextFrame = 0;
-
-		if ((!cdReadError) && (V230.sliceIndex != V230.finalSliceIndex))
-		{
-			// Discontinue current decoding,
-			// does not affect internal states (libref)
-			DecDCTReset(1);
 		}
 
-		// end of scrapbook
-		isFinished = V230.endOfStream != 0;
+		timeoutFrames--;
+
+		if (timeoutFrames == 0)
+		{
+			MM_VIDEO_DCT_OUTPUT_DONE = 1;
+		}
+
+	} while (!MM_VIDEO_DCT_OUTPUT_DONE);
+
+	do
+	{
+		cdReady = IsIdleGPU(MM_VIDEO_GPU_IDLE_TIMEOUT);
+
+	} while (cdReady != 0);
+
+	MM_VIDEO_DCT_OUTPUT_DONE = 0;
+
+	MM_VIDEO_DRAW_NEXT_FRAME = 0;
+
+	if ((!cdReadError) && (MM_VIDEO_SLICE_INDEX != MM_VIDEO_FINAL_SLICE_INDEX))
+	{
+		// Discontinue current decoding,
+		// does not affect internal states (libref)
+		DecDCTReset(1);
 	}
-	return isFinished;
+
+	return (u16)MM_VIDEO_END_OF_STREAM;
 }
 #endif

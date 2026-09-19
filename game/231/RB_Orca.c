@@ -2,97 +2,88 @@
 
 
 struct ParticleEmitter emSet_OrcaSplash[7] = {
-    [0] =
-        {
-            .flags = 1,
-            .initOffset = 0xC,
-            .InitTypes.FuncInit =
-                {
-                    .particle_funcPtr = 0,
-                    .particle_colorFlags = 0x4A0,
-                    .particle_lifespan = 0xF,
-                    .particle_Type = 0,
-                },
-        },
+    {
+        .flags = 1,
+        .initOffset = 0xC,
+        .InitTypes = {.FuncInit =
+                          {
+                              .particle_funcPtr = 0,
+                              .particle_colorFlags = 0x4A0,
+                              .particle_lifespan = 0xF,
+                              .particle_Type = 0,
+                          }},
+    },
 
-    [1] =
-        {
-            .flags = 0x12,
-            .initOffset = 0,
-            .InitTypes.AxisInit =
-                {
-                    .baseValue = {.startVal = 0, .velocity = -0x1400, .accel = 0},
-                    .rngSeed = {.startVal = 0, .velocity = 0x2800, .accel = 0},
-                },
-        },
+    {
+        .flags = 0x12,
+        .initOffset = 0,
+        .InitTypes = {.AxisInit =
+                          {
+                              .baseValue = {.startVal = 0, .velocity = -0x1400, .accel = 0},
+                              .rngSeed = {.startVal = 0, .velocity = 0x2800, .accel = 0},
+                          }},
+    },
 
-    [2] =
-        {
-            .flags = 0x12,
-            .initOffset = 2,
-            .InitTypes.AxisInit =
-                {
-                    .baseValue = {.startVal = 0, .velocity = -0x1400, .accel = 0},
-                    .rngSeed = {.startVal = 0, .velocity = 0x2800, .accel = 0},
-                },
-        },
+    {
+        .flags = 0x12,
+        .initOffset = 2,
+        .InitTypes = {.AxisInit =
+                          {
+                              .baseValue = {.startVal = 0, .velocity = -0x1400, .accel = 0},
+                              .rngSeed = {.startVal = 0, .velocity = 0x2800, .accel = 0},
+                          }},
+    },
 
-    [3] =
-        {
-            .flags = 0x3E,
-            .initOffset = 1,
-            .InitTypes.AxisInit =
-                {
-                    .baseValue = {.startVal = 0, .velocity = 0x4C00, .accel = -0xDAC},
-                    .rngSeed = {.startVal = 0x1000, .velocity = 0x4000, .accel = -0xC8},
-                },
-        },
+    {
+        .flags = 0x3E,
+        .initOffset = 1,
+        .InitTypes = {.AxisInit =
+                          {
+                              .baseValue = {.startVal = 0, .velocity = 0x4C00, .accel = -0xDAC},
+                              .rngSeed = {.startVal = 0x1000, .velocity = 0x4000, .accel = -0xC8},
+                          }},
+    },
 
-    [4] =
-        {
-            .flags = 0xB,
-            .initOffset = 5,
-            .InitTypes.AxisInit =
-                {
-                    .baseValue = {.startVal = 0x3E8, .velocity = 0x28, .accel = 0},
-                    .rngSeed = {.startVal = 0x64},
-                },
-        },
+    {
+        .flags = 0xB,
+        .initOffset = 5,
+        .InitTypes = {.AxisInit =
+                          {
+                              .baseValue = {.startVal = 0x3E8, .velocity = 0x28, .accel = 0},
+                              .rngSeed = {.startVal = 0x64},
+                          }},
+    },
 
-    [5] =
-        {
-            .flags = 3,
-            .initOffset = 7,
-            .InitTypes.AxisInit =
-                {
-                    .baseValue = {.startVal = 0x8000, .velocity = -0x700, .accel = 0},
-                },
-        },
+    {
+        .flags = 3,
+        .initOffset = 7,
+        .InitTypes = {.AxisInit =
+                          {
+                              .baseValue = {.startVal = 0x8000, .velocity = -0x700, .accel = 0},
+                          }},
+    },
 
-    [6] = {0},
+    {0},
 };
 
-static void RB_Orca_SpawnSplash(struct Instance *orcaInst)
+static inline void RB_Orca_SpawnSplash(struct Instance *orcaInst)
 {
 	struct Particle *particle;
-	struct GameTracker *gGT;
-	int i;
+	s32 i;
 
-	gGT = sdata->gGT;
-
-	for (i = 0; i < 0xF; i++)
+	for (i = 0xF; i != 0; i--)
 	{
-		particle = Particle_Init(0, gGT->iconGroup[1], &emSet_OrcaSplash[0]);
+		particle = Particle_Init(0, GAME_TRACKER->iconGroup[1], &emSet_OrcaSplash[0]);
 
 		if (particle == 0)
 		{
 			continue;
 		}
 
-		particle->axis[0].startVal += (orcaInst->matrix.t[0] << 8) + (particle->axis[0].velocity << 4);
-		particle->axis[1].startVal += (orcaInst->matrix.t[1] << 8) + (particle->axis[1].velocity << 1);
+		particle->axis[0].startVal += ((u32)orcaInst->matrix.t[0] << 8) + ((u32)particle->axis[0].velocity << 4);
+		particle->axis[1].startVal += ((u32)orcaInst->matrix.t[1] << 8) + ((u32)particle->axis[1].velocity << 1);
+		particle->axis[2].startVal += ((u32)orcaInst->matrix.t[2] << 8) + ((u32)particle->axis[2].velocity << 4);
 		particle->renderDepthLimit = 0x1000;
-		particle->axis[2].startVal += (orcaInst->matrix.t[2] << 8) + (particle->axis[2].velocity << 4);
 	}
 }
 
@@ -101,20 +92,22 @@ void RB_Orca_ThTick(struct Thread *t)
 	struct Orca *orcaObj;
 	struct Instance *orcaInst;
 	struct GameTracker *gGT;
-	int numFrames;
-	int pathFrame;
-	int denominator;
-	int nextFrame;
-	s16 direction;
+	s32 numFrames;
+	s16 pathFrame;
+	s32 denominator;
+	s32 signedFrame;
+	s32 nextFrame;
+	s32 direction;
 
-	orcaObj = (struct Orca *)t->object;
+	orcaObj = t->object;
+	pathFrame = orcaObj->cooldown;
 	orcaInst = t->inst;
 
-	if (orcaObj->cooldown != 0)
+	if (pathFrame != 0)
 	{
-		orcaObj->cooldown--;
+		orcaObj->cooldown = pathFrame - 1;
 
-		if ((u16)orcaObj->cooldown != 0)
+		if (orcaObj->cooldown != 0)
 		{
 			return;
 		}
@@ -125,28 +118,31 @@ void RB_Orca_ThTick(struct Thread *t)
 
 	numFrames = orcaObj->numFrames;
 	pathFrame = orcaObj->animIndex;
+	// Clamp travel separately from the animation's lead-in and splash frames.
+	denominator = numFrames - 0x14;
 
-	if ((numFrames - 0x14) < pathFrame)
+	if (denominator < pathFrame)
 	{
-		pathFrame = numFrames - 0x14;
+		pathFrame = denominator;
 	}
 
 	direction = orcaObj->direction;
 	denominator = numFrames - 0x17;
 
-	if (direction == 0)
+	if (direction != 0)
 	{
-		if ((numFrames - 0x1A) < (s16)pathFrame)
+		pathFrame -= 3;
+	}
+	else
+	{
+		signedFrame = pathFrame;
+		if ((numFrames - 0x1A) < signedFrame)
 		{
 			pathFrame = numFrames - 0x1A;
 		}
 	}
-	else
-	{
-		pathFrame -= 3;
-	}
 
-	if ((s16)pathFrame < 0)
+	if (pathFrame < 0)
 	{
 		pathFrame = 0;
 	}
@@ -159,7 +155,7 @@ void RB_Orca_ThTick(struct Thread *t)
 
 	if (nextFrame < orcaObj->numFrames)
 	{
-		gGT = sdata->gGT;
+		gGT = GAME_TRACKER;
 
 		if ((gGT->numPlyrCurrGame < 2) && ((nextFrame == 5) || (nextFrame == 0x31)))
 		{
@@ -168,13 +164,13 @@ void RB_Orca_ThTick(struct Thread *t)
 
 		orcaInst->animFrame = nextFrame;
 
-		if (direction == 0)
+		if (direction != 0)
 		{
-			orcaObj->animIndex--;
+			orcaObj->animIndex++;
 		}
 		else
 		{
-			orcaObj->animIndex++;
+			orcaObj->animIndex--;
 		}
 
 		return;
@@ -200,7 +196,6 @@ int RB_Orca_ThCollide(struct Thread *orcaThread, struct Thread *driverTh, void *
 void RB_Orca_LInB(struct Instance *inst)
 {
 	struct Orca *orcaObj;
-	struct SpawnType2 *spawnType2;
 	struct Thread *t;
 	void **pointers;
 	s16 *metaArray;
@@ -220,12 +215,13 @@ void RB_Orca_LInB(struct Instance *inst)
 	    0               // thread relative
 	);
 
+	inst->thread = t;
 	if (t == 0)
 	{
 		return;
 	}
 
-	inst->thread = t;
+	orcaObj = t->object;
 	t->funcThCollide = (void *)RB_Orca_ThCollide;
 	t->inst = inst;
 
@@ -234,7 +230,6 @@ void RB_Orca_LInB(struct Instance *inst)
 	inst->scale.z = 0xC00;
 	inst->flags |= DRAW_HUGE;
 
-	orcaObj = (struct Orca *)t->object;
 	orcaObj->animIndex = -10;
 	orcaObj->direction = 1;
 	orcaObj->instDefRot.x = inst->instDef->rot.x;
@@ -244,12 +239,10 @@ void RB_Orca_LInB(struct Instance *inst)
 	orcaID = inst->name[strlen(inst->name) - 1] - '0';
 	orcaObj->orcaID = orcaID;
 
-	if (sdata->gGT->level1->numSpawnType2 != 0)
+	if (GAME_TRACKER->level1->numSpawnType2 != 0)
 	{
-		spawnType2 = &sdata->gGT->level1->ptrSpawnType2[orcaID + 4];
-
-		orcaObj->startPos = spawnType2->coords.positions[0];
-		orcaObj->endPos = spawnType2->coords.positions[1];
+		orcaObj->startPos = GAME_TRACKER->level1->ptrSpawnType2[orcaID + 4].coords.positions[0];
+		orcaObj->endPos = GAME_TRACKER->level1->ptrSpawnType2[orcaObj->orcaID + 4].coords.positions[1];
 	}
 
 	orcaObj->pathDelta.x = orcaObj->startPos.x - orcaObj->endPos.x;
@@ -258,14 +251,15 @@ void RB_Orca_LInB(struct Instance *inst)
 
 	orcaObj->numFrames = INSTANCE_GetNumAnimFrames(inst, 0);
 
-	if (sdata->gGT->level1->ptrSpawnType1->count <= 0)
+	if (GAME_TRACKER->level1->ptrSpawnType1->count <= 0)
 	{
 		return;
 	}
 
-	pointers = ST1_GETPOINTERS(sdata->gGT->level1->ptrSpawnType1);
+	pointers = ST1_GETPOINTERS(GAME_TRACKER->level1->ptrSpawnType1);
 	metaArray = (s16 *)pointers[ST1_SPAWN];
-	orcaObj->cooldown = metaArray[orcaObj->orcaID];
+	metaArray += orcaObj->orcaID;
+	orcaObj->cooldown = *metaArray;
 
 	if (orcaObj->cooldown != 0)
 	{

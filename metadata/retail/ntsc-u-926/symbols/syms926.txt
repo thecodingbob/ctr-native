@@ -1747,6 +1747,7 @@
 800b06ac CS_Thread_LInB
 800b087c CS_Cutscene_Start
 800b0b38 CS_BoxScene_InstanceSplitLines
+800b7780 csGarageWhite
 800b7784 CS_Garage_ZoomOut
 800b7834 CS_Garage_MenuProc
 800b854c CS_Garage_GetMenuPtr
@@ -1757,6 +1758,7 @@
 800b88c8 CS_Credits_DrawNames
 800b8bd0 CS_Credits_DrawEpilogue
 800b8dc8 CS_Credits_ThTick
+800b8f84 CS_Credits_ThDestroy
 800b8f8c CS_Credits_Init
 800b92a0 CS_Credits_IsTextValid
 800b92cc CS_Credits_NewDancer

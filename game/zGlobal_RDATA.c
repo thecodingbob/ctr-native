@@ -10,6 +10,7 @@ struct rData rdata = {
 
     // NOTE(aalhendi): retail is pre-shaped; UI_DrawRaceClock patches digits only.
     .s_timeString_empty = "  :  :  ",
+    .s_lapString = "%2.02d/%ld",
 
     .s_oxide = "oxide",
     .s_fake = "fake",

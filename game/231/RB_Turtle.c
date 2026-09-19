@@ -1,123 +1,57 @@
 #include <common.h>
 
-
 void RB_Turtle_ThTick(struct Thread *t)
 {
-	struct Turtle *turtleObj;
-	struct Instance *turtleInst;
-	int currTimer;
+	struct Turtle *turtleObj = t->object;
+	struct Instance *turtleInst = t->inst;
 
-	turtleObj = t->object;
-	turtleInst = t->inst;
-
-	if (turtleObj->direction == TURTLE_DIRECTION_RISING)
+	if (turtleObj->direction != TURTLE_DIRECTION_RISING)
 	{
-		// use timer variables for milliseconds
-
-		currTimer = turtleObj->timer;
-
-		// if less than 1.0 seconds
-		// wait for rise
-		if (currTimer < 0x3c0)
+		if (turtleObj->timer < 0x3c0)
 		{
-			// increment
-			currTimer += sdata->gGT->elapsedTimeMS;
-
-			// set
-			turtleObj->timer = currTimer;
-
-			if (currTimer > 0x5a0)
+			turtleObj->timer += GAME_TRACKER->elapsedTimeMS;
+			if (turtleObj->timer > 0x5a0)
 			{
 				turtleObj->timer = 0x5a0;
 			}
-
+		}
+		else if (turtleInst->animFrame + 1 < INSTANCE_GetNumAnimFrames(turtleInst, 0))
+		{
+			turtleInst->animFrame++;
+		}
+		else
+		{
+			turtleObj->direction = TURTLE_DIRECTION_RISING;
+			turtleObj->timer = 0;
+			turtleObj->state = TURTLE_STATE_FULLY_DOWN;
+		}
+	}
+	else
+	{
+		if (turtleObj->timer < 0x3c0)
+		{
+			turtleObj->timer += GAME_TRACKER->elapsedTimeMS;
+			if (turtleObj->timer > 0x5a0)
+			{
+				turtleObj->timer = 0x5a0;
+			}
 			if (turtleObj->timer == 0x5a0)
 			{
 				PlaySound3D(0x7d, turtleInst);
 			}
 		}
-
-		// if more than one second has passed
-		// time to rise
 		else
 		{
-			// turtle not fully down,
-			// impacts jumping
+			// NOTE(aalhendi): Raising the shell changes jump height before the animation ends.
 			turtleObj->state = TURTLE_STATE_NOT_FULLY_DOWN;
-
-			// use timer variables for frame counting
-
-			// decrement frame (make turtle rise)
-			currTimer = turtleInst->animFrame - 1;
-
-			// end of animation
-			if (currTimer < 1)
+			if (turtleInst->animFrame - 1 > 0)
 			{
-				// reset direction
+				turtleInst->animFrame--;
+			}
+			else
+			{
 				turtleObj->direction = TURTLE_DIRECTION_FALLING;
-
-				// reset timer
 				turtleObj->timer = 0;
-			}
-
-			// playing animation
-			else
-			{
-				// decrement frame (make turtle rise)
-				turtleInst->animFrame = currTimer;
-			}
-		}
-	}
-
-	else
-	{
-		// use timer variables for milliseconds
-
-		currTimer = turtleObj->timer;
-
-		// if less than 1.0 seconds
-		// wait for fall
-		if (currTimer < 0x3c0)
-		{
-			// increment
-			currTimer += sdata->gGT->elapsedTimeMS;
-
-			// set
-			turtleObj->timer = currTimer;
-
-			if (currTimer > 0x5a0)
-			{
-				turtleObj->timer = 0x5a0;
-			}
-		}
-
-		// if more than one second has passed
-		// time to fall
-		else
-		{
-			// use timer variables for frame counting
-
-			// increment frame (make turtle fall)
-			currTimer = turtleInst->animFrame + 1;
-
-			// playing animation
-			if (currTimer < INSTANCE_GetNumAnimFrames(turtleInst, 0))
-			{
-				// increment frame (make turtle fall)
-				turtleInst->animFrame = currTimer;
-			}
-
-			// finished animation
-			else
-			{
-				// reset direction
-				turtleObj->direction = TURTLE_DIRECTION_RISING;
-
-				// reset timer
-				turtleObj->timer = 0;
-
-				// turtle is "fully" down
-				turtleObj->state = TURTLE_STATE_FULLY_DOWN;
 			}
 		}
 	}
@@ -125,26 +59,24 @@ void RB_Turtle_ThTick(struct Thread *t)
 
 int RB_Turtle_LInC(struct Instance *inst, struct Thread *driverTh, struct ScratchpadStruct *sps)
 {
-	(void)sps;
-	int speed;
-	int jumpType;
+	s32 speed;
+	s32 jumpType;
 	struct Driver *driver;
+	struct Turtle *turtleObj;
+	(void)sps;
+
 
 	driver = driverTh->object;
+	turtleObj = inst->thread->object;
 
-	// absolute value
-	speed = driver->speedApprox;
-	if (speed < 0)
-	{
-		speed = -speed;
-	}
+	speed = abs(driver->speedApprox);
 
 	if (speed > 0x1400)
 	{
 		// small jump
 		jumpType = FORCED_JUMP_LOW;
 
-		if (((struct Turtle *)inst->thread->object)->state != TURTLE_STATE_FULLY_DOWN)
+		if (turtleObj->state != TURTLE_STATE_FULLY_DOWN)
 		{
 			// big jump
 			jumpType = FORCED_JUMP_HIGH;
@@ -161,7 +93,7 @@ int RB_Turtle_LInC(struct Instance *inst, struct Thread *driverTh, struct Scratc
 
 void RB_Turtle_LInB(struct Instance *inst)
 {
-	int turtleID;
+	s32 turtleID;
 	struct Thread *t;
 	struct Turtle *turtleObj;
 
@@ -181,11 +113,12 @@ void RB_Turtle_LInB(struct Instance *inst)
 	    0                 // thread relative
 	);
 
+	inst->thread = t;
 	if (t == 0)
 	{
 		return;
 	}
-	inst->thread = t;
+	turtleObj = t->object;
 	t->inst = inst;
 
 	inst->scale.x = 0x1000;
@@ -194,24 +127,23 @@ void RB_Turtle_LInB(struct Instance *inst)
 
 	turtleID = inst->name[strlen(inst->name) - 1] - '0';
 
-	turtleObj = ((struct Turtle *)t->object);
 	turtleObj->turtleID = turtleID;
-	turtleObj->timer = 0;
 	turtleObj->direction = TURTLE_DIRECTION_FALLING;
+	turtleObj->timer = 0;
 	inst->animFrame = 0;
 
 	// put turtles on different cycles, based on turtleID
-	if ((turtleID & 1) == 0)
+	if ((turtleObj->turtleID & 1) != 0)
+	{
+		// fully down
+		turtleObj->direction = TURTLE_DIRECTION_RISING;
+		turtleObj->state = TURTLE_STATE_FULLY_DOWN;
+		inst->animFrame = INSTANCE_GetNumAnimFrames(inst, 0);
+	}
+	else
 	{
 		// fully up
 		turtleObj->direction = TURTLE_DIRECTION_FALLING;
 		turtleObj->state = TURTLE_STATE_NOT_FULLY_DOWN;
-		inst->animFrame = 0;
-		return;
 	}
-
-	// fully down
-	turtleObj->direction = TURTLE_DIRECTION_RISING;
-	turtleObj->state = TURTLE_STATE_FULLY_DOWN;
-	inst->animFrame = INSTANCE_GetNumAnimFrames(inst, 0);
 }

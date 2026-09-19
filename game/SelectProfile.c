@@ -112,7 +112,7 @@ void SelectProfile_DrawAdvProfile(struct AdvProgress *adv, int posX, int posY, s
 	struct GameTracker *gGT = sdata->gGT;
 	RECT profileRect;
 
-	int iconColor;
+	Color iconColor;
 	int numberColor;
 	int emptyColor;
 	int nameColor;
@@ -120,7 +120,7 @@ void SelectProfile_DrawAdvProfile(struct AdvProgress *adv, int posX, int posY, s
 
 	if ((menuFlag & SELECT_PROFILE_DRAW_STYLE_GREEN) != 0)
 	{
-		iconColor = sdata->greenColor;
+		ColorCode_SetPacked(&iconColor, (u32)sdata->greenColor);
 		numberColor = LIGHT_GREEN;
 		emptyColor = FOREST_GREEN;
 		nameColor = LIGHT_GREEN;
@@ -128,7 +128,7 @@ void SelectProfile_DrawAdvProfile(struct AdvProgress *adv, int posX, int posY, s
 	}
 	else
 	{
-		iconColor = sdata->greyColor;
+		ColorCode_SetPacked(&iconColor, (u32)sdata->greyColor);
 		numberColor = ORANGE;
 		emptyColor = RED;
 		nameColor = PERIWINKLE;
@@ -181,7 +181,7 @@ void SelectProfile_DrawAdvProfile(struct AdvProgress *adv, int posX, int posY, s
 		highlightRect.w = 0xd0;
 		highlightRect.h = 0x35;
 
-		CTR_Box_DrawClearBox(&highlightRect, highlightColor, 1, &gGT->backBuffer->otMem.uiOT[3]);
+		CTR_Box_DrawClearBox(&highlightRect, highlightColor, 1, &gGT->backBuffer->otMem.uiOT[3], &gGT->backBuffer->primMem);
 	}
 
 	RECTMENU_DrawInnerRect(&profileRect, (s16)menuFlag, &gGT->backBuffer->otMem.uiOT[3]);
@@ -398,18 +398,21 @@ void SelectProfile_DrawGhostProfile(struct GhostProfile *profile, int posX, int 
 		DecalFont_DrawLine(sdata->lngStrings[LNG_NOT_AVAILABLE], posX + 0x64, posY + 0x11, FONT_SMALL, JUSTIFY_CENTER | SILVER);
 		Color redColor;
 		ColorCode_SetPacked(&redColor, (u32)sdata->redColor);
-		CTR_Box_DrawClearBox(&innerRect, &redColor, ADD_DECAL, gGT->backBuffer->otMem.uiOT);
+		CTR_Box_DrawClearBox(&innerRect, &redColor, ADD_DECAL, gGT->backBuffer->otMem.uiOT, &gGT->backBuffer->primMem);
 	}
 
 	if (profile != NULL)
 	{
+		Color iconColor;
 		struct MetaDataLEV *mdLev = &data.metaDataLEV[profile->trackID];
 		int iconID = data.MetaDataCharacters[profile->characterID].iconID;
 
+		ColorCode_SetPacked(&iconColor, (u32)sdata->ghostIconColor);
+
 		DecalFont_DrawLine(sdata->lngStrings[mdLev->name_LNG], posX + 0x64, posY + 0x1e, FONT_SMALL, JUSTIFY_CENTER | LIGHT_GREEN);
 		DecalFont_DrawLine(RECTMENU_DrawTime(profile->trackTime), posX + 0x78, posY + 10, FONT_BIG, JUSTIFY_CENTER | PERIWINKLE);
-		RECTMENU_DrawPolyGT4(gGT->ptrIcons[iconID], posX + 8, posY + 5, &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT, sdata->ghostIconColor,
-		                     sdata->ghostIconColor, sdata->ghostIconColor, sdata->ghostIconColor, TRANS_50_DECAL, 0x1000);
+		RECTMENU_DrawPolyGT4(gGT->ptrIcons[iconID], posX + 8, posY + 5, &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT, iconColor, iconColor, iconColor,
+		                     iconColor, TRANS_50_DECAL, 0x1000);
 	}
 	else
 	{
@@ -422,7 +425,7 @@ void SelectProfile_DrawGhostProfile(struct GhostProfile *profile, int posX, int 
 	if (isHighlighted != 0)
 	{
 		Color *highlight = ((menuFlag & SELECT_PROFILE_DRAW_STYLE_GREEN) != 0) ? &sdata->menuRowHighlight_Green : &sdata->menuRowHighlight_Normal;
-		CTR_Box_DrawClearBox(&innerRect, highlight, TRANS_50_DECAL, gGT->backBuffer->otMem.uiOT);
+		CTR_Box_DrawClearBox(&innerRect, highlight, TRANS_50_DECAL, gGT->backBuffer->otMem.uiOT, &gGT->backBuffer->primMem);
 	}
 
 	RECTMENU_DrawInnerRect(&profileRect, (s16)menuFlag, gGT->backBuffer->otMem.uiOT);
@@ -643,8 +646,8 @@ static void SelectProfile_CopyGameProgressToCard(void)
 
 	RaceConfig_SaveGameOptions();
 	GAMEPROG_SaveCupProgress();
-	GAMEPROG_SyncGameAndCard(&memcard->gameProgress, &sdata->gameProgress);
-	memcpy(&memcard->gameProgress, &sdata->gameProgress, sizeof(struct GameProgress) + sizeof(struct GameOptions));
+	GAMEPROG_SyncGameAndCard(&memcard->gameSave.progress, &sdata->gameSave.progress);
+	memcpy(&memcard->gameSave, &sdata->gameSave, sizeof(struct GameSave));
 }
 
 static void SelectProfile_LoadAdvProfile(int slot)
@@ -652,7 +655,7 @@ static void SelectProfile_LoadAdvProfile(int slot)
 	struct GameTracker *gGT = sdata->gGT;
 	struct MemcardProfile *memcard = SelectProfile_MemcardProfile();
 
-	GAMEPROG_SyncGameAndCard(&memcard->gameProgress, &sdata->gameProgress);
+	GAMEPROG_SyncGameAndCard(&memcard->gameSave.progress, &sdata->gameSave.progress);
 	sdata->advProgress = memcard->advProgress[slot];
 	data.characterIDs[0] = sdata->advProgress.characterID;
 	memmove(gGT->prevNameEntered, sdata->advProgress.name, sizeof(gGT->prevNameEntered));

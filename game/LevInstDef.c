@@ -1,47 +1,50 @@
 #include <common.h>
 
+// NOTE(aalhendi): These lists alternate between InstDef* and Instance* in place.
+// Both records keep their peer at 0x2c. Shared PVS lists therefore toggle once
+// per reference, just as retail does; do not deduplicate the traversal.
+// Alias-qualified slots and byte-safe peer reads support either declared type.
+typedef void *LevInstDefLink CTR_MAY_ALIAS;
+CTR_STATIC_ASSERT(offsetof(struct InstDef, ptrInstance) == offsetof(struct Instance, instDef));
+
+static inline void *LevInstDef_Peer(const void *record)
+{
+	return (void *)CTR_ReadU32AlignedLE((const u8 *)record + offsetof(struct InstDef, ptrInstance));
+}
+
 
 void LevInstDef_UnPack(struct mesh_info *ptr_mesh_info)
 {
-	int i;
-	int numQuadBlock;
-	struct QuadBlock *ptrQuadBlockArray;
 	struct QuadBlock *qbCurr;
-	struct InstDef **visInstSrc;
+	struct QuadBlock *qbEnd;
+	LevInstDefLink *visInstSrc;
 	struct Level *level1;
 
-	numQuadBlock = ptr_mesh_info->numQuadBlock;
-	ptrQuadBlockArray = ptr_mesh_info->ptrQuadBlockArray;
+	qbCurr = ptr_mesh_info->ptrQuadBlockArray;
+	qbEnd = qbCurr + ptr_mesh_info->numQuadBlock;
 
 	// loop through all quadblocks
-	for (i = 0; i < numQuadBlock; i++)
+	for (; qbCurr < qbEnd; qbCurr++)
 	{
-		qbCurr = &ptrQuadBlockArray[i];
-
 		if ((qbCurr->pvs != 0) && (qbCurr->pvs->visInstSrc != 0))
 		{
 			// loop through all instance pointers visible on quadblock
-			for (visInstSrc = (struct InstDef **)qbCurr->pvs->visInstSrc; visInstSrc[0] != NULL; visInstSrc++)
+			for (visInstSrc = (LevInstDefLink *)qbCurr->pvs->visInstSrc; visInstSrc[0] != NULL; visInstSrc++)
 			{
-				//ND BUG: This operation is not idempotent. The outer for loop means we will do this operation multiple times
-				//on the same pointer, so we keep switching it from an InstDef pointer to an Instance pointer and back again.
-				//This is not a problem in the original game because LEVs were designed with this in mind (odd numbers of
-				//quadblocks), but we need to keep this in mind. The easiest solution I can think of is to keep track of which
-				//InstDefs have been unpacked and only unpack them once, but that requires a lot of extra bookkeeping and wouldn't.
-				//be "vanilla".
-				visInstSrc[0] = (struct InstDef *)visInstSrc[0]->ptrInstance;
+				visInstSrc[0] = LevInstDef_Peer(visInstSrc[0]);
 			}
 		}
 	}
 
-	level1 = sdata->gGT->level1;
+	level1 = GAME_TRACKER->level1;
+	visInstSrc = (LevInstDefLink *)level1->ptrInstDefPtrArray;
 
-	if (level1->ptrInstDefPtrArray != 0)
+	if (visInstSrc != NULL)
 	{
 		// loop through all instDef pointers in the LEV
-		for (visInstSrc = level1->ptrInstDefPtrArray; visInstSrc[0] != 0; visInstSrc++)
+		for (; visInstSrc[0] != 0; visInstSrc++)
 		{
-			visInstSrc[0] = (struct InstDef *)visInstSrc[0]->ptrInstance;
+			visInstSrc[0] = LevInstDef_Peer(visInstSrc[0]);
 		}
 	}
 }
@@ -49,38 +52,35 @@ void LevInstDef_UnPack(struct mesh_info *ptr_mesh_info)
 
 void LevInstDef_RePack(struct mesh_info *ptr_mesh_info, b32 boolAdvHub)
 {
-	int i;
-	int numQuadBlock;
-	struct QuadBlock *ptrQuadBlockArray;
 	struct QuadBlock *qbCurr;
-	struct Instance **visInstSrc;
+	struct QuadBlock *qbEnd;
+	LevInstDefLink *visInstSrc;
 	struct Level *level1;
 	struct Thread *th;
 
-	numQuadBlock = ptr_mesh_info->numQuadBlock;
-	ptrQuadBlockArray = ptr_mesh_info->ptrQuadBlockArray;
+	qbCurr = ptr_mesh_info->ptrQuadBlockArray;
+	qbEnd = qbCurr + ptr_mesh_info->numQuadBlock;
 
 	// loop through all quadblocks
-	for (i = 0; i < numQuadBlock; i++)
+	for (; qbCurr < qbEnd; qbCurr++)
 	{
-		qbCurr = &ptrQuadBlockArray[i];
-
 		if ((qbCurr->pvs != 0) && (qbCurr->pvs->visInstSrc != 0))
 		{
 			// loop through all instance pointers visible on quadblock
-			for (visInstSrc = qbCurr->pvs->visInstSrc; visInstSrc[0] != NULL; visInstSrc++)
+			for (visInstSrc = (LevInstDefLink *)qbCurr->pvs->visInstSrc; visInstSrc[0] != NULL; visInstSrc++)
 			{
-				visInstSrc[0] = (struct Instance *)visInstSrc[0]->instDef; // maybe `visInstSrc[0]->instDef->ptrInstance`?
+				visInstSrc[0] = LevInstDef_Peer(visInstSrc[0]);
 			}
 		}
 	}
 
-	level1 = sdata->gGT->level1;
+	level1 = GAME_TRACKER->level1;
+	visInstSrc = (LevInstDefLink *)level1->ptrInstDefPtrArray;
 
-	if (level1->ptrInstDefPtrArray != 0)
+	if (visInstSrc != NULL)
 	{
 		// loop through all instDef pointers in the LEV
-		for (visInstSrc = (struct Instance **)level1->ptrInstDefPtrArray; visInstSrc[0] != NULL; visInstSrc++)
+		for (; visInstSrc[0] != NULL; visInstSrc++)
 		{
 			struct Instance *inst = visInstSrc[0];
 			struct InstDef *instDef = inst->instDef;
@@ -94,12 +94,12 @@ void LevInstDef_RePack(struct mesh_info *ptr_mesh_info, b32 boolAdvHub)
 					th->flags |= THREAD_FLAG_DEAD;
 				}
 
-				// erase instance in pool
-				LIST_AddFront(&sdata->gGT->JitPools.instance.free, (struct Item *)inst);
+				// Return the level-owned instance to the free pool.
+				LIST_AddFront(&GAME_TRACKER->JitPools.instance.free, (struct Item *)visInstSrc[0]);
 			}
 
 			// go back to instDef
-			visInstSrc[0] = (struct Instance *)instDef;
+			visInstSrc[0] = instDef;
 		}
 	}
 

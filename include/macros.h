@@ -38,6 +38,8 @@ typedef s16 b16;
 typedef s32 b32;
 typedef float f32;
 typedef double f64;
+typedef u16 CtrPackedU16 CTR_MAY_ALIAS;
+typedef u32 CtrPackedU32 CTR_MAY_ALIAS;
 
 CTR_STATIC_ASSERT(sizeof(u8) == 1);
 CTR_STATIC_ASSERT(sizeof(s8) == 1);
@@ -78,16 +80,42 @@ CTR_STATIC_ASSERT(sizeof(void *) == 4);
 
 static inline u16 CTR_ReadU16LE(const void *src)
 {
+#ifdef CTR_NATIVE
 	const u8 *bytes = (const u8 *)src;
 
 	return (u16)((u16)bytes[0] | ((u16)bytes[1] << 8));
+#else
+	return *(const CtrPackedU16 *)src;
+#endif
 }
 
 static inline u32 CTR_ReadU32LE(const void *src)
 {
+#ifdef CTR_NATIVE
 	const u8 *bytes = (const u8 *)src;
 
 	return (u32)bytes[0] | ((u32)bytes[1] << 8) | ((u32)bytes[2] << 16) | ((u32)bytes[3] << 24);
+#else
+	return *(const CtrPackedU32 *)src;
+#endif
+}
+
+static inline u32 CTR_ReadU32AlignedLE(const void *src)
+{
+#ifdef CTR_NATIVE
+	return CTR_ReadU32LE(src);
+#else
+	return *(const u32 *)src;
+#endif
+}
+
+static inline u16 CTR_ReadU16AlignedLE(const void *src)
+{
+#ifdef CTR_NATIVE
+	return CTR_ReadU16LE(src);
+#else
+	return *(const u16 *)src;
+#endif
 }
 
 static inline void CTR_WriteU16LE(void *dst, u16 value)
@@ -106,6 +134,15 @@ static inline void CTR_WriteU32LE(void *dst, u32 value)
 	bytes[1] = (u8)(value >> 8);
 	bytes[2] = (u8)(value >> 16);
 	bytes[3] = (u8)(value >> 24);
+}
+
+static inline void CTR_WriteU32AlignedLE(void *dst, u32 value)
+{
+#ifdef CTR_NATIVE
+	CTR_WriteU32LE(dst, value);
+#else
+	*(u32 *)dst = value;
+#endif
 }
 
 // Raw [3] vector array helpers. Arguments must be side-effect-free lvalues.
