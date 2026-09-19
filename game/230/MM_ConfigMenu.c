@@ -214,7 +214,7 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 			if (j == menu->rowSelected)
 			{
 				RECT sel = {0x30, y - 2, 0x1B0, 0x0C};
-				CTR_Box_DrawClearBox(&sel, &sdata->menuRowHighlight_Normal, TRANS_50_DECAL, ot);
+				CTR_Box_DrawClearBox(&sel, &sdata->menuRowHighlight_Normal, TRANS_50_DECAL, ot, &gGT->backBuffer->primMem);
 			}
 		}
 
@@ -256,7 +256,7 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 			if (i == menu->rowSelected)
 			{
 				RECT sel = {0x30, y - 2, 0x1B0, 0x0C};
-				CTR_Box_DrawClearBox(&sel, &sdata->menuRowHighlight_Normal, TRANS_50_DECAL, ot);
+				CTR_Box_DrawClearBox(&sel, &sdata->menuRowHighlight_Normal, TRANS_50_DECAL, ot, &gGT->backBuffer->primMem);
 			}
 		}
 	}
@@ -265,7 +265,7 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		RECT sep = {0x20, 0x2C, 0x1C0, 2};
 		Color sepColor;
 		ColorCode_SetPacked(&sepColor, sdata->battleSetup_Color_UI_1);
-		RECTMENU_DrawOuterRect_Edge(&sep, sepColor, 0x20, ot);
+		RECTMENU_DrawOuterRect_Edge(&sep, &sepColor, 0x20, ot);
 	}
 
 	RECT bg = {0x10, 4, 0x1E0, 0xCE};

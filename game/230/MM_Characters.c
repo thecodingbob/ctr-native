@@ -137,7 +137,7 @@ static b32 MM_Characters_IsUnlocked(const struct CharacterSelectMeta *meta)
       return g_config.unlockNitrosOxide;
     }
 
-    return meta->unlockFlags == MM_CHARACTER_UNLOCK_ALWAYS ||
+    return (s16)meta->unlockFlags == MM_CHARACTER_UNLOCK_ALWAYS ||
            CHECK_ADV_BIT(GAME_PROGRESS.unlocks, meta->unlockFlags) ||
            g_config.unlockAllCharacters;
 }

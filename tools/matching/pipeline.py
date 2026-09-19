@@ -534,7 +534,7 @@ def assemble_mips_source(
         str(toolchain.binutils["as"]),
         f"-G{small_data_limit}",
     ]
-    command.extend(f"-I{path}" for path in include_directories)
+    command.extend(f"-I{path.as_posix()}" for path in include_directories)
     if dependency_file is not None:
         command.extend(["--MD", str(dependency_file)])
     command.extend(["-o", str(object_file), str(source)])
