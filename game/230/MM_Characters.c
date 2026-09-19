@@ -201,15 +201,12 @@ s32 MM_Characters_GetNextDriver(s32 direction, s16 characterID)
 	register s16 nextIcon CTR_PSX_REGISTER("$5");
 	s32 characterIndex;
 	s32 directionIndex;
-	s16 unlocked;
 
 	characterIndex = (s16)characterID;
 	directionIndex = (s16)direction;
 	nextIcon = *(u8 *)(directionIndex + &MM_ACTIVE_CHARACTER_SELECT_META[characterIndex].nextIconByDirection[0]);
-	unlocked = MM_ACTIVE_CHARACTER_SELECT_META[(s32)nextIcon].unlockFlags;
 
-    if (!MM_Characters_IsUnlocked(
-            &MM_ACTIVE_CHARACTER_SELECT_META[(s32)nextIcon]))
+    if (!MM_Characters_IsUnlocked(&MM_ACTIVE_CHARACTER_SELECT_META[(s32)nextIcon]))
     {
       nextIcon = characterID;
     }
@@ -622,17 +619,13 @@ LAB_Characters_DrawWindows_End:
 }
 void MM_Characters_SetMenuLayout(void)
 {
-	struct GameProgress *progress;
 	struct CharacterSelectMeta *meta1P2P;
-	u32 *unlockWord;
 	b16 expandRoster;
 	s16 layoutIndex;
 	s16 iconIndex;
-	s16 unlocked;
 
 	expandRoster = false;
 	iconIndex = MM_CHARACTER_SELECT_EXPANSION_ICON_FIRST;
-	progress = &GAME_PROGRESS;
 	meta1P2P = MM_CHARACTER_SELECT_META_1P2P;
 
 	layoutIndex = GAME_TRACKER->numPlyrNextGame - 1;
@@ -642,14 +635,14 @@ void MM_Characters_SetMenuLayout(void)
 
 	// Loop through bottom characters,
 	// if any are unlocked, use expanded
-    for (; iconIndex < MM_CHARACTER_SELECT_ICON_COUNT; iconIndex++)
-    {
-      if (MM_Characters_IsUnlocked(&meta1P2P[iconIndex]))
-      {
-        expandRoster = true;
-        MM_CHARACTER_SELECT_ROSTER_EXPANDED = true;
-      }
-    }
+        for (; iconIndex < MM_CHARACTER_SELECT_ICON_COUNT; iconIndex++)
+        {
+          if (MM_Characters_IsUnlocked(&meta1P2P[iconIndex]))
+          {
+            expandRoster = true;
+            MM_CHARACTER_SELECT_ROSTER_EXPANDED = true;
+          }
+        }
 
 	if (
 	    // if 1P or 2P
@@ -1351,9 +1344,6 @@ outerPlayerLoopComplete:
 		// loop through character icons
 		for (playerIndex = 0; playerIndex < MM_CHARACTER_SELECT_ICON_COUNT; playerIndex++, iconMetaTail += 6, preInputCharacterMeta++)
 		{
-			s16 unlockRequirement;
-
-			unlockRequirement = ((u16 *)iconMetaTail)[4];
 			if (MM_Characters_IsUnlocked(preInputCharacterMeta))
 			{
 				register struct TransitionMeta *iconTransition CTR_PSX_REGISTER("$3");
@@ -1569,10 +1559,8 @@ outerPlayerLoopComplete:
 	for (; playerIndex < MM_CHARACTER_SELECT_ICON_COUNT; playerIndex++, preInputCharacterMeta++)
 	{
 		RECT iconRect;
-		s16 unlockRequirement;
 
 		iconMetaTail = &preInputCharacterMeta->posY;
-		unlockRequirement = ((u16 *)iconMetaTail)[4];
 
 		if (MM_Characters_IsUnlocked(preInputCharacterMeta))
 		{

@@ -12,7 +12,7 @@ struct MenuRow s_rowsMainMenuBasicConfig[] = {
 	{0x51, 4, 6, 5, 5},
 	{0x0E, 5, 7, 6, 6},
 	{0x003, 6, 0, 7, 7},
-	{-1},
+	{RECTMENU_STRING_NONE, 0, 0, 0, 0},
 };
 
 struct MenuRow s_rowsMainMenuWithSBConfig[] = {
@@ -25,7 +25,7 @@ struct MenuRow s_rowsMainMenuWithSBConfig[] = {
 	{0x234, 5, 7, 6, 6},
 	{0x0E, 6, 8, 7, 7},
 	{0x003, 7, 0, 8, 8},
-	{-1},
+	{RECTMENU_STRING_NONE, 0, 0, 0, 0},
 };
 
 static void MM_MenuProc_Config(struct RectMenu *menu);
