@@ -285,22 +285,16 @@ void MM_MenuProc_Main(struct RectMenu *menu)
 		MM_DESIRED_MENU_INDEX = MM_EXIT_ROUTE_SCRAPBOOK;
 		return;
 
-	default:
-		return;
-	}
-
-	// Config / Options
-	if (choose == 0x0E)
-	{
+	case LNG_OPTIONS:
 		sdata->ptrDesiredMenu = &g_configMenu;
 		return;
-	}
 
-	// Quit
-	if (choose == 0x003)
-	{
+	case LNG_QUIT:
 		mainMenu->ptrNextBox_InHierarchy = &D230.menuQuitConfirm;
 		mainMenu->state |= DRAW_NEXT_MENU_IN_HIERARCHY;
+		return;
+
+	default:
 		return;
 	}
 }
