@@ -933,6 +933,15 @@ void MM_Characters_MenuProc(struct RectMenu *unused)
 			{
 				MM_Characters_HideDrivers();
 
+				if (g_config.extendedAdventureCharacterSelect &&
+				    ((GAME_TRACKER->gameMode1 & ADVENTURE_MODE) != 0))
+				{
+					GAME_ADV_PROGRESS.characterID = GAME_CHARACTER_IDS[0];
+					MM_DESIRED_MENU = &data.menuSubmitName;
+					SubmitName_RestoreName(0);
+					return;
+				}
+
 				// if you are in a cup
 				if ((GAME_TRACKER->gameMode2 & CUP_ANY_KIND) != 0)
 				{
@@ -950,14 +959,6 @@ void MM_Characters_MenuProc(struct RectMenu *unused)
 			// if returning to main menu
 			MM_JumpTo_Title_Returning();
 			MM_Characters_HideDrivers();
-		    if (g_config.extendedAdventureCharacterSelect &&
-                 ((GAME_TRACKER->gameMode1 & ADVENTURE_MODE) != 0))
-		    {
-		      GAME_ADV_PROGRESS.characterID = GAME_CHARACTER_IDS[0];
-		      MM_DESIRED_MENU = &data.menuSubmitName;
-		      SubmitName_RestoreName(0);
-		      return;
-		    }
 			return;
 		}
 		break;
