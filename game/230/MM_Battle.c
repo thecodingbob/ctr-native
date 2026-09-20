@@ -573,7 +573,10 @@ LAB_Battle_ValidSetup:
 							eventTimeMinutes = MM_BATTLE_LIFE_TIME_LIMIT_MINUTES[MM_MENU_BATTLE_LENGTH_LIFE_TIME.rowSelected];
 						}
 						gameTrackerPage = MM_GAME_TRACKER_PAGE_VALUE;
-						timeTracker = *((struct GameTracker **)(((u32)gameTrackerPage) + MM_GAME_TRACKER_PAGE_OFFSET));
+						// NOTE: Retail reloads GAME_TRACKER through its overlay page register here.
+						// On native the page value is 0, so chasing it would dereference a null
+						// pointer and crash. timeTracker is GAME_TRACKER; assign it directly.
+						timeTracker = battleTracker;
 						battleTracker->originalEventTime = eventTimeMinutes;
 						CTR_PSX_MEMORY_BARRIER();
 						originalEventTime = timeTracker->originalEventTime;
