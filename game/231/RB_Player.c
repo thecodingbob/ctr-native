@@ -2,9 +2,7 @@
 
 void RB_Player_KillPlayer(struct Driver *attacker, struct Driver *victim)
 {
-	struct GameTracker *gGT = sdata->gGT;
-	u32 gameMode = gGT->gameMode1;
-	u8 numPlyr = gGT->numPlyrCurrGame;
+	u32 gameMode = GAME_TRACKER->gameMode1;
 
 	if ((gameMode & BATTLE_MODE) == 0)
 	{
@@ -23,52 +21,55 @@ void RB_Player_KillPlayer(struct Driver *attacker, struct Driver *victim)
 
 	if ((gameMode & POINT_LIMIT) != 0)
 	{
-		int attackerTeam = attacker->BattleHUD.teamID;
-		int victimTeam = victim->BattleHUD.teamID;
+		s32 victimTeam = victim->BattleHUD.teamID;
+		s32 attackerTeam = attacker->BattleHUD.teamID;
 
-		if (victimTeam == attackerTeam)
+		if (victimTeam != attackerTeam)
 		{
-			int score = gGT->battleSetup.pointsPerTeam[victimTeam] - 1;
+			s32 score = GAME_TRACKER->battleSetup.pointsPerTeam[attackerTeam] + 1;
+			s32 i;
 
-			if (score < -9)
+			if (score < 100)
+			{
+				GAME_TRACKER->battleSetup.pointsPerTeam[attackerTeam] = score;
+			}
+			if (GAME_TRACKER->battleSetup.pointsPerTeam[attacker->BattleHUD.teamID] != GAME_TRACKER->battleSetup.killLimit)
 			{
 				return;
 			}
-
-			gGT->battleSetup.pointsPerTeam[victimTeam] = score;
+			if ((GAME_TRACKER->gameMode1 & TIME_LIMIT) != 0)
+			{
+				return;
+			}
+			for (i = 0; i < GAME_TRACKER->numPlyrCurrGame; i++)
+			{
+				GAME_TRACKER->drivers[i]->actionsFlagSet |= ACTION_RACE_FINISHED;
+			}
+		}
+		else
+		{
+			s32 score = GAME_TRACKER->battleSetup.pointsPerTeam[victimTeam] - 1;
+			if (score >= -9)
+			{
+				GAME_TRACKER->battleSetup.pointsPerTeam[victimTeam] = score;
+			}
 			return;
-		}
-
-		int score = gGT->battleSetup.pointsPerTeam[attackerTeam] + 1;
-
-		if (score < 100)
-		{
-			gGT->battleSetup.pointsPerTeam[attackerTeam] = score;
-		}
-
-		if (gGT->battleSetup.pointsPerTeam[attackerTeam] != gGT->battleSetup.killLimit)
-		{
-			return;
-		}
-
-		if ((gameMode & TIME_LIMIT) != 0)
-		{
-			return;
-		}
-
-		for (int i = 0; i < numPlyr; i++)
-		{
-			gGT->drivers[i]->actionsFlagSet |= ACTION_RACE_FINISHED;
 		}
 	}
 	else
 	{
+		s32 lives;
+		s32 i;
+		s16 isTeamAlive[4];
+		s32 deadPlayers;
+		s16 teamsAlive;
+		s32 victimTeam;
 		if ((gameMode & LIFE_LIMIT) == 0)
 		{
 			return;
 		}
 
-		int lives = victim->BattleHUD.numLives - 1;
+		lives = victim->BattleHUD.numLives - 1;
 
 		if (lives > 0)
 		{
@@ -76,47 +77,48 @@ void RB_Player_KillPlayer(struct Driver *attacker, struct Driver *victim)
 			return;
 		}
 
-		s16 isTeamAlive[4];
-		memset(isTeamAlive, 0, sizeof(isTeamAlive));
 
-		int deadPlayers = 0;
-		s16 teamsAlive = 0;
+		deadPlayers = 0;
+		memset(isTeamAlive, deadPlayers, sizeof(isTeamAlive));
+		// NOTE(aalhendi): Seed both tallies and the first scan from the reset count before counting starts.
+		teamsAlive = deadPlayers;
+		i = deadPlayers;
 
 		victim->funcPtrs[DRIVER_FUNC_INIT] = VehStuckProc_RIP_Init;
 		victim->BattleHUD.numLives = 0;
 		victim->actionsFlagSet |= ACTION_RACE_FINISHED;
 
-		for (int i = 0; i < numPlyr; i++)
+		for (; i < GAME_TRACKER->numPlyrCurrGame; i++)
 		{
-			struct Driver *driver = gGT->drivers[i];
+			struct Driver *driver = GAME_TRACKER->drivers[i];
 
-			if ((driver->actionsFlagSet & ACTION_RACE_FINISHED) == 0)
-			{
-				isTeamAlive[driver->BattleHUD.teamID] = 1;
-			}
-			else
+			if ((driver->actionsFlagSet & ACTION_RACE_FINISHED) != 0)
 			{
 				deadPlayers++;
 			}
+			else
+			{
+				isTeamAlive[driver->BattleHUD.teamID] = 1;
+			}
 		}
 
-		int victimTeam = victim->BattleHUD.teamID;
+		victimTeam = victim->BattleHUD.teamID;
 
-		if (((gGT->battleSetup.teamFlags & (1 << victimTeam)) != 0) && (isTeamAlive[victimTeam] == 0))
+		if (((GAME_TRACKER->battleSetup.teamFlags & (1 << victimTeam)) != 0) && (isTeamAlive[victimTeam] == 0))
 		{
-			int remainingPlayers = numPlyr - deadPlayers;
+			s32 remainingPlayers = GAME_TRACKER->numPlyrCurrGame - deadPlayers;
 
 			if (remainingPlayers < 3)
 			{
-				gGT->standingsPoints[victimTeam * 3 + remainingPlayers]++;
+				GAME_TRACKER->standingsPoints[victimTeam * 3 + remainingPlayers]++;
 			}
 
-			gGT->battleSetup.finishedRankOfEachTeam[victimTeam] = remainingPlayers;
+			GAME_TRACKER->battleSetup.finishedRankOfEachTeam[victim->BattleHUD.teamID] = GAME_TRACKER->numPlyrCurrGame - deadPlayers;
 		}
 
-		for (int team = 0; team < 4; team++)
+		for (i = 0; i < 4; i++)
 		{
-			if (((gGT->battleSetup.teamFlags & (1 << team)) != 0) && (isTeamAlive[team] != 0))
+			if (((GAME_TRACKER->battleSetup.teamFlags & (1 << i)) != 0) && (isTeamAlive[i] != 0))
 			{
 				teamsAlive++;
 			}
@@ -127,9 +129,9 @@ void RB_Player_KillPlayer(struct Driver *attacker, struct Driver *victim)
 			return;
 		}
 
-		for (int i = 0; i < numPlyr; i++)
+		for (i = 0; i < GAME_TRACKER->numPlyrCurrGame; i++)
 		{
-			gGT->drivers[i]->actionsFlagSet |= ACTION_RACE_FINISHED;
+			GAME_TRACKER->drivers[i]->actionsFlagSet |= ACTION_RACE_FINISHED;
 		}
 	}
 
@@ -138,10 +140,10 @@ void RB_Player_KillPlayer(struct Driver *attacker, struct Driver *victim)
 
 void RB_Player_ModifyWumpa(struct Driver *driver, int wumpaDelta)
 {
-	s8 numWumpaOriginal = driver->numWumpas;
+	s32 numWumpaOriginal = driver->numWumpas;
 
 	// if using unlimited wumpa, quit
-	if ((sdata->gGT->gameMode2 & CHEAT_WUMPA) != 0)
+	if ((GAME_TRACKER->gameMode2 & CHEAT_WUMPA) != 0)
 	{
 		return;
 	}
@@ -201,7 +203,7 @@ void RB_Player_ModifyWumpa(struct Driver *driver, int wumpaDelta)
 
 void RB_Player_ToggleInvisible(void)
 {
-	struct GameTracker *gGT = sdata->gGT;
+	struct GameTracker *gGT = GAME_TRACKER;
 	struct Driver *d;
 	struct Thread *t;
 
@@ -214,16 +216,13 @@ void RB_Player_ToggleInvisible(void)
 		// if driver is invisible
 		if (d->invisibleTimer != 0)
 		{
-			// loop through InstanceDrawPerPlayer
-			for (int i = 0; i < gGT->numPlyrCurrGame; i++)
+			s32 i;
+			for (i = 0; i < GAME_TRACKER->numPlyrCurrGame; i++)
 			{
-				// if this is not the screen of the invisible driver
+				// Keep the driver's own viewport visible.
 				if (i != d->driverID)
 				{
-					struct InstDrawPerPlayer *idpp = INST_GETIDPP(d->instSelf);
-
-					// make driver instance invisible on this screen
-					idpp[i].instFlags &= 0xffffffbf;
+					d->instSelf->idpp[i].instFlags &= 0xffffffbf;
 				}
 			}
 		}
@@ -233,7 +232,7 @@ void RB_Player_ToggleInvisible(void)
 
 void RB_Player_ToggleFlicker(void)
 {
-	struct GameTracker *gGT = sdata->gGT;
+	struct GameTracker *gGT = GAME_TRACKER;
 	struct Thread *t;
 	struct Driver *d;
 
@@ -247,15 +246,13 @@ void RB_Player_ToggleFlicker(void)
 		    (0x2a0 < d->invincibleTimer) &&
 
 		    // odd number frames
-		    ((gGT->timer & 1) != 0))
+		    ((GAME_TRACKER->timer & 1) != 0))
 		{
-			struct InstDrawPerPlayer *idpp = INST_GETIDPP(d->instSelf);
-
-			// on all screens
-			for (int i = 0; i < gGT->numPlyrCurrGame; i++)
+			s32 i;
+			// Flicker on every viewport, including the driver's own.
+			for (i = 0; i < GAME_TRACKER->numPlyrCurrGame; i++)
 			{
-				// make driver invisible
-				idpp[i].instFlags &= 0xffffffbf;
+				d->instSelf->idpp[i].instFlags &= 0xffffffbf;
 			}
 		}
 	}

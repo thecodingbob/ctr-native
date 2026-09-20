@@ -728,21 +728,29 @@ void NativeAssets_FreeBytes(struct NativeAssetsByteBuffer *bytes)
 
 internal void NativeAssets_PrintHeader(void)
 {
-	fprintf(stderr, "[CTR Native] Missing or incomplete assets.\n");
+	fprintf(stderr, "[CTR Native] Missing or invalid assets.\n");
 	fprintf(stderr, "[CTR Native] Expected NTSC-U retail assets under: %s\n", NativeAssets_GetAssetDir());
 }
 
 internal void NativeAssets_PrintFooter(void)
 {
 	fprintf(stderr, "[CTR Native] Provide either raw NTSC-U disc image %s, or extracted files:\n", NATIVE_ASSETS_DISC_PATH);
-	fprintf(stderr, "[CTR Native]   %s, %s, %s, %s, plus XA files referenced by %s\n", NATIVE_ASSETS_BIGFILE_PATH, NATIVE_ASSETS_KART_HWL_PATH,
-	        NATIVE_ASSETS_TEST_STR_PATH, NATIVE_ASSETS_XNF_PATH, NATIVE_ASSETS_XNF_PATH);
+	fprintf(stderr, "[CTR Native]   Required: %s, %s\n", NATIVE_ASSETS_BIGFILE_PATH, NATIVE_ASSETS_KART_HWL_PATH);
+	fprintf(stderr, "[CTR Native]   For complete audio/video: %s, %s, plus XA files referenced by %s\n", NATIVE_ASSETS_TEST_STR_PATH, NATIVE_ASSETS_XNF_PATH,
+	        NATIVE_ASSETS_XNF_PATH);
+}
+
+internal int NativeAssets_HasFile(const char *path)
+{
+	char assetPath[NATIVE_ASSETS_PATH_MAX];
+	struct NativeDiscImageFile discFile;
+
+	return NativeAssets_ResolvePath(path, assetPath, sizeof(assetPath)) || NativeDiscImage_FindFile(path, &discFile);
 }
 
 internal int NativeAssets_CheckRequiredFile(const char *path)
 {
 	char assetPath[NATIVE_ASSETS_PATH_MAX];
-	struct NativeDiscImageFile discFile;
 
 	if (!NativeAssets_BuildPath(path, assetPath, sizeof(assetPath)))
 	{
@@ -750,12 +758,7 @@ internal int NativeAssets_CheckRequiredFile(const char *path)
 		return 0;
 	}
 
-	if (NativeAssets_ResolvePath(path, assetPath, sizeof(assetPath)))
-	{
-		return 1;
-	}
-
-	if (NativeDiscImage_FindFile(path, &discFile))
+	if (NativeAssets_HasFile(path))
 	{
 		return 1;
 	}
@@ -764,7 +767,7 @@ internal int NativeAssets_CheckRequiredFile(const char *path)
 	return 0;
 }
 
-internal int NativeAssets_ValidateXA(void)
+internal int NativeAssets_ValidateXA(u32 *missing)
 {
 	local_persist const char *xaDirs[NATIVE_ASSETS_XA_TYPE_COUNT] = {
 	    "XA/MUSIC",
@@ -772,14 +775,19 @@ internal int NativeAssets_ValidateXA(void)
 	    "XA/ENG/GAME",
 	};
 	struct NativeAssetsByteBuffer xnf;
+	char manifestPath[NATIVE_ASSETS_PATH_MAX];
 	u8 required[NATIVE_ASSETS_XA_TYPE_COUNT][NATIVE_ASSETS_XA_MAX_FILE_NUMBER];
-	u32 missing = 0;
 	u32 categoryID;
 
 	memset(required, 0, sizeof(required));
 
-	if (!NativeAssets_ReadBytes(NATIVE_ASSETS_XNF_PATH, NATIVE_ASSET_READ_DATA_FILE, &xnf))
+	// Do not hide an empty or unreadable extracted override behind disc data.
+	int loaded = NativeAssets_ResolvePath(NATIVE_ASSETS_XNF_PATH, manifestPath, sizeof(manifestPath))
+	                 ? NativeAssets_ReadHostBytes(NATIVE_ASSETS_XNF_PATH, &xnf)
+	                 : NativeAssets_ReadBytes(NATIVE_ASSETS_XNF_PATH, NATIVE_ASSET_READ_DATA_FILE, &xnf);
+	if (!loaded)
 	{
+		fprintf(stderr, "[CTR Native] unable to read XA manifest: %s\n", NATIVE_ASSETS_XNF_PATH);
 		return 0;
 	}
 
@@ -793,10 +801,16 @@ internal int NativeAssets_ValidateXA(void)
 
 	u32 numXasTotal = NativeAssets_ReadLE32(&xnf.data[NATIVE_ASSETS_XA_NUM_XAS_TOTAL_OFFSET]);
 	u32 numTracksTotal = NativeAssets_ReadLE32(&xnf.data[NATIVE_ASSETS_XA_NUM_TRACKS_TOTAL_OFFSET]);
+	// Bound both tables before multiplying untrusted counts into byte offsets.
+	if (numXasTotal > ((u32)xnf.size - NATIVE_ASSETS_XA_HEADER_SIZE) / 4u)
+	{
+		NativeAssets_FreeBytes(&xnf);
+		fprintf(stderr, "[CTR Native] invalid XA position table: %s\n", NATIVE_ASSETS_XNF_PATH);
+		return 0;
+	}
 	u32 entryOffset = NATIVE_ASSETS_XA_HEADER_SIZE + numXasTotal * 4u;
-	u32 entryEnd = entryOffset + numTracksTotal * NATIVE_ASSETS_XA_ENTRY_BYTES;
 
-	if ((entryEnd < entryOffset) || (entryEnd > (u32)xnf.size))
+	if (numTracksTotal > ((u32)xnf.size - entryOffset) / NATIVE_ASSETS_XA_ENTRY_BYTES)
 	{
 		NativeAssets_FreeBytes(&xnf);
 		fprintf(stderr, "[CTR Native] invalid XA entry table: %s\n", NATIVE_ASSETS_XNF_PATH);
@@ -829,8 +843,6 @@ internal int NativeAssets_ValidateXA(void)
 		for (u32 fileNumber = 0; fileNumber < NATIVE_ASSETS_XA_MAX_FILE_NUMBER; fileNumber++)
 		{
 			char relativePath[256];
-			char path[NATIVE_ASSETS_PATH_MAX];
-			struct NativeDiscImageFile discFile;
 
 			if (!required[categoryID][fileNumber])
 			{
@@ -838,36 +850,49 @@ internal int NativeAssets_ValidateXA(void)
 			}
 
 			int written = snprintf(relativePath, sizeof(relativePath), "%s/S%02u.XA", xaDirs[categoryID], (unsigned int)fileNumber);
-			if ((written <= 0) || ((size_t)written >= sizeof(relativePath)) || !NativeAssets_BuildPath(relativePath, path, sizeof(path)))
+			if ((written <= 0) || ((size_t)written >= sizeof(relativePath)))
 			{
 				fprintf(stderr, "[CTR Native] XA asset path too long: %s/S%02u.XA\n", xaDirs[categoryID], (unsigned int)fileNumber);
-				missing++;
-				continue;
+				return 0;
 			}
 
-			if (!NativeAssets_ResolvePath(relativePath, path, sizeof(path)) && !NativeDiscImage_FindFile(relativePath, &discFile))
+			if (!NativeAssets_HasFile(relativePath))
 			{
-				fprintf(stderr, "[CTR Native] missing XA asset: %s\n", path);
-				missing++;
+				(*missing)++;
 			}
 		}
 	}
 
-	return missing == 0;
+	return 1;
 }
 
 int NativeAssets_Validate(void)
 {
 	int ok = 1;
+	u32 missingXA = 0;
 
 	ok &= NativeAssets_CheckRequiredFile(NATIVE_ASSETS_BIGFILE_PATH);
 	ok &= NativeAssets_CheckRequiredFile(NATIVE_ASSETS_KART_HWL_PATH);
-	ok &= NativeAssets_CheckRequiredFile(NATIVE_ASSETS_TEST_STR_PATH);
-	ok &= NativeAssets_CheckRequiredFile(NATIVE_ASSETS_XNF_PATH);
 
 	if (ok)
 	{
-		ok &= NativeAssets_ValidateXA();
+		int missingMovie = !NativeAssets_HasFile(NATIVE_ASSETS_TEST_STR_PATH);
+		int missingManifest = !NativeAssets_HasFile(NATIVE_ASSETS_XNF_PATH);
+
+		// NOTE(aalhendi): Missing streams use the existing playback failure paths.
+		// A present but invalid manifest is still an error, not optional content.
+		if (!missingManifest)
+		{
+			ok = NativeAssets_ValidateXA(&missingXA);
+		}
+		if (ok && (missingMovie || missingManifest || missingXA))
+		{
+			fprintf(stderr, "[CTR Native] Warning: missing optional media (%s%s%s). Unavailable audio/video will be skipped.\n",
+			        missingMovie ? NATIVE_ASSETS_TEST_STR_PATH : "", missingMovie && (missingManifest || missingXA) ? ", " : "",
+			        missingManifest ? NATIVE_ASSETS_XNF_PATH
+			        : missingXA     ? "XA streams"
+			                        : "");
+		}
 	}
 
 	if (!ok)

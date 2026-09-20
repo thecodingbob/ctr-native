@@ -40,7 +40,7 @@ static void MainInit_AllocVisLists(int **lists, int numPlayers, int byteCount)
 
 	for (int playerIndex = 0; playerIndex < numPlayers; playerIndex++)
 	{
-		lists[playerIndex] = MEMPACK_AllocMem(byteCount);
+		lists[playerIndex] = MEMPACK_AllocMem(byteCount, NULL);
 		memset(lists[playerIndex], 0, byteCount);
 #if defined(CTR_INTERNAL)
 		NativeCheckpoint_RegisterPointerSlot(&lists[playerIndex]);
@@ -77,7 +77,7 @@ static void MainInit_InitVisMemBspListNodes(struct VisMem *visMem, struct mesh_i
 		// Retail 4P visibility assets can provide a BSP-list array smaller than
 		// the level's actual BSP tree. Native rewrites every node anyway, so own
 		// an exactly sized array rather than relying on that PS1-era allocation.
-		struct VisMemBspListNode *bspList = MEMPACK_AllocMem(mesh->numBspNodes * sizeof(*bspList));
+		struct VisMemBspListNode *bspList = MEMPACK_AllocMem(mesh->numBspNodes * sizeof(*bspList), NULL);
 		visMem->bspList[playerIndex] = bspList;
 #if defined(CTR_INTERNAL)
 		NativeCheckpoint_RegisterPointerSlot(&visMem->bspList[playerIndex]);
@@ -291,8 +291,8 @@ EndFunc:
 
 	// 0x1000 per player, plus 0x18 for linking
 	size = ((gGT->numPlyrCurrGame) << 0xC) | 0x18;
-	gGT->otSwapchainDB[0] = MEMPACK_AllocMem(size); // "ot1"
-	gGT->otSwapchainDB[1] = MEMPACK_AllocMem(size); // "ot2"
+	gGT->otSwapchainDB[0] = MEMPACK_AllocMem(size, NULL); // "ot1"
+	gGT->otSwapchainDB[1] = MEMPACK_AllocMem(size, NULL); // "ot2"
 }
 
 void MainInit_JitPoolsNew(struct GameTracker *gGT)
@@ -327,15 +327,15 @@ void MainInit_JitPoolsNew(struct GameTracker *gGT)
 	JitPool_Init(&gGT->JitPools.thread, (renderBucketSize * 3) >> 7, sizeof(struct Thread), rdata.s_ThreadPool);
 	JitPool_Init(&gGT->JitPools.instance, renderBucketSize >> 5, sizeof(struct Instance) + (sizeof(struct InstDrawPerPlayer) * gGT->numPlyrCurrGame),
 	             rdata.s_InstancePool);
-	JitPool_Init(&gGT->JitPools.smallStack, (poolScale * 0x19) >> 10, 0x48, rdata.s_SmallStackPool);
-	JitPool_Init(&gGT->JitPools.mediumStack, poolScale >> 7, 0x88, rdata.s_MediumStackPool);
+	JitPool_Init(&gGT->JitPools.smallStack, (poolScale * 0x19) >> 10, THREAD_SMALL_STACK_SIZE, rdata.s_SmallStackPool);
+	JitPool_Init(&gGT->JitPools.mediumStack, poolScale >> 7, THREAD_MEDIUM_STACK_SIZE, rdata.s_MediumStackPool);
 
 	int numDriver = poolScale >> 9;
 	if ((gameMode & MAIN_MENU) != 0)
 	{
 		numDriver = 4;
 	}
-	JitPool_Init(&gGT->JitPools.largeStack, numDriver, 0x670, rdata.s_LargeStackPool);
+	JitPool_Init(&gGT->JitPools.largeStack, numDriver, THREAD_LARGE_STACK_SIZE, rdata.s_LargeStackPool);
 
 	int numParticle = poolScale >> 5;
 	JitPool_Init(&gGT->JitPools.particle, numParticle, sizeof(struct Particle), rdata.s_ParticlePool);
@@ -343,7 +343,7 @@ void MainInit_JitPoolsNew(struct GameTracker *gGT)
 	JitPool_Init(&gGT->JitPools.rain, poolScale >> 9, sizeof(struct RainLocal), rdata.s_RainPool);
 
 #ifndef CTR_NATIVE
-	gGT->ptrRenderBucketInstance = MEMPACK_AllocMem(renderBucketSize);
+	gGT->ptrRenderBucketInstance = MEMPACK_AllocMem(renderBucketSize, NULL);
 #else
 	// NOTE(aalhendi): Native reuses static RDATA scratch for existing PC memory headroom.
 	gGT->ptrRenderBucketInstance = (void *)((u32)&rdata.s_STATIC_GNORMALZ[0] + 148);
@@ -362,7 +362,7 @@ void MainInit_JitPoolsNew(struct GameTracker *gGT)
 
 	for (int i = 0; i < gGT->numPlyrCurrGame; i++)
 	{
-		data.PtrClipBuffer[i] = MEMPACK_AllocMem(MainDB_GetClipSize(gGT->levelID, gGT->numPlyrCurrGame) << 2);
+		data.PtrClipBuffer[i] = MEMPACK_AllocMem(MainDB_GetClipSize(gGT->levelID, gGT->numPlyrCurrGame) << 2, NULL);
 	}
 }
 

@@ -1,4 +1,4 @@
-#include <common.h>
+#include "VehCommon.h"
 
 enum
 {
@@ -7,6 +7,7 @@ enum
 	VEH_PHYS_CRASH_MATRIX_FRAC_SHIFT = 0xc,
 	VEH_PHYS_CRASH_UNIT_VECTOR_SCALE = 0x1000,
 	VEH_PHYS_CRASH_BOUNCE_Y_CLAMP = 0x3200,
+	VEH_PHYS_CRASH_BOUNCE_DOT_DIVISOR = 0xc00,
 	VEH_PHYS_CRASH_BOT_NAV_ROT_SHIFT = 4,
 	VEH_PHYS_CRASH_BOT_SPEED_SHIFT = 8,
 
@@ -37,67 +38,72 @@ enum
 };
 
 
-static u32 VehPhysCrash_LengthSq2(s32 x, s32 z)
+static inline u32 VehPhysCrash_LengthSq2(s32 x, s32 z)
 {
 	return (u32)CTR_MipsAddLo(CTR_MipsMulLo(x, x), CTR_MipsMulLo(z, z));
 }
 
-static u32 VehPhysCrash_LengthSq3(s32 x, s32 y, s32 z)
+static inline u32 VehPhysCrash_LengthSq3(s32 x, s32 y, s32 z)
 {
 	return (u32)CTR_MipsAddLo(CTR_MipsAddLo(CTR_MipsMulLo(x, x), CTR_MipsMulLo(y, y)), CTR_MipsMulLo(z, z));
 }
 
-static s32 VehPhysCrash_Dot3(s32 ax, s32 ay, s32 az, s32 bx, s32 by, s32 bz)
+static inline s32 VehPhysCrash_Dot3(s32 ax, s32 ay, s32 az, s32 bx, s32 by, s32 bz)
 {
 	return CTR_MipsAddLo(CTR_MipsAddLo(CTR_MipsMulLo(ax, bx), CTR_MipsMulLo(ay, by)), CTR_MipsMulLo(az, bz));
 }
 
 void VehPhysCrash_ConvertVecToSpeed(struct Driver *d, Vec3 *vel)
 {
-	int speed2D = VehCalc_FastSqrt(VehPhysCrash_LengthSq2(vel->x, vel->z), VEH_PHYS_CRASH_FAST_SQRT_ITERATIONS);
-	s16 speed3D =
-	    (s16)(VehCalc_FastSqrt(VehPhysCrash_LengthSq3(vel->x, vel->y, vel->z), VEH_PHYS_CRASH_FAST_SQRT_ITERATIONS) >> VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT);
+	register int speed2D CTR_PSX_REGISTER("$19") = VehCalc_FastSqrt(VehPhysCrash_LengthSq2(vel->x, vel->z), VEH_PHYS_CRASH_FAST_SQRT_ITERATIONS);
+	int speed;
+	int jumpSpeed;
+	int approximateSpeed;
+	register int projectionDot CTR_PSX_REGISTER("$2");
+	register int projOnMovingDirAxis CTR_PSX_REGISTER("$19");
+	int projX;
+	int projY;
+	int projZ;
 
-	d->speed = speed3D;
+	speed = (u32)VehCalc_FastSqrt(VehPhysCrash_LengthSq3(vel->x, vel->y, vel->z), VEH_PHYS_CRASH_FAST_SQRT_ITERATIONS) >> VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT;
+	d->speed = speed;
 	d->axisRotationY = (s16)ratan2(CTR_MipsSll(vel->y, VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT), speed2D);
 	d->axisRotationX = (s16)ratan2(vel->x, vel->z);
 
-	int projOnMovingDirAxis =
-	    CTR_MipsSra(VehPhysCrash_Dot3(vel->x, vel->y, vel->z, d->matrixMovingDir.m[0][1], d->matrixMovingDir.m[1][1], d->matrixMovingDir.m[2][1]),
-	                VEH_PHYS_CRASH_MATRIX_FRAC_SHIFT);
+	projectionDot = VehPhysCrash_Dot3(vel->x, vel->y, vel->z, d->matrixMovingDir.m[0][1], d->matrixMovingDir.m[1][1], d->matrixMovingDir.m[2][1]);
+	CTR_PSX_OBSERVE_VALUE(projectionDot);
+	projOnMovingDirAxis = CTR_MipsSra(projectionDot, VEH_PHYS_CRASH_MATRIX_FRAC_SHIFT);
 
-	int projX = CTR_MipsSra(CTR_MipsMulLo(d->matrixMovingDir.m[0][1], projOnMovingDirAxis), VEH_PHYS_CRASH_MATRIX_FRAC_SHIFT);
-	int projY = CTR_MipsSra(CTR_MipsMulLo(d->matrixMovingDir.m[1][1], projOnMovingDirAxis), VEH_PHYS_CRASH_MATRIX_FRAC_SHIFT);
-	int projZ = CTR_MipsSra(CTR_MipsMulLo(d->matrixMovingDir.m[2][1], projOnMovingDirAxis), VEH_PHYS_CRASH_MATRIX_FRAC_SHIFT);
+	projX = CTR_MipsSra(CTR_MipsMulLo(d->matrixMovingDir.m[0][1], projOnMovingDirAxis), VEH_PHYS_CRASH_MATRIX_FRAC_SHIFT);
+	projY = CTR_MipsSra(CTR_MipsMulLo(d->matrixMovingDir.m[1][1], projOnMovingDirAxis), VEH_PHYS_CRASH_MATRIX_FRAC_SHIFT);
+	projZ = CTR_MipsSra(CTR_MipsMulLo(d->matrixMovingDir.m[2][1], projOnMovingDirAxis), VEH_PHYS_CRASH_MATRIX_FRAC_SHIFT);
 
-	speed3D = (s16)(VehCalc_FastSqrt(VehPhysCrash_LengthSq3(projX, projY, projZ), VEH_PHYS_CRASH_FAST_SQRT_ITERATIONS) >> VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT);
+	jumpSpeed = (u32)VehCalc_FastSqrt(VehPhysCrash_LengthSq3(projX, projY, projZ), VEH_PHYS_CRASH_FAST_SQRT_ITERATIONS) >> VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT;
 
-	d->jumpHeightCurr = speed3D;
+	d->jumpHeightCurr = jumpSpeed;
 	if (projOnMovingDirAxis < 0)
 	{
-		d->jumpHeightCurr = (s16)CTR_MipsNegLo(speed3D);
+		d->jumpHeightCurr = (s16)CTR_MipsNegLo(jumpSpeed);
 	}
 
 	projX = CTR_MipsSubLo(vel->x, projX);
 	projY = CTR_MipsSubLo(vel->y, projY);
 	projZ = CTR_MipsSubLo(vel->z, projZ);
 
-	speed3D = (s16)(VehCalc_FastSqrt(VehPhysCrash_LengthSq3(projX, projY, projZ), VEH_PHYS_CRASH_FAST_SQRT_ITERATIONS) >> VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT);
+	approximateSpeed =
+	    (u32)VehCalc_FastSqrt(VehPhysCrash_LengthSq3(projX, projY, projZ), VEH_PHYS_CRASH_FAST_SQRT_ITERATIONS) >> VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT;
 
-	d->speedApprox = speed3D;
+	d->speedApprox = approximateSpeed;
 
 	if (VehPhysCrash_Dot3(projX, projY, projZ, d->matrixMovingDir.m[0][2], d->matrixMovingDir.m[1][2], d->matrixMovingDir.m[2][2]) < 0)
 	{
-		d->speedApprox = (s16)CTR_MipsNegLo(speed3D);
+		d->speedApprox = (s16)CTR_MipsNegLo(approximateSpeed);
 	}
 }
 
-static int VehPhysCrash_BounceSelf_Div6Shift9(int value)
+static inline int VehPhysCrash_ScaleBounceDot(int value)
 {
-	s64 product = (s64)value * 0x2aaaaaab;
-	int high = (s32)((u64)product >> 32);
-
-	return CTR_MipsSubLo(CTR_MipsSra(high, 9), CTR_MipsSra(value, 31));
+	return value / VEH_PHYS_CRASH_BOUNCE_DOT_DIVISOR;
 }
 
 int VehPhysCrash_BounceSelf(const SVec3 *normal, const Vec3 *origin, Vec3 *vel, b32 boolOtherDriver)
@@ -107,43 +113,48 @@ int VehPhysCrash_BounceSelf(const SVec3 *normal, const Vec3 *origin, Vec3 *vel, 
 	int diffZ = CTR_MipsSubLo(vel->z, origin->z);
 	int dot = CTR_MipsSra(CTR_MipsAddLo(CTR_MipsAddLo(CTR_MipsMulLo(diffX, normal->x), CTR_MipsMulLo(diffY, normal->y)), CTR_MipsMulLo(diffZ, normal->z)),
 	                      VEH_PHYS_CRASH_MATRIX_FRAC_SHIFT);
+	int impactStrength;
+	int absDot;
+	int oldY;
 
-	if (boolOtherDriver == 0)
+	if (boolOtherDriver != 0)
 	{
-		if (dot >= 0)
+		if (dot <= 0)
 		{
 			return 0;
 		}
 	}
-	else if (dot <= 0)
+	else if (dot >= 0)
 	{
 		return 0;
 	}
 
-	int absDot = dot;
-	if (absDot < 0)
+	impactStrength = sdata->vehicleCollisionImpactStrength;
+	absDot = dot;
+	if (dot < 0)
 	{
+		CTR_PSX_FORGET_VALUE(absDot);
 		absDot = CTR_MipsNegLo(absDot);
 	}
 
-	if (sdata->vehicleCollisionImpactStrength < absDot)
+	if (impactStrength < absDot)
 	{
 		sdata->vehicleCollisionImpactStrength = absDot;
 	}
 
-	diffX = CTR_MipsSubLo(diffX, VehPhysCrash_BounceSelf_Div6Shift9(CTR_MipsMulLo(dot, normal->x)));
-	diffY = CTR_MipsSubLo(diffY, VehPhysCrash_BounceSelf_Div6Shift9(CTR_MipsMulLo(dot, normal->y)));
-	diffZ = CTR_MipsSubLo(diffZ, VehPhysCrash_BounceSelf_Div6Shift9(CTR_MipsMulLo(dot, normal->z)));
+	diffX = CTR_MipsSubLo(diffX, VehPhysCrash_ScaleBounceDot(CTR_MipsMulLo(dot, normal->x)));
+	diffY = CTR_MipsSubLo(diffY, VehPhysCrash_ScaleBounceDot(CTR_MipsMulLo(dot, normal->y)));
+	diffZ = CTR_MipsSubLo(diffZ, VehPhysCrash_ScaleBounceDot(CTR_MipsMulLo(dot, normal->z)));
 
 	vel->x = CTR_MipsAddLo(diffX, origin->x);
 
-	int oldY = vel->y;
-	int newY = CTR_MipsAddLo(diffY, origin->y);
-	if ((oldY < newY) && (newY > VEH_PHYS_CRASH_BOUNCE_Y_CLAMP))
+	oldY = vel->y;
+	diffY = CTR_MipsAddLo(diffY, origin->y);
+	if ((oldY < diffY) && (diffY > VEH_PHYS_CRASH_BOUNCE_Y_CLAMP))
 	{
-		newY = VEH_PHYS_CRASH_BOUNCE_Y_CLAMP;
+		diffY = VEH_PHYS_CRASH_BOUNCE_Y_CLAMP;
 	}
-	vel->y = newY;
+	vel->y = diffY;
 	vel->z = CTR_MipsAddLo(diffZ, origin->z);
 
 	return 0;
@@ -151,32 +162,38 @@ int VehPhysCrash_BounceSelf(const SVec3 *normal, const Vec3 *origin, Vec3 *vel, 
 
 void VehPhysCrash_AI(struct Driver *bot, Vec3 *vel)
 {
+	register MATRIX *matrix CTR_PSX_REGISTER("$16") = &VEH_PHYS_CRASH_MATRIX;
+	register Vec3 *forward CTR_PSX_REGISTER("$7");
+	register SVec3 *rotationArgument CTR_PSX_REGISTER("$5");
+	s16 matrixForwardZ;
+	int botSpeed;
+	int velocityZProduct;
+	int velocityZ;
+
 	sdata->botCrashNavRot.x = (s16)CTR_MipsSll(bot->botData.botNavFrame->rot[0], VEH_PHYS_CRASH_BOT_NAV_ROT_SHIFT);
 	sdata->botCrashNavRot.y = (s16)CTR_MipsSll(bot->botData.botNavFrame->rot[1], VEH_PHYS_CRASH_BOT_NAV_ROT_SHIFT);
+	CTR_PSX_OBSERVE_VALUE(matrix);
+	rotationArgument = &VEH_BOT_CRASH_NAV_ROT_ARG;
 	sdata->botCrashNavRot.z = (s16)CTR_MipsSll(bot->botData.botNavFrame->rot[2], VEH_PHYS_CRASH_BOT_NAV_ROT_SHIFT);
+	CTR_PSX_CLOBBER("$4");
+	ConvertRotToMatrix(matrix, rotationArgument);
+	forward = &VEH_PHYS_CRASH_FORWARD;
 
-	struct VehPhysCrashAiScratch *scratch = (struct VehPhysCrashAiScratch *)(void *)&sdata->dataLibFiller[0];
-	MATRIX *matrix = &scratch->matrix;
+	forward->x = CTR_MipsSra(matrix->m[0][2], VEH_PHYS_CRASH_BOT_NAV_ROT_SHIFT);
+	matrixForwardZ = matrix->m[2][2];
+	forward->y = CTR_MipsSra(matrix->m[1][2], VEH_PHYS_CRASH_BOT_NAV_ROT_SHIFT);
+	forward->z = CTR_MipsSra(matrixForwardZ, VEH_PHYS_CRASH_BOT_NAV_ROT_SHIFT);
 
-	ConvertRotToMatrix(matrix, &sdata->botCrashNavRot);
-
-	scratch->forward.x = CTR_MipsSra(matrix->m[0][2], VEH_PHYS_CRASH_BOT_NAV_ROT_SHIFT);
-	scratch->forward.y = CTR_MipsSra(matrix->m[1][2], VEH_PHYS_CRASH_BOT_NAV_ROT_SHIFT);
-	scratch->forward.z = CTR_MipsSra(matrix->m[2][2], VEH_PHYS_CRASH_BOT_NAV_ROT_SHIFT);
-
-	int botSpeed = CTR_MipsSra(CTR_MipsAddLo(CTR_MipsAddLo(CTR_MipsMulLo(scratch->forward.x, vel->x), CTR_MipsMulLo(scratch->forward.y, vel->y)),
-	                                         CTR_MipsMulLo(scratch->forward.z, vel->z)),
-	                           VEH_PHYS_CRASH_BOT_SPEED_SHIFT);
+	botSpeed =
+	    CTR_MipsSra(CTR_MipsAddLo(CTR_MipsAddLo(CTR_MipsMulLo(forward->x, vel->x), CTR_MipsMulLo(forward->y, vel->y)), CTR_MipsMulLo(forward->z, vel->z)),
+	                VEH_PHYS_CRASH_BOT_SPEED_SHIFT);
 
 	bot->botData.aiPhysics.speedLinear = botSpeed;
-	bot->botData.aiPhysics.accel.x = CTR_MipsSubLo(vel->x, CTR_MipsSra(CTR_MipsMulLo(scratch->forward.x, botSpeed), VEH_PHYS_CRASH_BOT_SPEED_SHIFT));
+	bot->botData.aiPhysics.accel.x = CTR_MipsSubLo(vel->x, CTR_MipsSra(CTR_MipsMulLo(forward->x, botSpeed), VEH_PHYS_CRASH_BOT_SPEED_SHIFT));
+	velocityZProduct = CTR_MipsMulLo(forward->z, botSpeed);
+	velocityZ = vel->z;
 	bot->botData.botFlags |= BOT_FLAG_FREE_PHYSICS;
-	bot->botData.aiPhysics.accel.z = CTR_MipsSubLo(vel->z, CTR_MipsSra(CTR_MipsMulLo(scratch->forward.z, botSpeed), VEH_PHYS_CRASH_BOT_SPEED_SHIFT));
-}
-
-static void VehPhysCrash_Attack_SetReason(struct Driver *driver, u8 reason)
-{
-	driver->pendingDamageReasonByte = reason;
+	bot->botData.aiPhysics.accel.z = CTR_MipsSubLo(velocityZ, CTR_MipsSra(velocityZProduct, VEH_PHYS_CRASH_BOT_SPEED_SHIFT));
 }
 
 int VehPhysCrash_Attack(struct Driver *driver1, struct Driver *driver2, b32 canPlayFeedback, b32 boolPlayBubblePop)
@@ -186,13 +203,13 @@ int VehPhysCrash_Attack(struct Driver *driver1, struct Driver *driver2, b32 canP
 		if ((driver2->actionsFlagSet & ACTION_MASK_WEAPON) != 0 && g_config.maskDamagesOthers)
 		{
 			driver1->pendingDamageType = VEH_PHYS_CRASH_DAMAGE_TYPE_MASK;
-			VehPhysCrash_Attack_SetReason(driver1, VEH_PHYS_CRASH_DAMAGE_REASON_MASK);
+			driver1->pendingDamageReasonByte = VEH_PHYS_CRASH_DAMAGE_REASON_MASK;
 			driver1->pendingDamageAttacker = driver2;
 
 			if ((canPlayFeedback != 0) && (driver1->kartState != KS_BLASTED) && (driver1->invincibleTimer == 0))
 			{
 				OtherFX_DriverCrashing((driver1->actionsFlagSet & ACTION_ENGINE_ECHO) != 0, VEH_PHYS_CRASH_VOLUME_MAX);
-				Voiceline_RequestPlay(VEH_PHYS_CRASH_VOICELINE_CRASH, data.characterIDs[driver1->driverID], VEH_PHYS_CRASH_VOICELINE_PRIORITY);
+				Voiceline_RequestPlay(VEH_PHYS_CRASH_VOICELINE_CRASH, GAME_CHARACTER_IDS[driver1->driverID], VEH_PHYS_CRASH_VOICELINE_PRIORITY);
 			}
 		}
 
@@ -204,7 +221,7 @@ int VehPhysCrash_Attack(struct Driver *driver1, struct Driver *driver2, b32 canP
 			driver2->instBubbleHold = NULL;
 
 			driver1->pendingDamageType = VEH_PHYS_CRASH_DAMAGE_TYPE_MASK;
-			VehPhysCrash_Attack_SetReason(driver1, VEH_PHYS_CRASH_DAMAGE_REASON_SHIELD);
+			driver1->pendingDamageReasonByte = VEH_PHYS_CRASH_DAMAGE_REASON_SHIELD;
 			driver1->pendingDamageAttacker = driver2;
 
 			if ((canPlayFeedback != 0) && (driver1->kartState != KS_BLASTED) && (driver1->invincibleTimer == 0))
@@ -216,7 +233,7 @@ int VehPhysCrash_Attack(struct Driver *driver1, struct Driver *driver2, b32 canP
 					OtherFX_Play(VEH_PHYS_CRASH_BUBBLE_POP_FX, 1);
 				}
 
-				Voiceline_RequestPlay(VEH_PHYS_CRASH_VOICELINE_CRASH, data.characterIDs[driver1->driverID], VEH_PHYS_CRASH_VOICELINE_PRIORITY);
+				Voiceline_RequestPlay(VEH_PHYS_CRASH_VOICELINE_CRASH, GAME_CHARACTER_IDS[driver1->driverID], VEH_PHYS_CRASH_VOICELINE_PRIORITY);
 			}
 		}
 
@@ -226,7 +243,7 @@ int VehPhysCrash_Attack(struct Driver *driver1, struct Driver *driver2, b32 canP
 			driver2->forcedJumpType = FORCED_JUMP_HIGH;
 
 			driver1->pendingDamageType = VEH_PHYS_CRASH_DAMAGE_TYPE_TURBO;
-			VehPhysCrash_Attack_SetReason(driver1, VEH_PHYS_CRASH_DAMAGE_REASON_TURBO);
+			driver1->pendingDamageReasonByte = VEH_PHYS_CRASH_DAMAGE_REASON_TURBO;
 			driver1->pendingDamageAttacker = driver2;
 		}
 	}
@@ -234,131 +251,144 @@ int VehPhysCrash_Attack(struct Driver *driver1, struct Driver *driver2, b32 canP
 	return canPlayFeedback;
 }
 
-// NOTE(aalhendi): These static helpers factor repeated retail blocks; they
-// are not separate retail symbols.
-static s32 VehPhysCrash_WeightedAverage(s32 lhs, s16 lhsWeight, s32 rhs, s16 rhsWeight)
+static inline int VehPhysCrash_CurrentFrame(void)
 {
-	return CTR_MipsDiv(CTR_MipsAddLo(CTR_MipsMulLo(lhs, lhsWeight), CTR_MipsMulLo(rhs, rhsWeight)), CTR_MipsAddLo(lhsWeight, rhsWeight));
+	struct GameTracker *gameTracker;
+
+	VEH_LOAD_GAME_TRACKER(gameTracker);
+	return gameTracker->frameTimer_MainFrame_ResetDB;
 }
 
-static void VehPhysCrash_WeightedVelocity(Vec3 *out, Vec3 *lhs, struct Driver *lhsDriver, Vec3 *rhs, struct Driver *rhsDriver)
+static inline int VehPhysCrash_LastFeedbackFrame(void)
 {
-	out->x = VehPhysCrash_WeightedAverage(lhs->x, lhsDriver->const_CollisionWeight, rhs->x, rhsDriver->const_CollisionWeight);
-	out->y = VehPhysCrash_WeightedAverage(lhs->y, lhsDriver->const_CollisionWeight, rhs->y, rhsDriver->const_CollisionWeight);
-	out->z = VehPhysCrash_WeightedAverage(lhs->z, lhsDriver->const_CollisionWeight, rhs->z, rhsDriver->const_CollisionWeight);
+	register u32 page CTR_PSX_REGISTER("$2");
+	register int frame CTR_PSX_REGISTER("$2");
+
+	CTR_PSX_LOAD_SYMBOL_PAGE(page, VEH_LAST_FEEDBACK_FRAME_ASM_NAME);
+	CTR_PSX_LOAD_WORD_FROM_PAGE(frame, page, VEH_LAST_FEEDBACK_FRAME_ASM_NAME, sdata->audioDefaults[8]);
+	CTR_PSX_BIND_VALUE_CLOBBER(frame, "$18");
+	return frame;
 }
 
-static void VehPhysCrash_AddImpulse(Vec3 *vel, const SVec3 *hitDir, s32 strength)
+static inline void VehPhysCrash_RecordFeedbackFrame(void)
 {
-	vel->x = CTR_MipsAddLo(vel->x, CTR_MipsSra(CTR_MipsMulLo(hitDir->x, strength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
-	vel->y = CTR_MipsAddLo(vel->y, CTR_MipsSra(CTR_MipsMulLo(hitDir->y, strength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
-	vel->z = CTR_MipsAddLo(vel->z, CTR_MipsSra(CTR_MipsMulLo(hitDir->z, strength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
+#if defined(CTR_NATIVE)
+	sdata->audioDefaults[8] = VehPhysCrash_CurrentFrame();
+#else
+	// NOTE(aalhendi): Retail addresses this aliased audioDefaults slot
+	// absolutely and reuses v0 for both the tracker pointer and frame value.
+	register struct GameTracker *gameTracker CTR_PSX_REGISTER("$2");
+	register int currentFrame CTR_PSX_REGISTER("$2");
+	register u32 page CTR_PSX_REGISTER("$1");
+
+	VEH_LOAD_GAME_TRACKER(gameTracker);
+	currentFrame = gameTracker->frameTimer_MainFrame_ResetDB;
+	CTR_PSX_LOAD_SYMBOL_PAGE(page, VEH_LAST_FEEDBACK_FRAME_ASM_NAME);
+	__asm__ volatile("sw %0,%%lo(" VEH_LAST_FEEDBACK_FRAME_ASM_NAME ")(%1)" : : "r"(currentFrame), "r"(page) : "memory");
+#endif
 }
 
-static void VehPhysCrash_SubImpulse(Vec3 *vel, const SVec3 *hitDir, s32 strength)
+void VehPhysCrash_AnyTwoCars(struct Thread *thread, struct DriverCollisionSearch *searchArg, Vec3 *selfVelArg)
 {
-	vel->x = CTR_MipsSubLo(vel->x, CTR_MipsSra(CTR_MipsMulLo(hitDir->x, strength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
-	vel->y = CTR_MipsSubLo(vel->y, CTR_MipsSra(CTR_MipsMulLo(hitDir->y, strength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
-	vel->z = CTR_MipsSubLo(vel->z, CTR_MipsSra(CTR_MipsMulLo(hitDir->z, strength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
-}
+	// NOTE(aalhendi): The collision paths intentionally keep their weighted
+	// velocity scratch in separate scopes so GCC 2.8 reuses retail's registers.
+	register struct DriverCollisionSearch *search CTR_PSX_REGISTER("$21") = searchArg;
+	register Vec3 *selfVel CTR_PSX_REGISTER("$19") = selfVelArg;
+	int distance;
+	register struct Driver *otherDriver CTR_PSX_REGISTER("$16") = NULL;
+	register struct Driver *selfDriver CTR_PSX_REGISTER("$22");
+	register int hitStrength CTR_PSX_REGISTER("$18") = 0;
+	register SVec3 *hitDir CTR_PSX_REGISTER("$20") = NULL;
+	u32 canPlayFeedback;
+	u32 selfActions;
+	u32 botMask;
+	int attackResult;
+	Vec3 otherVel;
+	Vec3 weightedVel;
+	int hitDirX;
+	int hitDirY;
+	register int hitDirZ CTR_PSX_REGISTER("$2");
 
-static void VehPhysCrash_BouncePair(const SVec3 *hitDir, const Vec3 *weightedVel, Vec3 *otherVel, Vec3 *selfVel)
-{
-	if (VehPhysCrash_BounceSelf(hitDir, weightedVel, otherVel, 1) < 0)
+	CTR_PSX_KEEP_VALUE(search);
+	CTR_PSX_KEEP_VALUE(selfVel);
+	distance = MATH_FastSqrt(search->bucket.bestDistSq, 0);
+	hitDirZ = VEH_PHYS_CRASH_UNIT_VECTOR_SCALE;
+
+	if (distance != 0)
 	{
-		sdata->vehicleCollisionImpactStrength = 0;
-	}
-
-	if (VehPhysCrash_BounceSelf(hitDir, weightedVel, selfVel, 0) > 0)
-	{
-		sdata->vehicleCollisionImpactStrength = 0;
-	}
-}
-
-static void VehPhysCrash_PlayHumanFeedback(struct Thread *selfThread, struct Thread *otherThread, struct Driver *selfDriver, struct Driver *otherDriver,
-                                           u32 canPlayFeedback)
-{
-	if (sdata->vehicleCollisionImpactStrength <= VEH_PHYS_CRASH_FEEDBACK_MIN_IMPACT)
-	{
-		return;
-	}
-
-	if ((selfThread->modelIndex == DYNAMIC_PLAYER) || (otherThread->modelIndex == DYNAMIC_PLAYER))
-	{
-		int volume = VehCalc_MapToRange(sdata->vehicleCollisionImpactStrength, 0, VEH_PHYS_CRASH_VOLUME_IMPACT_MAX, VEH_PHYS_CRASH_VOLUME_MIN,
-		                                VEH_PHYS_CRASH_VOLUME_MAX);
-
-		if ((canPlayFeedback != 0) && (selfDriver->kartState != KS_BLASTED) && (selfDriver->invincibleTimer == 0) && (otherDriver->kartState != KS_BLASTED) &&
-		    (otherDriver->invincibleTimer == 0))
-		{
-			OtherFX_DriverCrashing((selfDriver->actionsFlagSet & ACTION_ENGINE_ECHO) != 0, volume);
-
-			// NOTE(aalhendi): Retail uses DAT_8008d838, which currently aliases
-			// the final audioDefaults slot.
-			sdata->audioDefaults[8] = sdata->gGT->frameTimer_MainFrame_ResetDB;
-
-			if ((u32)volume > VEH_PHYS_CRASH_HARD_CRASH_VOLUME)
-			{
-				Voiceline_RequestPlay(VEH_PHYS_CRASH_VOICELINE_HARD_CRASH, data.characterIDs[selfDriver->driverID], VEH_PHYS_CRASH_VOICELINE_PRIORITY);
-			}
-		}
-	}
-
-	GAMEPAD_ShockFreq(otherDriver, VEH_PHYS_CRASH_RUMBLE_CHANNEL, 0);
-	GAMEPAD_ShockForce1(otherDriver, VEH_PHYS_CRASH_RUMBLE_CHANNEL, VEH_PHYS_CRASH_RUMBLE_FORCE);
-	GAMEPAD_JogCon1(otherDriver, (otherDriver->simpTurnState > 0) ? VEH_PHYS_CRASH_JOG_TURNING : VEH_PHYS_CRASH_JOG_STRAIGHT, VEH_PHYS_CRASH_JOG_DURATION);
-
-	GAMEPAD_ShockFreq(selfDriver, VEH_PHYS_CRASH_RUMBLE_CHANNEL, 0);
-	GAMEPAD_ShockForce1(selfDriver, VEH_PHYS_CRASH_RUMBLE_CHANNEL, VEH_PHYS_CRASH_RUMBLE_FORCE);
-	GAMEPAD_JogCon1(selfDriver, (selfDriver->simpTurnState > 0) ? VEH_PHYS_CRASH_JOG_TURNING : VEH_PHYS_CRASH_JOG_STRAIGHT, VEH_PHYS_CRASH_JOG_DURATION);
-
-	selfDriver->actionsFlagSet |= ACTION_HUMAN_HUMAN_COLLISION;
-	otherDriver->actionsFlagSet |= ACTION_HUMAN_HUMAN_COLLISION;
-}
-
-void VehPhysCrash_AnyTwoCars(struct Thread *thread, struct DriverCollisionSearch *search, Vec3 *selfVel)
-{
-	int distance = VehCalc_FastSqrt(search->bucket.bestDistSq, 0);
-	const SVec3 *dist = &search->bucket.dist;
-	SVec3 *hitDir = &search->hitDir;
-
-	if (distance == 0)
-	{
-		CTR_SET_VEC3(CTR_VECTOR_DATA(hitDir), 0, 0, VEH_PHYS_CRASH_UNIT_VECTOR_SCALE);
+		hitDirX = CTR_MipsDiv(CTR_MipsSll(search->bucket.dist.x, VEH_PHYS_CRASH_MATRIX_FRAC_SHIFT), distance);
+		hitDirZ = CTR_MipsDiv(CTR_MipsSll(search->bucket.dist.z, VEH_PHYS_CRASH_MATRIX_FRAC_SHIFT), distance);
+		hitDirY = CTR_MipsDiv(CTR_MipsSll(search->bucket.dist.y, VEH_PHYS_CRASH_MATRIX_FRAC_SHIFT), distance);
+		search->hitDir.x = (s16)hitDirX;
+		search->hitDir.y = (s16)hitDirY;
 	}
 	else
 	{
-		CTR_SET_VEC3(CTR_VECTOR_DATA(hitDir), (s16)CTR_MipsDiv(CTR_MipsSll(dist->x, VEH_PHYS_CRASH_MATRIX_FRAC_SHIFT), distance),
-		             (s16)CTR_MipsDiv(CTR_MipsSll(dist->y, VEH_PHYS_CRASH_MATRIX_FRAC_SHIFT), distance),
-		             (s16)CTR_MipsDiv(CTR_MipsSll(dist->z, VEH_PHYS_CRASH_MATRIX_FRAC_SHIFT), distance));
+		search->hitDir.x = 0;
+		search->hitDir.y = 0;
 	}
+	search->hitDir.z = hitDirZ;
+	CTR_PSX_MEMORY_BARRIER();
 
-	struct Thread *otherThread = search->bucket.th;
-	struct Driver *otherDriver = otherThread->object;
-	struct Driver *selfDriver = thread->object;
+	otherDriver = search->bucket.th->object;
+	selfDriver = thread->object;
 
-	int hitStrength = CTR_MipsSubLo(CTR_MipsAddLo(thread->driverHitRadius, otherThread->driverHitRadius), distance);
+	hitStrength = CTR_MipsSubLo(CTR_MipsAddLo(thread->driverHitRadius, otherDriver->instSelf->thread->driverHitRadius), distance);
 	if (hitStrength <= 0)
 	{
 		return;
 	}
 
+	botMask = ACTION_BOT;
+	selfActions = selfDriver->actionsFlagSet;
 	sdata->vehicleCollisionImpactStrength = 0;
+	CTR_PSX_MEMORY_BARRIER();
 
-	if ((selfDriver->actionsFlagSet & ACTION_BOT) != 0)
+	if ((selfActions & botMask) != 0)
 	{
-		Vec3 otherVel;
-		Vec3 weightedVel;
+		hitDir = &search->hitDir;
 
 		if ((otherDriver->actionsFlagSet & ACTION_BOT) == 0)
 		{
-			VehPhysForce_ConvertSpeedToVecOut(otherDriver, &otherVel);
-			VehPhysCrash_WeightedVelocity(&weightedVel, selfVel, selfDriver, &otherVel, otherDriver);
-			VehPhysCrash_BouncePair(hitDir, &weightedVel, &otherVel, selfVel);
-			VehPhysCrash_AddImpulse(selfVel, hitDir, hitStrength);
-			VehPhysCrash_SubImpulse(&otherVel, hitDir, hitStrength);
+			VehPhysForce_ConvertSpeedToVec(otherDriver, &otherVel);
+			{
+				register int lhsWeight CTR_PSX_REGISTER("$3");
+
+				lhsWeight = selfDriver->const_CollisionWeight;
+				weightedVel.x = CTR_MipsDiv(CTR_MipsAddLo(CTR_MipsMulLo(selfVel->x, lhsWeight), CTR_MipsMulLo(otherVel.x, otherDriver->const_CollisionWeight)),
+				                            CTR_MipsAddLo(lhsWeight, otherDriver->const_CollisionWeight));
+				lhsWeight = selfDriver->const_CollisionWeight;
+				weightedVel.y = CTR_MipsDiv(CTR_MipsAddLo(CTR_MipsMulLo(selfVel->y, lhsWeight), CTR_MipsMulLo(otherVel.y, otherDriver->const_CollisionWeight)),
+				                            CTR_MipsAddLo(lhsWeight, otherDriver->const_CollisionWeight));
+				lhsWeight = selfDriver->const_CollisionWeight;
+				weightedVel.z = CTR_MipsDiv(CTR_MipsAddLo(CTR_MipsMulLo(selfVel->z, lhsWeight), CTR_MipsMulLo(otherVel.z, otherDriver->const_CollisionWeight)),
+				                            CTR_MipsAddLo(lhsWeight, otherDriver->const_CollisionWeight));
+#if defined(CTR_NATIVE)
+				hitDir = &search->hitDir;
+#else
+				// NOTE(aalhendi): Retail rematerializes this pointer after the weighted
+				// calculation; the dead s1 clobber preserves that allocation boundary.
+				__asm__("addiu %0,%1,24" : "+r"(hitDir) : "r"(search) : "$17");
+#endif
+
+				if (VehPhysCrash_BounceSelf(hitDir, &weightedVel, &otherVel, 1) < 0)
+				{
+					sdata->vehicleCollisionImpactStrength = 0;
+				}
+				if (VehPhysCrash_BounceSelf(hitDir, &weightedVel, selfVel, 0) > 0)
+				{
+					sdata->vehicleCollisionImpactStrength = 0;
+				}
+			}
+
+			selfVel->x = CTR_MipsAddLo(selfVel->x, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.x, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
+			selfVel->y = CTR_MipsAddLo(selfVel->y, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.y, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
+			selfVel->z = CTR_MipsAddLo(selfVel->z, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.z, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
+			otherVel.x = CTR_MipsSubLo(otherVel.x, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.x, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
+			otherVel.y = CTR_MipsSubLo(otherVel.y, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.y, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
+			otherVel.z = CTR_MipsSubLo(otherVel.z, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.z, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
 			VehPhysCrash_AI(selfDriver, selfVel);
-			VehPhysCrash_ConvertVecToSpeed(otherDriver, &otherVel);
+			VEH_CONVERT_VEC_TO_SPEED(otherDriver, &otherVel);
 		}
 		else
 		{
@@ -366,10 +396,35 @@ void VehPhysCrash_AnyTwoCars(struct Thread *thread, struct DriverCollisionSearch
 			otherVel.y = CTR_MipsAddLo(otherDriver->ySpeed, otherDriver->botData.aiPhysics.accel.y);
 			otherVel.z = CTR_MipsAddLo(otherDriver->zSpeed, otherDriver->botData.aiPhysics.accel.z);
 
-			VehPhysCrash_WeightedVelocity(&weightedVel, selfVel, selfDriver, &otherVel, otherDriver);
-			VehPhysCrash_BouncePair(hitDir, &weightedVel, &otherVel, selfVel);
-			VehPhysCrash_AddImpulse(selfVel, hitDir, hitStrength);
-			VehPhysCrash_SubImpulse(&otherVel, hitDir, hitStrength);
+			{
+				register int lhsWeight CTR_PSX_REGISTER("$3");
+
+				lhsWeight = selfDriver->const_CollisionWeight;
+				weightedVel.x = CTR_MipsDiv(CTR_MipsAddLo(CTR_MipsMulLo(selfVel->x, lhsWeight), CTR_MipsMulLo(otherVel.x, otherDriver->const_CollisionWeight)),
+				                            CTR_MipsAddLo(lhsWeight, otherDriver->const_CollisionWeight));
+				lhsWeight = selfDriver->const_CollisionWeight;
+				weightedVel.y = CTR_MipsDiv(CTR_MipsAddLo(CTR_MipsMulLo(selfVel->y, lhsWeight), CTR_MipsMulLo(otherVel.y, otherDriver->const_CollisionWeight)),
+				                            CTR_MipsAddLo(lhsWeight, otherDriver->const_CollisionWeight));
+				lhsWeight = selfDriver->const_CollisionWeight;
+				weightedVel.z = CTR_MipsDiv(CTR_MipsAddLo(CTR_MipsMulLo(selfVel->z, lhsWeight), CTR_MipsMulLo(otherVel.z, otherDriver->const_CollisionWeight)),
+				                            CTR_MipsAddLo(lhsWeight, otherDriver->const_CollisionWeight));
+
+				if (VehPhysCrash_BounceSelf(hitDir, &weightedVel, &otherVel, 1) < 0)
+				{
+					sdata->vehicleCollisionImpactStrength = 0;
+				}
+				if (VehPhysCrash_BounceSelf(hitDir, &weightedVel, selfVel, 0) > 0)
+				{
+					sdata->vehicleCollisionImpactStrength = 0;
+				}
+			}
+
+			selfVel->x = CTR_MipsAddLo(selfVel->x, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.x, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
+			selfVel->y = CTR_MipsAddLo(selfVel->y, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.y, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
+			selfVel->z = CTR_MipsAddLo(selfVel->z, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.z, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
+			otherVel.x = CTR_MipsSubLo(otherVel.x, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.x, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
+			otherVel.y = CTR_MipsSubLo(otherVel.y, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.y, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
+			otherVel.z = CTR_MipsSubLo(otherVel.z, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.z, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
 			VehPhysCrash_AI(otherDriver, &otherVel);
 			VehPhysCrash_AI(selfDriver, selfVel);
 			BOTS_CollideWithOtherAI(selfDriver, otherDriver);
@@ -378,36 +433,146 @@ void VehPhysCrash_AnyTwoCars(struct Thread *thread, struct DriverCollisionSearch
 		return;
 	}
 
+	hitDir = &search->hitDir;
+
 	if ((otherDriver->actionsFlagSet & ACTION_BOT) != 0)
 	{
-		Vec3 otherVel;
-		Vec3 weightedVel;
-
 		otherVel.x = CTR_MipsAddLo(otherDriver->xSpeed, otherDriver->botData.aiPhysics.accel.x);
 		otherVel.y = CTR_MipsAddLo(otherDriver->ySpeed, otherDriver->botData.aiPhysics.accel.y);
 		otherVel.z = CTR_MipsAddLo(otherDriver->zSpeed, otherDriver->botData.aiPhysics.accel.z);
 
-		VehPhysCrash_WeightedVelocity(&weightedVel, selfVel, selfDriver, &otherVel, otherDriver);
-		VehPhysCrash_BouncePair(hitDir, &weightedVel, &otherVel, selfVel);
-		VehPhysCrash_AddImpulse(selfVel, hitDir, hitStrength);
-		VehPhysCrash_SubImpulse(&otherVel, hitDir, hitStrength);
+		{
+			register int lhsWeight CTR_PSX_REGISTER("$3");
+
+			lhsWeight = selfDriver->const_CollisionWeight;
+			weightedVel.x = CTR_MipsDiv(CTR_MipsAddLo(CTR_MipsMulLo(selfVel->x, lhsWeight), CTR_MipsMulLo(otherVel.x, otherDriver->const_CollisionWeight)),
+			                            CTR_MipsAddLo(lhsWeight, otherDriver->const_CollisionWeight));
+			lhsWeight = selfDriver->const_CollisionWeight;
+			weightedVel.y = CTR_MipsDiv(CTR_MipsAddLo(CTR_MipsMulLo(selfVel->y, lhsWeight), CTR_MipsMulLo(otherVel.y, otherDriver->const_CollisionWeight)),
+			                            CTR_MipsAddLo(lhsWeight, otherDriver->const_CollisionWeight));
+			lhsWeight = selfDriver->const_CollisionWeight;
+			weightedVel.z = CTR_MipsDiv(CTR_MipsAddLo(CTR_MipsMulLo(selfVel->z, lhsWeight), CTR_MipsMulLo(otherVel.z, otherDriver->const_CollisionWeight)),
+			                            CTR_MipsAddLo(lhsWeight, otherDriver->const_CollisionWeight));
+
+			if (VehPhysCrash_BounceSelf(hitDir, &weightedVel, &otherVel, 1) < 0)
+			{
+				sdata->vehicleCollisionImpactStrength = 0;
+			}
+			if (VehPhysCrash_BounceSelf(hitDir, &weightedVel, selfVel, 0) > 0)
+			{
+				sdata->vehicleCollisionImpactStrength = 0;
+			}
+		}
+
+		selfVel->x = CTR_MipsAddLo(selfVel->x, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.x, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
+		selfVel->y = CTR_MipsAddLo(selfVel->y, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.y, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
+		selfVel->z = CTR_MipsAddLo(selfVel->z, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.z, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
+		otherVel.x = CTR_MipsSubLo(otherVel.x, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.x, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
+		otherVel.y = CTR_MipsSubLo(otherVel.y, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.y, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
+		otherVel.z = CTR_MipsSubLo(otherVel.z, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.z, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
 		VehPhysCrash_AI(otherDriver, &otherVel);
 	}
 	else
 	{
-		Vec3 weightedVel;
-		Vec3 *otherVel = &otherDriver->velocity;
+		{
+			register int lhsWeight CTR_PSX_REGISTER("$3");
 
-		VehPhysCrash_WeightedVelocity(&weightedVel, selfVel, selfDriver, otherVel, otherDriver);
-		VehPhysCrash_BouncePair(hitDir, &weightedVel, otherVel, selfVel);
-		VehPhysCrash_AddImpulse(selfVel, hitDir, hitStrength);
-		VehPhysCrash_SubImpulse(otherVel, hitDir, hitStrength);
+			lhsWeight = selfDriver->const_CollisionWeight;
+			weightedVel.x =
+			    CTR_MipsDiv(CTR_MipsAddLo(CTR_MipsMulLo(selfVel->x, lhsWeight), CTR_MipsMulLo(otherDriver->velocity.x, otherDriver->const_CollisionWeight)),
+			                CTR_MipsAddLo(lhsWeight, otherDriver->const_CollisionWeight));
+			lhsWeight = selfDriver->const_CollisionWeight;
+			weightedVel.y =
+			    CTR_MipsDiv(CTR_MipsAddLo(CTR_MipsMulLo(selfVel->y, lhsWeight), CTR_MipsMulLo(otherDriver->velocity.y, otherDriver->const_CollisionWeight)),
+			                CTR_MipsAddLo(lhsWeight, otherDriver->const_CollisionWeight));
+			lhsWeight = selfDriver->const_CollisionWeight;
+			weightedVel.z =
+			    CTR_MipsDiv(CTR_MipsAddLo(CTR_MipsMulLo(selfVel->z, lhsWeight), CTR_MipsMulLo(otherDriver->velocity.z, otherDriver->const_CollisionWeight)),
+			                CTR_MipsAddLo(lhsWeight, otherDriver->const_CollisionWeight));
+
+			if (VehPhysCrash_BounceSelf(hitDir, &weightedVel, &otherDriver->velocity, 1) < 0)
+			{
+				sdata->vehicleCollisionImpactStrength = 0;
+			}
+			if (VehPhysCrash_BounceSelf(hitDir, &weightedVel, selfVel, 0) > 0)
+			{
+				sdata->vehicleCollisionImpactStrength = 0;
+			}
+		}
+
+		selfVel->x = CTR_MipsAddLo(selfVel->x, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.x, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
+		selfVel->y = CTR_MipsAddLo(selfVel->y, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.y, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
+		selfVel->z = CTR_MipsAddLo(selfVel->z, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.z, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
+		otherDriver->velocity.x =
+		    CTR_MipsSubLo(otherDriver->velocity.x, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.x, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
+		otherDriver->velocity.y =
+		    CTR_MipsSubLo(otherDriver->velocity.y, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.y, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
+		otherDriver->velocity.z =
+		    CTR_MipsSubLo(otherDriver->velocity.z, CTR_MipsSra(CTR_MipsMulLo(search->hitDir.z, hitStrength), VEH_PHYS_CRASH_VECTOR_SPEED_SHIFT));
 	}
 
-	u32 canPlayFeedback = ((u32)CTR_MipsSubLo(sdata->gGT->frameTimer_MainFrame_ResetDB, sdata->audioDefaults[8]) >= VEH_PHYS_CRASH_FEEDBACK_COOLDOWN_FRAMES);
+	{
+		register int impactStrength CTR_PSX_REGISTER("$4");
+		register int currentFrame CTR_PSX_REGISTER("$3");
+		register int lastFeedbackFrame CTR_PSX_REGISTER("$2");
+		register int frameDelta CTR_PSX_REGISTER("$18");
+		register u32 isCoolingDown CTR_PSX_REGISTER("$2");
 
-	VehPhysCrash_PlayHumanFeedback(thread, otherThread, selfDriver, otherDriver, canPlayFeedback);
+		currentFrame = VehPhysCrash_CurrentFrame();
+		lastFeedbackFrame = VehPhysCrash_LastFeedbackFrame();
+		impactStrength = sdata->vehicleCollisionImpactStrength;
+		CTR_PSX_KEEP_VALUE(impactStrength);
+		frameDelta = CTR_MipsSubLo(currentFrame, lastFeedbackFrame);
+		isCoolingDown = ((u32)frameDelta < VEH_PHYS_CRASH_FEEDBACK_COOLDOWN_FRAMES);
+		canPlayFeedback = isCoolingDown ^ 1;
 
-	int attackResult = VehPhysCrash_Attack(selfDriver, otherDriver, canPlayFeedback, 0);
-	VehPhysCrash_Attack(otherDriver, selfDriver, attackResult, 1);
+		if (impactStrength > VEH_PHYS_CRASH_FEEDBACK_MIN_IMPACT)
+		{
+			int volume;
+			if ((((thread->modelIndex == DYNAMIC_PLAYER) || (search->bucket.th->modelIndex == DYNAMIC_PLAYER)) &&
+			     (volume = VehCalc_MapToRange(impactStrength, 0, VEH_PHYS_CRASH_VOLUME_IMPACT_MAX, VEH_PHYS_CRASH_VOLUME_MIN, VEH_PHYS_CRASH_VOLUME_MAX),
+			      canPlayFeedback != 0)) &&
+			    (selfDriver->kartState != KS_BLASTED) && (selfDriver->invincibleTimer == 0) && (otherDriver->kartState != KS_BLASTED) &&
+			    (otherDriver->invincibleTimer == 0))
+			{
+				OtherFX_DriverCrashing((selfDriver->actionsFlagSet & ACTION_ENGINE_ECHO) != 0, volume);
+				VehPhysCrash_RecordFeedbackFrame();
+
+				if ((u32)volume > VEH_PHYS_CRASH_HARD_CRASH_VOLUME)
+				{
+					Voiceline_RequestPlay(VEH_PHYS_CRASH_VOICELINE_HARD_CRASH, GAME_CHARACTER_IDS[selfDriver->driverID], VEH_PHYS_CRASH_VOICELINE_PRIORITY);
+				}
+			}
+
+			GAMEPAD_ShockFreq(otherDriver, VEH_PHYS_CRASH_RUMBLE_CHANNEL, 0);
+			GAMEPAD_ShockForce1(otherDriver, VEH_PHYS_CRASH_RUMBLE_CHANNEL, VEH_PHYS_CRASH_RUMBLE_FORCE);
+			// NOTE(aalhendi): Keeping the calls in both branches lets GCC 2.8
+			// perform retail's common-tail merge without changing native behavior.
+			if (otherDriver->simpTurnState > 0)
+			{
+				GAMEPAD_JogCon1(otherDriver, VEH_PHYS_CRASH_JOG_TURNING, VEH_PHYS_CRASH_JOG_DURATION);
+			}
+			else
+			{
+				GAMEPAD_JogCon1(otherDriver, VEH_PHYS_CRASH_JOG_STRAIGHT, VEH_PHYS_CRASH_JOG_DURATION);
+			}
+
+			GAMEPAD_ShockFreq(selfDriver, VEH_PHYS_CRASH_RUMBLE_CHANNEL, 0);
+			GAMEPAD_ShockForce1(selfDriver, VEH_PHYS_CRASH_RUMBLE_CHANNEL, VEH_PHYS_CRASH_RUMBLE_FORCE);
+			if (selfDriver->simpTurnState > 0)
+			{
+				GAMEPAD_JogCon1(selfDriver, VEH_PHYS_CRASH_JOG_TURNING, VEH_PHYS_CRASH_JOG_DURATION);
+			}
+			else
+			{
+				GAMEPAD_JogCon1(selfDriver, VEH_PHYS_CRASH_JOG_STRAIGHT, VEH_PHYS_CRASH_JOG_DURATION);
+			}
+
+			selfDriver->actionsFlagSet |= ACTION_HUMAN_HUMAN_COLLISION;
+			otherDriver->actionsFlagSet |= ACTION_HUMAN_HUMAN_COLLISION;
+		}
+
+		attackResult = VehPhysCrash_Attack(selfDriver, otherDriver, canPlayFeedback, 0);
+		VehPhysCrash_Attack(otherDriver, selfDriver, attackResult, 1);
+	}
 }

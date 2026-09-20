@@ -3,15 +3,11 @@
 
 int RB_Hazard_HurtDriver(struct Driver *driverVictim, int damageType, struct Driver *driverAttacker, int reason)
 {
-	struct GameTracker *gGT = sdata->gGT;
-	int result = 0;
+	int result;
 
-	if ((driverVictim->actionsFlagSet & ACTION_BOT) == 0)
+	if ((driverVictim->actionsFlagSet & ACTION_BOT) != 0)
 	{
-		result = VehPickState_NewState(driverVictim, damageType, driverAttacker, reason);
-	}
-	else
-	{
+		struct GameTracker *gGT = GAME_TRACKER;
 		if ((gGT->levelID == OXIDE_STATION) && (IS_BOSS_RACE(gGT->gameMode1)))
 		{
 			damageType = 1;
@@ -19,66 +15,68 @@ int RB_Hazard_HurtDriver(struct Driver *driverVictim, int damageType, struct Dri
 
 		result = (int)BOTS_ChangeState(driverVictim, damageType, driverAttacker, reason);
 	}
+	else
+	{
+		result = VehPickState_NewState(driverVictim, damageType, driverAttacker, reason);
+	}
 	return result;
 }
 
 struct Instance *RB_Hazard_CollideWithDrivers(struct Instance *weaponInst, s16 parentSafetyFrames, int hitRadius, struct Instance *mineDriverInst)
 {
-	int j;
-
-	u32 dist[3];
-	int modelID;
-
+	s32 dx, dz, dy;
+	u16 modelID;
 	u32 distCheck;
-	s32 delta;
 
-	for (int i = 0; i < 8; i++)
 	{
-		struct Driver *driver = sdata->gGT->drivers[i];
-
-		if (driver == 0)
+		int i;
+		for (i = 0; i < 8; i++)
 		{
-			continue;
-		}
-		if (driver->kartState == KS_MASK_GRABBED)
-		{
-			continue;
-		}
-		struct Instance *driverInst = driver->instSelf;
+			struct Instance *driverInst;
+			struct Driver *driver = GAME_TRACKER->drivers[i];
 
-		for (j = 0; j < 3; j++)
-		{
-			delta = driverInst->matrix.t[j] - weaponInst->matrix.t[j];
-			dist[j] = (u32)delta * (u32)delta;
-		}
-
-		modelID = weaponInst->model->id;
-
-		// 2D collision (barrel, warpball)
-		distCheck = dist[0] + dist[2];
-
-		if (((u32)modelID - STATIC_BEAKER_RED < 2) || // red or green potion
-		    (modelID == PU_EXPLOSIVE_CRATE) ||        // Nitro
-		    (modelID == STATIC_CRATE_TNT)             // TNT
-		)
-		{
-			// upgrade to 2D collision to 3D sphere
-			distCheck += dist[1];
-		}
-
-		// 2D collision, or 3D sphere
-		if (distCheck < (u32)hitRadius)
-		{
-			if ((parentSafetyFrames != 0) && (driverInst == mineDriverInst))
+			if (driver == 0)
 			{
 				continue;
 			}
-
-			// wasted check for 3D sphere,
-			// also upgrades 2D collision to 3D cylinder
-			if ((s32)dist[1] < (s32)((u32)hitRadius << 2))
+			if (driver->kartState == KS_MASK_GRABBED)
 			{
-				return driverInst;
+				continue;
+			}
+			driverInst = driver->instSelf;
+
+			// NOTE(aalhendi): Distance arithmetic wraps at 32 bits on both targets.
+			dx = (u32)driverInst->matrix.t[0] - (u32)weaponInst->matrix.t[0];
+			dz = (u32)driverInst->matrix.t[2] - (u32)weaponInst->matrix.t[2];
+			dy = (u32)driverInst->matrix.t[1] - (u32)weaponInst->matrix.t[1];
+
+			modelID = weaponInst->model->id;
+
+			if (((u32)modelID - STATIC_BEAKER_RED < 2) || // red or green potion
+			    ((s16)modelID == PU_EXPLOSIVE_CRATE) ||   // Nitro
+			    ((s16)modelID == STATIC_CRATE_TNT)        // TNT
+			)
+			{
+				distCheck = (u32)dx * dx + (u32)dz * dz + (u32)dy * dy;
+			}
+			else
+			{
+				distCheck = (u32)dx * dx + (u32)dz * dz;
+			}
+
+			// 2D collision, or 3D sphere
+			if (distCheck < (u32)hitRadius)
+			{
+				if ((parentSafetyFrames != 0) && (driverInst == mineDriverInst))
+				{
+					continue;
+				}
+
+				// The vertical bound also turns the planar test into a cylinder.
+				if ((s32)((u32)dy * dy) < (s32)((u32)hitRadius << 2))
+				{
+					return driverInst;
+				}
 			}
 		}
 	}
@@ -89,23 +87,20 @@ struct Instance *RB_Hazard_CollideWithDrivers(struct Instance *weaponInst, s16 p
 struct Instance *RB_Hazard_CollideWithBucket(struct Instance *weaponInst, struct Thread *weaponTh, struct Thread *bucket, s16 parentSafetyFrames, int hitRadius,
                                              struct Instance *mineDriverInst)
 {
-	int i;
-
-	s32 distComponent;
+	s32 dx, dz, dy;
 	u32 distCheck;
 
 	(void)weaponTh;
 
 	for (; bucket != 0; bucket = bucket->siblingThread)
 	{
-		distCheck = 0;
-		struct Instance *threadInst = bucket->inst;
+		struct Instance *threadInst;
+		threadInst = bucket->inst;
 
-		for (i = 0; i < 3; i++)
-		{
-			distComponent = threadInst->matrix.t[i] - weaponInst->matrix.t[i];
-			distCheck += (u32)distComponent * (u32)distComponent;
-		}
+		dx = (u32)threadInst->matrix.t[0] - (u32)weaponInst->matrix.t[0];
+		dz = (u32)threadInst->matrix.t[2] - (u32)weaponInst->matrix.t[2];
+		dy = (u32)threadInst->matrix.t[1] - (u32)weaponInst->matrix.t[1];
+		distCheck = (u32)dx * dx + (u32)dz * dz + (u32)dy * dy;
 
 		if (distCheck < (u32)hitRadius)
 		{
@@ -122,16 +117,18 @@ struct Instance *RB_Hazard_CollideWithBucket(struct Instance *weaponInst, struct
 }
 
 
-void RB_Hazard_ThCollide_Generic_Alt(struct Thread **threadSlot)
+int RB_Hazard_ThCollide_Generic_Alt(struct ThreadCollisionArgs *collision)
 {
-	RB_Hazard_ThCollide_Generic(threadSlot[0]);
+	return RB_Hazard_ThCollide_Generic(collision->self, collision->other, collision->funcThCollide, collision->sps);
 }
 
-// NOTE(aalhendi): Native ThCollide ABI is void; retail returns v0=1.
-void RB_Hazard_ThCollide_Missile(struct Thread *thread)
+int RB_Hazard_ThCollide_Missile(struct Thread *thread, struct Thread *other, void *funcThCollide, struct ScratchpadStruct *sps)
 {
 	struct Instance *inst = thread->inst;
 	struct TrackerWeapon *tw = inst->thread->object;
+	(void)other;
+	(void)funcThCollide;
+	(void)sps;
 
 	if (inst->model->id == DYNAMIC_ROCKET)
 	{
@@ -155,16 +152,20 @@ void RB_Hazard_ThCollide_Missile(struct Thread *thread)
 		thread->flags |= THREAD_FLAG_DEAD;
 	}
 
-	return;
+	return 1;
 }
 
-void RB_Hazard_ThCollide_Generic(struct Thread *thread)
+int RB_Hazard_ThCollide_Generic(struct Thread *thread, struct Thread *other, void *funcThCollide, struct ScratchpadStruct *sps)
 {
+	s16 modelID;
 	struct Instance *inst = thread->inst;
-	struct MineWeapon *mw = thread->object;
+	struct MineWeapon *mw = inst->thread->object;
 	int soundID;
 
 	struct Instance *crateInst = mw->crateInst;
+	(void)other;
+	(void)funcThCollide;
+	(void)sps;
 	if (crateInst != 0)
 	{
 		struct Thread *crateThread = crateInst->thread;
@@ -178,10 +179,10 @@ void RB_Hazard_ThCollide_Generic(struct Thread *thread)
 		}
 	}
 
-	int modelID = inst->model->id;
+	modelID = inst->model->id;
 
 	// if red beaker or green beaker
-	if ((u32)(modelID - STATIC_BEAKER_RED) < 2)
+	if ((u32)((u16)modelID - STATIC_BEAKER_RED) < 2)
 	{
 		PlaySound3D(0x3f, inst);
 
@@ -202,7 +203,7 @@ void RB_Hazard_ThCollide_Generic(struct Thread *thread)
 			// if not TNT
 			if (modelID != STATIC_CRATE_TNT)
 			{
-				return;
+				goto CollisionDone;
 			}
 
 			// at this point, must be TNT
@@ -212,7 +213,7 @@ void RB_Hazard_ThCollide_Generic(struct Thread *thread)
 			{
 				// quit, explosion handled
 				// by TNT thread
-				return;
+				goto CollisionDone;
 			}
 
 			// if no driver hit TNT,
@@ -226,108 +227,87 @@ void RB_Hazard_ThCollide_Generic(struct Thread *thread)
 
 		RB_Explosion_InitGeneric(inst);
 
-		inst->scale.x = 0;
-		inst->scale.y = 0;
 		inst->scale.z = 0;
+		inst->scale.y = 0;
+		inst->scale.x = 0;
 
 		inst->flags |= HIDE_MODEL;
 	}
 
 	// kill thread
 	thread->flags |= THREAD_FLAG_DEAD;
-	return;
+CollisionDone:
+	return 1;
 }
 
-u16 RB_Hazard_CollLevInst(struct ScratchpadStruct *sps, struct Thread *th)
+s32 RB_Hazard_CollLevInst(struct ScratchpadStruct *sps, struct Thread *th)
 {
 	struct InstDef *instdef;
 
-	// Check if the hitbox flag has the collision bit set and if InstDef is not NULL
-	if ((sps->bspHitbox->flag & 0x80) && (instdef = sps->bspHitbox->data.hitbox.instDef) != NULL)
+	if (((u8)sps->bspHitbox->flag & 0x80) && (instdef = sps->bspHitbox->data.hitbox.instDef) != NULL)
 	{
+		s16 model;
+		struct MetaDataMODEL *meta;
 		struct Instance *inst = instdef->ptrInstance;
 		if (inst == NULL)
 		{
-			return 1;
+			goto noCallback;
 		}
 
-		s16 model = inst->model->id;
+		model = instdef->modelID;
 
-		// Get the metadata for the model
-		struct MetaDataMODEL *meta = COLL_LevModelMeta(model);
+		meta = COLL_LevModelMeta(model);
 
-		// Check if LInC is not nullptr
 		if ((meta != NULL) && (meta->LInC != NULL))
 		{
-			// Execute LInC, create a thread for this instance, and let it run thread->funcThCollide upon collision
-			u16 flag = meta->LInC(inst, th, sps);
+			s32 flag = meta->LInC(inst, th, sps);
 
-			// if not PU_WUMPA_FRUIT
-			if (model != 2)
+			// NOTE(aalhendi): Pickups receive the collision, but do not stop the hazard.
+			// Classify the original level model, before its callback can change state.
+			switch (model)
 			{
-				// useless
-				if (model < 2)
-				{
-					return flag;
-				}
-
-				// anything except for
-				// 7: PU_FRUIT_CRATE,
-				// 8: PU_RANDOM_CRATE (weapon box)
-				if (8 < model)
-				{
-					return flag;
-				}
-				if (model < 7)
-				{
-					return flag;
-				}
+			case PU_WUMPA_FRUIT:
+			case PU_FRUIT_CRATE:
+			case PU_RANDOM_CRATE:
+				return 0;
+			default:
+				return flag;
 			}
-			return 0;
 		}
 	}
 
-	// make potion open teeth,
-	// or make warpball turn around
+noCallback:
+	// An unhandled level collision can open teeth or turn a warpball around.
 	return 1;
 }
 
 int RB_Hazard_InterpolateValue(s16 currRot, s16 desiredRot, s16 rotSpeed)
 {
-	if (currRot == desiredRot)
-	{
-		return currRot;
-	}
+	int diff;
+	s16 result = currRot;
 
-	int delta = (rotSpeed * sdata->gGT->elapsedTimeMS) >> 5;
+	if (currRot != desiredRot)
+	{
+		// Take the shortest signed arc in a 4096-unit revolution.
+		diff = (desiredRot - currRot) & 0xfff;
+		if (diff > 0x7ff)
+		{
+			diff -= 0x1000;
+		}
 
-	// adjust for range of "s16" [0-0xffff]
-	// compared to range of degrees [0-0xfff]
-	int diff = ((desiredRot - currRot) & 0xfff);
-	if (diff > 0x7ff)
-	{
-		diff -= 0x1000;
+		if (abs(diff) < rotSpeed)
+		{
+			result = desiredRot;
+		}
+		else if (diff > 0)
+		{
+			result = currRot + ((rotSpeed * GAME_TRACKER->elapsedTimeMS) >> 5);
+		}
+		else if (diff < 0)
+		{
+			result = currRot - ((rotSpeed * GAME_TRACKER->elapsedTimeMS) >> 5);
+		}
+		result &= 0xfff;
 	}
-
-	// skip to end if close enough
-	int diffAbs = diff;
-	if (diffAbs < 0)
-	{
-		diffAbs = -diffAbs;
-	}
-	if (diffAbs < rotSpeed)
-	{
-		return desiredRot & 0xfff;
-	}
-
-	// interpolate
-	if (diff < 0)
-	{
-		currRot -= delta;
-	}
-	else
-	{
-		currRot += delta;
-	}
-	return currRot & 0xfff;
+	return result;
 }

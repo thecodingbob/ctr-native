@@ -116,7 +116,7 @@ int howl_LoadHeader(char *filename)
 	MEMPACK_PushState();
 
 	// allocate room for one sector
-	alloc = MEMPACK_AllocMem(0x800 /*, filename*/);
+	alloc = MEMPACK_AllocMem(0x800, NULL /* filename */);
 
 	if (alloc != 0)
 	{

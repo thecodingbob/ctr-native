@@ -16,7 +16,7 @@ static struct ThTickNativeContext *s_thTickContext;
 
 void PROC_DestroyTracker(struct Thread *t)
 {
-	struct GameTracker *gGT = sdata->gGT;
+	struct GameTracker *gGT = GAME_TRACKER;
 
 	if (gGT->numMissiles > 0)
 	{
@@ -33,35 +33,29 @@ void PROC_DestroyInstance(struct Thread *t)
 }
 
 
-void PROC_DestroyObject(void *object, int threadFlags)
+void PROC_DestroyObject(void *object, ThreadFlags threadFlags)
 {
-	struct JitPool *myPool;
+	struct Item *item;
 
 	if (object == NULL)
 	{
 		return;
 	}
 
-	if ((threadFlags & 0x300) == 0x100)
+	// The payload follows the pool's intrusive list header.
+	item = (struct Item *)((u8 *)object - sizeof(struct Item));
+	switch (threadFlags & 0x300)
 	{
-		myPool = &sdata->gGT->JitPools.largeStack;
+	case LARGE:
+		LIST_AddFront(&GAME_TRACKER->JitPools.largeStack.free, item);
+		break;
+	case MEDIUM:
+		LIST_AddFront(&GAME_TRACKER->JitPools.mediumStack.free, item);
+		break;
+	default:
+		LIST_AddFront(&GAME_TRACKER->JitPools.smallStack.free, item);
+		break;
 	}
-	else if ((threadFlags & 0x300) == 0x200)
-	{
-		myPool = &sdata->gGT->JitPools.mediumStack;
-	}
-	else
-	{
-		myPool = &sdata->gGT->JitPools.smallStack;
-	}
-
-	// in allocation, "next" and "prev" are abstracted
-	// with obj+=8, so not all structs need "next" and "prev",
-	// now subtract 8 bytes to access those two pointers
-	object = (void *)((u8 *)object - 8);
-
-	// add object back to free list
-	LIST_AddFront(&myPool->free, (struct Item *)object);
 }
 
 
@@ -73,7 +67,7 @@ void PROC_DestroySelf(struct Thread *t)
 		return;
 	}
 
-	// this is usuallly PROC_DestroyInstance
+	// This is usually PROC_DestroyInstance; run it before recycling either allocation.
 	if (t->funcThDestroy != 0)
 	{
 		t->funcThDestroy(t);
@@ -87,7 +81,7 @@ void PROC_DestroySelf(struct Thread *t)
 	PROC_DestroyObject(t->object, t->flags);
 
 	// recycle thread
-	LIST_AddFront(&sdata->gGT->JitPools.thread.free, (struct Item *)t);
+	LIST_AddFront(&GAME_TRACKER->JitPools.thread.free, (struct Item *)t);
 }
 
 
@@ -116,42 +110,26 @@ void PROC_CheckBloodlineForDead(struct Thread **replaceSelf, struct Thread *th)
 	{
 		struct Thread *siblingThread = th->siblingThread;
 
-		if ((th->flags & THREAD_FLAG_DEAD) == 0)
+		if ((th->flags & THREAD_FLAG_DEAD) != 0)
 		{
-			// [wow this sounds dark]
-			// check child's bloodline, and if child is dead, then
-			// "childThread" inside "th" will be replaced with the
-			// child's sibling, or nullptr if all children are dead
-
-			// recursively find all children
-			if (th->childThread != 0)
-			{
-				PROC_CheckBloodlineForDead(&th->childThread, th->childThread);
-			}
-
-			// current thread is alive, doesn't need to be overwritten,
-			// next check sibling, so sibling will be replaced by the
-			// sibling's sibling, if the sibling's sibling is dead
-			replaceSelf = &th->siblingThread;
-		}
-
-		// if this thread needs to die
-		else
-		{
-			// recursively find all children
 			if (th->childThread != 0)
 			{
 				PROC_DestroyBloodline(th->childThread);
 			}
 
 			PROC_DestroySelf(th);
-
-			// replace thread with pointer to it's own sibling
+			// Keep the incoming link: the next sibling may also need removal.
 			*replaceSelf = siblingThread;
+		}
+		else
+		{
+			if (th->childThread != 0)
+			{
+				PROC_CheckBloodlineForDead(&th->childThread, th->childThread);
+			}
 
-			// dont overwrite replaceSelf like in previous
-			// "if" block, cause the next dead sibling can
-			// still take the place in replaceSelf
+			// This thread survives, so subsequent removals update its sibling link.
+			replaceSelf = &th->siblingThread;
 		}
 
 		th = siblingThread;
@@ -159,28 +137,24 @@ void PROC_CheckBloodlineForDead(struct Thread **replaceSelf, struct Thread *th)
 }
 
 
-void PROC_CheckAllForDead()
+void PROC_CheckAllForDead(void)
 {
-	int i;
-
-	struct ThreadBucket *tb = &sdata->gGT->threadBuckets[0];
+	s32 i;
 
 	for (i = 0; i < NUM_BUCKETS; i++)
 	{
-		PROC_CheckBloodlineForDead(&tb[i].thread, tb[i].thread);
+		PROC_CheckBloodlineForDead(&GAME_TRACKER->threadBuckets[i].thread, GAME_TRACKER->threadBuckets[i].thread);
 	}
 }
 
 
-struct Thread *PROC_BirthWithObject(int flags, void *funcThTick, const char *name, struct Thread *relativeTh)
+struct Thread *PROC_BirthWithObject(ThreadFlags flags, void *funcThTick, const char *name, struct Thread *relativeTh)
 {
-	int bucketID;
-	struct JitPool *stackPool;
+	u32 bucketID;
+	u32 objectSize;
+	u32 stackSize;
 	void *stackObj;
 	struct Thread *th;
-	struct GameTracker *gGT;
-
-	gGT = sdata->gGT;
 
 	// determine bucketID from relativeTh or flags
 	if (relativeTh != 0)
@@ -191,40 +165,42 @@ struct Thread *PROC_BirthWithObject(int flags, void *funcThTick, const char *nam
 	{
 		bucketID = flags & 0xff;
 	}
+	objectSize = flags >> 16;
 
-	// select stack pool based on flags & 0x300
+	// NOTE(aalhendi): Retail allocates from a fixed-capacity pool before validating
+	// the request. Keep the capacities shared with pool initialization.
 	switch (flags & 0x300)
 	{
-	case 0x100: // largeStack
-		stackPool = &gGT->JitPools.largeStack;
+	case LARGE:
+		stackSize = THREAD_LARGE_STACK_SIZE;
+		stackObj = LIST_RemoveFront(&GAME_TRACKER->JitPools.largeStack.free);
 		break;
-	case 0x200: // mediumStack
-		stackPool = &gGT->JitPools.mediumStack;
+	case MEDIUM:
+		stackSize = THREAD_MEDIUM_STACK_SIZE;
+		stackObj = LIST_RemoveFront(&GAME_TRACKER->JitPools.mediumStack.free);
 		break;
-	default: // 0x300 = smallStack
-		stackPool = &gGT->JitPools.smallStack;
+	default:
+		stackSize = THREAD_SMALL_STACK_SIZE;
+		stackObj = LIST_RemoveFront(&GAME_TRACKER->JitPools.smallStack.free);
 		break;
 	}
-
-	// allocate stack object FIRST
-	stackObj = LIST_RemoveFront(&stackPool->free);
 
 	// validate bucket
 	if (bucketID >= NUM_BUCKETS)
 	{
 		if (stackObj != 0)
 		{
-			PROC_DestroyObject((void *)((u32)stackObj + 8), flags);
+			PROC_DestroyObject((u8 *)stackObj + sizeof(struct Item), flags);
 		}
 		return 0;
 	}
 
-	// validate size fits in pool
-	if ((u32)(flags >> 0x10) >= (stackPool->itemSize - 8))
+	// NOTE(aalhendi): Retail rejects an exact payload-capacity request too.
+	if (objectSize >= stackSize - sizeof(struct Item))
 	{
 		if (stackObj != 0)
 		{
-			PROC_DestroyObject((void *)((u32)stackObj + 8), flags);
+			PROC_DestroyObject((u8 *)stackObj + sizeof(struct Item), flags);
 		}
 		return 0;
 	}
@@ -236,58 +212,63 @@ struct Thread *PROC_BirthWithObject(int flags, void *funcThTick, const char *nam
 	}
 
 	// allocate thread SECOND
-	th = (struct Thread *)LIST_RemoveFront(&gGT->JitPools.thread.free);
+	th = (struct Thread *)LIST_RemoveFront(&GAME_TRACKER->JitPools.thread.free);
 
 	// check thread allocated
 	if (th == 0)
 	{
-		PROC_DestroyObject((void *)((u32)stackObj + 8), flags);
+		PROC_DestroyObject((u8 *)stackObj + sizeof(struct Item), flags);
 		return 0;
 	}
 
 	// initialize thread fields
 	th->flags = flags;
 	th->cooldownFrameCount = 0;
-	th->funcThCollide = 0;
 	th->funcThDestroy = 0;
+	th->funcThCollide = 0;
 	th->inst = 0;
 
 	// handle relative thread linking
-	if (relativeTh == 0)
+	if (relativeTh != 0)
 	{
-		struct ThreadBucket *tb = &gGT->threadBuckets[bucketID];
+		if (flags & SELF_SIBLING)
+		{
+			struct Thread *parent;
 
-		th->siblingThread = tb->thread;
-		tb->thread = th;
-		th->parentThread = 0;
-		th->childThread = 0;
-	}
-	else if (flags & SELF_SIBLING)
-	{
-		th->siblingThread = relativeTh->siblingThread;
-		relativeTh->siblingThread = th;
-		th->childThread = 0;
-		th->parentThread = relativeTh->parentThread;
-	}
-	else if (flags & CHILD_BETWEEN)
-	{
-		th->childThread = relativeTh->childThread;
-		relativeTh->childThread = th;
-		th->parentThread = relativeTh;
-		th->siblingThread = 0;
+			th->siblingThread = relativeTh->siblingThread;
+			parent = relativeTh->parentThread;
+			relativeTh->siblingThread = th;
+			th->childThread = 0;
+			th->parentThread = parent;
+		}
+		else if (flags & CHILD_BETWEEN)
+		{
+			// NOTE(aalhendi): Retail inserts the child chain without rewriting
+			// the former children's parentThread pointers.
+			th->childThread = relativeTh->childThread;
+			relativeTh->childThread = th;
+			th->parentThread = relativeTh;
+			th->siblingThread = 0;
+		}
+		else
+		{
+			th->childThread = 0;
+			th->siblingThread = relativeTh->childThread;
+			relativeTh->childThread = th;
+			th->parentThread = relativeTh;
+		}
 	}
 	else
 	{
+		th->siblingThread = GAME_TRACKER->threadBuckets[bucketID].thread;
+		GAME_TRACKER->threadBuckets[bucketID].thread = th;
+		th->parentThread = 0;
 		th->childThread = 0;
-		th->siblingThread = relativeTh->childThread;
-		relativeTh->childThread = th;
-		th->parentThread = relativeTh;
 	}
 
-	// set remaining fields AFTER linking (ASM order)
 	th->funcThTick = funcThTick;
 	th->name = name;
-	th->object = (void *)(((u32)stackObj) + 8);
+	th->object = (u8 *)stackObj + sizeof(struct Item);
 
 	return th;
 }
@@ -367,6 +348,8 @@ struct Thread *PROC_SearchForModel(struct Thread *th, s16 modelID)
 {
 	while (th != 0)
 	{
+		struct Thread *other;
+
 		// if found, quit
 		if (th->modelIndex == modelID)
 		{
@@ -374,7 +357,7 @@ struct Thread *PROC_SearchForModel(struct Thread *th, s16 modelID)
 		}
 
 		// check children recursively, quit if found
-		struct Thread *other = PROC_SearchForModel(th->childThread, modelID);
+		other = PROC_SearchForModel(th->childThread, modelID);
 		if (other != 0)
 		{
 			return other;
@@ -415,6 +398,9 @@ void PROC_PerBspLeaf_CheckInstances(struct BSP *bspLeaf, struct ScratchpadStruct
 
 	for (/**/; *(int *)bspHitbox != 0; bspHitbox++)
 	{
+		s32 distYSquared;
+		s32 distZSquared;
+
 		if ((bspHitbox->flag & BSP_HITBOX_COLLIDABLE) == 0)
 		{
 			continue;
@@ -436,14 +422,14 @@ void PROC_PerBspLeaf_CheckInstances(struct BSP *bspLeaf, struct ScratchpadStruct
 			continue;
 		}
 
-		s32 distYSquared = PROC_PerBspLeaf_MipsSquare(distY);
+		distYSquared = PROC_PerBspLeaf_MipsSquare(distY);
 		dist += distYSquared;
 		if (distYSquared > 0x0fffffff)
 		{
 			continue;
 		}
 
-		s32 distZSquared = PROC_PerBspLeaf_MipsSquare(distZ);
+		distZSquared = PROC_PerBspLeaf_MipsSquare(distZ);
 		dist += distZSquared;
 		if (distZSquared > 0x0fffffff)
 		{
@@ -500,6 +486,9 @@ void PROC_CollideHitboxWithBucket(struct Thread *collThread, struct ScratchpadSt
 
 	for (/**/; collThread != NULL; collThread = collThread->siblingThread)
 	{
+		s32 distYSquared;
+		s32 distZSquared;
+
 		if (collThread->childThread != NULL)
 		{
 			PROC_CollideHitboxWithBucket(collThread->childThread, sps, ignoredThread);
@@ -527,14 +516,14 @@ void PROC_CollideHitboxWithBucket(struct Thread *collThread, struct ScratchpadSt
 			continue;
 		}
 
-		s32 distYSquared = PROC_CollideHitbox_MipsSquare(distY);
+		distYSquared = PROC_CollideHitbox_MipsSquare(distY);
 		dist += distYSquared;
 		if (distYSquared > 0x0fffffff)
 		{
 			continue;
 		}
 
-		s32 distZSquared = PROC_CollideHitbox_MipsSquare(distZ);
+		distZSquared = PROC_CollideHitbox_MipsSquare(distZ);
 		dist += distZSquared;
 		if (distZSquared > 0x0fffffff)
 		{

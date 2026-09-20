@@ -37,14 +37,12 @@ enum VersusBattleEndMenuConstants
 	VB_BATTLE_RANK_TEXT_CENTER_Y = 0xd,
 
 	VB_STANDINGS_VISIBLE_PLACES_MIN = 2,
+	VB_STANDINGS_EXPANDED_MIN_ENTRIES = 3,
 	VB_STANDINGS_POINTS_PER_ENTRY = 3,
 	VB_STANDINGS_TEXT_X_OFFSET = 0x79,
 	VB_STANDINGS_RANK_X_OFFSET = -0x24,
 	VB_STANDINGS_RANK_Y_OFFSET = 5,
 	VB_STANDINGS_ROW_HALF_HEIGHT = 4,
-	VB_STANDINGS_ROW_BASELINE_BIAS = 0xd,
-	VB_STANDINGS_SUFFIX_FIRST = LNG_ST,
-
 	VB_ICON_TRANSPARENCY = 1,
 	VB_ICON_SCALE = 0x1000,
 
@@ -65,242 +63,438 @@ enum VersusBattleEndMenuConstants
 	VB_MENU_READY_SHOW_MENU = 1,
 };
 
-// 2P, 3P, 4P
-global_variable s16 s_vsStandingsYByPlayerCount[3][VB_POSY_NUM] = {
-    {0x32, 0x5a, 0x82, 0, 0},     // 2P
-    {0x1e, 0x46, 0x6e, 0x96, 0},  // 3P
-    {0xa, 0x35, 0x5b, 0x81, 0xa7} // 4P
-};
+global_variable s16 s_vsStandingsYByPlayerCount[3][VB_POSY_NUM];
+global_variable s16 s_standingsSuffixStringIds225[VB_MAX_PLAYERS];
+
+// NOTE(aalhendi): The matching build replaces these defaults through its
+// private retail-symbol header. Native uses the canonical aggregates below.
+#ifdef CTR_NATIVE
+#define VB_GAME_TRACKER_PAGE                 0u
+#define VB_BATTLE_COLOR_PTR                  (&sdata->battleSetup_Color_UI_1)
+#define VB_STANDINGS_SUFFIX_PAGE             s_standingsSuffixStringIds225
+#define VB_ADD_STANDINGS_SUFFIX_LOW(value)   ((void)sizeof(value))
+#define VB_PLAYER_COUNT_FROM_PAGE(page)      ((void)sizeof(page), GAME_TRACKER->numPlyrCurrGame)
+#define VB_VIEW_TYPE                         struct PushBuffer
+#define VB_VIEW_FROM_OFFSET(offset)          ((struct PushBuffer *)((u8 *)&GAME_TRACKER->pushBuffer + (offset)))
+#define VB_VIEW_PUSH_BUFFER(view)            (*(view))
+#define VB_PUSH_BUFFER_FROM_OFFSET(offset)   (*VB_VIEW_FROM_OFFSET(offset))
+#define VB_MATCH_ROW_ALLOCATION_BEGIN(value) ((void)sizeof(value))
+#define VB_MATCH_ROW_SCHEDULE_BEGIN()        ((void)0)
+#define VB_MATCH_ROW_SCHEDULE_END()          ((void)0)
+#define VB_MATCH_ROW_SETUP_ORDER(rowCount, configIndex) \
+	do                                                  \
+	{                                                   \
+		(void)sizeof(rowCount);                         \
+		(void)sizeof(configIndex);                      \
+	} while (0)
+#define VB_MATCH_ROW_ALLOCATION_END(value) ((void)sizeof(value))
+#define VB_VALIDATE_MATCHING_CONSTANTS()
+
+static inline void VB_DrawOuterRect(RECT *rect, const u32 *packedColor, s16 transparency, u32 *ot)
+{
+	Color color;
+
+	ColorCode_SetPacked(&color, *packedColor);
+	RECTMENU_DrawOuterRect_HighLevel(rect, &color, transparency, ot);
+}
+
+#define VB_DRAW_OUTER_RECT VB_DrawOuterRect
+#define VB_DRAW_POLY_FT4   DecalHUD_DrawPolyFT4
+#endif
+
+VB_VALIDATE_MATCHING_CONSTANTS()
 
 void VB_EndEvent_DrawMenu(void)
 {
 	char text[24];
 	SVec2 pos;
+	struct GameTracker *battleGameTracker;
+	struct GameTracker *gGT;
+	s32 titleString;
+	s32 rankTextBaselineOffset;
+	u16 rankTextY;
+	b16 winnerViewportFound;
+	u16 standingsEntryCount;
+	s16 standingsPosition;
+	s16 previousStandingsScore;
+	s16 displayedRankOffset;
+	u32 screenY;
+	s32 player;
+	s32 titleAnimationFrame;
+	s32 rowAnimationFrame;
+	s32 battleBlockHeight;
+	s32 battlePlayerHeight;
+	s32 resultIndex;
+	s32 teamPlayerHeight;
+	s32 pushBufferOffset;
+	s32 teamID;
 
-	struct GameTracker *gGT = sdata->gGT;
-	s32 numPlayers = gGT->numPlyrCurrGame;
-	s32 playerCountIndex = numPlayers - VB_MIN_PLAYERS;
-	b32 isBattleMode = (gGT->gameMode1 & BATTLE_MODE) != 0;
+	winnerViewportFound = false;
+	standingsPosition = VB_POSY_P1;
+	previousStandingsScore = 0;
 
-	if (sdata->framesSinceRaceEnded < VB_RESULT_MAX_FRAMES)
 	{
-		sdata->framesSinceRaceEnded++;
-	}
+		s16 teamPlayerCount[VB_MAX_PLAYERS] = {0, 0, 0, 0};
 
-	s32 titleString = LNG_BATTLE;
-	s32 standingsEntryCount;
-	s16 titleY;
-	s16 teamPlayerCount[VB_MAX_PLAYERS] = {0, 0, 0, 0};
-	if (!isBattleMode)
-	{
-		titleString = LNG_VERSUS;
-		standingsEntryCount = numPlayers;
-		titleY = s_vsStandingsYByPlayerCount[playerCountIndex][VB_POSY_TITLE];
-	}
-	else
-	{
-		standingsEntryCount = gGT->battleSetup.numTeams;
-
-		for (s32 player = 0; player < numPlayers; player++)
 		{
-			teamPlayerCount[gGT->drivers[player]->BattleHUD.teamID]++;
-		}
+			RECT box;
 
-		titleY = (VB_BATTLE_BLOCK_BOTTOM_Y -
-		          ((gGT->battleSetup.numTeams - 1) * VB_BATTLE_TEAM_SCORE_GAP + numPlayers * VB_BATTLE_TITLE_PLAYER_HEIGHT + VB_BATTLE_BLOCK_HEADER_HEIGHT)) >>
-		         1;
-	}
+			displayedRankOffset = 0;
 
-	// Disable drawing lines between multiplayer screens
-	gGT->renderFlags &= ~RENDER_FLAG_SPLIT_SCREEN_LINES;
-
-	RaceFlag_SetFullyOnScreen();
-
-	s32 titleTargetX;
-	s32 titleFrame;
-	if (sdata->framesSinceRaceEnded <= VB_MENU_SHOW_DELAY_FRAMES)
-	{
-		titleTargetX = VB_TITLE_ENTRY_X;
-		titleFrame = sdata->framesSinceRaceEnded;
-	}
-	else
-	{
-		titleTargetX = VB_TITLE_TARGET_X;
-		titleFrame = sdata->framesSinceRaceEnded - VB_MENU_SHOW_DELAY_FRAMES;
-	}
-
-	// fly-in interpolation
-	UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), VB_TITLE_ENTRY_X, titleY, titleTargetX, titleY, titleFrame, VB_LERP_FRAMES);
-
-	s32 rowY = titleY + VB_TITLE_TO_ROWS_Y;
-
-	// "Versus" or "Battle"
-	DecalFont_DrawLine(sdata->lngStrings[titleString], pos.x, pos.y, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
-
-	DecalFont_DrawLine(sdata->lngStrings[LNG_STANDINGS], pos.x, pos.y + VB_STANDINGS_SUBTITLE_Y, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
-
-	s32 visiblePlaces = VB_STANDINGS_VISIBLE_PLACES_MIN;
-	if (standingsEntryCount >= 3)
-	{
-		visiblePlaces = standingsEntryCount - 1;
-	}
-
-	s32 rowDelay = VB_ROW_INITIAL_DELAY_FRAMES;
-	s16 displayedRankOffset = 0;
-	s16 previousStandingsScore = 0;
-	for (s32 standingsIndex = 0; standingsIndex < standingsEntryCount; standingsIndex++)
-	{
-		s32 entityID = gGT->battleSetup.standingsOrder[standingsIndex];
-		s16 currRowY = (s16)rowY;
-
-		s32 rowTargetX;
-		s32 rowFrame;
-		if (sdata->framesSinceRaceEnded > rowDelay)
-		{
-			rowFrame = sdata->framesSinceRaceEnded - rowDelay;
-			rowTargetX = VB_ROW_TARGET_X;
-		}
-		else
-		{
-			rowFrame = sdata->framesSinceRaceEnded;
-			rowTargetX = VB_TITLE_ENTRY_X;
-		}
-
-		// fly-in interpolation
-		UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), VB_TITLE_ENTRY_X, currRowY, rowTargetX, currRowY, rowFrame, VB_LERP_FRAMES);
-
-		s16 rankTextY;
-		if (!isBattleMode)
-		{
-			rankTextY = s_vsStandingsYByPlayerCount[playerCountIndex][VB_POSY_P1 + standingsIndex];
-
-			struct Driver *driver = gGT->drivers[entityID];
-			struct Icon *icon = gGT->ptrIcons[data.MetaDataCharacters[data.characterIDs[driver->driverID]].iconID];
-
-			DecalHUD_DrawPolyFT4(icon, pos.x, rankTextY, &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT, VB_ICON_TRANSPARENCY, VB_ICON_SCALE);
-		}
-		else
-		{
-			s16 numPlayersOnTeam = teamPlayerCount[entityID];
-			rankTextY = currRowY + (numPlayersOnTeam * VB_BATTLE_PLAYER_ICON_SPACING) / 2 - VB_BATTLE_RANK_TEXT_CENTER_Y;
-
-			s16 iconSlot = 0;
-			for (s32 player = 0; player < numPlayers; player++)
+			if (GAME_FRAMES_SINCE_RACE_ENDED < VB_RESULT_MAX_FRAMES)
 			{
-				struct Driver *driver = gGT->drivers[player];
+				GAME_FRAMES_SINCE_RACE_ENDED++;
+			}
 
-				if (driver->BattleHUD.teamID != entityID)
+			titleString = LNG_BATTLE;
+			gGT = GAME_TRACKER;
+			if ((gGT->gameMode1 & BATTLE_MODE) != 0)
+			{
+				standingsEntryCount = gGT->battleSetup.numTeams;
+				for (resultIndex = 0; gGT->numPlyrCurrGame != 0;)
 				{
-					continue;
+					battleGameTracker = gGT;
+					do
+					{
+						teamID = battleGameTracker->drivers[resultIndex]->BattleHUD.teamID;
+						// NOTE(aalhendi): Preserve retail's temporary-register allocation
+						// across the team-count update without changing game state.
+						CTR_PSX_CLOBBER("$2");
+						teamPlayerCount[teamID]++;
+						resultIndex++;
+					} while (resultIndex < battleGameTracker->numPlyrCurrGame);
+					break;
 				}
 
-				struct Icon *icon = gGT->ptrIcons[data.MetaDataCharacters[data.characterIDs[driver->driverID]].iconID];
-				DecalHUD_DrawPolyFT4(icon, pos.x, currRowY + iconSlot * VB_BATTLE_PLAYER_ICON_SPACING, &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT,
-				                     VB_ICON_TRANSPARENCY, VB_ICON_SCALE);
-				iconSlot++;
+				battleBlockHeight = (GAME_TRACKER->battleSetup.numTeams - 1) * VB_BATTLE_TEAM_SCORE_GAP;
+				battlePlayerHeight = GAME_TRACKER->numPlyrCurrGame * VB_BATTLE_TITLE_PLAYER_HEIGHT + VB_BATTLE_BLOCK_HEADER_HEIGHT;
+				battleBlockHeight += battlePlayerHeight;
+				screenY = (u32)(VB_BATTLE_BLOCK_BOTTOM_Y - battleBlockHeight) >> 1;
 			}
-
-			rowY += numPlayersOnTeam * VB_BATTLE_PLAYER_ICON_SPACING + VB_BATTLE_TEAM_SCORE_GAP;
-		}
-
-		for (s32 place = 0; place < visiblePlaces; place++)
-		{
-			s32 entityRank = isBattleMode ? gGT->battleSetup.finishedRankOfEachTeam[entityID] : gGT->drivers[entityID]->driverRank;
-
-			s32 placeTextColor = JUSTIFY_RIGHT | RED;
-			if (place == entityRank)
+			else
 			{
-				placeTextColor = (gGT->timer & 1) ? (JUSTIFY_RIGHT | RED) : (JUSTIFY_RIGHT | WHITE);
+				titleString = LNG_VERSUS;
+				standingsEntryCount = gGT->numPlyrCurrGame;
+				screenY = (u16)s_vsStandingsYByPlayerCount[gGT->numPlyrCurrGame - VB_MIN_PLAYERS][VB_POSY_TITLE];
 			}
 
-			sprintf(text, "%d%s-%2.02ld", place + 1, sdata->lngStrings[VB_STANDINGS_SUFFIX_FIRST + place],
-			        CTR_PRINTF_PSX_LONG(gGT->standingsPoints[entityID * VB_STANDINGS_POINTS_PER_ENTRY + place]));
+			GAME_TRACKER->renderFlags &= ~RENDER_FLAG_SPLIT_SCREEN_LINES;
+			RaceFlag_SetFullyOnScreen();
 
-			DecalFont_DrawLine(text, pos.x + VB_STANDINGS_TEXT_X_OFFSET,
-			                   rankTextY - (visiblePlaces * VB_STANDINGS_ROW_HALF_HEIGHT - VB_STANDINGS_ROW_BASELINE_BIAS) + place * 8, FONT_SMALL,
-			                   placeTextColor);
+			titleAnimationFrame = GAME_FRAMES_SINCE_RACE_ENDED;
+			if (VB_MENU_SHOW_DELAY_FRAMES < titleAnimationFrame)
+			{
+				UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), VB_TITLE_ENTRY_X, screenY, VB_TITLE_TARGET_X, screenY,
+				                 titleAnimationFrame - VB_MENU_SHOW_DELAY_FRAMES, VB_LERP_FRAMES);
+			}
+			else
+			{
+				UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), VB_TITLE_ENTRY_X, screenY, VB_TITLE_ENTRY_X, screenY, titleAnimationFrame, VB_LERP_FRAMES);
+			}
+
+			DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[titleString], pos.x, pos.y, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+
+			screenY += VB_TITLE_TO_ROWS_Y;
+			resultIndex = 0;
+
+			DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_STANDINGS], pos.x, pos.y + VB_STANDINGS_SUBTITLE_Y, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+
+			titleAnimationFrame = (s16)standingsEntryCount;
+			{
+				s32 standingsCount;
+
+				standingsCount = titleAnimationFrame;
+				if (standingsCount > 0)
+				{
+					s32 placeTextColor;
+					s16 teamCount;
+					s16 displayedRankIndex;
+					s32 displayedRankNumber;
+					s16 visiblePlaceCount;
+					s32 entityRank;
+					s16 currRowY;
+					s16 iconSlot;
+					s32 iconSlotBeforeIncrement;
+					s32 allocationAnchor;
+					s32 rowCount;
+					s32 standingsConfigIndex;
+					b32 rowCountBelowThree;
+					s32 rowDelay;
+					s32 rowStagger;
+					s32 rowFrame;
+					s16 *rankSuffix;
+					// NOTE(aalhendi): These matching-only register annotations preserve
+					// retail's final sprintf argument schedule. Native ignores them.
+					register s16 *suffixBase CTR_PSX_REGISTER("$2");
+					register char *rankText CTR_PSX_REGISTER("$4");
+					register const char *rankFormat CTR_PSX_REGISTER("$5");
+
+					VB_MATCH_ROW_ALLOCATION_BEGIN(allocationAnchor);
+					VB_MATCH_ROW_SCHEDULE_BEGIN();
+					rowDelay = VB_ROW_INITIAL_DELAY_FRAMES;
+					standingsConfigIndex = standingsCount - VB_MIN_PLAYERS;
+					rowCountBelowThree = standingsCount < VB_STANDINGS_EXPANDED_MIN_ENTRIES;
+					rowCount = standingsCount;
+					VB_MATCH_ROW_SETUP_ORDER(rowCount, standingsConfigIndex);
+					rowStagger = VB_ROW_STAGGER_FRAMES;
+					do
+					{
+						VB_MATCH_ROW_SCHEDULE_END();
+						teamCount = teamPlayerCount[GAME_TRACKER->battleSetup.standingsOrder[resultIndex]];
+						rankTextBaselineOffset = VB_BATTLE_RANK_TEXT_CENTER_Y;
+						teamPlayerHeight = teamCount * VB_BATTLE_PLAYER_ICON_SPACING;
+						rowFrame = GAME_FRAMES_SINCE_RACE_ENDED;
+
+						if (rowFrame > rowDelay)
+						{
+							rowAnimationFrame = rowFrame - VB_MENU_SHOW_DELAY_FRAMES;
+							UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), VB_TITLE_ENTRY_X, (s16)screenY, VB_ROW_TARGET_X, (s16)screenY,
+							                 rowAnimationFrame - rowStagger, VB_LERP_FRAMES);
+						}
+						else
+						{
+							UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), VB_TITLE_ENTRY_X, (s16)screenY, VB_TITLE_ENTRY_X, (s16)screenY, rowFrame, VB_LERP_FRAMES);
+						}
+
+						iconSlot = 0;
+						if ((GAME_TRACKER->gameMode1 & BATTLE_MODE) == 0)
+						{
+							s16 iconY;
+							s16 *vsCharacterIDs;
+
+							iconY = s_vsStandingsYByPlayerCount[standingsConfigIndex][standingsPosition];
+							rankTextY = iconY;
+							vsCharacterIDs = GAME_CHARACTER_IDS;
+
+							VB_DRAW_POLY_FT4(
+							    GAME_TRACKER->ptrIcons[GAME_CHARACTER_METADATA[vsCharacterIDs[GAME_TRACKER->battleSetup.standingsOrder[resultIndex]]].iconID],
+							    pos.x, iconY, &GAME_TRACKER->backBuffer->primMem, GAME_TRACKER->pushBuffer_UI.ptrOT, VB_ICON_TRANSPARENCY, VB_ICON_SCALE);
+						}
+						else
+						{
+							u32 nextScreenY;
+
+							currRowY = (s16)screenY;
+							rankTextY = currRowY + (s16)teamPlayerHeight / 2 - rankTextBaselineOffset;
+							player = 0;
+
+							if (GAME_TRACKER->numPlyrCurrGame != 0)
+							{
+								s32 battleIconY;
+
+								battleIconY = currRowY;
+								do
+								{
+									if (GAME_TRACKER->drivers[player]->BattleHUD.teamID == GAME_TRACKER->battleSetup.standingsOrder[resultIndex])
+									{
+										iconSlotBeforeIncrement = iconSlot;
+										VB_DRAW_POLY_FT4(GAME_TRACKER->ptrIcons[GAME_CHARACTER_METADATA[GAME_CHARACTER_IDS[player]].iconID], pos.x,
+										                 battleIconY + iconSlotBeforeIncrement * VB_BATTLE_PLAYER_ICON_SPACING,
+										                 &GAME_TRACKER->backBuffer->primMem, GAME_TRACKER->pushBuffer_UI.ptrOT, VB_ICON_TRANSPARENCY,
+										                 VB_ICON_SCALE);
+										iconSlot++;
+									}
+
+									player++;
+								} while (player < GAME_TRACKER->numPlyrCurrGame);
+							}
+
+							nextScreenY = screenY + VB_BATTLE_TEAM_SCORE_GAP;
+							screenY = teamPlayerHeight + nextScreenY;
+						}
+
+						standingsPosition++;
+						visiblePlaceCount = VB_STANDINGS_VISIBLE_PLACES_MIN;
+						if (rowCountBelowThree == 0)
+						{
+							visiblePlaceCount = standingsEntryCount - 1;
+						}
+						player = 0;
+						if (visiblePlaceCount > 0)
+						{
+							do
+							{
+								if ((GAME_TRACKER->gameMode1 & BATTLE_MODE) == 0)
+								{
+									entityRank = GAME_TRACKER->drivers[GAME_TRACKER->battleSetup.standingsOrder[resultIndex]]->driverRank;
+									if (player == entityRank)
+									{
+										goto HighlightCurrentPlace;
+									}
+
+									placeTextColor = JUSTIFY_RIGHT | RED;
+									goto DrawPlace;
+								}
+								else
+								{
+									entityRank = GAME_TRACKER->battleSetup.finishedRankOfEachTeam[GAME_TRACKER->battleSetup.standingsOrder[resultIndex]];
+									if (player != entityRank)
+									{
+										placeTextColor = JUSTIFY_RIGHT | RED;
+										goto DrawPlace;
+									}
+								}
+
+							HighlightCurrentPlace:
+								placeTextColor = JUSTIFY_RIGHT | WHITE;
+								if ((GAME_TRACKER->timer & 1) != 0)
+								{
+									placeTextColor = JUSTIFY_RIGHT | RED;
+								}
+
+							DrawPlace:
+								sprintf(
+								    text, "%d%s-%2.02ld", player + 1, GAME_LANGUAGE_STRINGS[s_standingsSuffixStringIds225[player]],
+								    CTR_PRINTF_PSX_LONG(
+								        GAME_TRACKER
+								            ->standingsPoints[GAME_TRACKER->battleSetup.standingsOrder[resultIndex] * VB_STANDINGS_POINTS_PER_ENTRY + player]));
+
+								DecalFont_DrawLine(text, pos.x + VB_STANDINGS_TEXT_X_OFFSET,
+								                   rankTextY - (visiblePlaceCount * VB_STANDINGS_ROW_HALF_HEIGHT + -rankTextBaselineOffset) + player * 8,
+								                   FONT_SMALL, placeTextColor);
+								player++;
+							} while (player < visiblePlaceCount);
+						}
+
+						if (GAME_TRACKER->battleSetup.standingsScore[GAME_TRACKER->battleSetup.standingsOrder[resultIndex]] == previousStandingsScore)
+						{
+							displayedRankOffset++;
+						}
+						else
+						{
+							displayedRankOffset = 0;
+						}
+
+						displayedRankIndex = (s16)resultIndex - displayedRankOffset;
+						if (displayedRankOffset == 0)
+						{
+							displayedRankIndex = (s16)resultIndex;
+						}
+
+						rankText = text;
+						rankFormat = "%d%s";
+						displayedRankNumber = displayedRankIndex + 1;
+						CTR_PSX_KEEP_VALUE(displayedRankNumber);
+						suffixBase = VB_STANDINGS_SUFFIX_PAGE;
+						VB_ADD_STANDINGS_SUFFIX_LOW(suffixBase);
+						rankSuffix = suffixBase + displayedRankIndex;
+						rowDelay += VB_ROW_STAGGER_FRAMES;
+						rowStagger += VB_ROW_STAGGER_FRAMES;
+						previousStandingsScore = (s16)GAME_TRACKER->battleSetup.standingsScore[GAME_TRACKER->battleSetup.standingsOrder[resultIndex]];
+
+						sprintf(rankText, rankFormat, displayedRankNumber, GAME_LANGUAGE_STRINGS[*rankSuffix]);
+						resultIndex++;
+						DecalFont_DrawLine(text, pos.x + VB_STANDINGS_RANK_X_OFFSET, rankTextY + VB_STANDINGS_RANK_Y_OFFSET, FONT_BIG,
+						                   (JUSTIFY_CENTER | ORANGE));
+					} while (resultIndex < rowCount);
+					VB_MATCH_ROW_ALLOCATION_END(allocationAnchor);
+				}
+			}
+
+			resultIndex = 0;
+			if (GAME_TRACKER->numPlyrCurrGame != 0)
+			{
+				struct Instance *bigNum;
+				VB_VIEW_TYPE *viewGameTracker;
+				register u32 gameTrackerPage CTR_PSX_REGISTER("$3");
+
+				do
+				{
+					pushBufferOffset = resultIndex * sizeof(struct PushBuffer);
+					bigNum = GAME_TRACKER->drivers[resultIndex]->instBigNum;
+
+					if (bigNum != NULL)
+					{
+						bigNum->scale.z = 0;
+						bigNum->scale.y = 0;
+						bigNum->scale.x = 0;
+					}
+
+					if (winnerViewportFound == false)
+					{
+						if ((GAME_TRACKER->gameMode1 & BATTLE_MODE) == 0)
+						{
+							if (resultIndex != GAME_TRACKER->driversInRaceOrder[0]->driverID)
+							{
+								goto DrawLoserViewport;
+							}
+
+							goto DrawWinnerViewport;
+						}
+						else
+						{
+							if (GAME_TRACKER->winnerIndex[0] != resultIndex)
+							{
+								goto DrawLoserViewport;
+							}
+
+							goto DrawWinnerViewport;
+						}
+					}
+
+				DrawLoserViewport:
+					viewGameTracker = VB_VIEW_FROM_OFFSET(pushBufferOffset);
+					if (VB_VIEW_PUSH_BUFFER(viewGameTracker).rect.w > 0)
+					{
+						VB_VIEW_PUSH_BUFFER(viewGameTracker).rect.x += VB_LOSER_RECT_STEP_X;
+						VB_VIEW_PUSH_BUFFER(viewGameTracker).rect.y += VB_LOSER_RECT_STEP_Y;
+						VB_VIEW_PUSH_BUFFER(viewGameTracker).rect.w -= VB_LOSER_RECT_STEP_W;
+						VB_VIEW_PUSH_BUFFER(viewGameTracker).rect.h -= VB_LOSER_RECT_STEP_H;
+					}
+					goto AdvanceViewport;
+
+				DrawWinnerViewport:
+					winnerViewportFound = true;
+					if (GAME_TRACKER->numPlyrCurrGame == 2)
+					{
+						viewGameTracker = VB_VIEW_FROM_OFFSET(pushBufferOffset);
+						if (VB_VIEW_PUSH_BUFFER(viewGameTracker).rect.w > VB_WINNER_2P_MIN_WIDE_RECT)
+						{
+							VB_VIEW_PUSH_BUFFER(viewGameTracker).rect.w -= VB_WINNER_2P_WIDTH_STEP;
+							VB_VIEW_PUSH_BUFFER(viewGameTracker).distanceToScreen_CURR = VB_WINNER_DISTANCE_TO_SCREEN;
+						}
+					}
+
+					UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), VB_PUSH_BUFFER_FROM_OFFSET(pushBufferOffset).rect.x,
+					                 VB_PUSH_BUFFER_FROM_OFFSET(pushBufferOffset).rect.y, VB_WINNER_TARGET_X, VB_WINNER_TARGET_Y, GAME_FRAMES_SINCE_RACE_ENDED,
+					                 VB_WINNER_LERP_FRAMES);
+
+					box.x = pos.x - VB_WINNER_BOX_X_PAD;
+					box.y = pos.y - VB_WINNER_BOX_Y_PAD;
+					box.w = VB_PUSH_BUFFER_FROM_OFFSET(pushBufferOffset).rect.w + 2 * VB_WINNER_BOX_X_PAD;
+					box.h = VB_PUSH_BUFFER_FROM_OFFSET(pushBufferOffset).rect.h + 2 * VB_WINNER_BOX_Y_PAD;
+
+					VB_DRAW_OUTER_RECT(&box, VB_BATTLE_COLOR_PTR, 0, GAME_TRACKER->backBuffer->otMem.uiOT);
+
+					{
+						VB_VIEW_TYPE *winnerView;
+
+						winnerView = VB_VIEW_FROM_OFFSET(pushBufferOffset);
+						VB_VIEW_PUSH_BUFFER(winnerView).rect.x = pos.x;
+						VB_VIEW_PUSH_BUFFER(winnerView).rect.y = pos.y;
+					}
+
+				AdvanceViewport:
+					gameTrackerPage = VB_GAME_TRACKER_PAGE;
+					CTR_PSX_KEEP_VALUE(gameTrackerPage);
+					resultIndex++;
+				} while (resultIndex < VB_PLAYER_COUNT_FROM_PAGE(gameTrackerPage));
+			}
 		}
+	}
 
-		if (gGT->battleSetup.standingsScore[entityID] == previousStandingsScore)
+	if (((GAME_MENU_READY & VB_MENU_READY_SHOW_MENU) == 0) && (VB_MENU_SHOW_DELAY_FRAMES < GAME_FRAMES_SINCE_RACE_ENDED))
+	{
+		if ((GAME_TRACKER->gameMode1 & BATTLE_MODE) != 0)
 		{
-			displayedRankOffset++;
+			RECTMENU_Show(&menuBattle);
 		}
 		else
 		{
-			displayedRankOffset = 0;
+			RECTMENU_Show(&menuVS);
 		}
 
-		s32 displayedRank = standingsIndex - displayedRankOffset;
-
-		rowDelay += VB_ROW_STAGGER_FRAMES;
-
-		previousStandingsScore = (s16)gGT->battleSetup.standingsScore[entityID];
-		sprintf(text, "%d%s", displayedRank + 1, sdata->lngStrings[VB_STANDINGS_SUFFIX_FIRST + displayedRank]);
-
-		DecalFont_DrawLine(text, pos.x + VB_STANDINGS_RANK_X_OFFSET, rankTextY + VB_STANDINGS_RANK_Y_OFFSET, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
-	}
-
-	b32 winnerViewportFound = false;
-	for (s32 player = 0; player < numPlayers; player++)
-	{
-		struct Instance *bigNum = gGT->drivers[player]->instBigNum;
-		struct PushBuffer *view = &gGT->pushBuffer[player];
-
-		if (bigNum != NULL)
-		{
-			bigNum->scale = (SVec3){0, 0, 0};
-		}
-
-		s32 winnerDriverID = isBattleMode ? gGT->winnerIndex[0] : gGT->driversInRaceOrder[0]->driverID;
-		b32 isWinnerViewport = !winnerViewportFound && (winnerDriverID == player);
-
-		if (isWinnerViewport)
-		{
-			winnerViewportFound = true;
-
-			if ((numPlayers == 2) && (view->rect.w > VB_WINNER_2P_MIN_WIDE_RECT))
-			{
-				view->rect.w -= VB_WINNER_2P_WIDTH_STEP;
-				view->distanceToScreen_CURR = VB_WINNER_DISTANCE_TO_SCREEN;
-			}
-
-			// fly-in interpolation
-			UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), view->rect.x, view->rect.y, VB_WINNER_TARGET_X, VB_WINNER_TARGET_Y, sdata->framesSinceRaceEnded,
-			                 VB_WINNER_LERP_FRAMES);
-
-			RECT box;
-			box.x = pos.x - VB_WINNER_BOX_X_PAD;
-			box.y = pos.y - VB_WINNER_BOX_Y_PAD;
-			box.w = view->rect.w + 2 * VB_WINNER_BOX_X_PAD;
-			box.h = view->rect.h + 2 * VB_WINNER_BOX_Y_PAD;
-
-			Color color;
-			ColorCode_SetPacked(&color, sdata->battleSetup_Color_UI_1);
-			RECTMENU_DrawOuterRect_HighLevel(&box, color, 0, gGT->backBuffer->otMem.uiOT);
-
-			view->rect.x = pos.x;
-			view->rect.y = pos.y;
-		}
-		else
-		{
-			if (view->rect.w > 0)
-			{
-				view->rect.x += VB_LOSER_RECT_STEP_X;
-				view->rect.y += VB_LOSER_RECT_STEP_Y;
-				view->rect.w -= VB_LOSER_RECT_STEP_W;
-				view->rect.h -= VB_LOSER_RECT_STEP_H;
-			}
-		}
-	}
-
-	if (((sdata->menuReadyToPass & VB_MENU_READY_SHOW_MENU) == 0) && (VB_MENU_SHOW_DELAY_FRAMES < sdata->framesSinceRaceEnded))
-	{
-		struct RectMenu *endMenu = isBattleMode ? &menuBattle : &menuVS;
-
-		// Make Menu Box appear based on the game mode
-		RECTMENU_Show(endMenu);
-
-		sdata->menuReadyToPass |= VB_MENU_READY_SHOW_MENU;
+		GAME_MENU_READY |= VB_MENU_READY_SHOW_MENU;
 	}
 }
 
@@ -419,3 +613,12 @@ global_variable struct RectMenu menuBattle = {
     .drawStyle = 4,
     // rest of variables all default zero
 };
+
+// 2P, 3P, 4P
+global_variable s16 s_vsStandingsYByPlayerCount[3][VB_POSY_NUM] = {
+    {0x32, 0x5a, 0x82, 0, 0},     // 2P
+    {0x1e, 0x46, 0x6e, 0x96, 0},  // 3P
+    {0xa, 0x35, 0x5b, 0x81, 0xa7} // 4P
+};
+
+global_variable s16 s_standingsSuffixStringIds225[VB_MAX_PLAYERS] = {LNG_ST, LNG_ND, LNG_RD, LNG_TH};

@@ -125,7 +125,6 @@ struct sData sdata_static = {.langBufferSize = 0x3F04,
                              .queueReady = 1,
                              .queueRetry = 0,
                              .queueLength = 0,
-                             .UnusedPadding1 = 0,
 
                              .load_inProgress = 0,
                              .frameFinishedVRAM = 0,
@@ -329,7 +328,12 @@ struct sData sdata_static = {.langBufferSize = 0x3F04,
                              .RaceFlag_ElapsedTime = 0,
                              .RaceFlag_CopyLoadStage = -1,
 
-                             .DrawSolidBoxData = {0, 0xc0c0c0, 0},
+                             .DrawSolidBoxData =
+                                 {
+                                     COLOR_CODE_PACKED_INIT(0),
+                                     COLOR_CODE_PACKED_INIT(0xc0c0c0),
+                                     COLOR_CODE_PACKED_INIT(0),
+                                 },
 
                              .strcatData1_colon = ":",
 

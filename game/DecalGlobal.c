@@ -1,27 +1,17 @@
 #include <common.h>
 
-enum
+// Asset names and lookup keys are fixed 16-byte fields, word-aligned on PSX.
+static inline u32 DecalGlobal_ReadNameWord(const char *name, s32 wordIndex)
 {
-	DECAL_NAME_BYTE_COUNT = 0x10,
-	DECAL_NAME_WORD_COUNT = DECAL_NAME_BYTE_COUNT / (s32)sizeof(u32),
-};
-
-static u32 DecalGlobal_ReadNameWord(const char *name, s32 wordIndex)
-{
-	u32 word;
-	memcpy(&word, &name[wordIndex * (s32)sizeof(word)], sizeof(word));
-	return word;
+	return CTR_ReadU32AlignedLE(&name[wordIndex * (s32)sizeof(u32)]);
 }
 
-static b32 DecalGlobal_NameEquals(const char *lhs, const char *rhs)
-{
-	return (DecalGlobal_ReadNameWord(lhs, 0) == DecalGlobal_ReadNameWord(rhs, 0)) && (DecalGlobal_ReadNameWord(lhs, 1) == DecalGlobal_ReadNameWord(rhs, 1)) &&
-	       (DecalGlobal_ReadNameWord(lhs, 2) == DecalGlobal_ReadNameWord(rhs, 2)) && (DecalGlobal_ReadNameWord(lhs, 3) == DecalGlobal_ReadNameWord(rhs, 3));
-}
-
-CTR_STATIC_ASSERT(sizeof(((struct Icon *)0)->name) == DECAL_NAME_BYTE_COUNT);
-CTR_STATIC_ASSERT(sizeof(((struct IconGroup *)0)->name) == DECAL_NAME_BYTE_COUNT);
-
+// NOTE(aalhendi): Keep comparisons in the caller's branch chain. GCC 2.8.1
+// materializes an extra Boolean when this expression returns through an inline.
+// Arguments are stable name pointers, not expressions with side effects.
+#define DECAL_NAME_EQUALS(lhs, rhs)                                                                                                                      \
+	((DecalGlobal_ReadNameWord(lhs, 0) == DecalGlobal_ReadNameWord(rhs, 0)) && (DecalGlobal_ReadNameWord(lhs, 1) == DecalGlobal_ReadNameWord(rhs, 1)) && \
+	 (DecalGlobal_ReadNameWord(lhs, 2) == DecalGlobal_ReadNameWord(rhs, 2)) && (DecalGlobal_ReadNameWord(lhs, 3) == DecalGlobal_ReadNameWord(rhs, 3)))
 
 void DecalGlobal_EmptyFunc_MainFrame_ResetDB(void)
 {
@@ -38,56 +28,58 @@ void DecalGlobal_Clear(struct GameTracker *gGT)
 void DecalGlobal_Store(struct GameTracker *gGT, struct LevTexLookup *LTL)
 {
 	struct Icon *currIcon;
+	struct Icon *endIcon;
 	struct IconGroup **currGroup;
+	struct IconGroup **endGroup;
 
 	if (LTL == 0)
 	{
 		return;
 	}
 
-	for (
-	    // array of Icon
-	    currIcon = &LTL->firstIcon[0]; currIcon < &LTL->firstIcon[LTL->numIcon]; currIcon++)
+	currIcon = LTL->firstIcon;
+	endIcon = &LTL->firstIcon[LTL->numIcon];
+	for (; currIcon < endIcon; currIcon++)
 	{
-		// uint, in case of negatives
-		if ((u32)currIcon->global_IconArray_Index < 0x88)
+		// Unsigned comparison rejects negative IDs as well as oversized ones.
+		if ((u32)currIcon->global_IconArray_Index < len(gGT->ptrIcons))
 		{
 			gGT->ptrIcons[currIcon->global_IconArray_Index] = currIcon;
 		}
 	}
 
-	for (
-	    // array of POINTER to iconGroup
-	    currGroup = &LTL->firstIconGroupPtr[0]; currGroup < &LTL->firstIconGroupPtr[LTL->numIconGroup]; currGroup++)
+	currGroup = LTL->firstIconGroupPtr;
+	endGroup = &LTL->firstIconGroupPtr[LTL->numIconGroup];
+	for (; currGroup < endGroup; currGroup++)
 	{
-		// use '[0]' to dereference pointer
-		if ((u32)currGroup[0]->groupID < 0x11)
+		struct IconGroup *group = *currGroup;
+		if ((u32)group->groupID < len(gGT->iconGroup))
 		{
-			gGT->iconGroup[currGroup[0]->groupID] = currGroup[0];
+			gGT->iconGroup[group->groupID] = group;
 		}
 	}
 }
 
 
-int *DecalGlobal_FindInLEV(struct Level *level, char *str)
+struct IconGroup *DecalGlobal_FindInLEV(struct Level *level, const char *name)
 {
 	struct LevTexLookup *ltl = level->levTexLookup;
+	struct IconGroup **curr;
+	struct IconGroup **end;
 
-	if (ltl == NULL)
+	if (ltl != NULL)
 	{
-		return NULL;
-	}
+		curr = ltl->firstIconGroupPtr;
+		end = &ltl->firstIconGroupPtr[ltl->numIconGroup];
 
-	struct IconGroup **curr = ltl->firstIconGroupPtr;
-	struct IconGroup **end = &ltl->firstIconGroupPtr[ltl->numIconGroup];
-
-	for (; curr < end; curr++)
-	{
-		struct IconGroup *group = *curr;
-
-		if (DecalGlobal_NameEquals(group->name, str))
+		for (; curr < end; curr++)
 		{
-			return (int *)group;
+			struct IconGroup *group = *curr;
+
+			if (DECAL_NAME_EQUALS(group->name, name))
+			{
+				return group;
+			}
 		}
 	}
 
@@ -95,17 +87,19 @@ int *DecalGlobal_FindInLEV(struct Level *level, char *str)
 }
 
 
-int *DecalGlobal_FindInMPK(u32 *icons, char *str)
+struct Icon *DecalGlobal_FindInMPK(struct Icon *icons, const char *name)
 {
-	struct Icon *icon = (struct Icon *)icons;
+	struct Icon *icon = icons;
 
 	for (; icon->name[0] != '\0'; icon++)
 	{
-		if (DecalGlobal_NameEquals(icon->name, str))
+		if (DECAL_NAME_EQUALS(icon->name, name))
 		{
-			return (int *)icon;
+			return icon;
 		}
 	}
 
 	return NULL;
 }
+
+#undef DECAL_NAME_EQUALS

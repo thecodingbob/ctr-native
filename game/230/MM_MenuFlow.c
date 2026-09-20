@@ -5,16 +5,25 @@ extern struct MenuRow s_rowsMainMenuBasicConfig[];
 extern struct MenuRow s_rowsMainMenuWithSBConfig[];
 extern struct RectMenu g_configMenu;
 
-u8 MM_TransitionInOut(struct TransitionMeta *meta, int framesPassed, int numFrames)
+s32 MM_TransitionInOut(struct TransitionMeta *meta, s32 framesPassed, s32 numFrames)
 {
-	u8 allTransitionsDone = 1;
-	int transitionIndex = 0;
+	s16 negativeTransitionState;
+	s16 allTransitionsDone;
+	u16 transitionIndex;
+	s32 transitionFrame;
+	s16 start;
+	s16 framesLeft;
+
+	allTransitionsDone = 1;
+	negativeTransitionState = 0;
+	transitionIndex = 0;
+	start = meta->headStart;
+	transitionFrame = framesPassed;
 
 	// last member of array is null-terminated with 0xFFFF
-	for (/**/; meta->headStart > -1; meta++, transitionIndex++)
+	for (/**/; start > -1; meta++, transitionIndex++, start = meta->headStart)
 	{
-		s16 start = meta->headStart;
-		s16 framesLeft = ((s16)framesPassed - start);
+		framesLeft = (s16)transitionFrame - start;
 
 		if ((framesLeft == MM_TRANSITION_SWISH_FRAME) && (transitionIndex == 0))
 		{
@@ -27,36 +36,40 @@ u8 MM_TransitionInOut(struct TransitionMeta *meta, int framesPassed, int numFram
 			allTransitionsDone = 0;
 			meta->currX = 0;
 			meta->currY = 0;
-			continue;
 		}
-
-		// else if
-		if (framesLeft < (s16)numFrames)
+		else if (framesLeft >= (s16)numFrames)
+		{
+			negativeTransitionState = 0;
+			meta->currX = meta->distX;
+			meta->currY = meta->distY;
+		}
+		else
 		{
 			allTransitionsDone = 0;
+			negativeTransitionState = allTransitionsDone;
 			meta->currX = framesLeft * meta->distX / (s16)numFrames;
 			meta->currY = framesLeft * meta->distY / (s16)numFrames;
-			continue;
 		}
-
-		// else
-		meta->currX = meta->distX;
-		meta->currY = meta->distY;
 	}
-	return allTransitionsDone;
+	return allTransitionsDone ? 1 : (negativeTransitionState ? -1 : 0);
 }
 
-void MM_MenuProc_Main(struct RectMenu *mainMenu)
+void MM_MenuProc_Main(struct RectMenu *menu)
 {
-	struct GameTracker *gGT = sdata->gGT;
+	register u32 timeTrialSetupTracker CTR_PSX_REGISTER("$3");
+	register struct RectMenu *mainMenu CTR_PSX_REGISTER("$16");
+	struct Title *titleObj;
+	s16 choose;
+
+	mainMenu = menu;
 
 	// if scrapbook is unlocked, change "rows" to extended array
-	if (CHECK_ADV_BIT(sdata->gameProgress.unlocks, GAME_UNLOCK_BIT_SCRAPBOOK) != 0)
+	if ((MM_GAME_UNLOCKS[MEMCARD_BIT_WORD(GAME_UNLOCK_BIT_SCRAPBOOK)] & MEMCARD_BIT_MASK(GAME_UNLOCK_BIT_SCRAPBOOK)) != 0)
 	{
-		mainMenu->rows = &s_rowsMainMenuWithSBConfig[0];
+	  mainMenu->rows = &s_rowsMainMenuWithSBConfig[0];
 	} else
 	{
-	        mainMenu->rows = &s_rowsMainMenuBasicConfig[0];
+	  mainMenu->rows = &s_rowsMainMenuBasicConfig[0];
 	}
 
 	MM_ParseCheatCodes();
@@ -70,37 +83,37 @@ void MM_MenuProc_Main(struct RectMenu *mainMenu)
 
 		if (
 		    // main menu, "title" exists, and timer >= 230
-		    (D230.titleMenuState == TITLE_MENU_STATE_IN_MENU) && (D230.titleObj != NULL) && (TITLE_INTRO_TM_DRAW_MIN_FRAME < D230.titleIntroFrame))
+		    (MM_TITLE_MENU_STATE == TITLE_MENU_STATE_IN_MENU) && (MM_TITLE_OBJECT != NULL) && (TITLE_INTRO_TM_DRAW_MIN_FRAME < (s16)MM_TITLE_INTRO_FRAME))
 		{
-			DecalFont_DrawLineOT(sdata->lngStrings[LNG_TM], MM_TITLE_TM_X, MM_TITLE_TM_Y, FONT_SMALL, ORANGE,
-			                     &gGT->backBuffer->otMem.uiOT[MM_TITLE_TM_OT_INDEX]);
+			DecalFont_DrawLineOT(GAME_LANGUAGE_STRINGS[LNG_TM], MM_TITLE_TM_X, MM_TITLE_TM_Y, FONT_SMALL, ORANGE,
+			                     &GAME_TRACKER->backBuffer->otMem.uiOT[MM_TITLE_TM_OT_INDEX]);
 		}
 
-		if ((D230.menuMainMenu.state & DRAW_NEXT_MENU_IN_HIERARCHY) == 0)
+		if ((MM_MENU_MAIN.state & DRAW_NEXT_MENU_IN_HIERARCHY) == 0)
 		{
-			gGT->numPlyrNextGame = 1;
+			GAME_TRACKER->numPlyrNextGame = 1;
+
+			// if button pressed, reset timer
+			if (GAMEPADS->anyoneHeldCurr != 0)
+			{
+				GAME_TRACKER->demoCountdownTimer = TITLE_DEMO_IDLE_FRAMES;
+			}
 
 			// if no buttons pressed, check demo mode
-			if (sdata->gGamepads->anyoneHeldCurr == 0)
+			else
 			{
-				gGT->demoCountdownTimer--;
+				GAME_TRACKER->demoCountdownTimer--;
 
 				// If time runs out
-				if (gGT->demoCountdownTimer < 1)
+				if (GAME_TRACKER->demoCountdownTimer < 1)
 				{
 					// Transition out of main menu
-					D230.titleMenuState = TITLE_MENU_STATE_EXITING;
+					MM_TITLE_MENU_STATE = TITLE_MENU_STATE_EXITING;
 
 					// Go to a cutscene of some kind, either the Oxide intro
 					// or a demo-mode race.
-					D230.desiredMenuIndex = MM_EXIT_ROUTE_DEMO;
+					MM_DESIRED_MENU_INDEX = MM_EXIT_ROUTE_DEMO;
 				}
-			}
-
-			// if button pressed, reset timer
-			else
-			{
-				gGT->demoCountdownTimer = TITLE_DEMO_IDLE_FRAMES;
 			}
 		}
 	}
@@ -110,7 +123,7 @@ void MM_MenuProc_Main(struct RectMenu *mainMenu)
 	// if drawing ptrNextBox_InHierarchy
 	if ((mainMenu->state & DRAW_NEXT_MENU_IN_HIERARCHY) != 0)
 	{
-		D230.titleIntroFrame = TITLE_INTRO_SKIP_FRAME;
+		MM_TITLE_INTRO_FRAME = TITLE_INTRO_SKIP_FRAME;
 	}
 
 	// if funcPtr is null
@@ -119,7 +132,7 @@ void MM_MenuProc_Main(struct RectMenu *mainMenu)
 		return;
 	}
 
-	struct Title *titleObj = D230.titleObj;
+	titleObj = MM_TITLE_OBJECT;
 
 	// if "title" object exists
 	if (titleObj != NULL)
@@ -139,140 +152,149 @@ void MM_MenuProc_Main(struct RectMenu *mainMenu)
 	// at the highest level of menu hierarchy
 
 	// if row is negative, do nothing
-	if ((mainMenu->rowSelected) < 0)
+	if (mainMenu->rowSelected < 0)
 	{
 		return;
 	}
-
 	// clear flags from game mode
-	gGT->gameMode1 &= ~(BATTLE_MODE | ADVENTURE_MODE | TIME_TRIAL | ADVENTURE_ARENA | ARCADE_MODE | ADVENTURE_CUP);
+	GAME_TRACKER->gameMode1 &= ~(BATTLE_MODE | ADVENTURE_MODE | TIME_TRIAL | ADVENTURE_ARENA | ARCADE_MODE | ADVENTURE_CUP);
 
 	// clear more game mode flags
-	gGT->gameMode2 &= ~(CUP_ANY_KIND);
+	GAME_TRACKER->gameMode2 &= ~(CUP_ANY_KIND);
 
 	mainMenu->state |= ONLY_DRAW_TITLE;
 
 	// Default to 3,
 	// this intentionally disables the 1-lap cheat
 	// in Time Trial and Adventure, DONT change it
-	gGT->numLaps = MM_DEFAULT_LAP_COUNT;
+	GAME_TRACKER->numLaps = MM_DEFAULT_LAP_COUNT;
 
 	// get LNG index of row selected
-	s16 choose = mainMenu->rows[mainMenu->rowSelected].stringIndex;
+	choose = mainMenu->rows[mainMenu->rowSelected].stringIndex;
 
-	// Adventure Mode
-	if (choose == LNG_ADVENTURE)
+	switch (choose)
 	{
-		// Turn on Adventure Mode, turn off item cheats
-		gGT->gameMode1 |= ADVENTURE_MODE;
-		gGT->gameMode2 &= ~(CHEAT_WUMPA | CHEAT_MASK | CHEAT_TURBO | CHEAT_ENGINE | CHEAT_BOMBS);
+	// Adventure Mode
+	case LNG_ADVENTURE:
+	{
+		struct GameTracker *adventureTracker;
+
+		adventureTracker = GAME_TRACKER;
+
+		// Turn on Adventure Mode
+		adventureTracker->gameMode1 |= ADVENTURE_MODE;
 
 		// menu for new/load
-		mainMenu->ptrNextBox_InHierarchy = &D230.menuAdventure;
+		mainMenu->ptrNextBox_InHierarchy = &MM_MENU_ADVENTURE;
 		mainMenu->state |= DRAW_NEXT_MENU_IN_HIERARCHY;
+
+		// Turn off item cheats
+		adventureTracker->gameMode2 &= ~CHEAT_WUMPA;
+		adventureTracker->gameMode2 &= ~CHEAT_TURBO;
+		adventureTracker->gameMode2 &= ~CHEAT_MASK;
+		adventureTracker->gameMode2 &= ~CHEAT_ENGINE;
+		adventureTracker->gameMode2 &= ~CHEAT_BOMBS;
 		return;
 	}
 
 	// Time Trial
-	if (choose == LNG_TIME_TRIAL)
-	{
-		// Leave main menu hierarchy
-		D230.titleMenuState = TITLE_MENU_STATE_EXITING;
+	case LNG_TIME_TRIAL:
+		timeTrialSetupTracker = (u32)GAME_TRACKER;
+		{
+			// Leave main menu hierarchy
+			MM_TITLE_MENU_STATE = TITLE_MENU_STATE_EXITING;
 
-		// Leave through the normal character-select flow.
-		D230.desiredMenuIndex = MM_EXIT_ROUTE_CHARACTER_SELECT;
+			// Leave through the normal character-select flow.
+			MM_DESIRED_MENU_INDEX = MM_EXIT_ROUTE_CHARACTER_SELECT;
 
-		// set game mode to Time Trial Mode
-		gGT->numPlyrNextGame = 1;
-		gGT->gameMode1 |= TIME_TRIAL;
-		gGT->gameMode2 &= ~(CHEAT_WUMPA | CHEAT_MASK | CHEAT_TURBO | CHEAT_ENGINE | CHEAT_BOMBS);
+			// set game mode to Time Trial Mode
+			((struct GameTracker *)timeTrialSetupTracker)->numPlyrNextGame = 1;
+			((struct GameTracker *)timeTrialSetupTracker)->gameMode1 |= TIME_TRIAL;
+			GAME_TRACKER->gameMode2 &= ~CHEAT_WUMPA;
+			GAME_TRACKER->gameMode2 &= ~CHEAT_TURBO;
+			GAME_TRACKER->gameMode2 &= ~CHEAT_MASK;
+			GAME_TRACKER->gameMode2 &= ~CHEAT_ENGINE;
+			GAME_TRACKER->gameMode2 &= ~CHEAT_BOMBS;
 
-		return;
-	}
+			return;
+		}
 
 	// Arcade Mode
-	if (choose == LNG_ARCADE)
+	case LNG_ARCADE:
 	{
 		// DONT change, should only work in Arcade, and VS
-		if ((gGT->gameMode2 & CHEAT_ONELAP) != 0)
+		if ((GAME_TRACKER->gameMode2 & CHEAT_ONELAP) != 0)
 		{
-			gGT->numLaps = MM_ONE_LAP_CHEAT_COUNT;
+			GAME_TRACKER->numLaps = MM_ONE_LAP_CHEAT_COUNT;
 		}
 
 		// set game mode to Arcade Mode
-		gGT->gameMode1 |= ARCADE_MODE;
+		GAME_TRACKER->gameMode1 |= ARCADE_MODE;
 
 		// set next menu
-		mainMenu->ptrNextBox_InHierarchy = &D230.menuRaceType;
+		mainMenu->ptrNextBox_InHierarchy = &MM_MENU_RACE_TYPE;
 		mainMenu->state |= DRAW_NEXT_MENU_IN_HIERARCHY;
 		return;
 	}
 
 	// Versus
-	if (choose == LNG_VS)
+	case LNG_VS:
 	{
 		// DONT change, should only work in Arcade, and VS
-		if ((gGT->gameMode2 & CHEAT_ONELAP) != 0)
+		if ((GAME_TRACKER->gameMode2 & CHEAT_ONELAP) != 0)
 		{
-			gGT->numLaps = MM_ONE_LAP_CHEAT_COUNT;
+			GAME_TRACKER->numLaps = MM_ONE_LAP_CHEAT_COUNT;
 		}
 
 		// next menu is choosing single+cup
-		mainMenu->ptrNextBox_InHierarchy = &D230.menuRaceType;
+		mainMenu->ptrNextBox_InHierarchy = &MM_MENU_RACE_TYPE;
 		mainMenu->state |= DRAW_NEXT_MENU_IN_HIERARCHY;
 		return;
 	}
 
 	// Battle
-	if (choose == LNG_BATTLE)
+	case LNG_BATTLE:
 	{
-		D230.characterSelectTransitionState = EXITING_MENU;
+		MM_CHARACTER_SELECT_TRANSITION_STATE = EXITING_MENU;
 
 		// set game mode to Battle Mode
-		gGT->gameMode1 |= BATTLE_MODE;
+		GAME_TRACKER->gameMode1 |= BATTLE_MODE;
 
 		// set next menu to 2P,3P,4P
-		mainMenu->ptrNextBox_InHierarchy = &D230.menuPlayers2P3P4P;
+		mainMenu->ptrNextBox_InHierarchy = &MM_MENU_PLAYERS_2P3P4P;
 		mainMenu->state |= DRAW_NEXT_MENU_IN_HIERARCHY;
 		return;
 	}
+		CTR_PSX_CLOBBER("$7");
 
 	// High Score
-	if (choose == LNG_HIGH_SCORE)
-	{
-		// Set next stage to high score menu
-		D230.desiredMenuIndex = MM_EXIT_ROUTE_HIGH_SCORE;
-
+	case LNG_HIGH_SCORE:
 		// Leave main menu hierarchy
-		D230.titleMenuState = TITLE_MENU_STATE_EXITING;
+		MM_TITLE_MENU_STATE = TITLE_MENU_STATE_EXITING;
 
+		// Set next stage to high score menu
+		MM_DESIRED_MENU_INDEX = MM_EXIT_ROUTE_HIGH_SCORE;
 		return;
-	}
 
 	// Scrapbook
-	if (choose == LNG_SCRAPBOOK)
-	{
-		// Set next stage to Scrapbook
-		D230.desiredMenuIndex = MM_EXIT_ROUTE_SCRAPBOOK;
-
+	case LNG_SCRAPBOOK:
 		// Leave main menu hierarchy
-		D230.titleMenuState = TITLE_MENU_STATE_EXITING;
+		MM_TITLE_MENU_STATE = TITLE_MENU_STATE_EXITING;
 
+		// Set next stage to Scrapbook
+		MM_DESIRED_MENU_INDEX = MM_EXIT_ROUTE_SCRAPBOOK;
 		return;
-	}
 
-	// Config / Options
-	if (choose == 0x0E)
-	{
+	case LNG_OPTIONS:
 		sdata->ptrDesiredMenu = &g_configMenu;
 		return;
-	}
 
-	// Quit
-	if (choose == 0x003)
-	{
+	case LNG_QUIT:
 		mainMenu->ptrNextBox_InHierarchy = &D230.menuQuitConfirm;
 		mainMenu->state |= DRAW_NEXT_MENU_IN_HIERARCHY;
+		return;
+
+	default:
 		return;
 	}
 }
@@ -297,28 +319,31 @@ void MM_MenuProc_QuitConfirm(struct RectMenu *menu)
 
 void MM_ToggleRows_PlayerCount(void)
 {
-	for (s32 rowIndex = 0; rowIndex < MM_PLAYER_1P2P_SELECTABLE_ROWS; rowIndex++)
+	struct MenuRow *row;
+	s16 rowIndex;
+
+	for (rowIndex = 0; rowIndex < MM_PLAYER_1P2P_SELECTABLE_ROWS; rowIndex++)
 	{
-		struct MenuRow *row = &D230.rowsPlayers1P2P[rowIndex];
+		row = &MM_ROWS_PLAYERS_1P2P[rowIndex];
 
 		// unlock row
 		row->stringIndex &= MENU_ROW_LNG_MASK;
 
-		if (!MainFrame_HaveAllPads(rowIndex + 1))
+		if ((s16)MainFrame_HaveAllPads(rowIndex + 1) == 0)
 		{
 			// lock row
 			row->stringIndex |= MENU_ROW_LOCKED;
 		}
 	}
 
-	for (s32 rowIndex = 0; rowIndex < MM_PLAYER_2P3P4P_SELECTABLE_ROWS; rowIndex++)
+	for (rowIndex = 0; rowIndex < MM_PLAYER_2P3P4P_SELECTABLE_ROWS; rowIndex++)
 	{
-		struct MenuRow *row = &D230.rowsPlayers2P3P4P[rowIndex];
+		row = &MM_ROWS_PLAYERS_2P3P4P[rowIndex];
 
 		// unlock row
 		row->stringIndex &= MENU_ROW_LNG_MASK;
 
-		if (!MainFrame_HaveAllPads(rowIndex + 2))
+		if ((s16)MainFrame_HaveAllPads(rowIndex + 2) == 0)
 		{
 			// lock row
 			row->stringIndex |= MENU_ROW_LOCKED;
@@ -328,294 +353,398 @@ void MM_ToggleRows_PlayerCount(void)
 
 void MM_MenuProc_1p2p(struct RectMenu *menu)
 {
-	struct GameTracker *gGT = sdata->gGT;
-	s16 row = menu->rowSelected;
+	struct RectMenu *previousMenuOwner;
+	s16 row;
+
+	previousMenuOwner = menu;
+	row = menu->rowSelected;
 
 	// if uninitialized
 	if (row == -1)
 	{
-		menu->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
-
-		gGT->numPlyrNextGame = 1;
-
-		D230.characterSelectTransitionState = ENTERING_MENU;
+		goto UNINITIALIZED;
 	}
 
-	else
+	if (row < -1)
 	{
-		// if on row 0 or 1
-		if ((row >= 0) && (row < MM_PLAYER_1P2P_SELECTABLE_ROWS))
-		{
-			// row 0 is 1P, row 1 is 2P
-			gGT->numPlyrNextGame = menu->rowSelected + 1;
-
-			// go to difficulty box
-			menu->ptrNextBox_InHierarchy = &D230.menuDifficulty;
-
-			menu->state |= ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY;
-			return;
-		}
+		return;
 	}
+
+	// if on row 0 or 1
+	if (row >= MM_PLAYER_1P2P_SELECTABLE_ROWS)
+	{
+		return;
+	}
+
+	// row 0 is 1P, row 1 is 2P
+	GAME_TRACKER->numPlyrNextGame = menu->rowSelected + 1;
+
+	// go to difficulty box
+	menu->ptrNextBox_InHierarchy = &MM_MENU_DIFFICULTY;
+
+	menu->state |= ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY;
+	return;
+
+UNINITIALIZED:
+	previousMenuOwner->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
+
+	GAME_TRACKER->numPlyrNextGame = 1;
+
+	MM_CHARACTER_SELECT_TRANSITION_STATE = ENTERING_MENU;
 	return;
 }
 
 void MM_MenuProc_2p3p4p(struct RectMenu *menu)
 {
-	struct GameTracker *gGT = sdata->gGT;
-	s16 row = menu->rowSelected;
+	register struct RectMenu *menuOwner CTR_PSX_REGISTER("$4") = menu;
+	struct RectMenu *selectedMenu;
+	s16 row;
+
+	selectedMenu = menu;
+	row = selectedMenu->rowSelected;
 
 	// if uninitialized
 	if (row == -1)
 	{
-		menu->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
-
-		gGT->numPlyrNextGame = 1;
-
-		D230.characterSelectTransitionState = ENTERING_MENU;
+		goto UNINITIALIZED;
 	}
-	else
+
+	if (row < -1)
 	{
-		// row is 0, 1, 2
-		if ((row >= 0) && (row < MM_PLAYER_2P3P4P_SELECTABLE_ROWS))
-		{
-			// row 0 is 2P, row 1 is 3P, row 2 is 4P
-			gGT->numPlyrNextGame = menu->rowSelected + 2;
-
-			D230.titleMenuState = TITLE_MENU_STATE_EXITING;
-			D230.desiredMenuIndex = MM_EXIT_ROUTE_CHARACTER_SELECT;
-
-			menu->state |= ONLY_DRAW_TITLE;
-			return;
-		}
+		return;
 	}
+
+	// row is 0, 1, 2
+	if (row >= MM_PLAYER_2P3P4P_SELECTABLE_ROWS)
+	{
+		return;
+	}
+
+	// row 0 is 2P, row 1 is 3P, row 2 is 4P
+	GAME_TRACKER->numPlyrNextGame = selectedMenu->rowSelected + 2;
+
+	MM_TITLE_MENU_STATE = TITLE_MENU_STATE_EXITING;
+	MM_DESIRED_MENU_INDEX = MM_EXIT_ROUTE_CHARACTER_SELECT;
+
+	selectedMenu->state |= ONLY_DRAW_TITLE;
+	return;
+
+UNINITIALIZED:
+	menuOwner->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
+
+	GAME_TRACKER->numPlyrNextGame = 1;
+
+	MM_CHARACTER_SELECT_TRANSITION_STATE = ENTERING_MENU;
 	return;
 }
 
 void MM_ToggleRows_Difficulty(void)
 {
-	struct GameTracker *gGT = sdata->gGT;
+	struct RectMenu *difficultyMenu;
+	s16 *firstUnlockBits;
+	struct GameProgress *progress;
+	struct GameTracker *gGT;
+	b16 shouldCheckNextTrack;
+	b16 finalUnlockState;
+	s16 difficultyIndex;
+	s16 trackIndex;
+	s16 *firstUnlockBit;
+	s16 *innerFirstUnlockBit;
+	s16 *firstUnlockBitCopy;
+	struct MenuRow *difficultyRow;
+	u32 *unlockWord;
+	s32 unlockBit;
+	u32 isUnlocked;
+	s32 lngIndex;
+	s32 signedDifficultyIndex;
+	s32 stringIndexOffset;
 
-	// check 3 mods (easy, medium, hard)
-	for (s32 difficultyIndex = 0; difficultyIndex < MM_DIFFICULTY_COUNT; difficultyIndex++)
+	difficultyMenu = &MM_MENU_DIFFICULTY;
+	difficultyIndex = 0;
+	firstUnlockBits = MM_CUP_DIFFICULTY_FIRST_UNLOCK_BIT;
+	progress = &GAME_PROGRESS;
+	gGT = GAME_TRACKER;
+
+	// check 3 modes (easy, medium, hard)
+	for (/**/; difficultyIndex < MM_DIFFICULTY_COUNT; difficultyIndex++)
 	{
-		s16 bitIndex = D230.cupDifficulty.firstUnlockBit[difficultyIndex];
+		firstUnlockBit = (s16 *)((u32)(difficultyIndex * sizeof(*firstUnlockBits)) + (u32)firstUnlockBits);
+		firstUnlockBitCopy = firstUnlockBit;
 
-		// if -1 (for EASY row), skip
-		if (-1 == bitIndex)
+		// if negative (for EASY row), skip
+		if (*firstUnlockBit < 0)
 		{
 			continue;
 		}
 
 		// assume unlocked
-		u32 isUnlocked = 1;
+		shouldCheckNextTrack = 1;
+		trackIndex = 0;
+		innerFirstUnlockBit = firstUnlockBitCopy;
 
 		// check 4 bits starting at bitIndex,
 		// one for each track in cup
-		for (s32 trackIndex = 0; trackIndex < MM_CUP_TRACK_COUNT; trackIndex++)
+		for (/**/; trackIndex < MM_CUP_TRACK_COUNT; trackIndex++, shouldCheckNextTrack = (b16)isUnlocked)
 		{
-			b32 shouldCheckNextTrack = (isUnlocked != 0);
 			isUnlocked = 0;
 
 			// if not determined locked
 			if (shouldCheckNextTrack)
 			{
-				s32 unlockBit = (s32)bitIndex + trackIndex;
+				unlockBit = (s32)*innerFirstUnlockBit + trackIndex;
 
 				// check what is unlocked
-				isUnlocked = CHECK_ADV_BIT(sdata->gameProgress.unlocks, unlockBit);
+				unlockWord = (u32 *)((u32)((unlockBit >> 5) * sizeof(*unlockWord)) + (u32)progress);
+				isUnlocked = (unlockWord[1] >> (unlockBit & 0x1f)) & 1;
 			}
 		}
 
 		// get current value of lng index,
 		// for easy, medium, hard
-		u16 lngIndex = D230.cupDifficulty.stringIndex[difficultyIndex];
+		signedDifficultyIndex = (s16)difficultyIndex;
+		CTR_PSX_KEEP_VALUE(signedDifficultyIndex);
+		stringIndexOffset = signedDifficultyIndex * sizeof(s16);
+		{
+			register s16 *stringIndices CTR_PSX_REGISTER("$2");
+
+			CTR_PSX_LOAD_SYMBOL_PAGE_AFTER(stringIndices, MM_CUP_DIFFICULTY_STRING_INDEX_ASM_NAME, stringIndexOffset);
+			CTR_PSX_ADD_SYMBOL_LOW(stringIndices, stringIndices, MM_CUP_DIFFICULTY_STRING_INDEX_ASM_NAME, MM_CUP_DIFFICULTY_STRING_INDEX);
+			lngIndex = *(s16 *)((u32)stringIndexOffset + (u32)stringIndices);
+		}
+		difficultyRow = (struct MenuRow *)((u32)(signedDifficultyIndex * sizeof(*difficultyRow)) + (u32)difficultyMenu->rows);
+		finalUnlockState = shouldCheckNextTrack;
+		isUnlocked = 0;
 
 		if (
-		    // if locked
-		    (isUnlocked == 0) &&
+		// if locked
+#ifdef CTR_NATIVE
+		    ((u32)(u16)finalUnlockState == isUnlocked) &&
+#else
+		    (finalUnlockState == isUnlocked) &&
+#endif
 
 		    // If you're in Arcade mode
-		    ((gGT->gameMode1 & ARCADE_MODE) != 0) &&
+		    ((gGT->gameMode1 & ARCADE_MODE) != isUnlocked) &&
 
 		    // if you are in Arcade or VS cup
-		    ((gGT->gameMode2 & CUP_ANY_KIND) != 0))
+		    ((gGT->gameMode2 & CUP_ANY_KIND) != isUnlocked))
 		{
 			// use high bits for "LOCKED"
 			lngIndex |= MENU_ROW_LOCKED;
 		}
 
 		// save new value
-		D230.rowsDifficulty[difficultyIndex].stringIndex = lngIndex;
+		difficultyRow->stringIndex = lngIndex;
 	}
 }
-
 void MM_MenuProc_Difficulty(struct RectMenu *menu)
 {
-	s16 row = menu->rowSelected;
+	register struct RectMenu *menuOwner CTR_PSX_REGISTER("$4") = menu;
+	struct RectMenu *selectedMenu;
+	s16 row;
+
+	selectedMenu = menu;
+	row = selectedMenu->rowSelected;
 
 	// if uninitialized
 	if (row == -1)
 	{
-		menu->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
+		goto UNINITIALIZED;
 	}
 
-	else
+	if (row < -1)
 	{
-		// if you are on a valid row
-		if ((row >= 0) && (row < MM_DIFFICULTY_COUNT))
-		{
-			// set difficulty to value, from array of fixed difficulty values
-			sdata->gGT->arcadeDifficulty = D230.cupDifficulty.speed[row];
-
-			D230.titleMenuState = TITLE_MENU_STATE_EXITING;
-			D230.desiredMenuIndex = MM_EXIT_ROUTE_CHARACTER_SELECT;
-
-			menu->state |= ONLY_DRAW_TITLE;
-			return;
-		}
+		return;
 	}
+
+	// if you are on a valid row
+	if (row >= MM_DIFFICULTY_COUNT)
+	{
+		return;
+	}
+
+	// set difficulty to value, from array of fixed difficulty values
+	GAME_TRACKER->arcadeDifficulty = MM_CUP_DIFFICULTY_SPEED[row];
+
+	MM_TITLE_MENU_STATE = TITLE_MENU_STATE_EXITING;
+	MM_DESIRED_MENU_INDEX = MM_EXIT_ROUTE_CHARACTER_SELECT;
+
+	selectedMenu->state |= ONLY_DRAW_TITLE;
+	return;
+
+UNINITIALIZED:
+	menuOwner->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
 	return;
 }
 
 void MM_MenuProc_SingleCup(struct RectMenu *menu)
 {
-	struct GameTracker *gGT = sdata->gGT;
-	s16 row = menu->rowSelected;
+	struct RectMenu *previousMenuOwner;
+	s16 row;
+
+	previousMenuOwner = menu;
+	row = menu->rowSelected;
 
 	if (row == -1)
 	{
-		menu->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
+		goto UNINITIALIZED;
+	}
+
+	if (row < -1)
+	{
 		return;
 	}
 
-	if ((row >= 0) && (row < MM_RACE_TYPE_SELECTABLE_ROWS))
+	if (row >= MM_RACE_TYPE_SELECTABLE_ROWS)
 	{
-		// disable Cup mode
-		gGT->gameMode2 &= ~(CUP_ANY_KIND);
-
-		// if you choose cup mode
-		if (menu->rowSelected != 0)
-		{
-			// enable cup mode
-			gGT->gameMode2 |= CUP_ANY_KIND;
-		}
-
-		menu->state |= ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY;
-
-		// if mode is Arcade
-		if ((gGT->gameMode1 & ARCADE_MODE) != 0)
-		{
-			// set next menu to 1P+2P select
-			menu->ptrNextBox_InHierarchy = &D230.menuPlayers1P2P;
-			D230.characterSelectTransitionState = IN_MENU;
-			return;
-		}
-
-		// if mode is VS
-
-		// set next menu to 2P+3P+4P (vs or battle)
-		menu->ptrNextBox_InHierarchy = &D230.menuPlayers2P3P4P;
-		D230.characterSelectTransitionState = EXITING_MENU;
+		return;
 	}
+
+	// disable Cup mode
+	GAME_TRACKER->gameMode2 &= ~(CUP_ANY_KIND);
+
+	// if you choose cup mode
+	if (menu->rowSelected != 0)
+	{
+		// enable cup mode
+		GAME_TRACKER->gameMode2 |= CUP_ANY_KIND;
+	}
+
+	menu->state |= ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY;
+
+	// if mode is Arcade
+	if ((GAME_TRACKER->gameMode1 & ARCADE_MODE) != 0)
+	{
+		// set next menu to 1P+2P select
+		menu->ptrNextBox_InHierarchy = &MM_MENU_PLAYERS_1P2P;
+		MM_CHARACTER_SELECT_TRANSITION_STATE = IN_MENU;
+		return;
+	}
+
+	// if mode is VS
+
+	// set next menu to 2P+3P+4P (vs or battle)
+	menu->ptrNextBox_InHierarchy = &MM_MENU_PLAYERS_2P3P4P;
+	MM_CHARACTER_SELECT_TRANSITION_STATE = EXITING_MENU;
+	return;
+
+UNINITIALIZED:
+	previousMenuOwner->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
 }
 
 void MM_MenuProc_NewLoad(struct RectMenu *menu)
 {
 	// row number
-	s16 row = menu->rowSelected;
+	s16 row;
 
-	if (row == -1)
+	row = menu->rowSelected;
+
+	switch (row)
 	{
+	case 0:
+		// MM_Title transitioning out
+		MM_TITLE_MENU_STATE = TITLE_MENU_STATE_EXITING;
+
+		// New was chosen
+		MM_DESIRED_MENU_INDEX = MM_EXIT_ROUTE_ADV_NEW;
+
+		menu->state |= ONLY_DRAW_TITLE;
+		return;
+
+	case 1:
+		// MM_Title transitioning out
+		MM_TITLE_MENU_STATE = TITLE_MENU_STATE_EXITING;
+
+		// Load was chosen
+		MM_DESIRED_MENU_INDEX = MM_EXIT_ROUTE_ADV_LOAD;
+
+		menu->state |= ONLY_DRAW_TITLE;
+		return;
+
+	case -1:
 		menu->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
 		return;
-	}
 
-	if ((row < 0) || (row >= MM_ADV_NEW_LOAD_ROUTE_COUNT))
-	{
+	default:
 		return;
 	}
-
-	// if Load was chosen
-	D230.desiredMenuIndex = row;
-
-	// MM_Title transitioning out
-	D230.titleMenuState = TITLE_MENU_STATE_EXITING;
-
-	menu->state |= ONLY_DRAW_TITLE;
-	return;
 }
 
 struct RectMenu *MM_AdvNewLoad_GetMenuPtr(void)
 {
 	// menu for new/load
-	return &D230.menuAdventure;
+	return &MM_MENU_ADVENTURE;
 }
 
 void MM_ResetAllMenus(void)
 {
-	for (s32 menuIndex = 0; menuIndex < MM_MENU_RESET_COUNT; menuIndex++)
+	u16 menuIndex;
+	for (menuIndex = 0; menuIndex < MM_MENU_RESET_COUNT; menuIndex++)
 	{
-		struct RectMenu *menu = D230.arrayMenuPtrs[menuIndex];
-
-// NOTE(aalhendi): Retail resets one menu per array slot; native walks chained
-// menus because overlay 230 data is not reloaded.
 #ifdef CTR_NATIVE
+		struct RectMenu *menu = MM_MENU_POINTERS[(s16)menuIndex];
+
+		// NOTE(aalhendi): Retail resets one menu per array slot; native walks
+		// chained menus because overlay 230 data is not reloaded.
 		do
 		{
 			struct RectMenu *next = menu->ptrNextBox_InHierarchy;
-#endif
 
-			// Close menu
 			menu->state |= RECTMENU_CLOSE_TRANSIENT;
 			menu->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
-
-			// Reset ptrNext and ptrPrev
 			menu->ptrNextBox_InHierarchy = 0;
 			menu->ptrPrevBox_InHierarchy = 0;
 
-#ifdef CTR_NATIVE
 			menu = next;
 		} while (menu != 0);
+#else
+		MM_MENU_POINTERS[(s16)menuIndex]->state |= RECTMENU_CLOSE_TRANSIENT;
+		MM_MENU_POINTERS[(s16)menuIndex]->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
+		MM_MENU_POINTERS[(s16)menuIndex]->ptrNextBox_InHierarchy = 0;
+		MM_MENU_POINTERS[(s16)menuIndex]->ptrPrevBox_InHierarchy = 0;
 #endif
 	}
 
 	// unused
-	sdata->framesRemainingInMenu = MM_MENU_RESET_DONE_FRAMES;
+	sdata_static.framesRemainingInMenu = MM_MENU_RESET_DONE_FRAMES;
 }
 
 void MM_JumpTo_Title_Returning(void)
 {
 	// return to main menu from another menu
-	D230.titleMenuState = TITLE_MENU_STATE_RETURNING;
+	MM_TITLE_MENU_STATE = TITLE_MENU_STATE_RETURNING;
 
 	// return to main menu
-	sdata->ptrDesiredMenu = &D230.menuMainMenu;
+	MM_DESIRED_MENU = &MM_MENU_MAIN;
 
-	D230.titleMenuTransitionFrame = D230.titleMenuTransitionDurationFrames;
+	MM_TITLE_MENU_TRANSITION_FRAME = MM_TITLE_TRANSITION_DURATION;
 }
 
 void MM_JumpTo_Title_FirstTime(void)
 {
-	struct GameTracker *gGT = sdata->gGT;
+	register struct GameTracker *gGT CTR_PSX_REGISTER("$4");
+	register struct RectMenu *mainMenu CTR_PSX_REGISTER("$5");
 
 	MM_ResetAllMenus();
 
 	MainStats_ClearBattleVS();
 
 	// open Main Menu for the first time
-	sdata->ptrActiveMenu = &D230.menuMainMenu;
+	mainMenu = &MM_MENU_MAIN;
+	MM_ACTIVE_MENU = mainMenu;
 
-	D230.titleIntroFrame = 0;
+	MM_TITLE_INTRO_FRAME = 0;
+	gGT = GAME_TRACKER;
 
 	// first time in main menu
 	// (play crash trophy anim)
-	D230.titleMenuState = TITLE_MENU_STATE_INTRO;
+	MM_TITLE_MENU_STATE = TITLE_MENU_STATE_INTRO;
 
 	// reset countdown clock for battle or crystal challenge
 	gGT->originalEventTime = TITLE_INITIAL_EVENT_TIME;
 
-	D230.menuMainMenu.state &= ~(EXECUTE_FUNCPTR | ONLY_DRAW_TITLE);
-	D230.menuMainMenu.state |= DISABLE_INPUT_ALLOW_FUNCPTRS;
+	mainMenu->state &= ~(EXECUTE_FUNCPTR | ONLY_DRAW_TITLE);
+	mainMenu->state |= DISABLE_INPUT_ALLOW_FUNCPTRS;
 
 	// distance to screen (perspective)
 	gGT->pushBuffer[0].distanceToScreen_PREV = TITLE_DEFAULT_DISTANCE_TO_SCREEN;
@@ -625,40 +754,52 @@ void MM_JumpTo_Title_FirstTime(void)
 
 void MM_JumpTo_BattleSetup(void)
 {
-	// Go to battle setup
-	sdata->ptrActiveMenu = &D230.menuBattleWeapons;
+	register struct RectMenu *menu CTR_PSX_REGISTER("$4");
 
-	D230.menuBattleWeapons.state &= ~(ONLY_DRAW_TITLE);
+	// Go to battle setup
+	menu = &MM_MENU_BATTLE_WEAPONS;
+	MM_ACTIVE_MENU = menu;
+
+	menu->state &= ~(ONLY_DRAW_TITLE);
 
 	MM_Battle_Init();
 }
 
 void MM_JumpTo_TrackSelect(void)
 {
-	// return to track selection
-	sdata->ptrActiveMenu = &D230.menuTrackSelect;
+	register struct RectMenu *menu CTR_PSX_REGISTER("$4");
 
-	D230.menuTrackSelect.state &= ~(ONLY_DRAW_TITLE);
+	// return to track selection
+	menu = &MM_MENU_TRACK_SELECT;
+	MM_ACTIVE_MENU = menu;
+
+	menu->state &= ~(ONLY_DRAW_TITLE);
 
 	MM_TrackSelect_Init();
 }
 
 void MM_JumpTo_Characters(void)
 {
-	// return to character selection
-	sdata->ptrActiveMenu = &D230.menuCharacterSelect;
+	register struct RectMenu *menu CTR_PSX_REGISTER("$4");
 
-	D230.menuCharacterSelect.state &= ~(ONLY_DRAW_TITLE);
+	// return to character selection
+	menu = &MM_MENU_CHARACTER_SELECT;
+	MM_ACTIVE_MENU = menu;
+
+	menu->state &= ~(ONLY_DRAW_TITLE);
 
 	MM_Characters_RestoreIDs();
 }
 
 void MM_JumpTo_Scrapbook(void)
 {
-	// go to scrapbook
-	sdata->ptrActiveMenu = &D230.menuScrapbook;
+	register struct RectMenu *menu CTR_PSX_REGISTER("$4");
 
-	D230.menuScrapbook.state &= ~(ONLY_DRAW_TITLE);
+	// go to scrapbook
+	menu = &MM_MENU_SCRAPBOOK;
+	MM_ACTIVE_MENU = menu;
+
+	menu->state &= ~(ONLY_DRAW_TITLE);
 
 	MM_Scrapbook_Init();
 }

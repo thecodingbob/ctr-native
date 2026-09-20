@@ -9,9 +9,11 @@
 
 #include <macros.h>
 
-/* Psy-X specific calls */
+#ifdef CTR_NATIVE
 
-/* sets cop2 data register value. LWC2 is the same kind*/
+/* Psy-X simulates the GTE through host calls. */
+
+/* sets cop2 data register value. LWC2 is the same kind */
 extern void MTC2(unsigned int value, int reg);
 extern void MTC2_S(int value, int reg);
 
@@ -29,6 +31,28 @@ extern int CFC2_S(int reg);
 
 /* performs cop2 opcode */
 extern int doCOP2(int op);
+
+#else
+
+#define CTR_GTE_STRINGIFY_IMPL(value) #value
+#define CTR_GTE_STRINGIFY(value)      CTR_GTE_STRINGIFY_IMPL(value)
+#define MTC2(value, reg)              __asm__ volatile("mtc2 %0,$" CTR_GTE_STRINGIFY(reg) : : "r"(value))
+#define MTC2_S(value, reg)            MTC2(value, reg)
+#define CTC2(value, reg)              __asm__ volatile("ctc2 %0,$" CTR_GTE_STRINGIFY(reg) : : "r"(value))
+#define CTC2_S(value, reg)            CTC2(value, reg)
+#define CTR_GTE_READ(instruction, reg, type)                                        \
+	({                                                                              \
+		type value;                                                                 \
+		__asm__ volatile(instruction " %0,$" CTR_GTE_STRINGIFY(reg) : "=r"(value)); \
+		value;                                                                      \
+	})
+#define MFC2(reg)   CTR_GTE_READ("mfc2", reg, unsigned int)
+#define MFC2_S(reg) CTR_GTE_READ("mfc2", reg, int)
+#define CFC2(reg)   CTR_GTE_READ("cfc2", reg, unsigned int)
+#define CFC2_S(reg) CTR_GTE_READ("cfc2", reg, int)
+#define doCOP2(op)  __asm__ volatile("cop2 " CTR_GTE_STRINGIFY(op))
+
+#endif
 
 
 /*
@@ -283,16 +307,6 @@ extern int doCOP2(int op);
 		CTC2(CTR_ReadU32LE((char *)(r0) + 8), 10);  \
 		CTC2(CTR_ReadU32LE((char *)(r0) + 12), 11); \
 		CTC2(CTR_ReadU32LE((char *)(r0) + 16), 12); \
-	}
-
-// ctc2 16-20
-#define gte_SetColorMatrix(r0)                      \
-	{                                               \
-		CTC2(CTR_ReadU32LE((char *)(r0)), 16);      \
-		CTC2(CTR_ReadU32LE((char *)(r0) + 4), 17);  \
-		CTC2(CTR_ReadU32LE((char *)(r0) + 8), 18);  \
-		CTC2(CTR_ReadU32LE((char *)(r0) + 12), 19); \
-		CTC2(CTR_ReadU32LE((char *)(r0) + 16), 20); \
 	}
 
 // mtc2 9,10,11

@@ -1,29 +1,25 @@
 #include <common.h>
+#include <ctr_gte_transfer.h>
 
-static const s16 s_warpballFadeScale[6 * 3] = {
-    4505, 5120, 4096, 5226, 8192, 4096, 5600, 5501, 4096, 5272, 3183, 4096, 4242, 1411, 3337, 2878, 437, 1668,
-};
+#ifndef RB_WARPBALL_FADE_Y
+#define RB_WARPBALL_FADE_Y R231.warpballFadeY
+#endif
 
-static const s32 s_warpballFadeY[6] = {
-    -64, -256, -87, 57, 167, 228,
-};
+#ifndef RB_WARPBALL_PARTICLE_HEIGHT
+#define RB_WARPBALL_PARTICLE_HEIGHT R231.warpballParticleHeight
+#endif
 
-// NOTE(aalhendi): Native uses retail fade scale/Y table bytes from 0x800b2c88 and 0x800b2cac.
 void RB_Warpball_FadeAway(struct Thread *t)
 {
 	s16 frameId;
 	struct TrackerWeapon *tw;
 	struct Instance *inst;
 	struct Driver *d;
-	struct GameTracker *gGT;
-
-	gGT = sdata->gGT;
+	const s16(*scale)[3];
 
 	tw = t->object;
 	inst = t->inst;
-	frameId = tw->fadeFrame;
-
-	if (frameId > 5)
+	if ((u32)tw->fadeFrame >= 6)
 	{
 		d = tw->driverTarget;
 
@@ -34,7 +30,7 @@ void RB_Warpball_FadeAway(struct Thread *t)
 		}
 
 		// remove active warpball flag
-		gGT->gameMode1 &= ~(WARPBALL_HELD);
+		GAME_TRACKER->gameMode1 &= ~WARPBALL_HELD;
 
 		// This thread is now dead
 		t->flags |= THREAD_FLAG_DEAD;
@@ -42,28 +38,31 @@ void RB_Warpball_FadeAway(struct Thread *t)
 	}
 
 	// set scale (x, y, z)
-	inst->scale.x = s_warpballFadeScale[(frameId * 3) + 0];
-	inst->scale.y = s_warpballFadeScale[(frameId * 3) + 1];
-	inst->scale.z = s_warpballFadeScale[(frameId * 3) + 2];
+	frameId = tw->fadeFrame;
+	scale = R231.warpballFadeScale;
+	inst->scale.x = scale[frameId][0];
+	inst->scale.y = scale[frameId][1];
+	inst->scale.z = scale[frameId][2];
 
-	inst->matrix.t[1] = tw->distFromGround + s_warpballFadeY[frameId];
+	inst->matrix.t[1] = CTR_MipsAddLo(tw->distFromGround, RB_WARPBALL_FADE_Y[frameId]);
 
-	tw->fadeFrame += 1;
+	tw->fadeFrame = CTR_MipsAddLo(tw->fadeFrame, 1);
 
 	return;
 }
 
 void RB_Warpball_Death(struct Thread *t)
 {
+	struct Instance *inst;
 	struct TrackerWeapon *tw;
 
+	inst = t->inst;
 	tw = t->object;
+	tw->distFromGround = inst->matrix.t[1];
 	tw->ptrParticle->framesLeftInLife = 0;
 	tw->fadeFrame = 0;
 
 	// play sound of warpball death
-	struct Instance *inst = t->inst;
-	tw->distFromGround = inst->matrix.t[1];
 	PlaySound3D(0x4f, inst);
 
 	// stop audio of moving
@@ -75,236 +74,223 @@ void RB_Warpball_Death(struct Thread *t)
 
 struct CheckpointNode *RB_Warpball_NewPathNode(struct CheckpointNode *cn, struct Driver *d)
 {
-	struct GameTracker *gGT = sdata->gGT;
-	u8 pathIndex;
-	u8 targetIndex;
-	int foundLeftPath;
-
-	if (d == NULL)
-	{
-		return &gGT->level1->ptr_restart_points[cn->nextIndex_forward];
-	}
+	struct CheckpointNode *currNode;
+	struct CheckpointNode *nodes;
+	b16 foundLeftPath;
+	s16 i;
 
 	foundLeftPath = 0;
-	targetIndex = d->checkpoint.branchChoiceIndex;
-	pathIndex = cn->nextIndex_left;
-
-	if (targetIndex == pathIndex)
+	if (d != NULL)
 	{
-		return &gGT->level1->ptr_restart_points[pathIndex];
-	}
-
-	if (pathIndex != 0xff)
-	{
-		struct CheckpointNode *currNode = cn;
-
-		for (int i = 0; i < 3; i++)
+		currNode = cn;
+		if (d->checkpoint.branchChoiceIndex == cn->nextIndex_left)
 		{
-			if (currNode->nextIndex_left == 0xff)
+			return &GAME_TRACKER->level1->ptr_restart_points[cn->nextIndex_left];
+		}
+		if (cn->nextIndex_left != 0xff)
+		{
+			nodes = GAME_TRACKER->level1->ptr_restart_points;
+			for (i = 0; i < 3; i++)
 			{
-				pathIndex = currNode->nextIndex_forward;
-			}
-			else
-			{
-				pathIndex = currNode->nextIndex_left;
-			}
-
-			currNode = &gGT->level1->ptr_restart_points[pathIndex];
-
-			if (targetIndex == currNode->nextIndex_forward)
-			{
-				foundLeftPath = 1;
-				break;
+				currNode = currNode->nextIndex_left == 0xff ? &nodes[currNode->nextIndex_forward] : &nodes[currNode->nextIndex_left];
+				if (d->checkpoint.branchChoiceIndex == currNode->nextIndex_forward)
+				{
+					foundLeftPath = 1;
+					break;
+				}
 			}
 		}
+		if (foundLeftPath)
+		{
+			return &GAME_TRACKER->level1->ptr_restart_points[cn->nextIndex_left];
+		}
 	}
-
-	if (foundLeftPath)
-	{
-		return &gGT->level1->ptr_restart_points[cn->nextIndex_left];
-	}
-
-	return &gGT->level1->ptr_restart_points[cn->nextIndex_forward];
+	return &GAME_TRACKER->level1->ptr_restart_points[cn->nextIndex_forward];
 }
 
 void RB_Warpball_Start(struct TrackerWeapon *tw)
 {
-	tw->ptrNodeCurr = RB_Warpball_NewPathNode(tw->ptrNodeCurr, tw->driverTarget);
+	struct CheckpointNode *node;
+	s16 i;
+
+	node = tw->ptrNodeCurr;
+	// NOTE(aalhendi): Retail retains a halfword lookahead loop for this single step.
+	for (i = 0; i < 1; i++)
+	{
+		node = RB_Warpball_NewPathNode(node, tw->driverTarget);
+	}
+	tw->ptrNodeCurr = node;
 	tw->ptrNodeNext = RB_Warpball_NewPathNode(tw->ptrNodeCurr, tw->driverTarget);
 	return;
 }
 
 struct Driver *RB_Warpball_GetDriverTarget(struct TrackerWeapon *tw, struct Instance *inst)
 {
-	struct GameTracker *gGT = sdata->gGT;
-	struct Driver *bestDriver = NULL;
-
-	if ((tw->flags & TRACKER_FLAG_POWERED_UP) == 0)
-	{
-		for (int i = 0; i < 8; i++)
-		{
-			struct Driver *driver = gGT->driversInRaceOrder[i];
-
-			if ((driver != NULL) && (driver != tw->driverParent) && ((driver->actionsFlagSet & ACTION_RACE_FINISHED) == 0))
-			{
-				return driver;
-			}
-		}
-
-		return bestDriver;
-	}
-
-	struct CheckpointNode *nodes = gGT->level1->ptr_restart_points;
-	struct CheckpointNode *node1 = &nodes[tw->ptrNodeCurr->nextIndex_forward];
-	struct CheckpointNode *node2 = &nodes[node1->nextIndex_forward];
-	int trackDistance = nodes[0].distToFinish << 3;
-	SVec3 pathVector;
+	struct Driver *bestDriver;
+	struct CheckpointNode *nodes;
+	struct CheckpointNode *node1;
+	struct CheckpointNode *node2;
 	SVec3 orbVector;
-	s32 projectedDistance;
-	int bestDistance = 0x7fffffff;
+	SVec3 pathVector;
+	s32 trackDistance, projectedDistance, distanceAlongTrack, bestDistance;
+	s32 unusedMAC2;
+	s16 i;
 
-	pathVector.x = (s16)(node1->pos.x - node2->pos.x);
-	pathVector.y = (s16)(node1->pos.y - node2->pos.y);
-	pathVector.z = (s16)(node1->pos.z - node2->pos.z);
-	MATH_VectorNormalize(&pathVector);
-
-	orbVector.x = (s16)(inst->matrix.t[0] - node1->pos.x);
-	orbVector.y = (s16)(inst->matrix.t[1] - node1->pos.y);
-	orbVector.z = (s16)(inst->matrix.t[2] - node1->pos.z);
-
-	// NOTE(aalhendi): Retail uses GTE MVMVA MAC1; this is the same row0 dot product.
-	projectedDistance = ((s32)pathVector.x * orbVector.x) + ((s32)pathVector.y * orbVector.y) + ((s32)pathVector.z * orbVector.z);
-
-	projectedDistance = ((node1->distToFinish << 3) + (projectedDistance >> 12) + 0x200) % trackDistance;
-
-	for (int i = 0; i < 8; i++)
+	bestDriver = NULL;
+	if (tw->flags & TRACKER_FLAG_POWERED_UP)
 	{
-		struct Driver *driver = gGT->drivers[i];
+		nodes = GAME_TRACKER->level1->ptr_restart_points;
+		node1 = &nodes[tw->ptrNodeCurr->nextIndex_forward];
+		node2 = &nodes[node1->nextIndex_forward];
+		trackDistance = nodes[0].distToFinish << 3;
+		pathVector.x = node1->pos.x - node2->pos.x;
+		pathVector.y = node1->pos.y - node2->pos.y;
+		pathVector.z = node1->pos.z - node2->pos.z;
+		MATH_VectorNormalize(&pathVector);
 
-		if ((driver != NULL) && ((tw->driversHit & (1u << (i & 0x1f))) == 0) && ((driver->actionsFlagSet & ACTION_RACE_FINISHED) == 0) &&
-		    (driver->kartState != KS_MASK_GRABBED))
+		orbVector.x = (u16)inst->matrix.t[0] - (u16)node1->pos.x;
+		orbVector.y = (u16)inst->matrix.t[1] - (u16)node1->pos.y;
+		orbVector.z = (u16)inst->matrix.t[2] - (u16)node1->pos.z;
+		CTR_GteLoadDotProduct(&pathVector, &orbVector);
+		CTR_GteLoadDelay();
+		gte_mvmva(0, 0, 0, 3, 0);
+		CTR_GteReadMAC12(projectedDistance, unusedMAC2);
+		(void)unusedMAC2;
+		projectedDistance >>= 12;
+		bestDistance = 0x7fffffff;
+		distanceAlongTrack = node1->distToFinish << 3;
+		distanceAlongTrack += projectedDistance;
+		distanceAlongTrack += 0x200;
+		distanceAlongTrack %= trackDistance;
+
+		for (i = 0; i < 8; i++)
 		{
-			int distance = projectedDistance - driver->distanceToFinish_curr;
-
-			if (distance < 0)
+			struct Driver *driver = GAME_TRACKER->drivers[i];
+			if (driver != NULL && !(tw->driversHit & (1u << i)) && !(driver->actionsFlagSet & ACTION_RACE_FINISHED) && driver->kartState != KS_MASK_GRABBED)
 			{
-				distance += trackDistance;
-			}
-
-			if (distance < bestDistance)
-			{
-				bestDistance = distance;
-				bestDriver = driver;
+				s32 distance = CTR_MipsSubLo(distanceAlongTrack, driver->distanceToFinish_curr);
+				if (distance < 0)
+				{
+					distance = CTR_MipsAddLo(distance, trackDistance);
+				}
+				if (distance < bestDistance)
+				{
+					bestDistance = distance;
+					bestDriver = driver;
+				}
 			}
 		}
 	}
-
+	else
+	{
+		s16 rank;
+		for (rank = 0; rank < 8; rank++)
+		{
+			struct Driver *driver = GAME_TRACKER->driversInRaceOrder[rank];
+			if (driver != NULL && driver != tw->driverParent && !(driver->actionsFlagSet & ACTION_RACE_FINISHED))
+			{
+				bestDriver = driver;
+				break;
+			}
+		}
+	}
 	return bestDriver;
 }
 
 void RB_Warpball_SetTargetDriver(struct TrackerWeapon *tw)
 {
-	struct GameTracker *gGT = sdata->gGT;
-	struct Driver *target = tw->driverTarget;
+	struct CheckpointNode *targetNode;
+	struct CheckpointNode *forwardTarget;
+	struct CheckpointNode *backwardTarget;
+	struct CheckpointNode *prevNode;
+	struct CheckpointNode *pathNode;
+	struct CheckpointNode *pathStarts[2];
+	struct Driver *target;
+	s32 targetDistance;
+	s16 i, j, forwardStep;
 
+	target = tw->driverTarget;
 	if (target == NULL)
 	{
 		return;
 	}
-
-	struct CheckpointNode *nodes = gGT->level1->ptr_restart_points;
-	struct CheckpointNode *targetNode = &nodes[target->checkpoint.currentIndex];
-	struct CheckpointNode *prevNode = targetNode;
-	int targetDistance = target->distanceToFinish_curr;
-
-	while ((((int)targetNode->distToFinish << 3) >= targetDistance) && (targetNode != nodes))
+	targetDistance = target->distanceToFinish_curr;
+	targetNode = &GAME_TRACKER->level1->ptr_restart_points[target->checkpoint.currentIndex];
+	prevNode = targetNode;
+	// Keep the last node before crossing the target's distance or reaching the finish.
+	while (1)
 	{
+		if ((targetNode->distToFinish << 3) < targetDistance || targetNode == GAME_TRACKER->level1->ptr_restart_points)
+		{
+			targetNode = prevNode;
+			break;
+		}
 		prevNode = targetNode;
-		targetNode = RB_Warpball_NewPathNode(targetNode, tw->driverTarget);
+		targetNode = RB_Warpball_NewPathNode(prevNode, tw->driverTarget);
 	}
-	targetNode = prevNode;
 
-	struct CheckpointNode *rightPathNode = NULL;
-
-	if ((tw->flags & TRACKER_FLAG_WARPBALL_TARGET_PATH) == 0)
+	pathStarts[0] = tw->ptrNodeCurr;
+	pathStarts[1] = NULL;
+	backwardTarget = targetNode;
+	// Search backward, then inspect the alternate right branch discovered along it.
+	for (i = 0; i < 2 && !(tw->flags & TRACKER_FLAG_WARPBALL_TARGET_PATH); i++)
 	{
-		struct CheckpointNode *pathStarts[2];
-
-		pathStarts[0] = tw->ptrNodeCurr;
-		pathStarts[1] = rightPathNode;
-
-		for (int i = 0; (i < 2) && ((tw->flags & TRACKER_FLAG_WARPBALL_TARGET_PATH) == 0); i++)
+		if (pathStarts[i] != NULL)
 		{
 			struct CheckpointNode *pathNode = pathStarts[i];
-
-			if (pathNode == NULL)
+			for (j = 0; j < 3; j++)
 			{
-				continue;
-			}
-
-			for (int j = 0; j < 3; j++)
-			{
-				if (pathNode == targetNode)
+				if (pathNode == backwardTarget)
 				{
-					tw->flags = (tw->flags & ~TRACKER_FLAG_WARPBALL_FALLBACK_PATH) | TRACKER_FLAG_WARPBALL_TARGET_PATH;
+					tw->flags = (s16)(tw->flags | TRACKER_FLAG_WARPBALL_TARGET_PATH) & ~TRACKER_FLAG_WARPBALL_FALLBACK_PATH;
 					break;
 				}
-
 				if (pathNode->nextIndex_right != 0xff)
 				{
-					rightPathNode = &nodes[pathNode->nextIndex_right];
-					pathStarts[1] = rightPathNode;
+					pathStarts[1] = &GAME_TRACKER->level1->ptr_restart_points[pathNode->nextIndex_right];
 				}
-
-				pathNode = &nodes[pathNode->nextIndex_backward];
+				pathNode = &GAME_TRACKER->level1->ptr_restart_points[pathNode->nextIndex_backward];
 			}
 		}
 	}
 
-	struct CheckpointNode *pathNode = tw->ptrNodeCurr;
-
-	for (int i = 0; i < 3; i++)
+	pathNode = tw->ptrNodeCurr;
+	forwardTarget = targetNode;
+	for (forwardStep = 0; forwardStep < 3; forwardStep++)
 	{
-		if (pathNode == targetNode)
+		if (pathNode == forwardTarget)
 		{
-			tw->flags = (tw->flags & ~TRACKER_FLAG_WARPBALL_FALLBACK_PATH) | TRACKER_FLAG_WARPBALL_TARGET_PATH;
+			tw->flags = (s16)(tw->flags | TRACKER_FLAG_WARPBALL_TARGET_PATH) & ~TRACKER_FLAG_WARPBALL_FALLBACK_PATH;
 			return;
 		}
-
 		pathNode = RB_Warpball_NewPathNode(pathNode, tw->driverTarget);
 	}
 }
 
 void RB_Warpball_SeekDriver(struct TrackerWeapon *tw, u32 checkpointIndex, struct Driver *d)
 {
-	checkpointIndex &= 0xff;
+	struct CheckpointNode *cn;
 
-	if (d == 0)
+	if (d == NULL)
 	{
 		return;
 	}
+	checkpointIndex &= 0xff;
 	if (checkpointIndex == 0xff)
 	{
 		return;
 	}
 
-	struct CheckpointNode *first = &sdata->gGT->level1->ptr_restart_points[0];
-
-	// pointer to path node
-	struct CheckpointNode *cn = &first[checkpointIndex];
-
-	while ((d->distanceToFinish_curr <= (u32)(cn->distToFinish << 3)) &&
-
-	       // node is not first node
-	       (cn != first))
+	cn = &GAME_TRACKER->level1->ptr_restart_points[checkpointIndex];
+	while (1)
 	{
+		if ((s32)d->distanceToFinish_curr > (cn->distToFinish << 3) || cn == GAME_TRACKER->level1->ptr_restart_points)
+		{
+			tw->nodeCurrIndex = cn - GAME_TRACKER->level1->ptr_restart_points;
+			return;
+		}
 		cn = RB_Warpball_NewPathNode(cn, tw->driverTarget);
 	}
-
-	// path index = pathPtr2 - pathPtr1
-	tw->nodeCurrIndex = (u8)(cn - first);
-
-	return;
 }
 
 void RB_Warpball_TurnAround(struct Thread *t)
@@ -312,7 +298,7 @@ void RB_Warpball_TurnAround(struct Thread *t)
 	struct TrackerWeapon *tw;
 	struct Instance *inst;
 	TrackerWeaponFlags flags;
-	struct GameTracker *gGT = sdata->gGT;
+	struct GameTracker *gGT;
 	s16 rot;
 
 	tw = t->object;
@@ -326,18 +312,20 @@ void RB_Warpball_TurnAround(struct Thread *t)
 	    // if no driver is being chased
 	    (tw->driverTarget == NULL))
 	{
+		struct CheckpointNode *cn;
 		if ((flags & TRACKER_FLAG_WARPBALL_TARGET_PATH) != 0)
 		{
 			tw->flags = (flags & ~TRACKER_FLAG_WARPBALL_TARGET_PATH) | TRACKER_FLAG_WARPBALL_BACKTRACKING | TRACKER_FLAG_WARPBALL_FALLBACK_PATH;
 		}
 
-		tw->vel.x = -tw->vel.x;
-		tw->vel.y = -tw->vel.y;
-		tw->vel.z = -tw->vel.z;
+		tw->vel.x = 0u - (u32)tw->vel.x;
+		tw->vel.y = 0u - (u32)tw->vel.y;
+		tw->vel.z = 0u - (u32)tw->vel.z;
 
-		inst->matrix.t[0] += ((int)tw->vel.x * gGT->elapsedTimeMS) >> 5;
-		inst->matrix.t[1] += ((int)tw->vel.y * gGT->elapsedTimeMS) >> 5;
-		inst->matrix.t[2] += ((int)tw->vel.z * gGT->elapsedTimeMS) >> 5;
+		gGT = GAME_TRACKER;
+		inst->matrix.t[0] = CTR_MipsAddLo(inst->matrix.t[0], CTR_MipsMulLo(tw->vel.x, gGT->elapsedTimeMS) >> 5);
+		inst->matrix.t[1] = CTR_MipsAddLo(inst->matrix.t[1], CTR_MipsMulLo(tw->vel.y, gGT->elapsedTimeMS) >> 5);
+		inst->matrix.t[2] = CTR_MipsAddLo(inst->matrix.t[2], CTR_MipsMulLo(tw->vel.z, gGT->elapsedTimeMS) >> 5);
 
 		// increment counter
 		tw->turnAroundFrames++;
@@ -358,21 +346,22 @@ void RB_Warpball_TurnAround(struct Thread *t)
 			RB_Warpball_Death(t);
 		}
 
-		// if attempted to turn around 3 times
+		// Step along the backward path every fourth turnaround tick.
 		if ((tw->turnAroundFrames & 3) == 0)
 		{
+			struct CheckpointNode *first;
 			tw->ptrNodeNext = tw->ptrNodeCurr;
 
-			struct CheckpointNode *first = &sdata->gGT->level1->ptr_restart_points[0];
+			first = &GAME_TRACKER->level1->ptr_restart_points[0];
 
-			// set new end to 10 path indices ahead of current
+			// The old current node becomes the next endpoint of the reversed segment.
 			tw->ptrNodeCurr = &first[tw->ptrNodeCurr->nextIndex_backward];
 		}
 
-		struct CheckpointNode *cn = tw->ptrNodeCurr;
+		cn = tw->ptrNodeCurr;
 
 		// rotation
-		rot = ratan2(cn->pos.x - inst->matrix.t[0], cn->pos.z - inst->matrix.t[2]);
+		rot = ratan2(CTR_MipsSubLo(cn->pos.x, inst->matrix.t[0]), CTR_MipsSubLo(cn->pos.z, inst->matrix.t[2]));
 
 		// rotation
 		tw->dir.y = rot;
@@ -380,25 +369,24 @@ void RB_Warpball_TurnAround(struct Thread *t)
 	return;
 }
 
-static const s16 s_warpballParticleHeight = 0xff;
-
-static void RB_Warpball_AdvanceStraight(struct TrackerWeapon *tw, struct Instance *inst, int elapsedTime)
+static inline void RB_Warpball_AdvanceStraight(struct TrackerWeapon *tw, struct Instance *inst)
 {
-	inst->matrix.t[0] += ((int)tw->vel.x * elapsedTime) >> 5;
-	inst->matrix.t[1] += ((int)tw->vel.y * elapsedTime) >> 5;
-	inst->matrix.t[2] += ((int)tw->vel.z * elapsedTime) >> 5;
+	struct GameTracker *gGT = GAME_TRACKER;
+	inst->matrix.t[0] = CTR_MipsAddLo(inst->matrix.t[0], CTR_MipsMulLo(tw->vel.x, gGT->elapsedTimeMS) >> 5);
+	inst->matrix.t[1] = CTR_MipsAddLo(inst->matrix.t[1], CTR_MipsMulLo(tw->vel.y, gGT->elapsedTimeMS) >> 5);
+	inst->matrix.t[2] = CTR_MipsAddLo(inst->matrix.t[2], CTR_MipsMulLo(tw->vel.z, gGT->elapsedTimeMS) >> 5);
 }
 
-static int RB_Warpball_NodeDeltaLength(struct CheckpointNode *curr, struct CheckpointNode *next, int *dx, int *dy, int *dz)
+static inline s32 RB_Warpball_NodeDeltaLength(struct CheckpointNode *curr, struct CheckpointNode *next, Vec3 *delta)
 {
-	*dx = next->pos.x - curr->pos.x;
-	*dy = next->pos.y - curr->pos.y;
-	*dz = next->pos.z - curr->pos.z;
+	delta->x = next->pos.x - curr->pos.x;
+	delta->y = next->pos.y - curr->pos.y;
+	delta->z = next->pos.z - curr->pos.z;
 
-	return SquareRoot0_stub(((*dx) * (*dx)) + ((*dy) * (*dy)) + ((*dz) * (*dz)));
+	return SquareRoot0_stub((u32)delta->x * delta->x + (u32)delta->y * delta->y + (u32)delta->z * delta->z);
 }
 
-static void RB_Warpball_SetQuadblockIndex(struct TrackerWeapon *tw, struct ScratchpadStruct *sps)
+static inline void RB_Warpball_SetQuadblockIndex(struct TrackerWeapon *tw, struct ScratchpadStruct *sps)
 {
 	if (sps->hit.ptrQuadblock->checkpointIndex != 0xff)
 	{
@@ -406,10 +394,8 @@ static void RB_Warpball_SetQuadblockIndex(struct TrackerWeapon *tw, struct Scrat
 	}
 }
 
-// NOTE(aalhendi): Native uses the extracted warpball particle-height halfword from RDATA 0x800b2c84.
 void RB_Warpball_ThTick(struct Thread *t)
 {
-	struct GameTracker *gGT;
 	struct TrackerWeapon *tw;
 	struct Instance *inst;
 	struct Driver *target;
@@ -417,19 +403,18 @@ void RB_Warpball_ThTick(struct Thread *t)
 	struct Instance *hitInst;
 	SVec3 posTop;
 	SVec3 posBottom;
-	int elapsedTime;
-	int distX;
-	int distY;
-	int distZ;
-	int distXZ;
+	s32 distX;
+	s32 distY;
+	s32 distZ;
+	s32 distXZ;
 
-	gGT = sdata->gGT;
 	inst = t->inst;
 	tw = t->object;
+	sps = CTR_SCRATCHPAD_PTR(struct ScratchpadStruct, 0x108);
 
-	CTR_WriteU16LE(&tw->savedPosXY, (u16)inst->matrix.t[0]);
-	CTR_WriteU16LE((u8 *)&tw->savedPosXY + 2, (u16)inst->matrix.t[1]);
-	tw->savedPosZ = (s16)inst->matrix.t[2];
+	tw->savedPos.x = inst->matrix.t[0];
+	tw->savedPos.y = inst->matrix.t[1];
+	tw->savedPos.z = inst->matrix.t[2];
 
 	if ((int)inst->animFrame + 1 < INSTANCE_GetNumAnimFrames(inst, 0))
 	{
@@ -444,10 +429,8 @@ void RB_Warpball_ThTick(struct Thread *t)
 	{
 		if ((tw->driverTarget->kartState == KS_MASK_GRABBED) && ((tw->flags & TRACKER_FLAG_WARPBALL_TARGET_PATH) != 0))
 		{
-			struct CheckpointNode *nodes = gGT->level1->ptr_restart_points;
-
 			tw->flags = (tw->flags & ~TRACKER_FLAG_WARPBALL_TARGET_PATH) | TRACKER_FLAG_WARPBALL_FALLBACK_PATH | TRACKER_FLAG_WARPBALL_MASK_REPATH;
-			tw->ptrNodeCurr = &nodes[tw->nodeNextIndex];
+			tw->ptrNodeCurr = &GAME_TRACKER->level1->ptr_restart_points[tw->nodeNextIndex];
 			tw->ptrNodeNext = RB_Warpball_NewPathNode(tw->ptrNodeCurr, tw->driverTarget);
 			tw->driverTarget = RB_Warpball_GetDriverTarget(tw, inst);
 			RB_Warpball_SetTargetDriver(tw);
@@ -466,29 +449,33 @@ void RB_Warpball_ThTick(struct Thread *t)
 
 	target = tw->driverTarget;
 	tw->flags &= ~TRACKER_FLAG_WARPBALL_BACKTRACKING;
-	elapsedTime = gGT->elapsedTimeMS;
 
 	if (target != NULL)
 	{
-		distX = (target->posCurr.x >> 8) - inst->matrix.t[0];
-		distZ = (target->posCurr.z >> 8) - inst->matrix.t[2];
-		distY = (target->posCurr.y >> 8) - inst->matrix.t[1];
-		distXZ = (distX * distX) + (distZ * distZ);
-		tw->distanceToTarget = distXZ;
-		target->thTrackingMe = RB_GetThread_ClosestTracker(target);
+		struct Thread *trackingThread;
+		distX = CTR_MipsSubLo(target->posCurr.x >> 8, inst->matrix.t[0]);
+		distZ = CTR_MipsSubLo(target->posCurr.z >> 8, inst->matrix.t[2]);
+		distY = CTR_MipsSubLo(target->posCurr.y >> 8, inst->matrix.t[1]);
+		tw->distanceToTarget = CTR_MipsAddLo(CTR_MipsMulLo(distX, distX), CTR_MipsMulLo(distZ, distZ));
+		distXZ = tw->distanceToTarget;
+		trackingThread = RB_GetThread_ClosestTracker(tw->driverTarget);
+		// NOTE(aalhendi): Resolve the recipient after the callback, as retail does.
+		tw->driverTarget->thTrackingMe = trackingThread;
 
-		if ((tw->flags & TRACKER_FLAG_WARPBALL_PATH_MODE) != 0)
+		// NOTE(aalhendi): Retail tests the flags in the upper half of the aligned velocity/flags word.
+		if (CTR_ReadU32AlignedLE(&tw->vel.z) & ((u32)TRACKER_FLAG_WARPBALL_PATH_MODE << 16))
 		{
 			s16 rotSpeed = 0x100;
+			s16 desiredYaw;
 
 			if ((tw->flags & TRACKER_FLAG_WARPBALL_TARGET_PATH) == 0)
 			{
 				struct CheckpointNode *pathNode = tw->ptrNodeCurr;
 
-				distX = pathNode->pos.x - inst->matrix.t[0];
-				distZ = pathNode->pos.z - inst->matrix.t[2];
-				distY = pathNode->pos.y - inst->matrix.t[1];
-				distXZ = (distX * distX) + (distZ * distZ);
+				distX = CTR_MipsSubLo(pathNode->pos.x, inst->matrix.t[0]);
+				distZ = CTR_MipsSubLo(pathNode->pos.z, inst->matrix.t[2]);
+				distY = CTR_MipsSubLo(pathNode->pos.y, inst->matrix.t[1]);
+				distXZ = (u32)distX * distX + (u32)distZ * distZ;
 
 				if (distXZ < 0x4000)
 				{
@@ -515,17 +502,19 @@ void RB_Warpball_ThTick(struct Thread *t)
 				rotSpeed = 0x40;
 			}
 
+			desiredYaw = ratan2(distX, distZ);
 			tw->dir.x = 0;
-			tw->dir.y = RB_Hazard_InterpolateValue(tw->dir.y, ratan2(distX, distZ), rotSpeed);
+			tw->dir.y = RB_Hazard_InterpolateValue(tw->dir.y, desiredYaw, rotSpeed);
 			tw->dir.z = 0;
-			tw->vel.x = (MATH_Sin(tw->dir.y) * 7) >> 8;
-			tw->vel.z = (MATH_Cos(tw->dir.y) * 7) >> 8;
-		        tw->vel.x = tw->vel.x * g_config.warpballSpeedMultiplier / 100;
-		        tw->vel.z = tw->vel.z * g_config.warpballSpeedMultiplier / 100;
+			tw->vel.x = ((u32)MATH_Sin(tw->dir.y) * 7) >> 8;
+			tw->vel.z = ((u32)MATH_Cos(tw->dir.y) * 7) >> 8;
+
+		    tw->vel.x = tw->vel.x * g_config.warpballSpeedMultiplier / 100;
+		    tw->vel.z = tw->vel.z * g_config.warpballSpeedMultiplier / 100;
 
 			if (distY > 0)
 			{
-				tw->vel.y += (elapsedTime << 2) >> 5;
+				tw->vel.y = (u32)tw->vel.y + (CTR_MipsSll(GAME_TRACKER->elapsedTimeMS, 2) >> 5);
 
 				if (distY < tw->vel.y)
 				{
@@ -539,7 +528,7 @@ void RB_Warpball_ThTick(struct Thread *t)
 			}
 			else if (distY < 0)
 			{
-				tw->vel.y -= (elapsedTime << 2) >> 5;
+				tw->vel.y = (u32)tw->vel.y - (CTR_MipsSll(GAME_TRACKER->elapsedTimeMS, 2) >> 5);
 
 				if (tw->vel.y < distY)
 				{
@@ -552,89 +541,93 @@ void RB_Warpball_ThTick(struct Thread *t)
 				}
 			}
 
-			RB_Warpball_AdvanceStraight(tw, inst, elapsedTime);
+			RB_Warpball_AdvanceStraight(tw, inst);
 		}
 		else
 		{
-			struct CheckpointNode *curr = tw->ptrNodeCurr;
 			struct CheckpointNode *next = tw->ptrNodeNext;
-			int segmentLength = RB_Warpball_NodeDeltaLength(curr, next, &distX, &distY, &distZ);
-			int progress = tw->pathProgress + (((elapsedTime * 0x70) >> 5) * g_config.warpballSpeedMultiplier / 100);
-			int fraction;
+			struct CheckpointNode *curr = tw->ptrNodeCurr;
+			Vec3 delta;
+			s32 segmentLength = RB_Warpball_NodeDeltaLength(curr, next, &delta);
+		    s32 progress =  CTR_MipsAddLo(tw->pathProgress,
+		      (s32)((((u32)GAME_TRACKER->elapsedTimeMS * 0x70) >> 5) * g_config.warpballSpeedMultiplier / 100));
+			s32 yaw;
 
 			if (segmentLength <= progress)
 			{
-				progress -= segmentLength;
+				progress = CTR_MipsSubLo(progress, segmentLength);
 
 				do
 				{
-					int keepAdvancing;
+					b32 reachedSegment;
 
 					curr = next;
 					next = RB_Warpball_NewPathNode(curr, tw->driverTarget);
-					segmentLength = RB_Warpball_NodeDeltaLength(curr, next, &distX, &distY, &distZ);
-					keepAdvancing = segmentLength <= progress;
-					progress -= segmentLength;
+					segmentLength = RB_Warpball_NodeDeltaLength(curr, next, &delta);
+					// NOTE(aalhendi): Test before subtracting; the final segment's length is restored below.
+					reachedSegment = progress < segmentLength;
+					progress = CTR_MipsSubLo(progress, segmentLength);
 
-					if (!keepAdvancing)
+					if (reachedSegment)
 					{
 						break;
 					}
 				} while (1);
 
-				progress += segmentLength;
+				progress = CTR_MipsAddLo(progress, segmentLength);
 			}
 
 			tw->pathProgress = progress;
 			tw->ptrNodeCurr = curr;
 			tw->ptrNodeNext = next;
 
-			if (segmentLength == 0)
+			if (segmentLength != 0)
 			{
-				fraction = 0;
+				progress = CTR_MipsDiv(CTR_MipsSll(progress, 12), segmentLength);
 			}
 			else
 			{
-				fraction = (progress << 12) / segmentLength;
+				progress = 0;
 			}
 
-			inst->matrix.t[0] = curr->pos.x + ((distX * fraction) >> 12);
-			inst->matrix.t[1] = curr->pos.y + ((distY * fraction) >> 12);
-			inst->matrix.t[2] = curr->pos.z + ((distZ * fraction) >> 12);
+			inst->matrix.t[0] = CTR_MipsAddLo(curr->pos.x, CTR_MipsMulLo(delta.x, progress) >> 12);
+			inst->matrix.t[1] = CTR_MipsAddLo(curr->pos.y, CTR_MipsMulLo(delta.y, progress) >> 12);
+			inst->matrix.t[2] = CTR_MipsAddLo(curr->pos.z, CTR_MipsMulLo(delta.z, progress) >> 12);
 
-			tw->dir.y = ratan2(distX, distZ);
-			tw->vel.x = (MATH_Sin(tw->dir.y) * 7) >> 8;
-			tw->vel.z = (MATH_Cos(tw->dir.y) * 7) >> 8;
-		        tw->vel.x = tw->vel.x * g_config.warpballSpeedMultiplier / 100;
-		        tw->vel.z = tw->vel.z * g_config.warpballSpeedMultiplier / 100;
+			yaw = ratan2(delta.x, delta.z);
+			tw->dir.y = yaw;
+			tw->vel.x = ((u32)MATH_Sin(yaw) * 7) >> 8;
+			tw->vel.z = ((u32)MATH_Cos(yaw) * 7) >> 8;
 			tw->vel.y = 0;
+
+		    tw->vel.x = tw->vel.x * g_config.warpballSpeedMultiplier / 100;
+		    tw->vel.z = tw->vel.z * g_config.warpballSpeedMultiplier / 100;
 		}
 	}
 	else
 	{
-		RB_Warpball_AdvanceStraight(tw, inst, elapsedTime);
+		RB_Warpball_AdvanceStraight(tw, inst);
 	}
 
 	PlaySound3D_Flags(&tw->soundIDCount, 0x4e, inst);
 
 	posTop.x = (s16)inst->matrix.t[0];
-	posTop.y = (s16)(inst->matrix.t[1] - 0x80);
+	posTop.y = (u16)inst->matrix.t[1] - 0x80;
 	posTop.z = (s16)inst->matrix.t[2];
 	posBottom.x = (s16)inst->matrix.t[0];
-	posBottom.y = (s16)(inst->matrix.t[1] + 0x80);
+	posBottom.y = (u16)inst->matrix.t[1] + 0x80;
 	posBottom.z = (s16)inst->matrix.t[2];
 
-	sps = CTR_SCRATCHPAD_PTR(struct ScratchpadStruct, 0x108);
 	sps->Union.QuadBlockColl.quadFlagsWanted = QUADBLOCK_FLAG_GROUND | QUADBLOCK_FLAG_TRIGGER;
 	sps->Union.QuadBlockColl.quadFlagsIgnored = 0;
 	sps->Union.QuadBlockColl.searchFlags = COLL_SEARCH_TEST_INSTANCES | COLL_SEARCH_FORCE_INSTANCE_HIT;
 
-	if (gGT->numPlyrCurrGame < 3)
+	if (GAME_TRACKER->numPlyrCurrGame < 3)
 	{
 		sps->Union.QuadBlockColl.searchFlags = COLL_SEARCH_TEST_INSTANCES | COLL_SEARCH_HIGH_LOD | COLL_SEARCH_FORCE_INSTANCE_HIT;
 	}
 
-	sps->ptr_mesh_info = gGT->level1->ptr_mesh_info;
+	sps->ptr_mesh_info = GAME_TRACKER->level1->ptr_mesh_info;
 	COLL_SearchBSP_CallbackQUADBLK(&posTop, &posBottom, sps, 0);
 	RB_MakeInstanceReflective(sps, inst);
 
@@ -659,16 +652,16 @@ void RB_Warpball_ThTick(struct Thread *t)
 		RB_Warpball_SetQuadblockIndex(tw, sps);
 		tw->vel.y = 0;
 
-		if (((tw->flags & TRACKER_FLAG_WARPBALL_PATH_MODE) != 0) && (inst->matrix.t[1] < sps->hit.hitPos.y))
+		if (((tw->flags & TRACKER_FLAG_WARPBALL_PATH_MODE) != 0) && (inst->matrix.t[1] < sps->Union.QuadBlockColl.hitPos.y))
 		{
-			inst->matrix.t[1] = sps->hit.hitPos.y;
+			inst->matrix.t[1] = sps->Union.QuadBlockColl.hitPos.y;
 			inst->depthBiasNormal = sps->hit.ptrQuadblock->draw_order_low - 1;
 		}
 	}
 	else
 	{
 		posTop.x = (s16)inst->matrix.t[0];
-		posTop.y = (s16)(inst->matrix.t[1] - 0x900);
+		posTop.y = (u16)inst->matrix.t[1] - 0x900;
 		posTop.z = (s16)inst->matrix.t[2];
 		COLL_SearchBSP_CallbackQUADBLK(&posTop, &posBottom, sps, 0);
 
@@ -684,18 +677,32 @@ void RB_Warpball_ThTick(struct Thread *t)
 		}
 	}
 
-	if ((s_warpballParticleHeight != 0) && (tw->ptrParticle != NULL))
 	{
-		struct Particle *p = tw->ptrParticle;
+		u16 *curve;
+		u16 *sample;
+		s32 sampleOffset;
 
-		p->axis[0].startVal = inst->matrix.t[0] << 8;
-		p->axis[1].startVal = (inst->matrix.t[1] + s_warpballParticleHeight) << 8;
-		p->axis[2].startVal = inst->matrix.t[2] << 8;
-		p->axis[3].startVal = s_warpballParticleHeight << 8;
-		p->axis[4].startVal = s_warpballParticleHeight * 0xc0;
-		p->axis[5].startVal = s_warpballParticleHeight << 7;
-		p->otIndexOffset = inst->depthBiasNormal + 1;
-		p->framesLeftInLife = -1;
+		curve = RB_WARPBALL_PARTICLE_HEIGHT;
+		sampleOffset = 10;
+
+		// NOTE(aalhendi): Retail always uses the final glow sample. Preserve its
+		// explicit sample-to-byte shift instead of folding it into the load offset.
+		CTR_PSX_SHIFT_LEFT_IN_PLACE(sampleOffset, 1);
+		sample = (u16 *)((u8 *)curve + sampleOffset);
+
+		if ((*sample != 0) && (tw->ptrParticle != NULL))
+		{
+			u32 height;
+			tw->ptrParticle->axis[0].startVal = (u32)inst->matrix.t[0] << 8;
+			tw->ptrParticle->axis[1].startVal = ((u32)inst->matrix.t[1] + *sample) << 8;
+			tw->ptrParticle->axis[2].startVal = (u32)inst->matrix.t[2] << 8;
+			height = *sample;
+			tw->ptrParticle->axis[3].startVal = height << 8;
+			tw->ptrParticle->axis[4].startVal = height * 0xc0;
+			tw->ptrParticle->axis[5].startVal = height << 7;
+			tw->ptrParticle->otIndexOffset = inst->depthBiasNormal + 1;
+			tw->ptrParticle->framesLeftInLife = -1;
+		}
 	}
 
 	hitInst = RB_Hazard_CollideWithDrivers(inst, tw->parentSafetyFrames, 0x9000, tw->instParent);
@@ -706,7 +713,7 @@ void RB_Warpball_ThTick(struct Thread *t)
 
 		if (hitDriver != tw->driverParent)
 		{
-			TrackerWeaponFlags hadTargetPathFlag = tw->flags & TRACKER_FLAG_WARPBALL_TARGET_PATH;
+			b16 hadTargetPathFlag = tw->flags & TRACKER_FLAG_WARPBALL_TARGET_PATH;
 			TrackerWeaponFlags flagsBeforeHit;
 
 			RB_Hazard_HurtDriver(hitDriver, 2, tw->driverParent, 0);
@@ -722,15 +729,18 @@ void RB_Warpball_ThTick(struct Thread *t)
 				return;
 			}
 
-			tw->driversHit |= 1u << (hitDriver->driverID & 0x1f);
+			tw->driversHit |= CTR_MipsSll(1, hitDriver->driverID);
 
-			for (int rank = hitDriver->driverRank; rank < 8; rank++)
 			{
-				struct Driver *rankDriver = gGT->driversInRaceOrder[rank];
-
-				if (rankDriver != NULL)
+				s16 rank;
+				for (rank = hitDriver->driverRank; rank < 8; rank++)
 				{
-					tw->driversHit |= 1u << (rankDriver->driverID & 0x1f);
+					struct Driver *rankDriver = GAME_TRACKER->driversInRaceOrder[rank];
+
+					if (rankDriver != NULL)
+					{
+						tw->driversHit |= CTR_MipsSll(1, rankDriver->driverID);
+					}
 				}
 			}
 
@@ -739,14 +749,14 @@ void RB_Warpball_ThTick(struct Thread *t)
 				tw->flags &= ~TRACKER_FLAG_WARPBALL_TARGET_PATH;
 				tw->driverTarget = RB_Warpball_GetDriverTarget(tw, inst);
 
-				if (tw->driverTarget == NULL)
+				if (tw->driverTarget != NULL)
 				{
-					tw->driverParent->instBombThrow = NULL;
-					RB_Warpball_Death(t);
+					RB_Warpball_SetTargetDriver(tw);
 				}
 				else
 				{
-					RB_Warpball_SetTargetDriver(tw);
+					tw->driverParent->instBombThrow = NULL;
+					RB_Warpball_Death(t);
 				}
 
 				if (hadTargetPathFlag != 0)
@@ -758,9 +768,7 @@ void RB_Warpball_ThTick(struct Thread *t)
 				{
 					if (tw->nodeCurrIndex != 0xff)
 					{
-						struct CheckpointNode *nodes = gGT->level1->ptr_restart_points;
-
-						tw->ptrNodeCurr = &nodes[tw->nodeCurrIndex];
+						tw->ptrNodeCurr = &GAME_TRACKER->level1->ptr_restart_points[tw->nodeCurrIndex];
 						tw->ptrNodeNext = RB_Warpball_NewPathNode(tw->ptrNodeCurr, tw->driverTarget);
 					}
 
@@ -771,13 +779,13 @@ void RB_Warpball_ThTick(struct Thread *t)
 	}
 	else
 	{
-		hitInst = RB_Hazard_CollideWithBucket(inst, t, gGT->threadBuckets[MINE].thread, tw->parentSafetyFrames, 0x2400, tw->instParent);
+		hitInst = RB_Hazard_CollideWithBucket(inst, t, GAME_TRACKER->threadBuckets[MINE].thread, tw->parentSafetyFrames, 0x2400, tw->instParent);
 
 		if (hitInst != NULL)
 		{
 			struct Thread *hitTh = hitInst->thread;
 
-			((ThreadSimpleCollideFunc)hitTh->funcThCollide)(hitTh);
+			((ThreadScratchCollideFunc)hitTh->funcThCollide)(hitTh, t, hitTh->funcThCollide, NULL);
 		}
 	}
 

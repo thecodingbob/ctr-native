@@ -2,44 +2,46 @@
 
 void CS_LoadBossCallback(struct LoadQueueSlot *lqs)
 {
-	void *ptr = lqs->ptrDestination;
-	sdata->load_inProgress = 0;
-	D233.ptrModelBossHead = ptr;
+	s32 *loadInProgress = &sdata->load_inProgress;
+	void *model = lqs->ptrDestination;
+
+	*loadInProgress = 0;
+	CS_BOSS_HEAD_MODEL = model;
 }
 
 void CS_LoadBoss(const struct BossCutsceneData *bcd)
 {
-	struct GameTracker *gGT = sdata->gGT;
-	int otherHubMempack = LOAD_HUB_MEMPACK_PAIR_INDEX_SUM - gGT->activeMempackIndex;
+	s32 i;
+	s32 fileIndex;
+	s32 otherHubMempack = LOAD_HUB_MEMPACK_PAIR_INDEX_SUM - GAME_TRACKER->activeMempackIndex;
+	const s32 *files = bcd->fileIDs;
 
 	CDSYS_XAPauseRequest();
+	for (i = CS_BOSS_MODEL_COUNT - 1; i >= 0; i--)
+		CS_BOSS_MODELS[i] = NULL;
 
-	// erase HEAD + BODY
-	D233.ptrModelBossBody = 0;
-	D233.ptrModelBossHead = 0;
-
-	// invalidate alternative-hub, because
-	// the boss will load in that level's RAM
-	gGT->levID_in_each_mempack[otherHubMempack] = LOAD_NO_LEVEL_IN_MEMPACK;
-
-	// Swap to pack of hub you're NOT on,
-	// wipe the pack to reload the new BOSS
+	// The boss borrows the inactive hub's memory pack.
+	GAME_TRACKER->levID_in_each_mempack[otherHubMempack] = LOAD_NO_LEVEL_IN_MEMPACK;
 	MEMPACK_SwapPacks(otherHubMempack);
 	MEMPACK_ClearLowMem();
+	CS_LOAD_IN_PROGRESS = 1;
 
-	sdata->load_inProgress = 1;
-
-	if (bcd->vrmFile_UNUSED != 0)
+	fileIndex = files[0];
+	if (fileIndex != 0)
 	{
-		LOAD_AppendQueue(0, LT_VRAM, bcd->vrmFile_UNUSED - 1 + otherHubMempack, NULL, NULL);
+		LOAD_AppendQueue(CS_BIGFILE_HEADER, LT_VRAM, fileIndex + (otherHubMempack - 1), NULL, NULL);
 	}
 
-	// CTR Model File (body)
-	if (bcd->bodyFile != 0)
+	files++;
+	for (i = CS_BOSS_MODEL_COUNT - 1; i > CS_BOSS_MODEL_HEAD; i--)
 	{
-		LOAD_AppendQueue(0, LT_DRAM, bcd->bodyFile - 1 + otherHubMempack, &D233.ptrModelBossBody, LOAD_QUEUE_CALLBACK_SET_POINTER);
+		fileIndex = files[i];
+		if (fileIndex != 0)
+		{
+			LOAD_AppendQueue(CS_BIGFILE_HEADER, LT_DRAM, fileIndex + (otherHubMempack - 1), &CS_BOSS_MODELS[i], LOAD_QUEUE_CALLBACK_SET_POINTER);
+		}
 	}
 
-	// CTR Model File (head)
-	LOAD_AppendQueue(0, LT_DRAM, bcd->headFile - 1 + otherHubMempack, NULL, CS_LoadBossCallback);
+	// The head is queued last; its callback releases the loading state.
+	LOAD_AppendQueue(CS_BIGFILE_HEADER, LT_DRAM, files[i] + (otherHubMempack - 1), NULL, CS_LoadBossCallback);
 }

@@ -78,7 +78,7 @@ void *LOAD_ReadDirectory(char *filename)
 		return NULL;
 	}
 
-	struct BigHeader *bh = MEMPACK_AllocMem(LOAD_BIGFILE_HEADER_ALLOC_BYTES /*, filename*/);
+	struct BigHeader *bh = MEMPACK_AllocMem(LOAD_BIGFILE_HEADER_ALLOC_BYTES, NULL /* filename */);
 
 	// Search for file on disc
 	// Set Cd laser to file position
@@ -358,7 +358,7 @@ void *LOAD_ReadFile_ex(struct BigHeader *bigfile, u32 loadType, int subfileIndex
 		// allocate room for all sectors,
 		// remove alignment before next Read
 		sectorSize = sectorCount << LOAD_CD_DATA_SECTOR_SHIFT;
-		ptrDst = (void *)MEMPACK_AllocMem(sectorSize); // "FILE"
+		ptrDst = (void *)MEMPACK_AllocMem(sectorSize, NULL); // "FILE"
 		if (ptrDst == NULL)
 		{
 			return NULL;
@@ -439,7 +439,7 @@ void *LOAD_XnfFile(char *filename, void *ptrDestination, int *size)
 		// allocate room for all sectors,
 		// remove alignment before next Read
 		int sectorSize = (cdlFile.size + LOAD_CD_DATA_SECTOR_ROUND_MASK) & LOAD_CD_DATA_SECTOR_ALIGN_MASK;
-		ptrDestination = MEMPACK_AllocMem(sectorSize /*, fileName*/);
+		ptrDestination = MEMPACK_AllocMem(sectorSize, NULL /* fileName */);
 		if (ptrDestination == NULL)
 		{
 			return NULL;

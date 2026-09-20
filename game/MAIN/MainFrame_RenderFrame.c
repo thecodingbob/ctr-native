@@ -1100,7 +1100,7 @@ void WindowBoxLines(struct GameTracker *gGT)
 		    &gGT->pushBuffer[i].rect, 4, 2,
 
 		    // color data
-		    color,
+		    &color,
 
 		    0,
 

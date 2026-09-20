@@ -318,6 +318,8 @@ void UI_DrawRankedDrivers(void)
 
 			int posX = nextTrackX + UI_RANK_TRACK_ICON_POS_X_OFFSET;
 			int posY = UI_RANK_TRACK_ICON_POS_Y;
+			Color color;
+			ColorCode_SetPacked(&color, damageColor);
 
 			DecalHUD_DrawPolyGT4(gGT->ptrIcons[data.MetaDataCharacters[data.characterIDs[driverIndex]].iconID], posX, posY,
 
@@ -328,7 +330,7 @@ void UI_DrawRankedDrivers(void)
 			                     gGT->pushBuffer_UI.ptrOT,
 
 			                     // color data
-			                     damageColor, damageColor, damageColor, damageColor,
+			                     color, color, color, color,
 
 			                     TRANS_50_DECAL, UI_RANK_TRACK_ICON_SCALE);
 

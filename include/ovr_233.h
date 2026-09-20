@@ -23,12 +23,9 @@ struct CsThreadInitData
 	SVec3Slot rot;
 
 	SVec3Slot derivedRot;
-	u32 local_28_alias;
-	u32 local_24_alias;
-	u32 local_20_alias;
 };
 
-CTR_STATIC_ASSERT(sizeof(struct CsThreadInitData) == 0x2c);
+CTR_STATIC_ASSERT(sizeof(struct CsThreadInitData) == 0x20);
 CTR_STATIC_ASSERT(offsetof(struct CsThreadInitData, podiumPos) == 0x0);
 CTR_STATIC_ASSERT(offsetof(struct CsThreadInitData, characterPos) == 0x8);
 CTR_STATIC_ASSERT(offsetof(struct CsThreadInitData, rot) == 0x10);
@@ -36,7 +33,7 @@ CTR_STATIC_ASSERT(offsetof(struct CsThreadInitData, derivedRot) == 0x18);
 
 struct CsPodiumCameraThreadObj
 {
-	u16 pathFrame32;
+	s16 pathFrame32;
 	u16 pad_02;
 };
 
@@ -314,7 +311,7 @@ struct CutsceneObj
 	char *prevOpcode;
 
 	// 0x44
-	char particleID;
+	s8 particleID;
 	u8 pad_45[2];
 	// 0x47
 	u8 animIndex;
@@ -370,12 +367,18 @@ enum BOSS_CUTSCENE_ORDER
 	BOSS_CUTSCENE_COUNT,
 };
 
+enum CsBossModelPart
+{
+	CS_BOSS_MODEL_HEAD,
+	CS_BOSS_MODEL_BODY,
+	CS_BOSS_MODEL_COUNT,
+};
+
 struct BossCutsceneData
 {
 	// 0x0
-	int vrmFile_UNUSED;
-	int headFile;
-	int bodyFile;
+	// Optional texture, then head and body model files.
+	s32 fileIDs[1 + CS_BOSS_MODEL_COUNT];
 
 	// Unused, cause it does model->id
 	// to get the model index anyway
@@ -405,6 +408,7 @@ struct CsInitMatrixEntry
 	union
 	{
 		s16 raw[10];
+		u32 words[5];
 		struct
 		{
 			SVec3 rot;
@@ -432,32 +436,31 @@ struct Ovr233InitMatrixTableEntry
 
 CTR_STATIC_ASSERT(sizeof(struct Ovr233InitMatrixTableEntry) == 0x8);
 
-struct OverlayRDATA_233
+struct CsThreadNames
 {
-	char fill_beginning[4];
-
 	char s_spawn[8];
 	char s_g_dancer[16];
+};
 
-	char fill_strings[0x290];
+extern const struct CsThreadNames csThreadNames;
 
-	// CS_Podium_FullScene_Init
+struct CsPodiumNames
+{
 	char s_podium[8];
-	// 0x800abca4
 	char s_third[8];
 	char s_second[8];
 	char s_first[8];
 	char s_tawna[8];
 	char s_prize[8];
 	char s_victorycam[16];
+};
 
-	char fill_strings2[0x3c];
+extern const struct CsPodiumNames csPodiumNames;
 
-	// CS_Thread_LInB
+struct CsIntroNames
+{
 	char s_introguy[12];
 	char s_introcam[12];
-
-	// Naughty Dog crate intro thread strings
 	char s_box1[8];
 	char s_box2[8];
 	char s_box2_bottom[16];
@@ -477,13 +480,25 @@ struct OverlayRDATA_233
 	char s_kart3[8];
 	char s_kart6[8];
 	char s_kart7[8];
+};
 
-	// R233.c owns the source initializer. This struct preserves the retail
-	// address-space layout that native cutscene opcode translation audits
-	// against; live mutable cutscene state is owned by D233.
-	char fill1[0x4DA8];
+extern const struct CsIntroNames csIntroNames;
 
+#ifndef CS_INTRO_NAME
+#define CS_INTRO_NAME(field) (csIntroNames.field)
+#endif
 
+struct CsCreditsNames
+{
+	char credits[8];
+	char creditGhost[12];
+	char creditStrings[16];
+};
+
+extern const struct CsCreditsNames csCreditsNames;
+
+struct OverlayDATA_233
+{
 	// 800b0b7c
 	int VertSplitLine;
 
@@ -497,7 +512,8 @@ struct OverlayRDATA_233
 	int bossCutsceneIndex;
 
 	// 800b0b8c
-	int CutsceneManipulatesAudio;
+	b16 CutsceneManipulatesAudio;
+	u16 audioControlPadding;
 
 	// 800b0b90
 	struct ParticleEmitter particleEmitterData[63];
@@ -506,8 +522,7 @@ struct OverlayRDATA_233
 	struct CsParticleConfig particleConfigs[8];
 
 	// 800b14cc
-	// NOTE(aalhendi): Retail cs_opcodeMeta prefix. Native interpreter uses
-	// the source-owned table in 233_02_09_CS_ScriptCmd.c.
+	// Opcode format flags, followed immediately by the first cutscene script.
 	char csOpcodeMetaPrefix[0x34];
 
 	// 800b1500
@@ -589,7 +604,8 @@ struct OverlayRDATA_233
 	char cs_initMatrixBool;
 
 	// 800b7351
-	char fill3_afterInitMatrix_beforeClearBox[0x123];
+	u8 pad_afterInitMatrix[3];
+	struct ParticleEmitter unusedIntroEmitter[8];
 
 	// 800b7474
 	Color introClearBoxColor;
@@ -610,11 +626,7 @@ struct OverlayRDATA_233
 	// 800b7764
 	int podiumCameraFrame;
 	// 800b7768
-	s16 FXVolumeBackup;
-	// 800b776a
-	s16 MusicVolumeBackup;
-	// 800b776c
-	s16 VoiceVolumeBackup;
+	s16 volumeBackup[3];
 	// 800b776e
 	s16 audioVolumeBackupPad;
 
@@ -624,82 +636,77 @@ struct OverlayRDATA_233
 	CutscenePhase cutsceneState;
 
 	// 800b7778
-	struct Model *ptrModelBossHead;
-	struct Model *ptrModelBossBody;
+	struct Model *bossModels[CS_BOSS_MODEL_COUNT];
 
 	// 800b7780
 };
 
-extern const struct OverlayRDATA_233 R233;
-
-struct OverlayDATA_233
-{
-	int VertSplitLine;
-	int boolLoadNextSwap;
-	int boolStartToSkip;
-	int bossCutsceneIndex;
-	int CutsceneManipulatesAudio;
-	u8 cs_initMatrixBool;
-	u8 padding_afterInitMatrixBool[3];
-	int isCutsceneOver;
-	int podiumCameraFrame;
-	s16 FXVolumeBackup;
-	s16 MusicVolumeBackup;
-	s16 VoiceVolumeBackup;
-	s16 audioVolumeBackupPad;
-	int podiumPrizeDropReady;
-	CutscenePhase cutsceneState;
-	struct Model *ptrModelBossHead;
-	struct Model *ptrModelBossBody;
-	struct CsInitMatrixEntry cs_initMatrixData[190];
-	struct Ovr233InitMatrixTableEntry cs_initMatrixTable[4];
-};
-
-CTR_STATIC_ASSERT(sizeof(struct OverlayDATA_233) == 0x1818);
 
 extern struct OverlayDATA_233 D233;
 
-// Overlay RDATA starts at 0x800ab9f0.
-#define OVR233_LAYOUT_ASSERT(ELEMENT, OFFSET, SIZE)                            \
-	CTR_STATIC_ASSERT(OFFSETOF(struct OverlayRDATA_233, ELEMENT) == (OFFSET)); \
-	CTR_STATIC_ASSERT(sizeof(((struct OverlayRDATA_233 *)0)->ELEMENT) == (SIZE))
+#ifndef CS_VERT_SPLIT
+#define CS_VERT_SPLIT          (D233.VertSplitLine)
+#define CS_LOAD_NEXT_SWAP      (D233.boolLoadNextSwap)
+#define CS_CAN_SKIP            (D233.boolStartToSkip)
+#define CS_BOSS_INDEX          (D233.bossCutsceneIndex)
+#define CS_CONTROLS_AUDIO      (D233.CutsceneManipulatesAudio)
+#define CS_MATRIX_TABLE        (D233.cs_initMatrixTable)
+#define CS_MATRIX_INITIALIZED  (D233.cs_initMatrixBool)
+#define CS_FINISHED            (D233.isCutsceneOver)
+#define CS_PODIUM_CAMERA_FRAME (D233.podiumCameraFrame)
+#define CS_VOLUME_BACKUP       (D233.volumeBackup)
+#define CS_PRIZE_DROP_READY    (D233.podiumPrizeDropReady)
+#define CS_PHASE               (D233.cutsceneState)
+#define CS_BOSS_MODELS         (D233.bossModels)
+#define CS_BIGFILE_HEADER      (sdata->ptrBigfileCdPos_2)
+#define CS_LOAD_IN_PROGRESS    (sdata->load_inProgress)
+#define CS_MAIN_MENU_STATE     (sdata->mainMenuState)
+#define CS_XA_STATE            (sdata->XA_State)
+#define CS_XA_OFFSET           (sdata->XA_CurrOffset)
+#define CS_QUEUE_READY         (sdata->queueReady)
+#define CS_QUEUE_LENGTH        (sdata->queueLength)
+#define CS_GARAGE_CURRENT      (sdata->advCharSelectIndex_curr)
+#define CS_GARAGE_PREVIOUS     (sdata->advCharSelectIndex_prev)
+#define CS_FRAME_COUNTER_LOW   ((u16)sdata->frameCounter)
+#define CS_BUTTONS_HOLD        (sdata->AnyPlayerHold)
+#define CS_DESIRED_MENU        (sdata->ptrDesiredMenu)
+#endif
+
+#define CS_BOSS_HEAD_MODEL     (CS_BOSS_MODELS[CS_BOSS_MODEL_HEAD])
+#define CS_BOSS_BODY_MODEL     (CS_BOSS_MODELS[CS_BOSS_MODEL_BODY])
+
+#define CS_FX_VOLUME_BACKUP    (CS_VOLUME_BACKUP[HOWL_VOLUME_TYPE_FX])
+#define CS_MUSIC_VOLUME_BACKUP (CS_VOLUME_BACKUP[HOWL_VOLUME_TYPE_MUSIC])
+#define CS_VOICE_VOLUME_BACKUP (CS_VOLUME_BACKUP[HOWL_VOLUME_TYPE_VOICE])
+
+#ifndef CS_PODIUM_FIRST_NAME
+#define CS_PODIUM_FIRST_NAME      (csPodiumNames.s_first)
+#define CS_PODIUM_TAWNA_NAME      (csPodiumNames.s_tawna)
+#define CS_PODIUM_PRIZE_NAME      (csPodiumNames.s_prize)
+#define CS_PODIUM_VICTORYCAM_NAME (csPodiumNames.s_victorycam)
+#endif
+
+#ifndef CS_INTRO_MODEL_SCRIPTS
+#define CS_INTRO_MODEL_SCRIPTS (D233.introModelScripts)
+#define CS_BOX_MODEL_SCRIPTS   (D233.boxModelScripts)
+#endif
+
+#ifndef CS_SCRIPT
+#define CS_SCRIPT(field) (D233.field)
+#endif
+
+// Cutscene data begins at retail 0x800b0b7c; code is linked separately.
+#define OVR233_LAYOUT_ASSERT(ELEMENT, OFFSET, SIZE)                                    \
+	CTR_STATIC_ASSERT(OFFSETOF(struct OverlayDATA_233, ELEMENT) == (OFFSET) - 0x518c); \
+	CTR_STATIC_ASSERT(sizeof(((struct OverlayDATA_233 *)0)->ELEMENT) == (SIZE))
 
 CTR_STATIC_ASSERT(sizeof(void *) == 4);
-OVR233_LAYOUT_ASSERT(s_spawn, 0x4, 0x8);
-OVR233_LAYOUT_ASSERT(s_g_dancer, 0xc, 0x10);
-OVR233_LAYOUT_ASSERT(s_podium, 0x2ac, 0x8);
-OVR233_LAYOUT_ASSERT(s_third, 0x2b4, 0x8);
-OVR233_LAYOUT_ASSERT(s_second, 0x2bc, 0x8);
-OVR233_LAYOUT_ASSERT(s_first, 0x2c4, 0x8);
-OVR233_LAYOUT_ASSERT(s_tawna, 0x2cc, 0x8);
-OVR233_LAYOUT_ASSERT(s_prize, 0x2d4, 0x8);
-OVR233_LAYOUT_ASSERT(s_victorycam, 0x2dc, 0x10);
-OVR233_LAYOUT_ASSERT(s_introguy, 0x328, 0xc);
-OVR233_LAYOUT_ASSERT(s_introcam, 0x334, 0xc);
-OVR233_LAYOUT_ASSERT(s_box1, 0x340, 0x8);
-OVR233_LAYOUT_ASSERT(s_box2, 0x348, 0x8);
-OVR233_LAYOUT_ASSERT(s_box2_bottom, 0x350, 0x10);
-OVR233_LAYOUT_ASSERT(s_box2_front, 0x360, 0x10);
-OVR233_LAYOUT_ASSERT(s_box2_A, 0x370, 0x8);
-OVR233_LAYOUT_ASSERT(s_box3, 0x378, 0x8);
-OVR233_LAYOUT_ASSERT(s_code, 0x380, 0x8);
-OVR233_LAYOUT_ASSERT(s_glow, 0x388, 0x8);
-OVR233_LAYOUT_ASSERT(s_lid, 0x390, 0x4);
-OVR233_LAYOUT_ASSERT(s_lidb, 0x394, 0x8);
-OVR233_LAYOUT_ASSERT(s_lidc, 0x39c, 0x8);
-OVR233_LAYOUT_ASSERT(s_lidd, 0x3a4, 0x8);
-OVR233_LAYOUT_ASSERT(s_lid2, 0x3ac, 0x8);
-OVR233_LAYOUT_ASSERT(s_kart0, 0x3b4, 0x8);
-OVR233_LAYOUT_ASSERT(s_kart1, 0x3bc, 0x8);
-OVR233_LAYOUT_ASSERT(s_kart2, 0x3c4, 0x8);
-OVR233_LAYOUT_ASSERT(s_kart3, 0x3cc, 0x8);
-OVR233_LAYOUT_ASSERT(s_kart6, 0x3d4, 0x8);
-OVR233_LAYOUT_ASSERT(s_kart7, 0x3dc, 0x8);
 OVR233_LAYOUT_ASSERT(VertSplitLine, 0x518c, 0x4);
 OVR233_LAYOUT_ASSERT(boolLoadNextSwap, 0x5190, 0x4);
 OVR233_LAYOUT_ASSERT(boolStartToSkip, 0x5194, 0x4);
 OVR233_LAYOUT_ASSERT(bossCutsceneIndex, 0x5198, 0x4);
-OVR233_LAYOUT_ASSERT(CutsceneManipulatesAudio, 0x519c, 0x4);
+OVR233_LAYOUT_ASSERT(CutsceneManipulatesAudio, 0x519c, 0x2);
+OVR233_LAYOUT_ASSERT(audioControlPadding, 0x519e, 0x2);
 OVR233_LAYOUT_ASSERT(particleEmitterData, 0x51a0, 0x8dc);
 OVR233_LAYOUT_ASSERT(particleConfigs, 0x5a7c, 0x60);
 OVR233_LAYOUT_ASSERT(csOpcodeMetaPrefix, 0x5adc, 0x34);
@@ -734,15 +741,12 @@ OVR233_LAYOUT_ASSERT(_pad_creditsDancerRotOffset, 0xba96, 0x2);
 OVR233_LAYOUT_ASSERT(bossCS, 0xba98, 0x2d8);
 OVR233_LAYOUT_ASSERT(isCutsceneOver, 0xbd70, 0x4);
 OVR233_LAYOUT_ASSERT(podiumCameraFrame, 0xbd74, 0x4);
-OVR233_LAYOUT_ASSERT(FXVolumeBackup, 0xbd78, 0x2);
-OVR233_LAYOUT_ASSERT(MusicVolumeBackup, 0xbd7a, 0x2);
-OVR233_LAYOUT_ASSERT(VoiceVolumeBackup, 0xbd7c, 0x2);
+OVR233_LAYOUT_ASSERT(volumeBackup, 0xbd78, 0x6);
 OVR233_LAYOUT_ASSERT(audioVolumeBackupPad, 0xbd7e, 0x2);
 OVR233_LAYOUT_ASSERT(podiumPrizeDropReady, 0xbd80, 0x4);
 OVR233_LAYOUT_ASSERT(cutsceneState, 0xbd84, 0x4);
-OVR233_LAYOUT_ASSERT(ptrModelBossHead, 0xbd88, 0x4);
-OVR233_LAYOUT_ASSERT(ptrModelBossBody, 0xbd8c, 0x4);
-CTR_STATIC_ASSERT(sizeof(struct OverlayRDATA_233) == 0xbd90);
+OVR233_LAYOUT_ASSERT(bossModels, 0xbd88, 0x8);
+CTR_STATIC_ASSERT(sizeof(struct OverlayDATA_233) == 0x6c04);
 
 #undef OVR233_LAYOUT_ASSERT
 
@@ -1008,13 +1012,48 @@ CTR_STATIC_ASSERT(sizeof(struct Ovr233_Credits_BSS) == 0x374);
 
 #undef OVR233_CREDITS_BSS_ASSERT
 
-#ifndef CTR_NATIVE
-CTR_STATIC_ASSERT(OFFSETOF(struct Ovr233_Credits_BSS, numStrings) == 0x20);
-CTR_STATIC_ASSERT(OFFSETOF(struct Ovr233_Credits_BSS, ptrStrings) == 0x24);
-CTR_STATIC_ASSERT(OFFSETOF(struct Ovr233_Credits_BSS, boolAllBlue) == 0x28);
-CTR_STATIC_ASSERT(OFFSETOF(struct Ovr233_Credits_BSS, creditsObj) == 0x34);
+extern struct Ovr233_Credits_BSS creditsBSS;
+
+#ifndef CS_CREDITS_THREAD
+#define CS_CREDITS_THREAD        (creditsBSS.creditThread)
+#define CS_CREDITS_DANCER_THREAD (creditsBSS.dancerThread)
+#define CS_CREDITS_DANCER        (creditsBSS.dancerInst_invisible)
+#define CS_CREDITS_STRING_COUNT  (creditsBSS.numStrings)
+#define CS_CREDITS_STRINGS       (creditsBSS.ptrStrings)
+#define CS_CREDITS_ALL_BLUE      (creditsBSS.boolAllBlue)
+#define CS_CREDITS_GHOST_POS     (creditsBSS.creditGhostPos)
+#define CS_CREDITS_TEXT_X        (creditsBSS.creditTextPosX)
 #endif
 
-extern struct Ovr233_Credits_BSS creditsBSS;
+#ifndef CS_COLOR_POINTERS
+#define CS_COLOR_POINTERS       (data.ptrColor)
+#define CS_CREDITS_FADE_PALETTE (data.colors[CREDITS_FADE])
+#endif
+
+#ifndef CS_GARAGE_ZOOM_FRAMES
+#define CS_GARAGE_ZOOM_FRAMES   (gGarage.numFramesMax_Zoom)
+#define CS_GARAGE_MOVE_FRAME    (gGarage.numFramesCurr_GarageMove)
+#define CS_GARAGE_ZOOM_IN       (gGarage.numFramesCurr_ZoomIn)
+#define CS_GARAGE_ZOOM_OUT      (gGarage.numFramesCurr_ZoomOut)
+#define CS_GARAGE_SELECTED      (gGarage.boolSelected)
+#define CS_GARAGE_DELAY         (gGarage.delayOneSecond)
+#define CS_GARAGE_CHARACTERS    (gGarage.garageCharacterIDs)
+#define CS_GARAGE_STAT_LENGTHS  (gGarage.statBarLengths)
+#define CS_GARAGE_UNUSED_FRAMES (gGarage.unusedFrameCount)
+#define CS_GARAGE_CLASS_STRINGS (gGarage.classStringIDs)
+#define CS_GARAGE_STAT_TARGETS  (gGarage.statBarTargetLengths)
+#define CS_GARAGE_STAT_COLORS   (gGarage.statBarSegmentColors)
+#define CS_GARAGE_MOVE_FRAMES   (gGarage.numFramesMax_GarageMove)
+#define CS_GARAGE_FOV_MIN       (gGarage.fovMin)
+#define CS_GARAGE_FOV_MAX       (gGarage.fovMax)
+#endif
+
+extern const Color csGarageWhite;
+
+#ifndef CS_DECALHUD_ARROW_2D
+#define CS_DECALHUD_ARROW_2D(icon, x, y, prim, ot, c0, c1, c2, c3, transparency, scale, rotation)                                                \
+	DecalHUD_Arrow2D((icon), (x), (y), (prim), (ot), ColorCode_Load(&(c0)), ColorCode_Load(&(c1)), ColorCode_Load(&(c2)), ColorCode_Load(&(c3)), \
+	                 (transparency), (scale), (rotation))
+#endif
 
 #endif

@@ -18,28 +18,36 @@ enum MempackConstants
 
 #define MEMPACK_ALIGN_SIZE(size) (((size) + MEMPACK_ALIGNMENT_MASK) & MEMPACK_ALIGNMENT_CLEAR_MASK)
 
+#ifndef MEMPACK_ACTIVE
+#define MEMPACK_ACTIVE sdata->PtrMempack
+#endif
+
+#ifndef MEMPACK_POOLS
+#define MEMPACK_POOLS sdata->mempack
+#endif
+
 struct Mempack
 {
 	// 0x0
-	s32 packSize; // end - start, 0x144E10
+	s32 packSize; // allocator capacity in bytes
 
 	// 0x4
-	void *start; // 0x800ba9f0
+	void *start; // low cursor reset point
 
 	// 0x8
-	void *lastFreeByte; // where you can put new data on High-End,
+	void *lastFreeByte; // high allocations grow downward from here
 
 	// 0xC
-	void *endOfAllocator; // always 0x801FF800
+	void *endOfAllocator; // high cursor reset point; NewPack leaves it unchanged
 
 	// 0x10
-	void *endOfMemory; // 0x80200000 (2mb) (never used)
+	void *endOfMemory; // backing limit; Init includes the reserved end-of-RAM sector
 
 	// 0x14
-	void *firstFreeByte; // where you can put new data on Low-End
+	void *firstFreeByte; // low allocations grow upward from here
 
 	// 0x18
-	s32 sizeOfPrevAllocation; // self-explanatory
+	s32 sizeOfPrevAllocation; // rounded size of the last low or high allocation
 
 	// 0x1C
 	s32 numBookmarks; // amount of bookmarks used

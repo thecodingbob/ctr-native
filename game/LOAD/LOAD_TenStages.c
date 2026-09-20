@@ -397,7 +397,7 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 			}
 
 			// Allocate room for LEV swapping
-			u8 *hubAlloc = MEMPACK_AllocMem(firstSubpackSize + secondSubpackSize); // "HUB ALLOC"
+			u8 *hubAlloc = MEMPACK_AllocMem(firstSubpackSize + secondSubpackSize, NULL); // "HUB ALLOC"
 			sdata->ptrHubAlloc = hubAlloc;
 
 			// Change active allocation system to #2
@@ -442,7 +442,7 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 			MEMPACK_SwapPacks(LOAD_MAIN_PACK_INDEX);
 
 			sdata->PatchMem_Size = MEMPACK_GetFreeBytes();
-			sdata->PatchMem_Ptr = MEMPACK_AllocHighMem(sdata->PatchMem_Size); //, "Patch Table Memory");
+			sdata->PatchMem_Ptr = MEMPACK_AllocHighMem(sdata->PatchMem_Size, NULL); // "Patch Table Memory"
 
 			// For Oxide-Intro and Credits, set active pack
 			MEMPACK_SwapPacks(gGT->activeMempackIndex);
@@ -501,12 +501,12 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 		// if linked list of icons exists
 		if (gGT->mpkIcons != 0)
 		{
-			u32 *mpkIconList = (u32 *)*(u32 *)(gGT->mpkIcons + 4);
+			struct Icon *mpkIconList = (struct Icon *)*(u32 *)(gGT->mpkIcons + 4);
 
-			gGT->trafficLightIcon[0] = (struct Icon *)DecalGlobal_FindInMPK(mpkIconList, rdata.s_lightredoff);
-			gGT->trafficLightIcon[1] = (struct Icon *)DecalGlobal_FindInMPK(mpkIconList, rdata.s_lightredon);
-			gGT->trafficLightIcon[2] = (struct Icon *)DecalGlobal_FindInMPK(mpkIconList, rdata.s_lightgreenoff);
-			gGT->trafficLightIcon[3] = (struct Icon *)DecalGlobal_FindInMPK(mpkIconList, rdata.s_lightgreenon);
+			gGT->trafficLightIcon[0] = DecalGlobal_FindInMPK(mpkIconList, rdata.s_lightredoff);
+			gGT->trafficLightIcon[1] = DecalGlobal_FindInMPK(mpkIconList, rdata.s_lightredon);
+			gGT->trafficLightIcon[2] = DecalGlobal_FindInMPK(mpkIconList, rdata.s_lightgreenoff);
+			gGT->trafficLightIcon[3] = DecalGlobal_FindInMPK(mpkIconList, rdata.s_lightgreenon);
 		}
 
 		gGT->gameMode1_prevFrame = 1;

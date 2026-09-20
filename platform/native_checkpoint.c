@@ -16,8 +16,8 @@
 // and retail globals are defined, so they can snapshot the same process-local
 // regions the game mutates.
 #define NATIVE_CHECKPOINT_MAGIC              NATIVE_CHECKPOINT_FOURCC('C', 'T', 'R', 'C')
-#define NATIVE_CHECKPOINT_VERSION            2u
-#define NATIVE_CHECKPOINT_ADDRESS_RANGE_CAP  16u
+#define NATIVE_CHECKPOINT_VERSION            3u
+#define NATIVE_CHECKPOINT_ADDRESS_RANGE_CAP  19u
 #define NATIVE_CHECKPOINT_POINTER_SLOT_CAP   65536u
 #define NATIVE_CHECKPOINT_CREDITS_STRING_CAP 4096u
 #define NATIVE_CHECKPOINT_LNG_STRING_CAP     4096u
@@ -34,7 +34,10 @@ enum NativeCheckpointRegionKind
 	NATIVE_CHECKPOINT_REGION_D231 = NATIVE_CHECKPOINT_FOURCC('D', '2', '3', '1'),  // race/battle overlay data
 	NATIVE_CHECKPOINT_REGION_R232 = NATIVE_CHECKPOINT_FOURCC('R', '2', '3', '2'),  // adventure overlay static data
 	NATIVE_CHECKPOINT_REGION_D232 = NATIVE_CHECKPOINT_FOURCC('D', '2', '3', '2'),  // adventure overlay data
-	NATIVE_CHECKPOINT_REGION_R233 = NATIVE_CHECKPOINT_FOURCC('R', '2', '3', '3'),  // cutscene overlay static data
+	NATIVE_CHECKPOINT_REGION_CSTN = NATIVE_CHECKPOINT_FOURCC('C', 'S', 'T', 'N'),  // cutscene thread names
+	NATIVE_CHECKPOINT_REGION_CSPN = NATIVE_CHECKPOINT_FOURCC('C', 'S', 'P', 'N'),  // podium names
+	NATIVE_CHECKPOINT_REGION_CSIN = NATIVE_CHECKPOINT_FOURCC('C', 'S', 'I', 'N'),  // intro names
+	NATIVE_CHECKPOINT_REGION_CSCN = NATIVE_CHECKPOINT_FOURCC('C', 'S', 'C', 'N'),  // credits names
 	NATIVE_CHECKPOINT_REGION_D233 = NATIVE_CHECKPOINT_FOURCC('D', '2', '3', '3'),  // cutscene overlay mutable data
 	NATIVE_CHECKPOINT_REGION_GAR3 = NATIVE_CHECKPOINT_FOURCC('G', 'A', 'R', '3'),  // garage runtime state
 	NATIVE_CHECKPOINT_REGION_CRD3 = NATIVE_CHECKPOINT_FOURCC('C', 'R', 'D', '3'),  // credits runtime state
@@ -213,8 +216,14 @@ internal int NativeCheckpoint_GetRegionSize(u32 kind)
 		return (int)sizeof(R232);
 	case NATIVE_CHECKPOINT_REGION_D232:
 		return (int)sizeof(D232);
-	case NATIVE_CHECKPOINT_REGION_R233:
-		return (int)sizeof(R233);
+	case NATIVE_CHECKPOINT_REGION_CSTN:
+		return (int)sizeof(csThreadNames);
+	case NATIVE_CHECKPOINT_REGION_CSPN:
+		return (int)sizeof(csPodiumNames);
+	case NATIVE_CHECKPOINT_REGION_CSIN:
+		return (int)sizeof(csIntroNames);
+	case NATIVE_CHECKPOINT_REGION_CSCN:
+		return (int)sizeof(csCreditsNames);
 	case NATIVE_CHECKPOINT_REGION_D233:
 		return (int)sizeof(D233);
 	case NATIVE_CHECKPOINT_REGION_GAR3:
@@ -258,8 +267,14 @@ internal void *NativeCheckpoint_GetRegionPtr(u32 kind)
 		return &R232;
 	case NATIVE_CHECKPOINT_REGION_D232:
 		return &D232;
-	case NATIVE_CHECKPOINT_REGION_R233:
-		return (void *)&R233;
+	case NATIVE_CHECKPOINT_REGION_CSTN:
+		return (void *)&csThreadNames;
+	case NATIVE_CHECKPOINT_REGION_CSPN:
+		return (void *)&csPodiumNames;
+	case NATIVE_CHECKPOINT_REGION_CSIN:
+		return (void *)&csIntroNames;
+	case NATIVE_CHECKPOINT_REGION_CSCN:
+		return (void *)&csCreditsNames;
 	case NATIVE_CHECKPOINT_REGION_D233:
 		return &D233;
 	case NATIVE_CHECKPOINT_REGION_GAR3:
@@ -273,36 +288,6 @@ internal void *NativeCheckpoint_GetRegionPtr(u32 kind)
 	}
 
 	return NULL;
-}
-
-internal int NativeCheckpoint_CaptureD233(void *dst, int dstSize)
-{
-	struct OverlayDATA_233 *state = (struct OverlayDATA_233 *)dst;
-
-	if ((dst == NULL) || (dstSize != (int)sizeof(*state)))
-	{
-		return 0;
-	}
-
-	*state = D233;
-	memset(state->cs_initMatrixTable, 0, sizeof(state->cs_initMatrixTable));
-
-	return 1;
-}
-
-internal int NativeCheckpoint_RestoreD233(const void *src, int srcSize)
-{
-	const struct OverlayDATA_233 *state = (const struct OverlayDATA_233 *)src;
-
-	if ((src == NULL) || (srcSize != (int)sizeof(*state)))
-	{
-		return 0;
-	}
-
-	D233 = *state;
-	OVR233_RebuildInitMatrixTable();
-
-	return 1;
 }
 
 internal int NativeCheckpoint_AddAddressRange(struct NativeCheckpointHeader *header, u32 kind)
@@ -340,8 +325,9 @@ internal int NativeCheckpoint_FillAddressRanges(struct NativeCheckpointHeader *h
 	local_persist const u32 rangeKinds[] = {
 	    NATIVE_CHECKPOINT_REGION_RDATA, NATIVE_CHECKPOINT_REGION_DATA, NATIVE_CHECKPOINT_REGION_SDATA, NATIVE_CHECKPOINT_REGION_R230,
 	    NATIVE_CHECKPOINT_REGION_D230,  NATIVE_CHECKPOINT_REGION_V230, NATIVE_CHECKPOINT_REGION_R231,  NATIVE_CHECKPOINT_REGION_D231,
-	    NATIVE_CHECKPOINT_REGION_R232,  NATIVE_CHECKPOINT_REGION_D232, NATIVE_CHECKPOINT_REGION_R233,  NATIVE_CHECKPOINT_REGION_D233,
-	    NATIVE_CHECKPOINT_REGION_GAR3,  NATIVE_CHECKPOINT_REGION_CRD3, NATIVE_CHECKPOINT_REGION_MPAK,  NATIVE_CHECKPOINT_REGION_SCRP,
+	    NATIVE_CHECKPOINT_REGION_R232,  NATIVE_CHECKPOINT_REGION_D232, NATIVE_CHECKPOINT_REGION_CSTN,  NATIVE_CHECKPOINT_REGION_CSPN,
+	    NATIVE_CHECKPOINT_REGION_CSIN,  NATIVE_CHECKPOINT_REGION_D233, NATIVE_CHECKPOINT_REGION_CSCN,  NATIVE_CHECKPOINT_REGION_GAR3,
+	    NATIVE_CHECKPOINT_REGION_CRD3,  NATIVE_CHECKPOINT_REGION_MPAK, NATIVE_CHECKPOINT_REGION_SCRP,
 	};
 
 	if (header == NULL)
@@ -1028,9 +1014,9 @@ internal void NativeCheckpoint_RelocateWarpPad(const struct NativeCheckpointHead
 		return;
 	}
 
-	for (u32 i = 0; i < len(warpPad->inst); i++)
+	for (u32 i = 0; i < len(warpPad->slots.inst); i++)
 	{
-		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &warpPad->inst[i]);
+		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &warpPad->slots.inst[i]);
 	}
 }
 
@@ -1677,8 +1663,33 @@ internal void NativeCheckpoint_RelocateD232Pointers(const struct NativeCheckpoin
 
 internal void NativeCheckpoint_RelocateD233Pointers(const struct NativeCheckpointHeader *oldHeader, const struct NativeCheckpointHeader *liveHeader)
 {
-	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &D233.ptrModelBossHead);
-	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &D233.ptrModelBossBody);
+	struct
+	{
+		char **slots;
+		u32 count;
+	} tables[] = {
+	    {D233.danceFirstScripts, len(D233.danceFirstScripts)},
+	    {D233.danceOtherScripts, len(D233.danceOtherScripts)},
+	    {D233.introModelScripts, len(D233.introModelScripts)},
+	    {D233.introCutsceneOpcodes, len(D233.introCutsceneOpcodes)},
+	    {D233.creditsCutsceneOpcodes, len(D233.creditsCutsceneOpcodes)},
+	    {D233.boxModelScripts, len(D233.boxModelScripts)},
+	    {D233.advCharSelectSelectOpcodes, len(D233.advCharSelectSelectOpcodes)},
+	    {D233.advCharSelectDeselectOpcodes, len(D233.advCharSelectDeselectOpcodes)},
+	    {D233.boxAndAdvCharSelectExtraOpcodes, len(D233.boxAndAdvCharSelectExtraOpcodes)},
+	};
+
+	for (u32 i = 0; i < len(tables); i++)
+		for (u32 j = 0; j < tables[i].count; j++)
+			NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &tables[i].slots[j]);
+	for (u32 i = 0; i < len(D233.particleConfigs); i++)
+		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &D233.particleConfigs[i].emitter);
+	for (u32 i = 0; i < len(D233.cs_initMatrixTable); i++)
+		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &D233.cs_initMatrixTable[i].data);
+	for (u32 i = 0; i < len(D233.bossCS); i++)
+		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &D233.bossCS[i].opcode);
+	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &D233.bossModels[CS_BOSS_MODEL_HEAD]);
+	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &D233.bossModels[CS_BOSS_MODEL_BODY]);
 }
 
 internal void NativeCheckpoint_RelocateCreditsObjPointers(const struct NativeCheckpointHeader *oldHeader, const struct NativeCheckpointHeader *liveHeader,
@@ -1951,10 +1962,6 @@ internal void NativeCheckpoint_RelocateMempackPointers(const struct NativeCheckp
 
 internal int NativeCheckpoint_CaptureRegion(u32 kind, void *dst, int dstSize)
 {
-	if (kind == NATIVE_CHECKPOINT_REGION_D233)
-	{
-		return NativeCheckpoint_CaptureD233(dst, dstSize);
-	}
 	if (kind == NATIVE_CHECKPOINT_REGION_PMAP)
 	{
 		return NativeCheckpoint_CapturePointerSlotState(dst, dstSize);
@@ -1976,10 +1983,6 @@ internal int NativeCheckpoint_CaptureRegion(u32 kind, void *dst, int dstSize)
 
 internal int NativeCheckpoint_RestoreRegion(u32 kind, const void *src, int srcSize)
 {
-	if (kind == NATIVE_CHECKPOINT_REGION_D233)
-	{
-		return NativeCheckpoint_RestoreD233(src, srcSize);
-	}
 
 	void *dst = NativeCheckpoint_GetRegionPtr(kind);
 	if (dst == NULL)
@@ -2165,9 +2168,8 @@ int NativeCheckpoint_Restore(const void *src, int srcSize)
 		return 0;
 	}
 
-	// NOTE(aalhendi): 233 checkpoints store only mutable overlay state. Restore
-	// the source-owned static image first, then overlay the captured runtime
-	// fields below.
+	// NOTE(aalhendi): Restore defaults for uncaptured data, such as the credits
+	// position prefix. The regions restored below include the complete D233 image.
 	OVR233_ResetRuntimeState();
 
 	for (u32 i = 0; i < header->regionCount; i++)

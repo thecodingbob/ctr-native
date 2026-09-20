@@ -239,7 +239,7 @@ void LOAD_LangFile(int bigfilePtr, int lang)
 
 	if (sdata->lngFile == 0)
 	{
-		sdata->lngFile = MEMPACK_AllocMem(sdata->langBufferSize /* "lang buffer" */);
+		sdata->lngFile = MEMPACK_AllocMem(sdata->langBufferSize, NULL /* "lang buffer" */);
 	}
 
 	lngFile = sdata->lngFile;

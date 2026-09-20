@@ -40,7 +40,6 @@ enum RelicRaceEndMenuConstants
 	RR_MENU_READY_FLAG = 1,
 	RR_SCORE_MODE_TIME_TRIAL = 0,
 	RR_SCORE_MODE_RELIC_RACE = 1,
-	RR_HIGH_SCORE_ENTRIES_PER_MODE = 6,
 	RR_HIGH_SCORE_VISIBLE_ROWS = 5,
 	RR_HIGH_SCORE_FIRST_VISIBLE_ENTRY = 1,
 	RR_HIGH_SCORE_ROW_SPACING = 0x1a,
@@ -58,42 +57,21 @@ global_variable const char s_countdownStartFormat223[4] = "-10";
 global_variable const char s_countdownFormat223[4] = "-%d";
 global_variable Color s_highScoreIconColor223;
 
-#ifndef RR_GAME_TRACKER
-#define RR_GAME_TRACKER            (sdata->gGT)
-#define RR_LANGUAGE_STRINGS        (sdata->lngStrings)
-#define RR_FRAMES_SINCE_RACE_ENDED (sdata->framesSinceRaceEnded)
-#define RR_RELIC                   (sdata->ptrRelic)
-#define RR_TIMEBOX1                (sdata->ptrTimebox1)
-#define RR_MENU_READY              (sdata->menuReadyToPass)
-#define RR_ANY_PLAYER_TAP          (sdata->AnyPlayerTap)
-#define RR_ADV_PROGRESS            (sdata->advProgress)
-#define RR_GAME_PROGRESS           (sdata->gameProgress)
-#define RR_RELIC_TIMES             ((s32(*)[RR_RELIC_TIERS])data.RelicTime)
-#define RR_RELIC_TIME_1MIN         (sdata->relicTime_1min)
-#define RR_RELIC_TIME_10SEC        (sdata->relicTime_10sec)
-#define RR_RELIC_TIME_1SEC         (sdata->relicTime_1sec)
-#define RR_RELIC_TIME_10MS         (sdata->relicTime_10ms)
-#define RR_RELIC_TIME_1MS          (sdata->relicTime_1ms)
-#define RR_MENU_HIGHLIGHT          (sdata->menuRowHighlight_Normal)
-#define RR_CHARACTER_METADATA      (data.MetaDataCharacters)
+#ifndef RR_RELIC
+#define RR_RELIC            (sdata->ptrRelic)
+#define RR_TIMEBOX1         (sdata->ptrTimebox1)
+#define RR_RELIC_TIMES      ((s32(*)[RR_RELIC_TIERS])data.RelicTime)
+#define RR_RELIC_TIME_1MIN  (sdata->relicTime_1min)
+#define RR_RELIC_TIME_10SEC (sdata->relicTime_10sec)
+#define RR_RELIC_TIME_1SEC  (sdata->relicTime_1sec)
+#define RR_RELIC_TIME_10MS  (sdata->relicTime_10ms)
+#define RR_RELIC_TIME_1MS   (sdata->relicTime_1ms)
 #endif
 
 #ifndef RR_DRAW_POLY_GT4
-static inline void RR_DrawPolyGT4(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, u32 *ot, Color color0, Color color1, Color color2,
-                                  Color color3, s8 transparency, s16 scale)
-{
-	RECTMENU_DrawPolyGT4(icon, posX, posY, primMem, ot, ColorCode_GetPacked(&color0), ColorCode_GetPacked(&color1), ColorCode_GetPacked(&color2),
-	                     ColorCode_GetPacked(&color3), transparency, scale);
-}
-
-static inline void RR_DrawClearBox(const RECT *rect, const Color *color, s32 transparency, u32 *ot, struct PrimMem *primMem)
-{
-	(void)primMem;
-	CTR_Box_DrawClearBox(rect, color, transparency, ot);
-}
-
-#define RR_DRAW_POLY_GT4  RR_DrawPolyGT4
-#define RR_DRAW_CLEAR_BOX RR_DrawClearBox
+#define RR_DRAW_POLY_GT4(icon, posX, posY, primMem, ot, color0, color1, color2, color3, transparency, scale) \
+	RECTMENU_DrawPolyGT4((icon), (s16)(posX), (s32)(posY), (primMem), (ot), (color0), (color1), (color2), (color3), (s8)(transparency), (s16)(scale))
+#define RR_DRAW_CLEAR_BOX CTR_Box_DrawClearBox
 #endif
 
 #if defined(CTR_NATIVE)
@@ -112,7 +90,7 @@ void RR_EndEvent_UnlockAward(void)
 		u32 *rewards;
 		s32 rewardBit;
 
-		gGT = RR_GAME_TRACKER;
+		gGT = GAME_TRACKER;
 		driver = gGT->drivers[0];
 		timeDeduct = 0;
 
@@ -123,7 +101,7 @@ void RR_EndEvent_UnlockAward(void)
 
 		if (driver->timeElapsedInRace - timeDeduct <= RR_RELIC_TIMES[gGT->levelID][RR_SAPPHIRE_RELIC_INDEX])
 		{
-			rewards = RR_ADV_PROGRESS.rewards;
+			rewards = GAME_ADV_PROGRESS.rewards;
 			rewardBit = gGT->levelID + ADV_REWARD_FIRST_SAPPHIRE_RELIC;
 			if (!CHECK_ADV_BIT(rewards, rewardBit))
 			{
@@ -133,7 +111,7 @@ void RR_EndEvent_UnlockAward(void)
 
 				if (gGT->levelID == TURBO_TRACK)
 				{
-					RR_GAME_PROGRESS.unlocks[0] |= GAME_UNLOCK_TURBO_TRACK_MASK;
+					GAME_PROGRESS.unlocks[0] |= GAME_UNLOCK_TURBO_TRACK_MASK;
 				}
 			}
 		}
@@ -145,11 +123,11 @@ void RR_EndEvent_UnlockAward(void)
 		u32 *rewards;
 		s32 rewardBit;
 
-		gGT = RR_GAME_TRACKER;
+		gGT = GAME_TRACKER;
 		driver = gGT->drivers[0];
 		if (driver->timeElapsedInRace - timeDeduct <= RR_RELIC_TIMES[gGT->levelID][1])
 		{
-			rewards = RR_ADV_PROGRESS.rewards;
+			rewards = GAME_ADV_PROGRESS.rewards;
 			rewardBit = gGT->levelID + ADV_REWARD_FIRST_GOLD_RELIC;
 			if (!CHECK_ADV_BIT(rewards, rewardBit))
 			{
@@ -172,11 +150,11 @@ void RR_EndEvent_UnlockAward(void)
 		u32 *rewards;
 		s32 rewardBit;
 
-		gGT = RR_GAME_TRACKER;
+		gGT = GAME_TRACKER;
 		driver = gGT->drivers[0];
 		if (driver->timeElapsedInRace - timeDeduct <= RR_RELIC_TIMES[gGT->levelID][2])
 		{
-			rewards = RR_ADV_PROGRESS.rewards;
+			rewards = GAME_ADV_PROGRESS.rewards;
 			rewardBit = gGT->levelID + ADV_REWARD_FIRST_PLATINUM_RELIC;
 			if (!CHECK_ADV_BIT(rewards, rewardBit))
 			{
@@ -233,7 +211,7 @@ void RR_EndEvent_DrawHighScore(s16 startX, s32 startY, s16 scoreMode)
 		timeboxYBase = iconYBaseSource;
 		startYCopy = (s16)startY;
 		rowOffsetY = 0;
-		driver = RR_GAME_TRACKER->drivers[0];
+		driver = GAME_TRACKER->drivers[0];
 		timeboxXSource = (s16)(startX - 0x1f);
 		// NOTE(aalhendi): Removing this otherwise dead retail temporary changes
 		// GCC 2.8.1's register allocation.
@@ -242,14 +220,14 @@ void RR_EndEvent_DrawHighScore(s16 startX, s32 startY, s16 scoreMode)
 		scoreModeCopy = scoreMode;
 
 		// 12 entries per track, 6 for Time Trial and 6 for Relic Race
-		scoreEntries = &RR_GAME_PROGRESS.highScoreTracks[RR_GAME_TRACKER->levelID].scoreEntry[RR_HIGH_SCORE_ENTRIES_PER_MODE * scoreModeCopy];
+		scoreEntries = GAME_PROGRESS.highScoreTracks[GAME_TRACKER->levelID].scoreEntry[scoreModeCopy];
 
 		// NOTE(aalhendi): Retail passes identical start and end points.
-		UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), startX, startYCopy, startX, startYCopy, RR_FRAMES_SINCE_RACE_ENDED, RR_LERP_FRAMES);
+		UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), startX, startYCopy, startX, startYCopy, GAME_FRAMES_SINCE_RACE_ENDED, RR_LERP_FRAMES);
 
 		rowIndex = 0;
 		scoreEntryOffset = sizeof(struct HighScoreEntry);
-		DecalFont_DrawLine(RR_LANGUAGE_STRINGS[LNG_BEST_TIMES], pos.x, pos.y, FONT_BIG, JUSTIFY_CENTER | ORANGE);
+		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_BEST_TIMES], pos.x, pos.y, FONT_BIG, JUSTIFY_CENTER | ORANGE);
 
 		iconYBase = (s16)iconYBaseSource;
 		timeboxX = timeboxXSource;
@@ -265,13 +243,13 @@ void RR_EndEvent_DrawHighScore(s16 startX, s32 startY, s16 scoreMode)
 		flashMask = RR_HIGH_SCORE_FLASH_TIMER_BIT << 1;
 
 		// If this loop index is a new high score
-		if ((s8)RR_GAME_TRACKER->newHighScoreIndex == rowIndex)
+		if ((s8)GAME_TRACKER->newHighScoreIndex == rowIndex)
 		{
 			// make name color flash every odd frame
-			nameColor = (RR_GAME_TRACKER->timer & RR_HIGH_SCORE_FLASH_TIMER_BIT) ? WHITE : scoreEntry->characterID + RR_HIGH_SCORE_DRIVER_COLOR_OFFSET;
+			nameColor = (GAME_TRACKER->timer & RR_HIGH_SCORE_FLASH_TIMER_BIT) ? WHITE : scoreEntry->characterID + RR_HIGH_SCORE_DRIVER_COLOR_OFFSET;
 
 			// flash color of time
-			timeColorSource = (RR_GAME_TRACKER->timer << 1) & flashMask;
+			timeColorSource = (GAME_TRACKER->timer << 1) & flashMask;
 			timeColor = timeColorSource;
 		}
 		else
@@ -290,8 +268,8 @@ void RR_EndEvent_DrawHighScore(s16 startX, s32 startY, s16 scoreMode)
 		DecalFont_DrawLine(rankString, iconX + 0x20, currentY - 1, FONT_SMALL, WHITE);
 
 		// Draw Character Icon
-		RR_DRAW_POLY_GT4(RR_GAME_TRACKER->ptrIcons[RR_CHARACTER_METADATA[(s16)scoreEntry->characterID].iconID], iconX, iconYBase + (s16)rowOffsetYCopy,
-		                 &RR_GAME_TRACKER->backBuffer->primMem, RR_GAME_TRACKER->pushBuffer_UI.ptrOT,
+		RR_DRAW_POLY_GT4(GAME_TRACKER->ptrIcons[GAME_CHARACTER_METADATA[(s16)scoreEntry->characterID].iconID], iconX, iconYBase + (s16)rowOffsetYCopy,
+		                 &GAME_TRACKER->backBuffer->primMem, GAME_TRACKER->pushBuffer_UI.ptrOT,
 		                 // color of each corner
 		                 s_highScoreIconColor223, s_highScoreIconColor223, s_highScoreIconColor223, s_highScoreIconColor223, 1, RR_HIGH_SCORE_ICON_SCALE);
 
@@ -302,7 +280,7 @@ void RR_EndEvent_DrawHighScore(s16 startX, s32 startY, s16 scoreMode)
 		RR_DRAW_LINE_WIDE_X(RECTMENU_DrawTime(scoreEntry->time), timeboxX, currentY + 0x11, FONT_SMALL, timeColor);
 
 		// If this loop index is a new high score
-		if ((s8)RR_GAME_TRACKER->newHighScoreIndex == rowIndex)
+		if ((s8)GAME_TRACKER->newHighScoreIndex == rowIndex)
 		{
 			box.x = iconX - 4;
 			highlightY = rowOffsetYCopy - 1;
@@ -311,7 +289,7 @@ void RR_EndEvent_DrawHighScore(s16 startX, s32 startY, s16 scoreMode)
 			box.h = 0x1a;
 
 			// Draw a rectangle to highlight your time on the "Best Times" list
-			RR_DRAW_CLEAR_BOX(&box, &RR_MENU_HIGHLIGHT, TRANS_50_DECAL, RR_GAME_TRACKER->pushBuffer_UI.ptrOT, &RR_GAME_TRACKER->backBuffer->primMem);
+			RR_DRAW_CLEAR_BOX(&box, &GAME_MENU_HIGHLIGHT, TRANS_50_DECAL, GAME_TRACKER->pushBuffer_UI.ptrOT, &GAME_TRACKER->backBuffer->primMem);
 		}
 	}
 
@@ -321,12 +299,12 @@ void RR_EndEvent_DrawHighScore(s16 startX, s32 startY, s16 scoreMode)
 		timeColor = JUSTIFY_CENTER | ORANGE;
 
 		// If you got a new best lap
-		if (((RR_GAME_TRACKER->gameModeEnd & NEW_BEST_LAP) != 0) && ((RR_GAME_TRACKER->timer & RR_HIGH_SCORE_FLASH_TIMER_BIT) != 0))
+		if (((GAME_TRACKER->gameModeEnd & NEW_BEST_LAP) != 0) && ((GAME_TRACKER->timer & RR_HIGH_SCORE_FLASH_TIMER_BIT) != 0))
 		{
 			timeColor = JUSTIFY_CENTER | WHITE;
 		}
 
-		DecalFont_DrawLine(RR_LANGUAGE_STRINGS[LNG_BEST_LAP], startX, timeboxYBase + 0x84, FONT_BIG, JUSTIFY_CENTER | ORANGE);
+		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_BEST_LAP], startX, timeboxYBase + 0x84, FONT_BIG, JUSTIFY_CENTER | ORANGE);
 
 		// make a string for best lap
 		timeString = RECTMENU_DrawTime(scoreEntries[0].time);
@@ -334,7 +312,7 @@ void RR_EndEvent_DrawHighScore(s16 startX, s32 startY, s16 scoreMode)
 	}
 	else
 	{
-		DecalFont_DrawLine(RR_LANGUAGE_STRINGS[LNG_YOUR_TIME], startX, timeboxYBase + 0x84, FONT_BIG, JUSTIFY_CENTER | ORANGE);
+		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_YOUR_TIME], startX, timeboxYBase + 0x84, FONT_BIG, JUSTIFY_CENTER | ORANGE);
 
 		// make a string for your current track time
 		timeString = RECTMENU_DrawTime(driver->timeElapsedInRace);
@@ -350,7 +328,7 @@ void RR_EndEvent_DrawHighScore(s16 startX, s32 startY, s16 scoreMode)
 	box.h = 0xb4;
 
 	// Draw 2D Menu rectangle background
-	RECTMENU_DrawInnerRect(&box, 4, RR_GAME_TRACKER->backBuffer->otMem.uiOT);
+	RECTMENU_DrawInnerRect(&box, 4, GAME_TRACKER->backBuffer->otMem.uiOT);
 }
 
 void RR_EndEvent_DrawMenu(void)
@@ -363,21 +341,21 @@ void RR_EndEvent_DrawMenu(void)
 	char crateCountText[16];
 	char countdownText[24];
 
-	struct Driver *driver = RR_GAME_TRACKER->drivers[0];
+	struct Driver *driver = GAME_TRACKER->drivers[0];
 
 	// change color
-	textColor = (RR_GAME_TRACKER->timer & 1) ? (JUSTIFY_CENTER | ORANGE) : (JUSTIFY_CENTER | WHITE);
+	textColor = (GAME_TRACKER->timer & 1) ? (JUSTIFY_CENTER | ORANGE) : (JUSTIFY_CENTER | WHITE);
 
-	rewardBit = RR_GAME_TRACKER->levelID + ADV_REWARD_FIRST_PLATINUM_RELIC;
+	rewardBit = GAME_TRACKER->levelID + ADV_REWARD_FIRST_PLATINUM_RELIC;
 
 	// check if platinum is unlocked, set platinum color
-	if (CHECK_ADV_BIT(RR_ADV_PROGRESS.rewards, rewardBit))
+	if (CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, rewardBit))
 	{
 		RR_RELIC->colorRGBA = RR_PLATINUM_RELIC_COLOR;
 	}
 
 	// check if gold is unlocked, set gold color
-	else if (CHECK_ADV_BIT(RR_ADV_PROGRESS.rewards, RR_GAME_TRACKER->levelID + ADV_REWARD_FIRST_GOLD_RELIC))
+	else if (CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, GAME_TRACKER->levelID + ADV_REWARD_FIRST_GOLD_RELIC))
 	{
 		RR_RELIC->colorRGBA = RR_GOLD_RELIC_COLOR;
 	}
@@ -387,7 +365,7 @@ void RR_EndEvent_DrawMenu(void)
 		struct Instance *timebox1;
 
 		timebox1 = RR_TIMEBOX1;
-		framesSinceRaceEnded = RR_FRAMES_SINCE_RACE_ENDED;
+		framesSinceRaceEnded = GAME_FRAMES_SINCE_RACE_ENDED;
 
 		timebox1->scale.z = RR_TIMEBOX_SCALE;
 		timebox1->scale.y = RR_TIMEBOX_SCALE;
@@ -395,32 +373,32 @@ void RR_EndEvent_DrawMenu(void)
 
 		if (framesSinceRaceEnded < RR_RESULT_MAX_FRAMES)
 		{
-			RR_FRAMES_SINCE_RACE_ENDED = framesSinceRaceEnded + 1;
+			GAME_FRAMES_SINCE_RACE_ENDED = framesSinceRaceEnded + 1;
 		}
 	}
 
-	if (RR_FRAMES_SINCE_RACE_ENDED >= RR_HIGH_SCORE_REVEAL_FRAME)
+	if (GAME_FRAMES_SINCE_RACE_ENDED >= RR_HIGH_SCORE_REVEAL_FRAME)
 	{
-		RR_GAME_TRACKER->gameModeEnd |= DRAW_HIGH_SCORES;
+		GAME_TRACKER->gameModeEnd |= DRAW_HIGH_SCORES;
 	}
 
 	// if race ended 59-80 frames ago and not all crates were collected
-	if (((u32)(RR_FRAMES_SINCE_RACE_ENDED - RR_MISSED_CRATE_SKIP_BASE) < RR_MISSED_CRATE_SKIP_PERFECT_WINDOW) &&
-	    (RR_GAME_TRACKER->drivers[0]->numTimeCrates != RR_GAME_TRACKER->timeCratesInLEV))
+	if (((u32)(GAME_FRAMES_SINCE_RACE_ENDED - RR_MISSED_CRATE_SKIP_BASE) < RR_MISSED_CRATE_SKIP_PERFECT_WINDOW) &&
+	    (GAME_TRACKER->drivers[0]->numTimeCrates != GAME_TRACKER->timeCratesInLEV))
 	{
 		// advance timer to 140 frames, since we can skip the amount of time
 		// that would have been taken to draw "PERFECT" text
-		RR_FRAMES_SINCE_RACE_ENDED = RR_PERFECT_SKIP_FRAME;
+		GAME_FRAMES_SINCE_RACE_ENDED = RR_PERFECT_SKIP_FRAME;
 	}
 
 	// if race ended 229-250 frames ago, no relic was won, and not all crates were collected
-	if (((u32)(RR_FRAMES_SINCE_RACE_ENDED - RR_MISSED_CRATE_SKIP_BASE) < RR_MISSED_CRATE_SKIP_RELIC_WINDOW) &&
-	    ((RR_GAME_TRACKER->gameModeEnd & NEW_RELIC) == 0) && (RR_GAME_TRACKER->drivers[0]->numTimeCrates != RR_GAME_TRACKER->timeCratesInLEV))
+	if (((u32)(GAME_FRAMES_SINCE_RACE_ENDED - RR_MISSED_CRATE_SKIP_BASE) < RR_MISSED_CRATE_SKIP_RELIC_WINDOW) &&
+	    ((GAME_TRACKER->gameModeEnd & NEW_RELIC) == 0) && (GAME_TRACKER->drivers[0]->numTimeCrates != GAME_TRACKER->timeCratesInLEV))
 	{
 		// advance timer to 370 frames, since we can skip the amount of time
 		// that would have been taken to draw the animation
 		// to deduct 10 seconds from the relic timer
-		RR_FRAMES_SINCE_RACE_ENDED = RR_RELIC_SKIP_FRAME;
+		GAME_FRAMES_SINCE_RACE_ENDED = RR_RELIC_SKIP_FRAME;
 	}
 
 
@@ -429,7 +407,7 @@ void RR_EndEvent_DrawMenu(void)
 	{
 		s32 elapsedFrames;
 
-		elapsedFrames = RR_FRAMES_SINCE_RACE_ENDED;
+		elapsedFrames = GAME_FRAMES_SINCE_RACE_ENDED;
 		if (elapsedFrames >= RR_FLYOUT_START_FRAME)
 		{
 			UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), 0x100, 0x32, 0x100, -0x32, elapsedFrames - RR_FLYOUT_FRAME_OFFSET, RR_LERP_FRAMES);
@@ -446,23 +424,23 @@ void RR_EndEvent_DrawMenu(void)
 	// Draw Relic,
 	// Reset local frame counter
 	{
-		if ((RR_GAME_TRACKER->gameModeEnd & NEW_RELIC) != 0)
+		if ((GAME_TRACKER->gameModeEnd & NEW_RELIC) != 0)
 		{
-			if (RR_FRAMES_SINCE_RACE_ENDED >= RR_FLYOUT_START_FRAME)
+			if (GAME_FRAMES_SINCE_RACE_ENDED >= RR_FLYOUT_START_FRAME)
 			{
 				UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), (s16)UI_ConvertX_2(0x100, RR_SCREEN_DEPTH), (s16)UI_ConvertY_2(0xa2, RR_SCREEN_DEPTH),
 				                 (s16)UI_ConvertX_2(-0x64, RR_SCREEN_DEPTH), (s16)UI_ConvertY_2(0xa2, RR_SCREEN_DEPTH),
-				                 RR_FRAMES_SINCE_RACE_ENDED - RR_FLYOUT_FRAME_OFFSET, RR_LERP_FRAMES);
+				                 GAME_FRAMES_SINCE_RACE_ENDED - RR_FLYOUT_FRAME_OFFSET, RR_LERP_FRAMES);
 			}
 			else
 			{
-				if (RR_FRAMES_SINCE_RACE_ENDED < RR_RELIC_GROW_START_FRAME)
+				if (GAME_FRAMES_SINCE_RACE_ENDED < RR_RELIC_GROW_START_FRAME)
 				{
 					goto draw_relic_done;
 				}
 
 				// on exactly the 251st frame after race ends
-				if (RR_FRAMES_SINCE_RACE_ENDED - 1 == RR_RELIC_AWARD_START_FRAME)
+				if (GAME_FRAMES_SINCE_RACE_ENDED - 1 == RR_RELIC_AWARD_START_FRAME)
 				{
 					// play sound of unlocking relic
 					OtherFX_Play(RR_RELIC_AWARD_SFX, 1);
@@ -477,7 +455,7 @@ void RR_EndEvent_DrawMenu(void)
 
 				UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), (s16)UI_ConvertX_2(0x100, RR_SCREEN_DEPTH), (s16)UI_ConvertY_2(0xa2, RR_SCREEN_DEPTH),
 				                 (s16)UI_ConvertX_2(0x100, RR_SCREEN_DEPTH), (s16)UI_ConvertY_2(0xa2, RR_SCREEN_DEPTH),
-				                 RR_FRAMES_SINCE_RACE_ENDED - RR_RELIC_AWARD_START_FRAME, RR_LERP_FRAMES);
+				                 GAME_FRAMES_SINCE_RACE_ENDED - RR_RELIC_AWARD_START_FRAME, RR_LERP_FRAMES);
 			}
 		}
 	}
@@ -488,7 +466,7 @@ draw_relic_done:
 	b16 beforeFlyout;
 
 	RR_RELIC->matrix.t[0] = pos.x;
-	elapsedFrames = RR_FRAMES_SINCE_RACE_ENDED;
+	elapsedFrames = GAME_FRAMES_SINCE_RACE_ENDED;
 	beforeFlyout = elapsedFrames < RR_FLYOUT_START_FRAME;
 	RR_RELIC->matrix.t[1] = pos.y;
 
@@ -507,7 +485,7 @@ draw_relic_done:
 	{
 		s32 elapsedFrames;
 
-		elapsedFrames = RR_FRAMES_SINCE_RACE_ENDED;
+		elapsedFrames = GAME_FRAMES_SINCE_RACE_ENDED;
 
 		if (elapsedFrames >= RR_FLYOUT_START_FRAME)
 		{
@@ -522,20 +500,20 @@ draw_relic_done:
 		RR_TIMEBOX1->matrix.t[1] = UI_ConvertY_2(pos.y, RR_SCREEN_DEPTH);
 
 		DecalFont_DrawLine((char *)&s_timeCrateXString223, pos.x + 0x14, pos.y - 10, 2, 0);
-		sprintf(crateCountText, s_crateCountFormat223, driver->numTimeCrates, CTR_PRINTF_PSX_LONG(RR_GAME_TRACKER->timeCratesInLEV));
+		sprintf(crateCountText, s_crateCountFormat223, driver->numTimeCrates, CTR_PRINTF_PSX_LONG(GAME_TRACKER->timeCratesInLEV));
 		DecalFont_DrawLine(crateCountText, pos.x + 0x21, pos.y - 0xe, 1, 0);
 	}
 
 
 	// if collected all time boxes in level
-	if (RR_GAME_TRACKER->drivers[0]->numTimeCrates == RR_GAME_TRACKER->timeCratesInLEV)
+	if (GAME_TRACKER->drivers[0]->numTimeCrates == GAME_TRACKER->timeCratesInLEV)
 	{
 		sprintf(countdownText, s_countdownStartFormat223);
 
 		{
 			s32 elapsedFrames;
 
-			elapsedFrames = RR_FRAMES_SINCE_RACE_ENDED;
+			elapsedFrames = GAME_FRAMES_SINCE_RACE_ENDED;
 
 			if (elapsedFrames >= RR_PERFECT_FLYOUT_OFFSET + RR_PERFECT_START_FRAME)
 			{
@@ -548,20 +526,20 @@ draw_relic_done:
 			{
 				UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), -0x96, 0x8a, 0x100, 0x8a, elapsedFrames - RR_PERFECT_START_FRAME, RR_LERP_FRAMES);
 
-				if (RR_FRAMES_SINCE_RACE_ENDED == RR_PERFECT_START_FRAME)
+				if (GAME_FRAMES_SINCE_RACE_ENDED == RR_PERFECT_START_FRAME)
 				{
 					OtherFX_Play(RR_PERFECT_SFX, 1);
 				}
 
 			draw_perfect:
-				DecalFont_DrawLine(RR_LANGUAGE_STRINGS[LNG_PERFECT], pos.x, pos.y, FONT_BIG, textColor);
+				DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PERFECT], pos.x, pos.y, FONT_BIG, textColor);
 			}
 		}
 
 		{
 			s32 elapsedFrames;
 
-			elapsedFrames = RR_FRAMES_SINCE_RACE_ENDED;
+			elapsedFrames = GAME_FRAMES_SINCE_RACE_ENDED;
 
 			if (elapsedFrames >= RR_FLYOUT_FRAME_OFFSET)
 			{
@@ -588,14 +566,14 @@ draw_relic_done:
 					}
 					else if ((minusSeconds != 10) && (countdownDelta == (countdownDelta / RR_COUNTDOWN_STEP_FRAMES) * RR_COUNTDOWN_STEP_FRAMES))
 					{
-						RR_GAME_TRACKER->drivers[0]->timeElapsedInRace -= RR_RACE_TIME_ONE_SECOND;
+						GAME_TRACKER->drivers[0]->timeElapsedInRace -= RR_RACE_TIME_ONE_SECOND;
 						OtherFX_Play(RR_COUNTDOWN_TICK_SFX, 1);
 					}
 
 					sprintf(countdownText, s_countdownFormat223, minusSeconds);
 				}
 
-				UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), 0x296, 0x2a, 0x199, 0x2a, RR_FRAMES_SINCE_RACE_ENDED - RR_COUNTDOWN_START_FRAME, RR_LERP_FRAMES);
+				UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), 0x296, 0x2a, 0x199, 0x2a, GAME_FRAMES_SINCE_RACE_ENDED - RR_COUNTDOWN_START_FRAME, RR_LERP_FRAMES);
 			}
 
 			DecalFont_DrawLine(countdownText, pos.x, pos.y, FONT_BIG, textColor);
@@ -605,23 +583,24 @@ draw_relic_done:
 skip_countdown:
 
 	// Draw RELIC AWARDED
-	if (((RR_GAME_TRACKER->gameModeEnd & (NEW_RELIC | NEW_HIGH_SCORE)) == NEW_RELIC) && (RR_FRAMES_SINCE_RACE_ENDED >= RR_FLYOUT_FRAME_OFFSET))
+	if (((GAME_TRACKER->gameModeEnd & (NEW_RELIC | NEW_HIGH_SCORE)) == NEW_RELIC) && (GAME_FRAMES_SINCE_RACE_ENDED >= RR_FLYOUT_FRAME_OFFSET))
 	{
-		UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), 0x100, 0x50, 0x296, 0x50, RR_FRAMES_SINCE_RACE_ENDED - RR_FLYOUT_FRAME_OFFSET, RR_LERP_FRAMES);
+		UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), 0x100, 0x50, 0x296, 0x50, GAME_FRAMES_SINCE_RACE_ENDED - RR_FLYOUT_FRAME_OFFSET, RR_LERP_FRAMES);
 		goto draw_relic_awarded;
 	}
 	else
 	{
-		if (((RR_GAME_TRACKER->gameModeEnd & (NEW_RELIC | NEW_HIGH_SCORE)) == (NEW_RELIC | NEW_HIGH_SCORE)) &&
-		    (RR_FRAMES_SINCE_RACE_ENDED >= RR_HIGH_SCORE_BANNER_START_FRAME))
+		if (((GAME_TRACKER->gameModeEnd & (NEW_RELIC | NEW_HIGH_SCORE)) == (NEW_RELIC | NEW_HIGH_SCORE)) &&
+		    (GAME_FRAMES_SINCE_RACE_ENDED >= RR_HIGH_SCORE_BANNER_START_FRAME))
 		{
-			UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), 0x100, 0x50, 0x296, 0x50, RR_FRAMES_SINCE_RACE_ENDED - RR_HIGH_SCORE_BANNER_START_FRAME, RR_LERP_FRAMES);
+			UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), 0x100, 0x50, 0x296, 0x50, GAME_FRAMES_SINCE_RACE_ENDED - RR_HIGH_SCORE_BANNER_START_FRAME,
+			                 RR_LERP_FRAMES);
 			goto draw_relic_awarded;
 		}
 
-		if (((RR_GAME_TRACKER->gameModeEnd & NEW_RELIC) != 0) && (RR_FRAMES_SINCE_RACE_ENDED >= RR_RELIC_AWARD_START_FRAME))
+		if (((GAME_TRACKER->gameModeEnd & NEW_RELIC) != 0) && (GAME_FRAMES_SINCE_RACE_ENDED >= RR_RELIC_AWARD_START_FRAME))
 		{
-			UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), -0x96, 0x50, 0x100, 0x50, RR_FRAMES_SINCE_RACE_ENDED - RR_RELIC_AWARD_START_FRAME, RR_LERP_FRAMES);
+			UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), -0x96, 0x50, 0x100, 0x50, GAME_FRAMES_SINCE_RACE_ENDED - RR_RELIC_AWARD_START_FRAME, RR_LERP_FRAMES);
 			goto draw_relic_awarded;
 		}
 	}
@@ -629,30 +608,31 @@ skip_countdown:
 	goto skip_relic_awarded;
 
 draw_relic_awarded:
-	DecalFont_DrawLine(RR_LANGUAGE_STRINGS[LNG_RELIC_AWARDED], pos.x, pos.y, FONT_BIG, textColor);
+	DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_RELIC_AWARDED], pos.x, pos.y, FONT_BIG, textColor);
 
 skip_relic_awarded:
 
 	// Draw NEW HIGH SCORE
-	if ((RR_GAME_TRACKER->gameModeEnd & NEW_HIGH_SCORE) != 0)
+	if ((GAME_TRACKER->gameModeEnd & NEW_HIGH_SCORE) != 0)
 	{
-		if (RR_FRAMES_SINCE_RACE_ENDED >= RR_FLYOUT_FRAME_OFFSET)
+		if (GAME_FRAMES_SINCE_RACE_ENDED >= RR_FLYOUT_FRAME_OFFSET)
 		{
-			UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), 0x100, 0x50, 0x296, 0x50, RR_FRAMES_SINCE_RACE_ENDED - RR_FLYOUT_FRAME_OFFSET, RR_LERP_FRAMES);
+			UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), 0x100, 0x50, 0x296, 0x50, GAME_FRAMES_SINCE_RACE_ENDED - RR_FLYOUT_FRAME_OFFSET, RR_LERP_FRAMES);
 		}
 		else
 		{
-			if (RR_FRAMES_SINCE_RACE_ENDED < RR_HIGH_SCORE_BANNER_START_FRAME)
+			if (GAME_FRAMES_SINCE_RACE_ENDED < RR_HIGH_SCORE_BANNER_START_FRAME)
 			{
 				goto skip_new_high_score;
 			}
 
-			UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), -0x96, 0x50, 0x100, 0x50, RR_FRAMES_SINCE_RACE_ENDED - RR_HIGH_SCORE_BANNER_START_FRAME, RR_LERP_FRAMES);
+			UI_Lerp2D_Linear(CTR_VECTOR_DATA(&(pos)), -0x96, 0x50, 0x100, 0x50, GAME_FRAMES_SINCE_RACE_ENDED - RR_HIGH_SCORE_BANNER_START_FRAME,
+			                 RR_LERP_FRAMES);
 			goto draw_new_high_score;
 		}
 
 	draw_new_high_score:
-		DecalFont_DrawLine(RR_LANGUAGE_STRINGS[LNG_NEW_HIGH_SCORE], pos.x, pos.y, FONT_BIG, textColor);
+		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_NEW_HIGH_SCORE], pos.x, pos.y, FONT_BIG, textColor);
 		// NOTE(aalhendi): Preserve retail's text-color register lifetime across
 		// the control-flow join below.
 		CTR_PSX_KEEP_VALUE(textColor);
@@ -664,7 +644,7 @@ skip_new_high_score:
 	{
 		s32 elapsedFrames;
 
-		elapsedFrames = RR_FRAMES_SINCE_RACE_ENDED;
+		elapsedFrames = GAME_FRAMES_SINCE_RACE_ENDED;
 
 		pos.x = 0;
 		pos.y = 0xc;
@@ -684,27 +664,27 @@ skip_new_high_score:
 	box.h = 0x3b;
 
 	// Draw 2D Menu rectangle background
-	RECTMENU_DrawInnerRect(&box, 0, RR_GAME_TRACKER->backBuffer->otMem.uiOT);
+	RECTMENU_DrawInnerRect(&box, 0, GAME_TRACKER->backBuffer->otMem.uiOT);
 
 
 	if ( // If you have not pressed X to continue
-	    ((RR_MENU_READY & RR_MENU_READY_FLAG) == 0) &&
+	    ((GAME_MENU_READY & RR_MENU_READY_FLAG) == 0) &&
 
-	    (RR_FRAMES_SINCE_RACE_ENDED >= RR_HIGH_SCORE_REVEAL_FRAME) &&
+	    (GAME_FRAMES_SINCE_RACE_ENDED >= RR_HIGH_SCORE_REVEAL_FRAME) &&
 
-	    ((RR_GAME_TRACKER->gameModeEnd & NEW_HIGH_SCORE) == 0))
+	    ((GAME_TRACKER->gameModeEnd & NEW_HIGH_SCORE) == 0))
 	{
 		RR_EndEvent_DrawHighScore(0x100, 10, RR_SCORE_MODE_RELIC_RACE);
 
-		DecalFont_DrawLine(RR_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, JUSTIFY_CENTER | ORANGE);
+		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, JUSTIFY_CENTER | ORANGE);
 
-		if ((RR_ANY_PLAYER_TAP & RR_CONFIRM_BUTTON_MASK) != 0)
+		if ((GAME_ANY_PLAYER_TAP & RR_CONFIRM_BUTTON_MASK) != 0)
 		{
 			RECTMENU_ClearInput();
 			RECTMENU_Show(&data.menuRetryExit);
 
 			// record that you have pressed X to continue
-			RR_MENU_READY |= RR_MENU_READY_FLAG;
+			GAME_MENU_READY |= RR_MENU_READY_FLAG;
 		}
 	}
 }

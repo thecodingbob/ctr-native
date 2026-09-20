@@ -56,30 +56,46 @@ static inline u32 CtrGpu_PackColorCode(u32 color, u32 code)
 
 static inline void CtrGpu_WriteColorCode(u8 *r, u32 colorCode)
 {
+#ifdef CTR_NATIVE
 	r[0] = (u8)colorCode;
 	r[1] = (u8)(colorCode >> 8);
 	r[2] = (u8)(colorCode >> 16);
 	r[3] = (u8)(colorCode >> 24);
+#else
+	*(CtrPackedU32 *)r = colorCode;
+#endif
 }
 
 static inline void CtrGpu_WritePackedXY(VERTTYPE *x, u32 xy)
 {
+#ifdef CTR_NATIVE
 	x[0] = (VERTTYPE)xy;
 	x[1] = (VERTTYPE)(xy >> 16);
+#else
+	*(CtrPackedU32 *)x = xy;
+#endif
 }
 
 static inline void CtrGpu_WritePackedUV(u8 *u, u16 uv)
 {
+#ifdef CTR_NATIVE
 	u[0] = (u8)uv;
 	u[1] = (u8)(uv >> 8);
+#else
+	*(CtrPackedU16 *)u = uv;
+#endif
 }
 
 static inline void CtrGpu_WritePackedUVWord(u8 *u, u32 uvTpage)
 {
+#ifdef CTR_NATIVE
 	u[0] = (u8)uvTpage;
 	u[1] = (u8)(uvTpage >> 8);
 	u[2] = (u8)(uvTpage >> 16);
 	u[3] = (u8)(uvTpage >> 24);
+#else
+	*(CtrPackedU32 *)u = uvTpage;
+#endif
 }
 
 CTR_STATIC_ASSERT(sizeof(POLY_FT4) == 0x28);

@@ -13,6 +13,31 @@
 
 #include <game_layouts.h>
 
+// NOTE(aalhendi): Native and unbound PSX units use the canonical runtime
+// aggregates. Matching supplies direct resident bindings before this header.
+#ifndef GAME_TRACKER
+#define GAME_TRACKER                 (sdata->gGT)
+#define GAME_LANGUAGE_STRINGS        (sdata->lngStrings)
+#define GAME_CHARACTER_METADATA      (data.MetaDataCharacters)
+#define GAME_CHARACTER_IDS           (data.characterIDs)
+#define GAME_FRAMES_SINCE_RACE_ENDED (sdata->framesSinceRaceEnded)
+#define GAME_MENU_READY              (sdata->menuReadyToPass)
+#define GAME_ANY_PLAYER_TAP          (sdata->AnyPlayerTap)
+#define GAME_ADV_PROGRESS            (sdata->advProgress)
+#define GAME_SAVE                    (sdata->gameSave)
+#define GAME_PROGRESS                (GAME_SAVE.progress)
+#define GAMEPADS                     (sdata->gGamepads)
+#define GAME_MENU_HIGHLIGHT          (sdata->menuRowHighlight_Normal)
+#define GAME_TOKEN                   (sdata->ptrToken)
+#define GAME_ADD_CONFIG_0            (sdata->Loading.OnBegin.AddBitsConfig0)
+#define GAME_REMOVE_CONFIG_0         (sdata->Loading.OnBegin.RemBitsConfig0)
+#define GAME_DOOR_ACCESS_FLAGS       (sdata->doorAccessFlags)
+#endif
+
+// NOTE(aalhendi): Retail sometimes rereads the pointer slot rather than reusing
+// a cached tracker. Qualify the access, not the shared declaration.
+#define GAME_TRACKER_RELOAD() (*(struct GameTracker *volatile *)&GAME_TRACKER)
+
 #if defined(CTR_NATIVE)
 #include <platform.h>
 #endif

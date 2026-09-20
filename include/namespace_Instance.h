@@ -1,6 +1,18 @@
 #ifndef CTR_NATIVE_NAMESPACE_INSTANCE_H
 #define CTR_NATIVE_NAMESPACE_INSTANCE_H
 
+// Stack request consumed by INSTANCE_BirthWithThread_Stack.
+struct InstanceBirthParams
+{
+	s32 modelID;
+	const char *name;
+	s32 poolType;
+	s32 bucket;
+	void *funcThTick;
+	s32 objSize;
+	struct Thread *parent;
+};
+
 // & 0x1 = draw instance
 // & 0x2, 0x4, 0x8 -- FUN_80030ad4 -- collision?
 // & 0x10 = animation: loop
@@ -634,7 +646,8 @@ struct Instance
 	u32 compressedNormalAndDriverIndex;
 
 	// 0x74
-	// struct InstDrawPerPlayer idpp[0];
+	// NOTE(aalhendi): The instance pool reserves one trailing record per viewport.
+	struct InstDrawPerPlayer idpp[0];
 };
 
 CTR_STATIC_ASSERT(offsetof(struct Instance, next) == 0x0);
@@ -691,6 +704,6 @@ static inline u32 INST_CompressNormalVectorAndDriverIndex(s32 normalX, s32 norma
 	return INST_CompressNormalVector(normalX, normalY, normalZ) | (((u32)driverID + INST_COMPRESSED_DRIVER_INDEX_OFFSET) << INST_COMPRESSED_DRIVER_INDEX_SHIFT);
 }
 
-#define INST_GETIDPP(x) (struct InstDrawPerPlayer *)((u32)x + sizeof(struct Instance))
+#define INST_GETIDPP(x) ((struct InstDrawPerPlayer *)((u32)x + sizeof(struct Instance)))
 
 #endif

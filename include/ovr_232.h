@@ -27,7 +27,7 @@ enum AHHintMenuConstants
 	AH_HINTMENU_VISIBLE_ROWS = 5,
 	AH_HINTMENU_SCROLL_MARGIN = AH_HINTMENU_VISIBLE_ROWS - 1,
 	AH_HINTMENU_VIEW_COOLDOWN_FRAMES = 30,
-	AH_HINTMENU_HINT_STRING_COUNT = 32,
+	AH_HINTMENU_HISTORY_CAPACITY = 64,
 	AH_HINTMENU_HINT_LNG_FIRST = LNG_GREETINGS,
 	AH_HINTMENU_INPUT_VIEW_EXIT = BTN_CROSS_one | BTN_CIRCLE | BTN_SQUARE_one | BTN_TRIANGLE,
 	AH_HINTMENU_INPUT_NAV = BTN_UP | BTN_DOWN | BTN_CROSS_one | BTN_CIRCLE | BTN_SQUARE_one | BTN_TRIANGLE,
@@ -349,15 +349,26 @@ CTR_STATIC_ASSERT(offsetof(struct AHPauseInstance, lightDir) == 0xc);
 struct WarpPad
 {
 	// 0x0
-	struct Instance *inst[WPIS_NUM_INSTANCES];
+	// NOTE(aalhendi): These views share the ten retail instance slots. Creation
+	// walks each visual group; animation and destruction use the complete array.
+	union
+	{
+		struct Instance *inst[WPIS_NUM_INSTANCES];
+		struct
+		{
+			struct Instance *closed[4];
+			struct Instance *beam;
+			struct Instance *rings[2];
+			struct Instance *prizes[3];
+		} visuals;
+	} slots;
 
 	// 0x28
 	SVec3 spinRot_Prize;
 	s16 _pad_spinRot_Prize;
 
 	// 0x30
-	SVec3 spinRot_Wisp[2];
-	s16 _pad_spinRot_Wisp[2];
+	SVec3Slot spinRot_Wisp[2];
 
 	// 0x40
 	SVec3 spinRot_Beam;
@@ -491,7 +502,7 @@ struct OverlayRDATA_232
 	u32 warppadColorJumpTable[AH_WP_VISUAL_COUNT];
 
 	// 0x800abac0
-	u32 unk_800abac0;
+	char s_x[4];
 
 	// 0x800abac4
 	char s_format[8];
@@ -575,14 +586,8 @@ struct OverlayDATA_232
 	SVec2 hubArrowPos[3];
 
 	// 800B4FF8
-	u32 hubArrow_col1[3];
-
-	// 800b5004
-	u32 hubArrow_col2[3];
-
-	// 800b5010
-	u32 hubArrowGray1[3];
-	u32 hubArrowGray2[3];
+	// Two flashing color triplets, followed by two locked-state triplets.
+	u32 hubArrowColors[12];
 
 	// 800b5028
 	struct AHPausePage advPausePages[AH_PAUSE_MENU_PAGE_COUNT];
@@ -707,17 +712,18 @@ struct OverlayDATA_232
 	struct PauseObject pauseObject; // 800b557c
 
 	// 800B5660
-	int hintMenu_boolViewHint;
+	b16 hintMenu_boolViewHint;
+	s16 padding_hintMenu_boolViewHint;
 
 	// 800B5664
-	int hintMenu_scrollIndex;
+	s16 hintMenu_scrollIndex;
+	s16 padding_hintMenu_scrollIndex;
 
 	// 800B5668
-	char audioBackup[4];
+	u8 audioBackup[4];
 
 	// 800B566c
-	s16 maskSpawnFrame;
-	s16 padding4;
+	s32 maskSpawnFrame;
 
 	// 800b5670
 	// Suppresses lower-priority hub-route arrows when an open boss/warppad arrow is drawn.
@@ -743,5 +749,107 @@ CTR_STATIC_ASSERT(OFFSETOF_D232(pauseObject) == 0x800b557c);
 
 extern struct OverlayRDATA_232 R232;
 extern struct OverlayDATA_232 D232;
+
+#define AH_BOSS_RACE_LEVELS       OXIDE_STATION, ROO_TUBES, PAPU_PYRAMID, DRAGON_MINES, HOT_AIR_SKYWAY
+#define AH_BOSS_CHARACTER_IDS     4, 0, 1, 2, 3
+#define AH_DOOR_KEY_SHRINK_SCALES 0x1333, 0x1599, 0x1666, 0x14cc, 0x1000, 0xb33, 0x800, 0x666, 0x4cc, 0x333, 0x199
+
+#ifndef AH_MASK_AUDIO_BACKUP
+#define AH_MASK_AUDIO_BACKUP D232.audioBackup
+#define AH_MASK_AUDIO_TARGET D232.maskAudioTargetVolume
+#endif
+
+#ifndef AH_HINT_MASK
+#define AH_HINT_MASK               sdata->instMaskHints3D
+#define AH_MASK_ROT                D232.maskRot
+#define AH_MASK_POS                D232.maskPos
+#define AH_MASK_SCALE              D232.maskScale
+#define AH_FIVE_ARROW_COLOR_1      D232.fiveArrow_col1
+#define AH_FIVE_ARROW_COLOR_2      D232.fiveArrow_col2
+#define AH_FRAME_COUNTER           ((u16)sdata->frameCounter)
+#define AH_PAUSE_OBJECT            D232.ptrPauseObject
+#define AH_PAUSE_STORAGE           D232.pauseObject
+#define AH_PAUSE_DIRECTION         D232.pausePageDir
+#define AH_PAUSE_TIMER             D232.pausePageTimer
+#define AH_PAUSE_PREVIOUS_PAGE     D232.pausePagePrev
+#define AH_PAUSE_CURRENT_PAGE      D232.pausePageCurr
+#define AH_PAUSE_FLIP_DIRECTION    D232.pausePageDir_dup
+#define AH_PAUSE_BUTTON_TAP        sdata->buttonTapPerPlayer[0]
+#define AH_PAUSE_THREAD_NAME       R232.s_PAUSE
+#define AH_PAUSE_INSTANCE_NAME     R232.s_pause
+#define AH_PAUSE_TOTAL_FORMAT      R232.s_format
+#define AH_PAUSE_PAGES             D232.advPausePages
+#define AH_PAUSE_ICONS             D232.advPauseInst
+#define AH_PAUSE_X_GLYPH           R232.s_x
+#define AH_COLOR_POINTERS          data.ptrColor
+#define AH_TRIG_TABLE              data.trigApprox
+#define AH_ARROW_PRIM_OFFSETS      D232.hubArrowPrimOffset
+#define AH_TRIANGLE_COLOR          D232.colorTri
+#define AH_SAVE_PRIM_OFFSETS       D232.loadSavePrimOffset
+#define AH_QUAD_COLOR              D232.colorQuad
+#define AH_HINT_VISIBLE            sdata->boolDraw3D_AdvMask
+#define AH_HINT_ID                 D232.maskHintID
+#define AH_HINT_INTERRUPTS_WARPPAD D232.maskWarppadBoolInterrupt
+#define AH_HINT_MODEL              sdata->modelMaskHints3D
+#define AH_MASK_SPAWN_FRAME        D232.maskSpawnFrame
+#define AH_MASK_OFFSET_POS         D232.maskOffsetPos
+#define AH_MASK_OFFSET_ROT         D232.maskOffsetRot
+#define AH_MASK_HINT_POSITIONS     D232.maskHintOffsets.pos
+#define AH_MASK_HINT_ROTATIONS     D232.maskHintOffsets.rot
+#define AH_ACTIVE_MENU             sdata->ptrActiveMenu
+#define AH_SAVE_MENU               data.menuGreenLoadSave
+#define AH_SAVE_CAMERA_ROT         D232.saveObjCameraOffset
+#define AH_SAVE_OBJECT_NAME        R232.s_saveobj
+#define AH_SCAN_NAME               R232.s_scan
+#define AH_GARAGE_NAME             R232.s_garage
+#define AH_GARAGE_TOP_NAME         R232.s_garagetop
+#define AH_HUB_TRACK_IDS           data.advHubTrackIDs
+#define AH_BOSS_REWARDS            data.BeatBossPrize
+#define AH_DOOR_NAME               R232.s_door
+#define AH_KEY_NAME                R232.s_key
+#define AH_STORY_REWARDS           GAME_ADV_PROGRESS.rewards[ADV_PROGRESS_WORD_STORY]
+#define AH_MAP_ARROW_DRAWN         D232.mapPriorityArrowDrawn
+#define AH_HUD_FLAGS               sdata->HudAndDebugFlags
+#define AH_HUD_LAYOUTS             data.hudStructPtr
+#define AH_MASK_CAM_POS_START      D232.maskCamPosStart
+#define AH_MASK_CAM_ROT_START      D232.maskCamRotStart
+#define AH_MASK_FRAME_CURR         D232.maskFrameCurr
+#define AH_MASK_DELAY              D232.maskWarppadDelayFrames
+#define AH_MASK_XA_STATE           sdata->XA_State
+#define AH_MASK_EYE                D232.eyePos
+#define AH_MASK_LOOK               D232.lookAtPos
+#define AH_MASK_SPAWN_EMITTERS     D232.emSet_maskSpawn
+#define AH_MASK_LEAVE_EMITTERS     D232.emSet_maskLeave
+#define AH_MASK_HINT_INDICES       D232.hintMenuLngIndex
+#define AH_MASK_ANGLE              D232.maskAngle
+#define AH_MAP_HUB_ITEMS           D232.hubItemsXY_ptrArray
+#define AH_MAP_SAVE_POS            D232.loadSavePos
+#define AH_MAP_SAVE_COLORS         D232.loadSave_col
+#define AH_MAP_ARROW_POS           D232.hubArrowPos
+#define AH_MAP_ARROW_COLORS        D232.hubArrowColors
+#define AH_MAP_INNER_OFFSETS       D232.hubArrowInnerOffset
+#define AH_MAP_OUTER_OFFSETS       D232.hubArrowOuterOffset
+#define AH_HINT_MENU_SCROLL        D232.hintMenu_scrollIndex
+#define AH_HINT_MENU_VIEW          D232.hintMenu_boolViewHint
+#define AH_MASK_COOLDOWN           D232.maskCooldown
+#define AH_LOAD_IN_PROGRESS        sdata->load_inProgress
+#define AH_MENU_EDGE_COLOR         sdata->battleSetup_Color_UI_1
+#define AH_HINT_STATE              sdata->AkuAkuHintState
+#define AH_BOSS_CHALLENGE_TEXT     data.lng_challenge
+#define AH_LEVEL_METADATA          data.metaDataLEV
+#define AH_WARP_CUPS               data.AdvCups
+#define AH_HUB_REQUIRED_KEYS       D232.keysNeededByHub
+#define AH_WARP_LIGHT_GEM          D232.lightDirGem
+#define AH_WARP_LIGHT_RELIC        D232.lightDirRelic
+#define AH_WARP_LIGHT_TOKEN        D232.lightDirToken
+#define AH_WARP_BATTLE_OFFSETS     R232.battleTrackPurpleTokenOffset
+#define AH_WARP_NEAREST_ID         D232.levelID
+#define AH_KART_SPAWN_ORDER        sdata->kartSpawnOrderArray
+#define AH_ADVENTURE_RNG           sdata->advRng
+#define AH_WARP_MENU_OPENED        sdata->boolOpenTokenRelicMenu
+#define AH_WARP_MENU               D232.menuTokenRelic
+#define AH_WARP_BATTLE_TIMES       D232.battleCrystalEventTime
+#define AH_WARP_CUP_TRACKS         data.advCupTrackIDs
+#endif
 
 #endif

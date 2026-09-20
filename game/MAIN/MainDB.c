@@ -41,7 +41,7 @@ void MainDB_PrimMem(struct PrimMem *primMem, u32 size)
 	u32 alignedSize;
 	void *pvVar1;
 
-	pvVar1 = MEMPACK_AllocMem(size);
+	pvVar1 = MEMPACK_AllocMem(size, NULL);
 	primMem->capacityBytes = size;
 	primMem->allocationStart = pvVar1;
 	primMem->cursor = pvVar1;
@@ -58,7 +58,7 @@ void MainDB_OTMem(struct OTMem *otMem, u32 size)
 	u32 alignedSize;
 	void *pvVar1;
 
-	pvVar1 = MEMPACK_AllocMem(size);
+	pvVar1 = MEMPACK_AllocMem(size, NULL);
 	otMem->capacityBytes = size;
 	otMem->cursor = pvVar1;
 	otMem->start = pvVar1;

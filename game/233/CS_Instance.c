@@ -13,7 +13,7 @@ enum CsInstanceConstants
 	CS_ANIM_BONE_TARGET_Y_OFFSET = 5,
 };
 
-void CS_Instance_GetFrameData(struct Instance *inst, int animIndex, u32 animFrame, SVec3 *pos, SVec3 *rotOut, int offset)
+void CS_Instance_GetFrameData(struct Instance *inst, int animIndex, s32 animFrame, SVec3 *pos, SVec3 *rotOut, int offset)
 {
 	int isOdd;
 	int numFrames;
@@ -23,13 +23,11 @@ void CS_Instance_GetFrameData(struct Instance *inst, int animIndex, u32 animFram
 	u32 boneValueX, boneValueY, boneValueZ;
 	u32 boneTargetX, boneTargetY, boneTargetZ;
 	struct ModelHeader *headers;
-	int scaleX, scaleY, scaleZ;
-	int deltaDX, deltaDY, deltaDZ;
 
 	headers = inst->model->headers;
 	ptrAnim = headers->ptrAnimations[animIndex];
 
-	if ((int)animFrame < 0)
+	if (animFrame < 0)
 	{
 		animFrame = 0;
 	}
@@ -39,18 +37,19 @@ void CS_Instance_GetFrameData(struct Instance *inst, int animIndex, u32 animFram
 
 	if (numFrames < 0)
 	{
+		// A negative frame count stores every other frame; odd frames interpolate.
 		numFrames = -numFrames;
 		isOdd = animFrame & 1;
 		animFrame = animFrame >> 1;
 	}
 
-	if ((int)animFrame >= (numFrames - 1))
+	if (animFrame >= (numFrames - 1))
 	{
-		isOdd = 0;
 		animFrame = numFrames - 1;
+		isOdd = 0;
 	}
 
-	framePos = (s16 *)((char *)ptrAnim + ptrAnim->frameSize * (int)animFrame + sizeof(struct ModelAnim));
+	framePos = (s16 *)((char *)ptrAnim + ((s16)ptrAnim->frameSize * (int)animFrame + sizeof(struct ModelAnim)));
 
 	{
 		int boneOff = offset * CS_ANIM_BONE_AXIS_STRIDE + CS_ANIM_BONE_DATA_OFFSET;
@@ -66,7 +65,7 @@ void CS_Instance_GetFrameData(struct Instance *inst, int animIndex, u32 animFram
 
 	if (isOdd)
 	{
-		framePos = (s16 *)((char *)framePos + ptrAnim->frameSize);
+		framePos = (s16 *)((char *)framePos + (s16)ptrAnim->frameSize);
 		{
 			int boneOff = offset * CS_ANIM_BONE_AXIS_STRIDE + CS_ANIM_BONE_DATA_OFFSET;
 			bonePtr = (u8 *)framePos + boneOff;
@@ -80,54 +79,55 @@ void CS_Instance_GetFrameData(struct Instance *inst, int animIndex, u32 animFram
 		boneTargetZ = (int)(boneTargetZ + bonePtr[CS_ANIM_BONE_TARGET_Z_OFFSET]) >> 1;
 	}
 
-	deltaDX = (int)boneValueX - (int)boneTargetX;
-
 	{
 		s16 instScale = inst->scale.x;
+		s32 partialY, partialZ;
+		s32 scaledY, scaledZ;
 
-		scaleX = ((((int)boneValueX + (int)framePos[0]) * instScale) >> FRACTIONAL_BITS) * (int)headers->scale.x >> FRACTIONAL_BITS;
-		scaleY = ((((int)boneValueY + (int)framePos[1]) * instScale) >> FRACTIONAL_BITS) * (int)headers->scale.y >> FRACTIONAL_BITS;
-		scaleZ = ((((int)boneValueZ + (int)framePos[2]) * instScale) >> FRACTIONAL_BITS) * (int)headers->scale.z >> FRACTIONAL_BITS;
+		// Keep the bone direction unscaled, and apply the two Q12 position scales separately.
+		boneTargetX = (int)boneValueX - (int)boneTargetX;
+		boneValueX = (int)boneValueX + framePos[0];
+		boneValueX = (int)boneValueX * instScale;
+		boneValueX = ((int)boneValueX >> FRACTIONAL_BITS) * headers->scale.x;
+		boneTargetY = (int)boneValueY - (int)boneTargetY;
+		boneValueY = (int)boneValueY + framePos[1];
+		partialY = (int)boneValueY * instScale;
+		scaledY = (partialY >> FRACTIONAL_BITS) * headers->scale.y;
+		boneTargetZ = (int)boneValueZ - (int)boneTargetZ;
+		boneValueZ = (int)boneValueZ + framePos[2];
+		partialZ = (int)boneValueZ * instScale;
+		scaledZ = (partialZ >> FRACTIONAL_BITS) * headers->scale.z;
+		boneValueX = (int)boneValueX >> FRACTIONAL_BITS;
+		boneValueY = scaledY >> FRACTIONAL_BITS;
+		boneValueZ = scaledZ >> FRACTIONAL_BITS;
 	}
+	CTR_GteLoadLightMatrix(&inst->matrix);
 
-	deltaDY = (int)boneValueY - (int)boneTargetY;
-	deltaDZ = (int)boneValueZ - (int)boneTargetZ;
-
-	gte_SetLightMatrix(&inst->matrix);
-
-	MTC2(CTR_PackS16Pair(scaleX, scaleY), 0);
-	MTC2(scaleZ, 1);
+	MTC2(CTR_PackS16Pair(boneValueX, boneValueY), 0);
+	MTC2(boneValueZ, 1);
+	CTR_GteLoadDelay();
 	gte_llv0();
 
-	{
-		s32 mac[3];
-		CTR_GteStoreMAC(mac);
-
-		pos->x = (s16)mac[0];
-		pos->y = (s16)mac[1];
-		pos->z = (s16)mac[2];
-	}
+	boneValueX = MFC2_S(25);
+	boneValueY = MFC2_S(26);
+	boneValueZ = MFC2_S(27);
+	pos->x = boneValueX;
+	pos->y = boneValueY;
+	pos->z = boneValueZ;
 
 	if (rotOut != NULL)
 	{
-		MTC2(CTR_PackS16Pair(deltaDX, deltaDY), 0);
-		MTC2(deltaDZ, 1);
+		MTC2(CTR_PackS16Pair(boneTargetX, boneTargetY), 0);
+		MTC2(boneTargetZ, 1);
+		CTR_GteLoadDelay();
 		gte_llv0();
 
-		{
-			s32 mac[3];
-			CTR_GteStoreMAC(mac);
-
-			int dvx = mac[0];
-			int dvy = mac[1];
-			int dvz = mac[2];
-			int pitch = ratan2(-dvy, SquareRoot0_stub(dvx * dvx + dvz * dvz));
-			rotOut->x = (s16)pitch;
-
-			int yaw = ratan2(dvx, dvz);
-			rotOut->y = (s16)yaw;
-			rotOut->z = 0;
-		}
+		boneTargetX = MFC2_S(25);
+		boneTargetY = MFC2_S(26);
+		boneTargetZ = MFC2_S(27);
+		rotOut->x = ratan2(-boneTargetY, SquareRoot0_stub(boneTargetX * boneTargetX + boneTargetZ * boneTargetZ));
+		rotOut->y = ratan2(boneTargetX, boneTargetZ);
+		rotOut->z = 0;
 	}
 }
 
@@ -180,6 +180,7 @@ int CS_Instance_GetNumAnimFrames(struct Instance *modelInst, int animIndex, int 
 
 int CS_Instance_SafeCheckAnimFrame(struct Instance *inst, int animIndex, int LOD, int desiredFrame)
 {
+	int numFrames;
 	// Default return value
 	int animFrame = desiredFrame;
 
@@ -193,27 +194,23 @@ int CS_Instance_SafeCheckAnimFrame(struct Instance *inst, int animIndex, int LOD
 		return 0;
 	}
 
-	int numFrames = CS_Instance_GetNumAnimFrames(inst, animIndex, LOD);
+	numFrames = CS_Instance_GetNumAnimFrames(inst, animIndex, LOD);
 
-	// if negative
-	if (numFrames < 1)
+	if (numFrames > 0)
 	{
-		return 0;
+		if (numFrames <= desiredFrame)
+		{
+			return numFrames - 1;
+		}
+		return desiredFrame;
 	}
-
-	// if more than 1 and out of bounds
-	if (numFrames <= desiredFrame)
-	{
-		animFrame = numFrames - 1;
-	}
-
-	// Return adjusted animFrame
-	return animFrame;
+	return 0;
 }
 
 b32 CS_Instance_BoolPlaySound(struct CutsceneObj *cs, struct Instance *desiredInst)
 {
 	struct Instance **visInstSrc;
+	struct Instance *visible;
 	struct InstDrawPerPlayer *idpp;
 
 	if ((desiredInst == NULL) || ((cs->flags & CS_FLAG_SOUND_ONSCREEN_ONLY) == 0))
@@ -222,7 +219,7 @@ b32 CS_Instance_BoolPlaySound(struct CutsceneObj *cs, struct Instance *desiredIn
 	}
 
 	// pointer to array of visible instances
-	visInstSrc = sdata->gGT->cameraDC[0].visInstSrc;
+	visInstSrc = GAME_TRACKER->cameraDC[0].visInstSrc;
 
 #if defined(CTR_NATIVE)
 	// NOTE(aalhendi): Same native low-RAM guard as AH_WarpPad_ThTick:
@@ -233,57 +230,54 @@ b32 CS_Instance_BoolPlaySound(struct CutsceneObj *cs, struct Instance *desiredIn
 	}
 #endif
 
-	// Same code as warppad_thtick
-	while (visInstSrc[0] != 0)
+	visible = *visInstSrc;
+	while (visible != NULL)
 	{
-		if (visInstSrc[0] == desiredInst)
-		{
-			idpp = INST_GETIDPP(desiredInst);
-			return (idpp[0].instFlags & DRAW_SUCCESSFUL) != 0;
-		}
-
 		visInstSrc++;
+		if (visible == desiredInst)
+		{
+			break;
+		}
+		visible = *visInstSrc;
 	}
 
-	return 0;
+	if (visible == NULL)
+	{
+		return 0;
+	}
+	idpp = INST_GETIDPP(desiredInst);
+	return (s32)(idpp[0].instFlags & DRAW_SUCCESSFUL) > 0;
 }
 
 void CS_Instance_InitMatrix(void)
 {
-	if (D233.cs_initMatrixBool != 0)
-	{
-		return;
-	}
-
-	D233.cs_initMatrixBool = 1;
-
+	MATRIX scale;
 	MATRIX mat;
-	MATRIX scale = {0};
-
-	for (int i = 0; i < 4; i++)
+	u32 i;
+	int j;
+	struct Ovr233InitMatrixTableEntry *table;
+	if (CS_MATRIX_INITIALIZED)
+		return;
+	CS_MATRIX_INITIALIZED = 1;
+	CTR_WriteU32AlignedLE(&scale.m[0][0], 0);
+	CTR_WriteU32AlignedLE(&scale.m[0][2], 0);
+	CTR_WriteU32AlignedLE(&scale.m[1][1], 0);
+	CTR_WriteU32AlignedLE(&scale.m[2][0], 0);
+	scale.m[2][2] = 0;
+	for (i = 0; i < 4; i++)
 	{
-		struct CsInitMatrixEntry *data = D233.cs_initMatrixTable[i].data;
-		int count = D233.cs_initMatrixTable[i].count;
-
-		if (data == NULL || count <= 0)
+		table = &CS_MATRIX_TABLE[i];
+		if (table->count != 0 && table->data != NULL)
 		{
-			continue;
-		}
-
-		for (int j = 0; j < count; j++)
-		{
-			struct CsInitMatrixEntry *entry = &data[j];
-
-			ConvertRotToMatrix(&mat, &entry->matrix.fields.rot);
-
-			scale.m[0][0] = entry->matrix.fields.scale.x;
-			scale.m[1][1] = entry->matrix.fields.scale.y;
-			scale.m[2][2] = entry->matrix.fields.scale.z;
-
-			// NOTE(aalhendi): Retail writes the 0x14-byte rotated payload
-			// directly into this entry, not a full MATRIX copy.
-			void *matrixDst = &entry->matrix.fields.rot;
-			MatrixRotate(matrixDst, &scale, &mat);
+			for (j = 0; j < table->count; j++)
+			{
+				struct CsInitMatrixEntry *entry = &table->data[j];
+				ConvertRotToMatrix(&mat, &entry->matrix.fields.rot);
+				scale.m[0][0] = entry->matrix.fields.scale.x;
+				scale.m[1][1] = entry->matrix.fields.scale.y;
+				scale.m[2][2] = entry->matrix.fields.scale.z;
+				MatrixRotate(&entry->matrix, &scale, &mat);
+			}
 		}
 	}
 }

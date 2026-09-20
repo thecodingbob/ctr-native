@@ -306,11 +306,11 @@ LAB_80055930:
 
 		u32 *ot = gGT->backBuffer->otMem.uiOT;
 
-		CTR_Box_DrawSolidBox(&rect, color, ot);
+		CTR_Box_DrawSolidBox(&rect, &color, ot, &gGT->backBuffer->primMem);
 
 		// Draw tiny rectangle near big black title bar (second)
 		rect.y = gGT->pushBuffer[0].rect.y + gGT->pushBuffer[0].rect.h + barTransition + UI_RACE_START_DIVIDER_BOTTOM_Y_OFFSET;
-		CTR_Box_DrawSolidBox(&rect, color, ot);
+		CTR_Box_DrawSolidBox(&rect, &color, ot, &gGT->backBuffer->primMem);
 
 		// 30-pixel height
 		// clear RGB, keep alpha (which is zero anyway)
@@ -320,11 +320,11 @@ LAB_80055930:
 
 		// draw big black title bar (first)
 		rect.y = gGT->pushBuffer[0].rect.y - barTransition;
-		CTR_Box_DrawSolidBox(&rect, color, ot);
+		CTR_Box_DrawSolidBox(&rect, &color, ot, &gGT->backBuffer->primMem);
 
 		// draw big black title bar (second)
 		rect.y = gGT->pushBuffer[0].rect.y + gGT->pushBuffer[0].rect.h + barTransition + UI_RACE_START_DIVIDER_BOTTOM_Y_OFFSET;
-		CTR_Box_DrawSolidBox(&rect, color, ot);
+		CTR_Box_DrawSolidBox(&rect, &color, ot, &gGT->backBuffer->primMem);
 	}
 	return;
 }

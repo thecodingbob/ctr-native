@@ -26,8 +26,9 @@ global_variable s32 s_scrapbookNativeNextVBlank;
 
 static void MM_Scrapbook_GetNativeSource(s16 *srcX, s16 *srcY, s16 *displayY)
 {
-	struct GameTracker *gGT = sdata->gGT;
-	DRAWENV *drawEnv = &gGT->db[1 - gGT->swapchainIndex].drawEnv;
+	DRAWENV *drawEnv;
+	struct GameTracker *gGT = sdata_static.gGT;
+	drawEnv = &gGT->db[1 - gGT->swapchainIndex].drawEnv;
 
 	// NOTE(aalhendi): Retail decodes Scrapbook into the inactive draw page.
 	// Native then presents that VRAM display page directly instead of drawing
@@ -38,43 +39,44 @@ static void MM_Scrapbook_GetNativeSource(s16 *srcX, s16 *srcY, s16 *displayY)
 }
 #endif
 
-#ifndef CTR_NATIVE
-int ScrapBookPlayMovie_DecodeFrame()
-{
-	struct GameTracker *gGT = sdata->gGT;
-	DRAWENV *ptrDrawEnv = &gGT->db[1 - gGT->swapchainIndex].drawEnv;
-
-	return MM_Video_DecodeFrame(ptrDrawEnv->ofs[0], ptrDrawEnv->ofs[1] + 4) == 0;
-}
-#endif
-
 void MM_Scrapbook_PlayMovie(struct RectMenu *menu)
 {
-	struct GameTracker *gGT = sdata->gGT;
-
+	// NOTE(aalhendi): Native playback does not perform retail CD file lookup.
+#ifndef CTR_NATIVE
+	CdlFILE cdlFile;
+	s32 cdPos;
+#endif
 	// book state (0,1,2,3,4)
 	switch (D230.scrapbookState)
 	{
 	// Init State,
 	// alter checkered flag
 	case SCRAP_INIT:
-		if (RaceFlag_IsFullyOnScreen())
+	{
+		s32 stateValue;
+
+		stateValue = SCRAP_LOAD;
+		if (RaceFlag_IsFullyOnScreen() == stateValue)
 		{
 			// checkered flag, begin transition off-screen
 			RaceFlag_BeginTransition(2);
 		}
 
 		// go to Load State
-		D230.scrapbookState = SCRAP_LOAD;
+		D230.scrapbookState = stateValue;
 		menu->state &= ~NEEDS_TO_CLOSE;
 		Audio_SetState_Safe(1);
 		break;
+	}
 
 	// find the TEST.STR file
 	case SCRAP_LOAD:
+	{
+		s32 fullyOffscreen;
 
 		// if not fully off screen
-		if (!RaceFlag_IsFullyOffScreen())
+		fullyOffscreen = RaceFlag_IsFullyOffScreen();
+		if (fullyOffscreen != 1)
 		{
 			// quit, dont start video yet
 			return;
@@ -87,7 +89,7 @@ void MM_Scrapbook_PlayMovie(struct RectMenu *menu)
 		{
 			// NOTE(aalhendi): Native video decoding skips interleaved XA records;
 			// play the Scrapbook CD-XA channel from the same raw STR file.
-			if (NativeAudio_PlayXAFile(SCRAPBOOK_NATIVE_XA_PATH, SCRAPBOOK_NATIVE_XA_CHANNEL, sdata->vol_Music << 7, sdata->vol_Music << 7) == 0)
+			if (NativeAudio_PlayXAFile(SCRAPBOOK_NATIVE_XA_PATH, SCRAPBOOK_NATIVE_XA_CHANNEL, sdata_static.vol_Music << 7, sdata_static.vol_Music << 7) == 0)
 			{
 				NativeSTR_Stop();
 				goto GO_BACK;
@@ -101,7 +103,7 @@ void MM_Scrapbook_PlayMovie(struct RectMenu *menu)
 		// if file was found
 		if (CdSearchFile(&cdlFile, R230.s_teststr1) != 0)
 		{
-			SpuSetCommonCDVolume(sdata->vol_Music << 7, sdata->vol_Music << 7);
+			SpuSetCommonCDVolume(sdata_static.vol_Music << 7, sdata_static.vol_Music << 7);
 
 			// Alloc memory to store Scrapbook
 			MM_Video_AllocMem(SCRAPBOOK_VIDEO_WIDTH, SCRAPBOOK_VIDEO_HEIGHT, MM_VIDEO_FLAG_HAS_XA_AUDIO | MM_VIDEO_FLAG_SCRAPBOOK,
@@ -120,30 +122,46 @@ void MM_Scrapbook_PlayMovie(struct RectMenu *menu)
 #endif
 
 		goto GO_BACK;
+	}
 
 	// Actually play the movie
 	case SCRAP_PLAY:
 	{
-		int getButtonPress;
-
-#ifndef CTR_NATIVE
-		// infinite loop (cause this is scrapbook),
-		// keep doing DecodeFrame and VSync until done
-		while (ScrapBookPlayMovie_DecodeFrame())
-		{
-			VSync(0);
-		}
-
-		// If you press Start, Cross, Circle, Triangle, or Square
-		getButtonPress = (sdata->buttonTapPerPlayer[0] & SCRAPBOOK_SKIP_INPUT);
-
-		if ((MM_Video_CheckIfFinished(0) == 1) || (getButtonPress != 0))
-#else
-		getButtonPress = (sdata->buttonTapPerPlayer[0] & SCRAPBOOK_SKIP_INPUT);
-		s32 nativeUploaded = 0;
+		s32 stateValue;
+		struct GameTracker *gameTracker;
+		u32 gameTrackerPage;
+		s32 nativeUploaded;
 		s16 nativeSrcX;
 		s16 nativeSrcY;
 		s16 nativeDisplayY;
+		int getButtonPress;
+
+#ifdef CTR_NATIVE
+		(void)stateValue;
+		(void)gameTracker;
+		(void)gameTrackerPage;
+#endif
+#ifndef CTR_NATIVE
+		CTR_PSX_LOAD_SYMBOL_PAGE(gameTrackerPage, RETAIL_GAME_TRACKER_ASM_NAME);
+		stateValue = 1;
+		// infinite loop (cause this is scrapbook),
+		// keep doing DecodeFrame and VSync until done
+		for (;;)
+		{
+			gameTracker = CTR_PSX_PAGE_LVALUE(struct GameTracker *, gameTrackerPage, MM_GAME_TRACKER_PAGE_OFFSET, GAME_TRACKER);
+			if (MM_Video_DecodeFrame(gameTracker->db[stateValue - gameTracker->swapchainIndex].drawEnv.ofs[0],
+			                         gameTracker->db[stateValue - gameTracker->swapchainIndex].drawEnv.ofs[1] + 4) != 0)
+			{
+				break;
+			}
+			VSync(0);
+		}
+
+		if ((MM_Video_CheckIfFinished(0) == stateValue) || ((MM_GAME_BUTTON_TAPS[0] & SCRAPBOOK_SKIP_INPUT) != 0))
+#else
+		getButtonPress = (MM_GAME_BUTTON_TAPS[0] & SCRAPBOOK_SKIP_INPUT);
+		nativeUploaded = 0;
+
 
 		MM_Scrapbook_GetNativeSource(&nativeSrcX, &nativeSrcY, &nativeDisplayY);
 		if (getButtonPress == 0)
@@ -155,7 +173,7 @@ void MM_Scrapbook_PlayMovie(struct RectMenu *menu)
 		if ((getButtonPress != 0) || (nativeUploaded == 0))
 #endif
 		{
-			if (getButtonPress != 0)
+			if ((MM_GAME_BUTTON_TAPS[0] & SCRAPBOOK_SKIP_INPUT) != 0)
 			{
 				RaceFlag_SetFullyOnScreen();
 			}
@@ -202,7 +220,7 @@ void MM_Scrapbook_PlayMovie(struct RectMenu *menu)
 		NativeSTR_Stop();
 #endif
 
-		if (RaceFlag_IsFullyOffScreen())
+		if (RaceFlag_IsFullyOffScreen() == 1)
 		{
 			RaceFlag_BeginTransition(1);
 		}
@@ -212,28 +230,28 @@ void MM_Scrapbook_PlayMovie(struct RectMenu *menu)
 		break;
 
 	case SCRAP_EXIT:
-		if (RaceFlag_IsFullyOnScreen())
+		if (RaceFlag_IsFullyOnScreen() == 1)
 		{
-			s16 lev;
+			register s32 lev CTR_PSX_REGISTER("$4");
 
 			// change checkered flag back
 			RaceFlag_SetDrawOrder(0);
 
-			if ((gGT->gameMode1 & ADVENTURE_MODE) == 0)
-			{
-				lev = MAIN_MENU_LEVEL;
-
-				MM_JumpTo_Title_Returning();
-
-				// return to main menu (adv, tt, arcade, vs, battle)
-				sdata->mainMenuState = MAIN_MENU_TITLE;
-			}
-			else
+			if ((GAME_TRACKER->gameMode1 & ADVENTURE_MODE) != 0)
 			{
 				lev = GEM_STONE_VALLEY;
 			}
+			else
+			{
+				MM_JumpTo_Title_Returning();
 
-			MainRaceTrack_RequestLoad(lev);
+				// return to main menu (adv, tt, arcade, vs, battle)
+				sdata_static.mainMenuState = MAIN_MENU_TITLE;
+
+				lev = MAIN_MENU_LEVEL;
+			}
+
+			MM_REQUEST_LEVEL(lev);
 
 			RECTMENU_Hide(menu);
 		}

@@ -1,138 +1,104 @@
 #include <common.h>
+#include <ctr_gte_transfer.h>
+#include "RB_Effect.h"
 
-static struct InstDrawPerPlayer *RB_Burst_GetIDPP(struct Instance *inst, int playerIndex)
+struct Burst
 {
-	return (struct InstDrawPerPlayer *)((char *)inst + sizeof(struct Instance) + (playerIndex * sizeof(struct InstDrawPerPlayer)));
-}
-
-static void RB_Burst_CopyDrawState(struct Instance *dstInst, struct Instance *srcInst, int playerIndex)
-{
-	struct InstDrawPerPlayer *src = RB_Burst_GetIDPP(srcInst, playerIndex);
-	struct InstDrawPerPlayer *dst = RB_Burst_GetIDPP(dstInst, playerIndex);
-
-	dst->instFlags &= src->instFlags | ~DRAW_SUCCESSFUL;
-	dst->otRangeNormal = src->otRangeNormal;
-	dst->depthOffset[0] = src->depthOffset[0];
-	dst->depthOffset[1] = src->depthOffset[1];
-}
+	struct Instance *shockwave;
+	struct Instance *explosion;
+	struct Instance *rotatedExplosion;
+};
 
 void RB_Burst_ProcessBucket(struct Thread *thread)
 {
-	struct GameTracker *gGT = sdata->gGT;
-
 	for (; thread != NULL; thread = thread->siblingThread)
 	{
-		u32 *burst = thread->object;
+		struct Burst *burst = thread->object;
 
-		for (int i = 0; i < gGT->numPlyrCurrGame; i++)
 		{
-			struct Instance *shockwaveInst = (struct Instance *)(u32)burst[0];
-			struct Instance *burstInst = (struct Instance *)(u32)burst[1];
-			struct Instance *warpedBurstInst = (struct Instance *)(u32)burst[2];
-
-			if (burstInst == NULL)
+			s32 i;
+			for (i = 0; i < GAME_TRACKER->numPlyrCurrGame; i++)
 			{
-				continue;
-			}
+				if (burst->explosion == NULL)
+				{
+					continue;
+				}
 
-			if (shockwaveInst != NULL)
-			{
-				RB_Burst_CopyDrawState(shockwaveInst, burstInst, i);
-			}
+				if (burst->shockwave != NULL)
+				{
+					burst->shockwave->idpp[i].instFlags &= burst->explosion->idpp[i].instFlags | ~DRAW_SUCCESSFUL;
+					burst->shockwave->idpp[i].otRangeNormal = burst->explosion->idpp[i].otRangeNormal;
+					burst->shockwave->idpp[i].depthOffset[0] = burst->explosion->idpp[i].depthOffset[0];
+					burst->shockwave->idpp[i].depthOffset[1] = burst->explosion->idpp[i].depthOffset[1];
+				}
 
-			if (warpedBurstInst != NULL)
-			{
-				RB_Burst_CopyDrawState(warpedBurstInst, burstInst, i);
+				if (burst->rotatedExplosion != NULL)
+				{
+					burst->rotatedExplosion->idpp[i].instFlags &= burst->explosion->idpp[i].instFlags | ~DRAW_SUCCESSFUL;
+					burst->rotatedExplosion->idpp[i].otRangeNormal = burst->explosion->idpp[i].otRangeNormal;
+					burst->rotatedExplosion->idpp[i].depthOffset[0] = burst->explosion->idpp[i].depthOffset[0];
+					burst->rotatedExplosion->idpp[i].depthOffset[1] = burst->explosion->idpp[i].depthOffset[1];
+				}
 			}
 		}
 	}
 }
 
-static void RB_Burst_UpdateSlot(int *slot)
-{
-	struct Instance *inst;
-	int nextFrame;
-
-	inst = (struct Instance *)*slot;
-	if (inst == NULL)
-	{
-		return;
-	}
-
-	nextFrame = inst->animFrame + 1;
-	if (nextFrame < INSTANCE_GetNumAnimFrames(inst, 0))
-	{
-		inst->animFrame++;
-		return;
-	}
-
-	INSTANCE_Death(inst);
-	*slot = 0;
-}
-
 void RB_Burst_ThTick(struct Thread *t)
 {
-	int *burst;
+	struct Burst *burst;
 	burst = t->object;
 
-	RB_Burst_UpdateSlot(&burst[1]);
-	RB_Burst_UpdateSlot(&burst[2]);
-	RB_Burst_UpdateSlot(&burst[0]);
+	RB_Effect_UpdateSlot(&burst->explosion);
+	RB_Effect_UpdateSlot(&burst->rotatedExplosion);
+	RB_Effect_UpdateSlot(&burst->shockwave);
 
-	if ((burst[1] == 0) && (burst[2] == 0))
+	// The shockwave alone does not keep the burst owner alive.
+	if ((burst->explosion == NULL) && (burst->rotatedExplosion == NULL))
 	{
 		t->flags |= THREAD_FLAG_DEAD;
 	}
 }
 
-void RB_Burst_CollThBucket(struct ScratchpadStruct *sps, void *hitObject)
+// The collision dispatcher passes an opaque hit object; keep thread handling typed.
+static inline void RB_Burst_CollThread(struct ScratchpadStruct *sps, struct Thread *t)
 {
-	struct Thread *t = hitObject;
-	struct GameTracker *gGT;
+	void *weaponObj;
+	struct Driver *attacker;
 	struct TrackerWeapon *tw;
-	s16 model;
-	u16 reason;
+	s32 model;
 	struct Thread *weaponTh;
-
-	gGT = sdata->gGT;
 
 	weaponTh = sps->Union.ThBuckColl.thread;
 	tw = weaponTh->object;
-	void *weaponObj = weaponTh->object;
-
-	struct Driver *attacker;
-	struct Driver *victim = t->object;
+	weaponObj = weaponTh->object;
 	model = t->modelIndex;
 
-	b32 hitDriver = (model == DYNAMIC_PLAYER) || (model == DYNAMIC_ROBOT_CAR);
-	if (hitDriver)
+	if ((model == DYNAMIC_PLAYER) || (model == DYNAMIC_ROBOT_CAR))
 	{
-		model = weaponTh->modelIndex;
+		s32 weaponModel = weaponTh->modelIndex;
 
-		b32 weaponIsMineHazard = (model == PU_EXPLOSIVE_CRATE) || (model == STATIC_BEAKER_RED) || (model == STATIC_BEAKER_GREEN) || (model == STATIC_CRATE_TNT);
-		if (weaponIsMineHazard)
+		if ((weaponModel == PU_EXPLOSIVE_CRATE) || (weaponModel == STATIC_BEAKER_RED) || (weaponModel == STATIC_BEAKER_GREEN) ||
+		    (weaponModel == STATIC_CRATE_TNT))
 		{
 			attacker = ((struct MineWeapon *)weaponObj)->instParent->thread->object;
 
 			// blast driver
-			RB_Hazard_HurtDriver(victim, 2, attacker, 2);
+			RB_Hazard_HurtDriver(t->object, 2, attacker, 2);
 		}
 		else
 		{
-			// bomb
-			reason = 1;
-
-			// missile
-			if (model == DYNAMIC_ROCKET)
-			{
-				// missile
-				reason = 3;
-			}
-
 			attacker = ((struct TrackerWeapon *)weaponObj)->instParent->thread->object;
 
-			// blast driver
-			RB_Hazard_HurtDriver(victim, 2, attacker, reason);
+			// missile
+			if (weaponModel == DYNAMIC_ROCKET)
+			{
+				RB_Hazard_HurtDriver(t->object, 2, attacker, 3);
+			}
+			else
+			{
+				RB_Hazard_HurtDriver(t->object, 2, attacker, 1);
+			}
 
 			if (attacker->longestShot < tw->timeAlive)
 			{
@@ -140,50 +106,48 @@ void RB_Burst_CollThBucket(struct ScratchpadStruct *sps, void *hitObject)
 			}
 		}
 
-		// if this driver is not an AI
-		if ((victim->actionsFlagSet & ACTION_BOT) == 0)
+		// NOTE(aalhendi): Reacquire the victim through its owner after damage callbacks.
+		// Only human players receive the screen flash.
+		if ((((struct Driver *)t->object)->actionsFlagSet & ACTION_BOT) == 0)
 		{
-			struct PushBuffer *pb = &gGT->pushBuffer[victim->driverID];
+			struct GameTracker *gGT = GAME_TRACKER;
 
-			pb->fadeFromBlack_currentValue = 0x1fff;
-			pb->fadeFromBlack_desiredResult = 0x1000;
-			pb->fade_step = 0xff78;
+			gGT->pushBuffer[((struct Driver *)t->object)->driverID].fadeFromBlack_currentValue = 0x1fff;
+			gGT->pushBuffer[((struct Driver *)t->object)->driverID].fadeFromBlack_desiredResult = 0x1000;
+			gGT->pushBuffer[((struct Driver *)t->object)->driverID].fade_step = -0x88;
 		}
 
 		// icon damage timer, draw icon as red
-		victim->damageColorTimer = 0x1e;
+		((struct Driver *)t->object)->damageColorTimer = 0x1e;
 
 		// get modelID from thread
 		model = t->modelIndex;
 	}
 
-	// not DYNAMIC_ROCKET
-	if (model != DYNAMIC_ROCKET)
+	switch (model)
 	{
-		if (model < DYNAMIC_BIGROCKET)
+	case PU_EXPLOSIVE_CRATE:
+	case STATIC_CRATE_TNT:
+	case DYNAMIC_ROCKET:
+	case STATIC_BEAKER_RED:
+	case STATIC_BEAKER_GREEN:
+	{
+		if (t->funcThCollide != NULL)
 		{
-			// not nitro and not STATIC_CRATE_TNT
-			if ((model != PU_EXPLOSIVE_CRATE) && (model != STATIC_CRATE_TNT))
-			{
-				return;
-			}
+			// NOTE(aalhendi): Retail passes 3 in the scratch argument. The mine and
+			// missile callbacks ignore it; preserve that word with their actual call type.
+			((ThreadScratchCollideFunc)t->funcThCollide)(t, sps->Union.ThBuckColl.thread, t->funcThCollide, (struct ScratchpadStruct *)3);
 		}
-		else
-		{
-			// return if anything that isn't beakers
-			if ((STATIC_BEAKER_GREEN < model) || (model < STATIC_BEAKER_RED))
-			{
-				return;
-			}
-		}
+		break;
 	}
-
-	// if function pointer is valid
-	if (t->funcThCollide != NULL)
-	{
-		((ThreadBurstCollideFunc)t->funcThCollide)(t, weaponTh, t->funcThCollide, 3);
 	}
 	return;
+}
+
+
+void RB_Burst_CollThBucket(struct ScratchpadStruct *sps, void *hitObject)
+{
+	RB_Burst_CollThread(sps, hitObject);
 }
 
 void RB_Burst_CollLevInst(struct ScratchpadStruct *sps, void *hitObject)
@@ -207,15 +171,10 @@ void RB_Burst_CollLevInst(struct ScratchpadStruct *sps, void *hitObject)
 	}
 
 	model = instdef->modelID;
-	if (model < PU_FRUIT_CRATE)
+	switch (model)
 	{
-		return;
-	}
-
-	// check 7 and 8,
-	// 7: PU_FRUIT_CRATE
-	// 8: PU_RANDOM_CRATE (weapon box)
-	if (model < PU_TIME_CRATE_1)
+	case PU_FRUIT_CRATE:
+	case PU_RANDOM_CRATE:
 	{
 		meta = COLL_LevModelMeta(model);
 		if (meta == NULL)
@@ -232,241 +191,168 @@ void RB_Burst_CollLevInst(struct ScratchpadStruct *sps, void *hitObject)
 		return;
 	}
 
-	if (model == STATIC_TEETH)
+	case STATIC_TEETH:
 	{
 		RB_Teeth_OpenDoor(inst);
+		break;
+	}
 	}
 
 	return;
 }
 
-static char s_burst_explosion1[] = "explosion1";
-static char s_burst_explosion2[] = "explosion2";
-static char s_burst_shockwave1[] = "shockwave1";
+
+static inline void RB_Burst_SetPosition(struct Instance *inst, struct Instance *weaponInst)
+{
+	inst->matrix.t[0] = weaponInst->matrix.t[0];
+	inst->matrix.t[1] = (u32)weaponInst->matrix.t[1] - 0x30;
+	inst->matrix.t[2] = weaponInst->matrix.t[2];
+
+	// Smaller effects leave more of each split-screen view visible.
+	if (GAME_TRACKER->numPlyrCurrGame > 2)
+	{
+		inst->scale.x >>= 1;
+		inst->scale.y >>= 1;
+		inst->scale.z >>= 1;
+	}
+}
 
 void RB_Burst_Init(struct Instance *weaponInst)
 {
-	struct GameTracker *gGT = sdata->gGT;
-	struct ModelHeader *headers;
+	struct TrackerWeapon *tw;
+	struct InstanceBirthParams birth;
 	struct Instance *currInst;
 	struct Thread *t;
-	int *burst;
+	struct Burst *burst;
+	struct ScratchpadStruct *sps;
 
-	// initialize thread for burst
-	currInst = INSTANCE_BirthWithThread(STATIC_WARPEDBURST, s_burst_explosion1, SMALL, BURST, RB_Burst_ThTick, 0xc, 0);
+	tw = weaponInst->thread->object;
+	birth.modelID = STATIC_WARPEDBURST;
+	birth.name = rb_nameExplosion;
+	birth.poolType = SMALL;
+	birth.bucket = BURST;
+	birth.funcThTick = RB_Burst_ThTick;
+	birth.objSize = sizeof(struct Burst);
+	birth.parent = NULL;
+	currInst = INSTANCE_BirthWithThread_Stack(&birth);
 
-	// get thread from instance
 	t = currInst->thread;
-
-	// get object from thread
 	burst = t->object;
-
-	// ====== First Instance =========
-
-	burst[1] = (int)currInst;
-	currInst->depthBiasNormal += -2;
-
-	// set rotation to identity matrix
+	burst->explosion = currInst;
+	currInst->depthBiasNormal -= 2;
+	RB_Burst_SetPosition(currInst, weaponInst);
 	CTR_MatrixSetRotIdentity(&currInst->matrix);
-
-	// set flag to always point to camera
-	headers = currInst->model->headers;
-	headers[0].flags |= 2;
-
-	// ======== Next one ===========
-
-	currInst = INSTANCE_Birth3D(gGT->modelPtr[STATIC_WARPEDBURST], s_burst_explosion2, t);
-
-	burst[2] = (int)currInst;
-	currInst->depthBiasNormal += -2;
-
-	currInst->flags |= VISIBLE_DURING_GAMEPLAY;
-
-	// rotate 90 degrees
-	currInst->matrix.m[0][0] = 0;
-	currInst->matrix.m[0][1] = 0xf000;
-	currInst->matrix.m[0][2] = 0;
-	currInst->matrix.m[1][0] = 0x1000;
-	CTR_WriteU32LE(&currInst->matrix.m[1][1], 0);
-	CTR_WriteU32LE(&currInst->matrix.m[2][0], 0);
-	currInst->matrix.m[2][2] = 0x1000;
-
-	// set flag to always point to camera
-	headers = currInst->model->headers;
-	headers[0].flags |= 2;
-
-	// ======= Next One ===========
-
-	currInst = INSTANCE_Birth3D(gGT->modelPtr[STATIC_SHOCKWAVE_RED], s_burst_shockwave1, t);
-
-	burst[0] = (int)currInst;
-	currInst->depthBiasNormal += -2;
-
-	// instance flags
-	currInst->flags |= (VISIBLE_DURING_GAMEPLAY | DRAW_BILLBOARD);
-
-	// set flag to always point to camera
-	headers = currInst->model->headers;
-	headers[0].flags |= 2;
-	headers[1].flags |= 2;
-
-	// ======= End of Instance =========
-
-	for (int i = 0; /*i < 3*/; i++)
 	{
-		currInst = (struct Instance *)burst[i];
-
-		currInst->matrix.t[0] = weaponInst->matrix.t[0];
-		currInst->matrix.t[1] = weaponInst->matrix.t[1] + -0x30;
-		currInst->matrix.t[2] = weaponInst->matrix.t[2];
-
-		// if more than two screens
-		if (2 < gGT->numPlyrCurrGame)
-		{
-			// set scale (x, y, z)
-			currInst->scale.x = currInst->scale.x >> 1;
-			currInst->scale.y = currInst->scale.y >> 1;
-			currInst->scale.z = currInst->scale.z >> 1;
-		}
-
-		// identity matrix (z)
-		CTR_WriteU32LE(&currInst->matrix.m[2][0], 0);
-		currInst->matrix.m[2][2] = 0x1000;
-
-		if (i == 2)
-		{
-			break;
-		}
-
-		// identity matrix (x, y)
-		CTR_WriteU32LE(&currInst->matrix.m[0][0], 0x1000);
-		CTR_WriteU32LE(&currInst->matrix.m[0][2], 0);
-		CTR_WriteU32LE(&currInst->matrix.m[1][1], 0x1000);
+		struct ModelHeader *headers = currInst->model->headers;
+		headers[0].flags |= 2;
 	}
 
-	// currInst is burst[2]
-
-	// rotate 90 degrees (X -> -Y)
+	// A second burst is rotated 90 degrees around its billboard axis.
+	currInst = INSTANCE_Birth3D(GAME_TRACKER->modelPtr[STATIC_WARPEDBURST], rb_nameBurstExplosion, t);
+	burst->rotatedExplosion = currInst;
+	currInst->flags |= VISIBLE_DURING_GAMEPLAY;
+	currInst->depthBiasNormal -= 2;
+	RB_Burst_SetPosition(currInst, weaponInst);
+	currInst->matrix.m[0][1] = -0x1000;
 	currInst->matrix.m[0][0] = 0;
-	currInst->matrix.m[0][1] = 0xf000;
 	currInst->matrix.m[0][2] = 0;
-
-	// rotate 90 degrees (Y -> X)
 	currInst->matrix.m[1][0] = 0x1000;
-	CTR_WriteU32LE(&currInst->matrix.m[1][1], 0);
+	currInst->matrix.m[1][1] = 0;
+	currInst->matrix.m[1][2] = 0;
+	currInst->matrix.m[2][0] = 0;
+	currInst->matrix.m[2][1] = 0;
+	currInst->matrix.m[2][2] = 0x1000;
+	{
+		struct ModelHeader *headers = currInst->model->headers;
+		headers[0].flags |= 2;
+	}
 
-	// ========= Collisions ===========
+	currInst = INSTANCE_Birth3D(GAME_TRACKER->modelPtr[STATIC_SHOCKWAVE_RED], rb_nameShockwave, t);
+	burst->shockwave = currInst;
+	currInst->flags |= VISIBLE_DURING_GAMEPLAY | DRAW_BILLBOARD;
+	currInst->depthBiasNormal -= 2;
+	RB_Burst_SetPosition(currInst, weaponInst);
+	CTR_MatrixSetRotIdentity(&currInst->matrix);
+	{
+		struct ModelHeader *headers = currInst->model->headers;
+		headers[0].flags |= 2;
+	}
+	{
+		struct ModelHeader *headers = currInst->model->headers;
+		headers[1].flags |= 2;
+	}
 
-	struct ScratchpadStruct *sps = CTR_SCRATCHPAD_PTR(struct ScratchpadStruct, 0x108);
-
-	// put weapon position on scratchpad
+	// Damage originates at the weapon, not the lowered visual effects.
+	sps = CTR_SCRATCHPAD_PTR(struct ScratchpadStruct, 0x108);
 	sps->Input1.pos.x = weaponInst->matrix.t[0];
 	sps->Input1.pos.y = weaponInst->matrix.t[1];
 	sps->Input1.pos.z = weaponInst->matrix.t[2];
 
-	struct TrackerWeapon *tw = weaponInst->thread->object;
-
-	int modelID = weaponInst->model->id;
-
-	// missile
-	if (modelID == DYNAMIC_ROCKET)
+	if (weaponInst->model->id == DYNAMIC_ROCKET)
 	{
-		// hitRadius and hitRadiusSquared
 		sps->Input1.hitRadius = 0x80;
 		sps->Input1.hitRadiusSquared = 0x4000;
 	}
+	else if (((struct TrackerWeapon *)weaponInst->thread->object)->flags & TRACKER_FLAG_POWERED_UP)
+	{
+		sps->Input1.hitRadius = 0x200;
+		sps->Input1.hitRadiusSquared = 0x40000;
+	}
 	else
 	{
-		if ((tw->flags & TRACKER_FLAG_POWERED_UP) == 0)
-		{
-			// hitRadius and hitRadiusSquared
-			sps->Input1.hitRadius = 0x140;
-			sps->Input1.hitRadiusSquared = 0x19000;
-		}
-		else
-		{
-			// hitRadius and hitRadiusSquared
-			sps->Input1.hitRadius = 0x200;
-			sps->Input1.hitRadiusSquared = 0x40000;
-		}
-
-		if (modelID == DYNAMIC_BOMB)
-		{
-			sps->Input1.hitRadius = sps->Input1.hitRadius * g_config.bombExplosionRadiusMultiplier / 100;
-			sps->Input1.hitRadiusSquared = sps->Input1.hitRadius * sps->Input1.hitRadius;
-		}
+		sps->Input1.hitRadius = 0x140;
+		sps->Input1.hitRadiusSquared = 0x19000;
 	}
 
-	sps->Input1.modelID = modelID;
+    if (weaponInst->model->id == DYNAMIC_BOMB)
+    {
+      sps->Input1.hitRadius = sps->Input1.hitRadius * g_config.bombExplosionRadiusMultiplier / 100;
+      sps->Input1.hitRadiusSquared = sps->Input1.hitRadius * sps->Input1.hitRadius;
+    }
 
-	sps->Union.ThBuckColl.thread = weaponInst->thread;
 	sps->Union.ThBuckColl.funcCallback = RB_Burst_CollThBucket;
+	sps->Union.ThBuckColl.thread = weaponInst->thread;
+	sps->Input1.modelID = weaponInst->model->id;
 
-	struct Thread *driverTh = tw->driverParent->instSelf->thread;
-
-	// check collision with all Player thread
-	PROC_CollideHitboxWithBucket(gGT->threadBuckets[PLAYER].thread, sps, driverTh);
-
-	// check collision with all Robotcar thread
-	PROC_CollideHitboxWithBucket(gGT->threadBuckets[ROBOT].thread, sps, driverTh);
-
-	// check collision with all Mine thread
-	PROC_CollideHitboxWithBucket(gGT->threadBuckets[MINE].thread, sps, 0);
-
-	// check collision with all Tracking thread
-	PROC_CollideHitboxWithBucket(gGT->threadBuckets[TRACKING].thread, sps, 0);
-
+	// The firing driver is excluded from both driver buckets.
+	PROC_CollideHitboxWithBucket(GAME_TRACKER->threadBuckets[PLAYER].thread, sps, tw->driverParent->instSelf->thread);
+	PROC_CollideHitboxWithBucket(GAME_TRACKER->threadBuckets[ROBOT].thread, sps, tw->driverParent->instSelf->thread);
+	PROC_CollideHitboxWithBucket(GAME_TRACKER->threadBuckets[MINE].thread, sps, NULL);
+	PROC_CollideHitboxWithBucket(GAME_TRACKER->threadBuckets[TRACKING].thread, sps, NULL);
 	sps->Union.ThBuckColl.funcCallback = RB_Burst_CollLevInst;
-
 	PROC_StartSearch_Self(sps);
-	return;
-}
-
-static struct InstDrawPerPlayer *RB_Burst_DrawAll_GetIDPP(struct Instance *inst, int playerIndex)
-{
-	return (struct InstDrawPerPlayer *)((char *)inst + sizeof(struct Instance) + (playerIndex * sizeof(struct InstDrawPerPlayer)));
-}
-
-static void RB_Burst_DrawAll_SetPushBuffer(struct Instance *inst, int playerIndex, struct PushBuffer *pb)
-{
-	if (inst != NULL)
-	{
-		RB_Burst_DrawAll_GetIDPP(inst, playerIndex)->pushBuffer = pb;
-	}
-}
-
-static struct Instance *RB_Burst_DrawAll_GetSlot(u32 *burst, int index)
-{
-	// NOTE(aalhendi): burst thread object is retail-width instance slots.
-	return (struct Instance *)(u32)burst[index];
 }
 
 void RB_Burst_DrawAll(struct GameTracker *gGT)
 {
+	s32 selectedFrame[4];
 	struct Thread *selectedThread[4];
-	int selectedFrame[4];
-	int playerIndex;
+	s32 playerIndex;
 	struct Thread *thread;
+	struct Burst *burst;
 
 	for (playerIndex = 0; playerIndex < gGT->numPlyrCurrGame; playerIndex++)
 	{
-		struct PushBuffer *pb = &gGT->pushBuffer[playerIndex];
+		MATRIX *view = &gGT->pushBuffer[playerIndex].matrix_ViewProj;
+		s32 distanceToScreen;
 
+		thread = gGT->threadBuckets[BURST].thread;
 		selectedFrame[playerIndex] = 0x10000;
 		selectedThread[playerIndex] = NULL;
+		distanceToScreen = (u32)gGT->pushBuffer[playerIndex].distanceToScreen_PREV << 1;
 
-		SetRotMatrix(&pb->matrix_ViewProj);
-		SetTransMatrix(&pb->matrix_ViewProj);
+		SetRotMatrix(view);
+		SetTransMatrix(view);
 
-		for (thread = gGT->threadBuckets[BURST].thread; thread != NULL; thread = thread->siblingThread)
+		for (; thread != NULL; thread = thread->siblingThread)
 		{
-			u32 *burst = thread->object;
-			struct Instance *burstInst = RB_Burst_DrawAll_GetSlot(burst, 1);
-			SVECTOR pos;
+			struct Instance *burstInst;
+			SVec4 pos;
 			VECTOR transformed;
-			int absX;
-			int absY;
-			int absZ;
+			VECTOR distance;
+
+			burst = thread->object;
+			burstInst = burst->explosion;
 
 #ifdef CTR_NATIVE
 			// NOTE(aalhendi): Retail can survive the one-frame null low-RAM read.
@@ -476,33 +362,21 @@ void RB_Burst_DrawAll(struct GameTracker *gGT)
 			}
 #endif
 
-			pos.vx = burstInst->matrix.t[0];
-			pos.vy = burstInst->matrix.t[1];
-			pos.vz = burstInst->matrix.t[2];
+			pos.x = burstInst->matrix.t[0];
+			pos.y = burstInst->matrix.t[1];
+			pos.z = burstInst->matrix.t[2];
 
-			CTR_GteLoadSV0(&pos);
+			CTR_GteLoadPositionV0(&pos);
 			gte_rt();
-			CTR_GteStoreMAC(&transformed.vx);
+			CTR_PSX_STORE_COP2_WORD(&transformed.vx, 25);
+			CTR_PSX_STORE_COP2_WORD(&transformed.vy, 26);
+			CTR_PSX_STORE_COP2_WORD(&transformed.vz, 27);
 
-			absX = transformed.vx;
-			if (absX < 0)
-			{
-				absX = -absX;
-			}
+			distance.vx = abs(transformed.vx);
+			distance.vy = abs(transformed.vy);
+			distance.vz = abs(transformed.vz);
 
-			absY = transformed.vy;
-			if (absY < 0)
-			{
-				absY = -absY;
-			}
-
-			absZ = transformed.vz;
-			if (absZ < 0)
-			{
-				absZ = -absZ;
-			}
-
-			if ((absX < 0x100) && (absY < 0x100) && (absZ < (pb->distanceToScreen_PREV << 1)))
+			if ((distance.vx < 0x100) && (distance.vy < 0x100) && (distance.vz < distanceToScreen))
 			{
 				if (burstInst->animFrame < selectedFrame[playerIndex])
 				{
@@ -510,11 +384,12 @@ void RB_Burst_DrawAll(struct GameTracker *gGT)
 					selectedThread[playerIndex] = thread;
 				}
 
-				if (burstInst->animFrame == 1)
+				if (burst->explosion->animFrame == 1)
 				{
-					pb->fadeFromBlack_desiredResult = 0x1000;
-					pb->fade_step = -0x88;
-					pb->fadeFromBlack_currentValue = 0x1fff - ((absX + absY) << 3);
+					s16 flash = 0x1fff - ((distance.vx + distance.vy) << 3);
+					gGT->pushBuffer[playerIndex].fadeFromBlack_desiredResult = 0x1000;
+					gGT->pushBuffer[playerIndex].fade_step = -0x88;
+					gGT->pushBuffer[playerIndex].fadeFromBlack_currentValue = flash;
 				}
 			}
 		}
@@ -522,21 +397,39 @@ void RB_Burst_DrawAll(struct GameTracker *gGT)
 
 	for (playerIndex = 0; playerIndex < gGT->numPlyrCurrGame; playerIndex++)
 	{
-		struct PushBuffer *pb = &gGT->pushBuffer[playerIndex];
-
 		for (thread = gGT->threadBuckets[BURST].thread; thread != NULL; thread = thread->siblingThread)
 		{
-			u32 *burst = thread->object;
-			struct PushBuffer *targetPB = pb;
-
+			burst = thread->object;
 			if ((selectedThread[playerIndex] != NULL) && (selectedThread[playerIndex] != thread))
 			{
-				targetPB = NULL;
+				if (burst->explosion != NULL)
+				{
+					burst->explosion->idpp[playerIndex].pushBuffer = NULL;
+				}
+				if (burst->rotatedExplosion != NULL)
+				{
+					burst->rotatedExplosion->idpp[playerIndex].pushBuffer = NULL;
+				}
+				if (burst->shockwave != NULL)
+				{
+					burst->shockwave->idpp[playerIndex].pushBuffer = NULL;
+				}
 			}
-
-			RB_Burst_DrawAll_SetPushBuffer(RB_Burst_DrawAll_GetSlot(burst, 1), playerIndex, targetPB);
-			RB_Burst_DrawAll_SetPushBuffer(RB_Burst_DrawAll_GetSlot(burst, 2), playerIndex, targetPB);
-			RB_Burst_DrawAll_SetPushBuffer(RB_Burst_DrawAll_GetSlot(burst, 0), playerIndex, targetPB);
+			else
+			{
+				if (burst->explosion != NULL)
+				{
+					burst->explosion->idpp[playerIndex].pushBuffer = &gGT->pushBuffer[playerIndex];
+				}
+				if (burst->rotatedExplosion != NULL)
+				{
+					burst->rotatedExplosion->idpp[playerIndex].pushBuffer = &gGT->pushBuffer[playerIndex];
+				}
+				if (burst->shockwave != NULL)
+				{
+					burst->shockwave->idpp[playerIndex].pushBuffer = &gGT->pushBuffer[playerIndex];
+				}
+			}
 		}
 	}
 }

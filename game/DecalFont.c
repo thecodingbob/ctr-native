@@ -1,180 +1,146 @@
 #include <common.h>
 
-int DecalFont_GetLineWidthStrlen(char *character, int len, int fontType)
+#ifndef FONT_ICON_GROUP
+#define FONT_ICON_GROUP        data.font_IconGroupID
+#define FONT_CHAR_WIDTH        data.font_charPixWidth
+#define FONT_CHAR_HEIGHT       data.font_charPixHeight
+#define FONT_PUNCT_WIDTH       data.font_puncPixWidth
+#define FONT_CHARACTER_ICONS   data.font_characterIconID
+#define FONT_BUTTON_SCALE      data.font_buttonScale
+#define FONT_BUTTON_WIDTH      data.font_buttonPixWidth
+#define FONT_BUTTON_HEIGHT     data.font_buttonPixHeight
+#define FONT_INDENT_ICONS      data.font_indentIconID
+#define FONT_INDENT_DIMENSIONS data.font_indentPixDimensions
+#define FONT_COLORS            data.ptrColor
+#endif
+
+#ifndef FONT_DRAW_POLY_GT4
+#define FONT_DRAW_POLY_GT4(icon, x, y, primMem, ot, c0, c1, c2, c3, transparency, scale)                                                                \
+	DecalHUD_DrawPolyGT4((icon), (x), (y), (primMem), (ot), ColorCode_Load(&(c0)), ColorCode_Load(&(c1)), ColorCode_Load(&(c2)), ColorCode_Load(&(c3)), \
+	                     (transparency), (scale))
+#endif
+
+s32 DecalFont_GetLineWidthStrlen(char *str, s16 len, s16 fontType)
 {
-	s16 font_charPixWidth;
-	s16 font_buttonPixWidth;
-	s16 font_puncPixWidth;
-	int pixLength;
-	u8 c;
-
-	font_charPixWidth = data.font_charPixWidth[fontType];
-	font_buttonPixWidth = data.font_buttonPixWidth[fontType];
-	font_puncPixWidth = data.font_puncPixWidth[fontType];
-	pixLength = 0;
-
-	while ((*character != 0) && (len != 0))
+	s16 width = 0;
+	while (*str != 0 && len != 0)
 	{
-		c = *character;
-
-		// do not use "switch" or "else if" that increases the number of bytes, and makes the function too large
-
-		// if the character is one of the PSX buttons
-		// @ is circle, [ is square, ^ is triangle, * is cross
-		if ((c == '@') || (c == '[') || (c == '^') || (c == '*'))
+		u8 c = *str;
+		if (c == '@' || c == '[' || c == '^' || c == '*')
 		{
-			// character width, plus extra spacing for button
-			pixLength += font_buttonPixWidth; // + font_charPixWidth
+			// NOTE(aalhendi): @, [, ^ and * encode circle, square, triangle and cross.
+			width += FONT_CHAR_WIDTH[fontType] + FONT_BUTTON_WIDTH[fontType];
 		}
-
-		// colon or period
-		if ((c == ':') || (c == '.'))
+		else if (c == ':' || c == '.')
 		{
-			// punctuation spacing
-			pixLength += font_puncPixWidth - font_charPixWidth; // + font_charPixWidth
+			width += FONT_PUNCT_WIDTH[fontType];
 		}
-
-
-		// if normal character
-		if (c > 2)
+		else if (c > 2)
 		{
-			// normal character spacing
-			// this will be added on top of button,
-			// and colon, and period, so dont "else if"
-			pixLength += font_charPixWidth;
+			width += FONT_CHAR_WIDTH[fontType];
 		}
-
-		character++;
+		str++;
 		len--;
 	}
-
-	return pixLength;
+	return width;
 }
 
 
-int DecalFont_GetLineWidth(char *str, s16 fontType)
+s32 DecalFont_GetLineWidth(char *str, s16 fontType)
 {
 	return (s16)DecalFont_GetLineWidthStrlen(str, -1, fontType);
 }
 
 
-void DecalFont_DrawLineStrlen(char *str, s16 len, int posX, s16 posY, s16 fontType, int flags)
+void DecalFont_DrawLineStrlen(char *str, s16 len, s16 posX, s16 posY, s16 fontType, s16 flags)
 {
-	struct GameTracker *gGT = sdata->gGT;
+	s16 x = posX;
+	u8 *character;
 
-	// text is justified left by default
-	if (flags & (JUSTIFY_CENTER | JUSTIFY_RIGHT))
+	if (flags & JUSTIFY_CENTER)
 	{
-		int alignX = DecalFont_GetLineWidthStrlen(str, len, fontType);
-
-		if (flags & JUSTIFY_CENTER)
-		{
-			alignX /= 2;
-		}
-
-		posX -= alignX;
+		x = posX - ((s16)DecalFont_GetLineWidthStrlen(str, len, fontType) >> 1);
+	}
+	else if (flags & JUSTIFY_RIGHT)
+	{
+		x = posX - DecalFont_GetLineWidthStrlen(str, len, fontType);
 	}
 
-
 	flags &= 0xfff;
-
-
-	for (; *str != 0 && len != 0; str++, len--)
+	for (character = (u8 *)str; *character != 0 && len != 0; character++, len--)
 	{
-		u8 *strcopy = (u8 *)str;
+		s16 extraX = 0;
 		u16 iconID = 0xff;
-		s16 charWidth = data.font_charPixWidth[fontType];
-		s16 pixWidthExtra = 0;
-		s16 pixHeightExtra = 0;
+		s16 extraY = 0;
+		s16 iconGroupID = FONT_ICON_GROUP[fontType];
+		Color *colors = (Color *)FONT_COLORS[flags];
+		s16 charWidth = FONT_CHAR_WIDTH[fontType];
 		s16 iconScale = FP(1.0);
+		s32 rawCode = *character;
+		// NOTE(aalhendi): Keep the raw byte separate from the classifier's retail scratch register.
+		register s32 c CTR_PSX_REGISTER("$3") = rawCode;
 
-
-		u32 *ptrColor = data.ptrColor[flags];
-
-
-		if (*strcopy == ':' || *strcopy == '.')
+		if (c == ':' || c == '.')
 		{
-			charWidth = data.font_puncPixWidth[fontType];
+			charWidth = FONT_PUNCT_WIDTH[fontType];
+		}
+		else if (c == '@' || c == '[' || c == '^' || c == '*')
+		{
+			// NOTE(aalhendi): Button glyphs have their own scale, baseline and neutral palette.
+			iconScale = FONT_BUTTON_SCALE[fontType];
+			extraY = FONT_BUTTON_HEIGHT[fontType];
+			charWidth = FONT_CHAR_WIDTH[fontType] + FONT_BUTTON_WIDTH[fontType];
+			colors = (Color *)FONT_COLORS[GRAY];
 		}
 
-		// if the character is one of the PSX buttons
-		// @ is circle, [ is square, ^ is triangle, * is X
-		if ((((*strcopy == '@') || (*strcopy == '[')) || (*strcopy == '^')) || (*strcopy == '*'))
+		c = rawCode;
+		if (c < 3)
 		{
-			iconScale = data.font_buttonScale[fontType];
-			pixHeightExtra = data.font_buttonPixHeight[fontType];
-			charWidth = data.font_charPixWidth[fontType] + data.font_buttonPixWidth[fontType];
-
-			// use neutral vertex color for button characters
-			ptrColor = data.ptrColor[GRAY];
-		}
-
-		// Set character sprite (icon) IDs
-		// The first 0x21 (counting 0) ASCII characters don't have icon IDs assigned to them
-		// High icon IDs are reserved for the incomplete kana font path.
-
-		// ASCII characters and reserved kana slots
-		// 0xE0 characters from 0x20 to 0x100
-		// TO DO: figure out why the cast to u32 is necessary --Super
-		if (((u32)*strcopy - 0x21) < 0xdf)
-		{
-			// get iconID based on ascii character
-			iconID = data.font_characterIconID[*strcopy - 0x21];
-		}
-
-		// Unused dakuten and handakuten placeholders
-		if (*strcopy < 3)
-		{
+			// NOTE(aalhendi): Bytes 1 and 2 select zero-advance accent placeholders.
+			s32 indentBase = fontType * 2 - 1;
+			s16 *dimensions = FONT_INDENT_DIMENSIONS + fontType * 2;
+			iconID = (u8)FONT_INDENT_ICONS[c + indentBase];
+			extraX = dimensions[0];
+			extraY = dimensions[1];
 			charWidth = 0;
-			iconID = data.font_indentIconID[fontType * 2 + *strcopy - 1];
-			pixWidthExtra = data.font_indentPixDimensions[fontType * 2];
-			pixHeightExtra = data.font_indentPixDimensions[(fontType * 2) + 1];
+		}
+		else if ((u32)(c - 0x21) < 0xdf && iconID == 0xff)
+		{
+			iconID = FONT_CHARACTER_ICONS[c - 0x21];
 		}
 
-
-		// if iconID is valid
 		if (iconID != 0xff)
 		{
-			s16 iconGroupID = data.font_IconGroupID[fontType];
-
-
-			// Incomplete kana font path; unused
-			// see below for more details
+			struct GameTracker *gGT;
+			struct IconGroup *group;
 			if (iconID > 0x7f)
 			{
+				// NOTE(aalhendi): High IDs select the reserved kana groups, not the normal font atlas.
+				s16 kanaGroup;
 				iconID -= 0x80;
-				s16 kanaIconGroupID = 15;
+				kanaGroup = 15;
 				if (iconGroupID == 4)
 				{
-					kanaIconGroupID = 14;
+					kanaGroup = 14;
 				}
-				iconGroupID = kanaIconGroupID;
+				iconGroupID = kanaGroup;
 			}
-
-
-// NOTE(aalhendi): Native can boot before every retail icon group is loaded.
+			gGT = GAME_TRACKER;
+			group = gGT->iconGroup[iconGroupID];
 #ifdef CTR_NATIVE
-			if (gGT->iconGroup[iconGroupID] != 0)
-			{
+			// NOTE(aalhendi): Native can boot before every retail icon group is loaded.
+			if (group != NULL)
 #endif
-
-				if (iconID < gGT->iconGroup[iconGroupID]->numIcons)
+			{
+				if (iconID < group->numIcons)
 				{
-					struct Icon **iconPtrArray = ICONGROUP_GETICONS(gGT->iconGroup[iconGroupID]);
-
-					DecalHUD_DrawPolyGT4(iconPtrArray[iconID],
-
-					                     posX + pixWidthExtra, posY + pixHeightExtra,
-
-					                     &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT,
-
-					                     ptrColor[0], ptrColor[1], ptrColor[2], ptrColor[3],
-
-					                     0, iconScale);
+					struct Icon **icons = ICONGROUP_GETICONS(group);
+					FONT_DRAW_POLY_GT4(icons[iconID], x + extraX, posY + extraY, &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT, colors[0], colors[1],
+					                   colors[2], colors[3], 0, iconScale);
 				}
 			}
 		}
-		posX += charWidth;
+		x += charWidth;
 	}
 }
 
@@ -185,152 +151,108 @@ void DecalFont_DrawLine(char *str, s16 posX, s16 posY, s16 fontType, s16 flags)
 }
 
 
-void DecalFont_DrawLineOT(char *str, int posX, int posY, s16 fontType, int flags, u32 *ot)
+void DecalFont_DrawLineOT(char *str, s16 posX, s16 posY, s16 fontType, s16 flags, u32 *ot)
 {
 	struct GameTracker *gGT;
 	u32 *backupOT;
 
-	gGT = sdata->gGT;
+	gGT = GAME_TRACKER;
 
-	// backup
 	backupOT = gGT->pushBuffer_UI.ptrOT;
-
-	// alter
 	gGT->pushBuffer_UI.ptrOT = ot;
 
-	// draw
 	DecalFont_DrawLine(str, (s16)posX, (s16)posY, fontType, (s16)flags);
 
-	// reset
-	gGT->pushBuffer_UI.ptrOT = backupOT;
+	// NOTE(aalhendi): Reload the tracker after drawing before restoring its UI table.
+	GAME_TRACKER->pushBuffer_UI.ptrOT = backupOT;
 }
 
 
-int DecalFont_DrawMultiLineStrlen(char *str, s16 len, s16 posX, s16 posY, s16 maxPixLen, s16 fontType, s16 flags)
+s32 DecalFont_DrawMultiLineStrlen(char *str, s16 len, s16 posX, s16 posY, s16 maxPixLen, s16 fontType, s16 flags)
 {
-	char strCharacter;
-	s16 lineLen;
-	char *currPointer;
-	s16 lettersRemaining;
-	char *strPointer;
-	int totalPassageHeight;
-
-	totalPassageHeight = 0;
+	s16 totalHeight = 0;
+	char *cursor;
+	char *lineStart;
+	s16 remainingAtBreak;
+	s16 lineWidth;
 
 	do
 	{
-		// pointer to string
-		strPointer = str;
-
-		// rather than using \n for new lines, CTR uses \r, which is similar if you try it with printf
-
-		// while you've not reached the end of the line
+		cursor = str;
+		remainingAtBreak = len;
+		lineStart = str;
+		// NOTE(aalhendi): CTR uses carriage returns for explicit line breaks.
 		if (*str != '\r')
 		{
-			// get the first character
-			strCharacter = *str;
-
 			while (1)
 			{
-				// pointer to current letter
-				currPointer = strPointer;
-
-				// number of letters remaining
-				lettersRemaining = len;
-
-				// if you reached a space, and you're
-				// not out of letters yet
-				if ((strCharacter == ' ') && (len != 0))
+				if (*cursor == ' ' && len != 0)
 				{
-					// increment pointer to next letter
-					currPointer = strPointer + 1;
-
-					// one letter less
-					lettersRemaining = len - 1;
+					cursor++;
+					len--;
 				}
-
-				// get next character
-				strCharacter = *currPointer;
-
-				// if nullptr, or out of letters, quit the loop
-				if ((strCharacter == '\0') || (lettersRemaining == 0))
+				if (*cursor == 0 || len == 0)
 				{
 					break;
 				}
-
-				// if this is a letter, number, or symbol
-				if ((strCharacter != ' ') && (strCharacter != '\r'))
+				if (*cursor != ' ' && *cursor != '\r')
 				{
-					// get the length of the next word
-					while (lettersRemaining != 0)
+					// NOTE(aalhendi): The word scanner keeps its own terminators and
+					// short budget snapshot to retain the retail loop layout.
+					s32 wordSpace = ' ';
+					s32 wordReturn = '\r';
+					while (1)
 					{
-						// increment pointer to next letter
-						currPointer = currPointer + 1;
-
-						// get value of next character
-						strCharacter = *currPointer;
-
-						// reduce number of remaining characters
-						lettersRemaining = lettersRemaining + -1;
-
-						// stop counting at a nullptr,
-						// or a space (end of word),
-						// or the end of the line '\r'
-						if (((strCharacter == '\0') || (strCharacter == ' ')) || (strCharacter == '\r'))
+						s16 remaining = len;
+						if (remaining == 0)
+						{
+							break;
+						}
+						cursor++;
+						len--;
+						if (*cursor == 0 || *cursor == wordSpace || *cursor == wordReturn)
 						{
 							break;
 						}
 					}
 				}
-
-				lineLen = DecalFont_GetLineWidthStrlen(str, (u32)currPointer - (u32)str, (int)fontType);
-
-				if (
-				    // if parameter line length is longer than string line length
-				    (maxPixLen <= lineLen) || (
-				                                  // get character
-				                                  strCharacter = *currPointer,
-
-				                                  // update pointer
-				                                  strPointer = currPointer,
-
-				                                  // update number of remaining characters
-				                                  len = lettersRemaining,
-
-				                                  // check if this is new line
-				                                  strCharacter == '\r'))
+				lineWidth = DecalFont_GetLineWidthStrlen(lineStart, (s16)(cursor - lineStart), fontType);
+				if (maxPixLen <= lineWidth)
+				{
+					break;
+				}
+				// NOTE(aalhendi): Accept only complete words that fit; retain their remaining byte budget.
+				str = cursor;
+				remainingAtBreak = len;
+				if (*cursor == '\r')
 				{
 					break;
 				}
 			}
 		}
 
-		DecalFont_DrawLineStrlen(str, (u32)strPointer - (u32)str, (int)posX, posY + totalPassageHeight, (int)fontType, (int)flags);
-
-
-		totalPassageHeight += data.font_charPixHeight[fontType];
-
-
-		if (*strPointer == '\0')
+		DecalFont_DrawLineStrlen(lineStart, (s16)(str - lineStart), posX, posY + totalHeight, fontType, flags);
+		len = remainingAtBreak;
+		totalHeight += FONT_CHAR_HEIGHT[fontType];
+		if (*str == 0)
 		{
-		EndFunction:
-			return totalPassageHeight;
+			break;
 		}
-
 		if (len != 0)
 		{
-			strPointer = strPointer + 1;
-			len = len + -1;
+			str++;
+			len--;
 		}
-		if ((*strPointer == '\0') || (str = strPointer, len == 0))
+		if (*str == 0 || len == 0)
 		{
-			goto EndFunction;
+			break;
 		}
 	} while (1);
+	return totalHeight;
 }
 
 
-int DecalFont_DrawMultiLine(char *str, int posX, int posY, int maxPixLen, s16 fontType, int flags)
+s32 DecalFont_DrawMultiLine(char *str, s16 posX, s16 posY, s16 maxPixLen, s16 fontType, s16 flags)
 {
 	return (s16)DecalFont_DrawMultiLineStrlen(str, -1, (s16)posX, (s16)posY, (s16)maxPixLen, fontType, (s16)flags);
 }

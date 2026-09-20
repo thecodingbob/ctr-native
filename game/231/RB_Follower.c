@@ -1,21 +1,11 @@
 #include <common.h>
 
-static struct InstDrawPerPlayer *RB_Follower_GetIDPP(struct Instance *inst, int playerIndex)
-{
-	return (struct InstDrawPerPlayer *)((char *)inst + sizeof(struct Instance) + (playerIndex * sizeof(struct InstDrawPerPlayer)));
-}
-
 void RB_Follower_ProcessBucket(struct Thread *t)
 {
-	int i;
-	int numPlyr;
-	int driverID;
+	s32 i;
+	s32 driverID;
 	struct Follower *fObj;
 	struct Instance *inst;
-	struct InstDrawPerPlayer *idpp;
-	struct GameTracker *gGT = sdata->gGT;
-
-	numPlyr = gGT->numPlyrNextGame;
 
 	for (/**/; t != 0; t = t->siblingThread)
 	{
@@ -26,66 +16,61 @@ void RB_Follower_ProcessBucket(struct Thread *t)
 		}
 
 		fObj = t->object;
+		inst = t->inst;
 		driverID = fObj->driver->driverID;
 
-		inst = t->inst;
-		idpp = RB_Follower_GetIDPP(inst, 0);
-
 		// make Follower invisible to all other players
-		for (i = 0; i < numPlyr; i++)
+		for (i = 0; i < GAME_TRACKER->numPlyrNextGame; i++)
 		{
-			if (i != driverID)
+			if (driverID != i)
 			{
-				idpp[i].instFlags &= ~DRAW_SUCCESSFUL;
+				inst->idpp[i].instFlags &= ~DRAW_SUCCESSFUL;
 			}
 		}
 
 		// make Mine invisible to this player
-		inst = fObj->mineTh->inst;
-		idpp = RB_Follower_GetIDPP(inst, driverID);
-		idpp->instFlags &= ~DRAW_SUCCESSFUL;
+		fObj->mineTh->inst->idpp[driverID].instFlags &= ~DRAW_SUCCESSFUL;
 	}
 }
 
 void RB_Follower_ThTick(struct Thread *t)
 {
-	int kartState;
+	s32 kartState;
 	struct Driver *d;
 	struct Follower *fObj;
 	struct Instance *inst;
+	struct Thread *mine;
 
-	inst = t->inst;
 	fObj = t->object;
 	d = fObj->driver;
+	mine = fObj->mineTh;
 	kartState = d->kartState;
 
-	fObj->frameCount--;
+	fObj->frameCount = CTR_MipsSubLo(fObj->frameCount, 1);
 
-	if ((fObj->frameCount > 0) && ((kartState == KS_NORMAL) || (kartState == KS_DRIFTING)) &&
+	if ((fObj->frameCount <= 0) || ((kartState != KS_NORMAL) && (kartState != KS_DRIFTING)) ||
 
-	    // terrible way of checking if mineTh was destroyed
-	    // before the follower thread was destroyed
-	    (fObj->mineTh->timesDestroyed == fObj->backupTimesDestroyed) &&
+	    // NOTE(aalhendi): The pool can reuse a destroyed mine's thread; check its generation.
+	    (mine->timesDestroyed != fObj->backupTimesDestroyed) ||
 
-	    (d->speedApprox > -1))
+	    (d->speedApprox < 0))
 	{
-		if (inst->scale.x < 0x800)
-		{
-			inst->scale.x = inst->scale.x << 1;
-			inst->scale.y = inst->scale.y << 1;
-			inst->scale.z = inst->scale.z << 1;
-		}
-
-		// midpoint between real mine position, and driver position
-		inst->matrix.t[0] = (fObj->realPos.x + (d->posCurr.x >> 8)) >> 1;
-		inst->matrix.t[1] = (fObj->realPos.y + (d->posCurr.y >> 8)) >> 1;
-		inst->matrix.t[2] = (fObj->realPos.z + (d->posCurr.z >> 8)) >> 1;
-
+		t->flags |= THREAD_FLAG_DEAD;
 		return;
 	}
 
-	// kill thread
-	t->flags |= THREAD_FLAG_DEAD;
+	inst = t->inst;
+	if (inst->scale.x < 0x800)
+	{
+		inst->scale.x = (u16)inst->scale.x << 1;
+		inst->scale.y = (u16)inst->scale.y << 1;
+		inst->scale.z = (u16)inst->scale.z << 1;
+	}
+
+	// midpoint between real mine position, and driver position
+	inst->matrix.t[0] = (fObj->realPos.x + (d->posCurr.x >> 8)) >> 1;
+	inst->matrix.t[1] = (fObj->realPos.y + (d->posCurr.y >> 8)) >> 1;
+	inst->matrix.t[2] = (fObj->realPos.z + (d->posCurr.z >> 8)) >> 1;
 }
 
 void RB_Follower_Init(struct Driver *d, struct Thread *mineTh)
@@ -108,7 +93,7 @@ void RB_Follower_Init(struct Driver *d, struct Thread *mineTh)
 	}
 
 	// disable for reverse camera
-	if (((sdata->gGT->cameraDC[d->driverID].flags) & CAMERA_FLAG_REVERSE) != 0)
+	if (((GAME_TRACKER->cameraDC[d->driverID].flags) & CAMERA_FLAG_REVERSE) != 0)
 	{
 		return;
 	}
@@ -121,12 +106,11 @@ void RB_Follower_Init(struct Driver *d, struct Thread *mineTh)
 		return;
 	}
 
-	// followerInst scale
+	// grow the afterimage from one quarter of the normal scale
 	followerInst->scale.x = 0x200;
 	followerInst->scale.y = 0x200;
 	followerInst->scale.z = 0x200;
 
-	// mineInst
 	mineInst = mineTh->inst;
 
 	memcpy(&followerInst->matrix, &mineInst->matrix, sizeof(followerInst->matrix));
@@ -140,9 +124,8 @@ void RB_Follower_Init(struct Driver *d, struct Thread *mineTh)
 	fObj->mineTh = mineTh;
 	fObj->backupTimesDestroyed = mineTh->timesDestroyed;
 
-	// backup original position
-	for (int i = 0; i < 3; i++)
-	{
-		CTR_VECTOR_DATA(&(fObj->realPos))[i] = mineInst->matrix.t[i];
-	}
+	// keep the original mine position as the other end of the afterimage
+	fObj->realPos.x = mineInst->matrix.t[0];
+	fObj->realPos.y = mineInst->matrix.t[1];
+	fObj->realPos.z = mineInst->matrix.t[2];
 }

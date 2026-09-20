@@ -9,52 +9,55 @@ void RB_Blade_ThTick(struct Thread *t)
 	bladeObj = (struct Blade *)t->object;
 	bladeInst = t->inst;
 
-	rot.x = bladeInst->instDef->rot.x;
-	rot.y = bladeInst->instDef->rot.y + 0x400;
-	rot.z = bladeObj->angle;
+	for (;;)
+	{
+		rot.x = bladeInst->instDef->rot.x;
+		rot.y = bladeInst->instDef->rot.y + 0x400;
+		rot.z = bladeObj->angle;
 
-	bladeObj->angle += 0x100;
+		bladeObj->angle += 0x100;
 
-	// converted to TEST in rebuildPS1
-	ConvertRotToMatrix(&bladeInst->matrix, &rot);
+		ConvertRotToMatrix(&bladeInst->matrix, &rot);
 
-	bladeInst->scale.x = 0x1000;
-	bladeInst->scale.y = 0x1000;
-	bladeInst->scale.z = 0x1000;
+		bladeInst->scale.z = 0x1000;
+		bladeInst->scale.y = 0x1000;
+		bladeInst->scale.x = 0x1000;
 
-	ThTick_FastRET(t);
+		ThTick_FastRET(t);
+#ifdef CTR_NATIVE
+		// NOTE(aalhendi): Native dispatch calls each tick anew; retail resumes after the yield.
+		return;
+#endif
+	}
 }
-
-static char s_blade[] = "blade";
 
 void RB_Blade_LInB(struct Instance *inst)
 {
-	// Four "blades" from two blimps, Hot Air Skyway
-	// One "blade" is a group of three fins,
-
+	struct Thread *t;
 	struct Blade *bladeObj;
+
+	// Hot Air Skyway has four blade groups across two blimps, three fins per group.
 	if (inst->thread != NULL)
 	{
 		return;
 	}
 
-	struct Thread *t = PROC_BirthWithObject(
+	t = PROC_BirthWithObject(
 	    // creation flags
 	    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Blade), NONE, SMALL, STATIC),
 
 	    RB_Blade_ThTick, // behavior
-	    s_blade,         // debug name
+	    "blade",         // debug name
 	    0                // thread relative
 	);
 
+	inst->thread = t;
 	if (t == 0)
 	{
 		return;
 	}
 
-	inst->thread = t;
+	bladeObj = t->object;
 	t->inst = inst;
-
-	bladeObj = ((struct Blade *)t->object);
 	bladeObj->angle = 0;
 }

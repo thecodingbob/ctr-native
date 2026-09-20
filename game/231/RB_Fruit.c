@@ -1,80 +1,68 @@
-#include <common.h>
-
-void RB_Fruit_GetScreenCoords(struct PushBuffer *pb, struct Instance *inst, s16 *output)
-{
-	MATRIX *m;
-	SVec4 posWorld;
-
-	// load camera matrix
-	m = &pb->matrix_ViewProj;
-	gte_SetRotMatrix(m);
-	gte_SetTransMatrix(m);
-
-	// load input vector, each int casts to s16
-	posWorld.x = (s16)inst->matrix.t[0];
-	posWorld.y = (s16)inst->matrix.t[1];
-	posWorld.z = (s16)inst->matrix.t[2];
-	posWorld.w = 0;
-	CTR_GteLoadSVec4V0(&posWorld);
-
-	// perspective projection
-	gte_rtps();
-
-	// get result
-	CTR_GteStoreSXY(&output[0]);
-}
+#include "RB_Pickup.h"
 
 void RB_Fruit_ThTick(struct Thread *fruitTh)
 {
 	struct Instance *fruitInst;
 
 	fruitInst = fruitTh->inst;
-	fruitInst->thread = NULL;
-	fruitTh->flags |= THREAD_FLAG_DEAD;
+	do
+	{
+		fruitInst->thread = NULL;
+		fruitTh->flags |= THREAD_FLAG_DEAD;
+		ThTick_FastRET(fruitTh);
+#ifdef CTR_NATIVE
+		// NOTE(aalhendi): Native ticks return as callbacks; retail yields through FastRET.
+		return;
+#endif
+	} while (1);
 }
 
 int RB_Fruit_ThCollide(struct Thread *fruitTh, struct Thread *driverTh, void *funcThCollide, struct ScratchpadStruct *sps)
 {
-	(void)funcThCollide;
-	struct PushBuffer *pb;
-	s16 posScreen[2];
+	SVec4 posWorld;
+	union RBPickupScreen posScreen;
 	struct Driver *driver;
 	struct Instance *fruitInst;
 	struct Fruit *fruitObj;
 	int modelID;
-
+	(void)funcThCollide;
 	fruitObj = fruitTh->object;
 	modelID = sps->Input1.modelID;
 	fruitInst = fruitTh->inst;
 
 	// wumpa fruit can be grabbed by players and robotcars
-	if ((modelID != DYNAMIC_PLAYER) && (modelID != DYNAMIC_ROBOT_CAR))
+	if ((modelID == DYNAMIC_PLAYER) || (modelID == DYNAMIC_ROBOT_CAR))
 	{
-		return 0;
+		driver = driverTh->object;
+		if (modelID == DYNAMIC_PLAYER)
+		{
+			posWorld.x = (s16)fruitInst->matrix.t[0];
+			posWorld.y = (s16)fruitInst->matrix.t[1];
+			posWorld.z = (s16)fruitInst->matrix.t[2];
+			RB_Pickup_SetCamera(driver);
+			CTR_GteLoadPositionV0(&posWorld);
+			gte_rtps();
+			CTR_GteStorePositionXY(posScreen.coords);
+
+			driver->PickupWumpaHUD.startX = posScreen.coords[0] + GAME_TRACKER->pushBuffer[driver->driverID].rect.x;
+			driver->PickupWumpaHUD.startY = posScreen.coords[1] + GAME_TRACKER->pushBuffer[driver->driverID].rect.y - 0x14;
+			driver->PickupWumpaHUD.cooldown = 5;
+			driver->PickupWumpaHUD.numCollected++;
+		}
+
+		fruitObj->driver = driver;
+
+		fruitInst->scale.x = 0;
+		fruitInst->scale.y = 0;
+		fruitInst->scale.z = 0;
+		fruitInst->thread = NULL;
+
+		PlaySound3D(0x43, fruitInst);
+		fruitTh->flags |= THREAD_FLAG_DEAD;
+
+		return 1;
 	}
-
-	driver = driverTh->object;
-	if (modelID == DYNAMIC_PLAYER)
-	{
-		pb = &sdata->gGT->pushBuffer[driver->driverID];
-		RB_Fruit_GetScreenCoords(pb, fruitInst, &posScreen[0]);
-
-		driver->PickupWumpaHUD.startX = pb->rect.x + posScreen[0];
-		driver->PickupWumpaHUD.startY = pb->rect.y + posScreen[1] - 0x14;
-		driver->PickupWumpaHUD.cooldown = 5;
-		driver->PickupWumpaHUD.numCollected++;
-	}
-
-	fruitObj->driver = driver;
-
-	CTR_WriteU32LE(&fruitInst->scale.x, 0);
-	fruitInst->scale.z = 0;
-	fruitInst->thread = NULL;
-
-	PlaySound3D(0x43, fruitInst);
-	fruitTh->flags |= THREAD_FLAG_DEAD;
-
-	return 1;
+	return 0;
 }
 
 void RB_Fruit_LInB(struct Instance *inst)
@@ -91,7 +79,7 @@ int RB_Fruit_LInC(struct Instance *fruitInst, struct Thread *driverTh, struct Sc
 	fruitTh = fruitInst->thread;
 	if (fruitTh == NULL)
 	{
-		fruitTh = PROC_BirthWithObject(
+		fruitInst->thread = PROC_BirthWithObject(
 		    // creation flags
 		    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Fruit), NONE, SMALL, STATIC),
 
@@ -100,7 +88,7 @@ int RB_Fruit_LInC(struct Instance *fruitInst, struct Thread *driverTh, struct Sc
 		    0                // thread relative
 		);
 
-		fruitInst->thread = fruitTh;
+		fruitTh = fruitInst->thread;
 		if (fruitTh == NULL)
 		{
 			return 0;
@@ -108,9 +96,9 @@ int RB_Fruit_LInC(struct Instance *fruitInst, struct Thread *driverTh, struct Sc
 
 		fruitTh->inst = fruitInst;
 		fruitTh->funcThCollide = (void *)RB_Fruit_ThCollide;
-		fruitTh = fruitInst->thread;
 	}
 
+	fruitTh = fruitInst->thread;
 	if ((fruitTh == NULL) || (fruitTh->funcThCollide == NULL))
 	{
 		return 0;

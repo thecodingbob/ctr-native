@@ -52,7 +52,7 @@ void MainGameEnd_SoloRaceGetReward(int subtractTimeCrateBonus)
 
 	gGT->gameModeEnd |= 4;
 
-	struct HighScoreTrack *track = &sdata->gameProgress.highScoreTracks[gGT->levelID];
+	struct HighScoreTrack *track = &sdata->gameSave.progress.highScoreTracks[gGT->levelID];
 	int playerTime = player->timeElapsedInRace;
 
 	if (((track->timeTrialFlags >> data.bitIndex_timeTrialFlags_saveData.nTropyOpen) & 1) == 0)
@@ -92,7 +92,7 @@ void MainGameEnd_SoloRaceGetReward(int subtractTimeCrateBonus)
 CheckOxideAllTracks:
 	if (GAMEPROG_CheckGhostsBeaten(2))
 	{
-		UNLOCK_ADV_BIT(sdata->gameProgress.unlocks, GAME_UNLOCK_BIT_SCRAPBOOK);
+		UNLOCK_ADV_BIT(sdata->gameSave.progress.unlocks, GAME_UNLOCK_BIT_SCRAPBOOK);
 	}
 }
 

@@ -1,4 +1,4 @@
-#include <common.h>
+#include "VehCommon.h"
 
 enum
 {
@@ -20,299 +20,440 @@ enum
 	VEH_GROUND_SKIDS_COLOR_FADE_SHIFT = 1,
 };
 
-static const u32 VEH_GROUND_SKIDS_TPAGE_BLEND_MASK = 0xff9fffff;
-static const u32 VEH_GROUND_SKIDS_COLOR_SENTINEL = 0xffffffffu;
+#define VEH_GROUND_SKIDS_TPAGE_BLEND_MASK 0xff9fffffu
+#define VEH_GROUND_SKIDS_COLOR_SENTINEL   0xffffffffu
 
+#ifdef CTR_NATIVE
+#define VehGroundSkids_LoadOriginTransform()                                                        \
+	do                                                                                              \
+	{                                                                                               \
+		const VehGroundSkidsWord *originWords = CTR_SCRATCHPAD_PTR(const VehGroundSkidsWord, 0xb8); \
+		CTC2(originWords[0], 5);                                                                    \
+		CTC2(originWords[1], 6);                                                                    \
+		CTC2(originWords[2], 7);                                                                    \
+	} while (0)
+#else
+#define VehGroundSkids_LoadOriginTransform()                                                                                                        \
+	__asm__ volatile("lui $8,0x1f80\n\tori $8,$8,0xb8\n\tlw $12,0($8)\n\tlw $13,4($8)\n\tlw $14,8($8)\n\tctc2 $12,$5\n\tctc2 $13,$6\n\tctc2 $14,$7" \
+	                 :                                                                                                                              \
+	                 :                                                                                                                              \
+	                 : "memory")
+#endif
 
-static u32 VehGroundSkids_ReadTexWord(const struct TextureLayout *layout, u32 offset)
-{
-	u32 word;
-	memcpy(&word, (const u8 *)layout + offset, sizeof(word));
-	return word;
-}
+// NOTE(aalhendi): This dependency keeps the fourth segment's a3 setup after
+// its flag-byte load. Native builds only need the equivalent pointer assignment.
+#ifdef CTR_NATIVE
+#define VehGroundSkids_SetCallScratch(result, source, dependency) \
+	do                                                            \
+	{                                                             \
+		(void)(dependency);                                       \
+		(result) = (source);                                      \
+	} while (0)
+#else
+#define VehGroundSkids_SetCallScratch(result, source, dependency) __asm__("addu %0,%1,$0" : "=r"(result) : "r"(source), "r"(dependency))
+#endif
 
-static u16 VehGroundSkids_ReadTexHalf(const struct TextureLayout *layout, u32 offset)
-{
-	u16 half;
-	memcpy(&half, (const u8 *)layout + offset, sizeof(half));
-	return half;
-}
+typedef u32 VehGroundSkidsWord CTR_MAY_ALIAS;
 
 void VehGroundSkids_Subset1(u32 *currXY, u32 *prevXY, int depth, struct VehGroundSkidsScratch *scratch)
 {
-	struct GameTracker *gGT = sdata->gGT;
-	struct DB *backBuffer = gGT->backBuffer;
-	POLY_GT4 *poly = backBuffer->primMem.cursor;
-	POLY_GT4 *nextPrim = poly + 1;
+	register struct GameTracker *gGT CTR_PSX_REGISTER("$9");
+	register u32 *previousXY CTR_PSX_REGISTER("$10");
+	struct DB *backBuffer;
+	register CtrPackedU32 *polyCursor CTR_PSX_REGISTER("$5");
+	register CtrPackedU32 *nextPrim CTR_PSX_REGISTER("$8");
+	register CtrPackedU32 *poly CTR_PSX_REGISTER("$8");
+	struct GameTracker *uvGameTracker;
+	register u32 tpage CTR_PSX_REGISTER("$2");
+	u32 colorNear;
+	register u32 packetAddress CTR_PSX_REGISTER("$5");
+	struct PushBuffer *pb;
+	u32 *ot;
 
-	if ((char *)backBuffer->primMem.guardEnd < (char *)nextPrim)
+	VEH_LOAD_GAME_TRACKER(gGT);
+	backBuffer = gGT->backBuffer;
+	previousXY = prevXY;
+	CTR_PSX_KEEP_VALUE(previousXY);
+	polyCursor = (CtrPackedU32 *)backBuffer->primMem.cursor;
+	nextPrim = polyCursor + (sizeof(POLY_GT4) / sizeof(*polyCursor));
+	if ((CtrPackedU32 *)backBuffer->primMem.guardEnd < nextPrim)
 	{
 		return;
 	}
 
-	backBuffer->primMem.cursor = nextPrim;
+	backBuffer->primMem.cursor = (void *)nextPrim;
+	colorNear = scratch->colorNear;
+	poly = polyCursor;
+	poly[1] = colorNear;
+	poly[4] = scratch->colorNear;
+	poly[7] = scratch->colorFar;
+	poly[10] = scratch->colorFar;
+	poly[2] = currXY[0];
+	poly[5] = currXY[1];
+	poly[8] = previousXY[0];
+	poly[11] = previousXY[1];
 
-	CtrGpu_WriteColorCode(&poly->r0, scratch->colorNear);
-	CtrGpu_WriteColorCode(&poly->r1, scratch->colorNear);
-	CtrGpu_WriteColorCode(&poly->r2, scratch->colorFar);
-	CtrGpu_WriteColorCode(&poly->r3, scratch->colorFar);
-
-	CtrGpu_WritePackedXY(&poly->x0, currXY[0]);
-	CtrGpu_WritePackedXY(&poly->x1, currXY[1]);
-	CtrGpu_WritePackedXY(&poly->x2, prevXY[0]);
-	CtrGpu_WritePackedXY(&poly->x3, prevXY[1]);
-
-	struct Icon *icon = gGT->ptrIcons[VEH_GROUND_SKIDS_ICON_TIREMARK];
-	CtrGpu_WritePackedUVWord(&poly->u0, VehGroundSkids_ReadTexWord(&icon->texLayout, offsetof(struct TextureLayout, u0)));
-
-	u32 tpage = VehGroundSkids_ReadTexWord(&icon->texLayout, offsetof(struct TextureLayout, u1));
+	poly[3] = *(const CtrPackedU32 *)&gGT->ptrIcons[VEH_GROUND_SKIDS_ICON_TIREMARK]->texLayout.u0;
 	if ((scratch->segment.segmentFlags & VEH_GROUND_SKIDS_ALT_TPAGE_FLAG) != 0)
 	{
-		tpage = (tpage & VEH_GROUND_SKIDS_TPAGE_BLEND_MASK) | VEH_GROUND_SKIDS_TPAGE_BLEND_ALT;
+		tpage = *(const CtrPackedU32 *)&gGT->ptrIcons[VEH_GROUND_SKIDS_ICON_TIREMARK]->texLayout.u1;
+		tpage &= VEH_GROUND_SKIDS_TPAGE_BLEND_MASK;
+		CTR_PSX_KEEP_VALUE(tpage);
+		tpage |= VEH_GROUND_SKIDS_TPAGE_BLEND_ALT;
 	}
 	else
 	{
-		tpage = (tpage & VEH_GROUND_SKIDS_TPAGE_BLEND_MASK) | VEH_GROUND_SKIDS_TPAGE_BLEND_NORMAL;
+		tpage = *(const CtrPackedU32 *)&gGT->ptrIcons[VEH_GROUND_SKIDS_ICON_TIREMARK]->texLayout.u1;
+		tpage &= VEH_GROUND_SKIDS_TPAGE_BLEND_MASK;
+		CTR_PSX_KEEP_VALUE(tpage);
+		tpage |= VEH_GROUND_SKIDS_TPAGE_BLEND_NORMAL;
 	}
-	CtrGpu_WritePackedUVWord(&poly->u1, tpage);
+	poly[6] = tpage;
+	CTR_PSX_MEMORY_BARRIER();
+	uvGameTracker = GAME_TRACKER;
+	CtrGpu_WritePackedUV((u8 *)&poly[9], CTR_ReadU16LE(&uvGameTracker->ptrIcons[VEH_GROUND_SKIDS_ICON_TIREMARK]->texLayout.u2));
+	packetAddress = CtrGpu_PrimToOTLink24(poly);
+	CtrGpu_WritePackedUV((u8 *)&poly[12], CTR_ReadU16LE(&uvGameTracker->ptrIcons[VEH_GROUND_SKIDS_ICON_TIREMARK]->texLayout.u3));
 
-	CtrGpu_WritePackedUV(&poly->u2, VehGroundSkids_ReadTexHalf(&icon->texLayout, offsetof(struct TextureLayout, u2)));
-	CtrGpu_WritePackedUV(&poly->u3, VehGroundSkids_ReadTexHalf(&icon->texLayout, offsetof(struct TextureLayout, u3)));
-
-	struct PushBuffer *pb = scratch->pushBuffer;
-	u32 *ot = pb->ptrOT + ((s32)depth >> VEH_GROUND_SKIDS_OT_DEPTH_SHIFT);
-	CtrGpu_LinkPacket24(ot, &poly->tag, poly, VEH_GROUND_SKIDS_GPU_TAG_POLY_GT4);
-}
-
-static s16 VehGroundSkids_ScaleRelative(u16 value, u16 origin)
-{
-	// NOTE(aalhendi): Retail uses lhu/subu/sll/sh, so preserve unsigned halfword wraparound.
-	return (s16)(u16)(((u32)value - (u32)origin) << VEH_GROUND_SKIDS_PROJECT_SCALE_SHIFT);
+	pb = scratch->pushBuffer;
+	ot = pb->ptrOT + ((s32)depth >> VEH_GROUND_SKIDS_OT_DEPTH_SHIFT);
+	poly[0] = *ot | VEH_GROUND_SKIDS_GPU_TAG_POLY_GT4;
+	*ot = packetAddress;
 }
 
 void VehGroundSkids_Subset2(struct VehGroundSkidsScratch *scratch, const SVECTOR *v1, const SVECTOR *v2, const SVECTOR *v3)
 {
-	u16 originX = (u16)scratch->origin.x;
-	u16 originY = (u16)scratch->origin.y;
-	u16 originZ = (u16)scratch->origin.z;
+	// NOTE(aalhendi): Retail deliberately subtracts the low halfwords before
+	// projection; keep the 16-bit wraparound visible to both targets.
+	scratch->projected[0].vx = (s16)(u16)(((u32)(u16)v1->vx - (u32)(u16)scratch->origin.x) << VEH_GROUND_SKIDS_PROJECT_SCALE_SHIFT);
+	scratch->projected[0].vy = (s16)(u16)(((u32)(u16)v1->vy - (u32)(u16)scratch->origin.y) << VEH_GROUND_SKIDS_PROJECT_SCALE_SHIFT);
+	scratch->projected[0].vz = (s16)(u16)(((u32)(u16)v1->vz - (u32)(u16)scratch->origin.z) << VEH_GROUND_SKIDS_PROJECT_SCALE_SHIFT);
 
-	scratch->projected[0].vx = VehGroundSkids_ScaleRelative((u16)v1->vx, originX);
-	scratch->projected[0].vy = VehGroundSkids_ScaleRelative((u16)v1->vy, originY);
-	scratch->projected[0].vz = VehGroundSkids_ScaleRelative((u16)v1->vz, originZ);
+	scratch->projected[1].vx = (s16)(u16)(((u32)(u16)v2->vx - (u32)(u16)scratch->origin.x) << VEH_GROUND_SKIDS_PROJECT_SCALE_SHIFT);
+	scratch->projected[1].vy = (s16)(u16)(((u32)(u16)v2->vy - (u32)(u16)scratch->origin.y) << VEH_GROUND_SKIDS_PROJECT_SCALE_SHIFT);
+	scratch->projected[1].vz = (s16)(u16)(((u32)(u16)v2->vz - (u32)(u16)scratch->origin.z) << VEH_GROUND_SKIDS_PROJECT_SCALE_SHIFT);
 
-	scratch->projected[1].vx = VehGroundSkids_ScaleRelative((u16)v2->vx, originX);
-	scratch->projected[1].vy = VehGroundSkids_ScaleRelative((u16)v2->vy, originY);
-	scratch->projected[1].vz = VehGroundSkids_ScaleRelative((u16)v2->vz, originZ);
-
-	scratch->projected[2].vx = VehGroundSkids_ScaleRelative((u16)v3->vx, originX);
-	scratch->projected[2].vy = VehGroundSkids_ScaleRelative((u16)v3->vy, originY);
-	scratch->projected[2].vz = VehGroundSkids_ScaleRelative((u16)v3->vz, originZ);
-}
-
-static u32 VehGroundSkids_ColorWord(int value)
-{
-	return VEH_GROUND_SKIDS_COLOR_PREFIX | ((u32)value << 16) | ((u32)value << 8) | (u32)value;
-}
-
-static s32 VehGroundSkids_Abs(s32 value)
-{
-	return value < 0 ? -value : value;
-}
-
-static int VehGroundSkids_InitPoint(SVECTOR *scratch, const SVECTOR *point, const s32 *origin)
-{
-	// NOTE(aalhendi): Retail uses lh/lw/subu/sll here; preserve unsigned 32-bit wraparound.
-	s32 x = (s32)(((u32)(s32)point->vx - (u32)origin[0]) << VEH_GROUND_SKIDS_PROJECT_SCALE_SHIFT);
-	if (VehGroundSkids_Abs(x) >= VEH_GROUND_SKIDS_CULL_ABS_MAX)
-	{
-		return 0;
-	}
-
-	s32 y = (s32)(((u32)(s32)point->vy - (u32)origin[1]) << VEH_GROUND_SKIDS_PROJECT_SCALE_SHIFT);
-	if (VehGroundSkids_Abs(y) >= VEH_GROUND_SKIDS_CULL_ABS_MAX)
-	{
-		return 0;
-	}
-
-	s32 z = (s32)(((u32)(s32)point->vz - (u32)origin[2]) << VEH_GROUND_SKIDS_PROJECT_SCALE_SHIFT);
-	if (VehGroundSkids_Abs(z) >= VEH_GROUND_SKIDS_CULL_ABS_MAX)
-	{
-		return 0;
-	}
-
-	scratch[0].vx = x;
-	scratch[0].vy = y;
-	scratch[0].vz = z;
-	return 1;
-}
-
-static int VehGroundSkids_IntensityFromDepth(int depth)
-{
-	depth >>= VEH_GROUND_SKIDS_DEPTH_SHIFT;
-	if (depth < VEH_GROUND_SKIDS_FULL_INTENSITY_DEPTH)
-	{
-		return VEH_GROUND_SKIDS_FULL_INTENSITY;
-	}
-
-	MTC2(depth - VEH_GROUND_SKIDS_FULL_INTENSITY_DEPTH, 30);
-	int shift = VEH_GROUND_SKIDS_LZCR_SHIFT_BASE - MFC2(31);
-	if (shift < 0)
-	{
-		shift = 0;
-	}
-
-	int intensity = VEH_GROUND_SKIDS_FULL_INTENSITY >> (shift & 0x1f);
-	if (intensity < VEH_GROUND_SKIDS_MIN_INTENSITY)
-	{
-		return -1;
-	}
-
-	return intensity;
-}
-
-static void VehGroundSkids_ProjectTriplet(struct VehGroundSkidsScratch *scratch, const SVECTOR *frame, u32 *sxy, s32 *depth)
-{
-	VehGroundSkids_Subset2(scratch, &frame[0], &frame[1], &frame[2]);
-	CTR_GteLoadSV3(&scratch->projected[0], &scratch->projected[1], &scratch->projected[2]);
-	gte_rtpt();
-	CTR_GteStoreSXY3(&sxy[0], &sxy[1], &sxy[2]);
-	gte_stsz3(&depth[0], &depth[1], &depth[2]);
-}
-
-static void VehGroundSkids_ProjectFrame(struct VehGroundSkidsScratch *scratch, const SVECTOR *frame, u32 *sxy, s32 *depth)
-{
-	VehGroundSkids_ProjectTriplet(scratch, &frame[0], &sxy[0], &depth[0]);
-	VehGroundSkids_ProjectTriplet(scratch, &frame[3], &sxy[3], &depth[3]);
-
-	VehGroundSkids_Subset2(scratch, &frame[6], &frame[7], &frame[0]);
-	CTR_GteLoadSV3(&scratch->projected[0], &scratch->projected[1], &scratch->projected[2]);
-	gte_rtpt();
-	CTR_GteStoreSXY3(&sxy[6], &sxy[7], &sxy[8]);
-	gte_stsz3(&depth[6], &depth[7], &depth[8]);
-}
-
-static void VehGroundSkids_TryEmitSegment(struct VehGroundSkidsScratch *scratch, u32 *currXY, u32 *prevXY, s32 *currDepth, s32 *prevDepth, u32 flags,
-                                          u32 prevFlags, int bit, const union VehEmitterSkidmark *mark, int pointIndex)
-{
-	if ((flags & prevFlags & bit) == 0)
-	{
-		return;
-	}
-	if (currDepth[pointIndex] <= VEH_GROUND_SKIDS_MIN_VISIBLE_DEPTH || currDepth[pointIndex + 1] <= VEH_GROUND_SKIDS_MIN_VISIBLE_DEPTH)
-	{
-		return;
-	}
-	if (prevDepth[pointIndex] <= VEH_GROUND_SKIDS_MIN_VISIBLE_DEPTH || prevDepth[pointIndex + 1] <= VEH_GROUND_SKIDS_MIN_VISIBLE_DEPTH)
-	{
-		return;
-	}
-
-	scratch->segment.bytes.segmentFlagsLow = mark->fields.flags;
-	int depth = (currDepth[pointIndex] >> VEH_GROUND_SKIDS_DEPTH_SHIFT) + (mark->fields.color << VEH_GROUND_SKIDS_OT_DEPTH_SHIFT);
-	VehGroundSkids_Subset1(&currXY[pointIndex], &prevXY[pointIndex], depth, scratch);
+	scratch->projected[2].vx = (s16)(u16)(((u32)(u16)v3->vx - (u32)(u16)scratch->origin.x) << VEH_GROUND_SKIDS_PROJECT_SCALE_SHIFT);
+	scratch->projected[2].vy = (s16)(u16)(((u32)(u16)v3->vy - (u32)(u16)scratch->origin.y) << VEH_GROUND_SKIDS_PROJECT_SCALE_SHIFT);
+	scratch->projected[2].vz = (s16)(u16)(((u32)(u16)v3->vz - (u32)(u16)scratch->origin.z) << VEH_GROUND_SKIDS_PROJECT_SCALE_SHIFT);
 }
 
 void VehGroundSkids_Main(struct Thread *thread, struct PushBuffer *pb)
 {
-	gte_SetGeomOffset(pb->rect.w >> 1, pb->rect.h >> 1);
-	gte_SetGeomScreen(pb->distanceToScreen_PREV);
+	register struct VehGroundSkidsScratch *scratch CTR_PSX_REGISTER("$18");
+	register u32 *currXY CTR_PSX_REGISTER("$20");
+	register u32 *prevXY CTR_PSX_REGISTER("$23");
+	register s32 *currDepth CTR_PSX_REGISTER("$17");
+	register s32 *prevDepth CTR_PSX_REGISTER("$19");
+	register u32 flags CTR_PSX_REGISTER("$21");
+	register u32 prevFlags;
+	register int frameOffset CTR_PSX_REGISTER("$22");
+	register union VehEmitterSkidmark *frame CTR_PSX_REGISTER("$16");
+	register s32 value CTR_PSX_REGISTER("$4");
+	register s32 geomX CTR_PSX_REGISTER("$3");
+	register s32 geomY CTR_PSX_REGISTER("$2");
+	register union VehEmitterSkidmark *initialFrame CTR_PSX_REGISTER("$5");
+	// NOTE(aalhendi): Volatile stack views below preserve retail reloads while
+	// this cursor reuses t0 for thread, driver, frame, and mark addresses.
+	register size_t cursor CTR_PSX_REGISTER("$8");
+	struct Driver *volatile savedDriver;
+	int frameIndex;
+	int depth;
+	s32 absDelta;
+	register s32 coordinate CTR_PSX_REGISTER("$2");
+	register s32 origin CTR_PSX_REGISTER("$3");
+	register u8 *markBytes CTR_PSX_REGISTER("$3");
+	const VehGroundSkidsWord *viewWords;
+	register u32 gteWord0 CTR_PSX_REGISTER("$12");
+	register u32 gteWord1 CTR_PSX_REGISTER("$13");
+	register u32 gteWord2 CTR_PSX_REGISTER("$14");
 
-	struct VehGroundSkidsScratch *scratch = CTR_SCRATCHPAD_PTR(struct VehGroundSkidsScratch, 0x0);
+	geomX = (s16)pb->rect.w >> 1;
+	geomY = (s16)pb->rect.h >> 1;
+	CTR_PSX_KEEP_VALUE(geomX);
+	CTR_PSX_KEEP_VALUE(geomY);
+	gteWord0 = (u32)geomX << 16;
+	gteWord1 = (u32)geomY << 16;
+	CTC2(gteWord0, 24);
+	CTC2(gteWord1, 25);
+	cursor = (size_t)pb->distanceToScreen_PREV;
+	gte_SetGeomScreen((s32)cursor);
 
+	scratch = CTR_SCRATCHPAD_PTR(struct VehGroundSkidsScratch, 0x0);
+	CTR_PSX_KEEP_VALUE(scratch);
 	scratch->pushBuffer = pb;
 	scratch->origin.x = 0;
 	scratch->origin.y = 0;
 	scratch->origin.z = 0;
 
-	gte_SetRotMatrix(&pb->matrix_ViewProj);
-	gte_SetTransVector(&scratch->origin);
+	viewWords = (const VehGroundSkidsWord *)(const void *)&pb->matrix_ViewProj;
+	CTR_PSX_KEEP_VALUE(viewWords);
+	gteWord0 = viewWords[0];
+	gteWord1 = viewWords[1];
+	CTC2(gteWord0, 0);
+	CTC2(gteWord1, 1);
+	gteWord0 = viewWords[2];
+	gteWord1 = viewWords[3];
+	gteWord2 = viewWords[4];
+	CTC2(gteWord0, 2);
+	CTC2(gteWord1, 3);
+	CTC2(gteWord2, 4);
+	VehGroundSkids_LoadOriginTransform();
 
 	scratch->origin.x = pb->matrix_Camera.t[0];
 	scratch->origin.y = pb->matrix_Camera.t[1];
 	scratch->origin.z = pb->matrix_Camera.t[2];
+	CTR_PSX_MEMORY_BARRIER();
 
-	while (thread != NULL)
+	cursor = (size_t)*(struct Thread *volatile *)&thread;
+	while (cursor != 0)
 	{
-		struct Driver *d = thread->object;
-		u32 flags = d->skidmarkEnableFlags;
+		cursor = (size_t)*(struct Thread *volatile *)&thread;
+		cursor = (size_t)((struct Thread *)cursor)->object;
+		savedDriver = (struct Driver *)cursor;
+		CTR_PSX_MEMORY_BARRIER();
+		flags = ((struct Driver *)cursor)->skidmarkEnableFlags;
 
 		if (flags > DRIVER_SKIDMARK_CURRENT_FRAME_MASK)
 		{
-			int frameIndex = ((u8)d->skidmarkFrameIndex - 1) & DRIVER_SKIDMARK_FRAME_INDEX_MASK;
-			union VehEmitterSkidmark *frame = d->skidmarks[frameIndex];
-			SVECTOR *framePoints = &frame[0].edge[0];
+			prevFlags = 0;
+			currXY = scratch->currXY;
+			currDepth = scratch->currDepth;
+			coordinate = (u8)((struct Driver *)cursor)->skidmarkFrameIndex;
+			prevXY = scratch->prevXY;
+			frameIndex = (coordinate - 1) & DRIVER_SKIDMARK_FRAME_INDEX_MASK;
+			CTR_PSX_OBSERVE_MEMORY(frameIndex);
+			initialFrame = (union VehEmitterSkidmark *)(cursor + frameIndex * sizeof(savedDriver->skidmarks[0]));
 
-			if (VehGroundSkids_InitPoint(scratch->projected, &framePoints[0], CTR_VECTOR_DATA(&(scratch->origin))))
+			coordinate = *(s16 *)((char *)initialFrame + offsetof(struct Driver, skidmarks));
+			CTR_PSX_MEMORY_BARRIER();
+			origin = scratch->origin.x;
+			value = (coordinate - origin) * 4;
+			absDelta = value;
+			if (value < 0)
 			{
-				CTR_GteLoadSV0(&scratch->projected[0]);
-				gte_rtv0();
+				absDelta = -absDelta;
+			}
+			prevDepth = scratch->prevDepth;
 
-				int intensity = VehGroundSkids_IntensityFromDepth(MFC2_S(27));
-				if (intensity >= 0)
+			if (absDelta < VEH_GROUND_SKIDS_CULL_ABS_MAX)
+			{
+				scratch->projected[0].vx = (s16)value;
+				coordinate = *(s16 *)((char *)initialFrame + offsetof(struct Driver, skidmarks) + 2);
+				CTR_PSX_MEMORY_BARRIER();
+				origin = scratch->origin.y;
+				value = (coordinate - origin) * 4;
+				absDelta = value;
+				if (value < 0)
 				{
-					u32 *currXY = scratch->currXY;
-					u32 *prevXY = scratch->prevXY;
-					s32 *currDepth = scratch->currDepth;
-					s32 *prevDepth = scratch->prevDepth;
+					absDelta = -absDelta;
+				}
 
-					scratch->colorNear = VehGroundSkids_ColorWord(intensity);
-					scratch->colorFar = VEH_GROUND_SKIDS_COLOR_SENTINEL;
-
-					u32 prevFlags = 0;
-					while (flags != 0)
+				if (absDelta < VEH_GROUND_SKIDS_CULL_ABS_MAX)
+				{
+					scratch->projected[0].vy = (s16)value;
+					coordinate = *(s16 *)((char *)initialFrame + offsetof(struct Driver, skidmarks) + 4);
+					CTR_PSX_MEMORY_BARRIER();
+					origin = scratch->origin.z;
+					value = (coordinate - origin) * 4;
+					absDelta = value;
+					if (value < 0)
 					{
-						u32 currFlags = flags;
+						absDelta = -absDelta;
+					}
 
-						if ((currFlags & DRIVER_SKIDMARK_CURRENT_FRAME_MASK) != 0)
+					if (absDelta < VEH_GROUND_SKIDS_CULL_ABS_MAX)
+					{
+						scratch->projected[0].vz = (s16)value;
+						VehGteLoadV0(&scratch->projected[0]);
+						CTR_PSX_GTE_PIPELINE_DELAY();
+						gte_rtv0();
+						value = MFC2_S(27);
+						CTR_PSX_GTE_READ_DELAY();
+						value >>= VEH_GROUND_SKIDS_DEPTH_SHIFT;
+
+						if (value < VEH_GROUND_SKIDS_FULL_INTENSITY_DEPTH)
 						{
-							frame = d->skidmarks[frameIndex];
-							framePoints = &frame[0].edge[0];
-							VehGroundSkids_ProjectFrame(scratch, framePoints, currXY, currDepth);
-
-							VehGroundSkids_TryEmitSegment(scratch, currXY, prevXY, currDepth, prevDepth, currFlags, prevFlags, DRIVER_SKIDMARK_BACK_LEFT,
-							                              &frame[0], 0);
-							VehGroundSkids_TryEmitSegment(scratch, currXY, prevXY, currDepth, prevDepth, currFlags, prevFlags, DRIVER_SKIDMARK_BACK_RIGHT,
-							                              &frame[1], 2);
-							VehGroundSkids_TryEmitSegment(scratch, currXY, prevXY, currDepth, prevDepth, currFlags, prevFlags, DRIVER_SKIDMARK_FRONT_LEFT,
-							                              &frame[2], 4);
-							VehGroundSkids_TryEmitSegment(scratch, currXY, prevXY, currDepth, prevDepth, currFlags, prevFlags, DRIVER_SKIDMARK_FRONT_RIGHT,
-							                              &frame[3], 6);
-						}
-
-						u32 *tmpXY = currXY;
-						currXY = prevXY;
-						prevXY = tmpXY;
-
-						s32 *tmpDepth = currDepth;
-						currDepth = prevDepth;
-						prevDepth = tmpDepth;
-
-						frameIndex = (frameIndex + 1) & DRIVER_SKIDMARK_FRAME_INDEX_MASK;
-
-						if (scratch->colorFar == VEH_GROUND_SKIDS_COLOR_SENTINEL)
-						{
-							scratch->colorFar = scratch->colorNear;
-							prevFlags = DRIVER_SKIDMARK_CURRENT_FRAME_MASK;
+							value = VEH_GROUND_SKIDS_FULL_INTENSITY;
+							// NOTE(aalhendi): Retail skips the minimum-intensity check on this path.
+							goto intensity_ready;
 						}
 						else
 						{
-							prevFlags = currFlags;
-							flags = currFlags >> DRIVER_SKIDMARK_HISTORY_SHIFT;
-
-							int faded = (scratch->colorNear & 0xff) >> VEH_GROUND_SKIDS_COLOR_FADE_SHIFT;
-							scratch->colorFar = scratch->colorNear;
-							scratch->colorNear = VehGroundSkids_ColorWord(faded);
+							coordinate = value - VEH_GROUND_SKIDS_FULL_INTENSITY_DEPTH;
+							MTC2(coordinate, 30);
+							CTR_PSX_GTE_PIPELINE_DELAY();
+							value = MFC2(31);
+							value = VEH_GROUND_SKIDS_LZCR_SHIFT_BASE - value;
+							if (value < 0)
+							{
+								value = 0;
+							}
+							value = VEH_GROUND_SKIDS_FULL_INTENSITY >> value;
 						}
 
-						if (scratch->colorFar == 0)
+						if (value >= VEH_GROUND_SKIDS_MIN_INTENSITY)
 						{
-							break;
+						intensity_ready:
+							CTR_PSX_MEMORY_BARRIER();
+							coordinate = (u32)value << 8;
+							origin = VEH_GROUND_SKIDS_COLOR_PREFIX;
+							coordinate |= origin;
+							coordinate = value | coordinate;
+							origin = (u32)value << 16;
+							coordinate |= origin;
+							scratch->colorNear = (u32)coordinate;
+							scratch->colorFar = VEH_GROUND_SKIDS_COLOR_SENTINEL;
+
+							while (flags != 0)
+							{
+								register struct VehGroundSkidsScratch *subsetScratch CTR_PSX_REGISTER("$4");
+
+								subsetScratch = scratch;
+								if ((flags & DRIVER_SKIDMARK_CURRENT_FRAME_MASK) != 0)
+								{
+									cursor = (size_t)*(volatile int *)&frameIndex;
+									frameOffset = cursor * sizeof(savedDriver->skidmarks[0]);
+									cursor = (size_t)savedDriver;
+									frame = (union VehEmitterSkidmark *)(frameOffset + offsetof(struct Driver, skidmarks));
+									frame = (union VehEmitterSkidmark *)(cursor + (size_t)frame);
+
+									VehGroundSkids_Subset2(subsetScratch, &frame[0].edge[0], &frame[0].edge[1], &frame[1].edge[0]);
+									VehGteLoadV3(scratch->projected);
+									CTR_PSX_GTE_PIPELINE_DELAY();
+									gte_rtpt();
+
+									VehGroundSkids_Subset2(scratch, &frame[1].edge[1], &frame[2].edge[0], &frame[2].edge[1]);
+									VehGteStoreSxy3(&currXY[0]);
+									VehGteStoreSz3(&currDepth[0]);
+									VehGteLoadV3(scratch->projected);
+									CTR_PSX_GTE_PIPELINE_DELAY();
+									gte_rtpt();
+
+									VehGroundSkids_Subset2(scratch, &frame[3].edge[0], &frame[3].edge[1], &frame[0].edge[0]);
+									VehGteStoreSxy3(&currXY[3]);
+									VehGteStoreSz3(&currDepth[3]);
+									VehGteLoadV3(scratch->projected);
+									CTR_PSX_GTE_PIPELINE_DELAY();
+									gte_rtpt();
+									VehGteStoreSxy3(&currXY[6]);
+									VehGteStoreSz3(&currDepth[6]);
+
+									if ((flags & prevFlags & DRIVER_SKIDMARK_BACK_LEFT) != 0 && currDepth[0] > VEH_GROUND_SKIDS_MIN_VISIBLE_DEPTH &&
+									    currDepth[1] > VEH_GROUND_SKIDS_MIN_VISIBLE_DEPTH && prevDepth[0] > VEH_GROUND_SKIDS_MIN_VISIBLE_DEPTH &&
+									    prevDepth[1] > VEH_GROUND_SKIDS_MIN_VISIBLE_DEPTH)
+									{
+										cursor = (size_t)savedDriver;
+										markBytes = (u8 *)(cursor + frameOffset);
+										scratch->segment.segmentFlags = markBytes[offsetof(struct Driver, skidmarks) + 7];
+										depth = (currDepth[0] >> VEH_GROUND_SKIDS_DEPTH_SHIFT) +
+										        (markBytes[offsetof(struct Driver, skidmarks) + 6] << VEH_GROUND_SKIDS_OT_DEPTH_SHIFT);
+										VehGroundSkids_Subset1(&currXY[0], &prevXY[0], depth, scratch);
+									}
+
+									if ((flags & prevFlags & DRIVER_SKIDMARK_BACK_RIGHT) != 0 && currDepth[2] > VEH_GROUND_SKIDS_MIN_VISIBLE_DEPTH &&
+									    currDepth[3] > VEH_GROUND_SKIDS_MIN_VISIBLE_DEPTH && prevDepth[2] > VEH_GROUND_SKIDS_MIN_VISIBLE_DEPTH &&
+									    prevDepth[3] > VEH_GROUND_SKIDS_MIN_VISIBLE_DEPTH)
+									{
+										cursor = (size_t)*(volatile int *)&frameIndex;
+										markBytes = (u8 *)(cursor * sizeof(savedDriver->skidmarks[0]));
+										cursor = (size_t)savedDriver;
+										markBytes = (u8 *)(cursor + (size_t)markBytes);
+										scratch->segment.segmentFlags = markBytes[offsetof(struct Driver, skidmarks) + sizeof(union VehEmitterSkidmark) + 7];
+										depth = (currDepth[2] >> VEH_GROUND_SKIDS_DEPTH_SHIFT) +
+										        (markBytes[offsetof(struct Driver, skidmarks) + sizeof(union VehEmitterSkidmark) + 6]
+										         << VEH_GROUND_SKIDS_OT_DEPTH_SHIFT);
+										VehGroundSkids_Subset1(&currXY[2], &prevXY[2], depth, scratch);
+									}
+
+									if ((flags & prevFlags & DRIVER_SKIDMARK_FRONT_LEFT) != 0 && currDepth[4] > VEH_GROUND_SKIDS_MIN_VISIBLE_DEPTH &&
+									    currDepth[5] > VEH_GROUND_SKIDS_MIN_VISIBLE_DEPTH && prevDepth[4] > VEH_GROUND_SKIDS_MIN_VISIBLE_DEPTH &&
+									    prevDepth[5] > VEH_GROUND_SKIDS_MIN_VISIBLE_DEPTH)
+									{
+										cursor = (size_t)*(volatile int *)&frameIndex;
+										markBytes = (u8 *)(cursor * sizeof(savedDriver->skidmarks[0]));
+										cursor = (size_t)savedDriver;
+										markBytes = (u8 *)(cursor + (size_t)markBytes);
+										scratch->segment.segmentFlags =
+										    markBytes[offsetof(struct Driver, skidmarks) + 2 * sizeof(union VehEmitterSkidmark) + 7];
+										depth = (currDepth[4] >> VEH_GROUND_SKIDS_DEPTH_SHIFT) +
+										        (markBytes[offsetof(struct Driver, skidmarks) + 2 * sizeof(union VehEmitterSkidmark) + 6]
+										         << VEH_GROUND_SKIDS_OT_DEPTH_SHIFT);
+										VehGroundSkids_Subset1(&currXY[4], &prevXY[4], depth, scratch);
+									}
+
+									// NOTE(aalhendi): Computing the first call argument in the final
+									// predicate preserves retail's branch-delay-slot scheduling.
+									if ((flags & prevFlags & DRIVER_SKIDMARK_FRONT_RIGHT) != 0 && currDepth[6] > VEH_GROUND_SKIDS_MIN_VISIBLE_DEPTH &&
+									    currDepth[7] > VEH_GROUND_SKIDS_MIN_VISIBLE_DEPTH && prevDepth[6] > VEH_GROUND_SKIDS_MIN_VISIBLE_DEPTH &&
+									    (value = (s32)(size_t)&currXY[6], prevDepth[7] > VEH_GROUND_SKIDS_MIN_VISIBLE_DEPTH))
+									{
+										register struct VehGroundSkidsScratch *callScratch CTR_PSX_REGISTER("$7");
+
+										cursor = (size_t)*(volatile int *)&frameIndex;
+										markBytes = (u8 *)(cursor * sizeof(savedDriver->skidmarks[0]));
+										cursor = (size_t)savedDriver;
+										initialFrame = (union VehEmitterSkidmark *)&prevXY[6];
+										markBytes = (u8 *)(cursor + (size_t)markBytes);
+										coordinate = markBytes[offsetof(struct Driver, skidmarks) + 3 * sizeof(union VehEmitterSkidmark) + 7];
+										VehGroundSkids_SetCallScratch(callScratch, scratch, coordinate);
+										scratch->segment.segmentFlags = (u32)coordinate;
+										depth = (currDepth[6] >> VEH_GROUND_SKIDS_DEPTH_SHIFT) +
+										        (markBytes[offsetof(struct Driver, skidmarks) + 3 * sizeof(union VehEmitterSkidmark) + 6]
+										         << VEH_GROUND_SKIDS_OT_DEPTH_SHIFT);
+										VehGroundSkids_Subset1((u32 *)(size_t)(u32)value, (u32 *)initialFrame, depth, callScratch);
+									}
+								}
+
+								currXY = (u32 *)((size_t)currXY ^ (size_t)prevXY);
+								prevXY = (u32 *)((size_t)prevXY ^ (size_t)currXY);
+								currXY = (u32 *)((size_t)currXY ^ (size_t)prevXY);
+								currDepth = (s32 *)((size_t)currDepth ^ (size_t)prevDepth);
+								prevDepth = (s32 *)((size_t)prevDepth ^ (size_t)currDepth);
+								currDepth = (s32 *)((size_t)currDepth ^ (size_t)prevDepth);
+								cursor = (size_t)*(volatile int *)&frameIndex;
+								coordinate = (s32)cursor + 1;
+								coordinate &= DRIVER_SKIDMARK_FRAME_INDEX_MASK;
+								frameIndex = coordinate;
+
+								if (scratch->colorFar == VEH_GROUND_SKIDS_COLOR_SENTINEL)
+								{
+									scratch->colorFar = scratch->colorNear;
+									prevFlags = DRIVER_SKIDMARK_CURRENT_FRAME_MASK;
+								}
+								else
+								{
+									prevFlags = flags;
+									flags >>= DRIVER_SKIDMARK_HISTORY_SHIFT;
+									coordinate = scratch->colorNear;
+									CTR_PSX_MEMORY_BARRIER();
+									origin = scratch->colorNear;
+									coordinate &= 0xff;
+									CTR_PSX_KEEP_VALUE(coordinate);
+									value = coordinate >> VEH_GROUND_SKIDS_COLOR_FADE_SHIFT;
+									coordinate = (u32)value << 8;
+									scratch->colorFar = (u32)origin;
+									origin = VEH_GROUND_SKIDS_COLOR_PREFIX;
+									coordinate |= origin;
+									coordinate = value | coordinate;
+									origin = (u32)value << 16;
+									coordinate |= origin;
+									scratch->colorNear = (u32)coordinate;
+								}
+
+								if (scratch->colorFar == 0)
+								{
+									break;
+								}
+							}
 						}
 					}
 				}
 			}
 		}
 
-		thread = thread->siblingThread;
+		cursor = (size_t)*(struct Thread *volatile *)&thread;
+		cursor = (size_t)((struct Thread *)cursor)->siblingThread;
+		thread = (struct Thread *)cursor;
 	}
 }

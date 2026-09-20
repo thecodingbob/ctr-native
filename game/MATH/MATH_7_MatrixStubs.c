@@ -184,7 +184,7 @@ void Unknown_8006c558(u32 *r0, u32 *r1, u32 *r2, u32 *r3, u32 *r4)
 	*r4 = t7;
 }
 
-static void MATH_Matrix_StoreWords(MATRIX *m, u32 r0, u32 r1, u32 r2, u32 r3, u32 r4)
+static void MATH_Matrix_StoreWords(void *m, u32 r0, u32 r1, u32 r2, u32 r3, u32 r4)
 {
 	MATH_Matrix_WriteWord(m, 0x0, r0);
 	MATH_Matrix_WriteWord(m, 0x4, r1);
@@ -306,7 +306,9 @@ void ConvertRotToMatrix_Transpose(MATRIX *m, const SVec3 *rot)
 	MATH_Matrix_InverseTransposeBody(m, -(s32)rot->x, -(s32)rot->z, -(s32)rot->y);
 }
 
-void MatrixRotate(MATRIX *dst, MATRIX *src, MATRIX *rot)
+// NOTE(aalhendi): The destination is five packed GTE rotation words, not a
+// complete MATRIX. Cutscene tables store this compact form without translation.
+void MatrixRotate(void *dst, MATRIX *src, MATRIX *rot)
 {
 	u32 r0 = MATH_Matrix_ReadWord(src, 0x0);
 	u32 r1 = MATH_Matrix_ReadWord(src, 0x4);

@@ -1,218 +1,180 @@
 #include <common.h>
+#include "RB_Effect.h"
 
-static struct InstDrawPerPlayer *RB_Blowup_GetIDPP(struct Instance *inst, int playerIndex)
+struct Blowup
 {
-	return (struct InstDrawPerPlayer *)((char *)inst + sizeof(struct Instance) + (playerIndex * sizeof(struct InstDrawPerPlayer)));
-}
-
-static void RB_Blowup_CopyDrawState(struct Instance *dstInst, struct Instance *srcInst, int playerIndex)
-{
-	struct InstDrawPerPlayer *src = RB_Blowup_GetIDPP(srcInst, playerIndex);
-	struct InstDrawPerPlayer *dst = RB_Blowup_GetIDPP(dstInst, playerIndex);
-
-	dst->instFlags &= src->instFlags | ~DRAW_SUCCESSFUL;
-	dst->otRangeNormal = src->otRangeNormal;
-	dst->depthOffset[0] = src->depthOffset[0];
-	dst->depthOffset[1] = src->depthOffset[1];
-}
+	struct Instance *shockwave;
+	struct Instance *explosion;
+	u32 reserved; // Retail allocates a third word; these behaviors leave it untouched.
+};
 
 void RB_Blowup_ProcessBucket(struct Thread *thread)
 {
-	struct GameTracker *gGT = sdata->gGT;
-
 	for (; thread != NULL; thread = thread->siblingThread)
 	{
-		u32 *blowup = thread->object;
+		struct Blowup *blowup = thread->object;
 
-		for (int i = 0; i < gGT->numPlyrCurrGame; i++)
 		{
-			struct Instance *shockwaveInst = (struct Instance *)(u32)blowup[0];
-			struct Instance *explosionInst = (struct Instance *)(u32)blowup[1];
-
-			if (shockwaveInst == NULL || explosionInst == NULL)
+			s32 i;
+			// The explosion inherits the shockwave's per-view visibility and depth.
+			for (i = 0; i < GAME_TRACKER->numPlyrCurrGame; i++)
 			{
-				continue;
-			}
+				if (blowup->shockwave == NULL || blowup->explosion == NULL)
+				{
+					continue;
+				}
 
-			RB_Blowup_CopyDrawState(explosionInst, shockwaveInst, i);
+				blowup->explosion->idpp[i].instFlags &= blowup->shockwave->idpp[i].instFlags | ~DRAW_SUCCESSFUL;
+				blowup->explosion->idpp[i].otRangeNormal = blowup->shockwave->idpp[i].otRangeNormal;
+				blowup->explosion->idpp[i].depthOffset[0] = blowup->shockwave->idpp[i].depthOffset[0];
+				blowup->explosion->idpp[i].depthOffset[1] = blowup->shockwave->idpp[i].depthOffset[1];
+			}
 		}
 	}
 }
 
-static void RB_Blowup_UpdateSlot(int *slot)
-{
-	struct Instance *inst;
-	int nextFrame;
-
-	inst = (struct Instance *)*slot;
-	if (inst == NULL)
-	{
-		return;
-	}
-
-	nextFrame = inst->animFrame + 1;
-	if (nextFrame < INSTANCE_GetNumAnimFrames(inst, 0))
-	{
-		inst->animFrame++;
-		return;
-	}
-
-	INSTANCE_Death(inst);
-	*slot = 0;
-}
-
 void RB_Blowup_ThTick(struct Thread *t)
 {
-	int *blowup;
+	struct Blowup *blowup;
 	blowup = t->object;
 
-	RB_Blowup_UpdateSlot(&blowup[1]);
-	RB_Blowup_UpdateSlot(&blowup[0]);
-
-	if ((blowup[1] == 0) && (blowup[0] == 0))
+	for (;;)
 	{
-		t->flags |= THREAD_FLAG_DEAD;
-	}
+		RB_Effect_UpdateSlot(&blowup->explosion);
+		RB_Effect_UpdateSlot(&blowup->shockwave);
 
-	ThTick_FastRET(t);
+		if ((blowup->explosion == NULL) && (blowup->shockwave == NULL))
+		{
+			t->flags |= THREAD_FLAG_DEAD;
+		}
+		ThTick_FastRET(t);
+#ifdef CTR_NATIVE
+		// NOTE(aalhendi): The native scheduler resumes this callback on the next tick.
+		return;
+#endif
+	}
 }
 
-// CTR_NATIVE only adds allocation-failure handling.
+// Spawn the explosion/shockwave pair, then apply its damage independently.
 void RB_Blowup_Init(struct Instance *weaponInst)
 {
+	s32 modelID;
+	struct ScratchpadStruct *sps;
 	struct Thread *explosionTh;
-	struct Instance *explosionInst;
-	struct Instance *shockwaveInst;
+	struct Instance *effectInst;
 	struct ModelHeader *headers;
-	struct GameTracker *gGT = sdata->gGT;
-	u32 color;
-	int *blowup;
+	struct Blowup *blowup;
+	struct InstanceBirthParams birth;
 
-	// initialize thread for blowup
-	explosionInst = INSTANCE_BirthWithThread(STATIC_CRATE_EXPLOSION, 0, SMALL, BLOWUP, RB_Blowup_ThTick, 0xc, 0);
+	birth.modelID = STATIC_CRATE_EXPLOSION;
+	birth.name = rb_nameBlowup;
+	birth.poolType = SMALL;
+	birth.bucket = BLOWUP;
+	birth.funcThTick = RB_Blowup_ThTick;
+	birth.objSize = sizeof(struct Blowup);
+	birth.parent = NULL;
+	effectInst = INSTANCE_BirthWithThread_Stack(&birth);
 
 #if defined(CTR_NATIVE)
 	// NOTE(aalhendi): Retail assumes the thread and instance pools have capacity. Native
 	// preserves the explosion damage when either optional visual cannot spawn.
-	if (explosionInst == NULL)
+	if (effectInst == NULL)
 	{
 		goto ApplyDamage;
 	}
 #endif
 
-	explosionInst->flags |= (VISIBLE_DURING_GAMEPLAY | DRAW_BILLBOARD);
+	effectInst->flags |= (VISIBLE_DURING_GAMEPLAY | DRAW_BILLBOARD);
 
-	explosionTh = explosionInst->thread;
+	explosionTh = effectInst->thread;
 	blowup = explosionTh->object;
 
-	// set explosion instance
-	blowup[1] = (s32)(u32)explosionInst;
+	blowup->explosion = effectInst;
 
 	// copy position and rotation from weapon to explosion
-	CTR_MatrixCopyRot(&explosionInst->matrix, &weaponInst->matrix);
-	explosionInst->matrix.t[0] = weaponInst->matrix.t[0];
-	explosionInst->matrix.t[1] = weaponInst->matrix.t[1];
-	explosionInst->matrix.t[2] = weaponInst->matrix.t[2];
+	effectInst->matrix = weaponInst->matrix;
 
-	// green
-	color = 0x1eac000;
-
-	// green shockwave
-	int modelID = STATIC_SHOCKWAVE_GREEN;
-
-	// if instance -> model -> modelID == tnt
+	// TNT uses the red effect; Nitro uses green.
 	if (weaponInst->model->id == STATIC_CRATE_TNT)
 	{
 		// red
-		color = 0xad10000;
-
-		// red shockwave
-		modelID = STATIC_SHOCKWAVE_RED;
+		effectInst->colorRGBA = 0xad10000;
+	}
+	else
+	{
+		effectInst->colorRGBA = 0x1eac000;
 	}
 
-	// set color
-	explosionInst->colorRGBA = color;
+	effectInst->alphaScale = 0x1000;
 
-	// set scale
-	explosionInst->alphaScale = 0x1000;
+	// The shockwave shares the explosion's owner thread.
 
-	// ======== Next Instance ==========
+	modelID = weaponInst->model->id == STATIC_CRATE_TNT ? STATIC_SHOCKWAVE_RED : STATIC_SHOCKWAVE_GREEN;
+	effectInst = INSTANCE_Birth3D(GAME_TRACKER->modelPtr[modelID], rb_nameShockwave, explosionTh);
 
-	shockwaveInst = INSTANCE_Birth3D(gGT->modelPtr[modelID], 0, explosionTh);
-
-	// set shockwave instance
-	blowup[0] = (s32)(u32)shockwaveInst;
+	blowup->shockwave = effectInst;
 
 #if defined(CTR_NATIVE)
-	if (shockwaveInst == NULL)
+	if (effectInst == NULL)
 	{
 		goto ApplyDamage;
 	}
 #endif
 
-	shockwaveInst->flags |= PIXEL_LOD;
+	effectInst->flags |= PIXEL_LOD;
 
-	CTR_MatrixSetRotIdentity(&shockwaveInst->matrix);
-	shockwaveInst->matrix.t[0] = weaponInst->matrix.t[0];
-	shockwaveInst->matrix.t[1] = weaponInst->matrix.t[1];
-	shockwaveInst->matrix.t[2] = weaponInst->matrix.t[2];
+	effectInst->matrix.t[0] = weaponInst->matrix.t[0];
+	effectInst->matrix.t[1] = weaponInst->matrix.t[1];
+	effectInst->matrix.t[2] = weaponInst->matrix.t[2];
 
-	headers = shockwaveInst->model->headers;
-
-	// set flag to always point to camera
+	// Both shockwave model headers billboard toward each camera.
+	headers = effectInst->model->headers;
 	headers[0].flags |= 2;
+	headers = effectInst->model->headers;
 	headers[1].flags |= 2;
-
-	// ======== End Of Instance ==========
+	CTR_MatrixSetRotIdentity(&effectInst->matrix);
 
 #if defined(CTR_NATIVE)
 ApplyDamage:;
 #endif
-	struct ScratchpadStruct *sps = CTR_SCRATCHPAD_PTR(struct ScratchpadStruct, 0x108);
+	sps = CTR_SCRATCHPAD_PTR(struct ScratchpadStruct, 0x108);
 
 	// put weapon position on scratchpad
 	sps->Input1.pos.x = weaponInst->matrix.t[0];
 	sps->Input1.pos.y = weaponInst->matrix.t[1];
 	sps->Input1.pos.z = weaponInst->matrix.t[2];
 
-	if (IS_BOSS_RACE(gGT->gameMode1))
+	if (!IS_BOSS_RACE(GAME_TRACKER->gameMode1))
 	{
-		// hitRadius and hitRadiusSquared
-		sps->Input1.hitRadius = 0x100;
-		sps->Input1.hitRadiusSquared = 0x10000;
-	}
-
-	// if you're not in boss mode
-	else
-	{
-		// hitRadius and hitRadiusSquared
 		sps->Input1.hitRadius = 0x140;
 		sps->Input1.hitRadiusSquared = 0x19000;
 	}
 
-	sps->Input1.modelID = weaponInst->model->id;
+	else
+	{
+		sps->Input1.hitRadius = 0x100;
+		sps->Input1.hitRadiusSquared = 0x10000;
+	}
 
-	sps->Union.ThBuckColl.thread = weaponInst->thread;
 	sps->Union.ThBuckColl.funcCallback = RB_Burst_CollThBucket;
+	sps->Union.ThBuckColl.thread = weaponInst->thread;
+	sps->Input1.modelID = weaponInst->model->id;
 
 	PROC_StartSearch_Self(sps);
 
-	PROC_CollideHitboxWithBucket(gGT->threadBuckets[ROBOT].thread, sps, 0);
-	PROC_CollideHitboxWithBucket(gGT->threadBuckets[MINE].thread, sps, 0);
+	PROC_CollideHitboxWithBucket(GAME_TRACKER->threadBuckets[ROBOT].thread, sps, 0);
+	PROC_CollideHitboxWithBucket(GAME_TRACKER->threadBuckets[MINE].thread, sps, 0);
 
-	// Nitro explosion has smaller radius than TNT explosion
-	if (weaponInst->model->id != STATIC_CRATE_TNT)
-	{
-		// hitRadius and hitRadiusSquared
-		sps->Input1.hitRadius = 0x80;
-		sps->Input1.hitRadiusSquared = 0x4000;
-	}
+        if (weaponInst->model->id != STATIC_CRATE_TNT)
+        {
+          /* Nitro has a smaller player-only base radius. */
+          sps->Input1.hitRadius = 0x80;
+        }
 
         sps->Input1.hitRadius = sps->Input1.hitRadius * g_config.tntExplosionRadiusMultiplier / 100;
         sps->Input1.hitRadiusSquared = sps->Input1.hitRadius * sps->Input1.hitRadius;
 
-	// check collision with player threads
-	PROC_CollideHitboxWithBucket(gGT->threadBuckets[PLAYER].thread, sps, 0);
+        PROC_CollideHitboxWithBucket(GAME_TRACKER->threadBuckets[PLAYER].thread, sps, 0);
 
 	sps->Union.ThBuckColl.funcCallback = RB_Burst_CollLevInst;
 	return;

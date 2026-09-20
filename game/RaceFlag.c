@@ -1,9 +1,32 @@
 #include <common.h>
+#include <ctr_gte_transfer.h>
+
+#ifndef RACE_FLAG_MATRIX
+#define RACE_FLAG_MATRIX data.matrixTitleFlag
+#define RACE_FLAG_WAVE   data.checkerFlagVariables
+#define RACE_FLAG_TRIG   data.trigApprox
+#endif
+#ifndef RACE_FLAG_CAN_DRAW
+#define RACE_FLAG_CAN_DRAW sdata->RaceFlag_CanDraw
+#endif
+
+// NOTE(aalhendi): The strip cursor starts one word before its first vertex.
+// Reserve that word inside native scratch RAM; PSX keeps its hardware addresses.
+#ifdef CTR_NATIVE
+#define RACE_FLAG_SCREEN_BASE CTR_SCRATCHPAD_PTR(u32, 4)
+#else
+#define RACE_FLAG_SCREEN_BASE CTR_SCRATCHPAD_PTR(u32, 0)
+#endif
+
+#ifndef RACE_FLAG_LOADING_STAGE
+#define RACE_FLAG_LOADING_STAGE sdata->Loading.stage
+#endif
 
 enum RaceFlagScratchConstants
 {
 	RACE_FLAG_SCREEN_ROWS = 10,
 	RACE_FLAG_SCREEN_POINTS_PER_ROW = 3,
+	RACE_FLAG_SCREEN_POINTS_PER_COLUMN = RACE_FLAG_SCREEN_ROWS * RACE_FLAG_SCREEN_POINTS_PER_ROW,
 };
 
 enum RaceFlagConstants
@@ -53,37 +76,14 @@ enum RaceFlagConstants
 };
 
 
-struct RaceFlagProjectedRow
+s32 RaceFlag_MoveModels(s32 frameIndex, s32 numFrames)
 {
-	u32 xy[RACE_FLAG_SCREEN_POINTS_PER_ROW];
-};
+	// Move intro logos and character-selection models along the same eased curve.
 
-union RaceFlagScreenBuffer
-{
-	struct RaceFlagProjectedRow row[RACE_FLAG_SCREEN_ROWS];
-	u32 xy[RACE_FLAG_SCREEN_ROWS * RACE_FLAG_SCREEN_POINTS_PER_ROW];
-};
-
-struct RaceFlagScratch
-{
-	union RaceFlagScreenBuffer screen[2];
-};
-
-CTR_STATIC_ASSERT(sizeof(union RaceFlagScreenBuffer) == 0x78);
-CTR_STATIC_ASSERT(sizeof(struct RaceFlagScratch) == 0xf0);
-
-int RaceFlag_MoveModels(int frameIndex, int numFrames)
-{
-	// need a better prefix than TitleFlag,
-	// all this does is move the intro logo models
-	// from the center of the screen, to the right
-
-	// also used for transitioning driver models
-	// on and off the screen in character selection
-
-	int angle;
-	int midpoint;
-	int result;
+	s16 midpoint;
+	s32 result;
+	// NOTE(aalhendi): Retain the angle's argument-register lifetime across scaling and division.
+	register s32 angle CTR_PSX_REGISTER("$4");
 
 	if (frameIndex < 0)
 	{
@@ -95,24 +95,22 @@ int RaceFlag_MoveModels(int frameIndex, int numFrames)
 		return 0x1000;
 	}
 
-	// cut in half
+	// NOTE(aalhendi): The midpoint narrows before either half of the transition.
 	midpoint = numFrames / 2;
 
-	// if less than half done
-	if (frameIndex < midpoint)
-	{
-		angle = (midpoint - frameIndex) * 0x400;
-
-		// 50% - sin(angle) / 2
-		result = 0x800 - MATH_Sin(angle / midpoint) / 2;
-	}
 	// if more than half done
+	if (frameIndex >= midpoint)
+	{
+		angle = frameIndex - midpoint;
+		angle *= 0x400;
+		result = MATH_Sin(angle / midpoint) / 2 + 0x800;
+	}
+	// if less than half done
 	else
 	{
-		angle = (frameIndex - midpoint) * 0x400;
-
-		// sin(angle) / 2 + 50%
-		result = MATH_Sin(angle / midpoint) / 2 + 0x800;
+		angle = midpoint - frameIndex;
+		angle *= 0x400;
+		result = 0x800 - MATH_Sin(angle / midpoint) / 2;
 	}
 	return result;
 }
@@ -130,7 +128,7 @@ b32 RaceFlag_IsFullyOffScreen(void)
 {
 	// return false, "not true", if flag is < 5000, partially on-screen
 	// return true, "not false", if flag is >= 5000, fully off-screen
-	return ((((u16)sdata->RaceFlag_Position + RACE_FLAG_OFFSCREEN_CHECK_BIAS) & 0xffff) < RACE_FLAG_OFFSCREEN_CHECK_WIDTH) ^ 1;
+	return ((((u32)(u16)sdata->RaceFlag_Position + RACE_FLAG_OFFSCREEN_CHECK_BIAS) & 0xffff) < RACE_FLAG_OFFSCREEN_CHECK_WIDTH) ^ 1;
 }
 
 
@@ -143,17 +141,25 @@ b32 RaceFlag_IsTransitioning(void)
 	    (pos != RACE_FLAG_POSITION_ONSCREEN) && (pos != RACE_FLAG_POSITION_OFFSCREEN_LEFT) && (pos != RACE_FLAG_POSITION_OFFSCREEN) &&
 
 	    // is allowed to render
-	    ((sdata->gGT->renderFlags & RENDER_FLAG_CHECKERED_FLAG) != 0);
+	    ((GAME_TRACKER->renderFlags & RENDER_FLAG_CHECKERED_FLAG) != 0);
 }
 
 
 void RaceFlag_SetDrawOrder(b32 drawAfterFlag)
 {
-	sdata->RaceFlag_DrawOrder = (drawAfterFlag != 0) ? RACE_FLAG_DRAW_ORDER_AFTER_FLAG : RACE_FLAG_DRAW_ORDER_BEFORE_FLAG;
+	// NOTE(aalhendi): Individual volatile stores keep these writes out of return delay slots.
+	if (drawAfterFlag)
+	{
+		*(volatile s16 *)&sdata->RaceFlag_DrawOrder = RACE_FLAG_DRAW_ORDER_AFTER_FLAG;
+	}
+	else
+	{
+		*(volatile s16 *)&sdata->RaceFlag_DrawOrder = RACE_FLAG_DRAW_ORDER_BEFORE_FLAG;
+	}
 }
 
 
-void RaceFlag_BeginTransition(int direction)
+void RaceFlag_BeginTransition(s32 direction)
 {
 	// Begin Transition on-screen
 	if (direction == RACE_FLAG_TRANSITION_BEGIN_ONSCREEN)
@@ -162,7 +168,7 @@ void RaceFlag_BeginTransition(int direction)
 
 		sdata->RaceFlag_Position = RACE_FLAG_POSITION_OFFSCREEN;
 
-		sdata->RaceFlag_AnimationType = RACE_FLAG_TRANSITION_ONSCREEN;
+		*(volatile s32 *)&sdata->RaceFlag_AnimationType = RACE_FLAG_TRANSITION_ONSCREEN;
 	}
 
 	// Begin Transition off-screen
@@ -176,43 +182,47 @@ void RaceFlag_BeginTransition(int direction)
 	}
 
 	// enable loading screen's checkered flag
-	sdata->gGT->renderFlags |= RENDER_FLAG_CHECKERED_FLAG;
+	GAME_TRACKER->renderFlags |= RENDER_FLAG_CHECKERED_FLAG;
 }
 
 
-void RaceFlag_SetFullyOnScreen()
+void RaceFlag_SetFullyOnScreen(void)
 {
+	struct GameTracker *gGT = GAME_TRACKER;
+	// NOTE(aalhendi): Keep the pending flags separate from the transition-state stores.
+	register u32 flags CTR_PSX_REGISTER("$3") = gGT->renderFlags;
+	sdata->RaceFlag_Position = RACE_FLAG_POSITION_ONSCREEN;
 	sdata->RaceFlag_AnimationType = RACE_FLAG_TRANSITION_ONSCREEN;
 	sdata->RaceFlag_LoadingTextAnimFrame = -1;
 
-	// flag is now fully on-screen
-	sdata->RaceFlag_Position = RACE_FLAG_POSITION_ONSCREEN;
-
 	// enable loading screen's checkered flag
-	sdata->gGT->renderFlags |= RENDER_FLAG_CHECKERED_FLAG;
+	gGT->renderFlags = flags | RENDER_FLAG_CHECKERED_FLAG;
 }
 
 
-void RaceFlag_SetFullyOffScreen()
+void RaceFlag_SetFullyOffScreen(void)
 {
-	sdata->RaceFlag_AnimationType = RACE_FLAG_TRANSITION_ONSCREEN;
+	struct GameTracker *gGT = GAME_TRACKER;
+	u32 flags;
 	sdata->RaceFlag_LoadingTextAnimFrame = -1;
 
 	// flag is now fully off-screen
 	sdata->RaceFlag_Position = RACE_FLAG_POSITION_OFFSCREEN;
+	flags = gGT->renderFlags;
+	sdata->RaceFlag_AnimationType = RACE_FLAG_TRANSITION_ONSCREEN;
 
 	// disable loading screen's checkered flag
-	sdata->gGT->renderFlags &= ~RENDER_FLAG_CHECKERED_FLAG;
+	gGT->renderFlags = flags & ~RENDER_FLAG_CHECKERED_FLAG;
 }
 
 
 void RaceFlag_SetCanDraw(s16 canDraw)
 {
-	sdata->RaceFlag_CanDraw = canDraw;
+	*(volatile s16 *)&sdata->RaceFlag_CanDraw = canDraw;
 }
 
 
-s16 RaceFlag_GetCanDraw(void)
+s32 RaceFlag_GetCanDraw(void)
 {
 	return sdata->RaceFlag_CanDraw;
 }
@@ -220,147 +230,147 @@ s16 RaceFlag_GetCanDraw(void)
 
 u32 *RaceFlag_GetOT(void)
 {
-	s16 positionStep;
-	int position;
-	struct GameTracker *gGT = sdata->gGT;
-
-	u32 *otDrawFirst_FarthestDepth;
-	u32 *otDrawLast_ClosestDepth;
-
-	otDrawFirst_FarthestDepth = (u32 *)&gGT->pushBuffer[0].ptrOT[0x3FF];
-	otDrawLast_ClosestDepth = gGT->otSwapchainDB[gGT->swapchainIndex];
+	s32 drawAfterFlag;
 
 	if (sdata->RaceFlag_DrawInitialized == 0)
-	{
 		sdata->RaceFlag_DrawInitialized = 1;
-	}
 
-	// transitioning on-screen
-	if (sdata->RaceFlag_AnimationType == RACE_FLAG_TRANSITION_ONSCREEN)
+	// NOTE(aalhendi): Keep the draw-order comparison value live across the transition dispatch.
+	drawAfterFlag = RACE_FLAG_DRAW_ORDER_AFTER_FLAG;
+	switch ((u32)sdata->RaceFlag_AnimationType)
 	{
-		// set fully "off" to start transition "on"
+	case RACE_FLAG_TRANSITION_ONSCREEN:
+	{
+		u16 position;
 		if (sdata->RaceFlag_Position < 0)
-		{
 			sdata->RaceFlag_Position = RACE_FLAG_POSITION_OFFSCREEN;
-		}
-
-		sdata->RaceFlag_TransitionSpeed = RACE_FLAG_TRANSITION_ONSCREEN_SPEED;
-
 		position = sdata->RaceFlag_Position;
-
-		// if transitioning
-		if (position != RACE_FLAG_POSITION_ONSCREEN)
+		sdata->RaceFlag_TransitionSpeed = RACE_FLAG_TRANSITION_ONSCREEN_SPEED;
+		if ((s16)position > 0)
 		{
-			// skip last 8 frames to zero
-			if (position < RACE_FLAG_TRANSITION_ONSCREEN_SNAP_DISTANCE)
-			{
-				sdata->RaceFlag_Position = RACE_FLAG_POSITION_ONSCREEN;
-
-				// transition for frame >= 8
-			}
+			struct GameTracker *gGT;
+			if ((s16)position < RACE_FLAG_TRANSITION_ONSCREEN_SNAP_DISTANCE)
+				*(volatile s16 *)&sdata->RaceFlag_Position = RACE_FLAG_POSITION_ONSCREEN;
 			else
 			{
-				// rate of transition
-
-				position = ((u16)sdata->RaceFlag_Position >> RACE_FLAG_TRANSITION_ONSCREEN_POSITION_SHIFT) * gGT->elapsedTimeMS;
-				position = position >> RACE_FLAG_TRANSITION_TIME_SHIFT;
-
-				positionStep = -(s16)position;
-				if (position < 1)
-				{
-					positionStep = -1;
-				}
-
-				sdata->RaceFlag_Position += positionStep;
+				s32 step = (((s16)position >> RACE_FLAG_TRANSITION_ONSCREEN_POSITION_SHIFT) * GAME_TRACKER->elapsedTimeMS) >> RACE_FLAG_TRANSITION_TIME_SHIFT;
+				if (step <= 0)
+					step = 1;
+				sdata->RaceFlag_Position = position - step;
 			}
+			gGT = GAME_TRACKER;
+			return gGT->otSwapchainDB[gGT->swapchainIndex];
 		}
-
-		// transition is finished
 		else
 		{
-			if (sdata->RaceFlag_DrawOrder != RACE_FLAG_DRAW_ORDER_AFTER_FLAG)
+			// NOTE(aalhendi): Classification retains its signed word while the update uses the raw halfword.
+			register s32 order CTR_PSX_REGISTER("$4") = sdata->RaceFlag_DrawOrder;
+			u16 rawOrder = sdata->RaceFlag_DrawOrder;
+			*(volatile s16 *)&sdata->RaceFlag_Position = RACE_FLAG_POSITION_ONSCREEN;
+			if (order == drawAfterFlag)
 			{
-				if (sdata->RaceFlag_DrawOrder != RACE_FLAG_DRAW_ORDER_BEFORE_FLAG)
-				{
-					return otDrawFirst_FarthestDepth;
-				}
-
-				sdata->RaceFlag_DrawOrder = RACE_FLAG_DRAW_ORDER_DONE;
+				struct GameTracker *gGT = GAME_TRACKER;
+				return gGT->otSwapchainDB[gGT->swapchainIndex];
 			}
+			if (order == RACE_FLAG_DRAW_ORDER_BEFORE_FLAG)
+				*(volatile s16 *)&sdata->RaceFlag_DrawOrder = rawOrder + 1;
+			else
+				return GAME_TRACKER->pushBuffer[0].ptrOT + 0x3ff;
 		}
+		break;
 	}
-
-	// transition off-screen
-	if (sdata->RaceFlag_AnimationType == RACE_FLAG_TRANSITION_OFFSCREEN)
+	case 1:
+		break;
+	case RACE_FLAG_TRANSITION_OFFSCREEN:
 	{
-		if (sdata->RaceFlag_TransitionSpeed < RACE_FLAG_TRANSITION_OFFSCREEN_SPEED_MAX)
+		s16 speed = sdata->RaceFlag_TransitionSpeed;
+		u16 rawSpeed = sdata->RaceFlag_TransitionSpeed;
+		s16 position;
+		u16 rawPosition;
+		if (speed < RACE_FLAG_TRANSITION_OFFSCREEN_SPEED_MAX)
+			sdata->RaceFlag_TransitionSpeed =
+			    rawSpeed + ((GAME_TRACKER->elapsedTimeMS * RACE_FLAG_TRANSITION_OFFSCREEN_ACCEL_SCALE) >> RACE_FLAG_TRANSITION_TIME_SHIFT);
+		position = sdata->RaceFlag_Position;
+		rawPosition = sdata->RaceFlag_Position;
+		if (position > RACE_FLAG_POSITION_OFFSCREEN_LEFT)
 		{
-			sdata->RaceFlag_TransitionSpeed += (s16)((gGT->elapsedTimeMS * RACE_FLAG_TRANSITION_OFFSCREEN_ACCEL_SCALE) >> RACE_FLAG_TRANSITION_TIME_SHIFT);
+			u16 nextSpeed = sdata->RaceFlag_TransitionSpeed;
+			*(volatile s16 *)&sdata->RaceFlag_Position =
+			    rawPosition -
+			    ((((s16)nextSpeed >> RACE_FLAG_TRANSITION_OFFSCREEN_POSITION_SHIFT) * GAME_TRACKER->elapsedTimeMS) >> RACE_FLAG_TRANSITION_TIME_SHIFT);
 		}
-
-		// If transitioning "off"
-		if (sdata->RaceFlag_Position > RACE_FLAG_POSITION_OFFSCREEN_LEFT)
-		{
-			sdata->RaceFlag_Position -= (((u32)sdata->RaceFlag_TransitionSpeed >> RACE_FLAG_TRANSITION_OFFSCREEN_POSITION_SHIFT) * gGT->elapsedTimeMS) >>
-			                            RACE_FLAG_TRANSITION_TIME_SHIFT;
-		}
-
-		// finished transitioning off
 		else
 		{
+			struct GameTracker *gGT = GAME_TRACKER;
+			u32 flags;
 			sdata->RaceFlag_Position = RACE_FLAG_POSITION_OFFSCREEN;
+			flags = gGT->renderFlags;
 			sdata->RaceFlag_AnimationType = RACE_FLAG_TRANSITION_ONSCREEN;
-			gGT->renderFlags &= ~RENDER_FLAG_CHECKERED_FLAG;
+			gGT->renderFlags = flags & ~RENDER_FLAG_CHECKERED_FLAG;
 		}
+		break;
 	}
-
-	return otDrawLast_ClosestDepth;
+	}
+	{
+		struct GameTracker *gGT = GAME_TRACKER;
+		return gGT->otSwapchainDB[gGT->swapchainIndex];
+	}
 }
 
 
 void RaceFlag_ResetTextAnim(void)
 {
-	sdata->RaceFlag_LoadingTextAnimFrame = -1;
+	*(volatile s32 *)&sdata->RaceFlag_LoadingTextAnimFrame = -1;
 }
 
 
 void RaceFlag_DrawLoadingString(void)
 {
-	struct GameTracker *gGT = sdata->gGT;
-	int loadingTextBytes;
-	int letterAnimFrame;
-	int letterX;
-	int glyphByteCount;
-	int textByteIndex;
+	// NOTE(aalhendi): The tracker is short-lived; the byte index survives both font calls.
+	register struct GameTracker *gGT CTR_PSX_REGISTER("$3") = GAME_TRACKER;
+	s32 loadingTextBytes;
+	s32 letterAnimFrame;
+	s32 letterX;
+	s32 glyphByteCount;
+	register s32 textByteIndex CTR_PSX_REGISTER("$18");
 	char *loadingText;
-	char *nextGlyph;
-	int nextLetterStartX;
-	int drawX;
+	s32 nextLetterStartX;
+	s32 drawX;
+	s32 textWidth;
 	u32 *oldOT;
-	u8 glyph[2];
+	u8 glyph[3];
 
-	loadingText = sdata->lngStrings[LNG_LOADING];
+#ifdef CTR_NATIVE
+	// NOTE(aalhendi): Font loops look ahead before checking the glyph count.
+	// Keep that byte inside initialized storage for either one- or two-byte glyphs.
+	glyph[1] = 0;
+	glyph[2] = 0;
+#endif
 
-	// pointer to OT mem
+	// Draw loading text into the active swapchain's ordering table.
 	oldOT = (u32 *)gGT->pushBuffer_UI.ptrOT;
 
-	// pointer to OT mem
 	gGT->pushBuffer_UI.ptrOT = gGT->otSwapchainDB[gGT->swapchainIndex];
+	loadingText = GAME_LANGUAGE_STRINGS[LNG_LOADING];
 
 	// get length of "LOADING..." string
 	loadingTextBytes = strlen(loadingText);
 
-	int textWidth = DecalFont_GetLineWidth(loadingText, RACE_FLAG_LOADING_FONT_SIZE);
+	textWidth = DecalFont_GetLineWidth(loadingText, RACE_FLAG_LOADING_FONT_SIZE);
 
 	// loop counter
 	textByteIndex = 0;
 
 	// if game is not loading
-	if (sdata->Loading.stage == LOAD_IDLE)
+	if (RACE_FLAG_LOADING_STAGE == LOAD_IDLE)
 	{
-		if (RACE_FLAG_LOADING_IDLE_SLIDE_LIMIT < (int)sdata->RaceFlag_Transition)
+		s32 transition = sdata->RaceFlag_Transition;
+		b32 atLimit = transition <= RACE_FLAG_LOADING_IDLE_SLIDE_LIMIT;
+		if (!atLimit)
 		{
-			sdata->RaceFlag_Transition -= RACE_FLAG_LOADING_IDLE_SLIDE_STEP;
+			// NOTE(aalhendi): Keep the decision live until the update so width narrowing cannot fill its branch delay slot.
+			CTR_PSX_KEEP_VALUE(atLimit);
+			*(volatile s32 *)&sdata->RaceFlag_Transition = transition - RACE_FLAG_LOADING_IDLE_SLIDE_STEP;
 		}
 	}
 	else
@@ -368,7 +378,7 @@ void RaceFlag_DrawLoadingString(void)
 		sdata->RaceFlag_Transition = 0;
 	}
 
-	drawX = (sdata->RaceFlag_Transition & 0xffff) - (textWidth >> 1);
+	drawX = (u16)sdata->RaceFlag_Transition - (s16)textWidth / 2;
 
 	letterAnimFrame = sdata->RaceFlag_LoadingTextAnimFrame;
 
@@ -379,43 +389,35 @@ void RaceFlag_DrawLoadingString(void)
 		// for each byte in the localized "LOADING..." string
 		do
 		{
-			if (letterAnimFrame < 0)
+			if (letterAnimFrame >= 0)
 			{
-			DrawLetterOffscreen:
-
-				// draw text off screen
-				letterX = RACE_FLAG_LOADING_OFFSCREEN_X;
+				letterX = nextLetterStartX;
+				if (letterAnimFrame > RACE_FLAG_LOADING_FIRST_CENTER_FRAME)
+				{
+					if (letterAnimFrame > RACE_FLAG_LOADING_LAST_CENTER_FRAME)
+					{
+						if (letterAnimFrame > RACE_FLAG_LOADING_LAST_VISIBLE_FRAME)
+							goto DrawLetterOffscreen;
+						letterX = (RACE_FLAG_LOADING_EXIT_BASE_FRAME - letterAnimFrame) * RACE_FLAG_LOADING_LETTER_SPEED_X + RACE_FLAG_LOADING_CENTER_X;
+					}
+					else
+						letterX = RACE_FLAG_LOADING_CENTER_X;
+				}
 			}
 			else
 			{
-				letterX = nextLetterStartX;
-				if (RACE_FLAG_LOADING_FIRST_CENTER_FRAME < letterAnimFrame)
-				{
-					letterX = RACE_FLAG_LOADING_CENTER_X;
-
-					if (RACE_FLAG_LOADING_LAST_CENTER_FRAME < letterAnimFrame)
-					{
-						// if letter is fully off-screen
-						if (RACE_FLAG_LOADING_LAST_VISIBLE_FRAME < letterAnimFrame)
-						{
-							goto DrawLetterOffscreen;
-						}
-
-						// letter is moving off-screen
-						letterX = (RACE_FLAG_LOADING_EXIT_BASE_FRAME - letterAnimFrame) * RACE_FLAG_LOADING_LETTER_SPEED_X + RACE_FLAG_LOADING_CENTER_X;
-					}
-				}
+			DrawLetterOffscreen:
+				letterX = RACE_FLAG_LOADING_OFFSCREEN_X;
 			}
-			glyph[0] = *loadingText;
-			nextGlyph = loadingText + 1;
+			glyph[0] = *loadingText++;
 			glyphByteCount = 1;
 			if (glyph[0] < RACE_FLAG_LOADING_GLYPH_EXTENDED_MAX)
 			{
-				glyph[1] = *nextGlyph;
-				nextGlyph = loadingText + 2;
+				glyph[1] = *loadingText;
+				loadingText += glyphByteCount;
 
 				// increment loop counter
-				textByteIndex = textByteIndex + 1;
+				textByteIndex = textByteIndex + glyphByteCount;
 
 				glyphByteCount = 2;
 			}
@@ -436,11 +438,11 @@ void RaceFlag_DrawLoadingString(void)
 			// treat all letters with 4 frame difference
 			letterAnimFrame = letterAnimFrame - RACE_FLAG_LOADING_LETTER_FRAME_STEP;
 
-			loadingText = nextGlyph;
 		} while (textByteIndex < loadingTextBytes);
 	}
 
-	// pointer to OT mem
+	// NOTE(aalhendi): Font calls may change the tracker; restore the saved OT through the current one.
+	gGT = GAME_TRACKER;
 	gGT->pushBuffer_UI.ptrOT = (u32 *)oldOT;
 
 	if (letterAnimFrame < RACE_FLAG_LOADING_ANIM_RESET_FRAME)
@@ -457,34 +459,22 @@ void RaceFlag_DrawLoadingString(void)
 
 	else
 	{
-		sdata->RaceFlag_LoadingTextAnimFrame = -1;
-		if ((u32)(sdata->Loading.stage - RACE_FLAG_LOADING_REPEAT_STAGE_FIRST) < RACE_FLAG_LOADING_REPEAT_STAGE_COUNT)
+		if ((u32)(RACE_FLAG_LOADING_STAGE - RACE_FLAG_LOADING_REPEAT_STAGE_FIRST) < RACE_FLAG_LOADING_REPEAT_STAGE_COUNT)
 		{
-			sdata->RaceFlag_LoadingTextAnimFrame = 0;
+			*(volatile s32 *)&sdata->RaceFlag_LoadingTextAnimFrame = 0;
 		}
+		else
+			sdata->RaceFlag_LoadingTextAnimFrame = -1;
 	}
 	return;
 }
 
-static char RaceFlag_CalculateBrightness(u32 sine, u8 darkTile)
+static inline s32 RaceFlag_DecodeSine(u32 angle, s32 sine)
 {
-	if (darkTile)
-	{
-		return ((sine * -55 + 0x140000) >> 0xD);
-	}
-	return ((sine * -125 + 0x1fe000) >> 0xD);
-}
-
-static int RaceFlag_Sin(u32 angle)
-{
-	int sine;
-
-	// approximate trigonometry
-	sine = (s32)CTR_ReadU32LE(&data.trigApprox[angle & RACE_FLAG_TRIG_TABLE_MASK]);
-
+	// Select the packed sine/cosine halfword, then reflect the second half-cycle.
 	if ((angle & RACE_FLAG_TRIG_HIGH_HALF_MASK) == 0)
 	{
-		sine = sine << 0x10;
+		sine = (u32)sine << 0x10;
 	}
 
 	sine = sine >> 0x10;
@@ -497,289 +487,302 @@ static int RaceFlag_Sin(u32 angle)
 	return sine;
 }
 
-void RaceFlag_DrawSelf()
+static inline s32 RaceFlag_Sin(u32 angle)
 {
-	int i, j;
-	int column, row;
-	int toggle;
+	const struct TrigTable *table = RACE_FLAG_TRIG;
+	return RaceFlag_DecodeSine(angle, (s32)CTR_ReadU32AlignedLE(&table[angle & RACE_FLAG_TRIG_TABLE_MASK]));
+}
 
-	s16 flagPos;
+// NOTE(aalhendi): The first wave advances by elapsed time; columns use a fixed 64-tick step.
+static inline s32 RaceFlag_StepWave(s32 *wave, s32 advance, s32 *light)
+{
+	u32 phase, angle;
+	// NOTE(aalhendi): Retain the packed sample's register lifetime before decoding either halfword.
+	register s32 sine CTR_PSX_REGISTER("$4");
+	s32 height;
+	wave[4] = (s32)((u32)wave[4] + advance);
+	phase = wave[4] >> 5;
+	if (phase > 4095)
+	{
+		wave[4] &= 0x1ffff;
+		phase = wave[4] >> 5;
+		angle = (u32)wave[0] + 512;
+		wave[0] = (s32)angle;
+		{
+			const struct TrigTable *table = RACE_FLAG_TRIG;
+			sine = (s32)CTR_ReadU32AlignedLE(&table[angle & RACE_FLAG_TRIG_TABLE_MASK]);
+			CTR_PSX_OBSERVE_VALUE(sine);
+			sine = RaceFlag_DecodeSine(angle, sine);
+		}
+		wave[1] = ((sine + 4095) * 32 >> 13) + 150;
+		angle = (u32)wave[2] + 200;
+		wave[2] = (s32)angle;
+		{
+			const struct TrigTable *table = RACE_FLAG_TRIG;
+			sine = (s32)CTR_ReadU32AlignedLE(&table[angle & RACE_FLAG_TRIG_TABLE_MASK]);
+			CTR_PSX_OBSERVE_VALUE(sine);
+			sine = RaceFlag_DecodeSine(angle, sine);
+		}
+		wave[3] = ((sine + 4095) * 64 >> 13) + 180;
+	}
+	// NOTE(aalhendi): Keep sampling and biasing separate for the inline result's retail lifetime.
+	height = RaceFlag_Sin(phase);
+	height += 4095;
+	phase += 3200;
+	*light = RaceFlag_Sin(phase) + 4095;
+	return height;
+}
+
+static inline u32 RaceFlag_ScreenSignMask(void)
+{
+	// NOTE(aalhendi): This inline boundary keeps GCC 2.8.1 from reassociating
+	// the packed clipping expressions and lets it load the mask after the column bases.
+	return 0x80008000u;
+}
+
+void RaceFlag_DrawSelf(void)
+{
+	SVECTOR positions[3];
+	s32 columnWave[5];
+	u8 colors[2];
+	s32 leftLight;
+	s32 *firstWave;
+	s32 columnPhase;
+	// NOTE(aalhendi): These non-emitting bindings preserve retail loop/packet lifetimes;
+	// native builds use ordinary locals. GTE transfers remain at the SDK boundary.
+	register s32 row CTR_PSX_REGISTER("$14");
+	s32 column;
+	s32 point;
+	s32 firstPoint;
+	s32 segment;
+	s32 toggle;
+	s32 depth;
+	s32 sine;
+	s32 height;
+	register s32 rightLight CTR_PSX_REGISTER("$25");
+	u32 rippleAngle;
 	u32 *ot;
-	u32 screenlimit;
-	u32 dimensions;
-
-	int var2;
-	int var3;
-	u32 var1;
-
-	POLY_G4 *p;
-	struct GameTracker *gGT = sdata->gGT;
-
-	int time;
-	int lightL;
-	int lightR;
-
-	struct RaceFlagScratch *scratch;
-	s32 local[5];
-	SVECTOR pos[3] = {0};
-
-	if (sdata->RaceFlag_CanDraw == 0)
+	register u32 *writeScreen CTR_PSX_REGISTER("$9");
+	u32 *readScreen;
+	s32 packedRight;
+	register POLY_G4 *poly CTR_PSX_REGISTER("$8");
+	s16 flagPosition;
+	if (!RACE_FLAG_CAN_DRAW)
 	{
 		return;
 	}
-
 	if (sdata->RaceFlag_LoadingTextAnimFrame < 0)
 	{
-		if ((5 < sdata->Loading.stage) && (sdata->Loading.stage < 8))
+		s32 stage = RACE_FLAG_LOADING_STAGE;
+		b32 tooEarly = stage < 6;
+
+		if ((!tooEarly) && (stage < 8))
 		{
 			sdata->RaceFlag_LoadingTextAnimFrame = 0;
 		}
-
 		if (sdata->RaceFlag_LoadingTextAnimFrame < 0)
 		{
-			goto SKIP_LOADING_TEXT;
+			goto SkipText;
 		}
 	}
-
 	RaceFlag_DrawLoadingString();
+SkipText:
+	*((volatile s32 *)(&sdata->RaceFlag_CopyLoadStage)) = RACE_FLAG_LOADING_STAGE;
 
-SKIP_LOADING_TEXT:
-
-	sdata->RaceFlag_CopyLoadStage = sdata->Loading.stage;
-	ot = (u32 *)RaceFlag_GetOT();
-
-	gte_SetRotMatrix(&data.matrixTitleFlag);
-	gte_SetTransMatrix(&data.matrixTitleFlag);
-	gte_SetGeomOffset(0x100, 0x78);
-	gte_SetGeomScreen(0x100);
-
-	p = (POLY_G4 *)gGT->backBuffer->primMem.cursor;
-
-	scratch = CTR_SCRATCHPAD_PTR(struct RaceFlagScratch, 0);
-
-	dimensions = 0xd80200;
-	screenlimit = 0x80008000;
-
-	toggle = 0;
-
-	// === First Loop Iteration ===
-	// Remove 36*10 branching instructions,
-	// Reduces clock from ~150 to ~130
+	ot = RaceFlag_GetOT();
+	CTR_GteSetRotMatrix(&RACE_FLAG_MATRIX);
+	CTR_GteSetTransMatrix(&RACE_FLAG_MATRIX);
+	CTR_GteSetGeomOffset(256, 120);
+	gte_SetGeomScreen(256);
+	firstWave = RACE_FLAG_WAVE;
+	poly = 0;
+	writeScreen = RACE_FLAG_SCREEN_BASE;
+	toggle = 1;
+	columnPhase = sdata->RaceFlag_ElapsedTime >> 5;
+	rippleAngle = columnPhase;
+	height = RaceFlag_StepWave(firstWave, firstWave[3] * GAME_TRACKER->elapsedTimeMS, &leftLight);
+	depth = ((height * RACE_FLAG_WAVE[1]) >> 13) + 640;
+	positions[0].vy = -910;
+	flagPosition = sdata->RaceFlag_Position;
+	positions[1].vy = -816;
+	positions[2].vy = -722;
+	flagPosition = (-3006) - flagPosition;
+	positions[0].vx = flagPosition;
+	positions[1].vx = flagPosition;
+	positions[2].vx = flagPosition;
+	for (row = 0; row < RACE_FLAG_SCREEN_ROWS; ++row)
 	{
-		union RaceFlagScreenBuffer *writeScreen = &scratch->screen[toggle];
-		toggle = toggle ^ 1;
-
-		local[0] = data.checkerFlagVariables[0];
-		local[1] = data.checkerFlagVariables[1];
-		local[2] = data.checkerFlagVariables[2];
-		local[3] = data.checkerFlagVariables[3];
-		local[4] = data.checkerFlagVariables[4];
-
-		// === Step 1 ===
-		int stepRate = gGT->elapsedTimeMS;
-		local[4] += local[3] * stepRate;
-		var1 = (int)local[4] >> 5;
-
-		// === Step 2 ===
-		if (0xfff < var1)
+		for (firstPoint = 0; firstPoint < RACE_FLAG_SCREEN_POINTS_PER_ROW; ++firstPoint)
 		{
-			// reset counter
-			local[4] &= 0x1ffff;
-			var1 = (int)local[4] >> 5;
-
-			local[0] += 0x200;
-			local[2] += 200;
-
-			int sin0 = RaceFlag_Sin(local[0]) + 0xfff;
-			int sin2 = RaceFlag_Sin(local[2]) + 0xfff;
-
-			// reset based on trig
-			local[1] = (sin0 * 0x20 >> 0xd) + 0x96;
-			local[3] = (sin2 * 0x40 >> 0xd) + 0xb4;
+			sine = RaceFlag_Sin(rippleAngle) + 4095;
+			positions[firstPoint].vz = depth + ((sine * 32) >> 13);
+			rippleAngle += 300;
 		}
 
-		// === Step 3 ===
-		var2 = RaceFlag_Sin(var1) + 0xfff;
-		var2 = var2 * local[1];
-		var2 = (var2 >> 0xd) + 0x280;
-
-		// === Step 4 ===
-		var1 += 0xc80;
-		lightL = RaceFlag_Sin(var1) + 0xfff;
-
-		// === Step 5 ===
-		pos[0].vy = 0xfc72;
-		pos[1].vy = 0xfcd0;
-		pos[2].vy = 0xfd2e;
-
-		// === Step 6 ===
-		data.checkerFlagVariables[0] = local[0];
-		data.checkerFlagVariables[1] = local[1];
-		data.checkerFlagVariables[2] = local[2];
-		data.checkerFlagVariables[3] = local[3];
-		data.checkerFlagVariables[4] = local[4];
-
-		time = sdata->RaceFlag_ElapsedTime >> 5;
-		var1 = time;
-
-		flagPos = sdata->RaceFlag_Position;
-		flagPos = -0xbbe - flagPos;
-		pos[0].vx = flagPos;
-		pos[1].vx = flagPos;
-		pos[2].vx = flagPos;
-
-		i = 0;
-		// === Step 7 ===
-		for (row = 0; row < 10; row++)
-		{
-			SVECTOR *vect;
-			for (vect = &pos[0]; vect < &pos[3]; vect++)
-			{
-				// Range: [1.0, 2.0]
-				var3 = RaceFlag_Sin(var1) + 0xfff;
-				var1 += 300;
-
-				// change all vector posZ
-				vect->vz = (s16)var2 + (s16)(var3 * 0x20 >> 0xd);
-			}
-
-			CTR_GteLoadSV3WithPad(&pos[0], &pos[1], &pos[2]);
-			gte_rtpt();
-
-			pos[0].vy += 0x11a;
-			pos[1].vy += 0x11a;
-			pos[2].vy += 0x11a;
-
-			CTR_GteStoreSXY3(&writeScreen->row[row].xy[0], &writeScreen->row[row].xy[1], &writeScreen->row[row].xy[2]);
-		}
-
-		lightR = lightL;
+		CTR_GteLoadPositionsV0V1V2(positions, &positions[1], &positions[2]);
+		gte_rtpt();
+		positions[0].vy += 282;
+		positions[1].vy += 282;
+		positions[2].vy = positions[2].vy + 282;
+		CTR_GteStorePositionsXY(writeScreen, writeScreen + 1, writeScreen + 2);
+		writeScreen += 3;
 	}
 
+	rightLight = leftLight;
+	columnWave[0] = RACE_FLAG_WAVE[0];
+	columnWave[1] = RACE_FLAG_WAVE[1];
+	columnWave[2] = RACE_FLAG_WAVE[2];
+	columnWave[3] = RACE_FLAG_WAVE[3];
+	columnWave[4] = RACE_FLAG_WAVE[4];
 
-	// === Rest of Iterations ===
-	// Now executing without branching
-	for (column = 1; column < 35; column++)
+	for (column = 1; column < 35; ++column)
 	{
-		union RaceFlagScreenBuffer *writeScreen = &scratch->screen[toggle];
-		toggle = toggle ^ 1;
-		union RaceFlagScreenBuffer *readScreen = &scratch->screen[toggle];
-
-		// === Step 1 ===
-		int stepRate = 0x40;
-		local[4] += local[3] * stepRate;
-		var1 = (int)local[4] >> 5;
-
-		// === Step 2 ===
-		if (0xfff < var1)
 		{
-			// reset counter
-			local[4] &= 0x1ffff;
-			var1 = (int)local[4] >> 5;
-
-			local[0] += 0x200;
-			local[2] += 200;
-
-			int sin0 = RaceFlag_Sin(local[0]) + 0xfff;
-			int sin2 = RaceFlag_Sin(local[2]) + 0xfff;
-
-			// reset based on trig
-			local[1] = (sin0 * 0x20 >> 0xd) + 0x96;
-			local[3] = (sin2 * 0x40 >> 0xd) + 0xb4;
+			// Alternate two 30-vertex scratch banks; keep the byte offset separate from the cursor base.
+			register u8 *columnBase CTR_PSX_REGISTER("$3") = (u8 *)(RACE_FLAG_SCREEN_BASE - 1);
+			register s32 byteOffset CTR_PSX_REGISTER("$2") = toggle * (RACE_FLAG_SCREEN_POINTS_PER_COLUMN * 4);
+			writeScreen = (u32 *)(columnBase + byteOffset);
+		}
+		toggle ^= 1;
+		readScreen = RACE_FLAG_SCREEN_BASE + (toggle * RACE_FLAG_SCREEN_POINTS_PER_COLUMN);
+		columnPhase += 256;
+		rippleAngle = columnPhase;
+		height = RaceFlag_StepWave(columnWave, columnWave[3] * 64, &leftLight);
+		depth = ((height * columnWave[1]) >> 13) + 640;
+		positions[0].vy = -910;
+		positions[1].vy = -816;
+		positions[2].vy = -722;
+		positions[0].vx += 100;
+		positions[1].vx += 100;
+		positions[2].vx += 100;
+		for (point = 0; point < RACE_FLAG_SCREEN_POINTS_PER_ROW; ++point)
+		{
+			sine = RaceFlag_DecodeSine(rippleAngle, (s32)CTR_ReadU32AlignedLE(&RACE_FLAG_TRIG[rippleAngle & RACE_FLAG_TRIG_TABLE_MASK])) + 4095;
+			positions[point].vz = depth + ((sine * 32) >> 13);
+			rippleAngle += 300;
 		}
 
-		// === Step 3 ===
-		var2 = RaceFlag_Sin(var1) + 0xfff;
-		var2 = var2 * local[1];
-		var2 = (var2 >> 0xd) + 0x280;
-
-		// === Step 4 ===
-		var1 += 0xc80;
-		lightL = RaceFlag_Sin(var1) + 0xfff;
-
-		// === Step 5 ===
-		pos[0].vy = 0xfc72;
-		pos[1].vy = 0xfcd0;
-		pos[2].vy = 0xfd2e;
-
-		// === Step 6 ===
-		time += 0x100;
-		var1 = time;
-
-		pos[0].vx += 100;
-		pos[1].vx += 100;
-		pos[2].vx += 100;
-
-		i = 0;
-		// === Step 7 ===
-		for (row = 0; row < 10; row++)
+		CTR_GteLoadPositionsV0V1V2(positions, &positions[1], &positions[2]);
+		gte_rtpt();
+		segment = 0;
+		row = 0;
+		do
 		{
-			SVECTOR *vect;
-			for (vect = &pos[0]; vect < &pos[3]; vect++)
+			s32 darkRight;
+			s32 weightedRight;
+			s32 shadeScale;
+			register s32 inverseRight CTR_PSX_REGISTER("$10");
+			++row;
+			if (row < RACE_FLAG_SCREEN_ROWS + 1)
 			{
-				// Range: [1.0, 2.0]
-				var3 = RaceFlag_Sin(var1) + 0xfff;
-				var1 += 300;
-
-				// change all vector posZ
-				vect->vz = (s16)var2 + (s16)(var3 * 0x20 >> 0xd);
-			}
-
-			CTR_GteLoadSV3WithPad(&pos[0], &pos[1], &pos[2]);
-			gte_rtpt();
-
-			pos[0].vy += 0x11a;
-			pos[1].vy += 0x11a;
-			pos[2].vy += 0x11a;
-
-			CTR_GteStoreSXY3(&writeScreen->row[row].xy[0], &writeScreen->row[row].xy[1], &writeScreen->row[row].xy[2]);
-
-			int firstSegment = (row == 0) ? 1 : 0;
-
-			for (j = firstSegment; j < RACE_FLAG_SCREEN_POINTS_PER_ROW; j++, i++)
-			{
-				int pointIndex = row * RACE_FLAG_SCREEN_POINTS_PER_ROW + j - 1;
-				u32 read0 = readScreen->xy[pointIndex];
-				u32 read1 = readScreen->xy[pointIndex + 1];
-				u32 write0 = writeScreen->xy[pointIndex];
-				u32 write1 = writeScreen->xy[pointIndex + 1];
-
-				if (((read0 & read1 & write0 & write1 & screenlimit) == 0) &&
-				    (((dimensions - read0) & (dimensions - read1) & (dimensions - write0) & (dimensions - write1) & screenlimit) == 0))
+				CTR_GteStorePositionsXY(writeScreen + 1, writeScreen + 2, writeScreen + 3);
+				if (row < RACE_FLAG_SCREEN_ROWS)
 				{
-					// TRUE for gray, FALSE for white
-					u8 boolDark = ((((column >> 2) + (i >> 2)) & 1U) != 0);
+					for (point = 0; point < RACE_FLAG_SCREEN_POINTS_PER_ROW; ++point)
+					{
+						sine = RaceFlag_DecodeSine(rippleAngle, (s32)CTR_ReadU32AlignedLE(&RACE_FLAG_TRIG[rippleAngle & RACE_FLAG_TRIG_TABLE_MASK])) + 4095;
+						positions[point].vz = depth + ((sine * 32) >> 13);
+						rippleAngle += 300;
+					}
 
-					u8 colorR = RaceFlag_CalculateBrightness(lightR, boolDark);
-					setRGB0(p, colorR, colorR, colorR);
-					CTR_WriteU32LE(&p->r2, CTR_ReadU32LE(&p->r0));
-
-					u8 colorL = RaceFlag_CalculateBrightness(lightL, boolDark);
-					setRGB1(p, colorL, colorL, colorL);
-					CTR_WriteU32LE(&p->r3, CTR_ReadU32LE(&p->r1));
-
-					// positions
-					CtrGpu_WritePackedXY(&p->x0, read0);
-					CtrGpu_WritePackedXY(&p->x2, read1);
-					CtrGpu_WritePackedXY(&p->x1, write0);
-					CtrGpu_WritePackedXY(&p->x3, write1);
-
-					// prim/code
-					setPolyG4(p);
-
-					// Prim/OT
-					// addPrim(ot, p); works but uses more instructions.
-					p->tag = CtrGpu_PackOTTag(*ot, 0x8000000);
-					*ot = CtrGpu_PrimToOTLink24(p);
-
-					p++;
+					positions[0].vy += 282;
+					positions[1].vy += 282;
+					positions[2].vy += 282;
+					CTR_GteLoadPositionsV0V1V2(positions, &positions[1], &positions[2]);
+					gte_rtpt();
 				}
 			}
-		}
+			{
+				register s32 quadPoint CTR_PSX_REGISTER("$11");
+				quadPoint = 0;
+				if (segment == 0)
+				{
+					quadPoint = 1;
+					++writeScreen;
+				}
 
-		lightR = lightL;
+				weightedRight = rightLight * 105;
+
+				shadeScale = 8192;
+				inverseRight = shadeScale - rightLight;
+				darkRight = (weightedRight + (inverseRight * 160)) >> 13;
+				do
+				{
+					const u32 screenMaxXY = (216u << 16) | 512u;
+					// Keep packed-word subtraction: an X borrow affects the Y halfword too.
+					if (((((((readScreen[0] & (readScreen[1] & RaceFlag_ScreenSignMask())) & RaceFlag_ScreenSignMask()) & writeScreen[0]) &
+					       RaceFlag_ScreenSignMask()) &
+					      writeScreen[1]) == 0) &&
+					    (((((((screenMaxXY - readScreen[0]) & ((screenMaxXY - readScreen[1]) & RaceFlag_ScreenSignMask())) & RaceFlag_ScreenSignMask()) &
+					        (screenMaxXY - writeScreen[0])) &
+					       RaceFlag_ScreenSignMask()) &
+					      (screenMaxXY - writeScreen[1])) == 0))
+					{
+						struct DB *back = GAME_TRACKER->backBuffer;
+						POLY_G4 *next = back->primMem.cursor;
+						register u32 packedLeft CTR_PSX_REGISTER("$3");
+						u32 packed;
+						if (next <= ((POLY_G4 *)back->primMem.guardEnd))
+						{
+							poly = next;
+							back->primMem.cursor = next + 1;
+						}
+
+#ifdef CTR_NATIVE
+						// NOTE(aalhendi): Retail reuses the last packet on exhaustion, which can
+						// create a cyclic OT link. Native stops before relinking that packet.
+						else
+							return;
+#endif
+						if (!poly)
+						{
+							return;
+						}
+						if (((column >> 2) + (segment >> 2)) & 1)
+						{
+							s32 left = *((volatile s32 *)(&leftLight));
+							colors[0] = darkRight;
+							colors[1] = ((left * 105) + ((shadeScale - left) * 160)) >> 13;
+						}
+						else
+						{
+							s32 left = *((volatile s32 *)(&leftLight));
+							colors[0] = ((rightLight * 130) + (inverseRight * 255)) >> 13;
+							colors[1] = ((left * 130) + ((shadeScale - left) * 255)) >> 13;
+						}
+						CtrGpu_WritePackedXY(&poly->x0, *(readScreen++));
+						CtrGpu_WritePackedXY(&poly->x2, *readScreen);
+						CtrGpu_WritePackedXY(&poly->x1, *(writeScreen++));
+						CtrGpu_WritePackedXY(&poly->x3, *writeScreen);
+						packedLeft = (colors[0] | (colors[0] << 16)) | (colors[0] << 8);
+						CTR_WriteU32AlignedLE(&poly->r0, packedLeft);
+						CTR_WriteU32AlignedLE(&poly->r2, packedLeft);
+						packedRight = (colors[1] | (colors[1] << 16)) | (colors[1] << 8);
+						setlen(poly, 8);
+						packed = packedRight;
+						setcode(poly, 0x38);
+						CTR_WriteU32AlignedLE(&poly->r1, packed);
+						CTR_WriteU32AlignedLE(&poly->r3, packed);
+						// NOTE(aalhendi): Preserve both tag length bytes while linking through native GPU tokens.
+						{
+							u32 addressMask = 0xffffffu;
+							register u32 lengthMask CTR_PSX_REGISTER("$4") = 0xff000000u;
+							poly->tag = (poly->tag & lengthMask) | (*ot & addressMask);
+							*ot = (*ot & lengthMask) | (CtrGpu_PrimToOTLink24(poly) & addressMask);
+						}
+					}
+					else
+					{
+						++readScreen;
+						++writeScreen;
+					}
+					++quadPoint;
+					++segment;
+				} while (quadPoint < RACE_FLAG_SCREEN_POINTS_PER_ROW);
+			}
+		} while (row < RACE_FLAG_SCREEN_ROWS);
+		rightLight = leftLight;
 	}
 
-	gGT->backBuffer->primMem.cursor = p;
-	sdata->RaceFlag_ElapsedTime += gGT->elapsedTimeMS * 100;
+	sdata->RaceFlag_ElapsedTime = (s32)(((u32)sdata->RaceFlag_ElapsedTime) + (GAME_TRACKER->elapsedTimeMS * 100));
 }

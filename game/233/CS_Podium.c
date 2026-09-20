@@ -92,11 +92,12 @@ void CS_DestroyPodium_StartDriving(void)
 {
 	struct Instance *inst;
 	struct Driver *d;
-	struct GameTracker *gGT = sdata->gGT;
-	struct Thread *t = gGT->threadBuckets[OTHER].thread;
+	struct GameTracker *gGT;
+	struct Thread *t;
 
 	// enable HUD
-	gGT->hudFlags |= HUD_FLAG_RACE_HUD;
+	GAME_TRACKER->hudFlags |= HUD_FLAG_RACE_HUD;
+	t = GAME_TRACKER->threadBuckets[OTHER].thread;
 
 	// loop through all threads
 	while (t != NULL)
@@ -109,7 +110,7 @@ void CS_DestroyPodium_StartDriving(void)
 		t = t->siblingThread;
 	}
 
-	d = gGT->drivers[0];
+	d = GAME_TRACKER->drivers[0];
 
 	// enable collisions for thread,
 	// and make instance visible
@@ -121,15 +122,16 @@ void CS_DestroyPodium_StartDriving(void)
 	d->funcPtrs[DRIVER_FUNC_INIT] = VehPhysProc_Driving_Init;
 
 	// if cutscene changed audio, restore backup
-	if (D233.CutsceneManipulatesAudio != 0)
+	if (CS_CONTROLS_AUDIO != 0)
 	{
 		// restore backup of volume variables
-		howl_VolumeSet(HOWL_VOLUME_TYPE_FX, D233.FXVolumeBackup);
-		howl_VolumeSet(HOWL_VOLUME_TYPE_MUSIC, D233.MusicVolumeBackup);
-		howl_VolumeSet(HOWL_VOLUME_TYPE_VOICE, D233.VoiceVolumeBackup);
+		howl_VolumeSet(HOWL_VOLUME_TYPE_FX, CS_FX_VOLUME_BACKUP);
+		howl_VolumeSet(HOWL_VOLUME_TYPE_MUSIC, CS_MUSIC_VOLUME_BACKUP);
+		howl_VolumeSet(HOWL_VOLUME_TYPE_VOICE, CS_VOICE_VOLUME_BACKUP);
 	}
 
 	// cam mode be zero to follow you
+	gGT = GAME_TRACKER;
 	gGT->cameraDC[0].cameraMode = 0;
 	gGT->pushBuffer[0].distanceToScreen_PREV = PODIUM_CAMERA_DISTANCE_TO_SCREEN;
 	gGT->pushBuffer[0].distanceToScreen_CURR = PODIUM_CAMERA_DISTANCE_TO_SCREEN;
@@ -137,7 +139,7 @@ void CS_DestroyPodium_StartDriving(void)
 
 void CS_Podium_Stand_ThTick(struct Thread *t)
 {
-	if (D233.isCutsceneOver != 0)
+	if (CS_FINISHED != 0)
 	{
 		t->flags |= THREAD_FLAG_DEAD;
 	}
@@ -145,7 +147,7 @@ void CS_Podium_Stand_ThTick(struct Thread *t)
 
 void CS_Podium_Stand_Init(struct CsThreadInitData *podiumData)
 {
-	struct Instance *inst = INSTANCE_BirthWithThread(STATIC_PODIUM, R233.s_podium, SMALL, OTHER, CS_Podium_Stand_ThTick, 0, 0);
+	struct Instance *inst = INSTANCE_BirthWithThread(STATIC_PODIUM, csPodiumNames.s_podium, SMALL, OTHER, CS_Podium_Stand_ThTick, 0, 0);
 
 	// if the instance was built
 	if (inst == NULL)
@@ -160,8 +162,8 @@ void CS_Podium_Stand_Init(struct CsThreadInitData *podiumData)
 	inst->matrix.t[1] = podiumData->podiumPos.y;
 	inst->matrix.t[2] = podiumData->podiumPos.z;
 
-	inst->depthBiasSecondary += 2;
 	inst->depthBiasNormal += 2;
+	inst->depthBiasSecondary += 2;
 
 	podiumData->derivedRot.x = podiumData->rot.x;
 	podiumData->derivedRot.y = podiumData->rot.y;
@@ -173,247 +175,243 @@ void CS_Podium_Stand_Init(struct CsThreadInitData *podiumData)
 void CS_Podium_Prize_Spin(struct Instance *inst, struct Prize *prize)
 {
 	struct GamepadSystem *gGS;
-	u32 trigApprox;
 	s16 prevAngle;
-	int ratio;
+	s32 ratio, delta;
 	u32 angle;
 	SVec3 lightDir;
 
 	prize->rot.y += PODIUM_PRIZE_ROT_Y_STEP;
-	const SVec3 *prizeRot = &prize->rot;
-	ConvertRotToMatrix(&inst->matrix, prizeRot);
-
-	gGS = sdata->gGamepads;
-
+	ConvertRotToMatrix(&inst->matrix, &prize->rot);
 	if ((inst->flags & USE_SPECULAR_LIGHT) == 0)
 	{
 		return;
 	}
 
+	gGS = GAMEPADS;
 	prevAngle = prize->specLightPhase;
 	prize->specLightPhase = prevAngle + PODIUM_PRIZE_SPEC_LIGHT_PHASE_STEP;
-
 	if ((gGS->gamepad[1].buttonsHeldCurrFrame & BTN_L1) != 0)
 	{
 		prize->specLightPhase = prevAngle;
 	}
 
-	ratio = (prize->specLightPhase & (ANG_TWO_PI - 1)) - ANG_PI;
-	if (ratio < 0)
 	{
-		ratio = -ratio;
-	}
+		s32 sine1, cos1, sine2, cos2;
 
-	angle = prize->specLightVerticalStart + (((prize->specLightVerticalEnd - prize->specLightVerticalStart) * ratio) >> PODIUM_PRIZE_SPEC_LIGHT_RATIO_SHIFT);
-
-	{
-		s16 sine1;
-		s16 cos1;
-
-		trigApprox = CTR_ReadU32LE(&data.trigApprox[ANG_MODULO_HALF_PI(angle)]);
-		if (IS_ANG_FIRST_OR_THIRD_QUADRANT(angle))
+		// A triangular phase sweeps the light between its authored angles.
+		angle = prize->specLightVerticalStart;
+		delta = prize->specLightVerticalEnd - angle;
+		ratio = (prize->specLightPhase & (ANG_TWO_PI - 1)) - ANG_PI;
+		ratio = abs(ratio);
+		angle = angle + ((delta * ratio) >> PODIUM_PRIZE_SPEC_LIGHT_RATIO_SHIFT);
 		{
-			cos1 = (s16)(trigApprox >> 16);
-			sine1 = (s16)trigApprox;
+			const void *base = data.trigApprox;
+			sine1 = CTR_ReadU32AlignedLE((const u8 *)base + (angle & 0x3ff) * 4);
+		}
+		if (angle & 0x400)
+		{
+			cos1 = (s16)sine1;
+			sine1 = sine1 >> 16;
+			if (angle & 0x800)
+				sine1 = -sine1;
+			else
+				cos1 = -cos1;
 		}
 		else
 		{
-			cos1 = -(s16)trigApprox;
-			sine1 = (s16)(trigApprox >> 16);
+			cos1 = sine1 >> 16;
+			sine1 = (s32)((u32)sine1 << 16);
+			sine1 = sine1 >> 16;
+			if (angle & 0x800)
+			{
+				cos1 = -cos1;
+				sine1 = -sine1;
+			}
 		}
-		if (IS_ANG_THIRD_OR_FOURTH_QUADRANT(angle))
-		{
-			cos1 = -cos1;
-			sine1 = -sine1;
-		}
+		// NOTE(aalhendi): GCC 2.8 otherwise keeps this cosine in v1 instead of
+		// retail's a1. This allocation constraint emits no code on either target.
+		CTR_PSX_CLOBBER("$3");
 		lightDir.y = cos1;
 
+		angle = prize->specLightHorizontalStart;
+		delta = prize->specLightHorizontalEnd - angle;
 		ratio = (prize->specLightPhase & (ANG_TWO_PI - 1)) - ANG_PI;
-		if (ratio < 0)
+		ratio = abs(ratio);
+		angle = angle + ((delta * ratio) >> PODIUM_PRIZE_SPEC_LIGHT_RATIO_SHIFT);
 		{
-			ratio = -ratio;
+			const void *base = data.trigApprox;
+			sine2 = CTR_ReadU32AlignedLE((const u8 *)base + (angle & 0x3ff) * 4);
 		}
-
-		angle = prize->specLightHorizontalStart +
-		        (((prize->specLightHorizontalEnd - prize->specLightHorizontalStart) * ratio) >> PODIUM_PRIZE_SPEC_LIGHT_RATIO_SHIFT);
-
-		s16 sine2;
-		s16 cos2;
-
-		trigApprox = CTR_ReadU32LE(&data.trigApprox[ANG_MODULO_HALF_PI(angle)]);
-		if (IS_ANG_FIRST_OR_THIRD_QUADRANT(angle))
+		if (angle & 0x400)
 		{
-			cos2 = (s16)(trigApprox >> 16);
-			sine2 = (s16)trigApprox;
+			cos2 = (s16)sine2;
+			sine2 = sine2 >> 16;
+			if (angle & 0x800)
+				sine2 = -sine2;
+			else
+				cos2 = -cos2;
 		}
 		else
 		{
-			cos2 = -(s16)trigApprox;
-			sine2 = (s16)(trigApprox >> 16);
-		}
-		if (IS_ANG_THIRD_OR_FOURTH_QUADRANT(angle))
-		{
-			cos2 = -cos2;
-			sine2 = -sine2;
+			cos2 = sine2 >> 16;
+			sine2 = (s32)((u32)sine2 << 16);
+			sine2 = sine2 >> 16;
+			if (angle & 0x800)
+			{
+				cos2 = -cos2;
+				sine2 = -sine2;
+			}
 		}
 		lightDir.x = (sine1 * cos2) >> FRACTIONAL_BITS;
 		lightDir.z = (sine1 * sine2) >> FRACTIONAL_BITS;
 	}
-
-	Vector_SpecLightSpin3D(inst, prizeRot, &lightDir);
+	Vector_SpecLightSpin3D(inst, &prize->rot, &lightDir);
 }
 
 void CS_Podium_Prize_ThTick3(struct Thread *th)
 {
 	struct GameTracker *gGT;
-	struct Instance *inst = th->inst;
-	struct Prize *prize = th->object;
-	s16 framesLeft;
+	struct Instance *inst;
+	struct Prize *prize;
+	s32 framesLeft;
 
-	framesLeft = prize->flyToHudFramesLeft - 1;
-	prize->flyToHudFramesLeft = framesLeft;
-
-	if (framesLeft != 0)
+	inst = th->inst;
+	// NOTE(aalhendi): Preserve retail's instance load ahead of the countdown.
+	CTR_PSX_OBSERVE_VALUE(inst);
+	prize = th->object;
+	prize->flyToHudFramesLeft--;
+	framesLeft = prize->flyToHudFramesLeft;
+	if (framesLeft == 0)
 	{
-		int frameMax = prize->flyToHudFramesTotal;
-		int xInterp = framesLeft * (PODIUM_PRIZE_HUD_CENTER_X - prize->targetScreenPos.x);
-		int yInterp = framesLeft * (PODIUM_PRIZE_HUD_CENTER_Y - prize->targetScreenPos.y);
-		int x;
-		int y;
-		s16 scale;
+		if (!CS_Camera_BoolGotoBoss())
+		{
+			u32 rewards = GAME_ADV_PROGRESS.rewards[ADV_PROGRESS_WORD_HINT];
+			s16 hintID;
 
-		x = (prize->targetScreenPos.x + xInterp / frameMax - PODIUM_PRIZE_HUD_CENTER_X) * -inst->matrix.t[2];
+			if ((rewards & ADV_REWARD_HINT_MAP_INFORMATION_MASK) == 0)
+			{
+				hintID = ADV_MASK_HINT_ID_MAP_INFORMATION;
+			}
+			else if ((rewards & ADV_REWARD_HINT_WUMPA_FRUIT_MASK) == 0)
+			{
+				hintID = ADV_MASK_HINT_ID_WUMPA_FRUIT;
+			}
+			else if ((rewards & ADV_REWARD_HINT_TNT_MASK) == 0)
+			{
+				hintID = ADV_MASK_HINT_ID_TNT;
+			}
+			else if ((rewards & ADV_REWARD_HINT_HANG_TIME_TURBO_MASK) == 0)
+			{
+				hintID = ADV_MASK_HINT_ID_HANG_TIME_TURBO;
+			}
+			else if ((rewards & ADV_REWARD_HINT_POWER_SLIDE_MASK) == 0)
+			{
+				hintID = ADV_MASK_HINT_ID_POWER_SLIDE;
+			}
+			else if ((rewards & ADV_REWARD_HINT_TURBO_BOOST_MASK) == 0)
+			{
+				hintID = ADV_MASK_HINT_ID_TURBO_BOOST;
+			}
+			else if ((rewards & ADV_REWARD_HINT_BRAKE_SLIDE_MASK) == 0)
+			{
+				hintID = ADV_MASK_HINT_ID_BRAKE_SLIDE;
+			}
+			else
+			{
+				goto finish;
+			}
+			MainFrame_RequestMaskHint(hintID, 0);
+		}
+
+	finish:
+		// Use the current tracker after the hint and camera callbacks.
+		gGT = GAME_TRACKER;
+		gGT->overlayTransition = 2;
+		gGT->gameMode2 &= ~VEH_FREEZE_PODIUM;
+		OtherFX_Play(PODIUM_REWARD_UNLOCK_SFX, 1);
+		th->flags |= THREAD_FLAG_DEAD;
+	}
+	else
+	{
+		s32 y, frameMax;
+		// NOTE(aalhendi): These two assignments and value lifetimes retain the
+		// retail projection schedule. The constraints are native no-ops.
+		register s32 x CTR_PSX_REGISTER("$4");
+		register s32 startY CTR_PSX_REGISTER("$5");
+		s32 startX;
+
+		startX = prize->targetScreenPos.x;
+		frameMax = prize->flyToHudFramesTotal;
+		x = framesLeft * (PODIUM_PRIZE_HUD_CENTER_X - startX) / frameMax;
+		startY = prize->targetScreenPos.y;
+		y = framesLeft * (PODIUM_PRIZE_HUD_CENTER_Y - startY) / frameMax;
+		{
+			s32 sum = startX + x;
+			CTR_PSX_ORDER_VALUES(x, startX);
+			x = sum - PODIUM_PRIZE_HUD_CENTER_X;
+		}
+		x *= 0u - (u32)inst->matrix.t[2];
 		if (x < 0)
 		{
 			x += FP8_ONE - 1;
 		}
-
+		y = CTR_MipsMulLo(startY + y - PODIUM_PRIZE_HUD_CENTER_Y, inst->matrix.t[2]);
 		inst->matrix.t[0] = x >> FRACTIONAL_BITS_8;
-
-		y = (prize->targetScreenPos.y + yInterp / frameMax - PODIUM_PRIZE_HUD_CENTER_Y) * inst->matrix.t[2];
 		if (y < 0)
 		{
 			y += FP8_ONE - 1;
 		}
-
+		CTR_PSX_ORDER_VALUES(x, startY);
 		inst->matrix.t[1] = y >> FRACTIONAL_BITS_8;
 
-		scale = inst->scale.x - PODIUM_PRIZE_SCALE_DOWN_STEP;
-		if (scale < PODIUM_PRIZE_SCALE_CLAMP_THRESHOLD)
+		inst->scale.x -= PODIUM_PRIZE_SCALE_DOWN_STEP;
+		if (inst->scale.x < PODIUM_PRIZE_SCALE_CLAMP_THRESHOLD)
 		{
-			scale = FP_ONE;
+			inst->scale.x = FP_ONE;
 		}
-
-		inst->scale.x = scale;
-		inst->scale.y = scale;
-		inst->scale.z = scale;
-
+		inst->scale.y = inst->scale.z = inst->scale.x;
 		CS_Podium_Prize_Spin(inst, prize);
-		return;
 	}
-
-	if (!CS_Camera_BoolGotoBoss())
-	{
-		u32 rewards = sdata->advProgress.rewards[ADV_PROGRESS_WORD_HINT];
-		s16 hintID = 0;
-
-		if ((rewards & ADV_REWARD_HINT_MAP_INFORMATION_MASK) == 0)
-		{
-			hintID = ADV_MASK_HINT_ID_MAP_INFORMATION;
-		}
-		else if ((rewards & ADV_REWARD_HINT_WUMPA_FRUIT_MASK) == 0)
-		{
-			hintID = ADV_MASK_HINT_ID_WUMPA_FRUIT;
-		}
-		else if ((rewards & ADV_REWARD_HINT_TNT_MASK) == 0)
-		{
-			hintID = ADV_MASK_HINT_ID_TNT;
-		}
-		else if ((rewards & ADV_REWARD_HINT_HANG_TIME_TURBO_MASK) == 0)
-		{
-			hintID = ADV_MASK_HINT_ID_HANG_TIME_TURBO;
-		}
-		else if ((rewards & ADV_REWARD_HINT_POWER_SLIDE_MASK) == 0)
-		{
-			hintID = ADV_MASK_HINT_ID_POWER_SLIDE;
-		}
-		else if ((rewards & ADV_REWARD_HINT_TURBO_BOOST_MASK) == 0)
-		{
-			hintID = ADV_MASK_HINT_ID_TURBO_BOOST;
-		}
-		else if ((rewards & ADV_REWARD_HINT_BRAKE_SLIDE_MASK) == 0)
-		{
-			hintID = ADV_MASK_HINT_ID_BRAKE_SLIDE;
-		}
-
-		if (hintID != 0)
-		{
-			MainFrame_RequestMaskHint(hintID, 0);
-		}
-	}
-
-	gGT = sdata->gGT;
-	gGT->overlayTransition = 2;
-	gGT->gameMode2 &= ~VEH_FREEZE_PODIUM;
-
-	OtherFX_Play(PODIUM_REWARD_UNLOCK_SFX, 1);
-
-	th->flags |= THREAD_FLAG_DEAD;
 }
 
 // Make the trophy bounce 3 times
 // Then start ThTick3
 void CS_Podium_Prize_ThTick2(struct Thread *th)
 {
-	int currScale;
-
 	struct Prize *prize = th->object;
-
-	// get instance from thread
 	struct Instance *inst = th->inst;
 
-	s16 frameIndex = prize->bounceFrameIndex;
-
-	// bouncing scale animation
-	if (frameIndex < PODIUM_PRIZE_BOUNCE_FRAME_COUNT)
+	if (prize->bounceFrameIndex >= PODIUM_PRIZE_BOUNCE_FRAME_COUNT)
 	{
-		// if even frame
-		if ((frameIndex & 1) == 0)
+		ThTick_SetAndExec(th, CS_Podium_Prize_ThTick3);
+		return;
+	}
+
+	if ((prize->bounceFrameIndex & 1) == 0)
+	{
+		u16 scale = inst->scale.x + PODIUM_PRIZE_BOUNCE_SCALE_UP_BASE;
+		u16 step = prize->bounceFrameIndex * PODIUM_PRIZE_BOUNCE_SCALE_UP_STEP;
+
+		// NOTE(aalhendi): Keep the multiply's last shift in the scale load's
+		// delay slot. GCC 2.8 otherwise schedules a non-emitting marker there.
+		CTR_PSX_ORDER_VALUES(scale, step);
+		inst->scale.x = scale + step;
+		if ((prize->bounceFrameIndex + 1) * PODIUM_PRIZE_BOUNCE_LIMIT_STEP + PODIUM_PRIZE_BOUNCE_LIMIT_BASE < inst->scale.x)
 		{
-			// scaleX
-			currScale = inst->scale.x + PODIUM_PRIZE_BOUNCE_SCALE_UP_BASE + frameIndex * PODIUM_PRIZE_BOUNCE_SCALE_UP_STEP;
-
-			if ((frameIndex + 1) * PODIUM_PRIZE_BOUNCE_LIMIT_STEP + PODIUM_PRIZE_BOUNCE_LIMIT_BASE < currScale)
-			{
-				// frame counter
-				frameIndex += 1;
-			}
+			prize->bounceFrameIndex++;
 		}
-		else
-		{
-			// scaleX
-			currScale = inst->scale.x - PODIUM_PRIZE_BOUNCE_SCALE_DOWN_STEP;
-
-			if (currScale < PODIUM_PRIZE_SCALE_CLAMP_THRESHOLD)
-			{
-				// frame counter
-				frameIndex += 1;
-			}
-		}
-
-		prize->bounceFrameIndex = frameIndex;
-
-		// scaleY and scaleZ
-		inst->scale.x = currScale;
-		inst->scale.y = currScale;
-		inst->scale.z = currScale;
-
-		CS_Podium_Prize_Spin(inst, prize);
 	}
 	else
 	{
-		ThTick_SetAndExec(th, CS_Podium_Prize_ThTick3);
+		inst->scale.x -= PODIUM_PRIZE_BOUNCE_SCALE_DOWN_STEP;
+		if (inst->scale.x < PODIUM_PRIZE_SCALE_CLAMP_THRESHOLD)
+		{
+			prize->bounceFrameIndex++;
+		}
 	}
+
+	inst->scale.y = inst->scale.z = inst->scale.x;
+	CS_Podium_Prize_Spin(inst, prize);
 }
 
 void CS_Podium_Prize_ThTick1(struct Thread *th)
@@ -422,7 +420,7 @@ void CS_Podium_Prize_ThTick1(struct Thread *th)
 	struct Prize *prize = th->object;
 	int trig;
 
-	if (D233.podiumPrizeDropReady != 0)
+	if (CS_PRIZE_DROP_READY != 0)
 	{
 		if (th->modelIndex != STATIC_BIG1)
 		{
@@ -440,63 +438,63 @@ void CS_Podium_Prize_ThTick1(struct Thread *th)
 	trig = MATH_Cos(prize->rot.y);
 	inst->matrix.t[2] = prize->posStart.z + ((prize->orbitRadius * trig) >> FRACTIONAL_BITS);
 
-	if (D233.isCutsceneOver == 0)
+	if (CS_FINISHED != 0)
+	{
+		prize->flyToHudFramesTotal = PODIUM_PRIZE_FLY_TO_HUD_FRAMES;
+		prize->flyToHudFramesLeft = PODIUM_PRIZE_FLY_TO_HUD_FRAMES;
+		prize->bounceFrameIndex = 0;
+
+		inst->depthBiasNormal = PODIUM_PRIZE_UI_DEPTH_BIAS;
+		inst->depthBiasSecondary = PODIUM_PRIZE_UI_DEPTH_BIAS;
+
+		{
+			struct InstDrawPerPlayer *idpp = INST_GETIDPP(inst);
+			idpp[0].pushBuffer = &GAME_TRACKER->pushBuffer_UI;
+		}
+		inst->scale.x = FP_ONE;
+		inst->scale.y = FP_ONE;
+		inst->scale.z = FP_ONE;
+
+		inst->matrix.t[0] = 0;
+		inst->matrix.t[1] = 0;
+		inst->matrix.t[2] = prize->targetScreenPos.z;
+
+		OtherFX_Stop2(PODIUM_PRIZE_STOP_DINGOFIRE_FX);
+		OtherFX_Stop2(PODIUM_PRIZE_STOP_AKUMOUTH_FX);
+		OtherFX_Play(PODIUM_PRIZE_FLY_TO_HUD_SFX, 1);
+
+		ThTick_SetAndExec(th, CS_Podium_Prize_ThTick2);
+	}
+	else
 	{
 		CS_Podium_Prize_Spin(inst, prize);
-		return;
 	}
-
-	prize->flyToHudFramesTotal = PODIUM_PRIZE_FLY_TO_HUD_FRAMES;
-	prize->flyToHudFramesLeft = PODIUM_PRIZE_FLY_TO_HUD_FRAMES;
-	prize->bounceFrameIndex = 0;
-
-	inst->depthBiasNormal = PODIUM_PRIZE_UI_DEPTH_BIAS;
-	inst->depthBiasSecondary = PODIUM_PRIZE_UI_DEPTH_BIAS;
-
-	inst->scale.x = FP_ONE;
-	inst->scale.y = FP_ONE;
-	inst->scale.z = FP_ONE;
-
-	inst->matrix.t[0] = 0;
-	inst->matrix.t[1] = 0;
-	inst->matrix.t[2] = prize->targetScreenPos.z;
-
-	{
-		struct InstDrawPerPlayer *idpp = INST_GETIDPP(inst);
-		idpp[0].pushBuffer = &sdata->gGT->pushBuffer_UI;
-	}
-
-	OtherFX_Stop2(PODIUM_PRIZE_STOP_DINGOFIRE_FX);
-	OtherFX_Stop2(PODIUM_PRIZE_STOP_AKUMOUTH_FX);
-	OtherFX_Play(PODIUM_PRIZE_FLY_TO_HUD_SFX, 1);
-
-	ThTick_SetAndExec(th, CS_Podium_Prize_ThTick2);
 }
 
 void CS_Podium_Prize_ThDestroy(struct Thread *t)
 {
 	// remove bits
-	sdata->gGT->gameMode2 &= ~(INC_RELIC | INC_KEY | INC_TROPHY);
+	GAME_TRACKER->gameMode2 &= ~(INC_RELIC | INC_KEY | INC_TROPHY);
 	PROC_DestroyInstance(t);
 }
 
 void CS_Podium_Prize_Init(u32 prizeModel, const char *prizeName, const SVec3Slot *podiumPos)
 {
-	struct GameTracker *gGT = sdata->gGT;
 	struct Instance *inst;
 	struct Prize *prize;
-	s32 transformedOffset[3];
+	s32 offsetX, offsetY, offsetZ;
+	struct UiElement2D *hud;
 
 	inst = INSTANCE_BirthWithThread(prizeModel, prizeName, MEDIUM, OTHER, CS_Podium_Prize_ThTick1, sizeof(struct Prize), NULL);
-
 	if (inst == NULL)
 	{
-		if (D233.cutsceneState < CS_WAIT_INPUT)
+		if (CS_PHASE < CS_WAIT_INPUT)
 		{
-			D233.cutsceneState = CS_WAIT_INPUT;
+			CS_PHASE = CS_WAIT_INPUT;
 		}
 
-		gGT->gameMode2 &= ~VEH_FREEZE_PODIUM;
+		// NOTE(aalhendi): Read the active tracker after birth, even on failure.
+		GAME_TRACKER->gameMode2 &= ~VEH_FREEZE_PODIUM;
 		return;
 	}
 
@@ -507,35 +505,69 @@ void CS_Podium_Prize_Init(u32 prizeModel, const char *prizeName, const SVec3Slot
 
 	prize = inst->thread->object;
 	inst->thread->funcThDestroy = CS_Podium_Prize_ThDestroy;
-
 	prize->orbitRadius = PODIUM_PRIZE_ORBIT_RADIUS;
 	prize->heightOffset = PODIUM_PRIZE_HEIGHT_OFFSET;
 	prize->rot.x = 0;
 	prize->rot.y = 0;
 	prize->rot.z = 0;
 
+	// Transform the prize's initial orbit offset with the podium's light matrix.
 	MTC2(0, 0);
 	MTC2(PODIUM_PRIZE_ORBIT_RADIUS, 1);
+	CTR_PSX_GTE_PIPELINE_DELAY();
 	gte_llv0();
+	offsetX = MFC2_S(25);
+	offsetY = MFC2_S(26);
+	offsetZ = MFC2_S(27);
 
-	CTR_GteStoreMAC(transformedOffset);
-
-	prize->posStart.x = podiumPos->x + (s16)transformedOffset[0];
-	prize->posStart.y = podiumPos->y + (s16)transformedOffset[1] + PODIUM_PRIZE_PODIUM_Y_OFFSET;
-	prize->posStart.z = podiumPos->z + (s16)transformedOffset[2];
+	prize->posStart.x = podiumPos->x + (s16)offsetX;
+	prize->posStart.y = podiumPos->y + (s16)offsetY + PODIUM_PRIZE_PODIUM_Y_OFFSET;
+	prize->posStart.z = podiumPos->z + (s16)offsetZ;
 	prize->targetScreenPos.z = PODIUM_PRIZE_DEFAULT_TARGET_Z;
 
+	hud = data.hudStructPtr[0];
 	switch (prizeModel)
 	{
-	case STATIC_BIG1:
-		inst->flags |= HIDE_MODEL;
-		goto center_target;
+	case STATIC_RELIC:
+	{
+		u32 *rewards = GAME_ADV_PROGRESS.rewards;
+		s32 level = GAME_TRACKER->prevLEV;
+		s32 platinumBit = level + ADV_REWARD_FIRST_PLATINUM_RELIC;
+
+		if ((rewards[platinumBit >> 5] >> (platinumBit & 31)) & 1)
+		{
+			inst->colorRGBA = INST_COLOR_PLATINUM_RELIC;
+		}
+		else
+		{
+			s32 goldBit = level + ADV_REWARD_FIRST_GOLD_RELIC;
+			if ((rewards[goldBit >> 5] >> (goldBit & 31)) & 1)
+			{
+				inst->colorRGBA = INST_COLOR_GOLD_RELIC;
+			}
+			else
+			{
+				inst->colorRGBA = INST_COLOR_SAPPHIRE_RELIC;
+			}
+		}
+		prize->specLightVerticalStart = PODIUM_RELIC_SPEC_LIGHT_VERTICAL_START;
+		prize->specLightHorizontalStart = PODIUM_RELIC_SPEC_LIGHT_HORIZONTAL_START;
+		prize->specLightVerticalEnd = PODIUM_RELIC_SPEC_LIGHT_VERTICAL_END;
+		prize->specLightHorizontalEnd = PODIUM_RELIC_SPEC_LIGHT_HORIZONTAL_END;
+		inst->flags |= USE_SPECULAR_LIGHT;
+
+		prize->targetScreenPos.x = hud[UI_HUD_SLOT_RELIC].x;
+		prize->targetScreenPos.y = hud[UI_HUD_SLOT_RELIC].y - PODIUM_PRIZE_HUD_Y_OFFSET;
+		GAME_TRACKER->gameMode2 |= INC_RELIC;
+		return;
+	}
 
 	case STATIC_GEM:
 	{
-		s16 *gemColor = data.AdvCups[gGT->cup.cupID].color;
+		const void *cupBase = data.AdvCups;
+		const struct AdventureCup *cup = (const void *)((const u8 *)cupBase + GAME_TRACKER->cup.cupID * sizeof(struct AdventureCup));
 
-		inst->colorRGBA = (gemColor[0] << 20) | (gemColor[1] << 12) | (gemColor[2] << 4);
+		inst->colorRGBA = ((u32)cup->color[0] << 20) | ((u32)cup->color[1] << 12) | ((u32)cup->color[2] << 4);
 		prize->specLightVerticalStart = PODIUM_GEM_SPEC_LIGHT_VERTICAL_START;
 		prize->specLightHorizontalStart = PODIUM_GEM_SPEC_LIGHT_HORIZONTAL_START;
 		prize->specLightVerticalEnd = PODIUM_GEM_SPEC_LIGHT_VERTICAL_END;
@@ -544,70 +576,7 @@ void CS_Podium_Prize_Init(u32 prizeModel, const char *prizeName, const SVec3Slot
 		goto center_target;
 	}
 
-	default:
-	center_target:
-		prize->targetScreenPos.x = PODIUM_PRIZE_HUD_CENTER_X;
-		prize->targetScreenPos.y = PODIUM_PRIZE_HUD_CENTER_Y;
-		return;
-
-	case STATIC_RELIC:
-	{
-		struct UiElement2D *hud = data.hudStructPtr[0];
-		u32 bitIndex = gGT->prevLEV + ADV_REWARD_FIRST_PLATINUM_RELIC;
-		u32 relicColor;
-
-		prize->targetScreenPos.x = hud[UI_HUD_SLOT_RELIC].x;
-		prize->targetScreenPos.y = hud[UI_HUD_SLOT_RELIC].y - PODIUM_PRIZE_HUD_Y_OFFSET;
-
-		if (!CHECK_ADV_BIT(sdata->advProgress.rewards, bitIndex))
-		{
-			bitIndex = gGT->prevLEV + ADV_REWARD_FIRST_GOLD_RELIC;
-
-			if (!CHECK_ADV_BIT(sdata->advProgress.rewards, bitIndex))
-			{
-				relicColor = INST_COLOR_SAPPHIRE_RELIC;
-			}
-			else
-			{
-				relicColor = INST_COLOR_GOLD_RELIC;
-			}
-		}
-		else
-		{
-			relicColor = INST_COLOR_PLATINUM_RELIC;
-		}
-
-		inst->colorRGBA = relicColor;
-		prize->specLightVerticalStart = PODIUM_RELIC_SPEC_LIGHT_VERTICAL_START;
-		prize->specLightHorizontalStart = PODIUM_RELIC_SPEC_LIGHT_HORIZONTAL_START;
-		prize->specLightVerticalEnd = PODIUM_RELIC_SPEC_LIGHT_VERTICAL_END;
-		prize->specLightHorizontalEnd = PODIUM_RELIC_SPEC_LIGHT_HORIZONTAL_END;
-		inst->flags |= USE_SPECULAR_LIGHT;
-
-		gGT->gameMode2 |= INC_RELIC;
-		return;
-	}
-
-	case STATIC_TROPHY:
-	{
-		struct UiElement2D *hud = data.hudStructPtr[0];
-
-		prize->targetScreenPos.x = hud[UI_HUD_SLOT_TROPHY].x;
-		prize->targetScreenPos.y = hud[UI_HUD_SLOT_TROPHY].y - PODIUM_PRIZE_HUD_Y_OFFSET;
-		prize->targetScreenPos.z = PODIUM_PRIZE_TROPHY_TARGET_Z;
-
-		inst->scale.x = PODIUM_PRIZE_TROPHY_INITIAL_SCALE;
-		inst->scale.y = PODIUM_PRIZE_TROPHY_INITIAL_SCALE;
-		inst->scale.z = PODIUM_PRIZE_TROPHY_INITIAL_SCALE;
-
-		gGT->gameMode2 |= INC_TROPHY;
-		return;
-	}
-
 	case STATIC_KEY:
-	{
-		struct UiElement2D *hud = data.hudStructPtr[0];
-
 		inst->colorRGBA = INST_COLOR_KEY;
 		prize->specLightVerticalStart = PODIUM_KEY_SPEC_LIGHT_VERTICAL_START;
 		prize->specLightHorizontalStart = PODIUM_KEY_SPEC_LIGHT_HORIZONTAL_START;
@@ -617,130 +586,171 @@ void CS_Podium_Prize_Init(u32 prizeModel, const char *prizeName, const SVec3Slot
 
 		prize->targetScreenPos.x = hud[UI_HUD_SLOT_KEY].x;
 		prize->targetScreenPos.y = hud[UI_HUD_SLOT_KEY].y - PODIUM_PRIZE_HUD_Y_OFFSET;
+		GAME_TRACKER->gameMode2 |= INC_KEY;
+		return;
 
-		gGT->gameMode2 |= INC_KEY;
+	case STATIC_TROPHY:
+		prize->targetScreenPos.x = hud[UI_HUD_SLOT_TROPHY].x;
+		prize->targetScreenPos.y = hud[UI_HUD_SLOT_TROPHY].y - PODIUM_PRIZE_HUD_Y_OFFSET;
+		prize->targetScreenPos.z = PODIUM_PRIZE_TROPHY_TARGET_Z;
+
+		inst->scale.x = PODIUM_PRIZE_TROPHY_INITIAL_SCALE;
+		inst->scale.y = PODIUM_PRIZE_TROPHY_INITIAL_SCALE;
+		inst->scale.z = PODIUM_PRIZE_TROPHY_INITIAL_SCALE;
+		GAME_TRACKER->gameMode2 |= INC_TROPHY;
+		return;
+
+	case STATIC_BIG1:
+		inst->flags |= HIDE_MODEL;
+		goto center_target;
+
+	default:
+	center_target:
+		prize->targetScreenPos.x = PODIUM_PRIZE_HUD_CENTER_X;
+		prize->targetScreenPos.y = PODIUM_PRIZE_HUD_CENTER_Y;
 		return;
 	}
-	}
 }
+
+const struct CsPodiumNames csPodiumNames = {
+    .s_podium = "podium",
+    .s_third = "third",
+    .s_second = "second",
+    .s_first = "first",
+    .s_tawna = "tawna",
+    .s_prize = "prize",
+    .s_victorycam = "victorycam",
+};
 
 void CS_Podium_FullScene_Init(void)
 {
 	struct Instance *driverInstSelf;
 	struct Thread *victoryCamThread;
 	u32 podiumMusic;
-	struct CsThreadInitData InitData = {0};
+	struct CsThreadInitData InitData;
 	MATRIX podiumMatrix;
 
-	struct SpawnPosRot *posRot;
+	struct CsThreadInitData *init;
+	struct Driver *driver;
 
-	struct GameTracker *gGT = sdata->gGT;
+	struct GameTracker *gGT;
 
 	// assume cutscene did not manipulate audio
-	D233.CutsceneManipulatesAudio = 0;
+	CS_CONTROLS_AUDIO = 0;
 
 	// Make a backup of FX volume, masked to a byte
-	D233.FXVolumeBackup = howl_VolumeGet(HOWL_VOLUME_TYPE_FX);
-	D233.FXVolumeBackup &= PODIUM_VOLUME_BACKUP_MASK;
+	CS_FX_VOLUME_BACKUP = howl_VolumeGet(HOWL_VOLUME_TYPE_FX);
+	CS_FX_VOLUME_BACKUP &= PODIUM_VOLUME_BACKUP_MASK;
 
 	// Make a backup of Music volume, masked to a byte
-	D233.MusicVolumeBackup = howl_VolumeGet(HOWL_VOLUME_TYPE_MUSIC);
-	D233.MusicVolumeBackup &= PODIUM_VOLUME_BACKUP_MASK;
+	CS_MUSIC_VOLUME_BACKUP = howl_VolumeGet(HOWL_VOLUME_TYPE_MUSIC);
+	CS_MUSIC_VOLUME_BACKUP &= PODIUM_VOLUME_BACKUP_MASK;
 
 	// Make a backup of Voice volume, masked to a byte
-	D233.VoiceVolumeBackup = howl_VolumeGet(HOWL_VOLUME_TYPE_VOICE);
-	D233.VoiceVolumeBackup &= PODIUM_VOLUME_BACKUP_MASK;
+	CS_VOICE_VOLUME_BACKUP = howl_VolumeGet(HOWL_VOLUME_TYPE_VOICE);
+	CS_VOICE_VOLUME_BACKUP &= PODIUM_VOLUME_BACKUP_MASK;
 
 	// Cutscene is now starting
-	D233.isCutsceneOver = 0;
-	D233.cutsceneState = CS_CAMERA_PAN;
+	CS_FINISHED = 0;
+	CS_PHASE = CS_CAMERA_PAN;
 
-	D233.podiumPrizeDropReady = 0;
+	CS_PRIZE_DROP_READY = 0;
 
-	driverInstSelf = gGT->drivers[0]->instSelf;
+	driver = GAME_TRACKER->drivers[0];
+	driverInstSelf = driver->instSelf;
 
-	D233.podiumCameraFrame = 0;
+	CS_PODIUM_CAMERA_FRAME = 0;
 
 	driverInstSelf->flags |= HIDE_MODEL;
 
-	VehPhysProc_FreezeEndEvent_Init(driverInstSelf->thread, gGT->drivers[0]);
+	VehPhysProc_FreezeEndEvent_Init(driverInstSelf->thread, driver);
 
 	// Number of Winners = 1
 	// this means Draw Confetti on one window
-	gGT->numWinners = 1;
+	{
+		struct GameTracker *gtHud;
+		gtHud = GAME_TRACKER;
+		gtHud->numWinners = 1;
 
-	// Set winnerIndex[0] to 0, to draw
-	// confetti on the first pushBuffer
-	gGT->winnerIndex[0] = 0;
+		// Set winnerIndex[0] to 0, to draw
+		// confetti on the first pushBuffer
+		gtHud->winnerIndex[0] = 0;
 
-	gGT->confetti.numParticles_max = PODIUM_CONFETTI_PARTICLE_COUNT;
-	gGT->confetti.vanishRate = PODIUM_CONFETTI_PARTICLE_COUNT;
-	gGT->hudFlags &= HUD_FLAG_CLEAR_RACE_HUD_MASK;
+		gtHud->confetti.numParticles_max = PODIUM_CONFETTI_PARTICLE_COUNT;
+		gtHud->confetti.vanishRate = PODIUM_CONFETTI_PARTICLE_COUNT;
+		gtHud->hudFlags &= HUD_FLAG_CLEAR_RACE_HUD_MASK;
 
-	// Draw Confetti
-	gGT->renderFlags |= RENDER_FLAG_CONFETTI;
-
+		// Draw Confetti
+		gtHud->renderFlags |= RENDER_FLAG_CONFETTI;
+	}
+	gGT = GAME_TRACKER;
 	gGT->gameMode2 |= VEH_FREEZE_PODIUM;
 
 	// position and rotation of podium scene
 	// Y coordinate (podiumPos.y) has added height
-	posRot = gGT->level1->ptrSpawnType2_PosRot[1].coords.posRot;
-	InitData.podiumPos.x = posRot->pos.x;
-	InitData.podiumPos.y = posRot->pos.y + PODIUM_SCENE_SPAWN_Y_OFFSET;
-	InitData.podiumPos.z = posRot->pos.z;
-	InitData.rot.x = posRot->rot.x;
-	InitData.rot.y = posRot->rot.y;
-	InitData.rot.z = posRot->rot.z;
+
+	InitData.podiumPos.x = gGT->level1->ptrSpawnType2_PosRot[1].coords.posRot->pos.x;
+	init = &InitData;
+	init->podiumPos.y = gGT->level1->ptrSpawnType2_PosRot[1].coords.posRot->pos.y + PODIUM_SCENE_SPAWN_Y_OFFSET;
+	init->podiumPos.z = gGT->level1->ptrSpawnType2_PosRot[1].coords.posRot->pos.z;
+	init->rot.x = gGT->level1->ptrSpawnType2_PosRot[1].coords.posRot->rot.x;
+	init->rot.y = gGT->level1->ptrSpawnType2_PosRot[1].coords.posRot->rot.y;
+	init->rot.z = gGT->level1->ptrSpawnType2_PosRot[1].coords.posRot->rot.z;
 
 	// convert 3 rotation shorts into rotation matrix
-	ConvertRotToMatrix(&podiumMatrix, SVec3Slot_AsVec3(&InitData.rot));
+	ConvertRotToMatrix(&podiumMatrix, SVec3Slot_AsVec3(&init->rot));
 	// Move position of trophy girl
-	gte_SetLightMatrix(&podiumMatrix);
+	CTR_GteLoadLightMatrix(&podiumMatrix);
 
 	// CameraDC, this makes the camera stop following you as it does while racing, it must be zero to follow you
+	gGT = GAME_TRACKER;
 	gGT->cameraDC[0].cameraMode = CAMERA_MODE_FREECAM;
 
 	// if someone placed third
 	if (gGT->podium_modelIndex_Third != '\0')
 	{
-		InitData.characterPos.x = PODIUM_THIRD_POS_X;
-		InitData.characterPos.y = PODIUM_THIRD_POS_Y;
-		InitData.characterPos.z = PODIUM_THIRD_POS_Z;
+		init->characterPos.x = PODIUM_THIRD_POS_X;
+		init->characterPos.y = PODIUM_THIRD_POS_Y;
+		init->characterPos.z = PODIUM_THIRD_POS_Z;
 
 		// create thread for "third"
-		CS_Thread_Init(gGT->podium_modelIndex_Third, &R233.s_third[0], &InitData, PODIUM_THIRD_YAW_OFFSET, 0);
+		CS_Thread_Init(gGT->podium_modelIndex_Third, &csPodiumNames.s_third[0], init, PODIUM_THIRD_YAW_OFFSET, 0);
 	}
 
 	// if someone placed second
-	if (gGT->podium_modelIndex_Second != '\0')
 	{
-		InitData.characterPos.x = PODIUM_SECOND_POS_X;
-		InitData.characterPos.y = PODIUM_SECOND_POS_Y;
-		InitData.characterPos.z = PODIUM_SECOND_POS_Z;
+		struct GameTracker *gtSecond;
+		gtSecond = GAME_TRACKER;
+		if (gtSecond->podium_modelIndex_Second != '\0')
+		{
+			init->characterPos.x = PODIUM_SECOND_POS_X;
+			init->characterPos.y = PODIUM_SECOND_POS_Y;
+			init->characterPos.z = PODIUM_SECOND_POS_Z;
 
-		// create thread for "second"
-		CS_Thread_Init(gGT->podium_modelIndex_Second, &R233.s_second[0], &InitData, PODIUM_SECOND_YAW_OFFSET, 0);
+			// create thread for "second"
+			CS_Thread_Init(gtSecond->podium_modelIndex_Second, &csPodiumNames.s_second[0], init, PODIUM_SECOND_YAW_OFFSET, 0);
+		}
 	}
-
-	InitData.characterPos.x = PODIUM_FIRST_POS_X;
-	InitData.characterPos.y = PODIUM_FIRST_POS_Y;
-	InitData.characterPos.z = PODIUM_FIRST_POS_Z;
+	init->characterPos.x = PODIUM_FIRST_POS_X;
+	init->characterPos.y = PODIUM_FIRST_POS_Y;
+	init->characterPos.z = PODIUM_FIRST_POS_Z;
 
 	// create thread for "first"
-	CS_Thread_Init(gGT->podium_modelIndex_First, &R233.s_first[0], &InitData, 0, 0);
+	CS_Thread_Init(GAME_TRACKER->podium_modelIndex_First, CS_PODIUM_FIRST_NAME, init, 0, 0);
 
-	InitData.characterPos.x = PODIUM_TAWNA_POS_X;
-	InitData.characterPos.y = PODIUM_TAWNA_POS_Y;
-	InitData.characterPos.z = PODIUM_TAWNA_POS_Z;
+	init->characterPos.x = PODIUM_TAWNA_POS_X;
+	init->characterPos.y = PODIUM_TAWNA_POS_Y;
+	init->characterPos.z = PODIUM_TAWNA_POS_Z;
 
 	// create thread for trophy girl (internally called "tawna")
-	CS_Thread_Init(gGT->podium_modelIndex_tawna, &R233.s_tawna[0], &InitData, PODIUM_TAWNA_YAW_OFFSET, 0);
+	CS_Thread_Init(GAME_TRACKER->podium_modelIndex_tawna, CS_PODIUM_TAWNA_NAME, init, PODIUM_TAWNA_YAW_OFFSET, 0);
 
-	CS_Podium_Prize_Init(gGT->podiumRewardID, &R233.s_prize[0], &InitData.podiumPos);
+	CS_Podium_Prize_Init(GAME_TRACKER->podiumRewardID, CS_PODIUM_PRIZE_NAME, &init->podiumPos);
 
-	CS_Podium_Stand_Init(&InitData);
+	CS_Podium_Stand_Init(init);
 
-	victoryCamThread = (struct Thread *)PROC_BirthWithObject(PODIUM_VICTORY_CAMERA_THREAD_FLAGS, (void *)CS_Camera_ThTick_Podium, R233.s_victorycam, NULL);
+	victoryCamThread =
+	    (struct Thread *)PROC_BirthWithObject(PODIUM_VICTORY_CAMERA_THREAD_FLAGS, (void *)CS_Camera_ThTick_Podium, CS_PODIUM_VICTORYCAM_NAME, NULL);
 
 	// if it allocated correctly
 	if (victoryCamThread != 0)
@@ -750,7 +760,7 @@ void CS_Podium_FullScene_Init(void)
 	}
 
 	// change victory music based on who is first in the podium
-	switch (gGT->podium_modelIndex_First - STATIC_CRASHDANCE)
+	switch (GAME_TRACKER->podium_modelIndex_First - STATIC_CRASHDANCE)
 	{
 	// Crash, Coco, Fake Crash
 	case PODIUM_DANCE_CRASH:
@@ -758,6 +768,13 @@ void CS_Podium_FullScene_Init(void)
 	case PODIUM_DANCE_FAKE_CRASH:
 		// Crash's music
 		podiumMusic = PODIUM_MUSIC_CRASH;
+		break;
+
+	// Polar Pura
+	case PODIUM_DANCE_POLAR:
+	case PODIUM_DANCE_PURA:
+		// Polar and Pura's music
+		podiumMusic = PODIUM_MUSIC_POLAR;
 		break;
 
 	// Cortex, NGin, NTrophy
@@ -768,11 +785,12 @@ void CS_Podium_FullScene_Init(void)
 		podiumMusic = PODIUM_MUSIC_CORTEX;
 		break;
 
-	// Polar Pura
-	case PODIUM_DANCE_POLAR:
-	case PODIUM_DANCE_PURA:
-		// Polar and Pura's music
-		podiumMusic = PODIUM_MUSIC_POLAR;
+	// papu, roo, penta
+	case PODIUM_DANCE_PAPU:
+	case PODIUM_DANCE_ROO:
+	case PODIUM_DANCE_PENTA:
+		// Ripper Roo's music
+		podiumMusic = PODIUM_MUSIC_ROO;
 		break;
 
 	// pinstripe kjoe
@@ -780,14 +798,6 @@ void CS_Podium_FullScene_Init(void)
 	case PODIUM_DANCE_JOE:
 		// Pinstripe's music
 		podiumMusic = PODIUM_MUSIC_PINSTRIPE;
-		break;
-
-	// papu, roo, penta
-	case PODIUM_DANCE_PAPU:
-	case PODIUM_DANCE_ROO:
-	case PODIUM_DANCE_PENTA:
-		// Ripper Roo's music
-		podiumMusic = PODIUM_MUSIC_ROO;
 		break;
 
 	// Tiny, Dingo, Oxide

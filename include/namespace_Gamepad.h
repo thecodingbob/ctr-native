@@ -291,7 +291,7 @@ struct GamepadSystem
 struct RacingWheelData
 {
 	// 0x0
-	u16 gamepadCenter;
+	s16 gamepadCenter;
 
 	// 0x2
 	s16 deadZone;
