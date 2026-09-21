@@ -321,10 +321,22 @@ void MM_ToggleRows_PlayerCount(void)
 {
 	struct MenuRow *row;
 	s16 rowIndex;
+	s16 arcadePlayerRowCount;
 
-	for (rowIndex = 0; rowIndex < MM_PLAYER_1P2P_SELECTABLE_ROWS; rowIndex++)
+	if (g_config.enableArcadeMultiplayer)
 	{
-		row = &MM_ROWS_PLAYERS_1P2P[rowIndex];
+		MM_MENU_PLAYERS_1P2P.rows = MM_ROWS_PLAYERS_1P2P3P4P;
+		arcadePlayerRowCount = MM_PLAYER_1P2P3P4P_SELECTABLE_ROWS;
+	}
+	else
+	{
+		MM_MENU_PLAYERS_1P2P.rows = MM_ROWS_PLAYERS_1P2P;
+		arcadePlayerRowCount = MM_PLAYER_1P2P_SELECTABLE_ROWS;
+	}
+
+	for (rowIndex = 0; rowIndex < arcadePlayerRowCount; rowIndex++)
+	{
+		row = &MM_MENU_PLAYERS_1P2P.rows[rowIndex];
 
 		// unlock row
 		row->stringIndex &= MENU_ROW_LNG_MASK;
@@ -370,13 +382,14 @@ void MM_MenuProc_1p2p(struct RectMenu *menu)
 		return;
 	}
 
-	// if on row 0 or 1
-	if (row >= MM_PLAYER_1P2P_SELECTABLE_ROWS)
+	// 3P and 4P Arcade must be explicitly enabled.
+	if ((row >= MM_PLAYER_1P2P3P4P_SELECTABLE_ROWS) ||
+	    (!g_config.enableArcadeMultiplayer && (row >= MM_PLAYER_1P2P_SELECTABLE_ROWS)))
 	{
 		return;
 	}
 
-	// row 0 is 1P, row 1 is 2P
+	// row N is (N+1)P
 	GAME_TRACKER->numPlyrNextGame = menu->rowSelected + 1;
 
 	// go to difficulty box

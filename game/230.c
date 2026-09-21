@@ -96,6 +96,7 @@
 #define MM_CHARACTER_SELECT_TRANSITION_BY_PLAYER_COUNT    (D230.characterSelectTransitionByPlayerCount)
 #define MM_ROWS_MAIN_WITH_SCRAPBOOK                       (D230.rowsMainMenuWithScrapbook)
 #define MM_ROWS_PLAYERS_1P2P                              (D230.rowsPlayers1P2P)
+#define MM_ROWS_PLAYERS_1P2P3P4P                          (D230.rowsPlayers1P2P3P4P)
 #define MM_ROWS_PLAYERS_2P3P4P                            (D230.rowsPlayers2P3P4P)
 #define MM_CUP_DIFFICULTY_FIRST_UNLOCK_BIT                (D230.cupDifficulty.firstUnlockBit)
 #define MM_CUP_DIFFICULTY_STRING_INDEX                    (D230.cupDifficulty.stringIndex)

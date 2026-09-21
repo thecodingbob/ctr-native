@@ -63,6 +63,15 @@ struct OverlayDATA_230 D230 CTR_PSX_MATCH_SECTION(".D230") =
                 {RECTMENU_STRING_NONE},
             },
 
+        .rowsPlayers1P2P3P4P =
+            {
+                {0x54, 0, 1, 0, 0},
+                {0x55, 0, 2, 1, 1},
+                {0x56, 1, 3, 2, 2},
+                {0x57, 2, 3, 3, 3},
+                {RECTMENU_STRING_NONE},
+            },
+
         .menuPlayers1P2P =
             {
                 .stringIndexTitle = LNG_PLAYERS,
