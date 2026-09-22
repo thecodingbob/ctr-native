@@ -471,7 +471,8 @@ void UI_RenderFrame_Racing()
 				sVar2 = hudStructPtr[UI_HUD_SLOT_RANK].y;
 				UI_DrawPosSuffix(sVar1, sVar2, playerStruct, (s16)partTimeVariable5);
 
-				if (numPlyr > 2)
+				// Use the 2D rank icon only when the high-quality model is unavailable.
+				if (numPlyr > 2 && playerStruct->instBigNum == NULL)
 				{
 					// Get Color Data
 					ptrColor = data.ptrColor[sVar17];

@@ -384,13 +384,9 @@ void UI_INSTANCE_InitAll(void)
 	sdata->ptrFruitDisp = (int)UI_INSTANCE_BirthWithThread(STATIC_FRUITDISP, (int)UI_ThTick_CountPickup, UI_HUD_SLOT_FRUIT_MODEL, 1, sdata->ptrPushBufferUI,
 	                                                       (int)rdata.s_fruitdisp);
 
-	if ((gGT->numPlyrCurrGame < 3 ||
-		(g_config.enableArcadeMultiplayer && gameMode1 & ARCADE_MODE) != 0) &&
-
-	    // If you're not in Battle Mode
-	    ((gameMode1 & BATTLE_MODE) == 0))
+	// Every racing viewport uses the same 3D rank-number model.
+	if ((gameMode1 & BATTLE_MODE) == 0)
 	{
-		// Arcade renders this instance when a player finishes, including 3P/4P.
 		UI_INSTANCE_BirthWithThread(STATIC_BIG1, (int)UI_ThTick_big1, UI_HUD_SLOT_BIG1, 0, 0, (int)sdata->s_big1);
 	}
 
