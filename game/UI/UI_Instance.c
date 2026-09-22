@@ -26,6 +26,7 @@ enum UIInstanceConstants
 	UI_INSTANCE_DEPTH_BIAS = 0x80,
 	UI_INSTANCE_ROTATE_NONE = 0,
 	UI_INSTANCE_SCALE = 0x1000,
+	UI_INSTANCE_3P4P_BIG_NUM_SCALE = 0xc00,
 	UI_INSTANCE_RELIC_TYPE_COUNT = 3,
 	UI_INSTANCE_RELIC_PLATINUM_TYPE = 2,
 	UI_INSTANCE_RANK_TRANSITION_FRAMES = 5,
@@ -217,7 +218,7 @@ struct Instance *UI_INSTANCE_BirthWithThread(int modelID, int tickFunc, int hudS
 		ui3D->rot.x = 0;
 		ui3D->rot.y = 0;
 		ui3D->rot.z = 0;
-		ui3D->scale = UI_INSTANCE_SCALE;
+		ui3D->scale = ((createdModelID == STATIC_BIG1) && (gGT->numPlyrCurrGame > 2)) ? UI_INSTANCE_3P4P_BIG_NUM_SCALE : UI_INSTANCE_SCALE;
 
 		// next thread
 		driverThread = driverThread->siblingThread;

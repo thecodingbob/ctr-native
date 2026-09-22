@@ -61,6 +61,8 @@ enum
 	UI_TRACKER_MISSILE_FILL_COLOR2 = 0x3000bbff,
 
 	UI_POS_SUFFIX_BIG_NUM_Z_BASE = 0x100,
+	UI_POS_SUFFIX_3P4P_BIG_NUM_X_OFFSET = 0x10,
+	UI_POS_SUFFIX_3P4P_BIG_NUM_Y_OFFSET = 4,
 	UI_LAP_COUNT_SPLIT_PLAYER_COUNT = 3,
 	UI_LAP_COUNT_TEXT_Y_OFFSET = 8,
 	UI_LAP_COUNT_MESSAGE_BUFFER_SIZE = 24,
@@ -558,7 +560,14 @@ void UI_DrawPosSuffix(s16 posX, s16 posY, struct Driver *d, s16 flags)
 	// setting posZ changes which number draws
 	if (d->instBigNum != 0)
 	{
-		d->instBigNum->matrix.t[2] = (d->driverRank + UI_POS_SUFFIX_BIG_NUM_Z_BASE);
+		s16 bigNumDepth = d->driverRank + UI_POS_SUFFIX_BIG_NUM_Z_BASE;
+
+		d->instBigNum->matrix.t[2] = bigNumDepth;
+		if (gGT->numPlyrCurrGame > 2)
+		{
+			d->instBigNum->matrix.t[0] = UI_ConvertX_2(posX - UI_POS_SUFFIX_3P4P_BIG_NUM_X_OFFSET, bigNumDepth);
+			d->instBigNum->matrix.t[1] = UI_ConvertY_2(posY + UI_POS_SUFFIX_3P4P_BIG_NUM_Y_OFFSET, bigNumDepth);
+		}
 	}
 
 	return;
