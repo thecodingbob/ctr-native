@@ -37,6 +37,7 @@ NativeConfig g_config = {
   .skipIntro = false,
   .showReservesMeter = false,
   .allowOxideStationMultiplayer = false,
+  .extendedArcadeMultiplayer = false,
   .skipHints = false,
   .extendedAdventureCharacterSelect = false,
 
@@ -99,6 +100,13 @@ const ConfigEntry g_configEntries[] = {
         .label = "Oxide Station Multiplayer",
         .type = CFG_BOOL,
         .valuePtr = &g_config.allowOxideStationMultiplayer
+    },
+    {
+        .section = "General",
+        .key = "extended_arcade_multiplayer",
+        .label = "Extended 2/3/4P Arcade",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.extendedArcadeMultiplayer
     },
       {
         .section = "General",

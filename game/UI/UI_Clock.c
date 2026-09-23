@@ -25,7 +25,6 @@ enum
 	UI_LIMIT_CLOCK_FLASH_THRESHOLD = 0x3840,
 };
 
-
 // used for both finished lap time and current race time
 void UI_DrawRaceClock(s16 labelPosX, s16 labelPosY, u32 flags, struct Driver *driver)
 {
@@ -36,6 +35,7 @@ void UI_DrawRaceClock(s16 labelPosX, s16 labelPosY, u32 flags, struct Driver *dr
 	s16 relicTimeY;
 	int stringColor;
 	u32 lapIndex;
+	b32 compactResults;
 	char *totalTimeString;
 	int iVar5;
 	int numParamY;
@@ -60,6 +60,7 @@ void UI_DrawRaceClock(s16 labelPosX, s16 labelPosY, u32 flags, struct Driver *dr
 	char minutesOnes;
 	char minutesTens;
 	char lapNumberString[8];
+	char compactTotalTimeString[9] = "  :  :  ";
 
 	u16 textPosX;
 	u16 textPosY;
@@ -68,6 +69,7 @@ void UI_DrawRaceClock(s16 labelPosX, s16 labelPosY, u32 flags, struct Driver *dr
 	int bitshiftTextPosX;
 
 	gGT = sdata->gGT;
+	compactResults = (flags & UI_RACE_CLOCK_COMPACT_RESULTS) != 0;
 
 	minutesTens = '\0';
 
@@ -145,8 +147,7 @@ void UI_DrawRaceClock(s16 labelPosX, s16 labelPosY, u32 flags, struct Driver *dr
 			lngIndex = LNG_YOUR_TIME;
 		}
 
-		// Draw big string
-		fontType = FONT_BIG;
+		fontType = compactResults ? FONT_SMALL : FONT_BIG;
 
 		// Results screens draw the label right-justified and flash it when requested.
 		if (((flags & UI_RACE_CLOCK_FLASH_TOTAL) == 0) || (labelFlags = (JUSTIFY_RIGHT | WHITE), (gGT->timer & 2) != 0))
@@ -178,7 +179,16 @@ void UI_DrawRaceClock(s16 labelPosX, s16 labelPosY, u32 flags, struct Driver *dr
 		timeColor = (u16)((gGT->timer & 2) == 0) << 2;
 	}
 
-	if (gGT->numLaps == UI_RACE_CLOCK_EXTENDED_MINUTE_LAP_COUNT)
+	if (compactResults)
+	{
+		// Match the fixed-width field used by the lap rows.
+		totalTimeString = compactTotalTimeString;
+		totalTimeString[0] = (gGT->numLaps != UI_RACE_CLOCK_EXTENDED_MINUTE_LAP_COUNT || timeElapsed < UI_RACE_CLOCK_TICKS_PER_TEN_MINUTES)
+		                             ? ' '
+		                             : minutesTens + '0';
+		strOffset = 1;
+	}
+	else if (gGT->numLaps == UI_RACE_CLOCK_EXTENDED_MINUTE_LAP_COUNT)
 	{
 		// String for amount of time in total race
 		totalTimeString = rdata.s_timeString_empty;
@@ -217,12 +227,16 @@ void UI_DrawRaceClock(s16 labelPosX, s16 labelPosY, u32 flags, struct Driver *dr
 	// then adjust them accordingly
 	else
 	{
-		posX = (int)(((u32)textPosX + UI_RACE_CLOCK_RESULTS_TIME_X_OFFSET) * 0x10000) >> 0x10;
+		posX = (int)(s16)textPosX;
+		if (!compactResults)
+		{
+			posX += UI_RACE_CLOCK_RESULTS_TIME_X_OFFSET;
+		}
 		numParamY = (u32)textPosY << 0x10;
 	}
 
 	// Draw String
-	DecalFont_DrawLine(totalTimeString, posX, numParamY >> 0x10, FONT_BIG, (int)timeColor);
+	DecalFont_DrawLine(totalTimeString, posX, numParamY >> 0x10, fontType, timeColor);
 
 	if (
 	    // If you're not in a Relic Race
@@ -308,8 +322,7 @@ void UI_DrawRaceClock(s16 labelPosX, s16 labelPosY, u32 flags, struct Driver *dr
 				}
 				else
 				{
-					// draw big text for time in each lap
-					lapFontType = FONT_BIG;
+					lapFontType = fontType;
 
 					// if number of laps is more than 3
 					if ('\x03' < gGT->numLaps)
@@ -326,12 +339,12 @@ void UI_DrawRaceClock(s16 labelPosX, s16 labelPosY, u32 flags, struct Driver *dr
 
 					// draw string
 					DecalFont_DrawLine(lapNumberString, unbitshiftTextPosX,
-					                   (int)(((u32)textPosY - (gGT->numLaps - numLaps) * (int)*lapTextHeight) * 0x10000) >> 0x10, lapFontType,
-					                   (JUSTIFY_RIGHT | RED));
+									   (int)(((u32)textPosY - (gGT->numLaps - numLaps) * (int)*lapTextHeight) * 0x10000) >> 0x10, lapFontType,
+									   (JUSTIFY_RIGHT | RED));
 
 					DecalFont_DrawLine(sdata->lngStrings[LNG_LAP], (int)(((u32)textPosX - (u32)data.font_charPixWidth[lapFontType])),
-					                   (int)(((u32)textPosY - (gGT->numLaps - numLaps) * (int)*lapTextHeight) * 0x10000) >> 0x10, lapFontType,
-					                   (JUSTIFY_RIGHT | RED));
+									   (int)(((u32)textPosY - (gGT->numLaps - numLaps) * (int)*lapTextHeight) * 0x10000) >> 0x10, lapFontType,
+									   (JUSTIFY_RIGHT | RED));
 
 					stringColor = (int)(s16)lapOrRelicColor;
 					iVar7 = (int)(((u32)textPosY - (gGT->numLaps - numLaps) * (int)*lapTextHeight) * 0x10000) >> 0x10;

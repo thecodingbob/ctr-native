@@ -12,6 +12,7 @@ typedef struct {
     bool skipIntro;             // false = off (default), true = skip all intros
     bool showReservesMeter;     // true = show the in-game reserves meter (default = false)
     bool allowOxideStationMultiplayer; // false = retail 1P-only restriction, true = allow multiplayer
+    bool extendedArcadeMultiplayer; // false = 1P/2P arcade, 2P arcade has 6 racers, true = allow 3P/4P arcade with AI fill 2P/3P/4P arcade have 8 racers
     bool skipHints;             // false = off (default), true = skip all mask hints in adventure mode
     bool extendedAdventureCharacterSelect; // false = garage, true = extended selector for new Adventure
     int speedMultiplier;        // percent, 10%..200%, 100 = 1.0x (default)

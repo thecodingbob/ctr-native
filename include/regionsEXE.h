@@ -4149,26 +4149,36 @@ struct sData
 		// 0x:00:00
 		int p1_Min1s[7];
 		int p2_Min1s[7];
+		int p3_Min1s[7];
+		int p4_Min1s[7];
 
 		// 8009AC38
 		// 00:00:x0
 		int p1_Ms10s[7];
 		int p2_Ms10s[7];
+		int p3_Ms10s[7];
+		int p4_Ms10s[7];
 
 		// 8009ac70
 		// 00:00:0x
 		int p1_Ms1s[7];
 		int p2_Ms1s[7];
+		int p3_Ms1s[7];
+		int p4_Ms1s[7];
 
 		// 8009aca8
 		// 00:x0:00
 		int p1_Sec10s[7];
 		int p2_Sec10s[7];
+		int p3_Sec10s[7];
+		int p4_Sec10s[7];
 
 		// 8009ace0
 		// 00:0x:00
 		int p1_Sec1s[7];
 		int p2_Sec1s[7];
+		int p3_Sec1s[7];
+		int p4_Sec1s[7];
 
 	} LapTimes;
 

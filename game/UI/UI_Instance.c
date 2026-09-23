@@ -26,6 +26,7 @@ enum UIInstanceConstants
 	UI_INSTANCE_DEPTH_BIAS = 0x80,
 	UI_INSTANCE_ROTATE_NONE = 0,
 	UI_INSTANCE_SCALE = 0x1000,
+	UI_INSTANCE_3P4P_BIG_NUM_SCALE = 0xc00,
 	UI_INSTANCE_RELIC_TYPE_COUNT = 3,
 	UI_INSTANCE_RELIC_PLATINUM_TYPE = 2,
 	UI_INSTANCE_RANK_TRANSITION_FRAMES = 5,
@@ -217,7 +218,7 @@ struct Instance *UI_INSTANCE_BirthWithThread(int modelID, int tickFunc, int hudS
 		ui3D->rot.x = 0;
 		ui3D->rot.y = 0;
 		ui3D->rot.z = 0;
-		ui3D->scale = UI_INSTANCE_SCALE;
+		ui3D->scale = ((createdModelID == STATIC_BIG1) && (gGT->numPlyrCurrGame > 2)) ? UI_INSTANCE_3P4P_BIG_NUM_SCALE : UI_INSTANCE_SCALE;
 
 		// next thread
 		driverThread = driverThread->siblingThread;
@@ -384,10 +385,8 @@ void UI_INSTANCE_InitAll(void)
 	sdata->ptrFruitDisp = (int)UI_INSTANCE_BirthWithThread(STATIC_FRUITDISP, (int)UI_ThTick_CountPickup, UI_HUD_SLOT_FRUIT_MODEL, 1, sdata->ptrPushBufferUI,
 	                                                       (int)rdata.s_fruitdisp);
 
-	if ((gGT->numPlyrCurrGame < 3) &&
-
-	    // If you're not in Battle Mode
-	    ((gameMode1 & BATTLE_MODE) == 0))
+	// Every racing viewport uses the same 3D rank-number model.
+	if ((gameMode1 & BATTLE_MODE) == 0)
 	{
 		UI_INSTANCE_BirthWithThread(STATIC_BIG1, (int)UI_ThTick_big1, UI_HUD_SLOT_BIG1, 0, 0, (int)sdata->s_big1);
 	}

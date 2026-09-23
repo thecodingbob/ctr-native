@@ -71,18 +71,34 @@ void LOAD_Robots2P(struct BigHeader *bigfile, int p1, int p2, void (*callback)(s
 
 void LOAD_Robots1P(int characterID)
 {
-	int newCharacterID = 0;
+	struct GameTracker *gGT = sdata->gGT;
+	int nextCharacterID = 0;
 
 	data.characterIDs[0] = characterID;
 
-	for (int i = 1; i < LOAD_CHARACTER_ID_COUNT; i++, newCharacterID++)
+	for (int driverID = gGT->numPlyrCurrGame; driverID < LOAD_CHARACTER_ID_COUNT; driverID++)
 	{
-		if (newCharacterID == characterID)
-		{
-			newCharacterID++;
-		}
+		b32 characterIsTaken;
 
-		data.characterIDs[i] = newCharacterID;
+		do
+		{
+			characterIsTaken = false;
+			for (int playerID = 0; playerID < gGT->numPlyrCurrGame; playerID++)
+			{
+				if (data.characterIDs[playerID] == nextCharacterID)
+				{
+					characterIsTaken = true;
+					break;
+				}
+			}
+
+			if (characterIsTaken)
+			{
+				nextCharacterID++;
+			}
+		} while (characterIsTaken);
+
+		data.characterIDs[driverID] = nextCharacterID++;
 	}
 }
 
@@ -95,6 +111,12 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 
 	struct GameTracker *gGT = sdata->gGT;
 	gameMode1 = gGT->gameMode1;
+
+	if ((gameMode1 & ARCADE_MODE) != 0 && g_config.extendedArcadeMultiplayer && gGT->numPlyrCurrGame > 2)
+	{
+		// The 1P arcade pack contains the full racer roster for AI opponents.
+		LOAD_Robots1P(data.characterIDs[0]);
+	}
 
 	int lastFileIndexMPK;
 	if (sdata->highDetailSplitScreenLevel)
@@ -118,14 +140,29 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 	// 3P/4P
 	if ((u32)(levelLOD - LOAD_LEVEL_LOD_3P) < LOAD_LEVEL_LOD_3P4P_COUNT)
 	{
-		for (i = 0; i < LOAD_DRIVER_MODEL_EXTRA_COUNT; i++)
+		if ((gameMode1 & ARCADE_MODE) != 0 && g_config.extendedArcadeMultiplayer)
 		{
-			// low lod CTR model
-			LOAD_AppendQueue(bigfile, LT_GETADDR, BI_RACERMODELLOW + data.characterIDs[i], &data.driverModelExtras[i].fileBase, LOAD_DriverMPK_SetPointer);
-		}
+			// P1 and all AI models come from the arcade pack. The standalone slots
+			// provide the remaining human selections at multiplayer LOD.
+			for (i = 1; i < gGT->numPlyrCurrGame; i++)
+			{
+				// low lod CTR model
+				LOAD_AppendQueue(bigfile, LT_GETADDR, BI_RACERMODELLOW + data.characterIDs[i], &data.driverModelExtras[i - 1].fileBase,
+				                 LOAD_DriverMPK_SetPointer);
+			}
 
-		// load 4P MPK of fourth player
-		lastFileIndexMPK = BI_4PARCADEPACK + data.characterIDs[3];
+			lastFileIndexMPK = BI_1PARCADEPACK + data.characterIDs[0];
+		}
+		else
+		{
+			for (i = 0; i < LOAD_DRIVER_MODEL_EXTRA_COUNT; i++)
+			{
+				LOAD_AppendQueue(bigfile, LT_GETADDR, BI_RACERMODELLOW + data.characterIDs[i], &data.driverModelExtras[i].fileBase,
+				                 LOAD_DriverMPK_SetPointer);
+			}
+			// load 4P MPK of fourth player
+			lastFileIndexMPK = BI_4PARCADEPACK + data.characterIDs[3];
+		}
 	}
 
 	else if (levelLOD == LOAD_LEVEL_LOD_1P)
