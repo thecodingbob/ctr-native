@@ -37,7 +37,7 @@ NativeConfig g_config = {
   .skipIntro = false,
   .showReservesMeter = false,
   .allowOxideStationMultiplayer = false,
-  .enableArcadeMultiplayer = false,
+  .extendedArcadeMultiplayer = false,
   .skipHints = false,
   .extendedAdventureCharacterSelect = false,
 
@@ -103,10 +103,10 @@ const ConfigEntry g_configEntries[] = {
     },
     {
         .section = "General",
-        .key = "enable_arcade_multiplayer",
-        .label = "3/4P Arcade",
+        .key = "extended_arcade_multiplayer",
+        .label = "Extended 2/3/4P Arcade",
         .type = CFG_BOOL,
-        .valuePtr = &g_config.enableArcadeMultiplayer
+        .valuePtr = &g_config.extendedArcadeMultiplayer
     },
       {
         .section = "General",

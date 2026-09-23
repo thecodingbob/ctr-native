@@ -406,7 +406,7 @@ void MainInit_Drivers(struct GameTracker *gGT)
 	        ((gameMode & 0x2c122020) == 0) &&
 
 		// Enabled 3P/4P Arcade fills every available grid slot with AIs.
-		(numPlyrCurrGame < 3 || ((gameMode & ARCADE_MODE) != 0 && g_config.enableArcadeMultiplayer))) &&
+		(numPlyrCurrGame < 3 || ((gameMode & ARCADE_MODE) != 0 && g_config.extendedArcadeMultiplayer))) &&
 	    // in Arcade or Adventure
 	    (gameMode & (ARCADE_MODE | ADVENTURE_MODE)) != 0)
 	{
@@ -429,18 +429,14 @@ void MainInit_Drivers(struct GameTracker *gGT)
 			numDrivers = numPlyrCurrGame + 4;
 		}
 
-		else if (numPlyrCurrGame == 1)
+		else if (numPlyrCurrGame == 1 || g_config.extendedArcadeMultiplayer)
 		{
 			numDrivers = 8;
 		}
 
-		else if (numPlyrCurrGame == 2)
+		else // if (numPlyrCurrGame == 2)
 		{
 			numDrivers = 6;
-		}
-		else
-		{
-			numDrivers = 8;
 		}
 
 		// Spawn AIs

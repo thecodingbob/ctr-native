@@ -112,7 +112,7 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 	struct GameTracker *gGT = sdata->gGT;
 	gameMode1 = gGT->gameMode1;
 
-	if ((gameMode1 & ARCADE_MODE) != 0 && g_config.enableArcadeMultiplayer && gGT->numPlyrCurrGame > 2)
+	if ((gameMode1 & ARCADE_MODE) != 0 && g_config.extendedArcadeMultiplayer && gGT->numPlyrCurrGame > 2)
 	{
 		// The 1P arcade pack contains the full racer roster for AI opponents.
 		LOAD_Robots1P(data.characterIDs[0]);
@@ -140,7 +140,7 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 	// 3P/4P
 	if ((u32)(levelLOD - LOAD_LEVEL_LOD_3P) < LOAD_LEVEL_LOD_3P4P_COUNT)
 	{
-		if ((gameMode1 & ARCADE_MODE) != 0 && g_config.enableArcadeMultiplayer)
+		if ((gameMode1 & ARCADE_MODE) != 0 && g_config.extendedArcadeMultiplayer)
 		{
 			// P1 and all AI models come from the arcade pack. The standalone slots
 			// provide the remaining human selections at multiplayer LOD.

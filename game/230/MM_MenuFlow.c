@@ -323,7 +323,7 @@ void MM_ToggleRows_PlayerCount(void)
 	s16 rowIndex;
 	s16 arcadePlayerRowCount;
 
-	if (g_config.enableArcadeMultiplayer)
+	if (g_config.extendedArcadeMultiplayer)
 	{
 		MM_MENU_PLAYERS_1P2P.rows = MM_ROWS_PLAYERS_1P2P3P4P;
 		arcadePlayerRowCount = MM_PLAYER_1P2P3P4P_SELECTABLE_ROWS;
@@ -384,7 +384,7 @@ void MM_MenuProc_1p2p(struct RectMenu *menu)
 
 	// 3P and 4P Arcade must be explicitly enabled.
 	if ((row >= MM_PLAYER_1P2P3P4P_SELECTABLE_ROWS) ||
-	    (!g_config.enableArcadeMultiplayer && (row >= MM_PLAYER_1P2P_SELECTABLE_ROWS)))
+	    (!g_config.extendedArcadeMultiplayer && (row >= MM_PLAYER_1P2P_SELECTABLE_ROWS)))
 	{
 		return;
 	}
