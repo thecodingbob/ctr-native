@@ -65,7 +65,7 @@ static void MainInit_InitHighDetailVisMem(struct VisMem *visMem, struct Level *l
 	MainInit_AllocVisLists(visMem->visSCVertList, numPlayers, ((level->numSCVert + 0x1f) >> 5) << 2);
 }
 
-static void MainInit_InitVisMemBspListNodes(struct VisMem *visMem, struct mesh_info *mesh, int numPlayers)
+static void MainInit_InitVisMemBspListNodes(struct VisMem *visMem, struct mesh_info *mesh, int numPlayers, b32 useLevelBspList)
 {
 	if (mesh == NULL || mesh->bspRoot == NULL)
 	{
@@ -74,10 +74,18 @@ static void MainInit_InitVisMemBspListNodes(struct VisMem *visMem, struct mesh_i
 
 	for (int playerIndex = 0; playerIndex < numPlayers; playerIndex++)
 	{
-		// Retail 4P visibility assets can provide a BSP-list array smaller than
-		// the level's actual BSP tree. Native rewrites every node anyway, so own
-		// an exactly sized array rather than relying on that PS1-era allocation.
-		struct VisMemBspListNode *bspList = MEMPACK_AllocMem(mesh->numBspNodes * sizeof(*bspList), NULL);
+		struct VisMemBspListNode *bspList = visMem->bspList[playerIndex];
+
+		// The 1P LEV already reserves one node per BSP. Adventure hub packs are
+		// tightly sized, so allocating a replacement list here exhausts the pack
+		// during a hub swap.
+		if (!useLevelBspList || numPlayers > 2)
+		{
+			// Retail 4P visibility assets can provide a BSP-list array smaller than
+			// the level's actual BSP tree. Native rewrites every node anyway, so own
+			// an exactly sized array rather than relying on that PS1-era allocation.
+			bspList = MEMPACK_AllocMem(mesh->numBspNodes * sizeof(*bspList), NULL);
+		}
 		visMem->bspList[playerIndex] = bspList;
 #if defined(CTR_INTERNAL)
 		NativeCheckpoint_RegisterPointerSlot(&visMem->bspList[playerIndex]);
@@ -122,7 +130,7 @@ void MainInit_VisMem(struct GameTracker *gGT)
 
 #ifdef CTR_NATIVE
 	MainInit_InitHighDetailVisMem(visMem, level, gGT->numPlyrCurrGame);
-	MainInit_InitVisMemBspListNodes(visMem, level->ptr_mesh_info, gGT->numPlyrCurrGame);
+	MainInit_InitVisMemBspListNodes(visMem, level->ptr_mesh_info, gGT->numPlyrCurrGame, (gGT->gameMode1 & ADVENTURE_ARENA) != 0);
 #endif
 }
 
