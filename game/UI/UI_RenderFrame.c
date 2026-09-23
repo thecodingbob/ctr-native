@@ -469,7 +469,10 @@ void UI_RenderFrame_Racing()
 
 				sVar1 = hudStructPtr[UI_HUD_SLOT_RANK].x;
 				sVar2 = hudStructPtr[UI_HUD_SLOT_RANK].y;
-				UI_DrawPosSuffix(sVar1, sVar2, playerStruct, (s16)partTimeVariable5);
+				if (!((numPlyr > 2) && ((gameMode1 & ARCADE_MODE) != 0) && ((playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) != 0)))
+				{
+					UI_DrawPosSuffix(sVar1, sVar2, playerStruct, (s16)partTimeVariable5);
+				}
 
 				// Use the 2D rank icon only when the high-quality model is unavailable.
 				if (numPlyr > 2 && playerStruct->instBigNum == NULL)

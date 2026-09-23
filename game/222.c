@@ -41,6 +41,20 @@ enum ArcadeAdventureEndMenuConstants
 	AA_TIME_BOX_HEIGHT_7_LAPS = 0x49,
 	AA_TIME_BOX_HEIGHT_5_LAPS = 0x39,
 	AA_TIME_BOX_HEIGHT_DEFAULT = 0x44,
+	AA_COMPACT_RESULT_BIG_NUM_SCALE = 0xa00,
+	AA_COMPACT_RESULT_RANK_X_LEFT = 0x28,
+	AA_COMPACT_RESULT_RANK_X_RIGHT = 0x128,
+	AA_COMPACT_RESULT_RANK_Y_TOP = 0x30,
+	AA_COMPACT_RESULT_RANK_Y_BOTTOM = 0x9c,
+	AA_COMPACT_RESULT_TIME_X_LEFT = 0x9c,
+	AA_COMPACT_RESULT_TIME_X_RIGHT = 0x19c,
+	AA_COMPACT_RESULT_TIME_Y_TOP = 0x34,
+	AA_COMPACT_RESULT_TIME_Y_BOTTOM = 0xa0,
+	AA_COMPACT_RESULT_TIME_BOX_PADDING = 0x10,
+	AA_COMPACT_RESULT_TIME_BOX_WIDTH = 0x64,
+	AA_COMPACT_RESULT_BIG_NUM_X_OFFSET = 0x10,
+	AA_COMPACT_RESULT_BIG_NUM_Y_OFFSET = 4,
+	AA_BIG_NUM_Z_BASE = 0x100,
 	AA_ADD_CONFIG_0_PAGE_OFFSET = -0x2f00,
 };
 
@@ -669,10 +683,14 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames)
 	RECT timeBoxRect;
 	SVec2 pos;
 	s16 timeBoxHeight;
-	s16 bigNumY;
-	s32 suffixY;
-	s32 clockY;
+	s16 bigNumY = 0x41;
+	s16 rankX = 0;
+	s16 rankY = 0;
+	s16 timeX = 0;
+	s32 suffixY = 0x89;
+	s32 clockY = 0xc3;
 	s32 hudArrayIndex;
+	b32 compactResults;
 
 	// NOTE(aalhendi): Retail materializes both absolute pages before either
 	// lookup. Keeping that order preserves the entry register allocation.
@@ -683,6 +701,7 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames)
 	CTR_PSX_BIND_VALUE_CLOBBER(hudGT, "$31");
 	hudArrayIndex = hudGT->numPlyrCurrGame - 1;
 	hudArray = hudStructs[hudArrayIndex];
+	compactResults = hudGT->numPlyrCurrGame > 2;
 
 	timeBoxHeight = AA_TIME_BOX_HEIGHT_7_LAPS;
 	if (hudGT->numLaps != 7)
@@ -694,8 +713,15 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames)
 		}
 	}
 
-	bigNumY = 0x41;
-	if (driverId == 0)
+	if (compactResults)
+	{
+		timeBoxHeight = hudGT->numLaps * data.font_charPixHeight[FONT_SMALL] + AA_COMPACT_RESULT_TIME_BOX_PADDING;
+		rankX = (driverId & 1) ? AA_COMPACT_RESULT_RANK_X_RIGHT : AA_COMPACT_RESULT_RANK_X_LEFT;
+		rankY = (driverId < 2) ? AA_COMPACT_RESULT_RANK_Y_TOP : AA_COMPACT_RESULT_RANK_Y_BOTTOM;
+		timeX = (driverId & 1) ? AA_COMPACT_RESULT_TIME_X_RIGHT : AA_COMPACT_RESULT_TIME_X_LEFT;
+		clockY = (driverId < 2) ? AA_COMPACT_RESULT_TIME_Y_TOP : AA_COMPACT_RESULT_TIME_Y_BOTTOM;
+	}
+	else if (driverId == 0)
 	{
 		bigNumY = -0x3d;
 		suffixY = 9;
@@ -703,6 +729,7 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames)
 	}
 	else
 	{
+		bigNumY = 0x41;
 		suffixY = 0x89;
 		clockY = 0xc3;
 	}
@@ -734,9 +761,20 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames)
 	}
 
 	// === Draw BigNum ===
+	if (compactResults)
+	{
+		s16 bigNumDepth = driver->driverRank + AA_BIG_NUM_Z_BASE;
+
+		driver->instBigNum->matrix.t[0] = UI_ConvertX_2(rankX - AA_COMPACT_RESULT_BIG_NUM_X_OFFSET, bigNumDepth);
+		driver->instBigNum->matrix.t[1] = UI_ConvertY_2(rankY + AA_COMPACT_RESULT_BIG_NUM_Y_OFFSET, bigNumDepth);
+		driver->instBigNum->matrix.t[2] = bigNumDepth;
+		driver->instBigNum->scale.x = AA_COMPACT_RESULT_BIG_NUM_SCALE;
+		driver->instBigNum->scale.y = AA_COMPACT_RESULT_BIG_NUM_SCALE;
+		driver->instBigNum->scale.z = AA_COMPACT_RESULT_BIG_NUM_SCALE;
+	}
 
 	// If race ended more than 10 seconds ago.
-	if (AA_TIME_DISPLAY_LATE_FRAME - timeOffsetFrames < driver->framesSinceRaceEnded_forThisDriver)
+	else if (AA_TIME_DISPLAY_LATE_FRAME - timeOffsetFrames < driver->framesSinceRaceEnded_forThisDriver)
 	{
 		UI_Lerp2D_Linear(CTR_VECTOR_DATA(&pos), -0xae, bigNumY,
 		                 UI_ConvertX_2(-100, hudArray[driverId * AA_HUD_ELEMENTS_PER_DRIVER + AA_TIME_DISPLAY_BIG_NUM_SLOT].z), bigNumY,
@@ -754,52 +792,68 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames)
 		                 driver->framesSinceRaceEnded_forThisDriver, AA_TIME_DISPLAY_FLYIN_FRAMES);
 	}
 
-	driver->instBigNum->matrix.t[0] = pos.x;
-	driver->instBigNum->matrix.t[1] = pos.y;
-
 	hud = (struct UiElement2D *)((u32)(driverId * AA_HUD_ELEMENTS_PER_DRIVER * sizeof(*hudArray)) + (u32)hudArray);
 
-	// interpolate scale to the target big-number size
-	UI_Lerp2D_Linear(CTR_VECTOR_DATA(&pos), hud[AA_TIME_DISPLAY_BIG_NUM_SLOT].scale, 0, AA_BIG_NUM_TARGET_SCALE, 0, driver->framesSinceRaceEnded_forThisDriver,
-	                 AA_TIME_DISPLAY_FLYIN_FRAMES);
+	if (!compactResults)
+	{
+		driver->instBigNum->matrix.t[0] = pos.x;
+		driver->instBigNum->matrix.t[1] = pos.y;
 
-	driver->instBigNum->scale.x = pos.x;
-	driver->instBigNum->scale.y = pos.x;
-	driver->instBigNum->scale.z = pos.x;
+		// interpolate scale to the target big-number size
+		UI_Lerp2D_Linear(CTR_VECTOR_DATA(&pos), hud[AA_TIME_DISPLAY_BIG_NUM_SLOT].scale, 0, AA_BIG_NUM_TARGET_SCALE, 0,
+		                 driver->framesSinceRaceEnded_forThisDriver, AA_TIME_DISPLAY_FLYIN_FRAMES);
+
+		driver->instBigNum->scale.x = pos.x;
+		driver->instBigNum->scale.y = pos.x;
+		driver->instBigNum->scale.z = pos.x;
+	}
 
 	// === Draw Suffix ===
 
-	if (AA_TIME_DISPLAY_LATE_FRAME - timeOffsetFrames < driver->framesSinceRaceEnded_forThisDriver)
+	if (!compactResults && AA_TIME_DISPLAY_LATE_FRAME - timeOffsetFrames < driver->framesSinceRaceEnded_forThisDriver)
 	{
 		UI_Lerp2D_Linear(CTR_VECTOR_DATA(&pos), 0x78, suffixY, -0x3c, suffixY,
 		                 driver->framesSinceRaceEnded_forThisDriver + (timeOffsetFrames - AA_TIME_DISPLAY_LATE_FRAME), AA_TIME_DISPLAY_FLYOUT_FRAMES);
 	}
-	else
+	else if (!compactResults)
 	{
 		UI_Lerp2D_Linear(CTR_VECTOR_DATA(&pos), hud[AA_TIME_DISPLAY_SUFFIX_SLOT].x, hud[AA_TIME_DISPLAY_SUFFIX_SLOT].y, 0x78, suffixY,
 		                 driver->framesSinceRaceEnded_forThisDriver, AA_TIME_DISPLAY_FLYIN_FRAMES);
 	}
 
-	UI_DrawPosSuffix(pos.x, pos.y, driver, 0);
+	if (compactResults)
+	{
+		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[data.stringIndexSuffix[driver->driverRank]], rankX, rankY, FONT_SMALL, ORANGE);
+	}
+	else
+	{
+		UI_DrawPosSuffix(pos.x, pos.y, driver, 0);
+	}
 
 	// === DrawRaceClock ===
 
-	if (AA_TIME_DISPLAY_LATE_FRAME - timeOffsetFrames < driver->framesSinceRaceEnded_forThisDriver)
+	if (!compactResults && AA_TIME_DISPLAY_LATE_FRAME - timeOffsetFrames < driver->framesSinceRaceEnded_forThisDriver)
 	{
 		UI_Lerp2D_Linear(CTR_VECTOR_DATA(&pos), 0x150, clockY, 0x27c, clockY,
 		                 driver->framesSinceRaceEnded_forThisDriver + (timeOffsetFrames - AA_TIME_DISPLAY_LATE_FRAME), AA_TIME_DISPLAY_FLYOUT_FRAMES);
 	}
 
-	else
+	else if (!compactResults)
 	{
 		UI_Lerp2D_Linear(CTR_VECTOR_DATA(&pos), 0x218, clockY, 0x150, clockY, driver->framesSinceRaceEnded_forThisDriver, AA_TIME_DISPLAY_FLYIN_FRAMES);
 	}
+	else
+	{
+		pos.x = timeX;
+		pos.y = clockY;
+	}
 
-	UI_DrawRaceClock(pos.x, pos.y, UI_RACE_CLOCK_SHOW_RESULTS, driver);
+	UI_DrawRaceClock(pos.x, pos.y, UI_RACE_CLOCK_SHOW_RESULTS | (compactResults ? UI_RACE_CLOCK_COMPACT_RESULTS : 0), driver);
 
-	timeBoxRect.x = (pos.x - DecalFont_GetLineWidth(GAME_LANGUAGE_STRINGS[LNG_TOTAL], FONT_BIG)) + -6;
+	timeBoxRect.x = (pos.x - DecalFont_GetLineWidth(GAME_LANGUAGE_STRINGS[LNG_TOTAL], compactResults ? FONT_SMALL : FONT_BIG)) + -6;
 	timeBoxRect.y = (pos.y - timeBoxHeight) + 0xd;
-	timeBoxRect.w = DecalFont_GetLineWidth(GAME_LANGUAGE_STRINGS[LNG_TOTAL], FONT_BIG) + 0x94;
+	timeBoxRect.w = DecalFont_GetLineWidth(GAME_LANGUAGE_STRINGS[LNG_TOTAL], compactResults ? FONT_SMALL : FONT_BIG) +
+	                (compactResults ? AA_COMPACT_RESULT_TIME_BOX_WIDTH : 0x94);
 	timeBoxRect.h = timeBoxHeight + 6;
 
 	// Draw 2D Menu rectangle background
