@@ -60,6 +60,7 @@ void UI_DrawRaceClock(s16 labelPosX, s16 labelPosY, u32 flags, struct Driver *dr
 	char minutesOnes;
 	char minutesTens;
 	char lapNumberString[8];
+	char compactTotalTimeString[9] = "  :  :  ";
 
 	u16 textPosX;
 	u16 textPosY;
@@ -178,7 +179,16 @@ void UI_DrawRaceClock(s16 labelPosX, s16 labelPosY, u32 flags, struct Driver *dr
 		timeColor = (u16)((gGT->timer & 2) == 0) << 2;
 	}
 
-	if (gGT->numLaps == UI_RACE_CLOCK_EXTENDED_MINUTE_LAP_COUNT)
+	if (compactResults)
+	{
+		// Match the fixed-width field used by the lap rows.
+		totalTimeString = compactTotalTimeString;
+		totalTimeString[0] = (gGT->numLaps != UI_RACE_CLOCK_EXTENDED_MINUTE_LAP_COUNT || timeElapsed < UI_RACE_CLOCK_TICKS_PER_TEN_MINUTES)
+		                             ? ' '
+		                             : minutesTens + '0';
+		strOffset = 1;
+	}
+	else if (gGT->numLaps == UI_RACE_CLOCK_EXTENDED_MINUTE_LAP_COUNT)
 	{
 		// String for amount of time in total race
 		totalTimeString = rdata.s_timeString_empty;
@@ -217,12 +227,16 @@ void UI_DrawRaceClock(s16 labelPosX, s16 labelPosY, u32 flags, struct Driver *dr
 	// then adjust them accordingly
 	else
 	{
-		posX = (int)(((u32)textPosX + UI_RACE_CLOCK_RESULTS_TIME_X_OFFSET) * 0x10000) >> 0x10;
+		posX = (int)(s16)textPosX;
+		if (!compactResults)
+		{
+			posX += UI_RACE_CLOCK_RESULTS_TIME_X_OFFSET;
+		}
 		numParamY = (u32)textPosY << 0x10;
 	}
 
 	// Draw String
-	DecalFont_DrawLine(totalTimeString, posX, numParamY >> 0x10, fontType, (int)timeColor);
+	DecalFont_DrawLine(totalTimeString, posX, numParamY >> 0x10, fontType, timeColor);
 
 	if (
 	    // If you're not in a Relic Race
