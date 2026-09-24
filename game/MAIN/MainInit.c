@@ -432,7 +432,7 @@ void MainInit_Drivers(struct GameTracker *gGT)
 		    ((gameMode & ADVENTURE_CUP) != 0) &&
 
 		    // purple gem cup
-		    (gGT->cup.cupID == 4))
+		    (gGT->cup.cupID == CUP_ID_PURPLE_GEM))
 		{
 			numDrivers = numPlyrCurrGame + 4;
 		}

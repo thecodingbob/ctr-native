@@ -316,6 +316,9 @@ void *LIST_GetNextItem(struct Item *I);
 
 void LOAD_AppendQueue(struct BigHeader *bigfile, int type, int fileIndex, void *destinationPtr, void (*callback)(struct LoadQueueSlot *));
 int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(struct LoadQueueSlot *));
+struct Model *LOAD_GetExtraCharacterModelByName(char *searchName);
+void LOAD_FinalizeExtraCharacterModels(void);
+b32 MM_Characters_IsCharacterUnlocked(s16 characterID);
 void LOAD_Hub_Main(struct BigHeader *bigfilePtr);
 void LOAD_Hub_ReadFile(struct BigHeader *bigfile, int levID, int packID);
 void LIST_Init(struct LinkedList *L, struct Item *item, int itemSize, int numItems);

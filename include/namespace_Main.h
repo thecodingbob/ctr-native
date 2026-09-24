@@ -39,6 +39,11 @@ enum GameMode1
 
 #define ADVENTURE_BOSS 0x80000000u
 
+enum CupID
+{
+	CUP_ID_PURPLE_GEM = 4,
+};
+
 enum GameMode1Masks
 {
 	GAME_MODE_VIBRATION_MASK = P1_VIBRATE | P2_VIBRATE | P3_VIBRATE | P4_VIBRATE,
@@ -753,7 +758,7 @@ struct GameTracker
 	struct
 	{
 		// 1e58
-		int cupID; // 0-3, or 4 for Purple cup
+		int cupID; // 0-3, or CUP_ID_PURPLE_GEM for the Purple cup
 
 		// 1e5c
 		int trackIndex; // 0-3

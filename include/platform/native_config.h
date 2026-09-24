@@ -13,6 +13,7 @@ typedef struct {
     bool showReservesMeter;     // true = show the in-game reserves meter (default = false)
     bool allowOxideStationMultiplayer; // false = retail 1P-only restriction, true = allow multiplayer
     bool extendedArcadeMultiplayer; // false = 1P/2P arcade, 2P arcade has 6 racers, true = allow 3P/4P arcade with AI fill 2P/3P/4P arcade have 8 racers
+    int botSelectionMode;         // BOT_SELECTION_PREDETERMINED (default), RANDOM_UNLOCKED, or RANDOM_ALL
     bool skipHints;             // false = off (default), true = skip all mask hints in adventure mode
     bool extendedAdventureCharacterSelect; // false = garage, true = extended selector for new Adventure
     int speedMultiplier;        // percent, 10%..200%, 100 = 1.0x (default)
@@ -55,6 +56,13 @@ enum
     MASK_MODE_INVERTED = 2,
     MASK_MODE_ALL_UKA = 3,
     MASK_MODE_ALL_AKU = 4,
+};
+
+enum
+{
+    BOT_SELECTION_PREDETERMINED = 0,
+    BOT_SELECTION_RANDOM_UNLOCKED = 1,
+    BOT_SELECTION_RANDOM_ALL = 2,
 };
 
 typedef enum { CFG_BOOL, CFG_INT, CFG_ENUM } ConfigType;

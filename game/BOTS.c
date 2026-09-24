@@ -80,6 +80,11 @@ static s16 BOTS_PathChangeCap(void)
 	return (s16)CTR_MipsSll(BOTS_NAV_PATH_COUNT, BOTS_PATH_CHANGE_PATH_SHIFT);
 }
 
+static b32 BOTS_IsAdventureBossOxide(const struct Driver *botDriver)
+{
+	return (sdata->gGT->gameMode1 & ADVENTURE_BOSS) != 0 && data.characterIDs[botDriver->driverID] == NITROS_OXIDE;
+}
+
 int BOTS_Adv_NumTimesLostEvent(int numLost)
 {
 	// if you lost more than 10 times
@@ -233,7 +238,7 @@ void BOTS_Adv_AdjustDifficulty(void)
 		s32 lostModifier = BOTS_Adv_NumTimesLostEvent(sdata->advProgress.timesLostCupRace[track]);
 		s32 maxDifficulty = track * BOTS_ADV_NORMAL_SCALE;
 
-		if (gGT->cup.cupID == 4)
+		if (gGT->cup.cupID == CUP_ID_PURPLE_GEM)
 		{
 			lostModifier -= BOTS_ADV_HIGH_TIER_LOSS_BASE;
 
@@ -350,7 +355,7 @@ void BOTS_Adv_AdjustDifficulty(void)
 		{
 			BOTS_Adv_CopySpawnOrder(data.kartSpawnOrder.boss_challenge_1, data.kartSpawnOrder.boss_challenge_2);
 		}
-		else if (((gameMode1 & ADVENTURE_CUP) != 0) && (gGT->cup.cupID == 4))
+		else if (((gameMode1 & ADVENTURE_CUP) != 0) && (gGT->cup.cupID == CUP_ID_PURPLE_GEM))
 		{
 			BOTS_Adv_CopySpawnOrder(data.kartSpawnOrder.purple_cup_1, data.kartSpawnOrder.purple_cup_2);
 		}
@@ -1007,10 +1012,11 @@ UpdateTireColorTimer:
 	if (botDriver->botData.ai_progress_cooldown == 0)
 	{
 		int trafficLightsTimer = gGT->trafficLightsTimer;
+		b32 isAdventureBossOxide = BOTS_IsAdventureBossOxide(botDriver);
 
-		if (data.characterIDs[botDriver->driverID] == NITROS_OXIDE) // check is oxide
+		if (isAdventureBossOxide)
 		{
-			// Pretend there is less time (oxide is a cheater)
+			// The Adventure boss begins before the traffic lights turn green.
 			trafficLightsTimer = CTR_MipsSubLo(trafficLightsTimer, 0x1e0);
 		}
 
@@ -1030,14 +1036,14 @@ UpdateTireColorTimer:
 			// first frame of race
 			botDriver->botData.botFlags |= BOT_FLAG_STARTLINE_INIT_DONE;
 
-			if (data.characterIDs[botDriver->driverID] == NITROS_OXIDE)
-			{ // if oxide, then talk
+			if (isAdventureBossOxide)
+			{
 				Voiceline_RequestPlay(0, 0xf, 0x10);
 			}
 
 			if (( // if in front row & 25% chance
 			        (sdata->kartSpawnOrderArray[botDriver->driverID] < 3) && ((RngDeadCoed(&sdata->advRng) & 0xFF) < 0x40)) ||
-			    (data.characterIDs[botDriver->driverID] == NITROS_OXIDE))
+			    isAdventureBossOxide)
 			{ // start the race with a boost
 				VehFire_Increment(botDriver, 0x2d0, 1, 0x180);
 
