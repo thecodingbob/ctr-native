@@ -101,7 +101,7 @@ void PlayLevel_UpdateLapStats(void)
 		// Part B: 32000 distToFinish -> 1200 distToFinish
 		// Part C: 1200 distToFinish -> Finish-line
 
-		if (
+		if ((gGT->gameMode1 & BATTLE_MODE) == 0 &&
 		    // crossed finishline (forwards)
 		    (distToFinish_prev < PLAYLEVEL_FINISHLINE_NEAR_DISTANCE) && (distToFinish_curr > PLAYLEVEL_FINISHLINE_FAR_DISTANCE))
 		{
