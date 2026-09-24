@@ -12,6 +12,7 @@ typedef struct {
     bool skipIntro;             // false = off (default), true = skip all intros
     bool showReservesMeter;     // true = show the in-game reserves meter (default = false)
     bool allowOxideStationMultiplayer; // false = retail 1P-only restriction, true = allow multiplayer
+    bool allowRaceTracksInBattle; // false = battle arenas only, true = select race tracks in battle mode
     bool extendedArcadeMultiplayer; // false = 1P/2P arcade, 2P arcade has 6 racers, true = allow 3P/4P arcade with AI fill 2P/3P/4P arcade have 8 racers
     int botSelectionMode;         // BOT_SELECTION_PREDETERMINED (default), RANDOM_UNLOCKED, or RANDOM_ALL
     bool skipHints;             // false = off (default), true = skip all mask hints in adventure mode
