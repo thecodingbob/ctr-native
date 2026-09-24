@@ -236,7 +236,8 @@ void UI_DrawRaceClock(s16 labelPosX, s16 labelPosY, u32 flags, struct Driver *dr
 	}
 
 	// Draw String
-	DecalFont_DrawLine(totalTimeString, posX, numParamY >> 0x10, fontType, timeColor);
+	DecalFont_DrawLine(totalTimeString, posX, numParamY >> 0x10,
+	                   compactResults ? FONT_SMALL : FONT_BIG, timeColor);
 
 	if (
 	    // If you're not in a Relic Race
