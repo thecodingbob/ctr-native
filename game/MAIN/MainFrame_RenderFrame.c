@@ -177,7 +177,11 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 			// this caller reaches them; keep the retail lap path intact.
 			if ((gGT->level1 != NULL) && (gGT->level1->ptr_restart_points != NULL) && (gGT->level1->cnt_restart_points != 0))
 			{
-				PlayLevel_UpdateLapStats();
+				// Battle mode has no laps, so no lap stats
+				if ((gGT->gameMode1 & BATTLE_MODE) == 0)
+				{
+					PlayLevel_UpdateLapStats();
+				}
 			}
 #else
 			PlayLevel_UpdateLapStats();
