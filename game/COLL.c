@@ -1287,7 +1287,7 @@ internal b32 COLL_FIXED_PlayerSearch_CheckMaskGrabProgress(struct Driver *d, str
 	struct GameTracker *gGT = sdata->gGT;
 	struct Level *level = gGT->level1;
 
-	if ((quad->quadFlags & QUADBLOCK_FLAG_KILL_PLANE) != 0)
+	if (((quad->quadFlags & QUADBLOCK_FLAG_KILL_PLANE) != 0) && ((gGT->gameMode1 & BATTLE_MODE) == 0))
 	{
 		return 1;
 	}
@@ -2373,7 +2373,7 @@ void COLL_MOVED_PlayerSearch(struct Thread *t, struct Driver *d)
 
 			struct QuadBlock *quad = sps->hit.ptrQuadblock;
 
-			if ((quad->quadFlags & QUADBLOCK_FLAG_KILL_PLANE) != 0)
+			if (((quad->quadFlags & QUADBLOCK_FLAG_KILL_PLANE) != 0) && (gGT->gameMode1 & BATTLE_MODE) == 0)
 			{
 				d->collisionFlags |= DRIVER_COLL_FLAG_MASK_GRAB_REQUEST;
 			}

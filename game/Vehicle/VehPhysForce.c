@@ -987,7 +987,7 @@ void VehPhysForce_CollideDrivers(struct Thread *thread, struct Driver *driver)
 	driver->velocity.y = CTR_MipsSubLo(driver->velocity.y, driver->accel.y);
 	driver->velocity.z = CTR_MipsSubLo(driver->velocity.z, driver->accel.z);
 
-	if ((stepFlagSet & COLL_STEP_FLAG_KILL_PLANE) != 0)
+	if ((stepFlagSet & COLL_STEP_FLAG_KILL_PLANE) != 0 && (GAME_TRACKER->gameMode1 & BATTLE_MODE) == 0)
 	{
 		driver->collisionFlags |= DRIVER_COLL_FLAG_MASK_GRAB_REQUEST;
 	}
