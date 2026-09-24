@@ -153,7 +153,7 @@ void UI_RenderFrame_Racing()
 					pb = &gGT->pushBuffer[playerStruct->driverID];
 
 					// if "Time on clock" last 0xXX u8 is greater than 0x80 and less than 0xFF
-					if ((gGT->elapsedEventTime & 0x80) != 0)
+					if (((gameMode1 & BATTLE_MODE) == 0) && ((gGT->elapsedEventTime & 0x80) != 0))
 					{
 						DecalFont_DrawLine(sdata->lngStrings[LNG_WRONG_WAY],
 
