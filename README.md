@@ -192,6 +192,9 @@ format). An example template is at `default_config.ini` in the project root.
 | `extended_arcade_multiplayer`     | `true` / `false`                                         | `false`   | Enable 3P/4P Arcade races with AI opponents and 8 racers in 2P/3P/4P Arcade races                 |
 | `bot_selection_mode`              | `Vanilla` / `R. unlocked` / `R. all`                     | `Vanilla` | Choose the normal Arcade and Adventure bot roster; boss races and the Purple Gem Cup remain fixed |
 
+**Known limitation:** when race tracks are enabled in Battle mode, the turbo/invisibility
+weapon icons and battle points/lives icons will be missing on those tracks.
+
 ### Adventure
 
 | Key                         | Values             | Default | Description                                                                                      |
