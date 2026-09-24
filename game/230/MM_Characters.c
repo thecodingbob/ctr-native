@@ -139,7 +139,36 @@ static b32 MM_Characters_IsUnlocked(const struct CharacterSelectMeta *meta)
 
     return (s16)meta->unlockFlags == MM_CHARACTER_UNLOCK_ALWAYS ||
            CHECK_ADV_BIT(GAME_PROGRESS.unlocks, meta->unlockFlags) ||
-           g_config.unlockAllCharacters;
+            g_config.unlockAllCharacters;
+}
+
+static const struct CharacterSelectMeta *const kCharacterMetaByID[MM_CHARACTER_SELECT_ICON_COUNT] = {
+	[CRASH_BANDICOOT] = &MM_CHARACTER_SELECT_META_1P2P[0],
+	[NEO_CORTEX] = &MM_CHARACTER_SELECT_META_1P2P[1],
+	[TINY_TIGER] = &MM_CHARACTER_SELECT_META_1P2P[2],
+	[COCO_BANDICOOT] = &MM_CHARACTER_SELECT_META_1P2P[3],
+	[N_GIN] = &MM_CHARACTER_SELECT_META_1P2P[4],
+	[DINGODILE] = &MM_CHARACTER_SELECT_META_1P2P[5],
+	[POLAR] = &MM_CHARACTER_SELECT_META_1P2P[6],
+	[PURA] = &MM_CHARACTER_SELECT_META_1P2P[7],
+	[PINSTRIPE] = &MM_CHARACTER_SELECT_META_1P2P[9],
+	[PAPU_PAPU] = &MM_CHARACTER_SELECT_META_1P2P[11],
+	[RIPPER_ROO] = &MM_CHARACTER_SELECT_META_1P2P[10],
+	[KOMODO_JOE] = &MM_CHARACTER_SELECT_META_1P2P[12],
+	[N_TROPY] = &MM_CHARACTER_SELECT_META_1P2P[8],
+	[PENTA_PENGUIN] = &MM_CHARACTER_SELECT_META_1P2P[13],
+	[FAKE_CRASH] = &MM_CHARACTER_SELECT_META_1P2P[14],
+	[NITROS_OXIDE] = &MM_CHARACTER_SELECT_META_1P2P[15],
+};
+
+b32 MM_Characters_IsCharacterUnlocked(s16 characterID)
+{
+	if ((u16)characterID >= MM_CHARACTER_SELECT_ICON_COUNT)
+	{
+		return false;
+	}
+
+	return MM_Characters_IsUnlocked(kCharacterMetaByID[characterID]);
 }
 
 void MM_Characters_AnimateColors(u8 *colorData, s16 playerID, s16 flag)

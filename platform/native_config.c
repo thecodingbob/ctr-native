@@ -16,6 +16,13 @@ static const ConfigEnumValue kMaskModeValues[] = {
 };
 #define NUM_MASK_MODES (sizeof(kMaskModeValues) / sizeof(kMaskModeValues[0]))
 
+static const ConfigEnumValue kBotSelectionModeValues[] = {
+    {"Vanilla", BOT_SELECTION_PREDETERMINED},
+    {"R. unlocked", BOT_SELECTION_RANDOM_UNLOCKED},
+    {"R. all", BOT_SELECTION_RANDOM_ALL},
+};
+#define NUM_BOT_SELECTION_MODES (sizeof(kBotSelectionModeValues) / sizeof(kBotSelectionModeValues[0]))
+
 static const ConfigEnumValue kAspectRatioValues[] = {
     {"4:3", 0},
     {"16:9", 1},
@@ -38,6 +45,7 @@ NativeConfig g_config = {
   .showReservesMeter = false,
   .allowOxideStationMultiplayer = false,
   .extendedArcadeMultiplayer = false,
+  .botSelectionMode = BOT_SELECTION_PREDETERMINED,
   .skipHints = false,
   .extendedAdventureCharacterSelect = false,
 
@@ -107,6 +115,15 @@ const ConfigEntry g_configEntries[] = {
         .label = "Extended 2/3/4P Arcade",
         .type = CFG_BOOL,
         .valuePtr = &g_config.extendedArcadeMultiplayer
+    },
+    {
+        .section = "General",
+        .key = "bot_selection_mode",
+        .label = "Bot Selection Mode",
+        .type = CFG_ENUM,
+        .valuePtr = &g_config.botSelectionMode,
+        .enumValues = kBotSelectionModeValues,
+        .numEnumValues = NUM_BOT_SELECTION_MODES
     },
       {
         .section = "General",

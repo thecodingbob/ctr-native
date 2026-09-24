@@ -233,7 +233,7 @@ void BOTS_Adv_AdjustDifficulty(void)
 		s32 lostModifier = BOTS_Adv_NumTimesLostEvent(sdata->advProgress.timesLostCupRace[track]);
 		s32 maxDifficulty = track * BOTS_ADV_NORMAL_SCALE;
 
-		if (gGT->cup.cupID == 4)
+		if (gGT->cup.cupID == CUP_ID_PURPLE_GEM)
 		{
 			lostModifier -= BOTS_ADV_HIGH_TIER_LOSS_BASE;
 
@@ -350,7 +350,7 @@ void BOTS_Adv_AdjustDifficulty(void)
 		{
 			BOTS_Adv_CopySpawnOrder(data.kartSpawnOrder.boss_challenge_1, data.kartSpawnOrder.boss_challenge_2);
 		}
-		else if (((gameMode1 & ADVENTURE_CUP) != 0) && (gGT->cup.cupID == 4))
+		else if (((gameMode1 & ADVENTURE_CUP) != 0) && (gGT->cup.cupID == CUP_ID_PURPLE_GEM))
 		{
 			BOTS_Adv_CopySpawnOrder(data.kartSpawnOrder.purple_cup_1, data.kartSpawnOrder.purple_cup_2);
 		}

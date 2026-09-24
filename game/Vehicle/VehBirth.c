@@ -631,6 +631,11 @@ struct Model *VehBirth_GetModelByName(char *searchName)
 		}
 	}
 
+	if (m == NULL)
+	{
+		m = LOAD_GetExtraCharacterModelByName(searchName);
+	}
+
 FoundModel:
 	return m;
 }

@@ -192,7 +192,7 @@ u32 Music_AsyncParseBanks(void)
 		        ((uVar4 & 0x8c100000) == 0) &&
 
 		        // If not purple gem cup
-		        (((uVar4 & ADVENTURE_CUP) == 0) || (gGT->cup.cupID != 4))
+		        (((uVar4 & ADVENTURE_CUP) == 0) || (gGT->cup.cupID != CUP_ID_PURPLE_GEM))
 
 		            ) ||
 
@@ -224,7 +224,7 @@ u32 Music_AsyncParseBanks(void)
 			    ((gGT->gameMode1 & ADVENTURE_CUP) == 0) ||
 
 			    // If this is not the purple gem cup
-			    (gGT->cup.cupID != 4))
+			    (gGT->cup.cupID != CUP_ID_PURPLE_GEM))
 			{
 				// numPlyrCurrGame
 				if (sdata->bankCount < gGT->numPlyrCurrGame)
