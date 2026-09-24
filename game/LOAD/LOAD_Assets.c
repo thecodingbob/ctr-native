@@ -108,11 +108,13 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 {
 	int i;
 	int gameMode1;
+	b32 extendedArcadeMultiplayer;
 
 	struct GameTracker *gGT = sdata->gGT;
 	gameMode1 = gGT->gameMode1;
+	extendedArcadeMultiplayer = (gameMode1 & ARCADE_MODE) != 0 && g_config.extendedArcadeMultiplayer;
 
-	if ((gameMode1 & ARCADE_MODE) != 0 && g_config.extendedArcadeMultiplayer && gGT->numPlyrCurrGame > 2)
+	if (extendedArcadeMultiplayer && gGT->numPlyrCurrGame > 1)
 	{
 		// The 1P arcade pack contains the full racer roster for AI opponents.
 		LOAD_Robots1P(data.characterIDs[0]);
@@ -128,7 +130,7 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 			LOAD_AppendQueue(bigfile, LT_GETADDR, BI_RACERMODELHI + data.characterIDs[i], &data.driverModelExtras[i - 1].fileBase, LOAD_DriverMPK_SetPointer);
 		}
 
-		if ((gGT->numPlyrCurrGame == 2) && (LOAD_SelectRobots2P(data.characterIDs[0], data.characterIDs[1]) < 0))
+		if (!extendedArcadeMultiplayer && (gGT->numPlyrCurrGame == 2) && (LOAD_SelectRobots2P(data.characterIDs[0], data.characterIDs[1]) < 0))
 		{
 			return sdata->ptrMPK;
 		}
@@ -239,6 +241,16 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 	// else if (levelLOD == LOAD_LEVEL_LOD_2P)
 	else
 	{
+		if (extendedArcadeMultiplayer)
+		{
+			// P1 and every AI model come from the 1P arcade pack. P2 keeps the
+			// normal 2P medium-detail model.
+			LOAD_AppendQueue(bigfile, LT_GETADDR, BI_RACERMODELMED + data.characterIDs[1], &data.driverModelExtras[0].fileBase,
+			                 LOAD_DriverMPK_SetPointer);
+			lastFileIndexMPK = BI_1PARCADEPACK + data.characterIDs[0];
+			goto QueueLastPack;
+		}
+
 		// med models
 		for (i = 0; i < LOAD_MED_LOD_DRIVER_MODEL_EXTRA_COUNT; i++)
 		{
