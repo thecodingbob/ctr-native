@@ -44,6 +44,7 @@ NativeConfig g_config = {
   .skipIntro = false,
   .showReservesMeter = false,
   .allowOxideStationMultiplayer = false,
+  .allowRaceTracksInBattle = false,
   .extendedArcadeMultiplayer = false,
   .botSelectionMode = BOT_SELECTION_PREDETERMINED,
   .skipHints = false,
@@ -108,6 +109,13 @@ const ConfigEntry g_configEntries[] = {
         .label = "Oxide Station Multiplayer",
         .type = CFG_BOOL,
         .valuePtr = &g_config.allowOxideStationMultiplayer
+    },
+    {
+        .section = "General",
+        .key = "allow_race_tracks_in_battle",
+        .label = "Race Tracks in Battle",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.allowRaceTracksInBattle
     },
     {
         .section = "General",

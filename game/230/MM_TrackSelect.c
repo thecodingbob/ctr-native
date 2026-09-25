@@ -22,6 +22,7 @@ enum
 	MM_TRACK_VIDEO_SCREEN_H = 0xd8,
 	MM_TRACK_SELECT_BATTLE_TRACK_COUNT = 7,
 	MM_TRACK_SELECT_ARCADE_TRACK_COUNT = 18,
+	MM_TRACK_SELECT_COMBINED_BATTLE_TRACK_COUNT = MM_TRACK_SELECT_BATTLE_TRACK_COUNT + MM_TRACK_SELECT_ARCADE_TRACK_COUNT,
 	MM_TRACK_SELECT_TRANSITION_FRAMES = 12,
 	MM_TRACK_SELECT_SLIDE_FRAMES = 8,
 	MM_TRACK_SELECT_TRACK_CHANGE_FRAMES = 3,
@@ -71,6 +72,28 @@ enum
 };
 
 #define MM_TRACK_GAME_TRACKER(page) CTR_PSX_PAGE_LVALUE(struct GameTracker *, page, MM_GAME_TRACKER_PAGE_OFFSET, GAME_TRACKER)
+
+static struct MainMenu_LevelRow s_combinedBattleTracks[MM_TRACK_SELECT_COMBINED_BATTLE_TRACK_COUNT];
+
+static b32 MM_TrackSelect_UseRaceTracks(void)
+{
+	return g_config.allowRaceTracksInBattle;
+}
+
+static void MM_TrackSelect_GetBattleTracks(struct MainMenu_LevelRow **tracks, s16 *trackCount)
+{
+	if (!MM_TrackSelect_UseRaceTracks())
+	{
+		*tracks = MM_BATTLE_TRACKS;
+		*trackCount = MM_TRACK_SELECT_BATTLE_TRACK_COUNT;
+		return;
+	}
+
+	memcpy(s_combinedBattleTracks, MM_BATTLE_TRACKS, sizeof(MM_BATTLE_TRACKS));
+	memcpy(&s_combinedBattleTracks[MM_TRACK_SELECT_BATTLE_TRACK_COUNT], MM_ARCADE_TRACKS, sizeof(MM_ARCADE_TRACKS));
+	*tracks = s_combinedBattleTracks;
+	*trackCount = MM_TRACK_SELECT_COMBINED_BATTLE_TRACK_COUNT;
+}
 
 void MM_TrackSelect_Video_SetDefaults(void)
 {
@@ -420,8 +443,7 @@ void MM_TrackSelect_Init(void)
 	// Set menu and num of tracks based on game mode
 	if ((sdata_static.gGT->gameMode1 & BATTLE_MODE) != 0)
 	{
-		selectMenu = MM_BATTLE_TRACKS;
-		numTracks = MM_TRACK_SELECT_BATTLE_TRACK_COUNT;
+		MM_TrackSelect_GetBattleTracks(&selectMenu, &numTracks);
 	}
 	else
 	{
@@ -552,20 +574,25 @@ void MM_TrackSelect_MenuProc(struct RectMenu *menu)
 	asm("" : "=m"(trackCountWork));
 #endif
 
-	// Battle and race modes use different track tables and row counts.
+	// Battle uses arena tracks and can include race tracks when enabled.
 	if ((GAME_TRACKER->gameMode1 & BATTLE_MODE) != 0)
 	{
 		register u32 trackTablePage CTR_PSX_REGISTER("$2");
 		register s16 trackCountValue CTR_PSX_REGISTER("$12");
 		trackTablePage = MM_OVERLAY_PAGE_VALUE;
 #ifdef CTR_NATIVE
-		selectMenu = MM_BATTLE_TRACKS;
+		{
+			s16 battleTrackCount;
+
+			MM_TrackSelect_GetBattleTracks(&selectMenu, &battleTrackCount);
+			trackCountValue = battleTrackCount;
+		}
 		(void)trackTablePage;
 #else
 		CTR_PSX_KEEP_VALUE(trackTablePage);
 		selectMenu = (struct MainMenu_LevelRow *)(trackTablePage + MM_BATTLE_TRACKS_PAGE_OFFSET);
-#endif
 		trackCountValue = MM_TRACK_SELECT_BATTLE_TRACK_COUNT;
+#endif
 		CTR_PSX_KEEP_VALUE_RELAXED(trackCountValue);
 		numTracks = trackCountValue;
 	}
