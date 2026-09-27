@@ -49,6 +49,7 @@ NativeConfig g_config = {
   .botSelectionMode = BOT_SELECTION_PREDETERMINED,
   .skipHints = false,
   .extendedAdventureCharacterSelect = false,
+  .multiplayerAdventure = false,
 
   .speedMultiplier = 100,
   .gravityMultiplier = 100,
@@ -163,6 +164,13 @@ const ConfigEntry g_configEntries[] = {
         .label = "Extended Character Select",
         .type = CFG_BOOL,
         .valuePtr = &g_config.extendedAdventureCharacterSelect
+    },
+    {
+        .section = "Adventure",
+        .key = "multiplayer_adventure",
+        .label = "Multiplayer Adventure",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.multiplayerAdventure
     },
     {
         .section = "Adventure",
@@ -420,6 +428,29 @@ const ConfigEntry g_configEntries[] = {
 };
 
 const int g_numConfigEntries = sizeof(g_configEntries) / sizeof(g_configEntries[0]);
+
+void NativeConfig_ApplyDependencies(const ConfigEntry *changedEntry)
+{
+    if (changedEntry == NULL)
+    {
+        return;
+    }
+
+    if (changedEntry->valuePtr == &g_config.multiplayerAdventure)
+    {
+        if (g_config.multiplayerAdventure)
+        {
+            g_config.extendedAdventureCharacterSelect = true;
+        }
+    }
+    else if (changedEntry->valuePtr == &g_config.extendedAdventureCharacterSelect)
+    {
+        if (!g_config.extendedAdventureCharacterSelect)
+        {
+            g_config.multiplayerAdventure = false;
+        }
+    }
+}
 
 static bool ParseBool(const char *s)
 {
