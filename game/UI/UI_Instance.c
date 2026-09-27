@@ -189,9 +189,17 @@ struct Instance *UI_INSTANCE_BirthWithThread(int modelID, int tickFunc, int hudS
 		if (pushBuffer == 0)
 		{
 			struct UiElement2D *currUI2D = &hudStruct[hudSlot];
+			s16 posX = currUI2D->x;
+			s16 posY = currUI2D->y;
 
-			inst->matrix.t[0] = UI_ConvertX_2(currUI2D->x, currUI2D->z);
-			inst->matrix.t[1] = UI_ConvertY_2(currUI2D->y, currUI2D->z);
+			if ((createdModelID == STATIC_CRYSTAL) && (gGT->numPlyrCurrGame == 2))
+			{
+				posX += UI_CRYSTAL_HUD_2P_OFFSET_X;
+				posY += UI_CRYSTAL_HUD_2P_OFFSET_Y;
+			}
+
+			inst->matrix.t[0] = UI_ConvertX_2(posX, currUI2D->z);
+			inst->matrix.t[1] = UI_ConvertY_2(posY, currUI2D->z);
 			inst->matrix.t[2] = currUI2D->z;
 		}
 
@@ -210,6 +218,11 @@ struct Instance *UI_INSTANCE_BirthWithThread(int modelID, int tickFunc, int hudS
 		}
 
 		scale = hudStruct[hudSlot].scale;
+		if ((createdModelID == STATIC_CRYSTAL) && (gGT->numPlyrCurrGame == 2))
+		{
+			scale /= UI_CRYSTAL_HUD_2P_SCALE_DIVISOR;
+		}
+
 		inst->scale.x = scale;
 		inst->scale.y = scale;
 		inst->scale.z = scale;
@@ -240,6 +253,13 @@ struct Instance *UI_INSTANCE_BirthWithThread(int modelID, int tickFunc, int hudS
 		driverThread = driverThread->siblingThread;
 
 		hudStruct += UI_HUD_SLOT_COUNT;
+
+		// Crystal Challenge has one shared counter and uses player 1's HUD.
+		// Do not create a duplicate crystal instance for player 2.
+		if (createdModelID == STATIC_CRYSTAL)
+		{
+			break;
+		}
 	}
 
 	return inst;

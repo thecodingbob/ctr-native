@@ -972,6 +972,11 @@ void UI_RenderFrame_CrystChall(void)
 	}
 	crystalPos.x = hudStructPtr[UI_HUD_SLOT_CRYSTAL].x;
 	crystalPos.y = hudStructPtr[UI_HUD_SLOT_CRYSTAL].y;
+	if (gGT->numPlyrCurrGame == 2)
+	{
+		crystalPos.x += UI_CRYSTAL_HUD_2P_OFFSET_X;
+		crystalPos.y += UI_CRYSTAL_HUD_2P_OFFSET_Y;
+	}
 
 	// make visible
 #if defined(CTR_NATIVE)
