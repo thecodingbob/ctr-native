@@ -79,6 +79,22 @@ struct Instance *UI_INSTANCE_BirthWithThread(int modelID, int tickFunc, int hudS
 
 		createdModelID = model->id;
 
+		// The Adventure HUD keeps one shared pointer for each CTR letter and
+		// token, so only the final player's instance is animated by pickup code.
+		// Hide the other per-player instances to prevent them appearing over the
+		// Wumpa model in split-screen HUD layouts.
+		if ((u32)(createdModelID - STATIC_C) < UI_INSTANCE_CTR_LETTER_COUNT || createdModelID == STATIC_TOKEN)
+		{
+			inst->flags |= HIDE_MODEL;
+		}
+
+		if (createdModelID == STATIC_TOKEN)
+		{
+			inst->scale.x = 0;
+			inst->scale.y = 0;
+			inst->scale.z = 0;
+		}
+
 		// bigNum
 		if (createdModelID == STATIC_BIG1)
 		{

@@ -121,6 +121,15 @@ void UI_ThTick_Reward(struct Thread *bucket)
 	struct Instance *inst = bucket->inst;
 	struct UiElement3D *obj = bucket->object;
 
+	// UI_INSTANCE_InitAll stores only the last per-player token instance in
+	// ptrToken. Keep the other copies hidden; otherwise the reward tick makes
+	// them visible again over the split-screen Wumpa HUD.
+	if (inst->model->id == STATIC_TOKEN && inst != sdata->ptrToken)
+	{
+		inst->flags |= HIDE_MODEL;
+		return;
+	}
+
 	obj->rot.y += UI_REWARD_PICKUP_ROT_SLOW;
 
 	Vector_SpecLightSpin2D(inst, &obj->rot, &obj->lightDir);
