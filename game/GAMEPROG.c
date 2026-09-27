@@ -261,6 +261,7 @@ void GAMEPROG_NewProfile_InsideAdv(struct AdvProgress *adv)
 
 	// no character selected
 	adv->characterID = -1;
+	adv->numPlayers = 1;
 
 	// N Sane Beach
 	adv->HubLevYouSavedOn = N_SANITY_BEACH;

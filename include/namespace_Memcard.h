@@ -497,7 +497,7 @@ struct AdvProgress
 	s16 characterID;
 
 	// 8FBD0
-	s16 unk;
+	s16 numPlayers;
 
 	// 8FBD2
 	s16 HubLevYouSavedOn;

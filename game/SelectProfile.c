@@ -657,6 +657,10 @@ static void SelectProfile_LoadAdvProfile(int slot)
 
 	GAMEPROG_SyncGameAndCard(&memcard->gameSave.progress, &sdata->gameSave.progress);
 	sdata->advProgress = memcard->advProgress[slot];
+	if (sdata->advProgress.numPlayers != 2)
+	{
+		sdata->advProgress.numPlayers = 1;
+	}
 	data.characterIDs[0] = sdata->advProgress.characterID;
 	memmove(gGT->prevNameEntered, sdata->advProgress.name, sizeof(gGT->prevNameEntered));
 }
@@ -1361,6 +1365,7 @@ static void SelectProfile_FinalizeAdventure(struct RectMenu *menu)
 		}
 
 		sdata->advProfileIndex = menu->rowSelected;
+		sdata->advProgress.numPlayers = gGT->numPlyrNextGame == 2 ? 2 : 1;
 		// NOTE(aalhendi): Retail 0x8004a75c-0x8004a778 queues new Adventure through currLEV.
 		gGT->currLEV = N_SANITY_BEACH;
 		Garage_Leave();
