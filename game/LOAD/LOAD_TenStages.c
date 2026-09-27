@@ -170,6 +170,13 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 
 
 		// ========== End of setting numPlyr ================
+		if ((gGT->gameMode1 & ADVENTURE_MODE) != 0 &&
+		    (gGT->gameMode1 & (ADVENTURE_ARENA | RELIC_RACE | MAIN_MENU | GAME_CUTSCENE)) == 0)
+		{
+			gGT->numPlyrCurrGame = sdata->advProgress.numPlayers;
+			gGT->numPlyrNextGame = gGT->numPlyrCurrGame;
+		}
+
 		// ========== Set LevelLOD variables ================
 
 
