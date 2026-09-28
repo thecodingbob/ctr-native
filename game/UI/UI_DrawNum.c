@@ -141,13 +141,31 @@ void UI_DrawNumTrophy(s16 posX, s16 posY, struct Driver *driver)
 	DecalFont_DrawLine(string, posX + UI_DRAWNUM_BIG_TEXT_OFFSET_X, posY, FONT_BIG, ORANGE);
 }
 
-void UI_DrawNumCrystal(s16 posX, s16 posY, struct Driver *d)
+// Crystal Challenge has a single shared counter, so co-op players pool pickups.
+int UI_Crystal_CountCollected(const struct GameTracker *gGT)
+{
+	int collected = 0;
+
+	for (int playerIndex = 0; playerIndex < gGT->numPlyrCurrGame; playerIndex++)
+	{
+		const struct Driver *driver = gGT->drivers[playerIndex];
+
+		if (driver != NULL)
+		{
+			collected += driver->numCrystals;
+		}
+	}
+
+	return collected;
+}
+
+void UI_DrawNumCrystal(s16 posX, s16 posY)
 {
 	char string[UI_DRAWNUM_COUNTER_TEXT_BUFFER_SIZE];
 
 	DecalFont_DrawLine(UI_NUM_X, posX, posY + UI_DRAWNUM_SMALL_X_OFFSET_Y, FONT_SMALL, ORANGE);
 
-	sprintf(string, rdata.s_lapString, d->numCrystals, CTR_PRINTF_PSX_LONG(GAME_TRACKER->numCrystalsInLEV));
+	sprintf(string, rdata.s_lapString, UI_Crystal_CountCollected(GAME_TRACKER), CTR_PRINTF_PSX_LONG(GAME_TRACKER->numCrystalsInLEV));
 
 	DecalFont_DrawLine(string, posX + UI_DRAWNUM_BIG_TEXT_OFFSET_X, posY, FONT_BIG, ORANGE);
 }

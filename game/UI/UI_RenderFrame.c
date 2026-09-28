@@ -901,10 +901,27 @@ void UI_RenderFrame_AdvHub(void)
 	UI_DrawNumTrophy(hudStructPtr[UI_HUD_SLOT_TROPHY].x + 0x10, hudStructPtr[UI_HUD_SLOT_TROPHY].y - 10, gGT->drivers[0]);
 }
 
+// Crystal Challenge is co-op in adventure multiplayer: the team shares one
+// counter, so every racer that collected enough crystals ends the event.
+static void UI_Crystal_FinishChallenge(const struct GameTracker *gGT)
+{
+	for (int playerIndex = 0; playerIndex < gGT->numPlyrCurrGame; playerIndex++)
+	{
+		struct Driver *player = gGT->drivers[playerIndex];
+
+		player->funcPtrs[DRIVER_FUNC_INIT] = VehPhysProc_FreezeEndEvent_Init;
+		player->actionsFlagSet |= ACTION_RACE_FINISHED;
+	}
+
+	MainGameEnd_Initialize();
+}
+
 void UI_RenderFrame_CrystChall(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
 	int iVar5;
+	int playerIndex;
+	int hasPendingPickup;
 	SVec2 crystalPos;
 
 	struct Driver *player = gGT->drivers[0];
@@ -925,7 +942,7 @@ void UI_RenderFrame_CrystChall(void)
 	{
 		// The engine HUD is a 1P element. Split-screen viewports get the same
 		// per-player turbo bar that every other multiplayer mode draws.
-		for (int playerIndex = 0; playerIndex < gGT->numPlyrCurrGame; playerIndex++, multiplayerHud += UI_HUD_SLOT_COUNT)
+		for (playerIndex = 0; playerIndex < gGT->numPlyrCurrGame; playerIndex++, multiplayerHud += UI_HUD_SLOT_COUNT)
 		{
 			struct Driver *hudPlayer = gGT->drivers[playerIndex];
 
@@ -955,7 +972,7 @@ void UI_RenderFrame_CrystChall(void)
 		UI_DrawSpeedBG();
 	}
 
-	UI_DrawNumCrystal(hudStructPtr[UI_HUD_SLOT_CRYSTAL].x + 0x10, hudStructPtr[UI_HUD_SLOT_CRYSTAL].y - 0x10, player);
+	UI_DrawNumCrystal(hudStructPtr[UI_HUD_SLOT_CRYSTAL].x + 0x10, hudStructPtr[UI_HUD_SLOT_CRYSTAL].y - 0x10);
 
 	// Draw weapon and number of wumpa fruit in HUD
 	UI_Weapon_DrawSelf(hudStructPtr[UI_HUD_SLOT_WEAPON].x, hudStructPtr[UI_HUD_SLOT_WEAPON].y, hudStructPtr[UI_HUD_SLOT_WEAPON].scale, player);
@@ -977,7 +994,65 @@ void UI_RenderFrame_CrystChall(void)
 		return;
 	}
 
-	if ((player->PickupWumpaHUD.numCollected) == 0)
+	// Both players share the single crystal counter, so every pending pickup is
+	// advanced and the shared total decides when the challenge is complete.
+	hasPendingPickup = false;
+	for (playerIndex = 0; playerIndex < gGT->numPlyrCurrGame; playerIndex++)
+	{
+		struct Driver *collectingPlayer = gGT->drivers[playerIndex];
+
+		if (collectingPlayer->PickupWumpaHUD.numCollected == 0)
+		{
+			continue;
+		}
+
+		hasPendingPickup = true;
+		crystalPos.x = hudStructPtr[UI_HUD_SLOT_CRYSTAL].x;
+		crystalPos.y = hudStructPtr[UI_HUD_SLOT_CRYSTAL].y;
+		if (isSplitScreen)
+		{
+			crystalPos.x += UI_CRYSTAL_HUD_2P_OFFSET_X;
+			crystalPos.y += UI_CRYSTAL_HUD_2P_OFFSET_Y;
+		}
+
+		// if cooldown between grabbing items is over,
+		// which also means item has moved to the hud icon
+		if (collectingPlayer->PickupWumpaHUD.cooldown == 0)
+		{
+			// add one to this player's crystal count
+			collectingPlayer->numCrystals++;
+
+			// deduct from number of queued items to pick up
+			collectingPlayer->PickupWumpaHUD.numCollected--;
+
+			// if the team has enough crystals to win the challenge
+			if (gGT->numCrystalsInLEV <= UI_Crystal_CountCollected(gGT))
+			{
+				UI_Crystal_FinishChallenge(gGT);
+			}
+
+			OtherFX_Play(0x42, 1);
+
+			if (collectingPlayer->PickupWumpaHUD.numCollected != 0)
+			{
+				collectingPlayer->PickupWumpaHUD.cooldown = 5;
+			}
+		}
+
+		// if cooldown is not done
+		else
+		{
+			// interpolate position over course of 5 frames
+			UI_Lerp2D_HUD(CTR_VECTOR_DATA(&(crystalPos)), (int)collectingPlayer->PickupWumpaHUD.startX,
+			              (int)collectingPlayer->PickupWumpaHUD.startY, (int)crystalPos.x, (int)crystalPos.y,
+			              collectingPlayer->PickupWumpaHUD.cooldown, 5);
+
+			// reduce cooldown between getting each wumpa (or crystal)
+			collectingPlayer->PickupWumpaHUD.cooldown--;
+		}
+	}
+
+	if (!hasPendingPickup)
 	{
 #if defined(CTR_NATIVE)
 		// NOTE(aalhendi): Menu-storage can enter crystal HUD flow without
@@ -992,13 +1067,6 @@ void UI_RenderFrame_CrystChall(void)
 		hudCrystal->flags |= HIDE_MODEL;
 		goto LAB_800545e8;
 	}
-	crystalPos.x = hudStructPtr[UI_HUD_SLOT_CRYSTAL].x;
-	crystalPos.y = hudStructPtr[UI_HUD_SLOT_CRYSTAL].y;
-	if (gGT->numPlyrCurrGame == 2)
-	{
-		crystalPos.x += UI_CRYSTAL_HUD_2P_OFFSET_X;
-		crystalPos.y += UI_CRYSTAL_HUD_2P_OFFSET_Y;
-	}
 
 	// make visible
 #if defined(CTR_NATIVE)
@@ -1006,45 +1074,6 @@ void UI_RenderFrame_CrystChall(void)
 	{
 #endif
 		hudCrystal->flags &= ~HIDE_MODEL;
-	}
-
-	// if cooldown between grabbing items is over,
-	// which also means item has moved to the hud icon
-	if ((player->PickupWumpaHUD.cooldown) == 0)
-	{
-		// add one to your crystal count
-		player->numCrystals++;
-
-		// deduct from number of queued items to pick up
-		player->PickupWumpaHUD.numCollected--;
-
-		// if you have enough crystals to win the race
-		if (gGT->numCrystalsInLEV <= player->numCrystals)
-		{
-			player->funcPtrs[DRIVER_FUNC_INIT] = VehPhysProc_FreezeEndEvent_Init;
-
-			player->actionsFlagSet |= ACTION_RACE_FINISHED;
-
-			MainGameEnd_Initialize();
-		}
-
-		OtherFX_Play(0x42, 1);
-
-		if (player->PickupWumpaHUD.numCollected != 0)
-		{
-			player->PickupWumpaHUD.cooldown = 5;
-		}
-	}
-
-	// if cooldown is not done
-	else
-	{
-		// interpolate position over course of 5 frames
-		UI_Lerp2D_HUD(CTR_VECTOR_DATA(&(crystalPos)), (int)player->PickupWumpaHUD.startX, (int)player->PickupWumpaHUD.startY,
-		              (int)hudStructPtr[UI_HUD_SLOT_CRYSTAL].x, (int)hudStructPtr[UI_HUD_SLOT_CRYSTAL].y, player->PickupWumpaHUD.cooldown, 5);
-
-		// reduce cooldown between getting each wumpa (or crystal)
-		player->PickupWumpaHUD.cooldown--;
 	}
 
 	// ======= This is UI_ConvertX_2 and Y_2, but inlined =======
