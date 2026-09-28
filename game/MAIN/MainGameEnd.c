@@ -565,7 +565,14 @@ void MainGameEnd_Initialize(void)
 		MainGameEnd_UpdateStandingsOrder(gGT);
 		MainGameEnd_FinalizeDriverClocks(gGT);
 
-		UI_VsQuipAssignAll();
+		// The versus round comments need a race ranking to pick winners and losers.
+		// Crystal Challenge is a co-op event with a single shared result, so it
+		// ends without them: skipping also keeps timerEndOfRaceVS at zero, which
+		// would otherwise hold the results menu back for several seconds.
+		if ((gGT->gameMode1 & CRYSTAL_CHALLENGE) == 0)
+		{
+			UI_VsQuipAssignAll();
+		}
 		SubmitName_RestoreName(2);
 
 		if ((gGT->gameMode1 & (RELIC_RACE | TIME_TRIAL)) != 0)
