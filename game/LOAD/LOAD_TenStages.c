@@ -2,6 +2,9 @@
 
 void (*mainMenuInit[])() = {MM_JumpTo_Title_FirstTime, MM_JumpTo_Characters, MM_JumpTo_TrackSelect, MM_JumpTo_BattleSetup, CS_Garage_Init, MM_JumpTo_Scrapbook};
 
+// Fraction of the solo time limit a co-op crystal challenge is given.
+static const float LOAD_CRYSTAL_CHALLENGE_2P_TIME_FACTOR = 0.6f;
+
 #ifdef CTR_NATIVE
 enum
 {
@@ -175,6 +178,13 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 		{
 			gGT->numPlyrCurrGame = sdata->advProgress.numPlayers;
 			gGT->numPlyrNextGame = gGT->numPlyrCurrGame;
+		}
+
+		// A co-op crystal challenge shares one clock, so two racers only get
+		// part of the time a solo attempt is given.
+		if ((gGT->gameMode1 & CRYSTAL_CHALLENGE) != 0 && gGT->numPlyrCurrGame > 1)
+		{
+			gGT->originalEventTime = (int)(gGT->originalEventTime * LOAD_CRYSTAL_CHALLENGE_2P_TIME_FACTOR);
 		}
 
 		// ========== Set LevelLOD variables ================
