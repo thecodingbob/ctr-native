@@ -261,7 +261,6 @@ void GAMEPROG_NewProfile_InsideAdv(struct AdvProgress *adv)
 
 	// no character selected
 	adv->characterID = -1;
-	adv->numPlayers = 1;
 
 	// N Sane Beach
 	adv->HubLevYouSavedOn = N_SANITY_BEACH;
@@ -326,6 +325,8 @@ void GAMEPROG_NewGame_OnBoot(void)
 {
 	GAMEPROG_NewProfile_OutsideAdv(&GAME_SAVE);
 	GAMEPROG_NewProfile_InsideAdv(&GAME_ADV_PROGRESS);
+	sdata->advMultiplayer.numPlayers = 1;
+	sdata->advMultiplayer.characterID2 = ADV_MULTIPLAYER_NO_CHARACTER;
 	GAMEPROG_GetPtrHighScoreTrack();
 }
 

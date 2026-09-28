@@ -479,8 +479,8 @@ void AH_WarpPad_ThTick(struct Thread *t)
 	if ((champID < AH_WP_RACER_SLOT_COUNT) && (champID != GAME_CHARACTER_IDS[driver->driverID]))
 	{
 		champSlot = 0;
-		// set everyone to spawn in order
-		for (i = 1; i < AH_WP_RACER_SLOT_COUNT; i++)
+		// set everyone to spawn in order, starting after the human drivers
+		for (i = sdata->advMultiplayer.numPlayers; i < AH_WP_RACER_SLOT_COUNT; i++)
 		{
 			if (AH_WarpPad_Champion(warppadObj->levelID) == GAME_CHARACTER_IDS[i])
 			{

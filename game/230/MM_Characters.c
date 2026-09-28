@@ -966,6 +966,15 @@ void MM_Characters_MenuProc(struct RectMenu *unused)
 				    ((GAME_TRACKER->gameMode1 & ADVENTURE_MODE) != 0))
 				{
 					GAME_ADV_PROGRESS.characterID = GAME_CHARACTER_IDS[0];
+
+					// The second racer is chosen on the same screen, so the new
+					// profile saves the partner together with both racer count and
+					// first character.
+					if (sdata->advMultiplayer.numPlayers > 1)
+					{
+						sdata->advMultiplayer.characterID2 = GAME_CHARACTER_IDS[1];
+					}
+
 					MM_DESIRED_MENU = &data.menuSubmitName;
 					SubmitName_RestoreName(0);
 					return;

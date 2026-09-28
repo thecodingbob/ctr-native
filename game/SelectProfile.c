@@ -1,5 +1,8 @@
 #include <common.h>
 
+// Defined with the profile load and save helpers further down.
+static void SelectProfile_ApplyAdvMultiplayerCharacter(void);
+
 void SelectProfile_QueueLoadHub_MenuProc(struct RectMenu *menu)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -8,6 +11,7 @@ void SelectProfile_QueueLoadHub_MenuProc(struct RectMenu *menu)
 	gGT->levelID = MAIN_MENU_LEVEL;
 
 	data.characterIDs[0] = sdata->advProgress.characterID;
+	SelectProfile_ApplyAdvMultiplayerCharacter();
 	MainRaceTrack_RequestLoad(gGT->currLEV);
 	RECTMENU_Hide(menu);
 	return;
@@ -625,9 +629,14 @@ static s16 *SelectProfile_AllProfiles_TimerSaveComplete(void)
 	return &sdata->selectProfileState.timerSaveComplete;
 }
 
+static struct MemcardData *SelectProfile_MemcardData(void)
+{
+	return (struct MemcardData *)sdata->ptrToMemcardBuffer2;
+}
+
 static struct MemcardProfile *SelectProfile_MemcardProfile(void)
 {
-	return (struct MemcardProfile *)sdata->ptrToMemcardBuffer2;
+	return &SelectProfile_MemcardData()->profile;
 }
 
 static int SelectProfile_IsGhostMode(void)
@@ -650,6 +659,59 @@ static void SelectProfile_CopyGameProgressToCard(void)
 	memcpy(&memcard->gameSave, &sdata->gameSave, sizeof(struct GameSave));
 }
 
+static int SelectProfile_IsValidCharacterID(s16 characterID)
+{
+	return (characterID >= 0) && (characterID < GAME_CHARACTER_COUNT);
+}
+
+static void SelectProfile_ApplyAdvMultiplayerCharacter(void)
+{
+	if (SelectProfile_IsValidCharacterID(sdata->advMultiplayer.characterID2))
+	{
+		data.characterIDs[1] = sdata->advMultiplayer.characterID2;
+	}
+}
+
+static void SelectProfile_LoadAdvMultiplayer(int slot)
+{
+	struct AdvMultiplayerSave *saved = &SelectProfile_MemcardData()->extension.adventure[slot];
+
+	sdata->advMultiplayer.numPlayers = 1;
+	sdata->advMultiplayer.characterID2 = ADV_MULTIPLAYER_NO_CHARACTER;
+
+	// Saves without the extension block predate multiplayer Adventure, so they
+	// keep the single racer and no partner.
+	if ((saved->magic != MEMCARD_EXTENSION_MAGIC) || (saved->version != MEMCARD_EXTENSION_VERSION))
+	{
+		return;
+	}
+
+	if ((saved->numPlayers > 1) && (saved->numPlayers <= ADV_MULTIPLAYER_NUM_PLAYERS_MAX))
+	{
+		sdata->advMultiplayer.numPlayers = saved->numPlayers;
+	}
+
+	if (SelectProfile_IsValidCharacterID(saved->characterID2))
+	{
+		sdata->advMultiplayer.characterID2 = saved->characterID2;
+	}
+}
+
+static void SelectProfile_SaveAdvMultiplayer(int slot)
+{
+	struct AdvMultiplayerSave *saved = &SelectProfile_MemcardData()->extension.adventure[slot];
+
+	saved->magic = MEMCARD_EXTENSION_MAGIC;
+	saved->version = MEMCARD_EXTENSION_VERSION;
+	saved->numPlayers = sdata->advMultiplayer.numPlayers;
+	saved->characterID2 = sdata->advMultiplayer.characterID2;
+}
+
+static void SelectProfile_ClearAdvMultiplayer(int slot)
+{
+	memset(&SelectProfile_MemcardData()->extension.adventure[slot], 0, sizeof(struct AdvMultiplayerSave));
+}
+
 static void SelectProfile_LoadAdvProfile(int slot)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -657,11 +719,9 @@ static void SelectProfile_LoadAdvProfile(int slot)
 
 	GAMEPROG_SyncGameAndCard(&memcard->gameSave.progress, &sdata->gameSave.progress);
 	sdata->advProgress = memcard->advProgress[slot];
-	if (sdata->advProgress.numPlayers != 2)
-	{
-		sdata->advProgress.numPlayers = 1;
-	}
+	SelectProfile_LoadAdvMultiplayer(slot);
 	data.characterIDs[0] = sdata->advProgress.characterID;
+	SelectProfile_ApplyAdvMultiplayerCharacter();
 	memmove(gGT->prevNameEntered, sdata->advProgress.name, sizeof(gGT->prevNameEntered));
 }
 
@@ -672,6 +732,7 @@ static void SelectProfile_SaveAdvProfile(int slot)
 	sdata->unk_8008d73C_relatedToRowHighlighted = slot;
 	SelectProfile_CopyGameProgressToCard();
 	memcard->advProgress[slot] = sdata->advProgress;
+	SelectProfile_SaveAdvMultiplayer(slot);
 	MEMCARD_SetIcon(0);
 	RefreshCard_StartMemcardAction(3);
 	*(s16 *)&sdata->unk_memcardRelated_8008d928[0] = 1;
@@ -1090,6 +1151,7 @@ static int SelectProfile_HandleSelection(struct RectMenu *menu, int rowCount)
 	         SelectProfile_AdvProfileOccupied(menu->rowSelected))
 	{
 		GAMEPROG_NewProfile_InsideAdv(&SelectProfile_MemcardProfile()->advProgress[menu->rowSelected]);
+		SelectProfile_ClearAdvMultiplayer(menu->rowSelected);
 		MEMCARD_SetIcon(0);
 		RefreshCard_StartMemcardAction(3);
 		*(s16 *)&sdata->unk_memcardRelated_8008d928[0] = 1;
@@ -1365,7 +1427,6 @@ static void SelectProfile_FinalizeAdventure(struct RectMenu *menu)
 		}
 
 		sdata->advProfileIndex = menu->rowSelected;
-		sdata->advProgress.numPlayers = gGT->numPlyrNextGame == 2 ? 2 : 1;
 		// NOTE(aalhendi): Retail 0x8004a75c-0x8004a778 queues new Adventure through currLEV.
 		gGT->currLEV = N_SANITY_BEACH;
 		Garage_Leave();

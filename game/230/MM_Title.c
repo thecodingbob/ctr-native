@@ -99,6 +99,12 @@ HANDLE_EXITING:
 
 		GAMEPROG_NewProfile_InsideAdv(&GAME_ADV_PROGRESS);
 
+		// The 1P/2P choice happens before this route, but the profile screen that
+		// writes the new save runs later, after the main menu has already reset
+		// numPlyrNextGame, so the racer count has to be captured here.
+		sdata->advMultiplayer.numPlayers = GAME_TRACKER->numPlyrNextGame;
+		sdata->advMultiplayer.characterID2 = ADV_MULTIPLAYER_NO_CHARACTER;
+
 		MM_ADV_PROFILE_INDEX = 0xffff;
 
 	        // go to adventure character select screen

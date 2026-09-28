@@ -176,7 +176,7 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 		if ((gGT->gameMode1 & ADVENTURE_MODE) != 0 &&
 		    (gGT->gameMode1 & (ADVENTURE_ARENA | RELIC_RACE | MAIN_MENU | GAME_CUTSCENE)) == 0)
 		{
-			gGT->numPlyrCurrGame = sdata->advProgress.numPlayers;
+			gGT->numPlyrCurrGame = sdata->advMultiplayer.numPlayers;
 			gGT->numPlyrNextGame = gGT->numPlyrCurrGame;
 		}
 

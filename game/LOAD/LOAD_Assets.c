@@ -12,7 +12,6 @@ enum
 	// Pura is the eighth base racer, so the 1P arcade MPK only carries her when
 	// the player picks her; see LOAD_RacerNeedsStandaloneModel.
 	LOAD_UNCOVERED_BASE_RACER_ID = 7,
-	LOAD_CHARACTER_COUNT = len(data.MetaDataCharacters),
 };
 
 static DriverModelExtraSlot s_extraCharacterModels[LOAD_EXTRA_CHARACTER_MODEL_CAPACITY];
@@ -60,7 +59,7 @@ static b32 LOAD_IsRandomBotRace(void)
 
 static void LOAD_ShuffleCharacterIDs(s16 *characterIDs)
 {
-	for (int i = LOAD_CHARACTER_COUNT - 1; i > 0; i--)
+	for (int i = GAME_CHARACTER_COUNT - 1; i > 0; i--)
 	{
 		int swapIndex = (u32)RngDeadCoed(&sdata->advRng) % (i + 1);
 		s16 characterID = characterIDs[i];
@@ -154,18 +153,18 @@ static void LOAD_QueueExtraCharacterModels(struct BigHeader *bigfile, const s16 
 
 static void LOAD_SelectRandomBots(void)
 {
-	s16 shuffledCharacterIDs[LOAD_CHARACTER_COUNT];
+	s16 shuffledCharacterIDs[GAME_CHARACTER_COUNT];
 	int botCount = LOAD_GetRandomBotCount();
 	int botIndex = 0;
 
-	for (int characterID = 0; characterID < LOAD_CHARACTER_COUNT; characterID++)
+	for (int characterID = 0; characterID < GAME_CHARACTER_COUNT; characterID++)
 	{
 		shuffledCharacterIDs[characterID] = (s16)characterID;
 	}
 
 	LOAD_ShuffleCharacterIDs(shuffledCharacterIDs);
 
-	for (int shuffledIndex = 0; shuffledIndex < LOAD_CHARACTER_COUNT && botIndex < botCount; shuffledIndex++)
+	for (int shuffledIndex = 0; shuffledIndex < GAME_CHARACTER_COUNT && botIndex < botCount; shuffledIndex++)
 	{
 		s16 characterID = shuffledCharacterIDs[shuffledIndex];
 

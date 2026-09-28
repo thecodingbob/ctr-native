@@ -90,6 +90,22 @@ enum MC_SCREEN
 	MC_SCREEN_ERROR_NODATA = 9,
 };
 
+enum MemcardFileConstants
+{
+	// Card data bytes per file: the retail profile, this port's extension in the
+	// padding retail left over, and the trailing checksum.
+	MEMCARD_FILE_DATA_SIZE = 0x1680,
+	MEMCARD_FILE_CHECKSUM_SIZE = 2,
+	MEMCARD_EXTENSION_VERSION = 1,
+};
+
+#define MEMCARD_EXTENSION_MAGIC 0x32504143 // "CAP2"
+
+enum AdvMultiplayerConstants
+{
+	ADV_MULTIPLAYER_NO_CHARACTER = -1,
+};
+
 enum HighScoreConstants
 {
 	MEMCARD_HIGH_SCORE_TRACK_COUNT = 0x12,
@@ -497,7 +513,7 @@ struct AdvProgress
 	s16 characterID;
 
 	// 8FBD0
-	s16 numPlayers;
+	s16 unk;
 
 	// 8FBD2
 	s16 HubLevYouSavedOn;
@@ -601,6 +617,38 @@ struct MemcardProfile
 	// 0x1600 - size of profile
 };
 
+// Runtime copy of the co-op Adventure settings of the profile in use.
+struct AdvMultiplayerSettings
+{
+	s16 numPlayers;
+	s16 characterID2;
+};
+
+// Per-profile settings written to the card extension. The magic marks saves
+// made after the extension existed, so retail cards and older saves keep their
+// own defaults instead of reading unused padding as settings.
+struct AdvMultiplayerSave
+{
+	u32 magic;
+	s16 version;
+	s16 numPlayers;
+	s16 characterID2;
+};
+
+struct MemcardExtension
+{
+	struct AdvMultiplayerSave adventure[MEMCARD_ADV_PROFILE_COUNT];
+};
+
+// The whole SLOTS file payload: the retail profile followed by this port's
+// extension. header[1] keeps advertising the retail profile size, so retail and
+// older builds still accept the card.
+struct MemcardData
+{
+	struct MemcardProfile profile;
+	struct MemcardExtension extension;
+};
+
 CTR_STATIC_ASSERT(sizeof(struct HighScoreEntry) == 0x18);
 CTR_STATIC_ASSERT(sizeof(struct HighScoreTrack) == 0x124);
 CTR_STATIC_ASSERT((u16)MEMCARD_PROFILE_VERSION == 0xffee);
@@ -614,6 +662,9 @@ CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct AdvProgress, rewards, 4) == 0x10);
 CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct AdvProgress, rewards, 5) == 0x14);
 CTR_STATIC_ASSERT(OFFSETOF(struct AdvProgress, name) == 0x18);
 CTR_STATIC_ASSERT(sizeof(struct AdvProgress) == 0x50);
+CTR_STATIC_ASSERT(sizeof(struct MemcardProfile) == 0x1600);
+CTR_STATIC_ASSERT(OFFSETOF(struct MemcardData, extension) == sizeof(struct MemcardProfile));
+CTR_STATIC_ASSERT(sizeof(struct MemcardData) <= (MEMCARD_FILE_DATA_SIZE - MEMCARD_FILE_CHECKSUM_SIZE));
 CTR_STATIC_ASSERT(sizeof(struct GhostProfile) == 0x34);
 CTR_STATIC_ASSERT(OFFSETOF(struct GameOptions, rwd) == 0x6);
 CTR_STATIC_ASSERT(OFFSETOF(struct GameOptions, audioMode) == 0x24);

@@ -19,6 +19,7 @@
 #define GAME_TRACKER                 (sdata->gGT)
 #define GAME_LANGUAGE_STRINGS        (sdata->lngStrings)
 #define GAME_CHARACTER_METADATA      (data.MetaDataCharacters)
+#define GAME_CHARACTER_COUNT         ((s32)len(GAME_CHARACTER_METADATA))
 #define GAME_CHARACTER_IDS           (data.characterIDs)
 #define GAME_FRAMES_SINCE_RACE_ENDED (sdata->framesSinceRaceEnded)
 #define GAME_MENU_READY              (sdata->menuReadyToPass)

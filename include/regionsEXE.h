@@ -4205,6 +4205,10 @@ struct sData
 	// needs that capacity and a terminator independently for each viewport.
 	b32 highDetailSplitScreenLevel;
 	struct QuadBlock *highDetailQuadBlocksRendered[4][NATIVE_HIGH_DETAIL_RENDERED_QUADBLOCK_CAPACITY];
+
+	// Co-op Adventure settings of the profile in use. Mirrored from the card
+	// extension on load and written back on save.
+	struct AdvMultiplayerSettings advMultiplayer;
 #endif
 
 	// after dataLibFiller is 8009AE58,
