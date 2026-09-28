@@ -904,15 +904,15 @@ void UI_RenderFrame_AdvHub(void)
 void UI_RenderFrame_CrystChall(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
-	struct Driver *player;
-	struct UiElement2D *hudStructPtr;
-	struct Instance *hudCrystal;
 	int iVar5;
 	SVec2 crystalPos;
 
-	player = gGT->drivers[0];
-	hudStructPtr = data.hudStructPtr[0];
-	hudCrystal = sdata->ptrHudCrystal;
+	struct Driver *player = gGT->drivers[0];
+	const struct UiElement2D *hudStructPtr = data.hudStructPtr[0];
+	struct Instance *hudCrystal = sdata->ptrHudCrystal;
+
+	const int isSplitScreen = gGT->numPlyrCurrGame > 1;
+	struct UiElement2D *multiplayerHud = data.hudStructPtr[gGT->numPlyrCurrGame - 1];
 
 	// If game is not paused
 	if ((gGT->gameMode1 & PAUSE_ALL) == 0)
@@ -921,17 +921,39 @@ void UI_RenderFrame_CrystChall(void)
 		UI_JumpMeter_Update(player);
 	}
 
-	UI_DrawSpeedNeedle(hudStructPtr[UI_HUD_SLOT_SPEEDOMETER].x, hudStructPtr[UI_HUD_SLOT_SPEEDOMETER].y, player);
-
-	UI_JumpMeter_Draw(hudStructPtr[UI_HUD_SLOT_JUMP_METER].x, hudStructPtr[UI_HUD_SLOT_JUMP_METER].y, player);
-
-	UI_DrawSlideMeter(hudStructPtr[UI_HUD_SLOT_SLIDE_METER].x, hudStructPtr[UI_HUD_SLOT_SLIDE_METER].y, player);
-	if (g_config.showReservesMeter)
+	if (isSplitScreen)
 	{
-		UI_DrawReservesMeter(hudStructPtr[UI_HUD_SLOT_SLIDE_METER].x, hudStructPtr[UI_HUD_SLOT_SLIDE_METER].y + 5, player);
-	}
+		// The engine HUD is a 1P element. Split-screen viewports get the same
+		// per-player turbo bar that every other multiplayer mode draws.
+		for (int playerIndex = 0; playerIndex < gGT->numPlyrCurrGame; playerIndex++, multiplayerHud += UI_HUD_SLOT_COUNT)
+		{
+			struct Driver *hudPlayer = gGT->drivers[playerIndex];
 
-	UI_DrawSpeedBG();
+			if ((gGT->gameMode1 & PAUSE_ALL) == 0)
+			{
+				UI_JumpMeter_Update(hudPlayer);
+			}
+
+			if ((hudPlayer->actionsFlagSet & ACTION_RACE_FINISHED) == 0)
+			{
+				UI_DrawSlideMeter(multiplayerHud[UI_HUD_SLOT_SLIDE_METER].x, multiplayerHud[UI_HUD_SLOT_SLIDE_METER].y, hudPlayer);
+			}
+		}
+	}
+	else
+	{
+		UI_DrawSpeedNeedle(hudStructPtr[UI_HUD_SLOT_SPEEDOMETER].x, hudStructPtr[UI_HUD_SLOT_SPEEDOMETER].y, player);
+
+		UI_JumpMeter_Draw(hudStructPtr[UI_HUD_SLOT_JUMP_METER].x, hudStructPtr[UI_HUD_SLOT_JUMP_METER].y, player);
+
+		UI_DrawSlideMeter(hudStructPtr[UI_HUD_SLOT_SLIDE_METER].x, hudStructPtr[UI_HUD_SLOT_SLIDE_METER].y, player);
+		if (g_config.showReservesMeter)
+		{
+			UI_DrawReservesMeter(hudStructPtr[UI_HUD_SLOT_SLIDE_METER].x, hudStructPtr[UI_HUD_SLOT_SLIDE_METER].y + 5, player);
+		}
+
+		UI_DrawSpeedBG();
+	}
 
 	UI_DrawNumCrystal(hudStructPtr[UI_HUD_SLOT_CRYSTAL].x + 0x10, hudStructPtr[UI_HUD_SLOT_CRYSTAL].y - 0x10, player);
 
