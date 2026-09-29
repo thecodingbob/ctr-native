@@ -229,12 +229,13 @@ void GAMEPROG_NewProfile_OutsideAdv(struct GameSave *save)
 }
 
 
-void GAMEPROG_InitFullMemcard(struct MemcardProfile *mcp)
+void GAMEPROG_InitFullMemcard(struct MemcardData *mcd)
 {
+	struct MemcardProfile *mcp = &mcd->profile;
 	struct GameSave *save = &mcp->gameSave;
 	s16 i;
-	// clear
-	memset(mcp, 0, sizeof(struct MemcardProfile));
+	// clear, this port's extension included
+	memset(mcd, 0, sizeof(struct MemcardData));
 	GAMEPROG_NewProfile_OutsideAdv(save);
 	i = 0;
 
@@ -325,9 +326,15 @@ void GAMEPROG_NewGame_OnBoot(void)
 {
 	GAMEPROG_NewProfile_OutsideAdv(&GAME_SAVE);
 	GAMEPROG_NewProfile_InsideAdv(&GAME_ADV_PROGRESS);
-	sdata->advMultiplayer.numPlayers = 1;
-	sdata->advMultiplayer.characterID2 = ADV_MULTIPLAYER_NO_CHARACTER;
+	GAMEPROG_ResetAdvMultiplayer(&sdata->advMultiplayer);
 	GAMEPROG_GetPtrHighScoreTrack();
+}
+
+
+void GAMEPROG_ResetAdvMultiplayer(struct AdvMultiplayerSettings *settings)
+{
+	settings->numPlayers = ADV_MULTIPLAYER_DEFAULT_PLAYERS;
+	settings->characterID2 = ADV_MULTIPLAYER_NO_CHARACTER;
 }
 
 

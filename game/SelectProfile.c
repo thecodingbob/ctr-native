@@ -674,23 +674,21 @@ static void SelectProfile_ApplyAdvMultiplayerCharacter(void)
 
 static void SelectProfile_LoadAdvMultiplayer(int slot)
 {
-	struct AdvMultiplayerSave *saved = &SelectProfile_MemcardData()->extension.adventure[slot];
+	struct AdvMultiplayerSettings *saved = &SelectProfile_MemcardData()->extension.adventure[slot];
 
-	sdata->advMultiplayer.numPlayers = 1;
-	sdata->advMultiplayer.characterID2 = ADV_MULTIPLAYER_NO_CHARACTER;
+	GAMEPROG_ResetAdvMultiplayer(&sdata->advMultiplayer);
 
-	// Saves without the extension block predate multiplayer Adventure, so they
-	// keep the single racer and no partner.
-	if ((saved->magic != MEMCARD_EXTENSION_MAGIC) || (saved->version != MEMCARD_EXTENSION_VERSION))
+	// A save without the co-op settings has zeroes here, which no racer count
+	// falls into: such a profile plays alone, and so does any count this port
+	// did not write.
+	if (saved->numPlayers <= 1 || saved->numPlayers > ADV_MULTIPLAYER_NUM_PLAYERS_MAX)
 	{
 		return;
 	}
 
-	if ((saved->numPlayers > 1) && (saved->numPlayers <= ADV_MULTIPLAYER_NUM_PLAYERS_MAX))
-	{
-		sdata->advMultiplayer.numPlayers = saved->numPlayers;
-	}
+	sdata->advMultiplayer.numPlayers = saved->numPlayers;
 
+	// A partner is only read once the racer count says two players are there.
 	if (SelectProfile_IsValidCharacterID(saved->characterID2))
 	{
 		sdata->advMultiplayer.characterID2 = saved->characterID2;
@@ -699,17 +697,14 @@ static void SelectProfile_LoadAdvMultiplayer(int slot)
 
 static void SelectProfile_SaveAdvMultiplayer(int slot)
 {
-	struct AdvMultiplayerSave *saved = &SelectProfile_MemcardData()->extension.adventure[slot];
+	struct AdvMultiplayerSettings *saved = &SelectProfile_MemcardData()->extension.adventure[slot];
 
-	saved->magic = MEMCARD_EXTENSION_MAGIC;
-	saved->version = MEMCARD_EXTENSION_VERSION;
-	saved->numPlayers = sdata->advMultiplayer.numPlayers;
-	saved->characterID2 = sdata->advMultiplayer.characterID2;
+	*saved = sdata->advMultiplayer;
 }
 
 static void SelectProfile_ClearAdvMultiplayer(int slot)
 {
-	memset(&SelectProfile_MemcardData()->extension.adventure[slot], 0, sizeof(struct AdvMultiplayerSave));
+	memset(&SelectProfile_MemcardData()->extension.adventure[slot], 0, sizeof(struct AdvMultiplayerSettings));
 }
 
 static void SelectProfile_LoadAdvProfile(int slot)

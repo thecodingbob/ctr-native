@@ -125,7 +125,8 @@ b32 GAMEPROG_CheckGhostsBeaten(s32 ghostID);
 void GAMEPROG_AdvPercent(struct AdvProgress *adv);
 void GAMEPROG_NewGame_OnBoot(void);
 void GAMEPROG_GetPtrHighScoreTrack(void);
-void GAMEPROG_InitFullMemcard(struct MemcardProfile *mcp);
+void GAMEPROG_InitFullMemcard(struct MemcardData *mcd);
+void GAMEPROG_ResetAdvMultiplayer(struct AdvMultiplayerSettings *settings);
 void GAMEPROG_SaveCupProgress(void);
 void GAMEPROG_SyncGameAndCard(struct GameProgress *memcardProg, struct GameProgress *currentProg);
 

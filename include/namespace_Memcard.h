@@ -96,14 +96,13 @@ enum MemcardFileConstants
 	// padding retail left over, and the trailing checksum.
 	MEMCARD_FILE_DATA_SIZE = 0x1680,
 	MEMCARD_FILE_CHECKSUM_SIZE = 2,
-	MEMCARD_EXTENSION_VERSION = 1,
 };
-
-#define MEMCARD_EXTENSION_MAGIC 0x32504143 // "CAP2"
 
 enum AdvMultiplayerConstants
 {
 	ADV_MULTIPLAYER_NO_CHARACTER = -1,
+	ADV_MULTIPLAYER_DEFAULT_PLAYERS = 1,
+	ADV_MULTIPLAYER_NUM_PLAYERS_MAX = 2,
 };
 
 enum HighScoreConstants
@@ -617,27 +616,20 @@ struct MemcardProfile
 	// 0x1600 - size of profile
 };
 
-// Runtime copy of the co-op Adventure settings of the profile in use.
+// Co-op Adventure settings. The same shape is the live copy in sData and the
+// per-profile copy in the card extension.
 struct AdvMultiplayerSettings
 {
 	s16 numPlayers;
 	s16 characterID2;
 };
 
-// Per-profile settings written to the card extension. The magic marks saves
-// made after the extension existed, so retail cards and older saves keep their
-// own defaults instead of reading unused padding as settings.
-struct AdvMultiplayerSave
-{
-	u32 magic;
-	s16 version;
-	s16 numPlayers;
-	s16 characterID2;
-};
-
+// The co-op settings per profile, in the padding retail never wrote. A card
+// without them has zeroes here, so a racer count outside the range this port
+// writes means the same thing: the profile plays alone.
 struct MemcardExtension
 {
-	struct AdvMultiplayerSave adventure[MEMCARD_ADV_PROFILE_COUNT];
+	struct AdvMultiplayerSettings adventure[MEMCARD_ADV_PROFILE_COUNT];
 };
 
 // The whole SLOTS file payload: the retail profile followed by this port's

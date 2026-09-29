@@ -68,9 +68,24 @@ static void LOAD_ShuffleCharacterIDs(s16 *characterIDs)
 	}
 }
 
+// The hub keeps the Adventure co-op partner in driver slot 1 while the tracker
+// still counts a single player, so the human drivers are not always the players
+// of the current game.
+static int LOAD_HumanDriverSlotCount(void)
+{
+	struct GameTracker *gGT = sdata->gGT;
+
+	if ((gGT->gameMode1 & ADVENTURE_ARENA) != 0 && sdata->advMultiplayer.numPlayers > 1)
+	{
+		return sdata->advMultiplayer.numPlayers;
+	}
+
+	return gGT->numPlyrCurrGame;
+}
+
 static b32 LOAD_IsCharacterUsedByPlayer(s16 characterID)
 {
-	for (int playerIndex = 0; playerIndex < sdata->gGT->numPlyrCurrGame; playerIndex++)
+	for (int playerIndex = 0; playerIndex < LOAD_HumanDriverSlotCount(); playerIndex++)
 	{
 		if (data.characterIDs[playerIndex] == characterID)
 		{
@@ -300,12 +315,11 @@ void LOAD_Robots2P(struct BigHeader *bigfile, int p1, int p2, void (*callback)(s
 
 void LOAD_Robots1P(int characterID)
 {
-	struct GameTracker *gGT = sdata->gGT;
 	int nextCharacterID = 0;
 
 	data.characterIDs[0] = characterID;
 
-	for (int driverID = gGT->numPlyrCurrGame; driverID < LOAD_CHARACTER_ID_COUNT; driverID++)
+	for (int driverID = LOAD_HumanDriverSlotCount(); driverID < LOAD_CHARACTER_ID_COUNT; driverID++)
 	{
 		while (LOAD_IsCharacterUsedByPlayer(nextCharacterID))
 		{
