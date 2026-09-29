@@ -435,7 +435,7 @@ static int PickupBots_UpdateBossJuice(struct MetaDataBOSS *bossMeta, int weaponI
 static void PickupBots_UpdateBoss(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
-	struct Driver *boss = gGT->drivers[1];
+	struct Driver *boss = gGT->drivers[LOAD_AdventureBossDriverSlot()];
 	struct Driver *player = gGT->drivers[0];
 	struct MetaDataBOSS *bossMeta = sdata->bossWeaponMeta;
 

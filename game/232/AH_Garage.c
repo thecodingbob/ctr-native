@@ -353,8 +353,8 @@ openGarage:
 			GAME_TRACKER->bossID = bosses[GAME_TRACKER->levelID - GEM_STONE_VALLEY];
 		}
 
-		// Set the boss character (P2)
-		GAME_CHARACTER_IDS[1] = AH_LEVEL_METADATA[raceLevels[GAME_TRACKER->levelID - GEM_STONE_VALLEY]].characterID_Boss;
+		// Set the boss character, in the driver slot past the players
+		GAME_CHARACTER_IDS[LOAD_AdventureBossDriverSlot()] = AH_LEVEL_METADATA[raceLevels[GAME_TRACKER->levelID - GEM_STONE_VALLEY]].characterID_Boss;
 
 		// NOTE(aalhendi): Retail reloads the destination after the callback.
 		RaceFlag_SetDrawOrder(1);

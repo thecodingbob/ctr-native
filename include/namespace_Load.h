@@ -117,6 +117,8 @@ enum LoadCharacterConstants
 	LOAD_2P_AI_SET_RACER_COUNT = 4,
 	LOAD_2P_AI_SET_COUNT = 7,
 	LOAD_PURPLE_GEM_CUP_AI_SET_INDEX = LOAD_2P_AI_SET_COUNT,
+	// Retail boss races are solo, so the boss takes the second driver slot.
+	LOAD_ADVENTURE_BOSS_DRIVER_SLOT_SOLO = 1,
 };
 
 CTR_STATIC_ASSERT((LOAD_2P_AI_SET_COUNT * LOAD_2P_AI_SET_RACER_COUNT) == 0x1c);

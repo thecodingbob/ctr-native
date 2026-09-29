@@ -387,7 +387,7 @@ void BOTS_Adv_AdjustDifficulty(void)
 	if ((gameMode1 & ADVENTURE_BOSS) != 0)
 	{
 		sdata->driver_pathIndexIDs[0] = 0;
-		sdata->driver_pathIndexIDs[1] = 1;
+		sdata->driver_pathIndexIDs[LOAD_AdventureBossDriverSlot()] = 1;
 	}
 
 	if ((gameMode1 & BATTLE_MODE) != 0)

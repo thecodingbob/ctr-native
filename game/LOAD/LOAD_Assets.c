@@ -83,6 +83,29 @@ static int LOAD_HumanDriverSlotCount(void)
 	return gGT->numPlyrCurrGame;
 }
 
+// A boss race is one racer per player plus the boss, so the boss drives in the
+// first driver slot past the players. Retail only ever plays a boss race solo,
+// where that is the second slot, so a solo race keeps the boss where it always was.
+int LOAD_AdventureBossDriverSlot(void)
+{
+	int playerCount = LOAD_HumanDriverSlotCount();
+
+	if (playerCount > ADV_MULTIPLAYER_DEFAULT_PLAYERS)
+	{
+		return playerCount;
+	}
+
+	return LOAD_ADVENTURE_BOSS_DRIVER_SLOT_SOLO;
+}
+
+// Only a co-op boss race changes who occupies the AI driver slots; a solo boss
+// race keeps the layout it has always had.
+static b32 LOAD_IsAdventureCoopBossRace(void)
+{
+	return (sdata->gGT->gameMode1 & ADVENTURE_BOSS) != 0 &&
+	       LOAD_AdventureBossDriverSlot() > LOAD_ADVENTURE_BOSS_DRIVER_SLOT_SOLO;
+}
+
 static b32 LOAD_IsCharacterUsedByPlayer(s16 characterID)
 {
 	for (int playerIndex = 0; playerIndex < LOAD_HumanDriverSlotCount(); playerIndex++)
@@ -389,6 +412,28 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 	}
 
 	int lastFileIndexMPK;
+	if (LOAD_IsAdventureCoopBossRace())
+	{
+		// A co-op boss race still only runs the players and the boss, so it takes
+		// the boss pack a solo race uses instead of an AI roster. This has to be
+		// decided before the split-screen branches below, because those hand the
+		// AI driver slots to the 2P lineup and would replace the boss.
+		// Player 1 keeps the solo boss detail, the partner takes the detail a
+		// split-screen racer of their position has everywhere else.
+		LOAD_AppendQueue(bigfile, LT_GETADDR, BI_RACERMODELHI + data.characterIDs[0], &data.driverModelExtras[0].fileBase,
+		                 LOAD_DriverMPK_SetPointer);
+
+		int partnerModelFile = sdata->highDetailSplitScreenLevel ? BI_RACERMODELHI : BI_RACERMODELMED;
+		for (i = 1; (i < gGT->numPlyrCurrGame) && (i < LOAD_DRIVER_MODEL_EXTRA_COUNT); i++)
+		{
+			LOAD_AppendQueue(bigfile, LT_GETADDR, partnerModelFile + data.characterIDs[i], &data.driverModelExtras[i].fileBase,
+			                 LOAD_DriverMPK_SetPointer);
+		}
+
+		lastFileIndexMPK = BI_TIMETRIALPACK + data.characterIDs[LOAD_AdventureBossDriverSlot()];
+		goto QueueLastPack;
+	}
+
 	if (sdata->highDetailSplitScreenLevel)
 	{
 		// The 1P arcade pack contains P1 at player quality. Use the standalone
