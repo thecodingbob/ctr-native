@@ -2,7 +2,6 @@
 
 // Defined with the profile load and save helpers further down.
 static void SelectProfile_ApplyAdvMultiplayerCharacter(void);
-static s16 SelectProfile_AdvMultiplayerPartner(const struct AdvMultiplayerSettings *settings);
 static const struct AdvMultiplayerSettings *SelectProfile_AdvSettingsToShow(const struct AdvProgress *adv, int slot);
 
 void SelectProfile_QueueLoadHub_MenuProc(struct RectMenu *menu)
@@ -704,7 +703,7 @@ static void SelectProfile_ApplyAdvMultiplayerCharacter(void)
 // Whether a co-op entry describes a profile that plays with a partner. A save
 // without the co-op settings has zeroes there, which no racer count falls into:
 // such a profile plays alone, and so does any count this port did not write.
-static int SelectProfile_AdvMultiplayerIsCoop(const struct AdvMultiplayerSettings *settings)
+int SelectProfile_AdvMultiplayerIsCoop(const struct AdvMultiplayerSettings *settings)
 {
 	const s16 numPlayers = settings->numPlayers;
 
@@ -714,7 +713,7 @@ static int SelectProfile_AdvMultiplayerIsCoop(const struct AdvMultiplayerSetting
 // The partner of a co-op entry, or ADV_MULTIPLAYER_NO_CHARACTER when it has none.
 // The partner is only read once the racer count says two players are there, so
 // what an older save left in the entry is never taken for one.
-static s16 SelectProfile_AdvMultiplayerPartner(const struct AdvMultiplayerSettings *settings)
+s16 SelectProfile_AdvMultiplayerPartner(const struct AdvMultiplayerSettings *settings)
 {
 	if (!SelectProfile_AdvMultiplayerIsCoop(settings))
 	{

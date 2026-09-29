@@ -540,6 +540,8 @@ void SelectProfile_QueueLoadHub_MenuProc(struct RectMenu *menu);
 void SelectProfile_AdvPickMode_MenuProc(struct RectMenu *menu);
 void SelectProfile_AllProfiles_MenuProc(struct RectMenu *menu);
 void SelectProfile_ToggleMode(u32 mode);
+int SelectProfile_AdvMultiplayerIsCoop(const struct AdvMultiplayerSettings *settings);
+s16 SelectProfile_AdvMultiplayerPartner(const struct AdvMultiplayerSettings *settings);
 
 void MEMPACK_Init(s32 ramSize);
 void MEMPACK_SwapPacks(s32 index);
