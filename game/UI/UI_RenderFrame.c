@@ -35,6 +35,7 @@ void UI_RenderFrame_Racing()
 	int offset;
 	u32 mapPosX;
 	u32 mapPosY;
+	b32 coopFinishedRacer;
 
 	offset = 0;
 
@@ -439,10 +440,16 @@ void UI_RenderFrame_Racing()
 
 			partTimeVariable5 = gameMode1;
 
+			// Adventure co-op has no winner to announce: once a racer is done,
+			// AA_EndEvent_DisplayTime owns its final position, so the in-race
+			// suffix is dropped. Otherwise it would be drawn twice until the
+			// partner crosses the line too.
+			coopFinishedRacer = MainGameEnd_IsCoopRace(gGT) && (playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) != 0;
+
 			// If you are in Relic Race, and not in battle mode, and not in time trial
 			if ((partTimeVariable5 & 0x4020020) == 0)
 			{
-				if (((playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) == 0) || ((
+				if (((playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) == 0) || (!coopFinishedRacer && (
 				                                                                        // if numPlyrCurrGame is 2
 				                                                                        numPlyr == '\x02' &&
 
