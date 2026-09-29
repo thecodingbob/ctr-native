@@ -473,6 +473,7 @@ void PlayLevel_UpdateLapStats(void)
 	}
 
 	int humanPlayerCount = gGT->numPlyrCurrGame;
+	b32 coopRace = MainGameEnd_IsCoopRace(gGT);
 
 	// Check if race should end
 	bool shouldEndRace = false;
@@ -490,12 +491,15 @@ void PlayLevel_UpdateLapStats(void)
 	            ) ||
 
 	    (
-	        // Multiplayer VS, all finished except one
-	        (humanPlayerCount > 1) && ((gGT->gameMode1 & ARCADE_MODE) == 0) && (finishedHumanCount >= (humanPlayerCount - 1))) ||
+	        // Multiplayer VS, all finished except one; an Adventure co-op race is
+	        // not a versus round, so it waits for the last racer below instead
+	        (humanPlayerCount > 1) && !coopRace && ((gGT->gameMode1 & ARCADE_MODE) == 0) &&
+	            (finishedHumanCount >= (humanPlayerCount - 1))) ||
 
 	    (
-	        // Arcade mode, all humans finished
-	        ((gGT->gameMode1 & ARCADE_MODE) != 0) && (humanPlayerCount <= finishedHumanCount)))
+	        // Arcade mode or Adventure co-op, all humans finished
+	        ((gGT->gameMode1 & ARCADE_MODE) != 0 || coopRace) && (humanPlayerCount <= finishedHumanCount))
+	  )
 	{
 		shouldEndRace = true;
 	}
@@ -544,6 +548,12 @@ void PlayLevel_UpdateLapStats(void)
 			}
 
 			// === VS Mode ===
+
+			// Adventure co-op has no losing racer, so nobody is blasted
+			if (coopRace)
+			{
+				continue;
+			}
 
 			// Make the player Blasted
 			VehPickState_NewState(currDriver, PLAYLEVEL_BLASTED_DAMAGE, currDriver, 0);

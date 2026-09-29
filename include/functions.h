@@ -787,6 +787,7 @@ bool PlayLevel_CanAutoEndRace(struct GameTracker *gGT);
 void MainGameEnd_SoloRaceGetReward(int subtractTimeCrateBonus);
 void MainGameEnd_SoloRaceSaveHighScore(void);
 void MainGameEnd_Initialize(void);
+b32 MainGameEnd_IsCoopRace(struct GameTracker *gGT);
 void Podium_InitModels(struct GameTracker *gGT);
 void VehLap_UpdateProgress(struct Driver *driver);
 

@@ -811,7 +811,10 @@ void UI_RenderFrame_Racing()
 			playerStruct = gGT->drivers[i];
 			pb = &gGT->pushBuffer[playerStruct->driverID];
 
-			if ((((playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) != 0) && ((gameMode1 & (ARCADE_MODE | TIME_TRIAL)) == 0)) &&
+			if ((((playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) != 0) && ((gameMode1 & (ARCADE_MODE | TIME_TRIAL)) == 0) &&
+			     // Adventure co-op shares one result, so neither racer is announced
+			     // as the one that finished first or as the loser of a versus round
+			     !MainGameEnd_IsCoopRace(gGT)) &&
 			    ((
 			        // cooldown is finished
 			        gGT->timerEndOfRaceVS == 0 ||

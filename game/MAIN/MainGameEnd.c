@@ -516,6 +516,14 @@ static void MainGameEnd_CheckTimeTrialGhost(struct GameTracker *gGT, struct Driv
 	gGT->gameModeEnd |= PLAYER_GHOST_BEAT;
 }
 
+// Adventure co-op shares one result between both racers, so it has no winner and
+// loser to rank or comment on, and it does not end on the first racer across the
+// line.
+b32 MainGameEnd_IsCoopRace(struct GameTracker *gGT)
+{
+	return (gGT->gameMode1 & ADVENTURE_MODE) != 0 && gGT->numPlyrCurrGame > 1;
+}
+
 void MainGameEnd_Initialize(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -566,10 +574,9 @@ void MainGameEnd_Initialize(void)
 		MainGameEnd_FinalizeDriverClocks(gGT);
 
 		// The versus round comments need a race ranking to pick winners and losers.
-		// Crystal Challenge is a co-op event with a single shared result, so it
-		// ends without them: skipping also keeps timerEndOfRaceVS at zero, which
-		// would otherwise hold the results menu back for several seconds.
-		if ((gGT->gameMode1 & CRYSTAL_CHALLENGE) == 0)
+		// Adventure co-op has instead shared events with a single result, so they end without them: skipping also
+		// keeps timerEndOfRaceVS at zero, which would otherwise hold the results menu back for several seconds.
+		if (!MainGameEnd_IsCoopRace(gGT))
 		{
 			UI_VsQuipAssignAll();
 		}
