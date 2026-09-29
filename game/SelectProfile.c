@@ -2,6 +2,8 @@
 
 // Defined with the profile load and save helpers further down.
 static void SelectProfile_ApplyAdvMultiplayerCharacter(void);
+static s16 SelectProfile_AdvMultiplayerPartner(const struct AdvMultiplayerSettings *settings);
+static const struct AdvMultiplayerSettings *SelectProfile_AdvSettingsToShow(const struct AdvProgress *adv, int slot);
 
 void SelectProfile_QueueLoadHub_MenuProc(struct RectMenu *menu)
 {
@@ -111,6 +113,16 @@ static void SelectProfile_DrawAdvProfile_UpdateIcon(struct SelectProfileLoadSave
 	inst->flags &= ~HIDE_MODEL;
 }
 
+// A racer avatar is drawn at the size of its own texture, which is what the
+// 0x1000 scale means for the decal draw helpers.
+static void SelectProfile_DrawRacerIcon(struct GameTracker *gGT, int characterID, Color color, int posX, int posY)
+{
+	int iconID = data.MetaDataCharacters[characterID].iconID;
+
+	RECTMENU_DrawPolyGT4(gGT->ptrIcons[iconID], posX, posY, &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT,
+		color, color, color, color, 1, 0x1000);
+}
+
 void SelectProfile_DrawAdvProfile(struct AdvProgress *adv, int posX, int posY, s16 isHighlighted, s16 slotIndex, u16 menuFlag)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -139,6 +151,10 @@ void SelectProfile_DrawAdvProfile(struct AdvProgress *adv, int posX, int posY, s
 		percentColor = WHITE;
 	}
 
+	// The row is identified by its profile slot, while the spinning models of the
+	// row come in threes.
+	int profileSlot = slotIndex;
+
 	slotIndex *= 3;
 	GAMEPROG_AdvPercent(adv);
 
@@ -148,15 +164,28 @@ void SelectProfile_DrawAdvProfile(struct AdvProgress *adv, int posX, int posY, s
 	}
 	else
 	{
-		int profileTextColor = JUSTIFY_RIGHT | numberColor;
-		int characterID = adv->characterID;
-		int iconID = data.MetaDataCharacters[characterID].iconID;
+		int numPlayers = SelectProfile_AdvSettingsToShow(adv, profileSlot)->numPlayers;
 		struct SelectProfileLoadSaveObj *obj = (struct SelectProfileLoadSaveObj *)sdata->ptrLoadSaveObj;
+		// A co-op profile shows the partner next to the first racer, and the group
+		// then moves left to keep clear of the text of the row.
+		int firstIconX = posX + SELECT_PROFILE_ADV_ICON_X;
+		int firstIconY = posY + SELECT_PROFILE_ADV_ICON_Y;
 
-		RECTMENU_DrawPolyGT4(gGT->ptrIcons[iconID], posX + 10, posY + 6, &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT, iconColor, iconColor, iconColor,
-		                     iconColor, 1, 0x1000);
+		if (numPlayers > 1)
+		{
+			firstIconX -= 8;
+			firstIconY -= 2;
+			int characterID2 = SelectProfile_AdvMultiplayerPartner(SelectProfile_AdvSettingsToShow(adv, profileSlot));
+			SelectProfile_DrawRacerIcon(gGT, characterID2, iconColor, firstIconX, firstIconY + 28);
+		}
+
+		int characterID = adv->characterID;
+		SelectProfile_DrawRacerIcon(gGT, characterID, iconColor, firstIconX, firstIconY);
+
 
 		DecalFont_DrawLine(adv->name, posX + 0x6c, posY + 0x29, FONT_BIG, JUSTIFY_CENTER | nameColor);
+
+		int profileTextColor = JUSTIFY_RIGHT | numberColor;
 
 		SelectProfile_PrintInteger(gGT->currAdvProfile.completionPercent, posX + 0x6a, posY + 0x17, 0, profileTextColor);
 		SelectProfile_PrintInteger(gGT->currAdvProfile.numTrophies, posX + 0x6a, posY + 5, 0, profileTextColor);
@@ -672,27 +701,63 @@ static void SelectProfile_ApplyAdvMultiplayerCharacter(void)
 	}
 }
 
+// Whether a co-op entry describes a profile that plays with a partner. A save
+// without the co-op settings has zeroes there, which no racer count falls into:
+// such a profile plays alone, and so does any count this port did not write.
+static int SelectProfile_AdvMultiplayerIsCoop(const struct AdvMultiplayerSettings *settings)
+{
+	const s16 numPlayers = settings->numPlayers;
+
+	return numPlayers > ADV_MULTIPLAYER_DEFAULT_PLAYERS && numPlayers <= ADV_MULTIPLAYER_NUM_PLAYERS_MAX;
+}
+
+// The partner of a co-op entry, or ADV_MULTIPLAYER_NO_CHARACTER when it has none.
+// The partner is only read once the racer count says two players are there, so
+// what an older save left in the entry is never taken for one.
+static s16 SelectProfile_AdvMultiplayerPartner(const struct AdvMultiplayerSettings *settings)
+{
+	if (!SelectProfile_AdvMultiplayerIsCoop(settings))
+	{
+		return ADV_MULTIPLAYER_NO_CHARACTER;
+	}
+
+	if (!SelectProfile_IsValidCharacterID(settings->characterID2))
+	{
+		return ADV_MULTIPLAYER_NO_CHARACTER;
+	}
+
+	return settings->characterID2;
+}
+
+// The co-op settings a profile shows. The profile in play shows its live settings,
+// which are what a save of it is about to write, while every other profile shows
+// what the card holds for its slot. The summary of the profile in play draws the
+// live profile itself, so it is recognised by that and not by the slot it passes
+// for the models of the row.
+static const struct AdvMultiplayerSettings *SelectProfile_AdvSettingsToShow(const struct AdvProgress *adv, int slot)
+{
+	if (adv == &sdata->advProgress || (slot == sdata->advProfileIndex))
+	{
+		return &sdata->advMultiplayer;
+	}
+
+	return &SelectProfile_MemcardData()->extension.adventure[slot];
+}
+
 static void SelectProfile_LoadAdvMultiplayer(int slot)
 {
 	struct AdvMultiplayerSettings *saved = &SelectProfile_MemcardData()->extension.adventure[slot];
+	s16 characterID2 = SelectProfile_AdvMultiplayerPartner(saved);
 
 	GAMEPROG_ResetAdvMultiplayer(&sdata->advMultiplayer);
 
-	// A save without the co-op settings has zeroes here, which no racer count
-	// falls into: such a profile plays alone, and so does any count this port
-	// did not write.
-	if (saved->numPlayers <= 1 || saved->numPlayers > ADV_MULTIPLAYER_NUM_PLAYERS_MAX)
+	if (!SelectProfile_AdvMultiplayerIsCoop(saved))
 	{
 		return;
 	}
 
 	sdata->advMultiplayer.numPlayers = saved->numPlayers;
-
-	// A partner is only read once the racer count says two players are there.
-	if (SelectProfile_IsValidCharacterID(saved->characterID2))
-	{
-		sdata->advMultiplayer.characterID2 = saved->characterID2;
-	}
+	sdata->advMultiplayer.characterID2 = characterID2;
 }
 
 static void SelectProfile_SaveAdvMultiplayer(int slot)
