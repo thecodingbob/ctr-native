@@ -332,7 +332,10 @@ void BOTS_Adv_AdjustDifficulty(void)
 
 	gGT->numBotsNextGame = 0;
 
-	if (((gameMode2 & CUP_ANY_KIND) == 0) || (gGT->cup.trackIndex == 0))
+	// Adventure co-op keeps the Adventure grid instead: the warp pad places both
+	// human racers at the back, and a retry carries over the positions from the
+	// previous race, so none of the tables below may overwrite it.
+	if (!MainGameEnd_IsCoopRace(gGT) && (((gameMode2 & CUP_ANY_KIND) == 0) || (gGT->cup.trackIndex == 0)))
 	{
 		if (gGT->numPlyrCurrGame == 2)
 		{
