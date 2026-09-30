@@ -224,7 +224,7 @@ void AH_WarpPad_ThTick(struct Thread *t)
 	s32 rewardScale2;
 
 	s32 champID;
-	s32 champSlot;
+	s32 champGridSlot;
 
 	// The human drivers always take the grid slots at the back, so the bots are
 	// the ones that share the front of the grid.
@@ -488,19 +488,21 @@ void AH_WarpPad_ThTick(struct Thread *t)
 	// and is not the same characterID as this driver
 	if ((champID < AH_WP_RACER_SLOT_COUNT) && (champID != GAME_CHARACTER_IDS[driver->driverID]))
 	{
-		champSlot = 0;
+		champGridSlot = 0;
 		// set everyone to spawn in order, starting after the human drivers
 		for (i = firstBotSlot; i < AH_WP_RACER_SLOT_COUNT; i++)
 		{
 			if (AH_WarpPad_Champion(warppadObj->levelID) == GAME_CHARACTER_IDS[i])
 			{
-				champSlot = i;
+				// The last bot takes over the grid slot the champion vacated, which
+				// is not the champion's driver slot once the humans sit at the back.
+				champGridSlot = AH_WP_FIRST_BOT_GRID_SLOT + (i - firstBotSlot);
 				AH_KART_SPAWN_ORDER[i] = AH_WP_SPEED_CHAMPION_GRID_SLOT;
 			}
 
 			else if (i == AH_WP_RACER_SLOT_COUNT - 1)
 			{
-				AH_KART_SPAWN_ORDER[AH_WP_RACER_SLOT_COUNT - 1] = champSlot;
+				AH_KART_SPAWN_ORDER[AH_WP_RACER_SLOT_COUNT - 1] = champGridSlot;
 			}
 
 			else
