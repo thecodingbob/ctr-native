@@ -7,8 +7,11 @@
 
 enum
 {
-	LOAD_EXTRA_CHARACTER_MODEL_CAPACITY = LOAD_CHARACTER_ID_COUNT - 1,
+	LOAD_EXTRA_CHARACTER_MODEL_CAPACITY = LOAD_CHARACTER_ID_COUNT,
 	LOAD_DEFAULT_CHARACTER_COUNT = 8,
+	// Pura is the eighth base racer, so the 1P arcade MPK only carries her when
+	// the player picks her; see LOAD_RacerNeedsStandaloneModel.
+	LOAD_UNCOVERED_BASE_RACER_ID = 7,
 	LOAD_CHARACTER_COUNT = len(data.MetaDataCharacters),
 };
 
@@ -20,6 +23,14 @@ static b32 LOAD_IsRandomBotSelectionEnabled(void)
 {
 	int mode = g_config.botSelectionMode;
 	return mode == BOT_SELECTION_RANDOM_UNLOCKED || mode == BOT_SELECTION_RANDOM_ALL;
+}
+
+// NOTE: Every random-bot decision has to agree with LOAD_DriverMPK on what the
+// extended Arcade option means, otherwise the roster it writes and the models it
+// queues describe different races.
+static b32 LOAD_IsExtendedArcadeMultiplayer(void)
+{
+	return (sdata->gGT->gameMode1 & ARCADE_MODE) != 0 && g_config.extendedArcadeMultiplayer;
 }
 
 static b32 LOAD_IsRandomBotRace(void)
@@ -36,7 +47,10 @@ static b32 LOAD_IsRandomBotRace(void)
 		return false;
 	}
 
-	if ((gameMode & (GAME_CUTSCENE | ADVENTURE_ARENA | MAIN_MENU | BATTLE_MODE | RELIC_RACE | TIME_TRIAL | ADVENTURE_BOSS)) != 0)
+	// CRYSTAL_CHALLENGE is the last entry: MainInit_Drivers never spawns AIs for
+	// it, so randomizing there would only queue models nobody uses.
+	if ((gameMode & (GAME_CUTSCENE | ADVENTURE_ARENA | MAIN_MENU | BATTLE_MODE | RELIC_RACE | TIME_TRIAL |
+	                 ADVENTURE_BOSS | CRYSTAL_CHALLENGE)) != 0)
 	{
 		return false;
 	}
@@ -72,7 +86,7 @@ static int LOAD_GetRandomBotCount(void)
 {
 	int playerCount = sdata->gGT->numPlyrCurrGame;
 
-	if (playerCount == 1 || g_config.extendedArcadeMultiplayer)
+	if (playerCount == 1 || LOAD_IsExtendedArcadeMultiplayer())
 	{
 		return LOAD_CHARACTER_ID_COUNT - playerCount;
 	}
@@ -99,13 +113,36 @@ static void LOAD_ResetExtraCharacterModels(void)
 	s_extraCharacterModelCount = 0;
 }
 
+// The 1P arcade MPK carries eight driver models: the player plus a fixed
+// seven-racer AI set drawn from the base roster. When the player is a base racer
+// that set is the other seven base racers, so the pack covers all eight. When
+// the player is a boss the set is crash..polar, which leaves LOAD_UNCOVERED_BASE_RACER_ID
+// without any model, and a bot drawn from her renders as an invisible ghost.
+static b32 LOAD_RacerNeedsStandaloneModel(s16 characterID)
+{
+	if (characterID >= LOAD_DEFAULT_CHARACTER_COUNT)
+	{
+		return true;
+	}
+
+	return (characterID == LOAD_UNCOVERED_BASE_RACER_ID) && (data.characterIDs[0] >= LOAD_DEFAULT_CHARACTER_COUNT);
+}
+
 static void LOAD_QueueExtraCharacterModels(struct BigHeader *bigfile, const s16 *characterIDs, int characterCount, int modelFileIndex)
 {
 	for (int characterIndex = 0; characterIndex < characterCount; characterIndex++)
 	{
 		if (s_extraCharacterModelCount >= LOAD_EXTRA_CHARACTER_MODEL_CAPACITY)
 		{
-			return;
+			break;
+		}
+
+		// LOAD_AppendQueue drops anything past LOAD_QUEUE_SLOT_COUNT, and a
+		// dropped request never hands back a model pointer. Stop here instead,
+		// otherwise the racer is queued as loaded but stays empty.
+		if (sdata->queueLength >= LOAD_QUEUE_SLOT_COUNT)
+		{
+			break;
 		}
 
 		int modelIndex = s_extraCharacterModelCount++;
@@ -150,19 +187,22 @@ static void LOAD_SelectRandomBots(void)
 
 static void LOAD_QueueRandomBotModels(struct BigHeader *bigfile)
 {
+	b32 extendedArcadeMultiplayer = LOAD_IsExtendedArcadeMultiplayer();
 	s16 standaloneCharacterIDs[LOAD_EXTRA_CHARACTER_MODEL_CAPACITY];
 	int botCount = LOAD_GetRandomBotCount();
 	int standaloneCharacterCount = 0;
-	int modelFileIndex = sdata->gGT->numPlyrCurrGame == 2 && !g_config.extendedArcadeMultiplayer ? BI_RACERMODELMED : BI_RACERMODELHI;
+	int modelFileIndex = sdata->gGT->numPlyrCurrGame == 2 && !extendedArcadeMultiplayer ? BI_RACERMODELMED : BI_RACERMODELHI;
 
 	for (int botIndex = 0; botIndex < botCount; botIndex++)
 	{
 		s16 characterID = data.characterIDs[sdata->gGT->numPlyrCurrGame + botIndex];
 
-		// The 1P arcade pack provides the original eight racers. The regular
-		// 2P pack has only its predefined AI set, so every randomized 2P bot
-		// needs a standalone model.
-		if (characterID >= LOAD_DEFAULT_CHARACTER_COUNT || (sdata->gGT->numPlyrCurrGame == 2 && !g_config.extendedArcadeMultiplayer))
+		// A randomized bot can land on any of the sixteen racers, while the
+		// 1P arcade pack only holds the player plus its own AI set, so ask
+		// LOAD_RacerNeedsStandaloneModel rather than assuming the pack covers
+		// every base racer. The regular 2P pack has only its predefined AI set,
+		// so every randomized 2P bot needs a standalone model regardless.
+		if (LOAD_RacerNeedsStandaloneModel(characterID) || (sdata->gGT->numPlyrCurrGame == 2 && !extendedArcadeMultiplayer))
 		{
 			standaloneCharacterIDs[standaloneCharacterCount++] = characterID;
 		}
@@ -277,6 +317,29 @@ void LOAD_Robots1P(int characterID)
 	}
 }
 
+// LOAD_Robots1P walks the base roster upwards, so with one player it stops
+// before Pura and every bot is covered by the 1P arcade pack. With two or more
+// players the skipped player entries push the last bot onto a racer the pack
+// does not carry, so give those bots their own model file.
+static void LOAD_QueueExtendedArcadeBotModels(struct BigHeader *bigfile)
+{
+	struct GameTracker *gGT = sdata->gGT;
+	s16 standaloneCharacterIDs[LOAD_EXTRA_CHARACTER_MODEL_CAPACITY];
+	int standaloneCharacterCount = 0;
+
+	for (int driverID = gGT->numPlyrCurrGame; driverID < LOAD_CHARACTER_ID_COUNT; driverID++)
+	{
+		s16 characterID = data.characterIDs[driverID];
+
+		if (LOAD_RacerNeedsStandaloneModel(characterID))
+		{
+			standaloneCharacterIDs[standaloneCharacterCount++] = characterID;
+		}
+	}
+
+	LOAD_QueueExtraCharacterModels(bigfile, standaloneCharacterIDs, standaloneCharacterCount, BI_RACERMODELHI);
+}
+
 static void (*const LOAD_DriverMPK_SetPointer)(struct LoadQueueSlot *) = LOAD_QUEUE_CALLBACK_SET_POINTER;
 
 int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(struct LoadQueueSlot *))
@@ -288,7 +351,7 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 
 	struct GameTracker *gGT = sdata->gGT;
 	gameMode1 = gGT->gameMode1;
-	extendedArcadeMultiplayer = (gameMode1 & ARCADE_MODE) != 0 && g_config.extendedArcadeMultiplayer;
+	extendedArcadeMultiplayer = LOAD_IsExtendedArcadeMultiplayer();
 
 	randomBotRace = LOAD_IsRandomBotRace();
 	LOAD_ResetExtraCharacterModels();
@@ -308,6 +371,7 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 		if (!randomBotRace)
 		{
 			LOAD_Robots1P(data.characterIDs[0]);
+			LOAD_QueueExtendedArcadeBotModels(bigfile);
 		}
 	}
 
