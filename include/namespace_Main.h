@@ -1396,6 +1396,13 @@ struct GameTracker
 	u8 pad_boolSeenOxideIntro;
 
 	// 2584
+
+	// Retail celebrates the top podium step and gives the two lower ones the losing
+	// model and dance. An Adventure co-op pair shares one result, so when the team
+	// wins both humans stand on the top two steps and both are celebrated. Written by
+	// Podium_InitModels, which knows the round result while the ranks are still valid,
+	// and read later by the podium model load and by the cutscene dance script.
+	u8 podium_secondPlaceCelebrates;
 };
 
 #ifndef CTR_NATIVE

@@ -16,6 +16,10 @@ void Podium_InitModels(struct GameTracker *gGT)
 	gGT->podium_modelIndex_Third = 0;
 	gGT->podium_modelIndex_tawna = STATIC_TAWNA1;
 
+	// This is the last point where the finishing order is still readable: by the time
+	// the podium overlay runs the racers have been replaced by the hub's single player.
+	gGT->podium_secondPlaceCelebrates = MainGameEnd_PodiumSharesWin(gGT);
+
 	u8 *podiumModelIndexArr = &gGT->podium_modelIndex_First;
 
 	for (int i = 0; i < PODIUM_DRIVER_COUNT; i++)

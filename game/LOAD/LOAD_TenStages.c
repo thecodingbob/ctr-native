@@ -579,7 +579,10 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 		// podium second place
 		if (ptrIndexArr[1] != 0)
 		{
-			fileIndex = BI_DANCEMODELLOSE + podiumFileVariant + (ptrIndexArr[1] - STATIC_CRASHDANCE) * LOAD_PODIUM_MODEL_FILE_STRIDE;
+			// A co-op team that won the round shares the winner's model with the
+			// racer on the second step, so both have a celebration to play.
+			int secondPlaceModel = gGT->podium_secondPlaceCelebrates ? BI_DANCEMODELWIN : BI_DANCEMODELLOSE;
+			fileIndex = secondPlaceModel + podiumFileVariant + (ptrIndexArr[1] - STATIC_CRASHDANCE) * LOAD_PODIUM_MODEL_FILE_STRIDE;
 			LOAD_AppendQueue(bigfile, LT_GETADDR, fileIndex, &ptrModelPtrArr[1], setPtrCb);
 		}
 

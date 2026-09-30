@@ -1768,10 +1768,20 @@ struct Thread *CS_Thread_Init(s32 modelID, const char *name, struct CsThreadInit
 		}
 		else
 		{
-			if (modelID == GAME_TRACKER->podium_modelIndex_First)
+			// Only the top step gets the victory dance. A co-op team that won shares
+			// it with the racer on the second step, who is a teammate rather than a
+			// loser.
+			b32 isWinner = (modelID == GAME_TRACKER->podium_modelIndex_First) ||
+			              (GAME_TRACKER->podium_secondPlaceCelebrates && (modelID == GAME_TRACKER->podium_modelIndex_Second));
+
+			if (isWinner)
+			{
 				CS_ScriptCmd_OpcodeAt(cs, CS_SCRIPT(danceFirstScripts)[value]);
+			}
 			else
+			{
 				CS_ScriptCmd_OpcodeAt(cs, CS_SCRIPT(danceOtherScripts)[value]);
+			}
 		}
 	}
 
