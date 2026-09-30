@@ -1,5 +1,14 @@
 #include <common.h>
 
+enum
+{
+	// driverRank is zero based, so the podium places an Adventure round is won on
+	// are the first two.
+	MAIN_GAME_END_FIRST_PLACE_RANK = 0,
+	MAIN_GAME_END_SECOND_PLACE_RANK = 1,
+	MAIN_GAME_END_PODIUM_PLACES = 2,
+};
+
 void MainGameEnd_SoloRaceGetReward(int subtractTimeCrateBonus)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -164,14 +173,16 @@ static void MainGameEnd_SetBattleConfetti(struct GameTracker *gGT)
 	gGT->confetti.vanishRate = 0xfa;
 }
 
-static void MainGameEnd_UpdateAdventureLosses(struct GameTracker *gGT, struct Driver *player)
+static void MainGameEnd_UpdateAdventureLosses(struct GameTracker *gGT)
 {
 	if ((gGT->gameMode1 & (ADVENTURE_CUP | RELIC_RACE | ADVENTURE_MODE)) != ADVENTURE_MODE)
 	{
 		return;
 	}
 
-	if (player->driverRank == 0)
+	// The loss counter follows the same win rule as the round itself, so a co-op
+	// pair that takes first and second together clears it just like a solo win.
+	if (MainGameEnd_AdventureRaceWon(gGT))
 	{
 		if (IS_BOSS_RACE(gGT->gameMode1))
 		{
@@ -524,6 +535,61 @@ b32 MainGameEnd_IsCoopRace(struct GameTracker *gGT)
 	return (gGT->gameMode1 & ADVENTURE_MODE) != 0 && gGT->numPlyrCurrGame > 1;
 }
 
+// Whether the human side won the Adventure round. A lone racer has to finish
+// first on their own. A co-op pair is a single result, so it is won only when both
+// racers are on the podium - first and second, in either order - and one racer up
+// front while the other trails is a loss. Rounds without a finish line to be ranked
+// on keep the solo racer test: the crystal challenge is won on crystals and relics
+// are solo.
+b32 MainGameEnd_AdventureRaceWon(struct GameTracker *gGT)
+{
+	if (!MainGameEnd_IsCoopRace(gGT) ||
+	    (gGT->gameMode1 & (CRYSTAL_CHALLENGE | RELIC_RACE)) != 0)
+	{
+		return gGT->drivers[0]->driverRank == MAIN_GAME_END_FIRST_PLACE_RANK;
+	}
+
+	int podiumCount = 0;
+
+	for (int i = 0; i < gGT->numPlyrCurrGame; i++)
+	{
+		struct Driver *driver = gGT->drivers[i];
+		int rank;
+
+		if (driver == NULL)
+		{
+			continue;
+		}
+
+		rank = driver->driverRank;
+
+		if ((rank == MAIN_GAME_END_FIRST_PLACE_RANK) || (rank == MAIN_GAME_END_SECOND_PLACE_RANK))
+		{
+			podiumCount++;
+		}
+	}
+
+	return podiumCount == MAIN_GAME_END_PODIUM_PLACES;
+}
+
+// True once every human racer is across the line. Co-op holds the round open
+// until the second racer arrives, so anything that reacts to the race being over
+// has to wait for this instead of firing on the first arrival.
+b32 MainGameEnd_AllHumansFinished(struct GameTracker *gGT)
+{
+	for (int i = 0; i < gGT->numPlyrCurrGame; i++)
+	{
+		struct Driver *driver = gGT->drivers[i];
+
+		if ((driver != NULL) && (driver->actionsFlagSet & ACTION_RACE_FINISHED) == 0)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
 void MainGameEnd_Initialize(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -549,7 +615,7 @@ void MainGameEnd_Initialize(void)
 			gGT->gameMode1 &= ~ROLLING_ITEM;
 		}
 
-		MainGameEnd_UpdateAdventureLosses(gGT, player);
+		MainGameEnd_UpdateAdventureLosses(gGT);
 
 		gGT->gameMode1 |= END_OF_RACE;
 		gGT->gameModeEnd = gGT->gameMode1 & GAME_MODE_END_RETAINED_MODE_MASK;

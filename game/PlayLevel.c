@@ -79,6 +79,28 @@ static bool PlayLevel_ShouldEndWhenOthersArrived(struct GameTracker *gGT)
 	return sdata->numPlayersFinishedRace >= (totalRacerCount - 1);
 }
 
+// Confetti celebrates the result of the round, so it only belongs to racers that
+// actually won it. Retail gives it to whoever crosses the line first, which in
+// Adventure co-op happens before the pair knows the outcome, so the co-op pair is
+// celebrated from the race-end block instead.
+static void PlayLevel_CelebrateWinner(struct GameTracker *gGT, struct Driver *winner, int winnerIndex, int winnerCount)
+{
+	u8 driverID = winner->driverID;
+
+	// amount of confetti particles
+	gGT->confetti.numParticles_max = PLAYLEVEL_CONFETTI_PARTICLES;
+	gGT->confetti.vanishRate = PLAYLEVEL_CONFETTI_PARTICLES;
+
+	// how many racers are being celebrated, and the slot this driver ID lands in
+	gGT->numWinners = winnerCount;
+	gGT->winnerIndex[winnerIndex] = driverID;
+
+	// edit window variables for confetti
+	gGT->pushBuffer[driverID].fadeFromBlack_currentValue = PLAYLEVEL_WINNER_FADE_CURRENT;
+	gGT->pushBuffer[driverID].fadeFromBlack_desiredResult = PLAYLEVEL_WINNER_FADE_DESIRED;
+	gGT->pushBuffer[driverID].fade_step = PLAYLEVEL_WINNER_FADE_STEP;
+}
+
 void PlayLevel_UpdateLapStats(void)
 {
 	int bestDriverIndex;
@@ -93,10 +115,12 @@ void PlayLevel_UpdateLapStats(void)
 	int driverIndex;
 	int finishedHumanCount;
 	int currRank;
+	b32 coopRace;
 	struct GameTracker *gGT = sdata->gGT;
 
 	finishedHumanCount = 0;
 	currRank = 0;
+	coopRace = MainGameEnd_IsCoopRace(gGT);
 
 	// driver pointer,
 	// unlike other "rank" index variables
@@ -248,26 +272,14 @@ void PlayLevel_UpdateLapStats(void)
 
 				if ((currDriver->actionsFlagSet & ACTION_BOT) == 0)
 				{
-					// If this racer is in first place
-					if (currDriver->driverRank == PLAYLEVEL_FIRST_PLACE_RANK)
+					// If this racer is in first place. Co-op skips this: its racers
+					// only win as a pair, so the outcome is not known until the
+					// race-end block below.
+					if (!coopRace && (currDriver->driverRank == PLAYLEVEL_FIRST_PLACE_RANK))
 					{
-						// amount of confetti particles
-						gGT->confetti.numParticles_max = PLAYLEVEL_CONFETTI_PARTICLES;
-						gGT->confetti.vanishRate = PLAYLEVEL_CONFETTI_PARTICLES;
-
 						// one person won,
 						// one person gets confetti
-						gGT->numWinners = PLAYLEVEL_SINGLE_WINNER_COUNT;
-
-						u8 driverID = currDriver->driverID;
-
-						// add driver ID to array of confetti winners
-						gGT->winnerIndex[PLAYLEVEL_FIRST_WINNER_INDEX] = driverID;
-
-						// edit window variables for confetti
-						gGT->pushBuffer[driverID].fadeFromBlack_currentValue = PLAYLEVEL_WINNER_FADE_CURRENT;
-						gGT->pushBuffer[driverID].fadeFromBlack_desiredResult = PLAYLEVEL_WINNER_FADE_DESIRED;
-						gGT->pushBuffer[driverID].fade_step = PLAYLEVEL_WINNER_FADE_STEP;
+						PlayLevel_CelebrateWinner(gGT, currDriver, PLAYLEVEL_FIRST_WINNER_INDEX, PLAYLEVEL_SINGLE_WINNER_COUNT);
 					}
 					if (currDriver->noItemTimer != 0)
 					{
@@ -473,7 +485,6 @@ void PlayLevel_UpdateLapStats(void)
 	}
 
 	int humanPlayerCount = gGT->numPlyrCurrGame;
-	b32 coopRace = MainGameEnd_IsCoopRace(gGT);
 
 	// Check if race should end
 	bool shouldEndRace = false;
@@ -561,6 +572,23 @@ void PlayLevel_UpdateLapStats(void)
 			// Reduce counters for AttackingPlayer and AttackedByPlayer
 			currDriver->numTimesAttackedByPlayer[currDriver->driverID]--;
 			currDriver->numTimesAttackingPlayer[currDriver->driverID]--;
+		}
+
+		// Adventure co-op has one result for the pair, so the confetti waits until
+		// this frame, where it is known whether the pair took the top two places.
+		if (coopRace && MainGameEnd_AdventureRaceWon(gGT))
+		{
+			for (currRank = 0; currRank < humanPlayerCount; currRank++)
+			{
+				currDriver = gGT->drivers[currRank];
+
+				if (currDriver == NULL)
+				{
+					continue;
+				}
+
+				PlayLevel_CelebrateWinner(gGT, currDriver, currRank, humanPlayerCount);
+			}
 		}
 
 		MainGameEnd_Initialize();

@@ -265,6 +265,7 @@ void Audio_Update1(void)
 	s32 i;
 	int raceOrderIndex;
 	s16 uVar1;
+	b32 humanWon;
 	b32 tropyBeatenOnAllTracks;
 	struct Driver *d = 0;
 	u32 maskTempo;
@@ -498,6 +499,15 @@ void Audio_Update1(void)
 
 		Level_AmbientSound();
 
+		// Adventure co-op holds the round open until the second racer is across
+		// the line, so the race-end music waits for that instead of firing on the
+		// first arrival. The state is re-evaluated every frame, so this only holds
+		// the music back while the partner is still on track.
+		if (MainGameEnd_IsCoopRace(gGT) && !MainGameEnd_AllHumansFinished(gGT))
+		{
+			break;
+		}
+
 		if ((d->actionsFlagSet & ACTION_RACE_FINISHED) != 0)
 		{
 			// if did not just open N Tropy
@@ -509,7 +519,12 @@ void Audio_Update1(void)
 					// defeat music
 					uVar1 = 5;
 
-					if ((raceOrderIndex == 0) || ((gGT->gameMode1 & ADVENTURE_CUP) != 0) || ((gGT->gameMode2 & CUP_ANY_KIND) != 0))
+					// Co-op only earns the fanfare when both racers took the top
+					// two places; a single racer up front is a loss. Every other
+					// mode keeps retail's "human in front won" test.
+					humanWon = MainGameEnd_IsCoopRace(gGT) ? MainGameEnd_AdventureRaceWon(gGT) : (raceOrderIndex == 0);
+
+					if (humanWon || ((gGT->gameMode1 & ADVENTURE_CUP) != 0) || ((gGT->gameMode2 & CUP_ANY_KIND) != 0))
 					{
 						OtherFX_Play(0x5f, 0);
 

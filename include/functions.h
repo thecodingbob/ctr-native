@@ -788,6 +788,8 @@ void MainGameEnd_SoloRaceGetReward(int subtractTimeCrateBonus);
 void MainGameEnd_SoloRaceSaveHighScore(void);
 void MainGameEnd_Initialize(void);
 b32 MainGameEnd_IsCoopRace(struct GameTracker *gGT);
+b32 MainGameEnd_AdventureRaceWon(struct GameTracker *gGT);
+b32 MainGameEnd_AllHumansFinished(struct GameTracker *gGT);
 void Podium_InitModels(struct GameTracker *gGT);
 void VehLap_UpdateProgress(struct Driver *driver);
 

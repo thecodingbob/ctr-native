@@ -69,6 +69,7 @@ enum ArcadeAdventureEndMenuConstants
 	AA_END_EVENT_TEXT_Y = 0xbe,
 	AA_END_EVENT_MENU_X = 0x100,
 	AA_END_EVENT_MENU_Y = 0xb4,
+	AA_CTR_LETTER_COUNT = 3,
 };
 
 // NOTE(aalhendi): Retail stores this writable one-character string before the
@@ -90,6 +91,26 @@ extern struct RectMenu menu222_2P;
 #define gameHudStructs           (data.hudStructPtr)
 #define gameMenuRetryExit        (data.menuRetryExit)
 #endif
+
+// The three CTR letters are a single shared resource: a co-op round is won on
+// them only if the pair collected all three between them, so the round total is
+// the sum over the human racers rather than one driver's tally.
+static int AA_TeamLettersCollected(struct GameTracker *gGT)
+{
+	int collected = 0;
+
+	for (int i = 0; i < gGT->numPlyrCurrGame; i++)
+	{
+		struct Driver *letterRacer = gGT->drivers[i];
+
+		if (letterRacer != NULL)
+		{
+			collected += letterRacer->PickupLetterHUD.numCollected;
+		}
+	}
+
+	return collected;
+}
 
 void AA_EndEvent_DrawMenu(void)
 {
@@ -165,7 +186,8 @@ void AA_EndEvent_DrawMenu(void)
 	// If adventure mode
 	if ((adventureGameTracker->gameMode1 & ADVENTURE_MODE) != 0)
 	{
-		if ((driver->driverRank != 0) || (driver->PickupLetterHUD.numCollected != 3))
+		if (!MainGameEnd_AdventureRaceWon(adventureGameTracker) ||
+		    (AA_TeamLettersCollected(adventureGameTracker) != AA_CTR_LETTER_COUNT))
 		{
 			// A lost or incomplete token run drops the letters in a six-frame stagger.
 			if (GAME_FRAMES_SINCE_RACE_ENDED < AA_RESULT_MAX_FRAMES)
@@ -570,16 +592,17 @@ void AA_EndEvent_DrawMenu(void)
 		return;
 	}
 
-	// Normal Adventure races require first place. Token races also require all
-	// three CTR letters.
+	// A solo Adventure racer needs first place on their own; a co-op pair needs
+	// both of them on the podium. Token races also require all three CTR letters.
 	if ((GAME_TRACKER->gameMode2 & TOKEN_RACE) == 0)
 	{
-		if (driver->driverRank == 0)
+		if (MainGameEnd_AdventureRaceWon(GAME_TRACKER))
 		{
 			goto race_won;
 		}
 	}
-	else if ((driver->driverRank == 0) && (driver->PickupLetterHUD.numCollected == 3))
+	else if (MainGameEnd_AdventureRaceWon(GAME_TRACKER) &&
+	         (AA_TeamLettersCollected(GAME_TRACKER) == AA_CTR_LETTER_COUNT))
 	{
 		goto race_won;
 	}
@@ -661,7 +684,7 @@ race_won:
 	}
 
 	// A normal Adventure win awards the first-time trophy and, when all three
-	// letters were collected, the track's CTR token.
+	// letters were collected between them, the track's CTR token.
 	rewardBit = GAME_TRACKER->levelID;
 	rewardBit += ADV_REWARD_FIRST_TROPHY;
 	if (!CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, rewardBit))
@@ -670,7 +693,7 @@ race_won:
 		GAME_TRACKER->podiumRewardID = STATIC_TROPHY;
 	}
 
-	if (driver->PickupLetterHUD.numCollected == 3)
+	if (AA_TeamLettersCollected(GAME_TRACKER) == AA_CTR_LETTER_COUNT)
 	{
 		UNLOCK_ADV_BIT(GAME_ADV_PROGRESS.rewards, GAME_TRACKER->levelID + ADV_REWARD_FIRST_CTR_TOKEN);
 	}
