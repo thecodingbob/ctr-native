@@ -170,8 +170,10 @@ void UI_CupStandings_InputAndDraw(void)
 
 	SVec2 drawPos;
 
-	// Multiplayer Cup Game
-	if (gGT->numPlyrCurrGame != 1)
+	// Multiplayer Cup Game. An Adventure co-op cup is left out: retail keeps the
+	// checkered flag off screen for the whole Adventure race and only brings it back
+	// for the Arcade and VS cups, so the wait below would never finish.
+	if ((gGT->numPlyrCurrGame != 1) && !MainGameEnd_IsCoopRace(gGT))
 	{
 		if (((gGT->gameMode2 & CUP_ANY_KIND) != 0) && (RaceFlag_IsFullyOffScreen()))
 		{
