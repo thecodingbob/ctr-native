@@ -641,8 +641,14 @@ void UI_CupStandings_InputAndDraw(void)
 					// remove flag for adventure cup
 					sdata->Loading.OnBegin.RemBitsConfig0 |= ADVENTURE_CUP;
 
-					// If player 1 won the cup
-					if (data.cupPositionPerPlayer[0] == gGT->drivers[0]->driverID)
+					// If the human side won the cup. The loop above has already turned
+					// the cup standings into driverRank values, so the Adventure round
+					// rule reads them directly: a lone racer has to be cup champion, and
+					// a co-op pair shares one result and has to hold the top two places,
+					// in either order. Retail only looked at cupPositionPerPlayer[0],
+					// which makes the cup belong to player 1 alone and ignores the
+					// partner entirely.
+					if (MainGameEnd_AdventureRaceWon(gGT))
 					{
 						int bitIndex = ADV_REWARD_FIRST_GEM + i;
 						u32 *rewardsSet = sdata->advProgress.rewards;
@@ -663,7 +669,7 @@ void UI_CupStandings_InputAndDraw(void)
 						sdata->advProgress.timesLostCupRace[gGT->cup.trackIndex] = 0;
 					}
 
-					// If player 1 did not win the cup
+					// If the human side did not win the cup
 					else
 					{
 						if (sdata->advProgress.timesLostCupRace[gGT->cup.trackIndex] < UI_CUP_STANDINGS_MAX_CUP_LOSSES)

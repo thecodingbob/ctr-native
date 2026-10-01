@@ -575,11 +575,14 @@ b32 MainGameEnd_AdventureRaceWon(struct GameTracker *gGT)
 // Whether the trophy podium should celebrate the second-place step as well. Retail
 // gives the top step the winner's model and dance and the two lower steps the losing
 // ones, but an Adventure co-op pair shares a single result, so a won round puts both
-// humans on the top two steps and both celebrate. Cups rank the whole field and a
-// relic race has no second racer, so both keep the retail podium.
+// humans on the top two steps and both celebrate. A cup counts the same way: the
+// standings run assigns the final cup positions to driverRank before the podium is
+// built, so a won cup also leaves both humans on the top two steps. A relic race has
+// no second racer, and the Arcade and VS cups rank the whole field, so those keep the
+// retail podium.
 b32 MainGameEnd_PodiumSharesWin(struct GameTracker *gGT)
 {
-	if ((gGT->gameMode1 & (ADVENTURE_CUP | RELIC_RACE | ADVENTURE_MODE)) != ADVENTURE_MODE)
+	if ((gGT->gameMode1 & (RELIC_RACE | ADVENTURE_MODE)) != ADVENTURE_MODE)
 	{
 		return false;
 	}
