@@ -25,6 +25,59 @@ enum PlayLevelConstants
 	PLAYLEVEL_BLASTED_DAMAGE = 2,
 };
 
+// Events where the driver shares the track with nobody else, so
+// "all other racers have arrived" would already be true on lap one.
+static bool PlayLevel_IsSoloOnlyRaceMode(u32 gameMode1)
+{
+	return ((gameMode1 & TIME_TRIAL) != 0) || ((gameMode1 & RELIC_RACE) != 0) || ((gameMode1 & CRYSTAL_CHALLENGE) != 0);
+}
+
+// Whether the auto-end option is allowed to decide the end of this event
+bool PlayLevel_CanAutoEndRace(struct GameTracker *gGT)
+{
+	// Off keeps the retail rules only
+	if (!g_config.autoEndRaceWhenOthersFinish)
+	{
+		return false;
+	}
+
+	// Battle ends through its own rules and never runs the lap stats
+	if ((gGT->gameMode1 & BATTLE_MODE) != 0)
+	{
+		return false;
+	}
+
+	if (PlayLevel_IsSoloOnlyRaceMode(gGT->gameMode1))
+	{
+		return false;
+	}
+
+	// Levels that are not a race, where nobody can arrive at all. Menus, the
+	// adventure hub and cutscenes reach the lap stats in some level builds,
+	// and the attract demo races on its own
+	if ((gGT->gameMode1 & (MAIN_MENU | ADVENTURE_ARENA | GAME_CUTSCENE)) != 0 || (gGT->boolDemoMode != 0))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+// Optional generalization of the multiplayer VS rule: end the race as soon
+// as every other racer has arrived, instead of waiting for the last kart
+static bool PlayLevel_ShouldEndWhenOthersArrived(struct GameTracker *gGT)
+{
+	// Off, solo-only events and battle keep the retail rules only
+	if (!PlayLevel_CanAutoEndRace(gGT))
+	{
+		return false;
+	}
+
+	int totalRacerCount = gGT->numPlyrNextGame + gGT->numBotsNextGame;
+
+	// Everyone arrived except at most the one kart still driving
+	return sdata->numPlayersFinishedRace >= (totalRacerCount - 1);
+}
 
 void PlayLevel_UpdateLapStats(void)
 {
@@ -422,6 +475,14 @@ void PlayLevel_UpdateLapStats(void)
 	int humanPlayerCount = gGT->numPlyrCurrGame;
 
 	// Check if race should end
+	bool shouldEndRace = false;
+
+	// Retail only ever leaves a human driving after the trigger below in
+	// multiplayer VS, and that is where the end-of-race blast belongs
+	bool endedByOthersArrived = false;
+
+	// Retail rules: 1P ends when the human finishes, multiplayer VS ends one
+	// human early, and arcade waits for every human player
 	if ((
 	        // 1P game, with 1 human finished
 	        (humanPlayerCount == 1) && (finishedHumanCount > 0)
@@ -435,6 +496,18 @@ void PlayLevel_UpdateLapStats(void)
 	    (
 	        // Arcade mode, all humans finished
 	        ((gGT->gameMode1 & ARCADE_MODE) != 0) && (humanPlayerCount <= finishedHumanCount)))
+	{
+		shouldEndRace = true;
+	}
+
+	// Optional: also end the race once every other racer has arrived
+	else if (PlayLevel_ShouldEndWhenOthersArrived(gGT))
+	{
+		shouldEndRace = true;
+		endedByOthersArrived = true;
+	}
+
+	if (shouldEndRace)
 	{
 		// End race for all drivers
 		for (currRank = 0; currRank < PLAYLEVEL_DRIVER_COUNT; currRank++)
@@ -459,6 +532,13 @@ void PlayLevel_UpdateLapStats(void)
 
 			// skip AIs
 			if ((currDriver->actionsFlagSet & ACTION_BOT) != 0)
+			{
+				continue;
+			}
+
+			// Blasting the driver still out on track is a retail VS ending
+			// only, it is not part of ending early on request
+			if (endedByOthersArrived)
 			{
 				continue;
 			}

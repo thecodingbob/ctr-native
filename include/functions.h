@@ -779,6 +779,7 @@ void VehPhysProc_SpinStop_PhysAngular(struct Thread *t, struct Driver *d);
 void VehPhysProc_SpinStop_Init(struct Thread *t, struct Driver *d);
 
 void PlayLevel_UpdateLapStats(void);
+bool PlayLevel_CanAutoEndRace(struct GameTracker *gGT);
 void MainGameEnd_SoloRaceGetReward(int subtractTimeCrateBonus);
 void MainGameEnd_SoloRaceSaveHighScore(void);
 void MainGameEnd_Initialize(void);
