@@ -192,12 +192,6 @@ void Audio_SetMaskSong(u32 tempo)
 	}
 }
 
-enum
-{
-	// driversInRaceOrder always covers the full starting grid
-	AUDIO_RACE_ORDER_DRIVERS = 8,
-};
-
 // Retail starts the end-of-race sequence from AUDIO_LAST_LAP, a state it
 // only reaches while the human driver is on the final lap next to the finish
 // line. Ending the race on request can leave that driver still out on track,
@@ -232,8 +226,9 @@ static void Audio_ResumeRaceEndSequence(struct GameTracker *gGT)
 		return;
 	}
 
-	// human driver in race order
-	for (int driverIndex = 0; driverIndex < AUDIO_RACE_ORDER_DRIVERS; driverIndex++)
+	int driverSlotCount = gGT->numPlyrNextGame + gGT->numBotsNextGame;
+
+	for (int driverIndex = 0; driverIndex < driverSlotCount; driverIndex++)
 	{
 		struct Driver *candidate = gGT->driversInRaceOrder[driverIndex];
 

@@ -23,10 +23,6 @@ enum PlayLevelConstants
 	PLAYLEVEL_PASS_VOICELINE = 8,
 	PLAYLEVEL_VOICELINE_FLAGS = 0x10,
 	PLAYLEVEL_BLASTED_DAMAGE = 2,
-
-	// Auto-end races once every racer except the last one still driving has arrived
-	PLAYLEVEL_MIN_RACERS_FOR_OTHERS_ARRIVED = 2,
-	PLAYLEVEL_RACERS_STILL_DRIVING = 1,
 };
 
 // Events where the driver shares the track with nobody else, so
@@ -51,36 +47,25 @@ bool PlayLevel_CanAutoEndRace(struct GameTracker *gGT)
 		return false;
 	}
 
-	return !PlayLevel_IsSoloOnlyRaceMode(gGT->gameMode1);
-}
-
-// Count the racers on track, and how many of them have already arrived
-static void PlayLevel_CountArrivedRacers(struct GameTracker *gGT, int *totalRacerCount, int *finishedRacerCount)
-{
-	*totalRacerCount = 0;
-	*finishedRacerCount = 0;
-
-	for (int racerIndex = 0; racerIndex < PLAYLEVEL_DRIVER_COUNT; racerIndex++)
+	if (PlayLevel_IsSoloOnlyRaceMode(gGT->gameMode1))
 	{
-		struct Driver *racer = gGT->drivers[racerIndex];
-
-		if (racer == NULL)
-		{
-			continue;
-		}
-
-		*totalRacerCount = *totalRacerCount + 1;
-
-		if ((racer->actionsFlagSet & ACTION_RACE_FINISHED) != 0)
-		{
-			*finishedRacerCount = *finishedRacerCount + 1;
-		}
+		return false;
 	}
+
+	// Levels that are not a race, where nobody can arrive at all. Menus, the
+	// adventure hub and cutscenes reach the lap stats in some level builds,
+	// and the attract demo races on its own
+	if ((gGT->gameMode1 & (MAIN_MENU | ADVENTURE_ARENA | GAME_CUTSCENE)) != 0 || (gGT->boolDemoMode != 0))
+	{
+		return false;
+	}
+
+	return true;
 }
 
 // Optional generalization of the multiplayer VS rule: end the race as soon
 // as every other racer has arrived, instead of waiting for the last kart
-static bool PlayLevel_ShouldEndWhenOthersArrived(struct GameTracker *gGT, int totalRacerCount, int finishedRacerCount)
+static bool PlayLevel_ShouldEndWhenOthersArrived(struct GameTracker *gGT)
 {
 	// Off, solo-only events and battle keep the retail rules only
 	if (!PlayLevel_CanAutoEndRace(gGT))
@@ -88,16 +73,11 @@ static bool PlayLevel_ShouldEndWhenOthersArrived(struct GameTracker *gGT, int to
 		return false;
 	}
 
-	// There must be somebody else out there who can arrive
-	if (totalRacerCount < PLAYLEVEL_MIN_RACERS_FOR_OTHERS_ARRIVED)
-	{
-		return false;
-	}
+	int totalRacerCount = gGT->numPlyrNextGame + gGT->numBotsNextGame;
 
 	// Everyone arrived except at most the one kart still driving
-	return finishedRacerCount >= (totalRacerCount - PLAYLEVEL_RACERS_STILL_DRIVING);
+	return sdata->numPlayersFinishedRace >= (totalRacerCount - 1);
 }
-
 
 void PlayLevel_UpdateLapStats(void)
 {
@@ -521,18 +501,10 @@ void PlayLevel_UpdateLapStats(void)
 	}
 
 	// Optional: also end the race once every other racer has arrived
-	else
+	else if (PlayLevel_ShouldEndWhenOthersArrived(gGT))
 	{
-		int totalRacerCount;
-		int finishedRacerCount;
-
-		PlayLevel_CountArrivedRacers(gGT, &totalRacerCount, &finishedRacerCount);
-
-		if (PlayLevel_ShouldEndWhenOthersArrived(gGT, totalRacerCount, finishedRacerCount))
-		{
-			shouldEndRace = true;
-			endedByOthersArrived = true;
-		}
+		shouldEndRace = true;
+		endedByOthersArrived = true;
 	}
 
 	if (shouldEndRace)
