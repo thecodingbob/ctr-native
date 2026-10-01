@@ -192,6 +192,79 @@ void Audio_SetMaskSong(u32 tempo)
 	}
 }
 
+enum
+{
+	// driversInRaceOrder always covers the full starting grid
+	AUDIO_RACE_ORDER_DRIVERS = 8,
+};
+
+// Retail starts the end-of-race sequence from AUDIO_LAST_LAP, a state it
+// only reaches while the human driver is on the final lap next to the finish
+// line. Ending the race on request can leave that driver still out on track,
+// so pick the same sequence up from whichever racing state is active instead
+// of waiting for transitions that will never happen.
+static void Audio_ResumeRaceEndSequence(struct GameTracker *gGT)
+{
+	struct Driver *human = NULL;
+
+	// Only an event that may auto-end can have been ended this way
+	if (!PlayLevel_CanAutoEndRace(gGT))
+	{
+		return;
+	}
+
+	if ((gGT->gameMode1 & END_OF_RACE) == 0)
+	{
+		return;
+	}
+
+	switch (sdata->audioState)
+	{
+	case AUDIO_RACING:
+	case AUDIO_PRE_LAST_LAP:
+	case AUDIO_FINAL_LAP:
+	case AUDIO_POST_LAST_LAP:
+		break;
+
+	// AUDIO_LAST_LAP finishes the sequence on its own, AUDIO_RACE_END has
+	// already started it
+	default:
+		return;
+	}
+
+	// human driver in race order
+	for (int driverIndex = 0; driverIndex < AUDIO_RACE_ORDER_DRIVERS; driverIndex++)
+	{
+		struct Driver *candidate = gGT->driversInRaceOrder[driverIndex];
+
+		if ((candidate != NULL) && (candidate->instSelf->thread->modelIndex == DYNAMIC_PLAYER))
+		{
+			human = candidate;
+			break;
+		}
+	}
+
+	// Nothing to resume until the race is over for that driver
+	if ((human == NULL) || ((human->actionsFlagSet & ACTION_RACE_FINISHED) == 0))
+	{
+		return;
+	}
+
+	// AUDIO_FINAL_LAP lowers the level song, and only its AUDIO_POST_LAST_LAP
+	// step raises it back
+	bool restoreVolume = (sdata->audioState == AUDIO_FINAL_LAP);
+
+	Audio_SetState_Safe(AUDIO_LAST_LAP);
+
+	// The race is already over, so skip retail's seek to the last-lap XA
+	sdata->boolNeedXASeek = 0;
+
+	if (restoreVolume)
+	{
+		Music_RaiseVolume();
+	}
+}
+
 void Audio_Update1(void)
 {
 	s32 i;
@@ -202,6 +275,8 @@ void Audio_Update1(void)
 	u32 maskTempo;
 	int iVar7;
 	struct GameTracker *gGT = sdata->gGT;
+
+	Audio_ResumeRaceEndSequence(gGT);
 
 	switch (sdata->audioState - 1)
 	{

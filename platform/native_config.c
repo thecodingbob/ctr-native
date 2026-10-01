@@ -84,7 +84,8 @@ NativeConfig g_config = {
   .maskDurationMultiplier = 100,
   .maskExtraSpeedMultiplier = 100,
   .clockDurationMultiplier = 100,
-  .allowWeaponsDuringClock = false
+  .allowWeaponsDuringClock = false,
+  .autoEndRaceWhenOthersFinish = false
 };
 
 const ConfigEntry g_configEntries[] = {
@@ -142,6 +143,13 @@ const ConfigEntry g_configEntries[] = {
         .enumValues = kMaskModeValues,
         .numEnumValues = NUM_MASK_MODES
       },
+    {
+        .section = "General",
+        .key = "auto_end_race_when_others_finish",
+        .label = "Auto-End Races",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.autoEndRaceWhenOthersFinish
+    },
     {
         .section = "Adventure",
         .key = "skip_hints",
