@@ -256,12 +256,13 @@ weapon icons and battle points/lives icons will be missing on those tracks.
 ### Developer Hacks
 
 The options in this section are normally hidden, and they can be enabled via an in-game cheat code. 
-Hold `L1` and `L2` and then press `↓` `→` `X` `↓` to do so.
+Hold `L1` and `R1` and then press `↓` `→` `X` `↓` to do so.
 These are meant to speed up testing during development.
 
-| Key                            | Values             | Default | Description                                                                                            |
-|--------------------------------|--------------------|---------|--------------------------------------------------------------------------------------------------------|
-| `developer_hacks_enabled`      | `true` / `false`   | `false` | Controls the visibility of the section. Once enabled, set it back to false to hide the menu once again |
+| Key                       | Values             | Default | Description                                                                                            |
+|---------------------------|--------------------|---------|--------------------------------------------------------------------------------------------------------|
+| `developer_hacks_enabled` | `true` / `false`   | `false` | Controls the visibility of the section. Once enabled, set it back to false to hide the menu once again |
+| `omni_controller`         | `true` / `false`   | `false` | Mirrors port 1 input to every controller slot, for testing 4 controllers as a single player            |
 
 ## Bug Replays
 

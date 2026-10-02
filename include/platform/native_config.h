@@ -51,6 +51,7 @@ typedef struct {
     bool allowWeaponsDuringClock; // false (default) = clock blocks weapon usage, true = weapons work during clock
     bool autoEndRaceWhenOthersFinish; // false = off (vanilla behavior), true = end race when all other racers have finished
     bool developerHacksEnabled; // false = off (default), true = enable developer hacks menu/options
+    bool omniController; // false = off (default), true = mirror port 1 input to all controller slots
 } NativeConfig;
 
 enum

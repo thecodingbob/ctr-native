@@ -87,7 +87,8 @@ NativeConfig g_config = {
   .clockDurationMultiplier = 100,
   .allowWeaponsDuringClock = false,
   .autoEndRaceWhenOthersFinish = false,
-  .developerHacksEnabled = false
+  .developerHacksEnabled = false,
+  .omniController = false
 };
 
 const ConfigEntry g_configEntries[] = {
@@ -426,13 +427,20 @@ const ConfigEntry g_configEntries[] = {
         .type = CFG_BOOL,
         .valuePtr = &g_config.textureFiltering
     },
-	{
-    	.section = "Developer Hacks",
-		.key = "developer_hacks_enabled",
-		.label = "Enable Developer Hacks",
-		.type = CFG_BOOL,
-		.valuePtr = &g_config.developerHacksEnabled,
-	},
+    {
+        .section = "Developer Hacks",
+        .key = "developer_hacks_enabled",
+        .label = "Enable Developer Hacks",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.developerHacksEnabled,
+    },
+    {
+        .section = "Developer Hacks",
+        .key = "omni_controller",
+        .label = "Omni Controller",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.omniController,
+    },
 };
 
 const int g_numConfigEntries = sizeof(g_configEntries) / sizeof(g_configEntries[0]);

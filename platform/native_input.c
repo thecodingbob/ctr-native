@@ -1,6 +1,7 @@
 #include <platform/native_input.h>
 
 #include <macros.h>
+#include "platform/native_config.h"
 #include "psx/libpad.h"
 
 #include <SDL3/SDL.h>
@@ -794,6 +795,14 @@ void Platform_InputUpdate(void)
 		NativeInput_ResetSnapshot(slot);
 		NativeInput_ApplyController(slot);
 		NativeInput_ApplyKeyboard(slot, keyboardButtons);
+	}
+	if (g_config.omniController)
+	{
+		// TEST: map all 4 controllers to port 1 input.
+		for (s32 slot = 1; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
+		{
+			s_controllers[slot].snapshot = s_controllers[0].snapshot;
+		}
 	}
 	NativeInput_WritePadBus();
 }
