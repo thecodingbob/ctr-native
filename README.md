@@ -268,6 +268,7 @@ Setting the other options to `true` in `config.ini` therefore has no effect unti
 | `developer_hacks_enabled` | `true` / `false`   | `false` | Controls the visibility of the section and gates every other option in it. Once enabled, set it back to false to hide the menu and reset the rest of the section to its defaults |
 | `omni_controller`         | `true` / `false`   | `false` | Mirrors port 1 input to every controller slot, for testing 4 controllers as a single player                                                                                      |
 | `one_lap_races`           | `true` / `false`   | `false` | Forces every race to a single lap. Extends the 1-lap cheat code, which only covers Arcade and Versus, to all races with no exception                                             |
+| `tow_player_2`            | `true` / `false`   | `false` | Holds the Adventure co-op partner kart right behind the lead racer. `select` toggles the tow in-race                                                                             |
 
 ## Bug Replays
 

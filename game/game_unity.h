@@ -120,6 +120,7 @@
 #include "MAIN/MainDrawCb.c"
 
 #include "MAIN/MainFrame.c"
+#include "MAIN/MainFrame_Tow.c"
 #include "MAIN/MainFrame_RenderFrame.c"
 
 #include "MAIN/MainFreeze.c"

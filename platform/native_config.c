@@ -89,7 +89,8 @@ NativeConfig g_config = {
   .autoEndRaceWhenOthersFinish = false,
   .developerHacksEnabled = false,
   .omniController = false,
-  .oneLapRaces = false
+  .oneLapRaces = false,
+  .towPlayer2 = false
 };
 
 const ConfigEntry g_configEntries[] = {
@@ -448,6 +449,13 @@ const ConfigEntry g_configEntries[] = {
         .label = "One Lap Races",
         .type = CFG_BOOL,
         .valuePtr = &g_config.oneLapRaces,
+    },
+    {
+        .section = CONFIG_SECTION_DEVELOPER_HACKS,
+        .key = "tow_player_2",
+        .label = "Tow Player 2",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.towPlayer2,
     },
 };
 

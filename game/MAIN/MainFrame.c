@@ -294,6 +294,8 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 			psVar8->quip2 = (s16)iVar4;
 		}
 
+		MainFrame_Tow_Update(gGT, gGamepads);
+
 		for (iVar4 = 0; iVar4 < PAUSE; iVar4++)
 		{
 			if ((((gGT->gameMode1 & DEBUG_MENU) == 0) || ((gGT->threadBuckets[iVar4].boolCantPause & 1) != 0)) &&

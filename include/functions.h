@@ -423,6 +423,7 @@ void MainFrame_InitVideoSTR(u32 boolPlayVideoStr, RECT *r, s16 posX, s16 posY);
 void MainFrame_VisMemFullFrame(struct GameTracker *gGT, struct Level *level);
 void MainFrame_RequestMaskHint(s16 hintId, s16 interruptWarpPad);
 void MainFrame_TogglePauseAudio(b32 bool_pause);
+void MainFrame_Tow_Update(struct GameTracker *gGT, struct GamepadSystem *gGamepads);
 
 void StateZero(void);
 void startSP(void);
