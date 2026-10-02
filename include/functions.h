@@ -1173,6 +1173,7 @@ void MM_Cheat_IcyTracks(void);
 void MM_Cheat_SuperTurboPads(void);
 void MM_Cheat_OneLap(void);
 void MM_Cheat_TurboCounter(void);
+void MM_Cheat_EnableDevHacks(void);
 
 void UI_Map_DrawMap_ExtraFunc(struct Icon *icon, POLY_FT4 *p, s16 posX, s16 empty, struct PrimMem *primMem, u32 *otMem, u32 transparency);
 
