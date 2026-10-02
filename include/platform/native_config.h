@@ -72,6 +72,8 @@ enum
 
 typedef enum { CFG_BOOL, CFG_INT, CFG_ENUM } ConfigType;
 
+#define CONFIG_SECTION_DEVELOPER_HACKS "Developer Hacks"
+
 typedef struct {
     const char *section;
     const char *key;

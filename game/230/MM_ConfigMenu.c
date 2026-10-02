@@ -43,7 +43,7 @@ static void BuildSectionMap(void)
 	for (int i = 0; i < g_numConfigEntries; i++)
 	{
 		// Only include Developer Hacks section if enabled
-		if (strcmp(g_configEntries[i].section, "Developer Hacks") == 0)
+		if (strcmp(g_configEntries[i].section, CONFIG_SECTION_DEVELOPER_HACKS) == 0)
 		{
 			if (!g_config.developerHacksEnabled)
 			{
@@ -189,6 +189,14 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 				NativeConfig_ApplyDependencies(e);
 				// Rebuild section map if visibility changed (e.g. Developer Hacks toggle)
 				BuildSectionMap();
+				// Turning the gate off hides the section we are standing in, so the
+				// cached index no longer names a section. Fall back to the section
+				// list instead of reading past the entry table.
+				if (s_currentSection >= s_numSections)
+				{
+					s_currentSection = -1;
+					return;
+				}
 			}
 			else if (e->type == CFG_ENUM)
 			{

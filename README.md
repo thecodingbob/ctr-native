@@ -259,9 +259,13 @@ The options in this section are normally hidden, and they can be enabled via an 
 Hold `L1` and `R1` and then press `↓` `→` `X` `↓` to do so.
 These are meant to speed up testing during development.
 
+`developer_hacks_enabled` is an umbrella switch. While it is `false` the section is hidden *and* every
+other option in it is restored to its default value, so a hidden option cannot silently alter gameplay.
+Setting the other options to `true` in `config.ini` therefore has no effect until this key is also `true`.
+
 | Key                       | Values             | Default | Description                                                                                            |
 |---------------------------|--------------------|---------|--------------------------------------------------------------------------------------------------------|
-| `developer_hacks_enabled` | `true` / `false`   | `false` | Controls the visibility of the section. Once enabled, set it back to false to hide the menu once again |
+| `developer_hacks_enabled` | `true` / `false`   | `false` | Controls the visibility of the section and gates every other option in it. Once enabled, set it back to false to hide the menu and reset the rest of the section to its defaults |
 | `omni_controller`         | `true` / `false`   | `false` | Mirrors port 1 input to every controller slot, for testing 4 controllers as a single player            |
 
 ## Bug Replays
