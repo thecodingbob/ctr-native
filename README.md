@@ -192,7 +192,6 @@ format). An example template is at `default_config.ini` in the project root.
 | `extended_arcade_multiplayer`       | `true` / `false`                                          | `false`   | Enable 3P/4P Arcade races with AI opponents and 8 racers in 2P/3P/4P Arcade races                 |
 | `bot_selection_mode`                | `Vanilla` / `R. unlocked` / `R. all`                      | `Vanilla` | Choose the normal Arcade and Adventure bot roster; boss races and the Purple Gem Cup remain fixed |
 | `auto_end_race_when_others_finish`  | `true` / `false`                                          | `false`   | End the race once every other racer has arrived                                                   |
-
 **Known limitation:** when race tracks are enabled in Battle mode, the turbo/invisibility
 weapon icons and battle points/lives icons will be missing on those tracks.
 
@@ -253,6 +252,16 @@ weapon icons and battle points/lives icons will be missing on those tracks.
 | `render_scale`             | `Original`, `2X`, `3X`, `4X`, `Native` | `Native` | Internal render resolution; Native follows the presentation viewport |
 | `smooth_scaling`           | `true` / `false` | `true`  | Use linear filtering when presenting scaled output                      |
 | `texture_filtering`        | `true` / `false` | `false` | Enable bilinear filtering for PSX textures                              |
+
+### Developer Hacks
+
+The options in this section are normally hidden, and they can be enabled via an in-game cheat code. 
+Hold `L1` and `L2` and then press `↓` `→` `X` `↓` to do so.
+These are meant to speed up testing during development.
+
+| Key                            | Values             | Default | Description                                                                                            |
+|--------------------------------|--------------------|---------|--------------------------------------------------------------------------------------------------------|
+| `developer_hacks_enabled`      | `true` / `false`   | `false` | Controls the visibility of the section. Once enabled, set it back to false to hide the menu once again |
 
 ## Bug Replays
 
