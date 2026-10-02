@@ -281,6 +281,13 @@ main.c (entrypoint)
 - Clean up `game/` copies strip byte budget hacks and route platform-specific code through `CTR_NATIVE`
 - Keep reducing 32-bit host-pointer assumptions in PSX-shaped data, and keep pruning inherited compatibility code now owned in `include/` and `platform/`.
 
+## AI Usage
+
+Parts of the additions in this fork were developed with the assistance of AI coding tools, primarily
+OpenCode with free models. This helps me speed up the development in such a big codebase and in a tricky programming
+language like `C` is. When the model produces code for me, I check its output and change it / ask to change it
+until I'm satisfied: the output is never accepted blindly. 
+
 ## Credits
 
 - [CTR-ModSDK](https://github.com/CTR-tools/CTR-ModSDK) — the decompilation project this is built on
