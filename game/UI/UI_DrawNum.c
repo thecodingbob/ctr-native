@@ -68,13 +68,15 @@ void UI_DrawNumWumpa(s16 posX, s16 posY, struct Driver *d)
 	}
 }
 
-void UI_DrawNumTimebox(s16 posX, s16 posY, struct Driver *d)
+// The collected count is passed in rather than read from the driver, because a
+// co-op relic race shares one crate pool between both racers.
+void UI_DrawNumTimebox(s16 posX, s16 posY, int collected)
 {
 	char string[UI_DRAWNUM_COUNTER_TEXT_BUFFER_SIZE];
 
 	DecalFont_DrawLine(UI_NUM_X, posX + UI_DRAWNUM_TIMEBOX_X_OFFSET_X, posY + UI_DRAWNUM_TIMEBOX_X_OFFSET_Y, FONT_SMALL, ORANGE);
 
-	sprintf(string, rdata.s_lapString, d->numTimeCrates, CTR_PRINTF_PSX_LONG(GAME_TRACKER->timeCratesInLEV));
+	sprintf(string, rdata.s_lapString, collected, CTR_PRINTF_PSX_LONG(GAME_TRACKER->timeCratesInLEV));
 
 	DecalFont_DrawLine(string, posX + UI_DRAWNUM_TIMEBOX_TEXT_OFFSET_X, posY + UI_DRAWNUM_TIMEBOX_TEXT_OFFSET_Y, FONT_BIG, ORANGE);
 }

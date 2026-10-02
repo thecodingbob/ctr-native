@@ -12,7 +12,9 @@ enum
 void MainGameEnd_SoloRaceGetReward(int subtractTimeCrateBonus)
 {
 	struct GameTracker *gGT = sdata->gGT;
-	struct Driver *driver = gGT->drivers[0];
+	// A co-op relic race has one result for the pair, so the recorded best time and
+	// the all-crates bonus are read off the racer the round is graded on.
+	struct Driver *driver = MainGameEnd_GradeDriver(gGT);
 	struct Driver *player = gGT->threadBuckets[PLAYER].thread->object;
 
 	gGT->newHighScoreIndex = -1;
@@ -20,7 +22,7 @@ void MainGameEnd_SoloRaceGetReward(int subtractTimeCrateBonus)
 
 	int timeBonus = 0;
 
-	if ((driver->numTimeCrates == gGT->timeCratesInLEV) && (subtractTimeCrateBonus != 0))
+	if (MainGameEnd_GotAllTimeCrates(gGT) && (subtractTimeCrateBonus != 0))
 	{
 		timeBonus = 0x2580;
 	}
@@ -108,7 +110,9 @@ CheckOxideAllTracks:
 void MainGameEnd_SoloRaceSaveHighScore(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
-	struct Driver *player = gGT->drivers[0];
+	// The entry has to hold the same clock and racer the results screen reported,
+	// which for a co-op pair is the racer the round was graded on.
+	struct Driver *player = MainGameEnd_GradeDriver(gGT);
 
 	MainGameEnd_SoloRaceGetReward(0);
 
@@ -535,16 +539,65 @@ b32 MainGameEnd_IsCoopRace(struct GameTracker *gGT)
 	return (gGT->gameMode1 & ADVENTURE_MODE) != 0 && gGT->numPlyrCurrGame > 1;
 }
 
+// The racer whose clock grades the round. A co-op pair has one shared result, so
+// the pair is graded on its slower racer and both have to beat the target; a lone
+// racer is graded on their own clock, which is retail's drivers[0] read.
+struct Driver *MainGameEnd_GradeDriver(struct GameTracker *gGT)
+{
+	struct Driver *graded = gGT->drivers[0];
+
+	if (!MainGameEnd_IsCoopRace(gGT))
+	{
+		return graded;
+	}
+
+	for (int i = 1; i < gGT->numPlyrCurrGame; i++)
+	{
+		if (gGT->drivers[i]->timeElapsedInRace > graded->timeElapsedInRace)
+		{
+			graded = gGT->drivers[i];
+		}
+	}
+
+	return graded;
+}
+
+// A time crate is a consumed object, so a co-op pair shares the pool and only
+// picked up the full set by collecting every crate between them. A lone racer
+// keeps retail's single count.
+int MainGameEnd_TimeCratesCollected(struct GameTracker *gGT)
+{
+	int collected = 0;
+
+	for (int i = 0; i < gGT->numPlyrCurrGame; i++)
+	{
+		collected += gGT->drivers[i]->numTimeCrates;
+	}
+
+	return collected;
+}
+
+b32 MainGameEnd_GotAllTimeCrates(struct GameTracker *gGT)
+{
+	return MainGameEnd_TimeCratesCollected(gGT) == gGT->timeCratesInLEV;
+}
+
 // Whether the human side won the Adventure round. A lone racer has to finish
 // first on their own. A co-op pair is a single result, so it is won only when both
 // racers are on the podium - first and second, in either order - and one racer up
-// front while the other trails is a loss. Rounds without a finish line to be ranked
-// on keep the solo racer test: the crystal challenge is won on crystals and relics
-// are solo.
+// front while the other trails is a loss. The crystal challenge keeps the solo
+// racer test because it is won on crystals. A relic race is run against a clock
+// rather than a field of racers, so there is no placing to lose: the pair shares
+// one clock and one crate pool and celebrates together, exactly as a lone racer
+// does after their own attempt.
 b32 MainGameEnd_AdventureRaceWon(struct GameTracker *gGT)
 {
-	if (!MainGameEnd_IsCoopRace(gGT) ||
-	    (gGT->gameMode1 & (CRYSTAL_CHALLENGE | RELIC_RACE)) != 0)
+	if ((gGT->gameMode1 & RELIC_RACE) != 0)
+	{
+		return true;
+	}
+
+	if (!MainGameEnd_IsCoopRace(gGT) || (gGT->gameMode1 & CRYSTAL_CHALLENGE) != 0)
 	{
 		return gGT->drivers[0]->driverRank == MAIN_GAME_END_FIRST_PLACE_RANK;
 	}
@@ -577,12 +630,11 @@ b32 MainGameEnd_AdventureRaceWon(struct GameTracker *gGT)
 // ones, but an Adventure co-op pair shares a single result, so a won round puts both
 // humans on the top two steps and both celebrate. A cup counts the same way: the
 // standings run assigns the final cup positions to driverRank before the podium is
-// built, so a won cup also leaves both humans on the top two steps. A relic race has
-// no second racer, and the Arcade and VS cups rank the whole field, so those keep the
-// retail podium.
+// built, so a won cup also leaves both humans on the top two steps. The Arcade and VS
+// cups rank the whole field, so those keep the retail podium.
 b32 MainGameEnd_PodiumSharesWin(struct GameTracker *gGT)
 {
-	if ((gGT->gameMode1 & (RELIC_RACE | ADVENTURE_MODE)) != ADVENTURE_MODE)
+	if ((gGT->gameMode1 & ADVENTURE_MODE) != ADVENTURE_MODE)
 	{
 		return false;
 	}

@@ -338,6 +338,32 @@ void GAMEPROG_ResetAdvMultiplayer(struct AdvMultiplayerSettings *settings)
 }
 
 
+enum
+{
+	// Sapphire, gold and platinum, one target time each per track.
+	GAMEPROG_RELIC_TIER_COUNT = 3,
+};
+
+// Adventure co-op shares one tier time between two racers on a single clock
+// and a single crate pool, so the multiplayer penalty takes 30% off every target.
+static const float GAMEPROG_RELIC_2P_TIME_FACTOR = 0.7f;
+
+// The target time the pair has to beat. A lone racer keeps the retail target;
+// this is the single place both the HUD goal and the award check read, so the two
+// can never disagree about what the round demands.
+int GAMEPROG_RelicTargetTime(int levelID, int tier)
+{
+	int soloTime = data.RelicTime[levelID * GAMEPROG_RELIC_TIER_COUNT + tier];
+
+	if (!MainGameEnd_IsCoopRace(GAME_TRACKER))
+	{
+		return soloTime;
+	}
+
+	return (int)(soloTime * GAMEPROG_RELIC_2P_TIME_FACTOR);
+}
+
+
 void GAMEPROG_GetPtrHighScoreTrack(void)
 {
 	struct GameTracker *gGT = GAME_TRACKER;

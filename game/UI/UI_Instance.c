@@ -27,7 +27,6 @@ enum UIInstanceConstants
 	UI_INSTANCE_ROTATE_NONE = 0,
 	UI_INSTANCE_SCALE = 0x1000,
 	UI_INSTANCE_3P4P_BIG_NUM_SCALE = 0xc00,
-	UI_INSTANCE_RELIC_TYPE_COUNT = 3,
 	UI_INSTANCE_RELIC_PLATINUM_TYPE = 2,
 	UI_INSTANCE_RANK_TRANSITION_FRAMES = 5,
 	UI_INSTANCE_RELIC_TIME_UNITS_PER_MINUTE = 0xe100,
@@ -39,6 +38,14 @@ enum UIInstanceConstants
 	UI_INSTANCE_RELIC_HUNDREDTH_SCALE = 100,
 };
 
+
+// A relic race is a single shared screen between the pair, so these models are
+// made once and laid out for the whole display. The crystal challenge shares one
+// screen too and gets its own tuned offset instead; keep the two apart.
+static b32 UI_INSTANCE_IsRelicRaceSharedModel(int modelID)
+{
+	return (modelID == STATIC_RELIC) || (modelID == STATIC_TIME_CRATE_01);
+}
 
 struct Instance *UI_INSTANCE_BirthWithThread(int modelID, int tickFunc, int hudSlot, int rotateToHud, int pushBuffer, int threadName)
 {
@@ -198,6 +205,17 @@ struct Instance *UI_INSTANCE_BirthWithThread(int modelID, int tickFunc, int hudS
 				posY += UI_CRYSTAL_HUD_2P_OFFSET_Y;
 			}
 
+			// A relic race shares one screen between the pair, so its models are
+			// laid out for the whole display rather than for a viewport. Read them
+			// from the 1P layout instead of shifting them, which is the layout
+			// overlay 223 lays the results screen out against.
+			if (UI_INSTANCE_IsRelicRaceSharedModel(createdModelID) && (gGT->numPlyrCurrGame > 1))
+			{
+				currUI2D = &data.hudStructPtr[0][hudSlot];
+				posX = currUI2D->x;
+				posY = currUI2D->y;
+			}
+
 			inst->matrix.t[0] = UI_ConvertX_2(posX, currUI2D->z);
 			inst->matrix.t[1] = UI_ConvertY_2(posY, currUI2D->z);
 			inst->matrix.t[2] = currUI2D->z;
@@ -221,6 +239,11 @@ struct Instance *UI_INSTANCE_BirthWithThread(int modelID, int tickFunc, int hudS
 		if ((createdModelID == STATIC_CRYSTAL) && (gGT->numPlyrCurrGame == 2))
 		{
 			scale /= UI_CRYSTAL_HUD_2P_SCALE_DIVISOR;
+		}
+		else if (UI_INSTANCE_IsRelicRaceSharedModel(createdModelID) && (gGT->numPlyrCurrGame > 1))
+		{
+			// Same as the position above: the 1P layout carries the display scale.
+			scale = data.hudStructPtr[0][hudSlot].scale;
 		}
 
 		inst->scale.x = scale;
@@ -255,8 +278,12 @@ struct Instance *UI_INSTANCE_BirthWithThread(int modelID, int tickFunc, int hudS
 		hudStruct += UI_HUD_SLOT_COUNT;
 
 		// Crystal Challenge has one shared counter and uses player 1's HUD.
-		// Do not create a duplicate crystal instance for player 2.
-		if (createdModelID == STATIC_CRYSTAL)
+		// A relic race is a single shared screen too: overlay 223 positions one
+		// relic and one time crate model at screen centre and scales the relic in,
+		// and it only ever holds a pointer to the last instance made here. Keep one
+		// instance instead of one per viewport, or the spare ones stay at full
+		// scale on the HUD slot. Do not create duplicates for player 2.
+		if ((createdModelID == STATIC_CRYSTAL) || UI_INSTANCE_IsRelicRaceSharedModel(createdModelID))
 		{
 			break;
 		}
@@ -393,7 +420,7 @@ void UI_INSTANCE_InitAll(void)
 		}
 
 		// get relic time on this track, for this relic type (sapphire, gold, platinum)
-		relicTime = data.RelicTime[gGT->levelID * UI_INSTANCE_RELIC_TYPE_COUNT + relicType];
+		relicTime = GAMEPROG_RelicTargetTime(gGT->levelID, relicType);
 
 		// store globally for HUD to access later
 		sdata->relicTime_1min = relicTime / UI_INSTANCE_RELIC_TIME_UNITS_PER_MINUTE;

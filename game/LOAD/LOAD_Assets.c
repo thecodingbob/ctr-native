@@ -578,6 +578,15 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 		// Load Player 1 [0]
 		LOAD_AppendQueue(bigfile, LT_GETADDR, BI_RACERMODELHI + data.characterIDs[0], &data.driverModelExtras[0].fileBase, LOAD_DriverMPK_SetPointer);
 
+		// The relic bundle carries a single level of detail and only ever shipped a
+		// model for the first racer, so a co-op relic race has to pull the partner's
+		// model in from the standalone multiplayer slots. A time trial only ever has
+		// one racer, so this loop is skipped there and its second ID stays the ghost.
+		for (i = 1; (i < gGT->numPlyrCurrGame) && (i < LOAD_DRIVER_MODEL_EXTRA_COUNT); i++)
+		{
+			LOAD_AppendQueue(bigfile, LT_GETADDR, BI_RACERMODELMED + data.characterIDs[i], &data.driverModelExtras[i].fileBase, LOAD_DriverMPK_SetPointer);
+		}
+
 		// Load boss or ghost [1]
 		lastFileIndexMPK = BI_TIMETRIALPACK + data.characterIDs[1];
 	}

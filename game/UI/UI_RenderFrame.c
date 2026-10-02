@@ -2,6 +2,13 @@
 
 // To do: add a header
 
+// In-race race clock, measured from the top left corner of the thing it sits in.
+enum
+{
+	UI_RACE_CLOCK_HUD_X = 0x14,
+	UI_RACE_CLOCK_HUD_Y = 0x8,
+};
+
 // CTR_NATIVE only adds an ST1 map-metadata null guard below.
 void UI_RenderFrame_Racing()
 {
@@ -208,10 +215,14 @@ void UI_RenderFrame_Racing()
 				}
 			}
 
-			// If you're in a Relic Race
-			if ((gameMode1 & RELIC_RACE) != 0)
+			// If you're in a Relic Race.
+			// A co-op relic race shares one counter between the pair, drawn once
+			// below from the 1P layout so it sits on the whole screen instead of
+			// on a viewport. The same way the split-screen crystal challenge
+			// presents its single counter.
+			if (((gameMode1 & RELIC_RACE) != 0) && (numPlyr == 1))
 			{
-				UI_DrawNumTimebox(hudStructPtr[UI_HUD_SLOT_TIMEBOX].x, hudStructPtr[UI_HUD_SLOT_TIMEBOX].y, playerStruct);
+				UI_DrawNumTimebox(hudStructPtr[UI_HUD_SLOT_TIMEBOX].x, hudStructPtr[UI_HUD_SLOT_TIMEBOX].y, playerStruct->numTimeCrates);
 			}
 
 			// If game is not paused
@@ -433,7 +444,12 @@ void UI_RenderFrame_Racing()
 				UI_DrawBattleScores((int)hudStructPtr[UI_HUD_SLOT_BATTLE_SCORE].x, (int)hudStructPtr[UI_HUD_SLOT_BATTLE_SCORE].y, playerStruct);
 			}
 
-			if (((gameMode1 & (ARCADE_MODE | ADVENTURE_MODE)) != 0) && ((playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) != 0))
+			// A relic race has no placing to announce: it is run against the tier
+			// target and overlay 223 shows the result. Overlay 222's finish card also
+			// drives the 3D big-number model, which a relic race never creates
+			// because its HUD instances return early.
+			if (((gameMode1 & (ARCADE_MODE | ADVENTURE_MODE)) != 0) && ((gameMode1 & RELIC_RACE) == 0) &&
+			    ((playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) != 0))
 			{
 				AA_EndEvent_DisplayTime((u32)playerStruct->driverID, 0);
 			}
@@ -570,11 +586,25 @@ void UI_RenderFrame_Racing()
 
 	sdata->framesDrivingSameDirection++;
 
+	// A relic race is a single shared screen: the pair gets one clock and one
+	// crate counter, both laid out for the whole display rather than for one
+	// viewport. The 1P HUD layout already places them, and the split-screen
+	// crystal challenge presents its single counter the same way. The clock
+	// reads the graded racer so it agrees with the award and the results screen.
+	if ((numPlyr > 1) && ((gameMode1 & RELIC_RACE) != 0))
+	{
+		const struct UiElement2D *sharedHud = data.hudStructPtr[0];
+
+		UI_DrawNumTimebox(sharedHud[UI_HUD_SLOT_TIMEBOX].x, sharedHud[UI_HUD_SLOT_TIMEBOX].y, MainGameEnd_TimeCratesCollected(gGT));
+
+		UI_DrawRaceClock(UI_RACE_CLOCK_HUD_X, UI_RACE_CLOCK_HUD_Y, UI_RACE_CLOCK_SHOW_CURRENT_TIME, MainGameEnd_GradeDriver(gGT));
+	}
+
 	if (numPlyr == 1)
 	{
 		playerStruct = gGT->drivers[0];
 
-		UI_DrawRaceClock(0x14, 8, UI_RACE_CLOCK_SHOW_CURRENT_TIME, playerStruct);
+		UI_DrawRaceClock(UI_RACE_CLOCK_HUD_X, UI_RACE_CLOCK_HUD_Y, UI_RACE_CLOCK_SHOW_CURRENT_TIME, playerStruct);
 
 		turboThread = 0;
 		turboThreadObject = 0;

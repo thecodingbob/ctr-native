@@ -174,7 +174,7 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 
 		// ========== End of setting numPlyr ================
 		if ((gGT->gameMode1 & ADVENTURE_MODE) != 0 &&
-		    (gGT->gameMode1 & (ADVENTURE_ARENA | RELIC_RACE | MAIN_MENU | GAME_CUTSCENE)) == 0)
+		    (gGT->gameMode1 & (ADVENTURE_ARENA | MAIN_MENU | GAME_CUTSCENE)) == 0)
 		{
 			gGT->numPlyrCurrGame = sdata->advMultiplayer.numPlayers;
 			gGT->numPlyrNextGame = gGT->numPlyrCurrGame;
@@ -374,7 +374,6 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 	}
 	case 6:
 	{
-		int visualLevelLOD;
 		if (!boolPlayMusicDuringLoading)
 		{
 			int banksReady = Music_AsyncParseBanks();
@@ -471,8 +470,11 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 		sdata->load_inProgress = 1;
 		// Keep the multiplayer MPK/driver LOD selection above, but use the 1P
 		// visual bundle when the native high-quality split-screen path is active.
-		visualLevelLOD = sdata->levelLOD;
-		if (sdata->highDetailSplitScreenLevel)
+		// The relic and time trial bundles carry the time crates, the shortcut
+		// triggers and the rest of the relic-only level content. The arcade bundles
+		// do not, so a high-detail split-screen request must not swap one out here.
+		int visualLevelLOD = sdata->levelLOD;
+		if (sdata->highDetailSplitScreenLevel && !(gGT->gameMode1 & (RELIC_RACE | TIME_TRIAL)) != 0)
 		{
 			visualLevelLOD = LOAD_LEVEL_LOD_1P;
 		}
