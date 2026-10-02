@@ -88,7 +88,8 @@ NativeConfig g_config = {
   .allowWeaponsDuringClock = false,
   .autoEndRaceWhenOthersFinish = false,
   .developerHacksEnabled = false,
-  .omniController = false
+  .omniController = false,
+  .oneLapRaces = false
 };
 
 const ConfigEntry g_configEntries[] = {
@@ -440,6 +441,13 @@ const ConfigEntry g_configEntries[] = {
         .label = "Omni Controller",
         .type = CFG_BOOL,
         .valuePtr = &g_config.omniController,
+    },
+    {
+        .section = CONFIG_SECTION_DEVELOPER_HACKS,
+        .key = "one_lap_races",
+        .label = "One Lap Races",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.oneLapRaces,
     },
 };
 

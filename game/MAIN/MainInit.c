@@ -544,6 +544,14 @@ void MainInit_FinalizeInit(struct GameTracker *gGT)
 
 	MainInit_JitPoolsReset(gGT);
 
+	// Developer hack: force every race down to a single lap, with no exception
+	// for mode. Applied here because this runs on the first frame after a level
+	// loads.
+	if (g_config.oneLapRaces)
+	{
+		gGT->numLaps = 1;
+	}
+
 	lev1 = gGT->level1;
 
 #if defined(CTR_NATIVE)

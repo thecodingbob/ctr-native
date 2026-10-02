@@ -52,6 +52,7 @@ typedef struct {
     bool autoEndRaceWhenOthersFinish; // false = off (vanilla behavior), true = end race when all other racers have finished
     bool developerHacksEnabled; // false = off (default), true = enable developer hacks menu/options
     bool omniController; // false = off (default), true = mirror port 1 input to all controller slots
+    bool oneLapRaces; // false = off (default), true = force every race to a single lap, whatever the mode or menu allows
 } NativeConfig;
 
 enum
