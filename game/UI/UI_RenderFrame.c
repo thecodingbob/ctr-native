@@ -2,6 +2,13 @@
 
 // To do: add a header
 
+// In-race race clock, measured from the top left corner of the thing it sits in.
+enum
+{
+	UI_RACE_CLOCK_HUD_X = 0x14,
+	UI_RACE_CLOCK_HUD_Y = 0x8,
+};
+
 // CTR_NATIVE only adds an ST1 map-metadata null guard below.
 void UI_RenderFrame_Racing()
 {
@@ -35,6 +42,7 @@ void UI_RenderFrame_Racing()
 	int offset;
 	u32 mapPosX;
 	u32 mapPosY;
+	b32 coopFinishedRacer;
 
 	offset = 0;
 
@@ -207,10 +215,14 @@ void UI_RenderFrame_Racing()
 				}
 			}
 
-			// If you're in a Relic Race
-			if ((gameMode1 & RELIC_RACE) != 0)
+			// If you're in a Relic Race.
+			// A co-op relic race shares one counter between the pair, drawn once
+			// below from the 1P layout so it sits on the whole screen instead of
+			// on a viewport. The same way the split-screen crystal challenge
+			// presents its single counter.
+			if (((gameMode1 & RELIC_RACE) != 0) && (numPlyr == 1))
 			{
-				UI_DrawNumTimebox(hudStructPtr[UI_HUD_SLOT_TIMEBOX].x, hudStructPtr[UI_HUD_SLOT_TIMEBOX].y, playerStruct);
+				UI_DrawNumTimebox(hudStructPtr[UI_HUD_SLOT_TIMEBOX].x, hudStructPtr[UI_HUD_SLOT_TIMEBOX].y, playerStruct->numTimeCrates);
 			}
 
 			// If game is not paused
@@ -432,17 +444,28 @@ void UI_RenderFrame_Racing()
 				UI_DrawBattleScores((int)hudStructPtr[UI_HUD_SLOT_BATTLE_SCORE].x, (int)hudStructPtr[UI_HUD_SLOT_BATTLE_SCORE].y, playerStruct);
 			}
 
-			if (((gameMode1 & (ARCADE_MODE | ADVENTURE_MODE)) != 0) && ((playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) != 0))
+			// A relic race has no placing to announce: it is run against the tier
+			// target and overlay 223 shows the result. Overlay 222's finish card also
+			// drives the 3D big-number model, which a relic race never creates
+			// because its HUD instances return early.
+			if (((gameMode1 & (ARCADE_MODE | ADVENTURE_MODE)) != 0) && ((gameMode1 & RELIC_RACE) == 0) &&
+			    ((playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) != 0))
 			{
 				AA_EndEvent_DisplayTime((u32)playerStruct->driverID, 0);
 			}
 
 			partTimeVariable5 = gameMode1;
 
+			// Adventure co-op has no winner to announce: once a racer is done,
+			// AA_EndEvent_DisplayTime owns its final position, so the in-race
+			// suffix is dropped. Otherwise it would be drawn twice until the
+			// partner crosses the line too.
+			coopFinishedRacer = MainGameEnd_IsCoopRace(gGT) && (playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) != 0;
+
 			// If you are in Relic Race, and not in battle mode, and not in time trial
 			if ((partTimeVariable5 & 0x4020020) == 0)
 			{
-				if (((playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) == 0) || ((
+				if (((playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) == 0) || (!coopFinishedRacer && (
 				                                                                        // if numPlyrCurrGame is 2
 				                                                                        numPlyr == '\x02' &&
 
@@ -563,11 +586,25 @@ void UI_RenderFrame_Racing()
 
 	sdata->framesDrivingSameDirection++;
 
+	// A relic race is a single shared screen: the pair gets one clock and one
+	// crate counter, both laid out for the whole display rather than for one
+	// viewport. The 1P HUD layout already places them, and the split-screen
+	// crystal challenge presents its single counter the same way. The clock
+	// reads the graded racer so it agrees with the award and the results screen.
+	if ((numPlyr > 1) && ((gameMode1 & RELIC_RACE) != 0))
+	{
+		const struct UiElement2D *sharedHud = data.hudStructPtr[0];
+
+		UI_DrawNumTimebox(sharedHud[UI_HUD_SLOT_TIMEBOX].x, sharedHud[UI_HUD_SLOT_TIMEBOX].y, MainGameEnd_TimeCratesCollected(gGT));
+
+		UI_DrawRaceClock(UI_RACE_CLOCK_HUD_X, UI_RACE_CLOCK_HUD_Y, UI_RACE_CLOCK_SHOW_CURRENT_TIME, MainGameEnd_GradeDriver(gGT));
+	}
+
 	if (numPlyr == 1)
 	{
 		playerStruct = gGT->drivers[0];
 
-		UI_DrawRaceClock(0x14, 8, UI_RACE_CLOCK_SHOW_CURRENT_TIME, playerStruct);
+		UI_DrawRaceClock(UI_RACE_CLOCK_HUD_X, UI_RACE_CLOCK_HUD_Y, UI_RACE_CLOCK_SHOW_CURRENT_TIME, playerStruct);
 
 		turboThread = 0;
 		turboThreadObject = 0;
@@ -811,7 +848,10 @@ void UI_RenderFrame_Racing()
 			playerStruct = gGT->drivers[i];
 			pb = &gGT->pushBuffer[playerStruct->driverID];
 
-			if ((((playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) != 0) && ((gameMode1 & (ARCADE_MODE | TIME_TRIAL)) == 0)) &&
+			if ((((playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) != 0) && ((gameMode1 & (ARCADE_MODE | TIME_TRIAL)) == 0) &&
+			     // Adventure co-op shares one result, so neither racer is announced
+			     // as the one that finished first or as the loser of a versus round
+			     !MainGameEnd_IsCoopRace(gGT)) &&
 			    ((
 			        // cooldown is finished
 			        gGT->timerEndOfRaceVS == 0 ||
@@ -901,18 +941,35 @@ void UI_RenderFrame_AdvHub(void)
 	UI_DrawNumTrophy(hudStructPtr[UI_HUD_SLOT_TROPHY].x + 0x10, hudStructPtr[UI_HUD_SLOT_TROPHY].y - 10, gGT->drivers[0]);
 }
 
+// Crystal Challenge is co-op in adventure multiplayer: the team shares one
+// counter, so every racer that collected enough crystals ends the event.
+static void UI_Crystal_FinishChallenge(const struct GameTracker *gGT)
+{
+	for (int playerIndex = 0; playerIndex < gGT->numPlyrCurrGame; playerIndex++)
+	{
+		struct Driver *player = gGT->drivers[playerIndex];
+
+		player->funcPtrs[DRIVER_FUNC_INIT] = VehPhysProc_FreezeEndEvent_Init;
+		player->actionsFlagSet |= ACTION_RACE_FINISHED;
+	}
+
+	MainGameEnd_Initialize();
+}
+
 void UI_RenderFrame_CrystChall(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
-	struct Driver *player;
-	struct UiElement2D *hudStructPtr;
-	struct Instance *hudCrystal;
 	int iVar5;
+	int playerIndex;
+	int hasPendingPickup;
 	SVec2 crystalPos;
 
-	player = gGT->drivers[0];
-	hudStructPtr = data.hudStructPtr[0];
-	hudCrystal = sdata->ptrHudCrystal;
+	struct Driver *player = gGT->drivers[0];
+	const struct UiElement2D *hudStructPtr = data.hudStructPtr[0];
+	struct Instance *hudCrystal = sdata->ptrHudCrystal;
+
+	const int isSplitScreen = gGT->numPlyrCurrGame > 1;
+	struct UiElement2D *multiplayerHud = data.hudStructPtr[gGT->numPlyrCurrGame - 1];
 
 	// If game is not paused
 	if ((gGT->gameMode1 & PAUSE_ALL) == 0)
@@ -921,19 +978,41 @@ void UI_RenderFrame_CrystChall(void)
 		UI_JumpMeter_Update(player);
 	}
 
-	UI_DrawSpeedNeedle(hudStructPtr[UI_HUD_SLOT_SPEEDOMETER].x, hudStructPtr[UI_HUD_SLOT_SPEEDOMETER].y, player);
-
-	UI_JumpMeter_Draw(hudStructPtr[UI_HUD_SLOT_JUMP_METER].x, hudStructPtr[UI_HUD_SLOT_JUMP_METER].y, player);
-
-	UI_DrawSlideMeter(hudStructPtr[UI_HUD_SLOT_SLIDE_METER].x, hudStructPtr[UI_HUD_SLOT_SLIDE_METER].y, player);
-	if (g_config.showReservesMeter)
+	if (isSplitScreen)
 	{
-		UI_DrawReservesMeter(hudStructPtr[UI_HUD_SLOT_SLIDE_METER].x, hudStructPtr[UI_HUD_SLOT_SLIDE_METER].y + 5, player);
+		// The engine HUD is a 1P element. Split-screen viewports get the same
+		// per-player turbo bar that every other multiplayer mode draws.
+		for (playerIndex = 0; playerIndex < gGT->numPlyrCurrGame; playerIndex++, multiplayerHud += UI_HUD_SLOT_COUNT)
+		{
+			struct Driver *hudPlayer = gGT->drivers[playerIndex];
+
+			if ((gGT->gameMode1 & PAUSE_ALL) == 0)
+			{
+				UI_JumpMeter_Update(hudPlayer);
+			}
+
+			if ((hudPlayer->actionsFlagSet & ACTION_RACE_FINISHED) == 0)
+			{
+				UI_DrawSlideMeter(multiplayerHud[UI_HUD_SLOT_SLIDE_METER].x, multiplayerHud[UI_HUD_SLOT_SLIDE_METER].y, hudPlayer);
+			}
+		}
+	}
+	else
+	{
+		UI_DrawSpeedNeedle(hudStructPtr[UI_HUD_SLOT_SPEEDOMETER].x, hudStructPtr[UI_HUD_SLOT_SPEEDOMETER].y, player);
+
+		UI_JumpMeter_Draw(hudStructPtr[UI_HUD_SLOT_JUMP_METER].x, hudStructPtr[UI_HUD_SLOT_JUMP_METER].y, player);
+
+		UI_DrawSlideMeter(hudStructPtr[UI_HUD_SLOT_SLIDE_METER].x, hudStructPtr[UI_HUD_SLOT_SLIDE_METER].y, player);
+		if (g_config.showReservesMeter)
+		{
+			UI_DrawReservesMeter(hudStructPtr[UI_HUD_SLOT_SLIDE_METER].x, hudStructPtr[UI_HUD_SLOT_SLIDE_METER].y + 5, player);
+		}
+
+		UI_DrawSpeedBG();
 	}
 
-	UI_DrawSpeedBG();
-
-	UI_DrawNumCrystal(hudStructPtr[UI_HUD_SLOT_CRYSTAL].x + 0x10, hudStructPtr[UI_HUD_SLOT_CRYSTAL].y - 0x10, player);
+	UI_DrawNumCrystal(hudStructPtr[UI_HUD_SLOT_CRYSTAL].x + 0x10, hudStructPtr[UI_HUD_SLOT_CRYSTAL].y - 0x10);
 
 	// Draw weapon and number of wumpa fruit in HUD
 	UI_Weapon_DrawSelf(hudStructPtr[UI_HUD_SLOT_WEAPON].x, hudStructPtr[UI_HUD_SLOT_WEAPON].y, hudStructPtr[UI_HUD_SLOT_WEAPON].scale, player);
@@ -955,7 +1034,65 @@ void UI_RenderFrame_CrystChall(void)
 		return;
 	}
 
-	if ((player->PickupWumpaHUD.numCollected) == 0)
+	// Both players share the single crystal counter, so every pending pickup is
+	// advanced and the shared total decides when the challenge is complete.
+	hasPendingPickup = false;
+	for (playerIndex = 0; playerIndex < gGT->numPlyrCurrGame; playerIndex++)
+	{
+		struct Driver *collectingPlayer = gGT->drivers[playerIndex];
+
+		if (collectingPlayer->PickupWumpaHUD.numCollected == 0)
+		{
+			continue;
+		}
+
+		hasPendingPickup = true;
+		crystalPos.x = hudStructPtr[UI_HUD_SLOT_CRYSTAL].x;
+		crystalPos.y = hudStructPtr[UI_HUD_SLOT_CRYSTAL].y;
+		if (isSplitScreen)
+		{
+			crystalPos.x += UI_CRYSTAL_HUD_2P_OFFSET_X;
+			crystalPos.y += UI_CRYSTAL_HUD_2P_OFFSET_Y;
+		}
+
+		// if cooldown between grabbing items is over,
+		// which also means item has moved to the hud icon
+		if (collectingPlayer->PickupWumpaHUD.cooldown == 0)
+		{
+			// add one to this player's crystal count
+			collectingPlayer->numCrystals++;
+
+			// deduct from number of queued items to pick up
+			collectingPlayer->PickupWumpaHUD.numCollected--;
+
+			// if the team has enough crystals to win the challenge
+			if (gGT->numCrystalsInLEV <= UI_Crystal_CountCollected(gGT))
+			{
+				UI_Crystal_FinishChallenge(gGT);
+			}
+
+			OtherFX_Play(0x42, 1);
+
+			if (collectingPlayer->PickupWumpaHUD.numCollected != 0)
+			{
+				collectingPlayer->PickupWumpaHUD.cooldown = 5;
+			}
+		}
+
+		// if cooldown is not done
+		else
+		{
+			// interpolate position over course of 5 frames
+			UI_Lerp2D_HUD(CTR_VECTOR_DATA(&(crystalPos)), (int)collectingPlayer->PickupWumpaHUD.startX,
+			              (int)collectingPlayer->PickupWumpaHUD.startY, (int)crystalPos.x, (int)crystalPos.y,
+			              collectingPlayer->PickupWumpaHUD.cooldown, 5);
+
+			// reduce cooldown between getting each wumpa (or crystal)
+			collectingPlayer->PickupWumpaHUD.cooldown--;
+		}
+	}
+
+	if (!hasPendingPickup)
 	{
 #if defined(CTR_NATIVE)
 		// NOTE(aalhendi): Menu-storage can enter crystal HUD flow without
@@ -970,8 +1107,6 @@ void UI_RenderFrame_CrystChall(void)
 		hudCrystal->flags |= HIDE_MODEL;
 		goto LAB_800545e8;
 	}
-	crystalPos.x = hudStructPtr[UI_HUD_SLOT_CRYSTAL].x;
-	crystalPos.y = hudStructPtr[UI_HUD_SLOT_CRYSTAL].y;
 
 	// make visible
 #if defined(CTR_NATIVE)
@@ -979,45 +1114,6 @@ void UI_RenderFrame_CrystChall(void)
 	{
 #endif
 		hudCrystal->flags &= ~HIDE_MODEL;
-	}
-
-	// if cooldown between grabbing items is over,
-	// which also means item has moved to the hud icon
-	if ((player->PickupWumpaHUD.cooldown) == 0)
-	{
-		// add one to your crystal count
-		player->numCrystals++;
-
-		// deduct from number of queued items to pick up
-		player->PickupWumpaHUD.numCollected--;
-
-		// if you have enough crystals to win the race
-		if (gGT->numCrystalsInLEV <= player->numCrystals)
-		{
-			player->funcPtrs[DRIVER_FUNC_INIT] = VehPhysProc_FreezeEndEvent_Init;
-
-			player->actionsFlagSet |= ACTION_RACE_FINISHED;
-
-			MainGameEnd_Initialize();
-		}
-
-		OtherFX_Play(0x42, 1);
-
-		if (player->PickupWumpaHUD.numCollected != 0)
-		{
-			player->PickupWumpaHUD.cooldown = 5;
-		}
-	}
-
-	// if cooldown is not done
-	else
-	{
-		// interpolate position over course of 5 frames
-		UI_Lerp2D_HUD(CTR_VECTOR_DATA(&(crystalPos)), (int)player->PickupWumpaHUD.startX, (int)player->PickupWumpaHUD.startY,
-		              (int)hudStructPtr[UI_HUD_SLOT_CRYSTAL].x, (int)hudStructPtr[UI_HUD_SLOT_CRYSTAL].y, player->PickupWumpaHUD.cooldown, 5);
-
-		// reduce cooldown between getting each wumpa (or crystal)
-		player->PickupWumpaHUD.cooldown--;
 	}
 
 	// ======= This is UI_ConvertX_2 and Y_2, but inlined =======

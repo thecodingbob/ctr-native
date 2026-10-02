@@ -229,12 +229,13 @@ void GAMEPROG_NewProfile_OutsideAdv(struct GameSave *save)
 }
 
 
-void GAMEPROG_InitFullMemcard(struct MemcardProfile *mcp)
+void GAMEPROG_InitFullMemcard(struct MemcardData *mcd)
 {
+	struct MemcardProfile *mcp = &mcd->profile;
 	struct GameSave *save = &mcp->gameSave;
 	s16 i;
-	// clear
-	memset(mcp, 0, sizeof(struct MemcardProfile));
+	// clear, this port's extension included
+	memset(mcd, 0, sizeof(struct MemcardData));
 	GAMEPROG_NewProfile_OutsideAdv(save);
 	i = 0;
 
@@ -325,7 +326,41 @@ void GAMEPROG_NewGame_OnBoot(void)
 {
 	GAMEPROG_NewProfile_OutsideAdv(&GAME_SAVE);
 	GAMEPROG_NewProfile_InsideAdv(&GAME_ADV_PROGRESS);
+	GAMEPROG_ResetAdvMultiplayer(&sdata->advMultiplayer);
 	GAMEPROG_GetPtrHighScoreTrack();
+}
+
+
+void GAMEPROG_ResetAdvMultiplayer(struct AdvMultiplayerSettings *settings)
+{
+	settings->numPlayers = ADV_MULTIPLAYER_DEFAULT_PLAYERS;
+	settings->characterID2 = ADV_MULTIPLAYER_NO_CHARACTER;
+}
+
+
+enum
+{
+	// Sapphire, gold and platinum, one target time each per track.
+	GAMEPROG_RELIC_TIER_COUNT = 3,
+};
+
+// Adventure co-op shares one tier time between two racers on a single clock
+// and a single crate pool, so the multiplayer penalty takes 30% off every target.
+static const float GAMEPROG_RELIC_2P_TIME_FACTOR = 0.7f;
+
+// The target time the pair has to beat. A lone racer keeps the retail target;
+// this is the single place both the HUD goal and the award check read, so the two
+// can never disagree about what the round demands.
+int GAMEPROG_RelicTargetTime(int levelID, int tier)
+{
+	int soloTime = data.RelicTime[levelID * GAMEPROG_RELIC_TIER_COUNT + tier];
+
+	if (!MainGameEnd_IsCoopRace(GAME_TRACKER))
+	{
+		return soloTime;
+	}
+
+	return (int)(soloTime * GAMEPROG_RELIC_2P_TIME_FACTOR);
 }
 
 

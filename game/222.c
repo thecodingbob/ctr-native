@@ -56,6 +56,20 @@ enum ArcadeAdventureEndMenuConstants
 	AA_COMPACT_RESULT_BIG_NUM_Y_OFFSET = 4,
 	AA_BIG_NUM_Z_BASE = 0x100,
 	AA_ADD_CONFIG_0_PAGE_OFFSET = -0x2f00,
+
+	// The PSX display raster is 0x200 x 0xd8 (see SetDefDispEnv in MainMain.c),
+	// so the middle of the screen is (0x100, 0x6c) - the anchor every centred
+	// retail menu uses. Adventure co-op splits the screen between both racers'
+	// results, so the "press * to continue" prompt and the retry/exit menu move
+	// there from their retail spot along the bottom edge, which is where P2's
+	// finish time lands. A lone racer keeps the retail spot.
+	AA_SCREEN_CENTER_X = 0x100,
+	AA_SCREEN_CENTER_Y = 0x6c,
+	AA_END_EVENT_TEXT_X = 0x100,
+	AA_END_EVENT_TEXT_Y = 0xbe,
+	AA_END_EVENT_MENU_X = 0x100,
+	AA_END_EVENT_MENU_Y = 0xb4,
+	AA_CTR_LETTER_COUNT = 3,
 };
 
 // NOTE(aalhendi): Retail stores this writable one-character string before the
@@ -77,6 +91,26 @@ extern struct RectMenu menu222_2P;
 #define gameHudStructs           (data.hudStructPtr)
 #define gameMenuRetryExit        (data.menuRetryExit)
 #endif
+
+// The three CTR letters are a single shared resource: a co-op round is won on
+// them only if the pair collected all three between them, so the round total is
+// the sum over the human racers rather than one driver's tally.
+static int AA_TeamLettersCollected(struct GameTracker *gGT)
+{
+	int collected = 0;
+
+	for (int i = 0; i < gGT->numPlyrCurrGame; i++)
+	{
+		struct Driver *letterRacer = gGT->drivers[i];
+
+		if (letterRacer != NULL)
+		{
+			collected += letterRacer->PickupLetterHUD.numCollected;
+		}
+	}
+
+	return collected;
+}
 
 void AA_EndEvent_DrawMenu(void)
 {
@@ -110,6 +144,9 @@ void AA_EndEvent_DrawMenu(void)
 	b32 tokenGrowthDelayed;
 	s32 tokenAwardFrame;
 	s32 i;
+	b32 coopRace;
+	s16 promptX;
+	s16 promptY;
 
 	// NOTE(aalhendi): This compiler barrier preserves retail's address-page
 	// allocation across initialization; it does not change game state.
@@ -120,6 +157,17 @@ void AA_EndEvent_DrawMenu(void)
 	hudArray = gameHudStructs[GAME_TRACKER->numPlyrCurrGame - 1];
 	pushBuffer = &GAME_TRACKER->pushBuffer[0];
 	driverRankString = (char *)&s_driverRankString222;
+
+	// The retail prompt and retry menu sit along the bottom edge, which is where
+	// P2's finish time lands once Adventure co-op splits the screen. Both are
+	// repositioned every frame so neither mode can leave a stale placement behind
+	// for the other.
+	coopRace = MainGameEnd_IsCoopRace(GAME_TRACKER);
+	promptX = coopRace ? AA_SCREEN_CENTER_X : AA_END_EVENT_TEXT_X;
+	promptY = coopRace ? AA_SCREEN_CENTER_Y : AA_END_EVENT_TEXT_Y;
+	gameMenuRetryExit.posX_curr = coopRace ? AA_SCREEN_CENTER_X : AA_END_EVENT_MENU_X;
+	gameMenuRetryExit.posY_curr = coopRace ? AA_SCREEN_CENTER_Y : AA_END_EVENT_MENU_Y;
+
 	if (GAME_FRAMES_SINCE_RACE_ENDED < AA_RESULT_MAX_FRAMES)
 	{
 		GAME_FRAMES_SINCE_RACE_ENDED++;
@@ -138,7 +186,8 @@ void AA_EndEvent_DrawMenu(void)
 	// If adventure mode
 	if ((adventureGameTracker->gameMode1 & ADVENTURE_MODE) != 0)
 	{
-		if ((driver->driverRank != 0) || (driver->PickupLetterHUD.numCollected != 3))
+		if (!MainGameEnd_AdventureRaceWon(adventureGameTracker) ||
+		    (AA_TeamLettersCollected(adventureGameTracker) != AA_CTR_LETTER_COUNT))
 		{
 			// A lost or incomplete token run drops the letters in a six-frame stagger.
 			if (GAME_FRAMES_SINCE_RACE_ENDED < AA_RESULT_MAX_FRAMES)
@@ -543,23 +592,24 @@ void AA_EndEvent_DrawMenu(void)
 		return;
 	}
 
-	// Normal Adventure races require first place. Token races also require all
-	// three CTR letters.
+	// A solo Adventure racer needs first place on their own; a co-op pair needs
+	// both of them on the podium. Token races also require all three CTR letters.
 	if ((GAME_TRACKER->gameMode2 & TOKEN_RACE) == 0)
 	{
-		if (driver->driverRank == 0)
+		if (MainGameEnd_AdventureRaceWon(GAME_TRACKER))
 		{
 			goto race_won;
 		}
 	}
-	else if ((driver->driverRank == 0) && (driver->PickupLetterHUD.numCollected == 3))
+	else if (MainGameEnd_AdventureRaceWon(GAME_TRACKER) &&
+	         (AA_TeamLettersCollected(GAME_TRACKER) == AA_CTR_LETTER_COUNT))
 	{
 		goto race_won;
 	}
 	goto race_lost;
 
 race_won:
-	DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+	DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], promptX, promptY, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 	if ((GAME_ANY_PLAYER_TAP & AA_CONFIRM_BUTTON_MASK) == 0)
 	{
 		return;
@@ -634,7 +684,7 @@ race_won:
 	}
 
 	// A normal Adventure win awards the first-time trophy and, when all three
-	// letters were collected, the track's CTR token.
+	// letters were collected between them, the track's CTR token.
 	rewardBit = GAME_TRACKER->levelID;
 	rewardBit += ADV_REWARD_FIRST_TROPHY;
 	if (!CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, rewardBit))
@@ -643,7 +693,7 @@ race_won:
 		GAME_TRACKER->podiumRewardID = STATIC_TROPHY;
 	}
 
-	if (driver->PickupLetterHUD.numCollected == 3)
+	if (AA_TeamLettersCollected(GAME_TRACKER) == AA_CTR_LETTER_COUNT)
 	{
 		UNLOCK_ADV_BIT(GAME_ADV_PROGRESS.rewards, GAME_TRACKER->levelID + ADV_REWARD_FIRST_CTR_TOKEN);
 	}
@@ -661,7 +711,7 @@ race_won:
 race_lost:
 	if ((GAME_MENU_READY & AA_MENU_READY_FLAG) == 0)
 	{
-		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], promptX, promptY, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 
 		if ((GAME_ANY_PLAYER_TAP & AA_CONFIRM_BUTTON_MASK) != 0)
 		{

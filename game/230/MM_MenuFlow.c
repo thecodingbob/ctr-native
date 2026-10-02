@@ -321,22 +321,21 @@ void MM_ToggleRows_PlayerCount(void)
 {
 	struct MenuRow *row;
 	s16 rowIndex;
-	s16 arcadePlayerRowCount;
+	s16 selectablePlayerCountRows = MM_PLAYER_1P2P_SELECTABLE_ROWS;
+	const b32 adventurePlayerCountSelection = (GAME_TRACKER->gameMode1 & ADVENTURE_MODE) != 0 && g_config.multiplayerAdventure;
+	struct MenuRow *playerCountRows = MM_ROWS_PLAYERS_1P2P;
 
-	if (g_config.extendedArcadeMultiplayer)
+	if (g_config.extendedArcadeMultiplayer && !adventurePlayerCountSelection)
 	{
-		MM_MENU_PLAYERS_1P2P.rows = MM_ROWS_PLAYERS_1P2P3P4P;
-		arcadePlayerRowCount = MM_PLAYER_1P2P3P4P_SELECTABLE_ROWS;
-	}
-	else
-	{
-		MM_MENU_PLAYERS_1P2P.rows = MM_ROWS_PLAYERS_1P2P;
-		arcadePlayerRowCount = MM_PLAYER_1P2P_SELECTABLE_ROWS;
+		playerCountRows = MM_ROWS_PLAYERS_1P2P3P4P;
+		selectablePlayerCountRows = MM_PLAYER_1P2P3P4P_SELECTABLE_ROWS;
 	}
 
-	for (rowIndex = 0; rowIndex < arcadePlayerRowCount; rowIndex++)
+	MM_MENU_PLAYERS_1P2P.rows = playerCountRows;
+
+	for (rowIndex = 0; rowIndex < selectablePlayerCountRows; rowIndex++)
 	{
-		row = &MM_MENU_PLAYERS_1P2P.rows[rowIndex];
+		row = &playerCountRows[rowIndex];
 
 		// unlock row
 		row->stringIndex &= MENU_ROW_LNG_MASK;
@@ -365,11 +364,10 @@ void MM_ToggleRows_PlayerCount(void)
 
 void MM_MenuProc_1p2p(struct RectMenu *menu)
 {
-	struct RectMenu *previousMenuOwner;
-	s16 row;
+	s16 selectableRowCount = 0;
 
-	previousMenuOwner = menu;
-	row = menu->rowSelected;
+	struct RectMenu *previousMenuOwner = menu;
+	const s16 row = menu->rowSelected;
 
 	// if uninitialized
 	if (row == -1)
@@ -382,15 +380,25 @@ void MM_MenuProc_1p2p(struct RectMenu *menu)
 		return;
 	}
 
-	// 3P and 4P Arcade must be explicitly enabled.
-	if ((row >= MM_PLAYER_1P2P3P4P_SELECTABLE_ROWS) ||
-	    (!g_config.extendedArcadeMultiplayer && (row >= MM_PLAYER_1P2P_SELECTABLE_ROWS)))
+	while (menu->rows[selectableRowCount].stringIndex != RECTMENU_STRING_NONE)
+	{
+		selectableRowCount++;
+	}
+
+	if (row >= selectableRowCount)
 	{
 		return;
 	}
 
 	// row N is (N+1)P
-	GAME_TRACKER->numPlyrNextGame = menu->rowSelected + 1;
+	GAME_TRACKER->numPlyrNextGame = row + 1;
+	if (menu->ptrPrevBox_InHierarchy == &MM_MENU_ADVENTURE)
+	{
+		MM_TITLE_MENU_STATE = TITLE_MENU_STATE_EXITING;
+		MM_DESIRED_MENU_INDEX = MM_EXIT_ROUTE_ADV_NEW;
+		menu->state |= ONLY_DRAW_TITLE;
+		return;
+	}
 
 	// go to difficulty box
 	menu->ptrNextBox_InHierarchy = &MM_MENU_DIFFICULTY;
@@ -655,6 +663,14 @@ void MM_MenuProc_NewLoad(struct RectMenu *menu)
 	switch (row)
 	{
 	case 0:
+		if (g_config.multiplayerAdventure)
+		{
+			menu->ptrNextBox_InHierarchy = &MM_MENU_PLAYERS_1P2P;
+			menu->ptrNextBox_InHierarchy->rowSelected = 0;
+			menu->state |= ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY;
+			return;
+		}
+
 		// MM_Title transitioning out
 		MM_TITLE_MENU_STATE = TITLE_MENU_STATE_EXITING;
 

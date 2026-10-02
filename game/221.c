@@ -162,7 +162,6 @@ static void CC_EndEvent_UnlockRewardBit(struct AdvProgress *adv, s32 rewardBit)
 void CC_EndEvent_DrawMenu()
 {
 	struct GameTracker *comparisonGT;
-	struct Driver *driver;
 	s16 pos[2];
 	s32 resultStringIndex;
 	b32 didWin;
@@ -178,7 +177,6 @@ void CC_EndEvent_DrawMenu()
 #endif
 	s32 tokenRewardBit;
 
-	driver = GAME_TRACKER_RELOAD()->drivers[0];
 	comparisonGT = GAME_TRACKER_RELOAD();
 
 #if !defined(CTR_NATIVE)
@@ -188,7 +186,7 @@ void CC_EndEvent_DrawMenu()
 		s16 battleTrackPurpleTokenOffset[LAB_BASEMENT - NITRO_COURT + 1] = {CC_BATTLE_TRACK_PURPLE_TOKEN_OFFSETS};
 #endif
 
-		if (driver->numCrystals >= comparisonGT->numCrystalsInLEV)
+		if (UI_Crystal_CountCollected(comparisonGT) >= comparisonGT->numCrystalsInLEV)
 		{
 			didWin = true;
 			resultStringIndex = LNG_YOU_WIN;
@@ -231,7 +229,7 @@ void CC_EndEvent_DrawMenu()
 			CC_MENU_CRYSTAL->matrix.t[0] = UI_ConvertX_2(pos[0], CC_SCREEN_DEPTH);
 			CC_MENU_CRYSTAL->matrix.t[1] = UI_ConvertY_2(pos[1], CC_SCREEN_DEPTH);
 		}
-		UI_DrawNumCrystal(pos[0] + 0xf, pos[1] - 0x10, driver);
+		UI_DrawNumCrystal(pos[0] + 0xf, pos[1] - 0x10);
 
 		// YOU WIN, or TRY AGAIN
 		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[resultStringIndex], pos[0] + 0x33, pos[1] + 8, FONT_BIG, (JUSTIFY_CENTER | ORANGE));

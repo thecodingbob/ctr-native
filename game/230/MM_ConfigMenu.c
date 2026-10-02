@@ -175,7 +175,10 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 			OtherFX_Play(1, 1);
 			const ConfigEntry *e = &g_configEntries[firstEntry + menu->rowSelected];
 			if (e->type == CFG_BOOL)
+			{
 				*(bool *)e->valuePtr ^= 1;
+				NativeConfig_ApplyDependencies(e);
+			}
 			else if (e->type == CFG_ENUM)
 			{
 				int *val = (int *)e->valuePtr;

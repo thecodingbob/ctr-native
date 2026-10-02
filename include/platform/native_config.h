@@ -17,6 +17,7 @@ typedef struct {
     int botSelectionMode;         // BOT_SELECTION_PREDETERMINED (default), RANDOM_UNLOCKED, or RANDOM_ALL
     bool skipHints;             // false = off (default), true = skip all mask hints in adventure mode
     bool extendedAdventureCharacterSelect; // false = garage, true = extended selector for new Adventure
+    bool multiplayerAdventure;  // false = off (default), true = enable multiplayer Adventure setup
     int speedMultiplier;        // percent, 10%..200%, 100 = 1.0x (default)
     int gravityMultiplier;      // percent, 10%..300%, 100 = 1.0x (default)
     int turnMultiplier;         // percent, 10%..400%, 100 = 1.0x (default)
@@ -86,5 +87,6 @@ extern const int g_numConfigEntries;
 
 void NativeConfig_Load(void);
 void NativeConfig_Save(void);
+void NativeConfig_ApplyDependencies(const ConfigEntry *changedEntry);
 
 #endif

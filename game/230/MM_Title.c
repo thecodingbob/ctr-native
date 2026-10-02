@@ -99,6 +99,12 @@ HANDLE_EXITING:
 
 		GAMEPROG_NewProfile_InsideAdv(&GAME_ADV_PROGRESS);
 
+		// The 1P/2P choice happens before this route, but the profile screen that
+		// writes the new save runs later, after the main menu has already reset
+		// numPlyrNextGame, so the racer count has to be captured here.
+		sdata->advMultiplayer.numPlayers = GAME_TRACKER->numPlyrNextGame;
+		sdata->advMultiplayer.characterID2 = ADV_MULTIPLAYER_NO_CHARACTER;
+
 		MM_ADV_PROFILE_INDEX = 0xffff;
 
 	        // go to adventure character select screen
@@ -111,7 +117,10 @@ HANDLE_EXITING:
 		{
 		  // The normal Adventure path loads the garage. Keep the main-menu level
 		  // active instead so its full character roster can be selected first.
-		  GAME_TRACKER->numPlyrNextGame = 1;
+		  if (!g_config.multiplayerAdventure)
+		  {
+		    GAME_TRACKER->numPlyrNextGame = 1;
+		  }
 		  sdata->ptrDesiredMenu = &D230.menuCharacterSelect;
 		  MM_Characters_RestoreIDs();
 		}

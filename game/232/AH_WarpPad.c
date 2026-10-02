@@ -17,6 +17,8 @@ enum
 	AH_WP_GEM_CUP_COUNT = 5,
 	AH_WP_BATTLE_TRACK_ID_SPAN = 7,
 	AH_WP_RACER_SLOT_COUNT = 8,
+	AH_WP_SPEED_CHAMPION_GRID_SLOT = 0,
+	AH_WP_FIRST_BOT_GRID_SLOT = 1,
 	AH_WP_REWARD_INSTANCE_COUNT = 3,
 	AH_WP_WISP_COUNT = 2,
 	AH_WP_WARP_LOAD_FRAMES = 61,
@@ -222,7 +224,12 @@ void AH_WarpPad_ThTick(struct Thread *t)
 	s32 rewardScale2;
 
 	s32 champID;
-	s32 champSlot;
+	s32 champGridSlot;
+
+	// The human drivers always take the grid slots at the back, so the bots are
+	// the ones that share the front of the grid.
+	s32 firstBotSlot;
+	s32 botCount;
 
 	u8 randKartSpawn[AH_WP_RACER_SLOT_COUNT];
 	rewardScale = 0x100;
@@ -474,28 +481,33 @@ void AH_WarpPad_ThTick(struct Thread *t)
 	// Track speed champion.
 	champID = AH_WarpPad_Champion(warppadObj->levelID);
 
+	firstBotSlot = sdata->advMultiplayer.numPlayers;
+	botCount = AH_WP_RACER_SLOT_COUNT - firstBotSlot;
+
 	// If Speed Champion is on the track (Crash-Pura)
 	// and is not the same characterID as this driver
 	if ((champID < AH_WP_RACER_SLOT_COUNT) && (champID != GAME_CHARACTER_IDS[driver->driverID]))
 	{
-		champSlot = 0;
-		// set everyone to spawn in order
-		for (i = 1; i < AH_WP_RACER_SLOT_COUNT; i++)
+		champGridSlot = 0;
+		// set everyone to spawn in order, starting after the human drivers
+		for (i = firstBotSlot; i < AH_WP_RACER_SLOT_COUNT; i++)
 		{
 			if (AH_WarpPad_Champion(warppadObj->levelID) == GAME_CHARACTER_IDS[i])
 			{
-				champSlot = i;
-				AH_KART_SPAWN_ORDER[i] = 0;
+				// The last bot takes over the grid slot the champion vacated, which
+				// is not the champion's driver slot once the humans sit at the back.
+				champGridSlot = AH_WP_FIRST_BOT_GRID_SLOT + (i - firstBotSlot);
+				AH_KART_SPAWN_ORDER[i] = AH_WP_SPEED_CHAMPION_GRID_SLOT;
 			}
 
-			else if (i == 7)
+			else if (i == AH_WP_RACER_SLOT_COUNT - 1)
 			{
-				AH_KART_SPAWN_ORDER[AH_WP_RACER_SLOT_COUNT - 1] = champSlot;
+				AH_KART_SPAWN_ORDER[AH_WP_RACER_SLOT_COUNT - 1] = champGridSlot;
 			}
 
 			else
 			{
-				AH_KART_SPAWN_ORDER[i] = i;
+				AH_KART_SPAWN_ORDER[i] = AH_WP_FIRST_BOT_GRID_SLOT + (i - firstBotSlot);
 			}
 		}
 	}
@@ -503,18 +515,18 @@ void AH_WarpPad_ThTick(struct Thread *t)
 	// Speed Champion is invalid
 	else
 	{
-		i = 1;
+		i = firstBotSlot;
 		do
 		{
 			randKartSpawn[i] = i;
 			i++;
 		} while (i < AH_WP_RACER_SLOT_COUNT);
 
-		for (i = 0; i < AH_WP_RACER_SLOT_COUNT - 1; i++)
+		for (i = 0; i < botCount; i++)
 		{
 			rng1 = RngDeadCoed(&AH_ADVENTURE_RNG);
 
-			rng2 = (rng1 & 0xfff) % (AH_WP_RACER_SLOT_COUNT - 1 - i) + 1;
+			rng2 = (rng1 & 0xfff) % (botCount - i) + firstBotSlot;
 			AH_KART_SPAWN_ORDER[(s32)randKartSpawn[rng2]] = (u8)i;
 
 			while (rng2 < AH_WP_RACER_SLOT_COUNT - 1)
@@ -525,8 +537,11 @@ void AH_WarpPad_ThTick(struct Thread *t)
 		}
 	}
 
-	// spawn P1 in the back
-	AH_KART_SPAWN_ORDER[0] = 7;
+	// spawn the human drivers in the back, P1 last
+	for (i = 0; i < firstBotSlot; i++)
+	{
+		AH_KART_SPAWN_ORDER[i] = AH_WP_RACER_SLOT_COUNT - 1 - i;
+	}
 
 	// if flag is on-screen, loading has already been finalized
 	if (RaceFlag_IsTransitioning())

@@ -46,6 +46,14 @@ enum AHMapMainConstants
 	AH_MAP_HUD_SLOT_TROPHY_COUNT = 0x10,
 	AH_MAP_HUD_COUNTER_OFFSET_X = 0x10,
 	AH_MAP_HUD_COUNTER_OFFSET_Y = -10,
+
+	// Co-op indicator, in the bottom left corner the hub HUD leaves free: the
+	// label of the racer count, then the head of the partner beside it.
+	AH_MAP_MULTIPLAYER_LABEL_X = 0x19,
+	AH_MAP_MULTIPLAYER_LABEL_Y = 0xba,
+	AH_MAP_MULTIPLAYER_ICON_GAP_X = 0x2,
+	AH_MAP_MULTIPLAYER_ICON_OFFSET_Y = -0x8,
+	AH_MAP_MULTIPLAYER_ICON_SCALE = 0x1000,
 };
 
 enum AHMapArrowOutlineConstants
@@ -664,6 +672,30 @@ void AH_Map_Warppads(struct UIMap *map, struct Thread *warppadThread, s16 *arrow
 static void AH_MaskHint_DrawRepeatPrompt(void);
 #endif
 
+// The hub shows who the second racer is while the profile in play plays co-op.
+// The hub reads the live settings of that profile, which are what a save of it is
+// about to write, so an entry without a partner draws nothing here.
+static void AH_Map_DrawMultiplayer(void)
+{
+	struct GameTracker *gGT = GAME_TRACKER;
+	s16 characterID2 = SelectProfile_AdvMultiplayerPartner(&sdata->advMultiplayer);
+	if (characterID2 == ADV_MULTIPLAYER_NO_CHARACTER)
+	{
+		return;
+	}
+
+	char *label = GAME_LANGUAGE_STRINGS[LNG_2P];
+	int iconX;
+
+	iconX = AH_MAP_MULTIPLAYER_LABEL_X + DecalFont_GetLineWidth(label, FONT_BIG) + AH_MAP_MULTIPLAYER_ICON_GAP_X;
+
+	DecalFont_DrawLine(label, AH_MAP_MULTIPLAYER_LABEL_X, AH_MAP_MULTIPLAYER_LABEL_Y, FONT_BIG, ORANGE);
+
+	DecalHUD_DrawPolyFT4(gGT->ptrIcons[data.MetaDataCharacters[characterID2].iconID], iconX,
+	                     AH_MAP_MULTIPLAYER_LABEL_Y + AH_MAP_MULTIPLAYER_ICON_OFFSET_Y, &gGT->backBuffer->primMem,
+	                     gGT->pushBuffer_UI.ptrOT, 0, AH_MAP_MULTIPLAYER_ICON_SCALE);
+}
+
 void AH_Map_Main(void)
 {
 	s16 driverIconCounter;
@@ -745,6 +777,8 @@ void AH_Map_Main(void)
 	UI_DrawNumKey(hud[AH_MAP_HUD_SLOT_KEY_COUNT].x + AH_MAP_HUD_COUNTER_OFFSET_X, hud[AH_MAP_HUD_SLOT_KEY_COUNT].y + AH_MAP_HUD_COUNTER_OFFSET_Y, advDriver);
 	UI_DrawNumTrophy(hud[AH_MAP_HUD_SLOT_TROPHY_COUNT].x + AH_MAP_HUD_COUNTER_OFFSET_X, hud[AH_MAP_HUD_SLOT_TROPHY_COUNT].y + AH_MAP_HUD_COUNTER_OFFSET_Y,
 	                 advDriver);
+
+	AH_Map_DrawMultiplayer();
 
 #if defined(CTR_NATIVE)
 	// NOTE(aalhendi): Retail appends this prompt after DrawOTag starts; the PS1

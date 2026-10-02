@@ -249,7 +249,7 @@ void RefreshCard_Unknown2(void)
 {
 	if ((s16)CTR_ReadU16LE(&sdata->boolAdvProfilesChecked) == 0)
 	{
-		GAMEPROG_InitFullMemcard((struct MemcardProfile *)sdata->ptrToMemcardBuffer1);
+		GAMEPROG_InitFullMemcard(sdata->ptrToMemcardBuffer1);
 		CTR_WriteU16LE(&sdata->boolAdvProfilesChecked, 1);
 	}
 
@@ -287,13 +287,14 @@ static void RefreshCard_QueueGetInfo(void)
 
 static void RefreshCard_QueueMainLoad(void)
 {
-	RefreshCard_NextMemcardAction(0, MC_ACTION_Load, data.s_BASCUS_94426_SLOTS, NULL, (struct GhostHeader *)sdata->ptrToMemcardBuffer1, 0x1680);
+	RefreshCard_NextMemcardAction(0, MC_ACTION_Load, data.s_BASCUS_94426_SLOTS, NULL, (struct GhostHeader *)sdata->ptrToMemcardBuffer1,
+	                              MEMCARD_FILE_DATA_SIZE);
 }
 
 static void RefreshCard_QueueMainSave(void)
 {
 	RefreshCard_NextMemcardAction(0, MC_ACTION_Save, data.s_BASCUS_94426_SLOTS, (char *)data.memcardIcon_HeaderSLOTS,
-	                              (struct GhostHeader *)sdata->ptrToMemcardBuffer1, 0x1680);
+	                              (struct GhostHeader *)sdata->ptrToMemcardBuffer1, MEMCARD_FILE_DATA_SIZE);
 }
 
 static void RefreshCard_QueueGhostSave(void)

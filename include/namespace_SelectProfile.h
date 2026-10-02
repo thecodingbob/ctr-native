@@ -30,6 +30,13 @@ enum SelectProfileConstants
 	SELECT_PROFILE_UI_DEPTH = 0x100,
 	SELECT_PROFILE_UI_SCALE = 0x100,
 
+	// A profile row shows the racer avatars on the left and the text on the
+	// right. A co-op row adds a second avatar, and the pair shifts left when it
+	// would run into the text.
+	SELECT_PROFILE_ADV_ICON_X = 10,
+	SELECT_PROFILE_ADV_ICON_Y = 6,
+	SELECT_PROFILE_ADV_ICON_RACERS = 2,
+
 	SELECT_PROFILE_ADV_SAVE_BYTES = 0x1680,
 	SELECT_PROFILE_GHOST_SAVE_BYTES = 0x3e00,
 	SELECT_PROFILE_GHOST_SLOT_COUNT = 7,

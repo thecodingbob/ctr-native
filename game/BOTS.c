@@ -332,15 +332,22 @@ void BOTS_Adv_AdjustDifficulty(void)
 
 	gGT->numBotsNextGame = 0;
 
+	// Adventure co-op has no versus grid of its own: the warp pad puts both human
+	// racers at the back and a retry carries over the previous race's positions,
+	// the same way a lone racer's Adventure does. The tables keyed on the event
+	// still apply below, exactly as they do for a lone racer.
 	if (((gameMode2 & CUP_ANY_KIND) == 0) || (gGT->cup.trackIndex == 0))
 	{
-		if (gGT->numPlyrCurrGame == 2)
+		if (!MainGameEnd_IsCoopRace(gGT))
 		{
-			BOTS_Adv_CopySpawnOrder(data.kartSpawnOrder.VS_2P_1, data.kartSpawnOrder.VS_2P_2);
-		}
-		else if (gGT->numPlyrCurrGame > 2)
-		{
-			BOTS_Adv_CopySpawnOrder(data.kartSpawnOrder.VS_3P_4P_1, data.kartSpawnOrder.VS_3P_4P_2);
+			if (gGT->numPlyrCurrGame == 2)
+			{
+				BOTS_Adv_CopySpawnOrder(data.kartSpawnOrder.VS_2P_1, data.kartSpawnOrder.VS_2P_2);
+			}
+			else if (gGT->numPlyrCurrGame > 2)
+			{
+				BOTS_Adv_CopySpawnOrder(data.kartSpawnOrder.VS_3P_4P_1, data.kartSpawnOrder.VS_3P_4P_2);
+			}
 		}
 
 		if ((gameMode1 & (RELIC_RACE | TIME_TRIAL)) != 0)
@@ -387,7 +394,7 @@ void BOTS_Adv_AdjustDifficulty(void)
 	if ((gameMode1 & ADVENTURE_BOSS) != 0)
 	{
 		sdata->driver_pathIndexIDs[0] = 0;
-		sdata->driver_pathIndexIDs[1] = 1;
+		sdata->driver_pathIndexIDs[LOAD_AdventureBossDriverSlot()] = 1;
 	}
 
 	if ((gameMode1 & BATTLE_MODE) != 0)

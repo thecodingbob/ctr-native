@@ -2,8 +2,9 @@
 
 enum RelicRaceEndMenuConstants
 {
-	RR_RELIC_TIERS = 3,
 	RR_SAPPHIRE_RELIC_INDEX = 0,
+	RR_GOLD_RELIC_INDEX = 1,
+	RR_PLATINUM_RELIC_INDEX = 2,
 	RR_RACE_TIME_ONE_SECOND = 0x3c0,
 	RR_RACE_TIME_TEN_SECONDS = 0x2580,
 	RR_RACE_TIME_ONE_MINUTE = 0xe100,
@@ -60,7 +61,6 @@ global_variable Color s_highScoreIconColor223;
 #ifndef RR_RELIC
 #define RR_RELIC            (sdata->ptrRelic)
 #define RR_TIMEBOX1         (sdata->ptrTimebox1)
-#define RR_RELIC_TIMES      ((s32(*)[RR_RELIC_TIERS])data.RelicTime)
 #define RR_RELIC_TIME_1MIN  (sdata->relicTime_1min)
 #define RR_RELIC_TIME_10SEC (sdata->relicTime_10sec)
 #define RR_RELIC_TIME_1SEC  (sdata->relicTime_1sec)
@@ -80,26 +80,39 @@ global_variable Color s_highScoreIconColor223;
 #define RR_DRAW_LINE_WIDE_X DecalFont_DrawLine
 #endif
 
+// The tier time the team has to beat. Reading the shared accessor keeps the goal
+// shown on the results screen equal to the one the award was decided on.
+static s32 RR_TeamTargetTime(struct GameTracker *gGT, s32 tier)
+{
+	return GAMEPROG_RelicTargetTime(gGT->levelID, tier);
+}
+
 void RR_EndEvent_UnlockAward(void)
 {
+	// One clock and one crate pool decide the pair's relic, so both the tier
+	// comparison and the all-crates bonus are read off the team, not off player one.
 	s32 timeDeduct;
+	s32 teamTime;
+	s32 goldTarget;
+	s32 platinumTarget;
+
+	{
+		struct GameTracker *gGT = GAME_TRACKER;
+
+		timeDeduct = MainGameEnd_GotAllTimeCrates(gGT) ? RR_RACE_TIME_TEN_SECONDS : 0;
+		teamTime = MainGameEnd_GradeDriver(gGT)->timeElapsedInRace - timeDeduct;
+		goldTarget = RR_TeamTargetTime(gGT, RR_GOLD_RELIC_INDEX);
+		platinumTarget = RR_TeamTargetTime(gGT, RR_PLATINUM_RELIC_INDEX);
+	}
 
 	{
 		struct GameTracker *gGT;
-		struct Driver *driver;
 		u32 *rewards;
 		s32 rewardBit;
 
 		gGT = GAME_TRACKER;
-		driver = gGT->drivers[0];
-		timeDeduct = 0;
 
-		if (driver->numTimeCrates == gGT->timeCratesInLEV)
-		{
-			timeDeduct = RR_RACE_TIME_TEN_SECONDS;
-		}
-
-		if (driver->timeElapsedInRace - timeDeduct <= RR_RELIC_TIMES[gGT->levelID][RR_SAPPHIRE_RELIC_INDEX])
+		if (teamTime <= RR_TeamTargetTime(gGT, RR_SAPPHIRE_RELIC_INDEX))
 		{
 			rewards = GAME_ADV_PROGRESS.rewards;
 			rewardBit = gGT->levelID + ADV_REWARD_FIRST_SAPPHIRE_RELIC;
@@ -119,13 +132,11 @@ void RR_EndEvent_UnlockAward(void)
 
 	{
 		struct GameTracker *gGT;
-		struct Driver *driver;
 		u32 *rewards;
 		s32 rewardBit;
 
 		gGT = GAME_TRACKER;
-		driver = gGT->drivers[0];
-		if (driver->timeElapsedInRace - timeDeduct <= RR_RELIC_TIMES[gGT->levelID][1])
+		if (teamTime <= goldTarget)
 		{
 			rewards = GAME_ADV_PROGRESS.rewards;
 			rewardBit = gGT->levelID + ADV_REWARD_FIRST_GOLD_RELIC;
@@ -135,24 +146,22 @@ void RR_EndEvent_UnlockAward(void)
 				gGT->podiumRewardID = STATIC_RELIC;
 				gGT->gameModeEnd |= NEW_RELIC;
 
-				RR_RELIC_TIME_1MIN = RR_RELIC_TIMES[gGT->levelID][1] / RR_RACE_TIME_ONE_MINUTE;
-				RR_RELIC_TIME_10SEC = (RR_RELIC_TIMES[gGT->levelID][1] / RR_RACE_TIME_TEN_SECONDS) % 6;
-				RR_RELIC_TIME_1SEC = (RR_RELIC_TIMES[gGT->levelID][1] / RR_RACE_TIME_ONE_SECOND) % 10;
-				RR_RELIC_TIME_10MS = (RR_RELIC_TIMES[gGT->levelID][1] / (RR_RACE_TIME_ONE_SECOND / 10)) % 10;
-				RR_RELIC_TIME_1MS = ((RR_RELIC_TIMES[gGT->levelID][1] * 100) / RR_RACE_TIME_ONE_SECOND) % 10;
+				RR_RELIC_TIME_1MIN = goldTarget / RR_RACE_TIME_ONE_MINUTE;
+				RR_RELIC_TIME_10SEC = (goldTarget / RR_RACE_TIME_TEN_SECONDS) % 6;
+				RR_RELIC_TIME_1SEC = (goldTarget / RR_RACE_TIME_ONE_SECOND) % 10;
+				RR_RELIC_TIME_10MS = (goldTarget / (RR_RACE_TIME_ONE_SECOND / 10)) % 10;
+				RR_RELIC_TIME_1MS = ((goldTarget * 100) / RR_RACE_TIME_ONE_SECOND) % 10;
 			}
 		}
 	}
 
 	{
 		struct GameTracker *gGT;
-		struct Driver *driver;
 		u32 *rewards;
 		s32 rewardBit;
 
 		gGT = GAME_TRACKER;
-		driver = gGT->drivers[0];
-		if (driver->timeElapsedInRace - timeDeduct <= RR_RELIC_TIMES[gGT->levelID][2])
+		if (teamTime <= platinumTarget)
 		{
 			rewards = GAME_ADV_PROGRESS.rewards;
 			rewardBit = gGT->levelID + ADV_REWARD_FIRST_PLATINUM_RELIC;
@@ -162,11 +171,11 @@ void RR_EndEvent_UnlockAward(void)
 				gGT->podiumRewardID = STATIC_RELIC;
 				gGT->gameModeEnd |= NEW_RELIC;
 
-				RR_RELIC_TIME_1MIN = RR_RELIC_TIMES[gGT->levelID][2] / RR_RACE_TIME_ONE_MINUTE;
-				RR_RELIC_TIME_10SEC = (RR_RELIC_TIMES[gGT->levelID][2] / RR_RACE_TIME_TEN_SECONDS) % 6;
-				RR_RELIC_TIME_1SEC = (RR_RELIC_TIMES[gGT->levelID][2] / RR_RACE_TIME_ONE_SECOND) % 10;
-				RR_RELIC_TIME_10MS = (RR_RELIC_TIMES[gGT->levelID][2] / (RR_RACE_TIME_ONE_SECOND / 10)) % 10;
-				RR_RELIC_TIME_1MS = ((RR_RELIC_TIMES[gGT->levelID][2] * 100) / RR_RACE_TIME_ONE_SECOND) % 10;
+				RR_RELIC_TIME_1MIN = platinumTarget / RR_RACE_TIME_ONE_MINUTE;
+				RR_RELIC_TIME_10SEC = (platinumTarget / RR_RACE_TIME_TEN_SECONDS) % 6;
+				RR_RELIC_TIME_1SEC = (platinumTarget / RR_RACE_TIME_ONE_SECOND) % 10;
+				RR_RELIC_TIME_10MS = (platinumTarget / (RR_RACE_TIME_ONE_SECOND / 10)) % 10;
+				RR_RELIC_TIME_1MS = ((platinumTarget * 100) / RR_RACE_TIME_ONE_SECOND) % 10;
 			}
 		}
 	}
@@ -211,7 +220,7 @@ void RR_EndEvent_DrawHighScore(s16 startX, s32 startY, s16 scoreMode)
 		timeboxYBase = iconYBaseSource;
 		startYCopy = (s16)startY;
 		rowOffsetY = 0;
-		driver = GAME_TRACKER->drivers[0];
+		driver = MainGameEnd_GradeDriver(GAME_TRACKER);
 		timeboxXSource = (s16)(startX - 0x1f);
 		// NOTE(aalhendi): Removing this otherwise dead retail temporary changes
 		// GCC 2.8.1's register allocation.
@@ -341,7 +350,9 @@ void RR_EndEvent_DrawMenu(void)
 	char crateCountText[16];
 	char countdownText[24];
 
-	struct Driver *driver = GAME_TRACKER->drivers[0];
+	// The screen reports the clock the relic was graded on and the crates the pair
+	// picked up between them, so a co-op result reads as one shared attempt.
+	struct Driver *driver = MainGameEnd_GradeDriver(GAME_TRACKER);
 
 	// change color
 	textColor = (GAME_TRACKER->timer & 1) ? (JUSTIFY_CENTER | ORANGE) : (JUSTIFY_CENTER | WHITE);
@@ -384,7 +395,7 @@ void RR_EndEvent_DrawMenu(void)
 
 	// if race ended 59-80 frames ago and not all crates were collected
 	if (((u32)(GAME_FRAMES_SINCE_RACE_ENDED - RR_MISSED_CRATE_SKIP_BASE) < RR_MISSED_CRATE_SKIP_PERFECT_WINDOW) &&
-	    (GAME_TRACKER->drivers[0]->numTimeCrates != GAME_TRACKER->timeCratesInLEV))
+	    !MainGameEnd_GotAllTimeCrates(GAME_TRACKER))
 	{
 		// advance timer to 140 frames, since we can skip the amount of time
 		// that would have been taken to draw "PERFECT" text
@@ -393,7 +404,7 @@ void RR_EndEvent_DrawMenu(void)
 
 	// if race ended 229-250 frames ago, no relic was won, and not all crates were collected
 	if (((u32)(GAME_FRAMES_SINCE_RACE_ENDED - RR_MISSED_CRATE_SKIP_BASE) < RR_MISSED_CRATE_SKIP_RELIC_WINDOW) &&
-	    ((GAME_TRACKER->gameModeEnd & NEW_RELIC) == 0) && (GAME_TRACKER->drivers[0]->numTimeCrates != GAME_TRACKER->timeCratesInLEV))
+	    ((GAME_TRACKER->gameModeEnd & NEW_RELIC) == 0) && !MainGameEnd_GotAllTimeCrates(GAME_TRACKER))
 	{
 		// advance timer to 370 frames, since we can skip the amount of time
 		// that would have been taken to draw the animation
@@ -500,13 +511,13 @@ draw_relic_done:
 		RR_TIMEBOX1->matrix.t[1] = UI_ConvertY_2(pos.y, RR_SCREEN_DEPTH);
 
 		DecalFont_DrawLine((char *)&s_timeCrateXString223, pos.x + 0x14, pos.y - 10, 2, 0);
-		sprintf(crateCountText, s_crateCountFormat223, driver->numTimeCrates, CTR_PRINTF_PSX_LONG(GAME_TRACKER->timeCratesInLEV));
+		sprintf(crateCountText, s_crateCountFormat223, MainGameEnd_TimeCratesCollected(GAME_TRACKER), CTR_PRINTF_PSX_LONG(GAME_TRACKER->timeCratesInLEV));
 		DecalFont_DrawLine(crateCountText, pos.x + 0x21, pos.y - 0xe, 1, 0);
 	}
 
 
 	// if collected all time boxes in level
-	if (GAME_TRACKER->drivers[0]->numTimeCrates == GAME_TRACKER->timeCratesInLEV)
+	if (MainGameEnd_GotAllTimeCrates(GAME_TRACKER))
 	{
 		sprintf(countdownText, s_countdownStartFormat223);
 
@@ -566,7 +577,9 @@ draw_relic_done:
 					}
 					else if ((minusSeconds != 10) && (countdownDelta == (countdownDelta / RR_COUNTDOWN_STEP_FRAMES) * RR_COUNTDOWN_STEP_FRAMES))
 					{
-						GAME_TRACKER->drivers[0]->timeElapsedInRace -= RR_RACE_TIME_ONE_SECOND;
+						// The all-crates bonus is the team's, so the visible deduction
+						// comes off the clock the screen and high score entry report.
+						driver->timeElapsedInRace -= RR_RACE_TIME_ONE_SECOND;
 						OtherFX_Play(RR_COUNTDOWN_TICK_SFX, 1);
 					}
 

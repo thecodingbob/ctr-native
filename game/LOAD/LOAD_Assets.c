@@ -12,12 +12,20 @@ enum
 	// Pura is the eighth base racer, so the 1P arcade MPK only carries her when
 	// the player picks her; see LOAD_RacerNeedsStandaloneModel.
 	LOAD_UNCOVERED_BASE_RACER_ID = 7,
-	LOAD_CHARACTER_COUNT = len(data.MetaDataCharacters),
 };
 
 static DriverModelExtraSlot s_extraCharacterModels[LOAD_EXTRA_CHARACTER_MODEL_CAPACITY];
 static s16 s_extraCharacterModelIDs[LOAD_EXTRA_CHARACTER_MODEL_CAPACITY];
 static int s_extraCharacterModelCount;
+
+// The Purple Gem Cup fields the bosses of four of its tracks instead of a normal AI
+// lineup, in this order.
+static const s16 LOAD_PurpleGemCupBosses[LOAD_2P_AI_SET_RACER_COUNT] = {
+	RIPPER_ROO,
+	PAPU_PAPU,
+	KOMODO_JOE,
+	PINSTRIPE,
+};
 
 static b32 LOAD_IsRandomBotSelectionEnabled(void)
 {
@@ -60,7 +68,7 @@ static b32 LOAD_IsRandomBotRace(void)
 
 static void LOAD_ShuffleCharacterIDs(s16 *characterIDs)
 {
-	for (int i = LOAD_CHARACTER_COUNT - 1; i > 0; i--)
+	for (int i = GAME_CHARACTER_COUNT - 1; i > 0; i--)
 	{
 		int swapIndex = (u32)RngDeadCoed(&sdata->advRng) % (i + 1);
 		s16 characterID = characterIDs[i];
@@ -69,9 +77,66 @@ static void LOAD_ShuffleCharacterIDs(s16 *characterIDs)
 	}
 }
 
+// The hub keeps the Adventure co-op partner in driver slot 1 while the tracker
+// still counts a single player, so the human drivers are not always the players
+// of the current game.
+static int LOAD_HumanDriverSlotCount(void)
+{
+	struct GameTracker *gGT = sdata->gGT;
+
+	if ((gGT->gameMode1 & ADVENTURE_ARENA) != 0 && sdata->advMultiplayer.numPlayers > 1)
+	{
+		return sdata->advMultiplayer.numPlayers;
+	}
+
+	return gGT->numPlyrCurrGame;
+}
+
+// A boss race is one racer per player plus the boss, so the boss drives in the
+// first driver slot past the players. Retail only ever plays a boss race solo,
+// where that is the second slot, so a solo race keeps the boss where it always was.
+int LOAD_AdventureBossDriverSlot(void)
+{
+	int playerCount = LOAD_HumanDriverSlotCount();
+
+	if (playerCount > ADV_MULTIPLAYER_DEFAULT_PLAYERS)
+	{
+		return playerCount;
+	}
+
+	return LOAD_ADVENTURE_BOSS_DRIVER_SLOT_SOLO;
+}
+
+// Only a co-op boss race changes who occupies the AI driver slots; a solo boss
+// race keeps the layout it has always had.
+static b32 LOAD_IsAdventureCoopBossRace(void)
+{
+	return (sdata->gGT->gameMode1 & ADVENTURE_BOSS) != 0 &&
+	       LOAD_AdventureBossDriverSlot() > LOAD_ADVENTURE_BOSS_DRIVER_SLOT_SOLO;
+}
+
+// The Purple Gem Cup always fields its four bosses, whoever is driving.
+static b32 LOAD_IsPurpleGemCupRace(void)
+{
+	struct GameTracker *gGT = sdata->gGT;
+
+	return (gGT->gameMode1 & ADVENTURE_CUP) != 0 && gGT->cup.cupID == CUP_ID_PURPLE_GEM;
+}
+
+// Retail ran the Purple Gem Cup solo and wrote the bosses to driver slots 1-4.
+// Split-screen puts a human in slot 1, so the bosses take the slots after the humans,
+// which is where MainInit_Drivers spawns the cup's AI from.
+static void LOAD_SelectPurpleGemCupBosses(void)
+{
+	for (int bossIndex = 0; bossIndex < LOAD_2P_AI_SET_RACER_COUNT; bossIndex++)
+	{
+		data.characterIDs[LOAD_HumanDriverSlotCount() + bossIndex] = LOAD_PurpleGemCupBosses[bossIndex];
+	}
+}
+
 static b32 LOAD_IsCharacterUsedByPlayer(s16 characterID)
 {
-	for (int playerIndex = 0; playerIndex < sdata->gGT->numPlyrCurrGame; playerIndex++)
+	for (int playerIndex = 0; playerIndex < LOAD_HumanDriverSlotCount(); playerIndex++)
 	{
 		if (data.characterIDs[playerIndex] == characterID)
 		{
@@ -154,18 +219,18 @@ static void LOAD_QueueExtraCharacterModels(struct BigHeader *bigfile, const s16 
 
 static void LOAD_SelectRandomBots(void)
 {
-	s16 shuffledCharacterIDs[LOAD_CHARACTER_COUNT];
+	s16 shuffledCharacterIDs[GAME_CHARACTER_COUNT];
 	int botCount = LOAD_GetRandomBotCount();
 	int botIndex = 0;
 
-	for (int characterID = 0; characterID < LOAD_CHARACTER_COUNT; characterID++)
+	for (int characterID = 0; characterID < GAME_CHARACTER_COUNT; characterID++)
 	{
 		shuffledCharacterIDs[characterID] = (s16)characterID;
 	}
 
 	LOAD_ShuffleCharacterIDs(shuffledCharacterIDs);
 
-	for (int shuffledIndex = 0; shuffledIndex < LOAD_CHARACTER_COUNT && botIndex < botCount; shuffledIndex++)
+	for (int shuffledIndex = 0; shuffledIndex < GAME_CHARACTER_COUNT && botIndex < botCount; shuffledIndex++)
 	{
 		s16 characterID = shuffledCharacterIDs[shuffledIndex];
 
@@ -301,12 +366,11 @@ void LOAD_Robots2P(struct BigHeader *bigfile, int p1, int p2, void (*callback)(s
 
 void LOAD_Robots1P(int characterID)
 {
-	struct GameTracker *gGT = sdata->gGT;
 	int nextCharacterID = 0;
 
 	data.characterIDs[0] = characterID;
 
-	for (int driverID = gGT->numPlyrCurrGame; driverID < LOAD_CHARACTER_ID_COUNT; driverID++)
+	for (int driverID = LOAD_HumanDriverSlotCount(); driverID < LOAD_CHARACTER_ID_COUNT; driverID++)
 	{
 		while (LOAD_IsCharacterUsedByPlayer(nextCharacterID))
 		{
@@ -376,6 +440,52 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 	}
 
 	int lastFileIndexMPK;
+	if (LOAD_IsAdventureCoopBossRace())
+	{
+		// A co-op boss race still only runs the players and the boss, so it takes
+		// the boss pack a solo race uses instead of an AI roster. This has to be
+		// decided before the split-screen branches below, because those hand the
+		// AI driver slots to the 2P lineup and would replace the boss.
+		// Player 1 keeps the solo boss detail, the partner takes the detail a
+		// split-screen racer of their position has everywhere else.
+		LOAD_AppendQueue(bigfile, LT_GETADDR, BI_RACERMODELHI + data.characterIDs[0], &data.driverModelExtras[0].fileBase,
+		                 LOAD_DriverMPK_SetPointer);
+
+		int partnerModelFile = sdata->highDetailSplitScreenLevel ? BI_RACERMODELHI : BI_RACERMODELMED;
+		for (i = 1; (i < gGT->numPlyrCurrGame) && (i < LOAD_DRIVER_MODEL_EXTRA_COUNT); i++)
+		{
+			LOAD_AppendQueue(bigfile, LT_GETADDR, partnerModelFile + data.characterIDs[i], &data.driverModelExtras[i].fileBase,
+			                 LOAD_DriverMPK_SetPointer);
+		}
+
+		lastFileIndexMPK = BI_TIMETRIALPACK + data.characterIDs[LOAD_AdventureBossDriverSlot()];
+		goto QueueLastPack;
+	}
+
+	if (LOAD_IsPurpleGemCupRace())
+	{
+		// The cup packs its four bosses into the AI driver slots, so this has to be
+		// decided before the split-screen branches below, because those hand those
+		// slots to a generic 2P lineup and would replace the bosses.
+		// Player 1 keeps the solo cup detail, the partner takes the detail a
+		// split-screen racer of their position has everywhere else.
+		LOAD_AppendQueue(bigfile, LT_GETADDR, BI_RACERMODELHI + data.characterIDs[0], &data.driverModelExtras[0].fileBase,
+		                 LOAD_DriverMPK_SetPointer);
+
+		int partnerModelFile = sdata->highDetailSplitScreenLevel ? BI_RACERMODELHI : BI_RACERMODELMED;
+		for (i = 1; (i < gGT->numPlyrCurrGame) && (i < LOAD_DRIVER_MODEL_EXTRA_COUNT); i++)
+		{
+			LOAD_AppendQueue(bigfile, LT_GETADDR, partnerModelFile + data.characterIDs[i], &data.driverModelExtras[i].fileBase,
+			                 LOAD_DriverMPK_SetPointer);
+		}
+
+		LOAD_SelectPurpleGemCupBosses();
+
+		// pack of four AIs with bosses
+		lastFileIndexMPK = BI_2PARCADEPACK + LOAD_PURPLE_GEM_CUP_AI_SET_INDEX;
+		goto QueueLastPack;
+	}
+
 	if (sdata->highDetailSplitScreenLevel)
 	{
 		// The 1P arcade pack contains P1 at player quality. Use the standalone
@@ -448,27 +558,6 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 			goto LoadHighAndPack;
 		}
 
-		if (
-		    // If you are in Adventure cup
-		    ((gameMode1 & ADVENTURE_CUP) != 0) &&
-
-		    // purple gem cup
-		    (gGT->cup.cupID == CUP_ID_PURPLE_GEM))
-		{
-			// high lod model
-			LOAD_AppendQueue(bigfile, LT_GETADDR, BI_RACERMODELHI + data.characterIDs[0], &data.driverModelExtras[0].fileBase, LOAD_DriverMPK_SetPointer);
-
-			// pack of four AIs with bosses
-			LOAD_AppendQueue(bigfile, LT_GETADDR, BI_2PARCADEPACK + LOAD_PURPLE_GEM_CUP_AI_SET_INDEX, NULL, callback);
-
-			data.characterIDs[1] = RIPPER_ROO;
-			data.characterIDs[2] = PAPU_PAPU;
-			data.characterIDs[3] = KOMODO_JOE;
-			data.characterIDs[4] = PINSTRIPE;
-
-			return sdata->ptrMPK;
-		}
-
 		if (!randomBotRace && ((gameMode1 & (TIME_TRIAL | MAIN_MENU)) != MAIN_MENU))
 		{
 			LOAD_Robots1P(data.characterIDs[0]);
@@ -488,6 +577,15 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 
 		// Load Player 1 [0]
 		LOAD_AppendQueue(bigfile, LT_GETADDR, BI_RACERMODELHI + data.characterIDs[0], &data.driverModelExtras[0].fileBase, LOAD_DriverMPK_SetPointer);
+
+		// The relic bundle carries a single level of detail and only ever shipped a
+		// model for the first racer, so a co-op relic race has to pull the partner's
+		// model in from the standalone multiplayer slots. A time trial only ever has
+		// one racer, so this loop is skipped there and its second ID stays the ghost.
+		for (i = 1; (i < gGT->numPlyrCurrGame) && (i < LOAD_DRIVER_MODEL_EXTRA_COUNT); i++)
+		{
+			LOAD_AppendQueue(bigfile, LT_GETADDR, BI_RACERMODELMED + data.characterIDs[i], &data.driverModelExtras[i].fileBase, LOAD_DriverMPK_SetPointer);
+		}
 
 		// Load boss or ghost [1]
 		lastFileIndexMPK = BI_TIMETRIALPACK + data.characterIDs[1];
