@@ -91,7 +91,7 @@ enum MainMenuCheatConstants
 	MM_CHEAT_SUCCESS_SFX = 0x67,
 	MM_CHEAT_BUTTON_HISTORY_COUNT = 10,
 
-	MM_CHEAT_COUNT = 0x16,
+	MM_CHEAT_COUNT = 0x17,
 };
 
 enum CharacterSelectDirection

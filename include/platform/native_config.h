@@ -50,6 +50,10 @@ typedef struct {
     int clockDurationMultiplier;  // percent, 20%..250%, 100 = 1.0x (default)
     bool allowWeaponsDuringClock; // false (default) = clock blocks weapon usage, true = weapons work during clock
     bool autoEndRaceWhenOthersFinish; // false = off (vanilla behavior), true = end race when all other racers have finished
+    bool developerHacksEnabled; // false = off (default), true = enable developer hacks menu/options
+    bool omniController; // false = off (default), true = mirror port 1 input to all controller slots
+    bool oneLapRaces; // false = off (default), true = force every race to a single lap, whatever the mode or menu allows
+    bool towPlayer2; // false = off (default), true = hold the Adventure co-op partner kart behind the lead racer; select toggles the tow
 } NativeConfig;
 
 enum
@@ -69,6 +73,8 @@ enum
 };
 
 typedef enum { CFG_BOOL, CFG_INT, CFG_ENUM } ConfigType;
+
+#define CONFIG_SECTION_DEVELOPER_HACKS "Developer Hacks"
 
 typedef struct {
     const char *section;

@@ -304,6 +304,7 @@ struct OverlayDATA_230 D230 CTR_PSX_MATCH_SECTION(".D230") =
                 {7, {CHEAT_A, CHEAT_R, CHEAT_S, CHEAT_E, CHEAT_N, CHEAT_A, CHEAT_L}, MM_Cheat_MaxBombs},
                 {10, {CHEAT_S, CHEAT_U, CHEAT_D, CHEAT_D, CHEAT_E, CHEAT_N, CHEAT_D, CHEAT_E, CHEAT_A, CHEAT_D}, MM_Cheat_OneLap},
                 {5, {CHEAT_A, CHEAT_D, CHEAT_D, CHEAT_O, CHEAT_N}, MM_Cheat_TurboCounter},
+                {4, {CHEAT_D, CHEAT_E, CHEAT_X, CHEAT_S}, MM_Cheat_EnableDevHacks},
             },
 
         .cheatButtonHistory = {0},

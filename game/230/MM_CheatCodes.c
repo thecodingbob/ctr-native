@@ -1,4 +1,5 @@
 #include <common.h>
+#include <platform/native_config.h>
 
 void MM_Cheat_MaxWumpa(void)
 {
@@ -199,4 +200,10 @@ void MM_ParseCheatCodes(void)
 	} while (cheat < &cheats[MM_CHEAT_COUNT]);
 
 	return;
+}
+
+void MM_Cheat_EnableDevHacks(void)
+{
+	g_config.developerHacksEnabled = true;
+	OtherFX_Play(MM_CHEAT_SUCCESS_SFX, 1);
 }

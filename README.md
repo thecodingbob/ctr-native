@@ -192,7 +192,6 @@ format). An example template is at `default_config.ini` in the project root.
 | `extended_arcade_multiplayer`       | `true` / `false`                                          | `false`   | Enable 3P/4P Arcade races with AI opponents and 8 racers in 2P/3P/4P Arcade races                 |
 | `bot_selection_mode`                | `Vanilla` / `R. unlocked` / `R. all`                      | `Vanilla` | Choose the normal Arcade and Adventure bot roster; boss races and the Purple Gem Cup remain fixed |
 | `auto_end_race_when_others_finish`  | `true` / `false`                                          | `false`   | End the race once every other racer has arrived                                                   |
-
 **Known limitation:** when race tracks are enabled in Battle mode, the turbo/invisibility
 weapon icons and battle points/lives icons will be missing on those tracks.
 
@@ -253,6 +252,23 @@ weapon icons and battle points/lives icons will be missing on those tracks.
 | `render_scale`             | `Original`, `2X`, `3X`, `4X`, `Native` | `Native` | Internal render resolution; Native follows the presentation viewport |
 | `smooth_scaling`           | `true` / `false` | `true`  | Use linear filtering when presenting scaled output                      |
 | `texture_filtering`        | `true` / `false` | `false` | Enable bilinear filtering for PSX textures                              |
+
+### Developer Hacks
+
+The options in this section are normally hidden, and they can be enabled via an in-game cheat code. 
+Hold `L1` and `R1` and then press `↓` `→` `X` `↓` to do so.
+These are meant to speed up testing during development.
+
+`developer_hacks_enabled` is an umbrella switch. While it is `false` the section is hidden *and* every
+other option in it is restored to its default value, so a hidden option cannot silently alter gameplay.
+Setting the other options to `true` in `config.ini` therefore has no effect until this key is also `true`.
+
+| Key                       | Values             | Default | Description                                                                                                                                                                      |
+|---------------------------|--------------------|---------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `developer_hacks_enabled` | `true` / `false`   | `false` | Controls the visibility of the section and gates every other option in it. Once enabled, set it back to false to hide the menu and reset the rest of the section to its defaults |
+| `omni_controller`         | `true` / `false`   | `false` | Mirrors port 1 input to every controller slot, for testing 4 controllers as a single player                                                                                      |
+| `one_lap_races`           | `true` / `false`   | `false` | Forces every race to a single lap. Extends the 1-lap cheat code, which only covers Arcade and Versus, to all races with no exception                                             |
+| `tow_player_2`            | `true` / `false`   | `false` | Holds the Adventure co-op partner kart right behind the lead racer. `select` toggles the tow in-race                                                                             |
 
 ## Bug Replays
 

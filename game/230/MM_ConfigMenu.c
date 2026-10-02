@@ -39,8 +39,17 @@ static void BuildSectionMap(void)
 {
 	s_numSections = 0;
 	const char *curSection = NULL;
+	extern NativeConfig g_config;
 	for (int i = 0; i < g_numConfigEntries; i++)
 	{
+		// Only include Developer Hacks section if enabled
+		if (strcmp(g_configEntries[i].section, CONFIG_SECTION_DEVELOPER_HACKS) == 0)
+		{
+			if (!g_config.developerHacksEnabled)
+			{
+				continue;
+			}
+		}
 		if (curSection == NULL || strcmp(g_configEntries[i].section, curSection) != 0)
 		{
 			curSection = g_configEntries[i].section;
@@ -178,6 +187,16 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 			{
 				*(bool *)e->valuePtr ^= 1;
 				NativeConfig_ApplyDependencies(e);
+				// Rebuild section map if visibility changed (e.g. Developer Hacks toggle)
+				BuildSectionMap();
+				// Turning the gate off hides the section we are standing in, so the
+				// cached index no longer names a section. Fall back to the section
+				// list instead of reading past the entry table.
+				if (s_currentSection >= s_numSections)
+				{
+					s_currentSection = -1;
+					return;
+				}
 			}
 			else if (e->type == CFG_ENUM)
 			{
@@ -242,6 +261,14 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 			s_currentSection = menu->rowSelected;
 			menu->rowSelected = 0;
 			s_scrollOffset = 0;
+		}
+
+		// If visibility changes (e.g. cheat enabled), rebuild map
+		if (s_numSections == 0 || (sdata->frameCounter % 30) == 0)
+		{
+			BuildSectionMap();
+			if (menu->rowSelected >= s_numSections && s_numSections > 0)
+				menu->rowSelected = s_numSections - 1;
 		}
 
 		DecalFont_DrawLineOT(sdata->lngStrings[LNG_OPTIONS],

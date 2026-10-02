@@ -86,7 +86,11 @@ NativeConfig g_config = {
   .maskExtraSpeedMultiplier = 100,
   .clockDurationMultiplier = 100,
   .allowWeaponsDuringClock = false,
-  .autoEndRaceWhenOthersFinish = false
+  .autoEndRaceWhenOthersFinish = false,
+  .developerHacksEnabled = false,
+  .omniController = false,
+  .oneLapRaces = false,
+  .towPlayer2 = false
 };
 
 const ConfigEntry g_configEntries[] = {
@@ -424,10 +428,82 @@ const ConfigEntry g_configEntries[] = {
         .label = "Texture Filtering",
         .type = CFG_BOOL,
         .valuePtr = &g_config.textureFiltering
-    }
+    },
+    {
+        .section = CONFIG_SECTION_DEVELOPER_HACKS,
+        .key = "developer_hacks_enabled",
+        .label = "Enable Developer Hacks",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.developerHacksEnabled,
+    },
+    {
+        .section = CONFIG_SECTION_DEVELOPER_HACKS,
+        .key = "omni_controller",
+        .label = "Omni Controller",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.omniController,
+    },
+    {
+        .section = CONFIG_SECTION_DEVELOPER_HACKS,
+        .key = "one_lap_races",
+        .label = "One Lap Races",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.oneLapRaces,
+    },
+    {
+        .section = CONFIG_SECTION_DEVELOPER_HACKS,
+        .key = "tow_player_2",
+        .label = "Tow Player 2",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.towPlayer2,
+    },
 };
 
 const int g_numConfigEntries = sizeof(g_configEntries) / sizeof(g_configEntries[0]);
+
+// Snapshot of the pristine g_config, copied at the top of NativeConfig_Load
+// before anything mutates it.
+static NativeConfig s_defaults;
+
+// Developer hacks are an umbrella switch: while developerHacksEnabled is off,
+// every other option in the section is restored to its default so a hidden
+// option can never silently alter gameplay.
+static void NativeConfig_ResetDisabledDeveloperHacks(void)
+{
+    if (g_config.developerHacksEnabled)
+    {
+        return;
+    }
+
+    for (int i = 0; i < g_numConfigEntries; i++)
+    {
+        const ConfigEntry *e = &g_configEntries[i];
+
+        if (strcmp(e->section, CONFIG_SECTION_DEVELOPER_HACKS) != 0)
+        {
+            continue;
+        }
+
+        // The gate itself is never reset.
+        if (e->valuePtr == &g_config.developerHacksEnabled)
+        {
+            continue;
+        }
+
+        // valuePtr points into g_config, so the same offset selects the
+        // matching field of the snapshot.
+        const size_t offset = (size_t)((const char *)e->valuePtr - (const char *)&g_config);
+
+        if (e->type == CFG_BOOL)
+        {
+            *(bool *)e->valuePtr = *(const bool *)((const char *)&s_defaults + offset);
+        }
+        else
+        {
+            *(int *)e->valuePtr = *(const int *)((const char *)&s_defaults + offset);
+        }
+    }
+}
 
 void NativeConfig_ApplyDependencies(const ConfigEntry *changedEntry)
 {
@@ -449,6 +525,10 @@ void NativeConfig_ApplyDependencies(const ConfigEntry *changedEntry)
         {
             g_config.multiplayerAdventure = false;
         }
+    }
+    else if (changedEntry->valuePtr == &g_config.developerHacksEnabled)
+    {
+        NativeConfig_ResetDisabledDeveloperHacks();
     }
 }
 
@@ -472,6 +552,10 @@ static char *trimWhitespace(char *s)
 
 void NativeConfig_Load(void)
 {
+    // Must happen before the parse below (and before the config menu can edit
+    // anything) so the snapshot still holds the pristine defaults.
+    s_defaults = g_config;
+
     printf("[Config] Base:       %s\n", NativeAssets_GetBaseDir());
     char path[512];
     NativePath_Join(path, sizeof(path), NativeStr8_FromCString(NativeAssets_GetBaseDir()), NATIVE_STR8_LIT("config.ini"));
@@ -546,6 +630,11 @@ void NativeConfig_Load(void)
     }
 
     fclose(f);
+
+    // Applied after the whole file is parsed so key order in config.ini does
+    // not matter: developer hack options only take effect while the section is
+    // enabled.
+    NativeConfig_ResetDisabledDeveloperHacks();
 }
 
 void NativeConfig_Save(void)

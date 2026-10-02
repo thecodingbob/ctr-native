@@ -423,6 +423,7 @@ void MainFrame_InitVideoSTR(u32 boolPlayVideoStr, RECT *r, s16 posX, s16 posY);
 void MainFrame_VisMemFullFrame(struct GameTracker *gGT, struct Level *level);
 void MainFrame_RequestMaskHint(s16 hintId, s16 interruptWarpPad);
 void MainFrame_TogglePauseAudio(b32 bool_pause);
+void MainFrame_Tow_Update(struct GameTracker *gGT, struct GamepadSystem *gGamepads);
 
 void StateZero(void);
 void startSP(void);
@@ -1173,6 +1174,7 @@ void MM_Cheat_IcyTracks(void);
 void MM_Cheat_SuperTurboPads(void);
 void MM_Cheat_OneLap(void);
 void MM_Cheat_TurboCounter(void);
+void MM_Cheat_EnableDevHacks(void);
 
 void UI_Map_DrawMap_ExtraFunc(struct Icon *icon, POLY_FT4 *p, s16 posX, s16 empty, struct PrimMem *primMem, u32 *otMem, u32 transparency);
 
