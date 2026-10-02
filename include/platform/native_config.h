@@ -50,6 +50,7 @@ typedef struct {
     int clockDurationMultiplier;  // percent, 20%..250%, 100 = 1.0x (default)
     bool allowWeaponsDuringClock; // false (default) = clock blocks weapon usage, true = weapons work during clock
     bool autoEndRaceWhenOthersFinish; // false = off (vanilla behavior), true = end race when all other racers have finished
+    bool developerHacksEnabled; // false = off (default), true = enable developer hacks menu/options
 } NativeConfig;
 
 enum
