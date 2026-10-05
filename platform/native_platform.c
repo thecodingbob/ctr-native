@@ -512,26 +512,12 @@ void Platform_PollHostEvents(void)
 				key = SDL_SCANCODE_LALT;
 			}
 
-			if ((key == SDL_SCANCODE_F4) && (down == 0))
+			if ((key == SDL_SCANCODE_F4 || key == SDL_SCANCODE_F6) && (down == 0))
 			{
 #ifdef CTR_INTERNAL
-				Platform_LogWarn("[CTR Native] Keyboard assigned to player %d\n", Platform_InputCycleKeyboardController());
-#endif
-				break;
-			}
-
-			if ((key == SDL_SCANCODE_F6) && (down == 0))
-			{
-#ifdef CTR_INTERNAL
-				int player = Platform_InputCycleGamepadController();
-				if (player == 0)
-				{
-					Platform_LogWarn("[CTR Native] No gamepad connected\n");
-				}
-				else
-				{
-					Platform_LogWarn("[CTR Native] Gamepad assigned to player %d\n", player);
-				}
+				// Assignment is owned by the controls module and editable in the
+				// options menu, so these only report what it resolved.
+				Platform_InputLogAssignment();
 #endif
 				break;
 			}

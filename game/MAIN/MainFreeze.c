@@ -550,7 +550,10 @@ static void DISPLAYRECTMENU_MainFreeze_MenuPtrOptions(struct RectMenu *menu, GAM
 {
 	struct GameTracker *gGT = sdata->gGT;
 
-	// note: multitap only works if it's connected to the P1 slot
+	// The native host always writes a multitap on port 0 (see
+	// NativeInput_WritePadBus), so pads are labelled 1A-1D rather than 1/2. Reading the
+	// flag instead of hardcoding the offset keeps this correct if the pad bus ever
+	// stops pretending.
 	int multitapStringOffset = (sdata->gGamepads->slotBuffer[0].controllerData == (PAD_ID_MULTITAP << 4)) ? 2 : 0;
 
 	// a menu row is 10 pixels

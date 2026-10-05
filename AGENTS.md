@@ -64,3 +64,4 @@ commit message.
 - Fix underlying issues rather than reverting a requested feature when an initial approach fails.
 - Do not introduce `#ifdef CTR_NATIVE` branches for new application code; this fork targets native builds.
 - Avoid redundant parentheses.
+- Don't overexplain and don't repeat explanations over and over in comments.

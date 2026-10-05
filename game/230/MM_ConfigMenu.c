@@ -1,4 +1,6 @@
 #include <common.h>
+
+#include <platform/native_controls.h>
 #include <stdio.h>
 
 
@@ -29,6 +31,38 @@ struct MenuRow s_rowsMainMenuWithSBConfig[] = {
 };
 
 static void MM_MenuProc_Config(struct RectMenu *menu);
+
+// Owns the "Controls" section screen: player selection, device selection, and
+// rebinding. Defined in MM_ControlsConfig.c.
+void MM_MenuProc_Controls(struct RectMenu *menu);
+
+// True while the device picker is up, so this file leaves the back button to it
+// instead of backing out of the whole section.
+b32 MM_Controls_IsPickerOpen(void);
+
+// Union of the button presses this screen accepts: player 1's device and the selected
+// player's own. Used for the back button, which this file handles on its behalf.
+u32 MM_Controls_MenuTapped(void);
+
+// Frame and separators shared by the section list and every section screen.
+static void Config_DrawFrame(uint32_t *ot)
+{
+	{
+		RECT sep = {0x20, 0x2C, 0x1C0, 2};
+		Color sepColor;
+		ColorCode_SetPacked(&sepColor, sdata->battleSetup_Color_UI_1);
+		RECTMENU_DrawOuterRect_Edge(&sep, &sepColor, 0x20, ot);
+	}
+
+	RECT bg = {0x10, 4, 0x1E0, 0xCE};
+	RECTMENU_DrawInnerRect(&bg, 4, ot);
+}
+
+static void Config_DrawRowHighlight(struct GameTracker *gGT, uint32_t *ot, int y)
+{
+	RECT sel = {0x30, y - 2, 0x1B0, 0x0C};
+	CTR_Box_DrawClearBox(&sel, &sdata->menuRowHighlight_Normal, TRANS_50_DECAL, ot, &gGT->backBuffer->primMem);
+}
 
 // Section lookup built from g_configEntries at first use
 static int s_sectionToEntry[16];
@@ -64,6 +98,18 @@ static void BuildSectionMap(void)
 static int s_currentSection = -1; // -1 = section selector, 0+ = submenu
 static int s_scrollOffset = 0;    // first visible row in submenu
 #define CONFIG_MAX_VISIBLE_ROWS 10
+
+// True when the section at this index is one of the screens that draws and edits
+// its own rows instead of going through g_configEntries values.
+static bool Config_IsCustomSection(int section)
+{
+	if ((section < 0) || (section >= s_numSections))
+	{
+		return false;
+	}
+
+	return strcmp(g_configEntries[s_sectionToEntry[section]].section, CONFIG_SECTION_CONTROLS) == 0;
+}
 
 struct RectMenu g_configMenu = {
 	.stringIndexTitle = -1,
@@ -127,9 +173,21 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 	if (s_numSections == 0)
 		BuildSectionMap();
 
-	if ((pad->buttonsTapped & (BTN_TRIANGLE | BTN_START)) != 0)
+	// Inside the Controls section the back button belongs to player 1's device and the
+	// selected player's own, so read it through the same union that screen uses.
+	const bool inControls = Config_IsCustomSection(s_currentSection);
+	const u32 backTapped = inControls ? MM_Controls_MenuTapped() : (u32)pad->buttonsTapped;
+
+	// The device picker consumes back itself, so it must close before this file acts,
+	// otherwise one press would close the picker and leave the section in the same
+	// frame.
+	if (!MM_Controls_IsPickerOpen() && ((backTapped & (BTN_TRIANGLE | BTN_START)) != 0))
 	{
 		OtherFX_Play(2, 1);
+
+		// A rebind in progress would keep eating input on the next screen.
+		NativeControls_CancelCapture();
+
 		if (s_currentSection >= 0)
 		{
 			menu->rowSelected = s_currentSection;
@@ -144,6 +202,13 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 
 	if (s_currentSection >= 0)
 	{
+		if (Config_IsCustomSection(s_currentSection))
+		{
+			// Draws and edits everything itself, including its own input.
+			MM_MenuProc_Controls(menu);
+			return;
+		}
+
 		const int sec = s_currentSection;
 		const int numRows = s_sectionCount[sec];
 		const int firstEntry = s_sectionToEntry[sec];
@@ -234,10 +299,7 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 			Config_DrawValue(e, valueX, y, ot, buf);
 
 			if (j == menu->rowSelected)
-			{
-				RECT sel = {0x30, y - 2, 0x1B0, 0x0C};
-				CTR_Box_DrawClearBox(&sel, &sdata->menuRowHighlight_Normal, TRANS_50_DECAL, ot, &gGT->backBuffer->primMem);
-			}
+				Config_DrawRowHighlight(gGT, ot, y);
 		}
 
 
@@ -284,20 +346,9 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 			int y = startY + i * spacing;
 			DecalFont_DrawLineOT((char *)e->section, labelX, y, FONT_SMALL, ORANGE, ot);
 			if (i == menu->rowSelected)
-			{
-				RECT sel = {0x30, y - 2, 0x1B0, 0x0C};
-				CTR_Box_DrawClearBox(&sel, &sdata->menuRowHighlight_Normal, TRANS_50_DECAL, ot, &gGT->backBuffer->primMem);
-			}
+				Config_DrawRowHighlight(gGT, ot, y);
 		}
 	}
 
-	{
-		RECT sep = {0x20, 0x2C, 0x1C0, 2};
-		Color sepColor;
-		ColorCode_SetPacked(&sepColor, sdata->battleSetup_Color_UI_1);
-		RECTMENU_DrawOuterRect_Edge(&sep, &sepColor, 0x20, ot);
-	}
-
-	RECT bg = {0x10, 4, 0x1E0, 0xCE};
-	RECTMENU_DrawInnerRect(&bg, 4, ot);
+	Config_DrawFrame(ot);
 }

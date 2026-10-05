@@ -96,6 +96,16 @@ NativeConfig g_config = {
 const ConfigEntry g_configEntries[] = {
 
     {
+        // No value backing: this row only exists so the options menu offers a
+        // "Controls" section. MM_MenuProc_Config hands that section to
+        // MM_MenuProc_Controls, which owns the screen, and the loader and saver
+        // both skip CFG_ACTION entries.
+        .section = CONFIG_SECTION_CONTROLS,
+        .key = "controls",
+        .label = "Controls",
+        .type = CFG_ACTION,
+    },
+    {
         .section = "General",
         .key = "skip_intro",
         .label = "Skip Intros",
@@ -490,6 +500,12 @@ static void NativeConfig_ResetDisabledDeveloperHacks(void)
             continue;
         }
 
+        // Menu markers have no value to restore.
+        if (e->type == CFG_ACTION)
+        {
+            continue;
+        }
+
         // valuePtr points into g_config, so the same offset selects the
         // matching field of the snapshot.
         const size_t offset = (size_t)((const char *)e->valuePtr - (const char *)&g_config);
@@ -604,7 +620,11 @@ void NativeConfig_Load(void)
             if (strcmp(section, e->section) == 0 &&
                 strcmp(key, e->key) == 0)
             {
-                if (e->type == CFG_BOOL)
+                if (e->type == CFG_ACTION)
+                {
+                    // Nothing to parse; the section is drawn by its own screen.
+                }
+                else if (e->type == CFG_BOOL)
                     *(bool *)e->valuePtr = ParseBool(value);
                 else if (e->type == CFG_ENUM)
                 {
@@ -650,6 +670,10 @@ void NativeConfig_Save(void)
     for (int i = 0; i < g_numConfigEntries; i++)
     {
         const ConfigEntry *e = &g_configEntries[i];
+
+        // CFG_ACTION rows are menu markers with no config.ini representation.
+        if (e->type == CFG_ACTION)
+            continue;
 
         if (lastSection == NULL || strcmp(e->section, lastSection) != 0)
         {
