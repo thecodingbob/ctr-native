@@ -384,6 +384,9 @@ internal u16 NativeInput_ReadKeyboard(int device)
 	return buttons;
 }
 
+// Alt belongs to the host window manager: Alt+Tab, Alt+F4 and Alt+Enter must never
+// reach the game. This only answers whether Alt is held; what it does about it is
+// up to the caller.
 internal s32 NativeInput_KeyboardSuppressed(void)
 {
 	if (s_keyboardState == NULL)
@@ -396,8 +399,15 @@ internal s32 NativeInput_KeyboardSuppressed(void)
 
 // The keyboard is a device like any other: it is merged into whichever slot owns
 // it, which is not necessarily slot 0.
+//
+// The Alt suppression applies to the buttons only. Skipping the keyboard's whole
+// contribution also skipped its connection flag, so holding Alt made the game report
+// the pad as unplugged. The buttons are already released by the frame's reset, so
+// leaving the merge out leaves every button up.
 internal void NativeInput_ApplyKeyboard(void)
 {
+	const s32 suppressed = NativeInput_KeyboardSuppressed();
+
 	for (s32 slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
 	{
 		int device = s_controllers[slot].device;
@@ -415,6 +425,11 @@ internal void NativeInput_ApplyKeyboard(void)
 			snapshot->connected = 1;
 			snapshot->status = 0;
 			snapshot->id = NATIVE_INPUT_PAD_DIGITAL;
+		}
+
+		if (suppressed != 0)
+		{
+			continue;
 		}
 
 		u16 buttons = NativeInput_GetSnapshotButtons(snapshot);
@@ -509,10 +524,7 @@ void Platform_InputUpdate(void)
 		NativeInput_ApplyController(slot);
 	}
 
-	if (!NativeInput_KeyboardSuppressed())
-	{
-		NativeInput_ApplyKeyboard();
-	}
+	NativeInput_ApplyKeyboard();
 
 	if (g_config.omniController)
 	{

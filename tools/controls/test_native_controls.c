@@ -894,6 +894,88 @@ static void TestDisabledPlayerLeavesAHole(void)
 	Check(perPlayer[1] == 0, "the disabled player reports disconnected");
 }
 
+// Stand-in for SDL's keyboard array, so the real NativeInput_ReadKeyboard path runs
+// without a window.
+static bool s_testKeyboardState[SDL_SCANCODE_COUNT];
+
+// Reads one pad's button word off the multitap bus. The byte order is the game's own,
+// from GAMEPAD_ProcessHold.
+static u16 PadBusButtons(u8 *port0, int player)
+{
+	struct TestPadSlot *slot = (struct TestPadSlot *)port0;
+	struct ControllerPacket *packet = &slot->controllers[player];
+
+	return (u16)((packet->input.high << 8) | packet->input.low);
+}
+
+// Whether the game would see a raw button mask held on a pad. Buttons are active low, and
+// gamepadMapBtn carries every raw bit in both byte positions, so both orders count.
+static int PadBusButtonDown(u8 *port0, int player, u16 rawMask)
+{
+	u16 word = PadBusButtons(port0, player);
+	u16 swapped = (u16)((word >> 8) | (word << 8));
+
+	return ((word & rawMask) == 0) || ((swapped & rawMask) == 0);
+}
+
+static int PadBusConnected(u8 *port0, int player)
+{
+	struct TestPadSlot *slot = (struct TestPadSlot *)port0;
+
+	return slot->controllers[player].plugged == PLUGGED;
+}
+
+// Regression: Alt was suppressed by skipping the keyboard's whole contribution in
+// Platform_InputUpdate, which also skipped the pad's connection flag, so holding Alt
+// made the game announce the player as unplugged.
+static void TestAltKeepsTheKeyboardPadConnected(void)
+{
+	printf("keyboard: Alt suppresses buttons without dropping the pad\n");
+	ResetBusState();
+
+	int pads[4];
+	int keyboard;
+	DeclareDevicesForBus(0, pads, &keyboard);
+	NativeControls_ResolveAssignment();
+
+	u8 port0[NATIVE_INPUT_MULTITAP_HEADER + (NATIVE_INPUT_MAX_CONTROLLERS * NATIVE_INPUT_PAD_PACKET_BYTES)];
+	u8 port1[NATIVE_INPUT_PAD_PACKET_BYTES];
+	memset(port0, 0, sizeof(port0));
+	memset(port1, 0, sizeof(port1));
+	s_padSlotData[0] = port0;
+	s_padSlotData[1] = port1;
+
+	memset(s_testKeyboardState, 0, sizeof(s_testKeyboardState));
+	s_keyboardState = s_testKeyboardState;
+
+	// Drive the real frame function: the guard that dropped the pad used to live there.
+	s_inputInitialized = 1;
+	NativeInput_SyncDevices();
+
+	Check(NativeControls_GetDeviceKind(s_controllers[0].device) == NATIVE_CONTROLS_DEVICE_KEYBOARD,
+		"pad slot 0 follows the keyboard");
+
+	const u16 crossMask = s_bindingButtonMask[NATIVE_CONTROLS_BIND_CROSS];
+
+	Platform_InputUpdate();
+	Check(PadBusConnected(port0, 0), "an idle keyboard is connected");
+	Check(PadBusButtons(port0, 0) == 0xffff, "an idle keyboard reads no buttons");
+
+	// A key on its own reaches the game.
+	s_testKeyboardState[SDL_SCANCODE_C] = true;
+	Platform_InputUpdate();
+	Check(PadBusButtonDown(port0, 0, crossMask) == 1, "a keyboard cross press reaches the pad");
+
+	// Alt belongs to the window manager: the button goes away, the pad does not.
+	s_testKeyboardState[SDL_SCANCODE_LALT] = true;
+	Platform_InputUpdate();
+	Check(PadBusButtonDown(port0, 0, crossMask) == 0, "Alt suppresses the keyboard's buttons");
+	Check(PadBusConnected(port0, 0), "the pad stays connected while Alt is held");
+
+	s_inputInitialized = 0;
+	s_keyboardState = NULL;
+}
+
 static void TestAutoAssignmentPutsFirstGamepadOnPlayerOne(void)
 {
 	printf("auto assignment: first gamepad on player 1\n");
@@ -1310,6 +1392,7 @@ int main(void)
 	TestKeyboardOnPlayerTwoIsVisibleToTheGame();
 	TestAllFourPlayersAreReachable();
 	TestDisabledPlayerLeavesAHole();
+	TestAltKeepsTheKeyboardPadConnected();
 	TestChangingAPlayerDeviceReachesThePadBus();
 	TestDisablingAPlayerReachesThePadBus();
 	TestAutoAssignmentPutsFirstGamepadOnPlayerOne();
