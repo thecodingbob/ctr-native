@@ -39,12 +39,16 @@ enum UIInstanceConstants
 };
 
 
-// A relic race is a single shared screen between the pair, so these models are
-// made once and laid out for the whole display. The crystal challenge shares one
-// screen too and gets its own tuned offset instead; keep the two apart.
-static b32 UI_INSTANCE_IsRelicRaceSharedModel(int modelID)
+// A relic race, a crystal challenge and a CTR token run are all shared between
+// the pair, so these models are made once and laid out for the whole display
+// from the 1P HUD. That layout is also the one their overlays animate against,
+// and it keeps the models in the top half of a split screen at their 1P size.
+static b32 UI_INSTANCE_IsSharedHudModel(int modelID)
 {
-	return (modelID == STATIC_RELIC) || (modelID == STATIC_TIME_CRATE_01);
+	b32 isCtrLetter = (u32)(modelID - STATIC_C) < UI_INSTANCE_CTR_LETTER_COUNT;
+
+	return isCtrLetter || (modelID == STATIC_CRYSTAL) || (modelID == STATIC_TOKEN) || (modelID == STATIC_RELIC) ||
+	       (modelID == STATIC_TIME_CRATE_01);
 }
 
 struct Instance *UI_INSTANCE_BirthWithThread(int modelID, int tickFunc, int hudSlot, int rotateToHud, int pushBuffer, int threadName)
@@ -87,9 +91,8 @@ struct Instance *UI_INSTANCE_BirthWithThread(int modelID, int tickFunc, int hudS
 		createdModelID = model->id;
 
 		// The Adventure HUD keeps one shared pointer for each CTR letter and
-		// token, so only the final player's instance is animated by pickup code.
-		// Hide the other per-player instances to prevent them appearing over the
-		// Wumpa model in split-screen HUD layouts.
+		// token, and only that instance is ever animated, so it starts hidden
+		// and is revealed by the pickup fly-in or by the end-of-race award.
 		if ((u32)(createdModelID - STATIC_C) < UI_INSTANCE_CTR_LETTER_COUNT || createdModelID == STATIC_TOKEN)
 		{
 			inst->flags |= HIDE_MODEL;
@@ -196,28 +199,18 @@ struct Instance *UI_INSTANCE_BirthWithThread(int modelID, int tickFunc, int hudS
 		if (pushBuffer == 0)
 		{
 			struct UiElement2D *currUI2D = &hudStruct[hudSlot];
-			s16 posX = currUI2D->x;
-			s16 posY = currUI2D->y;
 
-			if ((createdModelID == STATIC_CRYSTAL) && (gGT->numPlyrCurrGame == 2))
-			{
-				posX += UI_CRYSTAL_HUD_2P_OFFSET_X;
-				posY += UI_CRYSTAL_HUD_2P_OFFSET_Y;
-			}
-
-			// A relic race shares one screen between the pair, so its models are
-			// laid out for the whole display rather than for a viewport. Read them
-			// from the 1P layout instead of shifting them, which is the layout
-			// overlay 223 lays the results screen out against.
-			if (UI_INSTANCE_IsRelicRaceSharedModel(createdModelID) && (gGT->numPlyrCurrGame > 1))
+			// A shared model belongs to the whole display rather than to one
+			// viewport, so read it from the 1P layout instead of shifting it.
+			// Overlays 221 to 223 lay their shared elements out against that
+			// layout, which keeps the models in the top half of a split screen.
+			if (UI_INSTANCE_IsSharedHudModel(createdModelID) && (gGT->numPlyrCurrGame > 1))
 			{
 				currUI2D = &data.hudStructPtr[0][hudSlot];
-				posX = currUI2D->x;
-				posY = currUI2D->y;
 			}
 
-			inst->matrix.t[0] = UI_ConvertX_2(posX, currUI2D->z);
-			inst->matrix.t[1] = UI_ConvertY_2(posY, currUI2D->z);
+			inst->matrix.t[0] = UI_ConvertX_2(currUI2D->x, currUI2D->z);
+			inst->matrix.t[1] = UI_ConvertY_2(currUI2D->y, currUI2D->z);
 			inst->matrix.t[2] = currUI2D->z;
 		}
 
@@ -236,13 +229,10 @@ struct Instance *UI_INSTANCE_BirthWithThread(int modelID, int tickFunc, int hudS
 		}
 
 		scale = hudStruct[hudSlot].scale;
-		if ((createdModelID == STATIC_CRYSTAL) && (gGT->numPlyrCurrGame == 2))
+		if (UI_INSTANCE_IsSharedHudModel(createdModelID) && (gGT->numPlyrCurrGame > 1))
 		{
-			scale /= UI_CRYSTAL_HUD_2P_SCALE_DIVISOR;
-		}
-		else if (UI_INSTANCE_IsRelicRaceSharedModel(createdModelID) && (gGT->numPlyrCurrGame > 1))
-		{
-			// Same as the position above: the 1P layout carries the display scale.
+			// Same as the position above: the 1P layout carries the display scale,
+			// which is the size these elements are authored at.
 			scale = data.hudStructPtr[0][hudSlot].scale;
 		}
 
@@ -277,13 +267,11 @@ struct Instance *UI_INSTANCE_BirthWithThread(int modelID, int tickFunc, int hudS
 
 		hudStruct += UI_HUD_SLOT_COUNT;
 
-		// Crystal Challenge has one shared counter and uses player 1's HUD.
-		// A relic race is a single shared screen too: overlay 223 positions one
-		// relic and one time crate model at screen centre and scales the relic in,
-		// and it only ever holds a pointer to the last instance made here. Keep one
-		// instance instead of one per viewport, or the spare ones stay at full
-		// scale on the HUD slot. Do not create duplicates for player 2.
-		if ((createdModelID == STATIC_CRYSTAL) || UI_INSTANCE_IsRelicRaceSharedModel(createdModelID))
+		// A shared model is one element for the whole display, so keep one
+		// instance instead of one per viewport; the overlays hold a single
+		// pointer to it and the spare ones would sit on the other half of a
+		// split screen. Do not create duplicates for player 2.
+		if (UI_INSTANCE_IsSharedHudModel(createdModelID))
 		{
 			break;
 		}

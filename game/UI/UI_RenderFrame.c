@@ -292,8 +292,11 @@ void UI_RenderFrame_Racing()
 				if (playerStruct->PickupLetterHUD.cooldown != 0)
 				{
 					struct Instance *curr;
-					letterCtrPos.x = hudStructPtr[UI_HUD_SLOT_TOKEN_OR_CTR].x;
-					letterCtrPos.y = hudStructPtr[UI_HUD_SLOT_TOKEN_OR_CTR].y;
+					// The CTR letters are one shared display in adventure, so
+					// place them at the 1P layout slot and draw them once in
+					// the top half instead of on both split screens.
+					letterCtrPos.x = data.hudStructPtr[0][UI_HUD_SLOT_TOKEN_OR_CTR].x;
+					letterCtrPos.y = data.hudStructPtr[0][UI_HUD_SLOT_TOKEN_OR_CTR].y;
 
 					// C-Letter
 					if (playerStruct->PickupLetterHUD.modelID == STATIC_C)
@@ -1047,13 +1050,10 @@ void UI_RenderFrame_CrystChall(void)
 		}
 
 		hasPendingPickup = true;
+		// The crystal counter is one shared element laid out by the 1P HUD, so
+		// the model and the count agree in a split screen too.
 		crystalPos.x = hudStructPtr[UI_HUD_SLOT_CRYSTAL].x;
 		crystalPos.y = hudStructPtr[UI_HUD_SLOT_CRYSTAL].y;
-		if (isSplitScreen)
-		{
-			crystalPos.x += UI_CRYSTAL_HUD_2P_OFFSET_X;
-			crystalPos.y += UI_CRYSTAL_HUD_2P_OFFSET_Y;
-		}
 
 		// if cooldown between grabbing items is over,
 		// which also means item has moved to the hud icon
