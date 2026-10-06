@@ -72,9 +72,10 @@ enum
     BOT_SELECTION_RANDOM_ALL = 2,
 };
 
-typedef enum { CFG_BOOL, CFG_INT, CFG_ENUM } ConfigType;
+typedef enum { CFG_BOOL, CFG_INT, CFG_ENUM, CFG_ACTION } ConfigType;
 
 #define CONFIG_SECTION_DEVELOPER_HACKS "Developer Hacks"
+#define CONFIG_SECTION_CONTROLS      "Controls"
 
 typedef struct {
     const char *section;
@@ -86,6 +87,11 @@ typedef struct {
     const ConfigEnumValue *enumValues;  // value-name pairs for CFG_ENUM
     int numEnumValues;                  // number of entries in enumValues
 } ConfigEntry;
+
+// CFG_ACTION has no g_config backing and no file representation: it exists only to
+// give a section a row in the options menu, and the section's own screen draws
+// and edits everything under it. NativeConfig_Load and NativeConfig_Save skip it,
+// so it never reaches config.ini.
 
 extern NativeConfig g_config;
 extern const ConfigEntry g_configEntries[];

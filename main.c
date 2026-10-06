@@ -19,6 +19,7 @@
 #define ExitCriticalSection()
 
 #include "platform/native_assets.h"
+#include "platform/native_controls.h"
 #include "platform/native_log.h"
 #include "platform/native_memory.h"
 #include "platform/native_perf.h"
@@ -67,6 +68,7 @@
 #include "platform/native_state.c"
 #include "platform/native_str.c"
 #include "platform/native_config.c"
+#include "platform/native_controls.c"
 
 #ifndef CC
 #if defined(__GNUC__)
@@ -180,6 +182,7 @@ int main(int argc, char *argv[])
 	}
 
 	NativeConfig_Load();
+	NativeControls_Init();
 
 #if defined(CTR_INTERNAL)
 	if (NativeReplayScheduler_PrepareReportFromArgs(argc, argv) != 0)

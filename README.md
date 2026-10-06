@@ -180,6 +180,10 @@ immediately and are saved automatically.
 For reference, the settings are persisted to `build/config.ini` (standard INI
 format). An example template is at `default_config.ini` in the project root.
 
+Input bindings and player assignment are kept separately in `build/controls.ini`
+and are edited from the **Controls** section of the same menu. See
+[docs/features/CONTROLS.md](docs/features/CONTROLS.md).
+
 ### General
 
 | Key                                 | Values                                                    | Default   | Description                                                                                       |
@@ -266,7 +270,7 @@ Setting the other options to `true` in `config.ini` therefore has no effect unti
 | Key                       | Values             | Default | Description                                                                                                                                                                      |
 |---------------------------|--------------------|---------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `developer_hacks_enabled` | `true` / `false`   | `false` | Controls the visibility of the section and gates every other option in it. Once enabled, set it back to false to hide the menu and reset the rest of the section to its defaults |
-| `omni_controller`         | `true` / `false`   | `false` | Mirrors port 1 input to every controller slot, for testing 4 controllers as a single player                                                                                      |
+| `omni_controller`         | `true` / `false`   | `false` | Mirrors player 1's device input to every controller slot, for testing 4 controllers as a single player                                                                           |
 | `one_lap_races`           | `true` / `false`   | `false` | Forces every race to a single lap. Extends the 1-lap cheat code, which only covers Arcade and Versus, to all races with no exception                                             |
 | `tow_player_2`            | `true` / `false`   | `false` | Holds the Adventure co-op partner kart right behind the lead racer. `select` toggles the tow in-race                                                                             |
 

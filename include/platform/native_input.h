@@ -5,6 +5,10 @@
 
 #define PLATFORM_INPUT_PAD_COUNT 4
 
+// Analog value a control has to reach to count as held. Shared by the input layer and
+// the controls module's capture so both agree on what counts as pressed.
+#define PLATFORM_INPUT_PRESS_THRESHOLD 16384
+
 struct PlatformInputPadSnapshot
 {
 	u8 status;
@@ -20,8 +24,9 @@ void Platform_InputShutdown(void);
 void Platform_InputUpdate(void);
 void Platform_InputControllerAdded(int deviceIndex);
 void Platform_InputControllerRemoved(int instanceId);
-int Platform_InputCycleKeyboardController(void);
-int Platform_InputCycleGamepadController(void);
+
+// Logs the player-to-device assignment resolved by platform/native_controls.c.
+void Platform_InputLogAssignment(void);
 
 void Platform_InputPadInit(int slot, unsigned char *padData);
 int Platform_InputPadGetState(int port);

@@ -89,6 +89,15 @@ if(NOT EXISTS "${CMAKE_BINARY_DIR}/config.ini")
     message(STATUS "Copied default_config.ini → ${CMAKE_BINARY_DIR}/config.ini")
 endif()
 
+# Same for controls.ini, which is written by the in-game Controls screen. Copied
+# only as a reference: the game creates it on the first binding change, and an
+# existing build/controls.ini must never be overwritten.
+if(NOT EXISTS "${CMAKE_BINARY_DIR}/controls.ini")
+    configure_file("${CMAKE_SOURCE_DIR}/default_controls.ini"
+                   "${CMAKE_BINARY_DIR}/controls.ini" COPYONLY)
+    message(STATUS "Copied default_controls.ini → ${CMAKE_BINARY_DIR}/controls.ini")
+endif()
+
 # CTR Native
 add_executable(ctr_native main.c)
 set_target_properties(ctr_native PROPERTIES
