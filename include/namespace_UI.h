@@ -32,13 +32,6 @@ enum UIHudSlot
 	UI_HUD_SLOT_COUNT = 0x14,
 };
 
-enum UICrystalHudConstants
-{
-	UI_CRYSTAL_HUD_2P_OFFSET_X = -36,
-	UI_CRYSTAL_HUD_2P_OFFSET_Y = 8,
-	UI_CRYSTAL_HUD_2P_SCALE_DIVISOR = 2
-};
-
 enum UIRaceClockFlags
 {
 	UI_RACE_CLOCK_SHOW_CURRENT_TIME = 0x0,

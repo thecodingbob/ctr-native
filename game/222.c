@@ -154,7 +154,10 @@ void AA_EndEvent_DrawMenu(void)
 	timeOffsetFrames = 0;
 	continueDelayOffset = 0;
 	driver = GAME_TRACKER->drivers[0];
-	hudArray = gameHudStructs[GAME_TRACKER->numPlyrCurrGame - 1];
+	// The CTR letters and the token are one shared display, laid out against the
+	// 1P HUD like the models themselves: the split-screen layouts leave that slot
+	// on the Wumpa model at the right edge, which would push the award over there.
+	hudArray = gameHudStructs[0];
 	pushBuffer = &GAME_TRACKER->pushBuffer[0];
 	driverRankString = (char *)&s_driverRankString222;
 
@@ -193,42 +196,66 @@ void AA_EndEvent_DrawMenu(void)
 			if (GAME_FRAMES_SINCE_RACE_ENDED < AA_RESULT_MAX_FRAMES)
 			{
 				hudC = gameHudC;
-				if (((hudC->flags & HIDE_MODEL) == 0) && (hudC->matrix.t[1] > AA_CTR_LETTER_FALL_MIN_Y))
+				if (hudC != NULL && ((hudC->flags & HIDE_MODEL) == 0) && (hudC->matrix.t[1] > AA_CTR_LETTER_FALL_MIN_Y))
 				{
-					letter = hudC->thread->object;
-					hudC->matrix.t[0] += letter->vel[0];
-					hudC->matrix.t[1] -= letter->vel[1];
-					if (letter->vel[1] > AA_CTR_LETTER_FALL_MIN_VEL_Y)
+					if (hudC->thread != NULL)
 					{
-						letter->vel[1] -= 2;
+						letter = hudC->thread->object;
+						if (letter != NULL)
+						{
+							hudC->matrix.t[0] += letter->vel[0];
+							hudC->matrix.t[1] -= letter->vel[1];
+							if (letter->vel[1] > AA_CTR_LETTER_FALL_MIN_VEL_Y)
+							{
+								letter->vel[1] -= 2;
+							}
+						}
 					}
 				}
 
 				// NOTE(aalhendi): Retail applies T and R horizontal velocity to C
 				// while each letter keeps its own vertical motion.
 				hudT = gameHudT;
-				if (((hudT->flags & HIDE_MODEL) == 0) && (GAME_FRAMES_SINCE_RACE_ENDED > AA_CTR_LETTER_FALL_DELAY_FRAMES) &&
+				if (hudT != NULL && ((hudT->flags & HIDE_MODEL) == 0) && (GAME_FRAMES_SINCE_RACE_ENDED > AA_CTR_LETTER_FALL_DELAY_FRAMES) &&
 				    (hudT->matrix.t[1] > AA_CTR_LETTER_FALL_MIN_Y))
 				{
-					letter = hudT->thread->object;
-					gameHudC->matrix.t[0] += letter->vel[0];
-					hudT->matrix.t[1] -= letter->vel[1];
-					if (letter->vel[1] > AA_CTR_LETTER_FALL_MIN_VEL_Y)
+					if (hudT->thread != NULL)
 					{
-						letter->vel[1] -= 2;
+						letter = hudT->thread->object;
+						if (letter != NULL)
+						{
+							if (gameHudC != NULL)
+							{
+								gameHudC->matrix.t[0] += letter->vel[0];
+							}
+							hudT->matrix.t[1] -= letter->vel[1];
+							if (letter->vel[1] > AA_CTR_LETTER_FALL_MIN_VEL_Y)
+							{
+								letter->vel[1] -= 2;
+							}
+						}
 					}
 				}
 
 				hudT = gameHudR;
-				if (((hudT->flags & HIDE_MODEL) == 0) && (GAME_FRAMES_SINCE_RACE_ENDED > AA_CTR_LETTER_FALL_DELAY_FRAMES * 2) &&
+				if (hudT != NULL && ((hudT->flags & HIDE_MODEL) == 0) && (GAME_FRAMES_SINCE_RACE_ENDED > AA_CTR_LETTER_FALL_DELAY_FRAMES * 2) &&
 				    (hudT->matrix.t[1] > AA_CTR_LETTER_FALL_MIN_Y))
 				{
-					letter = hudT->thread->object;
-					gameHudC->matrix.t[0] += letter->vel[0];
-					hudT->matrix.t[1] -= letter->vel[1];
-					if (letter->vel[1] > AA_CTR_LETTER_FALL_MIN_VEL_Y)
+					if (hudT->thread != NULL)
 					{
-						letter->vel[1] -= 2;
+						letter = hudT->thread->object;
+						if (letter != NULL)
+						{
+							if (gameHudC != NULL)
+							{
+								gameHudC->matrix.t[0] += letter->vel[0];
+							}
+							hudT->matrix.t[1] -= letter->vel[1];
+							if (letter->vel[1] > AA_CTR_LETTER_FALL_MIN_VEL_Y)
+							{
+								letter->vel[1] -= 2;
+							}
+						}
 					}
 				}
 			}
@@ -361,14 +388,20 @@ void AA_EndEvent_DrawMenu(void)
 
 				hudToken = GAME_TOKEN;
 				hudWork->matrix.t[1] = letterRPositionY;
-				hudToken->flags &= ~HIDE_MODEL;
-				GAME_TOKEN->matrix.t[0] = UI_ConvertX_2(pos.x + letterTPositionOffsetX, AA_SCREEN_DEPTH);
+				if (hudToken != NULL)
+				{
+					hudToken->flags &= ~HIDE_MODEL;
+					hudToken->matrix.t[0] = UI_ConvertX_2(pos.x + letterTPositionOffsetX, AA_SCREEN_DEPTH);
+				}
 				tokenPositionY = UI_ConvertY_2(pos.y + 0x18, AA_SCREEN_DEPTH);
 				tokenGrowthDelayed = GAME_FRAMES_SINCE_RACE_ENDED <= AA_CTR_TEXT_FLYIN_START_FRAME;
 				hudWork = GAME_TOKEN;
-				hudWork->matrix.t[1] = tokenPositionY;
+				if (hudWork != NULL)
+				{
+					hudWork->matrix.t[1] = tokenPositionY;
+				}
 
-				if (!tokenGrowthDelayed && (hudWork->scale.x < AA_TOKEN_GROW_LIMIT))
+				if (hudWork != NULL && !tokenGrowthDelayed && (hudWork->scale.x < AA_TOKEN_GROW_LIMIT))
 				{
 					hudWork->scale.x += AA_TOKEN_GROW_STEP;
 					hudWork->scale.y += AA_TOKEN_GROW_STEP;
