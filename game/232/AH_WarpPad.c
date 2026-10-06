@@ -638,8 +638,9 @@ void AH_WarpPad_ThTick(struct Thread *t)
 			goto WarpPad_OtherTrack;
 		if (!(CHECK_ADV_BIT(GAME_ADV_PROGRESS.rewards, destination + ADV_REWARD_FIRST_TROPHY)))
 			goto WarpPad_DefaultEnter;
-		// Token/relic selection is unlocked by the hub's key requirement.
-		if (GAME_TRACKER->currAdvProfile.numKeys < AH_HUB_REQUIRED_KEYS[AH_LEVEL_METADATA[destination].hubID])
+		// Token/relic selection is unlocked by the hub's key requirement,
+		// which the all-portals option waives along with the pad's own lock.
+		if (!g_config.unlockAllPortals && (GAME_TRACKER->currAdvProfile.numKeys < AH_HUB_REQUIRED_KEYS[AH_LEVEL_METADATA[destination].hubID]))
 			goto WarpPad_OtherTrack;
 		if (warppadObj->framesWarping < AH_WP_WARP_LOAD_FRAMES)
 		{
