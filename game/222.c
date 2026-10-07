@@ -147,6 +147,7 @@ void AA_EndEvent_DrawMenu(void)
 	b32 coopRace;
 	s16 promptX;
 	s16 promptY;
+	s16 promptCenterLift;
 
 	// NOTE(aalhendi): This compiler barrier preserves retail's address-page
 	// allocation across initialization; it does not change game state.
@@ -164,10 +165,14 @@ void AA_EndEvent_DrawMenu(void)
 	// The retail prompt and retry menu sit along the bottom edge, which is where
 	// P2's finish time lands once Adventure co-op splits the screen. Both are
 	// repositioned every frame so neither mode can leave a stale placement behind
-	// for the other.
+	// for the other. The retry menu is a RECTMENU_STATE_CENTERED menu, so
+	// AA_SCREEN_CENTER_Y is already its vertical middle; DecalFont_DrawLine takes
+	// the top of the glyph box instead, so the prompt is lifted by half a line to
+	// land on that same middle rather than hanging into the lower half.
+	promptCenterLift = data.font_charPixHeight[FONT_BIG] / 2;
 	coopRace = MainGameEnd_IsCoopRace(GAME_TRACKER);
 	promptX = coopRace ? AA_SCREEN_CENTER_X : AA_END_EVENT_TEXT_X;
-	promptY = coopRace ? AA_SCREEN_CENTER_Y : AA_END_EVENT_TEXT_Y;
+	promptY = coopRace ? AA_SCREEN_CENTER_Y - promptCenterLift : AA_END_EVENT_TEXT_Y;
 	gameMenuRetryExit.posX_curr = coopRace ? AA_SCREEN_CENTER_X : AA_END_EVENT_MENU_X;
 	gameMenuRetryExit.posY_curr = coopRace ? AA_SCREEN_CENTER_Y : AA_END_EVENT_MENU_Y;
 
