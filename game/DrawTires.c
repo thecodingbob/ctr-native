@@ -496,6 +496,73 @@ static void DrawTiresSolid_LinkPrimitive(struct DrawTiresScratch *scratch, POLY_
 	*otSlot = (u32)CtrGpu_PrimToOTLink24(p);
 }
 
+enum
+{
+	// Any real wheel quad stays well inside this, even for the closest kart.
+	DRAW_TIRES_MAX_LEGIT_EXTENT = 256,
+	// Filling under a sixteenth of the bounding box means sliver, not wheel.
+	DRAW_TIRES_MIN_FILL_SHIFT = 4,
+};
+
+// A wheel quad whose rim axis has collapsed has near-coincident corner pairs, so
+// the GPU's two triangles degenerate into a single sliver spanning the frame
+// from corner to corner. That is the visible artifact: black elongated geometry
+// trailing distant racers.
+//
+// A sliver alone is not enough to reject. A wheel seen edge-on, axle pointing at
+// the camera, legitimately projects to a thin sliver that real hardware draws as
+// a narrow ellipse. What separates that from the artifact is size: a collapsed
+// wheel spans most of the frame, while a real wheel never does at any angle or
+// distance. So reject only slivers that are also implausibly large.
+static int DrawTires_IsDegenerateQuad(const POLY_FT4 *p)
+{
+	const int xs[4] = {p->x0, p->x1, p->x2, p->x3};
+	const int ys[4] = {p->y0, p->y1, p->y2, p->y3};
+
+	int minX = xs[0];
+	int maxX = xs[0];
+	int minY = ys[0];
+	int maxY = ys[0];
+
+	for (int i = 1; i < 4; i++)
+	{
+		if (xs[i] < minX) { minX = xs[i]; }
+		if (xs[i] > maxX) { maxX = xs[i]; }
+		if (ys[i] < minY) { minY = ys[i]; }
+		if (ys[i] > maxY) { maxY = ys[i]; }
+	}
+
+	const long long extentX = (long long)maxX - (long long)minX;
+	const long long extentY = (long long)maxY - (long long)minY;
+
+	// Collapsed to a line or a point: no area at all.
+	if ((extentX <= 1) || (extentY <= 1))
+	{
+		return 1;
+	}
+
+	// A large quad is legitimate however thin it looks, so only screen-spanning
+	// geometry can be the artifact.
+	if ((extentX <= DRAW_TIRES_MAX_LEGIT_EXTENT) && (extentY <= DRAW_TIRES_MAX_LEGIT_EXTENT))
+	{
+		return 0;
+	}
+
+	// Twice the signed area. Coordinates reach +/-32767, so the products and
+	// their sum overflow 32 bits; the comparison is done in 64.
+	long long area2 = ((long long)xs[0] * ys[1]) - ((long long)xs[1] * ys[0]);
+	area2 += ((long long)xs[1] * ys[2]) - ((long long)xs[2] * ys[1]);
+	area2 += ((long long)xs[2] * ys[3]) - ((long long)xs[3] * ys[2]);
+	area2 += ((long long)xs[3] * ys[0]) - ((long long)xs[0] * ys[3]);
+
+	if (area2 < 0)
+	{
+		area2 = -area2;
+	}
+
+	return (area2 << DRAW_TIRES_MIN_FILL_SHIFT) < (extentX * extentY);
+}
+
 static int DrawTiresSolid_EmitProjectedWheel(struct DrawTiresScratch *scratch, struct DrawTiresSolidProjectedWheel *selected, struct PrimMem *primMem,
                                              int *primCount)
 {
@@ -523,11 +590,29 @@ static int DrawTiresSolid_EmitProjectedWheel(struct DrawTiresScratch *scratch, s
 	}
 
 	DrawTiresSolid_WritePrimitiveCorners(p, sxy);
+
+	if (DrawTires_IsDegenerateQuad(p) != 0)
+	{
+		// primMem->cursor is deliberately left alone: the corners written above
+		// are scratch until the cursor advances, so the next wheel overwrites
+		// them.
+		return 1;
+	}
+
 	DrawTiresSolid_LinkPrimitive(scratch, p, selectedOTSlot);
 	primMem->cursor = (char *)primMem->cursor + sizeof(POLY_FT4);
 	(*primCount)++;
 
 	return 1;
+}
+
+// These passes write POLY_FT4 straight at the primitive cursor, so they need the
+// same guardEnd headroom check the RenderBucket, ground shadow and ground skid
+// emitters already perform. Without it, LOD 0 wheels for far racers can be
+// pushed past the end of the buffer, and the overflow quads still reach the OT.
+static int DrawTires_HasRoomForQuad(struct PrimMem *primMem)
+{
+	return ((char *)primMem->cursor + sizeof(POLY_FT4) < (char *)primMem->guardEnd) ? 1 : 0;
 }
 
 static int DrawTiresSolid_ProjectWheelQuads(struct DrawTiresScratch *scratch, struct PrimMem *primMem, int *primCount)
@@ -538,6 +623,11 @@ static int DrawTiresSolid_ProjectWheelQuads(struct DrawTiresScratch *scratch, st
 	// depth-bias scratch updates, UV copy, and OT linking.
 	for (int wheelIndex = 3; wheelIndex >= 0; wheelIndex--)
 	{
+		if (DrawTires_HasRoomForQuad(primMem) == 0)
+		{
+			break;
+		}
+
 		DrawTiresSolid_LoadCorner(scratch, 0, wheelIndex, -1, -1);
 		DrawTiresSolid_LoadCorner(scratch, 1, wheelIndex, 1, -1);
 		DrawTiresSolid_LoadCorner(scratch, 2, wheelIndex, -1, 1);
@@ -641,6 +731,11 @@ void DrawTires_Solid(struct Thread *thread, struct PrimMem *primMem, u8 numPlyr)
 
 		for (int playerIndex = 0; playerIndex < (int)(u8)numPlyr; playerIndex++)
 		{
+			if (DrawTires_HasRoomForQuad(primMem) == 0)
+			{
+				break;
+			}
+
 			if (DrawTiresSolid_StagePlayer(&scratch, driver, inst, playerIndex, primMem, &primCount) == 0)
 			{
 				continue;
@@ -1103,6 +1198,11 @@ static int DrawTiresReflection_ProjectWheelQuads(struct DrawTiresScratch *scratc
 	// reflected SXY scratch order used by the later jump-table primitive path.
 	for (int wheelIndex = 3; wheelIndex >= 0; wheelIndex--)
 	{
+		if (DrawTires_HasRoomForQuad(primMem) == 0)
+		{
+			break;
+		}
+
 		DrawTiresReflection_LoadCorner(scratch, 0, wheelIndex, -1, -1);
 		DrawTiresReflection_LoadCorner(scratch, 1, wheelIndex, 1, -1);
 		DrawTiresReflection_LoadCorner(scratch, 2, wheelIndex, -1, 1);
@@ -1197,6 +1297,11 @@ void DrawTires_Reflection(struct Thread *thread, struct PrimMem *primMem, u8 num
 
 		for (int playerIndex = 0; playerIndex < (int)(u8)numPlyr; playerIndex++)
 		{
+ 			if (DrawTires_HasRoomForQuad(primMem) == 0)
+			{
+				break;
+			}
+
 			if (DrawTiresReflection_StagePlayer(&scratch, driver, inst, playerIndex, primMem, &primCount) == 0)
 			{
 				continue;
