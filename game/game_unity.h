@@ -147,8 +147,9 @@
 #include "MEMCARD/MEMCARD_Events.c"
 #include "MEMCARD/MEMCARD_FileIO.c"
 
-// NOTE(aalhendi): Retail card operations use PSX card/event/file APIs. Native
-// provides the same game-facing MEMCARD_* API from platform/native_memcard_adapter.c.
+// The game-facing MEMCARD_* API comes from
+// platform/native_memcard_adapter.c; retail PSX card/event/file sources are
+// not part of this build.
 
 #include "MEMPACK.c"
 

@@ -42,8 +42,7 @@ vanilla behavior unless the user requests otherwise; keep existing defaults.
 - `origin` is the personal fork; `upstream` is `CTR-tools/ctr-native`. Never
   push to upstream.
 - `master` is protected. Make a topic branch and merge through a pull request.
-- `config.ini`, `errors.txt`, this `AGENTS.md` and skill files are local-only. Do not add
-  them to commits. `AGENTS.md` is excluded through `.git/info/exclude`.
+- `config.ini` and `errors.txt` are local only. Don't add them to commits.
 - Preserve user changes and untracked files. Do not reset, clean, or discard
   worktree changes without explicit approval.
 - Do not commit changes, stage them and let the user commit.
