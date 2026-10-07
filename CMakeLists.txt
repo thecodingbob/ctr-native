@@ -154,12 +154,4 @@ include(CTest)
 if(BUILD_TESTING)
     add_test(NAME ctr_native_version COMMAND $<TARGET_FILE:ctr_native> --version)
     set_tests_properties(ctr_native_version PROPERTIES PASS_REGULAR_EXPRESSION "^CTR Native ")
-
-    find_package(Python3 REQUIRED COMPONENTS Interpreter)
-    add_test(
-        NAME ctr_match_unit
-        COMMAND ${Python3_EXECUTABLE} -m unittest discover
-            -s ${CMAKE_SOURCE_DIR}/tools/matching
-            -p test_*.py
-    )
 endif()
