@@ -325,7 +325,7 @@ void MM_ToggleRows_PlayerCount(void)
 	const b32 adventurePlayerCountSelection = (GAME_TRACKER->gameMode1 & ADVENTURE_MODE) != 0 && g_config.multiplayerAdventure;
 	struct MenuRow *playerCountRows = MM_ROWS_PLAYERS_1P2P;
 
-	if (g_config.extendedArcadeMultiplayer && !adventurePlayerCountSelection)
+	if (g_config.extendedMultiplayer && !adventurePlayerCountSelection)
 	{
 		playerCountRows = MM_ROWS_PLAYERS_1P2P3P4P;
 		selectablePlayerCountRows = MM_PLAYER_1P2P3P4P_SELECTABLE_ROWS;

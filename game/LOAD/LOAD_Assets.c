@@ -33,39 +33,6 @@ static b32 LOAD_IsRandomBotSelectionEnabled(void)
 	return mode == BOT_SELECTION_RANDOM_UNLOCKED || mode == BOT_SELECTION_RANDOM_ALL;
 }
 
-// NOTE: Every random-bot decision has to agree with LOAD_DriverMPK on what the
-// extended Arcade option means, otherwise the roster it writes and the models it
-// queues describe different races.
-static b32 LOAD_IsExtendedArcadeMultiplayer(void)
-{
-	return (sdata->gGT->gameMode1 & ARCADE_MODE) != 0 && g_config.extendedArcadeMultiplayer;
-}
-
-static b32 LOAD_IsRandomBotRace(void)
-{
-	u32 gameMode = sdata->gGT->gameMode1;
-
-	if (!LOAD_IsRandomBotSelectionEnabled())
-	{
-		return false;
-	}
-
-	if ((gameMode & (ARCADE_MODE | ADVENTURE_MODE)) == 0)
-	{
-		return false;
-	}
-
-	// CRYSTAL_CHALLENGE is the last entry: MainInit_Drivers never spawns AIs for
-	// it, so randomizing there would only queue models nobody uses.
-	if ((gameMode & (GAME_CUTSCENE | ADVENTURE_ARENA | MAIN_MENU | BATTLE_MODE | RELIC_RACE | TIME_TRIAL |
-	                 ADVENTURE_BOSS | CRYSTAL_CHALLENGE)) != 0)
-	{
-		return false;
-	}
-
-	return !((gameMode & ADVENTURE_CUP) != 0 && sdata->gGT->cup.cupID == CUP_ID_PURPLE_GEM);
-}
-
 static void LOAD_ShuffleCharacterIDs(s16 *characterIDs)
 {
 	for (int i = GAME_CHARACTER_COUNT - 1; i > 0; i--)
@@ -123,6 +90,60 @@ static b32 LOAD_IsPurpleGemCupRace(void)
 	return (gGT->gameMode1 & ADVENTURE_CUP) != 0 && gGT->cup.cupID == CUP_ID_PURPLE_GEM;
 }
 
+// Modes that pick their own AI lineup write the racers past the players
+// themselves, so the extended multiplayer option must leave those slots alone.
+static b32 LOAD_HasManagedAIRoster(void)
+{
+	u32 gameMode = sdata->gGT->gameMode1;
+
+	// CRYSTAL_CHALLENGE is the last entry: MainInit_Drivers never spawns AIs for
+	// it, so filling or randomizing its grid would only queue racers nobody uses.
+	if ((gameMode & (GAME_CUTSCENE | ADVENTURE_ARENA | MAIN_MENU | BATTLE_MODE | RELIC_RACE | TIME_TRIAL |
+	                 ADVENTURE_BOSS | CRYSTAL_CHALLENGE)) != 0)
+	{
+		return true;
+	}
+
+	return LOAD_IsPurpleGemCupRace();
+}
+
+// The extended multiplayer option fills every grid slot with a racer, in Arcade
+// and in Adventure alike. MainInit_Drivers spawns one driver per racer the roster
+// names, so this is the single definition of what the option means for the
+// current race: whoever writes character IDs and whoever counts AI slots have to
+// agree on it, or the extra slots spawn drivers on IDs nobody assigned.
+b32 LOAD_UsesExtendedMultiplayerGrid(void)
+{
+	if (!g_config.extendedMultiplayer)
+	{
+		return false;
+	}
+
+	if ((sdata->gGT->gameMode1 & (ARCADE_MODE | ADVENTURE_MODE)) == 0)
+	{
+		return false;
+	}
+
+	return !LOAD_HasManagedAIRoster();
+}
+
+static b32 LOAD_IsRandomBotRace(void)
+{
+	u32 gameMode = sdata->gGT->gameMode1;
+
+	if (!LOAD_IsRandomBotSelectionEnabled())
+	{
+		return false;
+	}
+
+	if ((gameMode & (ARCADE_MODE | ADVENTURE_MODE)) == 0)
+	{
+		return false;
+	}
+
+	return !LOAD_HasManagedAIRoster();
+}
+
 // Retail ran the Purple Gem Cup solo and wrote the bosses to driver slots 1-4.
 // Split-screen puts a human in slot 1, so the bosses take the slots after the humans,
 // which is where MainInit_Drivers spawns the cup's AI from.
@@ -151,7 +172,7 @@ static int LOAD_GetRandomBotCount(void)
 {
 	int playerCount = sdata->gGT->numPlyrCurrGame;
 
-	if (playerCount == 1 || LOAD_IsExtendedArcadeMultiplayer())
+	if (playerCount == 1 || LOAD_UsesExtendedMultiplayerGrid())
 	{
 		return LOAD_CHARACTER_ID_COUNT - playerCount;
 	}
@@ -252,11 +273,11 @@ static void LOAD_SelectRandomBots(void)
 
 static void LOAD_QueueRandomBotModels(struct BigHeader *bigfile)
 {
-	b32 extendedArcadeMultiplayer = LOAD_IsExtendedArcadeMultiplayer();
+	b32 extendedMultiplayerGrid = LOAD_UsesExtendedMultiplayerGrid();
 	s16 standaloneCharacterIDs[LOAD_EXTRA_CHARACTER_MODEL_CAPACITY];
 	int botCount = LOAD_GetRandomBotCount();
 	int standaloneCharacterCount = 0;
-	int modelFileIndex = sdata->gGT->numPlyrCurrGame == 2 && !extendedArcadeMultiplayer ? BI_RACERMODELMED : BI_RACERMODELHI;
+	int modelFileIndex = sdata->gGT->numPlyrCurrGame == 2 && !extendedMultiplayerGrid ? BI_RACERMODELMED : BI_RACERMODELHI;
 
 	for (int botIndex = 0; botIndex < botCount; botIndex++)
 	{
@@ -267,7 +288,7 @@ static void LOAD_QueueRandomBotModels(struct BigHeader *bigfile)
 		// LOAD_RacerNeedsStandaloneModel rather than assuming the pack covers
 		// every base racer. The regular 2P pack has only its predefined AI set,
 		// so every randomized 2P bot needs a standalone model regardless.
-		if (LOAD_RacerNeedsStandaloneModel(characterID) || (sdata->gGT->numPlyrCurrGame == 2 && !extendedArcadeMultiplayer))
+		if (LOAD_RacerNeedsStandaloneModel(characterID) || (sdata->gGT->numPlyrCurrGame == 2 && !extendedMultiplayerGrid))
 		{
 			standaloneCharacterIDs[standaloneCharacterCount++] = characterID;
 		}
@@ -385,7 +406,7 @@ void LOAD_Robots1P(int characterID)
 // before Pura and every bot is covered by the 1P arcade pack. With two or more
 // players the skipped player entries push the last bot onto a racer the pack
 // does not carry, so give those bots their own model file.
-static void LOAD_QueueExtendedArcadeBotModels(struct BigHeader *bigfile)
+static void LOAD_QueueExtendedBotModels(struct BigHeader *bigfile)
 {
 	struct GameTracker *gGT = sdata->gGT;
 	s16 standaloneCharacterIDs[LOAD_EXTRA_CHARACTER_MODEL_CAPACITY];
@@ -410,12 +431,12 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 {
 	int i;
 	int gameMode1;
-	b32 extendedArcadeMultiplayer;
+	b32 extendedMultiplayerGrid;
 	b32 randomBotRace;
 
 	struct GameTracker *gGT = sdata->gGT;
 	gameMode1 = gGT->gameMode1;
-	extendedArcadeMultiplayer = LOAD_IsExtendedArcadeMultiplayer();
+	extendedMultiplayerGrid = LOAD_UsesExtendedMultiplayerGrid();
 
 	randomBotRace = LOAD_IsRandomBotRace();
 	LOAD_ResetExtraCharacterModels();
@@ -429,13 +450,13 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 		LOAD_QueueRandomBotModels(bigfile);
 	}
 
-	if (extendedArcadeMultiplayer && gGT->numPlyrCurrGame > 1)
+	if (extendedMultiplayerGrid && gGT->numPlyrCurrGame > 1)
 	{
 		// The 1P arcade pack contains the full racer roster for AI opponents.
 		if (!randomBotRace)
 		{
 			LOAD_Robots1P(data.characterIDs[0]);
-			LOAD_QueueExtendedArcadeBotModels(bigfile);
+			LOAD_QueueExtendedBotModels(bigfile);
 		}
 	}
 
@@ -495,7 +516,7 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 			LOAD_AppendQueue(bigfile, LT_GETADDR, BI_RACERMODELHI + data.characterIDs[i], &data.driverModelExtras[i - 1].fileBase, LOAD_DriverMPK_SetPointer);
 		}
 
-		if (!randomBotRace && !extendedArcadeMultiplayer && (gGT->numPlyrCurrGame == 2) && (LOAD_SelectRobots2P(data.characterIDs[0], data.characterIDs[1]) < 0))
+		if (!randomBotRace && !extendedMultiplayerGrid && (gGT->numPlyrCurrGame == 2) && (LOAD_SelectRobots2P(data.characterIDs[0], data.characterIDs[1]) < 0))
 		{
 			return sdata->ptrMPK;
 		}
@@ -507,7 +528,7 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 	// 3P/4P
 	if ((u32)(levelLOD - LOAD_LEVEL_LOD_3P) < LOAD_LEVEL_LOD_3P4P_COUNT)
 	{
-		if ((gameMode1 & ARCADE_MODE) != 0 && g_config.extendedArcadeMultiplayer)
+		if (extendedMultiplayerGrid)
 		{
 			// P1 and all AI models come from the arcade pack. The standalone slots
 			// provide the remaining human selections at multiplayer LOD.
@@ -594,7 +615,7 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 	// else if (levelLOD == LOAD_LEVEL_LOD_2P)
 	else
 	{
-		if (extendedArcadeMultiplayer)
+		if (extendedMultiplayerGrid)
 		{
 			// P1 and every AI model come from the 1P arcade pack. P2 keeps the
 			// normal 2P medium-detail model.

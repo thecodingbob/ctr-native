@@ -45,7 +45,7 @@ NativeConfig g_config = {
   .showReservesMeter = false,
   .allowOxideStationMultiplayer = false,
   .allowRaceTracksInBattle = false,
-  .extendedArcadeMultiplayer = false,
+  .extendedMultiplayer = false,
   .botSelectionMode = BOT_SELECTION_PREDETERMINED,
   .skipHints = false,
   .extendedAdventureCharacterSelect = false,
@@ -135,10 +135,10 @@ const ConfigEntry g_configEntries[] = {
     },
     {
         .section = "General",
-        .key = "extended_arcade_multiplayer",
-        .label = "Extended 2/3/4P Arcade",
+        .key = "extended_multiplayer",
+        .label = "Extended Multiplayer",
         .type = CFG_BOOL,
-        .valuePtr = &g_config.extendedArcadeMultiplayer
+        .valuePtr = &g_config.extendedMultiplayer
     },
     {
         .section = "General",

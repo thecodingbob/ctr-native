@@ -1239,6 +1239,7 @@ void RB_Burst_Init(struct Instance *weaponInst);
 void GAMEPAD_ShockFreq(struct Driver *d, int frame, int val);
 b32 RaceFlag_IsTransitioning(void);
 void LOAD_Robots1P(int characterID);
+b32 LOAD_UsesExtendedMultiplayerGrid(void);
 int LOAD_AdventureBossDriverSlot(void);
 void UI_Map_DrawRawIcon(struct UIMap *map, const s32 worldPos[3], int iconID, int colorID, int unused, s16 scale);
 s32 RaceFlag_GetCanDraw(void);
