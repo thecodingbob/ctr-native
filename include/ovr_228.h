@@ -10,9 +10,7 @@ enum OverlayRDATA_228_Counts
 	OVR228_CLIP_RECORD_JUMP_WORD_COUNT = 24,
 };
 
-#define OVR228_RDATA_START             0x800a8e38u
 #define OVR228_RDATA_BUCKET_SETUP_BASE 0x800a8ed8u
-#define OVR228_RDATA_STOP              0x800a9258u
 
 enum OverlayRDATA_228_BucketSetupLayout
 {

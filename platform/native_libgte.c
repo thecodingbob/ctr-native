@@ -20,7 +20,6 @@
 
 extern u32 gte_leadingzerocount(u32 lzcs);
 
-#define ONE_BITS 12
 #define ONE      (1 << 12)
 #define FIXED(a) ((a) >> 12)
 

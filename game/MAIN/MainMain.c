@@ -528,10 +528,7 @@ void StateZero()
 	// Get CD Position fo BIGFILE
 	sdata->ptrBigfile1 = LOAD_ReadDirectory(BIGPATH);
 
-// Defrag to save heap space,
-// required because MEMPACK_Init moves heap
-
-	// English=1
+	// Bigfile language slot; English is 1.
 	LOAD_LangFile((int)sdata->ptrBigfile1, 1);
 	GAMEPROG_NewGame_OnBoot();
 	gGT->overlayIndex_null_notUsed = 0;

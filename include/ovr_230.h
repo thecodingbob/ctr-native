@@ -222,7 +222,6 @@ enum MMVideoConstants
 	MM_VIDEO_GPU_IDLE_TIMEOUT = 10000,
 };
 
-#define MM_VIDEO_STREAM_END_FRAME_NONE 0xffffffffu
 
 
 enum MainMenuTrackUnlockRequirement

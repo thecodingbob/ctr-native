@@ -306,7 +306,6 @@ CTR_STATIC_ASSERT(offsetof(struct RenderBucketGhostTexturedPacket, mask) == 0x00
 CTR_STATIC_ASSERT(offsetof(struct RenderBucketGhostTexturedPacket, body) == 0x1C);
 
 #define RB_RETAIL_INST_FUNC3_SPLIT_WHITE  ((u32)0x8006d404U)
-#define RB_RETAIL_INST_FUNC3_SPLIT_INTERP ((u32)0x8006d428U)
 
 struct RenderBucketBounds
 {

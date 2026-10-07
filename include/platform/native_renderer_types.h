@@ -17,8 +17,6 @@
 #define VRAM_WIDTH             (1024)
 #define VRAM_HEIGHT            (512)
 
-#define TPAGE_WIDTH            (256)
-#define TPAGE_HEIGHT           (256)
 
 #define MAX_VERTEX_BUFFER_SIZE (1u << 16)
 
