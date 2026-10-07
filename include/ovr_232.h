@@ -88,13 +88,6 @@ struct BossGarageDoor
 };
 
 CTR_STATIC_ASSERT(sizeof(struct BossGarageDoor) == 0x14);
-
-#if 0
-struct AdvPause {
-
-};
-#endif
-
 enum WoodDoorCamFlags
 {
 	WdCam_None = 0,

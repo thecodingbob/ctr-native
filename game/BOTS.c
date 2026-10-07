@@ -831,13 +831,6 @@ void BOTS_ThTick_Drive(struct Thread *botThread)
 	struct Instance *botInstance = (struct Instance *)botThread->inst; // iVar22
 	struct GameTracker *gGT = sdata->gGT;
 
-	// local_34 = gGT->elapsedTimeMS;
-
-#if 0
-	if(botDriver->driverID != 0)
-		return;
-#endif
-
 	botDriver->turbo_MeterRoomLeft = 0;
 	botDriver->forwardDir = 0;
 
@@ -1186,28 +1179,7 @@ UpdateTireColorTimer:
 				int ZY = SquareRoot0_stub(ZYsqr);
 
 				int zVel = CTR_MipsMulLo(botDriver->botData.aiPhysics.speedLinear, 0x6900); // iVar3
-
-#if 0 // in the OG game
-				if (ZY == 0)
-				{
-					//trap(0x1c00);
-				}
-				if ((ZY == -1) && (zVel == -0x80000000))
-				{
-					//trap(0x1800);
-				}
-#endif
 				int yVel = CTR_MipsMulLo(botDriver->botData.aiPhysics.speedY, 0x6900); // iVar15
-#if 0                                                                                  // in the OG game
-				if (ZY == 0)
-				{
-					//trap(0x1c00);
-				}
-				if ((ZY == -1) && (yVel == -0x80000000))
-				{
-					//trap(0x1800);
-				}
-#endif
 				botDriver->botData.aiPhysics.speedLinear = CTR_MipsDiv(zVel, ZY);
 				botDriver->botData.aiPhysics.speedY = CTR_MipsDiv(yVel, ZY);
 			}
@@ -2058,16 +2030,6 @@ UpdateTireColorTimer:
 					int iVar3 = navFrameCurr->distToNextNavXZ;
 					if (iVar3 != 0)
 					{
-#if 0
-						if (iVar3 == 0)
-						{
-							trap(0x1c00);
-						}
-						if ((iVar3 == -1) && (deltaPosThisFrame * navFrameCurr->distToNextNavXYZ == -0x80000000))
-						{
-							trap(0x1800);
-						}
-#endif
 						botDriver->botData.navProgressRemainder =
 						    CTR_MipsSll(CTR_MipsDiv(CTR_MipsMulLo(deltaPosThisFrame, navFrameCurr->distToNextNavXYZ), iVar3), 8);
 					}
@@ -2146,16 +2108,6 @@ UpdateTireColorTimer:
 					int iVar3 = navFrameCurr->distToNextNavXZ;
 					if (iVar3 != 0)
 					{
-#if 0
-						if (iVar3 == 0)
-						{
-							trap(0x1c00);
-						}
-						if ((iVar3 == -1) && (deltaPosThisFrame * navFrameCurr->distToNextNavXYZ == -0x80000000))
-						{
-							trap(0x1800);
-						}
-#endif
 						botDriver->botData.navProgressRemainder =
 						    CTR_MipsSll(CTR_MipsDiv(CTR_MipsMulLo(deltaPosThisFrame, navFrameCurr->distToNextNavXYZ), iVar3), 8);
 					}
@@ -2204,16 +2156,6 @@ UpdateTireColorTimer:
 			int iVar3 = navFrameCurr->distToNextNavXYZ;
 			if (iVar3 != 0)
 			{
-#if 0
-				if (iVar3 == 0)
-				{
-					trap(0x1c00);
-				}
-				if ((iVar3 == -1) && (deltaPosThisFrame * navFrameCurr->distToNextNavXZ == -0x80000000))
-				{
-					trap(0x1800);
-				}
-#endif
 				botDriver->botData.navProgressRemainder = CTR_MipsSll(CTR_MipsDiv(CTR_MipsMulLo(deltaPosThisFrame, navFrameCurr->distToNextNavXZ), iVar3), 8);
 			}
 		}

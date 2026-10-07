@@ -147,12 +147,6 @@ int Bank_AssignSpuAddrs()
 		// === Assign SpuEntry for all "new" samples ===
 
 		struct SpuAddrEntry *sae;
-
-#if 0
-		printf("New\n");
-		printf("%08x\n", sdata->audioAllocPtr);
-#endif
-
 		for (i = 0; i < sdata->ptrSampleBlock1->numSamples; i++)
 		{
 			s16 *spuIndexArr = SBHEADER_GETARR(sdata->ptrSampleBlock1);
@@ -163,10 +157,6 @@ int Bank_AssignSpuAddrs()
 				sae->spuAddr = audioAllocPtr;
 			}
 			audioAllocPtr += sae->spuSize;
-
-#if 0
-			printf("%08x\n", audioAllocPtr);
-#endif
 		}
 
 		sdata->bankLoadStage++;

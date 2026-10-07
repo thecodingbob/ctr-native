@@ -1145,12 +1145,6 @@ void WindowDivsionLines(struct GameTracker *gGT)
 	// vertical bar
 	if (numPlyrCurrGame > 2)
 	{
-#if 0
-		gGT->drivers[0]->numWumpas = DRIVER_WUMPA_JUICED_COUNT;
-		gGT->drivers[0]->heldItemID = HELD_ITEM_TNT;
-		gGT->drivers[1]->numWumpas = DRIVER_WUMPA_JUICED_COUNT;
-		gGT->drivers[1]->heldItemID = HELD_ITEM_TNT;
-#endif
 
 		p = gGT->backBuffer->primMem.cursor;
 

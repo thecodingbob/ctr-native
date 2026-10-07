@@ -24,19 +24,6 @@ void GAMEPAD_Init(struct GamepadSystem *gGamepads)
 }
 
 
-void GAMEPAD_SetMainMode(void)
-{
-	PadSetMainMode(0, 0, 0);
-	PadSetMainMode(1, 0, 0);
-	PadSetMainMode(2, 0, 0);
-	PadSetMainMode(3, 0, 0);
-	PadSetMainMode(0x10, 0, 0);
-	PadSetMainMode(0x11, 0, 0);
-	PadSetMainMode(0x12, 0, 0);
-	PadSetMainMode(0x13, 0, 0);
-}
-
-
 void GAMEPAD_ProcessState(struct GamepadBuffer *pad, int padState, s16 id)
 {
 	int iVar2;

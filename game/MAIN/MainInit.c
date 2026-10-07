@@ -647,12 +647,6 @@ void MainInit_FinalizeInit(struct GameTracker *gGT)
 	ThTick_RunBucket(gGT->threadBuckets[CAMERA].thread);
 
 // dont write unused variables
-#if 0
-    // lev -> clearColor rgb
-    sdata->LevClearColorRGB[0] = (u32)(char *)(lev1->clearColorRGBA)[0];
-    sdata->LevClearColorRGB[1] = (u32)(char *)(lev1->clearColorRGBA)[1];
-    sdata->LevClearColorRGB[2] = (u32)(char *)(lev1->clearColorRGBA)[2];
-#endif
 
 	// Used in Coco Park, encoded as Blue
 	*(int *)&gGT->db[0].drawEnv.isbg = lev1->clearColorRGBA << 8;
@@ -707,11 +701,6 @@ void MainInit_FinalizeInit(struct GameTracker *gGT)
 	{
 		gGT->winnerIndex[i] = 0;
 	}
-
-#if 0
-    BOTS_EmptyFunc();
-#endif
-
 	if ((gGT->gameMode1 & GAME_CUTSCENE) != 0)
 	{
 		// freecam mode

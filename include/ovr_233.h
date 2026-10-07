@@ -827,12 +827,6 @@ CTR_STATIC_ASSERT(sizeof(struct OVR233_Garage) == 0xac);
 #undef OVR233_GARAGE_ASSERT
 
 extern struct OVR233_Garage gGarage;
-
-#if 0
-800b8644 - CREDITS RDATA
-800b8668 - first byte of credits func (CREDITS TEXT)
-#endif
-
 // === Credits Functions Here ===
 
 // 800b9488 - first byte after last func (CREDITS BSS)
