@@ -46,25 +46,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-## PSn00bSDK
-
-Source: <https://github.com/Lameguy64/PSn00bSDK>
-
-Path: `include/psn00bsdk`
-
-CTR Native vendors a small PSn00bSDK header subset for PS1/Psy-Q-compatible
-types, constants, and inline helpers used by the shared source. CTR Native does
-not vendor or link `libpsn00b` into the native PC executable.
-
-This notice applies to PSn00bSDK core files only. `mkpsxiso` and `dumpsxiso`
-are separate GPLv2-or-later tools and are not distributed as part of CTR Native.
-
-License: Mozilla Public License 2.0
-
-The vendored header files retain their original copyright and license notices.
-A copy of the MPL 2.0 license can be obtained at:
-<https://mozilla.org/MPL/2.0/>
-
 ## SDL3
 
 Path: `externals/SDL`
@@ -92,51 +73,5 @@ freely, subject to the following restrictions:
    misrepresented as being the original software.
 3. This notice may not be removed or altered from any source distribution.
 
-## maspsx
-
-Source: <https://github.com/mkst/maspsx>
-
-Path: `externals/maspsx`
-
-CTR Native vendors `maspsx` at commit
-`42b862c988fe7a13fe4e7ac0ebec90ed6b9fb763` for its PSYQ ASPSX-compatible
-assembly transformation.
 
 License: MIT
-
-The full license is retained in `externals/maspsx/LICENSE`.
-
-## GNU GCC 2.8.1 PSX toolchain
-
-Sources:
-
-- <https://github.com/decompals/old-gcc>
-- <https://ftp.gnu.org/gnu/gcc/gcc-2.8.1.tar.gz>
-
-Path: `externals/old-gcc`
-
-CTR Native vendors the Decompals build recipes at tag `0.17`, the corresponding
-GCC 2.8.1 source archive, and the tested Linux i386 PSX compiler release.
-
-License: GNU GPL v2
-
-The license is retained in `externals/old-gcc/GCC-COPYING`; exact source,
-release, commit, and binary hashes are recorded in
-`externals/old-gcc/UPSTREAM.md`.
-
-## GNU Binutils 2.40
-
-Sources:
-
-- <https://github.com/Lameguy64/PSn00bSDK/releases/tag/v0.24>
-- <https://ftp.gnu.org/gnu/binutils/binutils-2.40.tar.xz>
-
-Path: `externals/psx-binutils`
-
-CTR Native retains the four MIPS ELF programs used by the matching pipeline
-from the PSn00bSDK v0.24 Linux toolchain distribution, together with the
-corresponding GNU Binutils 2.40 source archive.
-
-The applicable GNU licenses are retained in `externals/psx-binutils/COPYING`
-and `externals/psx-binutils/COPYING3`; exact archive and binary hashes are
-recorded in `externals/psx-binutils/UPSTREAM.md`.
