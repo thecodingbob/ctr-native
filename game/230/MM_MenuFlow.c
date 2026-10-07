@@ -538,11 +538,7 @@ void MM_ToggleRows_Difficulty(void)
 
 		if (
 		// if locked
-#ifdef CTR_NATIVE
 		    ((u32)(u16)finalUnlockState == isUnlocked) &&
-#else
-		    (finalUnlockState == isUnlocked) &&
-#endif
 
 		    // If you're in Arcade mode
 		    ((gGT->gameMode1 & ARCADE_MODE) != isUnlocked) &&
@@ -710,7 +706,6 @@ void MM_ResetAllMenus(void)
 	u16 menuIndex;
 	for (menuIndex = 0; menuIndex < MM_MENU_RESET_COUNT; menuIndex++)
 	{
-#ifdef CTR_NATIVE
 		struct RectMenu *menu = MM_MENU_POINTERS[(s16)menuIndex];
 
 		// NOTE(aalhendi): Retail resets one menu per array slot; native walks
@@ -726,12 +721,6 @@ void MM_ResetAllMenus(void)
 
 			menu = next;
 		} while (menu != 0);
-#else
-		MM_MENU_POINTERS[(s16)menuIndex]->state |= RECTMENU_CLOSE_TRANSIENT;
-		MM_MENU_POINTERS[(s16)menuIndex]->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
-		MM_MENU_POINTERS[(s16)menuIndex]->ptrNextBox_InHierarchy = 0;
-		MM_MENU_POINTERS[(s16)menuIndex]->ptrPrevBox_InHierarchy = 0;
-#endif
 	}
 
 	// unused
@@ -832,5 +821,3 @@ void MM_JumpTo_Scrapbook(void)
 
 	MM_Scrapbook_Init();
 }
-
-

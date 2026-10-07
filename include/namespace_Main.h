@@ -1405,8 +1405,4 @@ struct GameTracker
 	u8 podium_secondPlaceCelebrates;
 };
 
-#ifndef CTR_NATIVE
-CTR_STATIC_ASSERT(sizeof(struct GameTracker) == 0x2584);
-#endif
-
 #endif

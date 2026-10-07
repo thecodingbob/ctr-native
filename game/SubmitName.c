@@ -56,16 +56,14 @@ void SubmitName_RestoreName(s16 submitNameMode)
 	gGT->typeCursorPosition = cursor;
 }
 
-// CTR_NATIVE adds host keyboard shortcuts before the retail input path.
+// Host keyboard shortcuts are consumed before the retail input path.
 
-#ifdef CTR_NATIVE
 int kbCurr = 0;
 int kbPrev = 0;
 void SubmitName_UseKeyboard(int key)
 {
 	kbCurr = key;
 }
-#endif
 
 s16 SubmitName_DrawMenu(u16 string)
 {
@@ -196,7 +194,6 @@ s16 SubmitName_DrawMenu(u16 string)
 
 	int tap = sdata->buttonTapPerPlayer[0];
 
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): native keyboard shortcut; retail input remains gamepad-driven.
 
 	if (kbCurr != kbPrev)
@@ -266,7 +263,6 @@ s16 SubmitName_DrawMenu(u16 string)
 		tap = BTN_CIRCLE;
 	}
 
-#endif
 
 	if ((tap & (BTN_UP | BTN_DOWN | BTN_LEFT | BTN_RIGHT)) == 0)
 	{

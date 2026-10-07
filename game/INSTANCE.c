@@ -7,13 +7,9 @@ void INSTANCE_Birth(struct Instance *inst, struct Model *model, const char *name
 	char *dst = inst->name;
 	char *last = &inst->name[sizeof(inst->name) - 1];
 
-#if defined(CTR_NATIVE)
 	// NOTE(aalhendi): Retail copies a fixed 15-byte field. Native also accepts
 	// NULL and short C strings, so stop at their terminator and zero-pad.
 	while (dst < last && name != NULL && *name != '\0')
-#else
-	while (dst < last)
-#endif
 	{
 		*dst++ = *name++;
 	}
@@ -78,14 +74,12 @@ struct Instance *INSTANCE_Birth2D(struct Model *model, const char *name, struct 
 	{
 		INSTANCE_Birth(inst, model, name, th, 0x40f);
 	}
-#if defined(CTR_NATIVE)
 	else
 	{
 		// NOTE(aalhendi): Retail assumes capacity; native cannot write through
 		// the null instance when the shared pool is exhausted.
 		return NULL;
 	}
-#endif
 
 	gGT = GAME_TRACKER;
 	inst->idpp[0].pushBuffer = &gGT->pushBuffer_UI;
@@ -106,8 +100,6 @@ struct Instance *INSTANCE_Birth2D(struct Model *model, const char *name, struct 
 	return inst;
 }
 
-
-#if defined(CTR_NATIVE)
 static void INSTANCE_RollbackThreadBirth(struct Thread *t, struct Thread *relativeTh)
 {
 	struct GameTracker *gGT = GAME_TRACKER;
@@ -132,7 +124,6 @@ static void INSTANCE_RollbackThreadBirth(struct Thread *t, struct Thread *relati
 	PROC_DestroyObject(t->object, t->flags);
 	LIST_AddFront(&gGT->JitPools.thread.free, (struct Item *)t);
 }
-#endif
 
 struct Instance *INSTANCE_BirthWithThread(s32 modelID, const char *name, s32 poolType, s32 bucket, void *funcThTick, s32 objSize, struct Thread *parent)
 {
@@ -172,25 +163,21 @@ struct Instance *INSTANCE_BirthWithThread(s32 modelID, const char *name, s32 poo
 	CTR_PSX_OBSERVE_VALUE(sizeFlags);
 	t = PROC_BirthWithObject(sizeFlags | bucket, funcThTick, name, parent);
 
-#if defined(CTR_NATIVE)
 	// NOTE(aalhendi): Retail assumes the thread and instance pools have capacity.
 	// Native returns failure instead of writing through PS1 low memory.
 	if (t == NULL)
 	{
 		return NULL;
 	}
-#endif
 
 	t->modelIndex = modelID;
 	inst = INSTANCE_Birth3D(model, name, t);
 
-#if defined(CTR_NATIVE)
 	if (inst == NULL)
 	{
 		INSTANCE_RollbackThreadBirth(t, parent);
 		return NULL;
 	}
-#endif
 
 	t->inst = inst;
 

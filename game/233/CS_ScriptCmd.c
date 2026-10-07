@@ -139,12 +139,10 @@ void CS_ScriptCmd_OpcodeNext(struct CutsceneObj *cs)
 	CS_ScriptCmd_ReadOpcode_Main(cs);
 }
 
-// CTR_NATIVE translates retail bytecode branch targets before the retail body.
+// Retail bytecode branch targets are translated before the body runs.
 void CS_ScriptCmd_OpcodeAt(struct CutsceneObj *cs, char *opCodeAt)
 {
-#ifdef CTR_NATIVE
 	opCodeAt = CS_OVR233_TranslateRetailOpcodePointer(opCodeAt);
-#endif
 
 	cs->currOpcode[0] = opCodeAt;
 	cs->prevOpcode = (char *)-1;

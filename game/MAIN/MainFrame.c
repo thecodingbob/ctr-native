@@ -1,6 +1,5 @@
 #include <common.h>
 
-#if defined(CTR_NATIVE)
 static void MainFrame_RegisterGpuLinkRanges(struct GameTracker *gGT)
 {
 	static const char *const primLabels[2] = {"db0 prim", "db1 prim"};
@@ -25,7 +24,6 @@ static void MainFrame_RegisterGpuLinkRanges(struct GameTracker *gGT)
 		NativeGpuLinks_RegisterRangeChecked(swapchainLabels[i], gGT->otSwapchainDB[i], swapchainOTBytes);
 	}
 }
-#endif
 
 static b32 s_selectOpenedSaveMenu = 0;
 
@@ -74,9 +72,7 @@ void MainFrame_ResetDB(struct GameTracker *gGT)
 	db->primMem.primitiveCount = 0;
 	db->otMem.cursor = db->otMem.start;
 
-#if defined(CTR_NATIVE)
 	MainFrame_RegisterGpuLinkRanges(gGT);
-#endif
 
 	CTR_EmptyFunc_MainFrame_ResetDB();
 	DecalGlobal_EmptyFunc_MainFrame_ResetDB();
@@ -98,7 +94,6 @@ void MainFrame_ResetDB(struct GameTracker *gGT)
 	gGT->pushBuffer_UI.ptrOT = puVar3;
 	db->otMem.uiOT = puVar3;
 
-#if defined(CTR_NATIVE)
 	if (sdata->ptrPushBufferUI != 0)
 	{
 		struct PushBuffer *wumpaPushBuffer = (struct PushBuffer *)(u32)sdata->ptrPushBufferUI;
@@ -110,12 +105,11 @@ void MainFrame_ResetDB(struct GameTracker *gGT)
 		wumpaPushBuffer->renderBucketOTRangeEnd = NULL;
 		wumpaPushBuffer->renderBucketOTByteOffset = 0;
 	}
-#endif
 
 	return;
 }
 
-#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+#if defined(CTR_INTERNAL)
 #include <platform/native_replay_scheduler.h>
 #endif
 
@@ -170,15 +164,11 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 					uVar3 = (u32)psVar9->clockReceive;
 				}
 
-#if defined(CTR_NATIVE)
 				DISPLAY_Blur_Main(pushBuffer, uVar3);
-#endif
 			}
 			else
 			{
-#if defined(CTR_NATIVE)
 				DISPLAY_Blur_Main(pushBuffer, -uVar3);
-#endif
 				psVar9->clockFlash--;
 			}
 		LAB_80034e74:
@@ -204,7 +194,7 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 		{
 			gGT->elapsedTimeMS = 0x20;
 		}
-#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+#if defined(CTR_INTERNAL)
 		// NOTE(aalhendi): Replay playback must not let host RCNT timing decide
 		// cutscene/gameplay advancement. Use the recorded PS1-shaped frame delta
 		// before msInThisLEV and elapsedEventTime consume it.
@@ -259,7 +249,6 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 		psVar8 = 0;
 		psVar9 = 0;
 
-#if defined(CTR_NATIVE)
 		for (psVar12 = gGT->threadBuckets[0].thread; psVar12 != 0; psVar12 = psVar12->siblingThread)
 		{
 			struct Driver *currentDriver = psVar12->object;
@@ -287,7 +276,6 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 				psVar8 = currentDriver;
 			}
 		}
-#endif
 
 		if (((psVar8 != 0) && (psVar9 != 0)) && (iVar4 = (u32)psVar9->numTimesAttacking - (u32)psVar8->numTimesAttacking, psVar8->quip2 < iVar4))
 		{
@@ -340,18 +328,12 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 			}
 		}
 
-#if defined(CTR_NATIVE)
 		BOTS_UpdateGlobals();
-#endif
 		GhostTape_WriteMoves(0);
 		gGT->unk1cc4[4] = (u32)(gGT->unk1cc4[4] * 10000) / 0x147e;
 
-#if defined(CTR_NATIVE)
-
-
 		Particle_UpdateAllParticles();
 
-#endif
 	}
 	else
 	{
@@ -365,12 +347,10 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 	uVar5 = LOAD_IsOpen_RacingOrBattle();
 	if (uVar5 != 0)
 	{
-#if defined(CTR_NATIVE)
 		if ((gGT->gameMode1 & PAUSE_ALL) == 0)
 		{
 			RB_Bubbles_RoosTubes();
 		}
-#endif
 		if (gGT->threadBuckets[BURST].thread != 0)
 		{
 			RB_Burst_DrawAll(gGT);
@@ -434,9 +414,7 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 							for (iVar4 = 0; iVar4 < gGT->numPlyrCurrGame; iVar4++)
 							{
 								if ((((uVar5 != 0) && ((
-#if defined(CTR_NATIVE)
 								                          !MainFrame_HaveAllPads((u16)gGT->numPlyrNextGame) &&
-#endif
 								                          ((gGT->gameMode1 & PAUSE_ALL) == 0)))) ||
 								     ((gGamepads->gamepad[iVar4].buttonsTapped & BTN_START) != 0)) &&
 								    (gGT->overlayIndex_Threads != OVERLAY_INDEX_NONE))
@@ -500,9 +478,6 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 					return;
 				}
 
-
-#if defined(CTR_NATIVE)
-
 				// if SAVE
 				if (sVar2 == 1)
 				{
@@ -515,7 +490,6 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 
 					return;
 				}
-#endif
 
 				// if -1 (cancel)
 				gGT->newHighScoreIndex = -1;
@@ -529,10 +503,8 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 	{
 		if (gGT->timerEndOfRaceVS < 0x96)
 		{
-#if defined(CTR_NATIVE)
 			UI_VsQuipDrawAll();
 			UI_VsWaitForPressX();
-#endif
 		}
 		if (0x1e < gGT->timerEndOfRaceVS)
 		{
@@ -548,7 +520,6 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 
 void MainFrame_InitVideoSTR(u32 boolPlayVideoStr, RECT *r, s16 posX, s16 posY)
 {
-#ifdef CTR_NATIVE
 	if (r == NULL)
 	{
 		// NOTE(aalhendi): Native overlay 230 uses NULL to disable STR copy;
@@ -559,7 +530,6 @@ void MainFrame_InitVideoSTR(u32 boolPlayVideoStr, RECT *r, s16 posX, s16 posY)
 		sdata->videoSTR_src_vramRect.h = 0;
 	}
 	else
-#endif
 	{
 		sdata->videoSTR_src_vramRect.x = r->x;
 		sdata->videoSTR_src_vramRect.y = r->y;

@@ -562,7 +562,6 @@ static inline void RenderBucket_WaterSplitInterpolateVertex(struct RenderBucketD
 
 static struct ModelAnim *RenderBucket_GetAnim(struct Instance *inst, struct ModelHeader *mh)
 {
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Retail indexes this table directly when ptrAnimations is
 	// non-null; native keeps malformed/incomplete model data from trapping.
 	if (mh->numAnimations == 0)
@@ -574,7 +573,6 @@ static struct ModelAnim *RenderBucket_GetAnim(struct Instance *inst, struct Mode
 	{
 		return 0;
 	}
-#endif
 
 	return mh->ptrAnimations[inst->animIndex];
 }
@@ -907,12 +905,6 @@ static int RenderBucket_WriteAlphaScale(struct Instance *inst, struct InstDrawPe
 		int depthFade = RenderBucket_MipsSll(viewDepth, 1);
 		int firstReject = RenderBucket_MipsSub(depthFade, 0x1000);
 
-#ifndef CTR_NATIVE
-		// NOTE(aalhendi): Retail 0x80070a78 writes this in the first reject
-		// branch delay slot; native cannot safely write absolute address 0x24.
-		*(volatile u32 *)0x24 = 0;
-#endif
-
 		if (firstReject > 0)
 		{
 			return 0;
@@ -941,14 +933,12 @@ static void RenderBucket_ApplyOwnerPushBufferGate(struct Instance *inst, int pla
 	}
 
 	thread = inst->thread;
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Retail dereferences this owner path directly; native keeps
 	// the host stable for malformed/incomplete instance ownership.
 	if (thread == 0 || thread->object == 0)
 	{
 		return;
 	}
-#endif
 
 	driver = (struct Driver *)thread->object;
 
@@ -1221,32 +1211,26 @@ static struct ModelHeader *RenderBucket_SelectModelHeader(struct Instance *inst,
 	*lodIndexOut = 0;
 	*lodExhaustedOut = 0;
 
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Retail trusts ModelHeader count and will walk raw model
 	// data; native keeps malformed host-side models from trapping.
 	if (inst->model->numHeaders <= 0)
 	{
 		return 0;
 	}
-#endif
 
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Retail reaches a raw div by GTE H here; native guards the
 	// host divide-by-zero case.
 	if (pb->distanceToScreen_PREV == 0)
 	{
 		return 0;
 	}
-#endif
 
 	// NOTE(aalhendi): Retail keeps the low 32 bits of this product before dividing by GTE H.
 	projectedDistance = (int)(u32)((s64)(pb->rect.w >> 1) * viewDepth) / pb->distanceToScreen_PREV;
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): maxDrawDistance LOD scaling must skip screenspace instances
 	// (e.g. instBigNum) whose viewDepth is a digit selector, not a 3D camera distance.
 	if (g_config.increaseDrawDistance && (inst->flags & SCREENSPACE_INSTANCE) == 0)
 		projectedDistance = (projectedDistance * 100) / 400;
-#endif
 	mh = inst->model->headers;
 	headersRemaining = inst->model->numHeaders;
 	lodIndex = 0;
@@ -1470,14 +1454,12 @@ static void RenderBucket_BuildCustomMatrix(struct InstDrawPerPlayer *idpp, u32 i
 	MTC2(viewZ, 10);
 	doCOP2(0x0a00428);
 	length = SquareRoot0_stub(RenderBucket_MipsAdd(MFC2(25), MFC2(26)));
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Retail falls through to raw divs by this value; native
 	// keeps the host from trapping on impossible/degenerate camera-facing input.
 	if (length == 0)
 	{
 		return;
 	}
-#endif
 
 	m0 = (u16)(RenderBucket_MipsSll(viewZ, 12) / length);
 	m1 = (u16)(RenderBucket_MipsSll(viewX, 12) / length);
@@ -1552,7 +1534,6 @@ static struct RenderBucketSplitState RenderBucket_BuildSplitState(struct Instanc
 		return split;
 	}
 
-#ifdef CTR_NATIVE
 	if (matrixState->scratch76 == 0)
 	{
 		// NOTE(aalhendi): Retail reaches raw MIPS divs by this value. PS1 div
@@ -1582,7 +1563,6 @@ static struct RenderBucketSplitState RenderBucket_BuildSplitState(struct Instanc
 		}
 		return split;
 	}
-#endif
 
 	frameY = (s16)(RenderBucket_PackedFrameXY(frame, nextFrame) >> 16);
 	baseY = RenderBucket_MipsAdd(inst->matrix.t[1], (frameY / matrixState->scratch76) >> 12);
@@ -1647,7 +1627,6 @@ static int RenderBucket_AllocateOTRange(struct RenderBucketQueueState *queueStat
 	int range;
 	int byteOffset;
 
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Retail consumes the OT allocator scratch pointers
 	// directly; native keeps malformed host-side render state from trapping.
 	if (queueState->otCurr == 0)
@@ -1664,17 +1643,14 @@ static int RenderBucket_AllocateOTRange(struct RenderBucketQueueState *queueStat
 	{
 		return 0;
 	}
-#endif
 
 	range = RenderBucket_MipsSub(maxDepth, minDepth);
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Retail reaches allocation with cull-ordered depths and
 	// does not guard this separately.
 	if (range < 0)
 	{
 		return 0;
 	}
-#endif
 
 	rangeStart = queueState->otCurr;
 	rangeEnd = rangeStart + range;
@@ -1932,7 +1908,6 @@ static struct ModelFrame *RenderBucket_GetFrame(struct Instance *inst, struct Mo
 	}
 
 	anim = RenderBucket_GetAnim(inst, mh);
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Retail uses the selected animation pointer directly;
 	// native tolerates sparse host-side model data while keeping PSX behavior
 	// as the default path.
@@ -1944,7 +1919,6 @@ static struct ModelFrame *RenderBucket_GetFrame(struct Instance *inst, struct Mo
 	{
 		return 0;
 	}
-#endif
 
 	// NOTE(aalhendi): Retail 0x80070ca0-0x80070dfc checks ptrAnimations first,
 	// then carries current/next frame through s6/s1 plus ptrDeltaArray through
@@ -2007,7 +1981,6 @@ static struct RenderBucketEntry *RenderBucket_QueueDraw(struct Instance *inst, s
 	// state from QueueLev/QueueNonLev. Native spells the verified same state out
 	// as C parameters and RenderBucketQueueState.
 
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Retail callers provide a valid visible-list instance and
 	// model; native keeps malformed host-side lists from trapping.
 	if (inst == 0)
@@ -2024,7 +1997,6 @@ static struct RenderBucketEntry *RenderBucket_QueueDraw(struct Instance *inst, s
 	{
 		return rbi;
 	}
-#endif
 
 	queuedFlags = inst->flags;
 	instPlayerBase = RenderBucket_InstancePlayerBase(inst, playerIndex);
@@ -2086,7 +2058,6 @@ static struct RenderBucketEntry *RenderBucket_QueueDraw(struct Instance *inst, s
 
 	frame = RenderBucket_GetFrame(inst, mh, &nextFrame, &deltaArray, &lastFrameAdvance);
 	idpp->ptrDeltaArray = deltaArray;
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Retail uses the selected frame pointer directly; native
 	// tolerates incomplete host-side model data.
 	if (frame == 0)
@@ -2094,7 +2065,6 @@ static struct RenderBucketEntry *RenderBucket_QueueDraw(struct Instance *inst, s
 		idpp->instFlags = queuedFlags;
 		return rbi;
 	}
-#endif
 
 	RenderBucket_AdvanceInstanceAnimWord(inst, gameMode1, playerIndex, lastFrameAdvance, &queuedFlags);
 	idpp->ptrCurrFrame = frame;
@@ -2133,9 +2103,7 @@ void *RenderBucket_QueueLevInstances(struct CameraDC *cDC, struct OTMem *otState
 	// ABI; native passes the same state as explicit C parameters.
 	RenderBucket_CopyDispatchTables();
 
-#ifdef CTR_NATIVE
 	if (otState != 0)
-#endif
 	{
 		queueState.otCurr = otState->cursor;
 		queueState.otEndMinusOne = otState->end - 1;
@@ -2156,9 +2124,7 @@ void *RenderBucket_QueueLevInstances(struct CameraDC *cDC, struct OTMem *otState
 		}
 	}
 
-#ifdef CTR_NATIVE
 	if (otState != 0)
-#endif
 	{
 		otState->cursor = queueState.otCurr;
 	}
@@ -2176,9 +2142,7 @@ void *RenderBucket_QueueNonLevInstances(struct Item *item, struct OTMem *otState
 	// ABI; native passes the same state as explicit C parameters.
 	RenderBucket_CopyDispatchTables();
 
-#ifdef CTR_NATIVE
 	if (otState != 0)
-#endif
 	{
 		queueState.otCurr = otState->cursor;
 		queueState.otEndMinusOne = otState->end - 1;
@@ -2192,9 +2156,7 @@ void *RenderBucket_QueueNonLevInstances(struct Item *item, struct OTMem *otState
 		}
 	}
 
-#ifdef CTR_NATIVE
 	if (otState != 0)
-#endif
 	{
 		otState->cursor = queueState.otCurr;
 	}

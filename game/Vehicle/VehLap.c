@@ -69,11 +69,9 @@ void VehLap_UpdateProgress(struct Driver *driver)
 	nodeDelta.x = (s16)CTR_MipsSubLo((u16)progressNode->pos.x, (u16)nextNode->pos.x);
 	nodeDelta.y = (s16)CTR_MipsSubLo((u16)progressNode->pos.y, (u16)nextNode->pos.y);
 	nodeDelta.z = (s16)CTR_MipsSubLo((u16)progressNode->pos.z, (u16)nextNode->pos.z);
-#if defined(CTR_NATIVE)
 	// NOTE(aalhendi): The GTE ignores the upper half of VZ0. Retail leaves it
 	// untouched, while native initializes it before the host shim reads it.
 	nodeDelta.w = 0;
-#endif
 
 	nodeDeltaPtr = SVec3Slot_AsVec3(&nodeDelta);
 	MATH_VectorNormalize(nodeDeltaPtr);
@@ -100,13 +98,7 @@ void VehLap_UpdateProgress(struct Driver *driver)
 		CTC2(movingY | (movingZ << 16), 2);
 	}
 
-#if defined(CTR_NATIVE)
 	gte_ldv0(nodeDeltaPtr);
-#else
-	// NOTE(aalhendi): PsyQ emits direct coprocessor loads here; native routes
-	// the same two words through its GTE shim above.
-	__asm__ volatile("lwc2 $0,0(%0)\n\tlwc2 $1,4(%0)" : : "r"(nodeDeltaPtr), "m"(nodeDelta));
-#endif
 	CTR_PSX_GTE_PIPELINE_DELAY();
 	gte_mvmva(0, 0, 0, 3, 0);
 

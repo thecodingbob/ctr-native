@@ -12,7 +12,6 @@
 	                     (transparency), (scale))
 #endif
 
-#ifdef CTR_NATIVE
 static inline void AH_DrawMenuEdge(RECT *rect, u32 *ot)
 {
 	// NOTE(aalhendi): Native's typed primitive builder needs a Color object,
@@ -21,8 +20,5 @@ static inline void AH_DrawMenuEdge(RECT *rect, u32 *ot)
 	ColorCode_SetPacked(&color, AH_MENU_EDGE_COLOR);
 	RECTMENU_DrawOuterRect_Edge(rect, &color, 0x20, ot);
 }
-#else
-#define AH_DrawMenuEdge(rect, ot) RECTMENU_DrawOuterRect_Edge((rect), (const Color *)&AH_MENU_EDGE_COLOR, 0x20, (ot))
-#endif
 
 #endif

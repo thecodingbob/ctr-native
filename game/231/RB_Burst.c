@@ -354,13 +354,11 @@ void RB_Burst_DrawAll(struct GameTracker *gGT)
 			burst = thread->object;
 			burstInst = burst->explosion;
 
-#ifdef CTR_NATIVE
 			// NOTE(aalhendi): Retail can survive the one-frame null low-RAM read.
 			if (burstInst == NULL)
 			{
 				continue;
 			}
-#endif
 
 			pos.x = burstInst->matrix.t[0];
 			pos.y = burstInst->matrix.t[1];

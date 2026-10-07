@@ -23,7 +23,6 @@ enum
 #define VEH_GROUND_SKIDS_TPAGE_BLEND_MASK 0xff9fffffu
 #define VEH_GROUND_SKIDS_COLOR_SENTINEL   0xffffffffu
 
-#ifdef CTR_NATIVE
 #define VehGroundSkids_LoadOriginTransform()                                                        \
 	do                                                                                              \
 	{                                                                                               \
@@ -32,26 +31,15 @@ enum
 		CTC2(originWords[1], 6);                                                                    \
 		CTC2(originWords[2], 7);                                                                    \
 	} while (0)
-#else
-#define VehGroundSkids_LoadOriginTransform()                                                                                                        \
-	__asm__ volatile("lui $8,0x1f80\n\tori $8,$8,0xb8\n\tlw $12,0($8)\n\tlw $13,4($8)\n\tlw $14,8($8)\n\tctc2 $12,$5\n\tctc2 $13,$6\n\tctc2 $14,$7" \
-	                 :                                                                                                                              \
-	                 :                                                                                                                              \
-	                 : "memory")
-#endif
 
 // NOTE(aalhendi): This dependency keeps the fourth segment's a3 setup after
 // its flag-byte load. Native builds only need the equivalent pointer assignment.
-#ifdef CTR_NATIVE
 #define VehGroundSkids_SetCallScratch(result, source, dependency) \
 	do                                                            \
 	{                                                             \
 		(void)(dependency);                                       \
 		(result) = (source);                                      \
 	} while (0)
-#else
-#define VehGroundSkids_SetCallScratch(result, source, dependency) __asm__("addu %0,%1,$0" : "=r"(result) : "r"(source), "r"(dependency))
-#endif
 
 typedef u32 VehGroundSkidsWord CTR_MAY_ALIAS;
 

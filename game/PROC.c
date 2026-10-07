@@ -1,6 +1,5 @@
 #include <common.h>
 
-#if defined(CTR_NATIVE)
 #include <setjmp.h>
 
 struct ThTickNativeContext
@@ -11,7 +10,6 @@ struct ThTickNativeContext
 };
 
 static struct ThTickNativeContext *s_thTickContext;
-#endif
 
 
 void PROC_DestroyTracker(struct Thread *t)
@@ -564,7 +562,6 @@ static void ThTick_PushPending(struct Thread **pending, int *count, struct Threa
 	(*count)++;
 }
 
-#if defined(CTR_NATIVE)
 internal struct Thread *ThTick_RunThreadNative(struct ThTickNativeContext *context, struct Thread *thread)
 {
 	context->currentThread = thread;
@@ -575,19 +572,16 @@ internal struct Thread *ThTick_RunThreadNative(struct ThTickNativeContext *conte
 
 	return context->currentThread;
 }
-#endif
 
 void ThTick_RunBucket(struct Thread *thread)
 {
 	struct Thread *pending[THTICK_MAX_PENDING];
 	int count = 0;
 
-#if defined(CTR_NATIVE)
 	struct ThTickNativeContext context;
 	context.currentThread = NULL;
 	context.prev = s_thTickContext;
 	s_thTickContext = &context;
-#endif
 
 	ThTick_PushPending(pending, &count, thread);
 
@@ -610,19 +604,13 @@ void ThTick_RunBucket(struct Thread *thread)
 
 		if (t->funcThTick != NULL)
 		{
-#if defined(CTR_NATIVE)
 			t = ThTick_RunThreadNative(&context, t);
-#else
-			t->funcThTick(t);
-#endif
 		}
 
 		ThTick_PushPending(pending, &count, t->childThread);
 	}
 
-#if defined(CTR_NATIVE)
 	s_thTickContext = context.prev;
-#endif
 }
 
 void ThTick_FastRET(struct Thread *thread)
@@ -635,7 +623,6 @@ void ThTick_SetAndExec(struct Thread *thread, void (*funcThTick)(struct Thread *
 	thread->funcThTick = funcThTick;
 	funcThTick(thread);
 
-#if defined(CTR_NATIVE)
 	// NOTE(aalhendi): Retail restores the ThTick_RunBucket stack from
 	// scratchpad after the replacement tick returns. Native must not resume the
 	// stale caller that requested the tick switch.
@@ -643,7 +630,6 @@ void ThTick_SetAndExec(struct Thread *thread, void (*funcThTick)(struct Thread *
 	{
 		longjmp(s_thTickContext->env, 1);
 	}
-#endif
 }
 
 void ThTick_Set(struct Thread *thread, void (*funcThTick)(struct Thread *))

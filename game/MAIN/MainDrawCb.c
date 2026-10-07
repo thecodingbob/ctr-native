@@ -13,7 +13,7 @@ void MainDrawCb_DrawSync()
 	return;
 }
 
-// NOTE(aalhendi): CTR_NATIVE keeps native input/audio/VRAM bridge work.
+// Keeps host input/audio/VRAM bridge work.
 void MainDrawCb_Vsync()
 {
 	struct GameTracker *gGT;
@@ -32,20 +32,16 @@ void MainDrawCb_Vsync()
 	sdata->rcntTotalUnits += GetRCnt(0xf2000001);
 	ResetRCnt(0xf2000001);
 
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Retail calls HOWL unconditionally. Native skips only while
 	// channel lists are mid-edit.
 	if (sdata->criticalSectionCount == 0)
-#endif
 	{
 		howl_PlayAudio_Update();
 	}
 
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Native owns host input and writes PSX-shaped pad
 	// snapshots before retail GAMEPAD_PollVsync consumes them.
 	Platform_PollInput();
-#endif
 
 	GAMEPAD_PollVsync(sdata->gGamepads);
 

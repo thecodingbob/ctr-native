@@ -668,9 +668,7 @@ void AH_Map_Warppads(struct UIMap *map, struct Thread *warppadThread, s16 *arrow
 	return;
 }
 
-#if defined(CTR_NATIVE)
 static void AH_MaskHint_DrawRepeatPrompt(void);
-#endif
 
 // The hub shows who the second racer is while the profile in play plays co-op.
 // The hub reads the live settings of that profile, which are what a save of it is
@@ -782,7 +780,6 @@ void AH_Map_Main(void)
 
 	AH_Map_DrawMultiplayer();
 
-#if defined(CTR_NATIVE)
 	// NOTE(aalhendi): Retail appends this prompt after DrawOTag starts; the PS1
 	// GPU can still consume that late OT write. Native DrawOTag parses
 	// synchronously, so emit only this static prompt during the hub UI pass and
@@ -791,5 +788,4 @@ void AH_Map_Main(void)
 	{
 		AH_MaskHint_DrawRepeatPrompt();
 	}
-#endif
 }

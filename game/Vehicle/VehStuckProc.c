@@ -1130,16 +1130,9 @@ void VehStuckProc_RevEngine_Animate(struct Thread *t, struct Driver *d)
 		{
 			register s32 interpSpeed CTR_PSX_REGISTER("$5");
 			register s32 interpTarget CTR_PSX_REGISTER("$6");
-#ifndef CTR_NATIVE
-			register s32 divideMagicHigh CTR_PSX_REGISTER("$2") = 0x55550000;
-#endif
 
 			interpSpeed = accelSpeed;
-#ifdef CTR_NATIVE
 			CTR_PSX_KEEP_VALUE(interpSpeed);
-#else
-			__asm__("" : "+r"(interpSpeed) : "r"(divideMagicHigh));
-#endif
 			interpTarget = interpSpeed + d->const_SacredFireSpeed;
 			interpSpeed = interpTarget - interpSpeed;
 			d->KartStates.RevEngine.chargeState = REV_ENGINE_CHARGE_IDLE;
@@ -1184,24 +1177,9 @@ void VehStuckProc_RevEngine_Animate(struct Thread *t, struct Driver *d)
 	{
 		s32 sacredFireThird;
 
-#ifdef CTR_NATIVE
 		d->KartStates.RevEngine.lockoutFlags &= ~REV_ENGINE_LOCKOUT_REV_DECAY;
 		sacredFireThird = d->const_SacredFireSpeed / 3;
 		d->KartStates.RevEngine.boostMeter = d->const_AccelSpeed_ClassStat + sacredFireThird;
-#else
-		register s32 divideMagic CTR_PSX_REGISTER("$2") = 0x55550000;
-		register s32 sacredFireSpeed CTR_PSX_REGISTER("$3");
-
-		CTR_PSX_LOAD_SIGNED_HALF(sacredFireSpeed, d, offsetof(struct Driver, const_SacredFireSpeed), d->const_SacredFireSpeed);
-		__asm__("ori %0,%1,0x5556" : "=r"(divideMagic) : "r"(divideMagic), "r"(sacredFireSpeed));
-		__asm__ volatile("mult %0,%1" : : "r"(sacredFireSpeed), "r"(divideMagic));
-		d->KartStates.RevEngine.lockoutFlags &= ~REV_ENGINE_LOCKOUT_REV_DECAY;
-		sacredFireSpeed >>= 31;
-		__asm__ volatile("lh $2,%2(%0)\n\tmfhi $8\n\tsubu %1,$8,%1\n\taddu $2,$2,%1\n\tsw $2,%3(%0)"
-		                 : "+r"(d), "+r"(sacredFireSpeed)
-		                 : "I"(offsetof(struct Driver, const_AccelSpeed_ClassStat)), "I"(offsetof(struct Driver, KartStates.RevEngine.boostMeter))
-		                 : "$2", "memory");
-#endif
 	}
 
 	if (d->fireSpeed < 1)
@@ -1639,7 +1617,6 @@ typedef u32 VehWarpDustWord CTR_MAY_ALIAS;
 #define VEH_WARP_DUST_SIGNED_HALF(base, offset) (*(VehWarpDustSignedHalfword *)((u8 *)(base) + (offset)))
 #define VEH_WARP_DUST_WORD(base, offset)        (*(VehWarpDustWord *)((u8 *)(base) + (offset)))
 
-#if defined(CTR_NATIVE)
 #define VehWarpDust_LoadMatrices(matrix) \
 	do                                   \
 	{                                    \
@@ -1766,256 +1743,6 @@ typedef u32 VehWarpDustWord CTR_MAY_ALIAS;
 		(segment)++;                                                                                           \
 		(packetEnd) += 72;                                                                                     \
 	} while (0)
-#else
-// NOTE(aalhendi): The two encoded JALs preserve retail's occupied delay slots;
-// their targets are fixed by the retail EXE address map used by this build.
-#define VehWarpDust_LoadMatrices(matrix)                                                                                                                    \
-	__asm__ volatile("lw $12,0(%0)\n\tlw $13,4(%0)\n\tctc2 $12,$0\n\tctc2 $13,$1\n\tlw $12,8(%0)\n\tlw $13,12(%0)\n\tlw $14,16(%0)\n\tctc2 $12,$2\n\tctc2 " \
-	                 "$13,$3\n\tctc2 $14,$4\n\tlw $12,20(%0)\n\tlw $13,24(%0)\n\tctc2 $12,$5\n\tlw $14,28(%0)\n\tctc2 $13,$6\n\tctc2 $14,$7"                \
-	                 :                                                                                                                                      \
-		                 : "r"(matrix), "m"(*(const MATRIX *)(matrix))                                                                                          \
-	                 : "$12", "$13", "$14")
-#define VehWarpDust_LoadV3(left, point, right)                                                                            \
-	__asm__ volatile("lwc2 $0,0(%0)\n\tlwc2 $1,4(%0)\n\tlwc2 $2,0(%1)\n\tlwc2 $3,4(%1)\n\tlwc2 $4,0(%2)\n\tlwc2 $5,4(%2)" \
-	                 :                                                                                                    \
-	                 : "r"(left), "r"(point), "r"(right)                                                                  \
-	                 : "memory")
-#define VehWarpDust_LoadFirstV3(scratch, point) \
-	__asm__ volatile("addiu $2,%0,136\n\t"      \
-	                 "sh $3,148(%0)\n\t"        \
-	                 "lwc2 $0,0($2)\n\t"        \
-	                 "lwc2 $1,4($2)\n\t"        \
-	                 "lwc2 $2,0(%1)\n\t"        \
-	                 "lwc2 $3,4(%1)\n\t"        \
-	                 "addiu $2,%0,144\n\t"      \
-	                 "lwc2 $4,0($2)\n\t"        \
-	                 "lwc2 $5,4($2)"            \
-	                 :                          \
-	                 : "r"(scratch), "r"(point) \
-	                 : "$2", "memory")
-#define VehWarpDust_StoreProjection(output) \
-	__asm__ volatile("swc2 $12,0(%0)\n\tswc2 $13,4(%0)\n\tswc2 $14,8(%0)\n\taddiu $2,%0,12\n\tswc2 $17,0($2)" : : "r"(output) : "$2", "memory")
-#define VehWarpDust_StoreInitialProjection(output, scratch) \
-	__asm__ volatile("swc2 $12,0(%0)\n\tswc2 $13,4(%0)\n\tswc2 $14,8(%0)\n\taddiu $2,%1,164\n\tswc2 $17,0($2)" : : "r"(output), "r"(scratch) : "$2", "memory")
-#define VehWarpDust_LinkPacket(ot, prim)                                  \
-	do                                                                    \
-	{                                                                     \
-		VEH_WARP_DUST_WORD((prim), 0) = *(ot) | VEH_WARP_DUST_PACKET_TAG; \
-		*(ot) = ((u32)(prim) << 8) >> 8;                                  \
-	} while (0)
-#define VehWarpDust_SetupCameraOffsets(pb, scratch, cameraZ, offsetX, offsetY) \
-	__asm__ volatile("lhu $4,72(%3)\n\t"                                       \
-	                 "lh $3,74(%3)\n\t"                                        \
-	                 "lhu $5,78(%3)\n\t"                                       \
-	                 "lhu %0,84(%3)\n\t"                                       \
-	                 "sll $4,$4,16\n\t"                                        \
-	                 "sra $2,$4,16\n\t"                                        \
-	                 "addu $2,$2,$3\n\t"                                       \
-	                 "sra $2,$2,5\n\t"                                         \
-	                 "sra %1,$4,26\n\t"                                        \
-	                 "sh $2,184(%4)\n\t"                                       \
-	                 "lh $2,78(%3)\n\t"                                        \
-	                 "lh $3,80(%3)\n\t"                                        \
-	                 "sll $5,$5,16\n\t"                                        \
-	                 "addu $2,$2,$3\n\t"                                       \
-	                 "sra $2,$2,5\n\t"                                         \
-	                 "sh $2,186(%4)\n\t"                                       \
-	                 "lh $2,84(%3)\n\t"                                        \
-	                 "lh $3,86(%3)\n\t"                                        \
-	                 "sra %2,$5,26\n\t"                                        \
-	                 "addu $2,$2,$3\n\t"                                       \
-	                 "sra $2,$2,5\n\t"                                         \
-	                 "sh $2,188(%4)"                                           \
-	                 : "=r"(cameraZ), "=r"(offsetX), "=r"(offsetY)             \
-	                 : "r"(pb), "r"(scratch)                                   \
-	                 : "$2", "$3", "$4", "$5", "memory")
-#define VehWarpDust_InitEndpoint(gGT, d, warp, scratch, cameraZ, prim, offsetZ) \
-	__asm__ volatile(".set noreorder\n\t"                                       \
-	                 "lw $2,16(%2)\n\t"                                         \
-	                 "lw $10,64($sp)\n\t"                                       \
-	                 "lw %0,128($2)\n\t"                                        \
-	                 "lw $2,28($10)\n\t"                                        \
-	                 "sll %3,%3,16\n\t"                                         \
-	                 "lw $2,40($2)\n\t"                                         \
-	                 "nop\n\t"                                                  \
-	                 "andi $2,$2,0x80\n\t"                                      \
-	                 "beqz $2,1f\n\t"                                           \
-	                 "sra %1,%3,26\n\t"                                         \
-	                 "lw $2,724($10)\n\t"                                       \
-	                 "nop\n\t"                                                  \
-	                 "sra $2,$2,8\n\t"                                          \
-	                 "sh $2,128(%4)\n\t"                                        \
-	                 "lw $10,68($sp)\n\t"                                       \
-	                 "nop\n\t"                                                  \
-	                 "lw $2,16($10)\n\t"                                        \
-	                 "nop\n\t"                                                  \
-	                 "sra $2,$2,8\n\t"                                          \
-	                 "sh $2,130(%4)\n\t"                                        \
-	                 "lw $10,64($sp)\n\t"                                       \
-	                 "lui $4,0x1f80\n\t"                                        \
-	                 "lw $2,732($10)\n\t"                                       \
-	                 "ori $4,$4,0x188\n\t"                                      \
-	                 "sra $2,$2,8\n\t"                                          \
-	                 ".word 0x0c01a16c\n\t"                                     \
-	                 "sh $2,132(%4)\n\t"                                        \
-	                 "1:\n\t"                                                   \
-	                 ".set noreorder"                                           \
-	                 : "=r"(prim), "=r"(offsetZ)                                \
-	                 : "r"(gGT), "r"(cameraZ), "r"(scratch)                     \
-	                 : "$2", "$4", "$31", "memory")
-#define VehWarpDust_InitRings(ring, edgeColor)     \
-	__asm__ volatile("sw $0,%1\n\t"                \
-	                 "lui %0,0x7f\n\t"             \
-	                 "ori %0,%0,0x1f3f"            \
-	                 : "=r"(edgeColor), "=m"(ring) \
-	                 :                             \
-	                 : "memory")
-#define VehWarpDust_StartRing(ring, warp, baseAngle, sine) \
-	__asm__ volatile("lui $3,0x2aaa\n\t"                   \
-	                 "lw $10,16($sp)\n\t"                  \
-	                 "ori $3,$3,0xaaab\n\t"                \
-	                 "sll $2,$10,12\n\t"                   \
-	                 "mult $2,$3\n\t"                      \
-	                 "lw $10,68($sp)\n\t"                  \
-	                 "sra $2,$2,31\n\t"                    \
-	                 "lw $4,12($10)\n\t"                   \
-	                 "mfhi $10\n\t"                        \
-	                 "subu %0,$10,$2\n\t"                  \
-	                 ".word 0x0c00f461\n\t"                \
-	                 "addu $4,%0,$4"                       \
-	                 : "=r"(baseAngle), "=r"(sine)         \
-	                 :                                     \
-	                 : "memory")
-#define VehWarpDust_NextRing(ring, nextRing, repeat) \
-	__asm__ volatile("lw %0,%2\n\t"                  \
-	                 "nop\n\t"                       \
-	                 "addiu %0,%0,1\n\t"             \
-	                 "slti %1,%0,6"                  \
-	                 : "=r"(nextRing), "=r"(repeat)  \
-	                 : "m"(ring))
-#define VehWarpDust_SetupFirstProjection(scratch, point, previous, current, offsetX, offsetY, offsetZ) \
-	__asm__ volatile("move %0,%3\n\t"                                                                  \
-	                 "addiu %1,%3,152\n\t"                                                             \
-	                 "addiu %2,%3,168\n\t"                                                             \
-	                 "lhu $2,0(%3)\n\t"                                                                \
-	                 "lhu $3,2(%3)\n\t"                                                                \
-	                 "addu $2,$2,%4\n\t"                                                               \
-	                 "sh $2,136(%3)\n\t"                                                               \
-	                 "lhu $2,4(%3)\n\t"                                                                \
-	                 "addu $3,$3,%5\n\t"                                                               \
-	                 "sh $3,138(%3)\n\t"                                                               \
-	                 "lhu $3,0(%3)\n\t"                                                                \
-	                 "addu $2,$2,%6\n\t"                                                               \
-	                 "sh $2,140(%3)\n\t"                                                               \
-	                 "lhu $2,2(%3)\n\t"                                                                \
-	                 "subu $3,$3,%4\n\t"                                                               \
-	                 "sh $3,144(%3)\n\t"                                                               \
-	                 "lhu $3,4(%3)\n\t"                                                                \
-	                 "subu $2,$2,%5\n\t"                                                               \
-	                 "subu $3,$3,%6\n\t"                                                               \
-	                 "sh $2,146(%3)"                                                                   \
-	                 : "=r"(point), "=r"(previous), "=r"(current)                                      \
-	                 : "r"(scratch), "r"(offsetX), "r"(offsetY), "r"(offsetZ)                          \
-	                 : "$2", "$3", "memory")
-#define VehWarpDust_InitSegments(segment, packetEnd, prim, scratch) \
-	__asm__ volatile("move %0,$0\n\t"                               \
-	                 "addiu %1,%2,68\n\t"                           \
-	                 "addiu $7,%3,4"                                \
-	                 : "=r"(segment), "=r"(packetEnd)               \
-	                 : "r"(prim), "r"(scratch))
-#define VehWarpDust_ProjectNext(scratch, point, previous, current, offsetX, offsetY, offsetZ) \
-	__asm__ volatile("addiu %0,%0,8\n\t"                                                      \
-	                 "lhu $2,0(%0)\n\t"                                                       \
-	                 "addiu $7,$7,8\n\t"                                                      \
-	                 "addu $2,$2,%4\n\t"                                                      \
-	                 "sh $2,136(%3)\n\t"                                                      \
-	                 "lhu $2,-2($7)\n\t"                                                      \
-	                 "nop\n\t"                                                                \
-	                 "addu $2,$2,%5\n\t"                                                      \
-	                 "sh $2,138(%3)\n\t"                                                      \
-	                 "lhu $2,0($7)\n\t"                                                       \
-	                 "nop\n\t"                                                                \
-	                 "addu $2,$2,%6\n\t"                                                      \
-	                 "sh $2,140(%3)\n\t"                                                      \
-	                 "lhu $2,0(%0)\n\t"                                                       \
-	                 "move $3,%2\n\t"                                                         \
-	                 "subu $2,$2,%4\n\t"                                                      \
-	                 "sh $2,144(%3)\n\t"                                                      \
-	                 "lhu $2,-2($7)\n\t"                                                      \
-	                 "move %2,%1\n\t"                                                         \
-	                 "subu $2,$2,%5\n\t"                                                      \
-	                 "sh $2,146(%3)\n\t"                                                      \
-	                 "lhu $2,0($7)\n\t"                                                       \
-	                 "move %1,$3\n\t"                                                         \
-	                 "subu $2,$2,%6\n\t"                                                      \
-	                 "sh $2,148(%3)"                                                          \
-	                 : "+r"(point), "+r"(previous), "+r"(current)                             \
-	                 : "r"(scratch), "r"(offsetX), "r"(offsetY), "r"(offsetZ)                 \
-	                 : "$2", "$3", "memory")
-#define VehWarpDust_LoadNextV3(scratch, point)  \
-	__asm__ volatile("addiu $2,%0,136\n\t"      \
-	                 "lwc2 $0,0($2)\n\t"        \
-	                 "lwc2 $1,4($2)\n\t"        \
-	                 "lwc2 $2,0(%1)\n\t"        \
-	                 "lwc2 $3,4(%1)\n\t"        \
-	                 "addiu $2,%0,144\n\t"      \
-	                 "lwc2 $4,0($2)\n\t"        \
-	                 "lwc2 $5,4($2)"            \
-	                 :                          \
-	                 : "r"(scratch), "r"(point) \
-	                 : "$2", "memory")
-#define VehWarpDust_EmitNextSegment(packetEnd, previous, current, edgeColor, pb, prim, segment) \
-	__asm__ volatile("lui $2,0xe100\n\t"                                                        \
-	                 "ori $2,$2,0x0a20\n\t"                                                     \
-	                 "lui $10,0x3a00\n\t"                                                       \
-	                 "sw $2,-64(%0)\n\t"                                                        \
-	                 "sw $10,-60(%0)\n\t"                                                       \
-	                 "sw %4,-52(%0)\n\t"                                                        \
-	                 "sw $0,-44(%0)\n\t"                                                        \
-	                 "sw %4,-36(%0)\n\t"                                                        \
-	                 "lw $2,0(%2)\n\t"                                                          \
-	                 "nop\n\t"                                                                  \
-	                 "sw $2,-56(%0)\n\t"                                                        \
-	                 "lw $2,4(%2)\n\t"                                                          \
-	                 "nop\n\t"                                                                  \
-	                 "sw $2,-48(%0)\n\t"                                                        \
-	                 "lw $2,0(%3)\n\t"                                                          \
-	                 "nop\n\t"                                                                  \
-	                 "sw $2,-40(%0)\n\t"                                                        \
-	                 "lw $2,4(%3)\n\t"                                                          \
-	                 "sw $10,-28(%0)\n\t"                                                       \
-	                 "sw %4,-20(%0)\n\t"                                                        \
-	                 "sw $0,-12(%0)\n\t"                                                        \
-	                 "sw %4,-4(%0)\n\t"                                                         \
-	                 "sw $2,-32(%0)\n\t"                                                        \
-	                 "lw $2,8(%2)\n\t"                                                          \
-	                 "nop\n\t"                                                                  \
-	                 "sw $2,-24(%0)\n\t"                                                        \
-	                 "lw $2,4(%2)\n\t"                                                          \
-	                 "nop\n\t"                                                                  \
-	                 "sw $2,-16(%0)\n\t"                                                        \
-	                 "lw $2,8(%3)\n\t"                                                          \
-	                 "addiu %1,%1,1\n\t"                                                        \
-	                 "sw $2,-8(%0)\n\t"                                                         \
-	                 "lw $2,4(%3)\n\t"                                                          \
-	                 "lui $3,0x1100\n\t"                                                        \
-	                 "sw $2,0(%0)\n\t"                                                          \
-	                 "lw $2,12(%2)\n\t"                                                         \
-	                 "lw $4,244(%5)\n\t"                                                        \
-	                 "sra $2,$2,6\n\t"                                                          \
-	                 "sll $2,$2,2\n\t"                                                          \
-	                 "addu $4,$4,$2\n\t"                                                        \
-	                 "lw $2,0($4)\n\t"                                                          \
-	                 "addiu %0,%0,72\n\t"                                                       \
-	                 "or $2,$2,$3\n\t"                                                          \
-	                 "sw $2,0(%6)\n\t"                                                          \
-	                 "sll $2,%6,8\n\t"                                                          \
-	                 "srl $2,$2,8\n\t"                                                          \
-	                 "sw $2,0($4)"                                                              \
-	                 : "+r"(packetEnd), "+r"(segment)                                           \
-	                 : "r"(previous), "r"(current), "r"(edgeColor), "r"(pb), "r"(prim)          \
-	                 : "$2", "$3", "$4", "memory")
-#endif
 
 void VehStuckProc_Warp_AddDustPuff2(struct Driver *d, struct DriverWarpState *warp)
 {

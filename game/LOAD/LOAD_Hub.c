@@ -96,9 +96,7 @@ void LOAD_Hub_SwapNow()
 	gGT->msInThisLEV = 0;
 }
 
-// NOTE(aalhendi): Native mirrors retail rdata 0x80011180 because CTR_NATIVE
-// does not expose the retail rdata object.
-#if defined(CTR_NATIVE)
+// Mirrors retail rdata 0x80011180, which is not exposed here.
 static const int s_advHubConnectedLevID[LOAD_ADV_HUB_COUNT][LOAD_ADV_HUB_CONNECTION_COUNT] = {
     {N_SANITY_BEACH, THE_LOST_RUINS, -1},
     {GEM_STONE_VALLEY, GLACIER_PARK, -1},
@@ -107,9 +105,6 @@ static const int s_advHubConnectedLevID[LOAD_ADV_HUB_COUNT][LOAD_ADV_HUB_CONNECT
     {GLACIER_PARK, -1, -1},
 };
 #define LOAD_HUB_CONNECTED_LEV(hub, index) s_advHubConnectedLevID[(hub)][(index)]
-#else
-#define LOAD_HUB_CONNECTED_LEV(hub, index) rdata.MetaDataHubs[(hub)].connectedHub_LevID[(index)]
-#endif
 
 void LOAD_Hub_Main(struct BigHeader *bigfilePtr)
 {

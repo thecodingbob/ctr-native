@@ -1,10 +1,9 @@
 #include <common.h>
 
-#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+#if defined(CTR_INTERNAL)
 #include <platform/native_checkpoint.h>
 #endif
 
-#ifdef CTR_NATIVE
 static void MainInit_SetRenderedQuadBlockDestinations(int numPlayers)
 {
 	const int playerCount = (int)len(data.ptrRenderedQuadblockDestination_forEachPlayer);
@@ -103,7 +102,6 @@ static void MainInit_InitVisMemBspListNodes(struct VisMem *visMem, struct mesh_i
 		}
 	}
 }
-#endif
 
 void MainInit_VisMem(struct GameTracker *gGT)
 {
@@ -111,9 +109,7 @@ void MainInit_VisMem(struct GameTracker *gGT)
 	struct VisMem *visMem = level->visMem;
 	gGT->visMem1 = visMem;
 
-#ifdef CTR_NATIVE
 	MainInit_SetRenderedQuadBlockDestinations(gGT->numPlyrCurrGame);
-#endif
 
 	if (visMem == NULL)
 	{
@@ -128,10 +124,8 @@ void MainInit_VisMem(struct GameTracker *gGT)
 		visMem->visSCVertSrc[i] = NULL;
 	}
 
-#ifdef CTR_NATIVE
 	MainInit_InitHighDetailVisMem(visMem, level, gGT->numPlyrCurrGame);
 	MainInit_InitVisMemBspListNodes(visMem, level->ptr_mesh_info, gGT->numPlyrCurrGame, (gGT->gameMode1 & ADVENTURE_ARENA) != 0);
-#endif
 }
 
 void MainInit_RainBuffer(struct GameTracker *gGT)
@@ -350,12 +344,8 @@ void MainInit_JitPoolsNew(struct GameTracker *gGT)
 	JitPool_Init(&gGT->JitPools.oscillator, numParticle, 0x18, rdata.s_OscillatorPool);
 	JitPool_Init(&gGT->JitPools.rain, poolScale >> 9, sizeof(struct RainLocal), rdata.s_RainPool);
 
-#ifndef CTR_NATIVE
-	gGT->ptrRenderBucketInstance = MEMPACK_AllocMem(renderBucketSize, NULL);
-#else
 	// NOTE(aalhendi): Native reuses static RDATA scratch for existing PC memory headroom.
 	gGT->ptrRenderBucketInstance = (void *)((u32)&rdata.s_STATIC_GNORMALZ[0] + 148);
-#endif
 
 	for (int i = 0; i < 3; i++)
 	{
@@ -485,7 +475,6 @@ void MainInit_Drivers(struct GameTracker *gGT)
 
 		GhostTape_Start();
 
-#if defined(CTR_NATIVE)
 		struct Model **humanPlyrDriverModel = &gGT->threadBuckets[PLAYER].thread->inst->model;
 
 		// that's characterIDs[1] from the MPK
@@ -493,7 +482,6 @@ void MainInit_Drivers(struct GameTracker *gGT)
 
 		// then replace with intended P1 model
 		*humanPlyrDriverModel = data.driverModelExtras[0].model;
-#endif
 	}
 }
 
@@ -558,10 +546,8 @@ void MainInit_FinalizeInit(struct GameTracker *gGT)
 
 	lev1 = gGT->level1;
 
-#if defined(CTR_NATIVE)
 	// NOTE(aalhendi): Native menu LEVs may publish no restart table.
 	if (lev1->ptr_restart_points != NULL)
-#endif
 	// 0x1d7c
 	{
 		gGT->trackLength_x_numLaps_x_8 = lev1->ptr_restart_points[0].distToFinish * gGT->numLaps * 8;
@@ -825,7 +811,5 @@ void MainInit_VRAMDisplay()
 		}
 	}
 
-#ifdef CTR_NATIVE
 	Platform_PresentVRAMDisplay();
-#endif
 }

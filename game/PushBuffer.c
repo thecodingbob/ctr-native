@@ -157,7 +157,6 @@ void PushBuffer_SetDrawEnv_DecalMP(void *ot, struct DB *backBuffer, RECT *viewpo
 	void *p;
 	DRAWENV newDrawEnv;
 
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Retail receives PS1 RAM OT slots here. Native translates
 	// 24-bit OT tokens back to host pointers, so stale DecalMP range metadata
 	// must not splice a DR_ENV packet into unrelated current-frame memory.
@@ -165,7 +164,6 @@ void PushBuffer_SetDrawEnv_DecalMP(void *ot, struct DB *backBuffer, RECT *viewpo
 	{
 		return;
 	}
-#endif
 
 	// Copy DrawEnv from gGT->backBuffer
 	for (u32 i = 0; i < sizeof(DRAWENV) / 4; i++)
@@ -305,25 +303,7 @@ void PushBuffer_SetMatrixVP(struct PushBuffer *pb)
 	negPos.z = -pb->pos.z;
 
 	// load inverted camera position
-#ifndef CTR_NATIVE
-#define gte_ldVXY0(r0) __asm__ volatile("mtc2   %0, $0" : : "r"(r0))
-#define gte_ldVZ0(r0)  __asm__ volatile("mtc2   %0, $1" : : "r"(r0))
-	gte_ldVXY0(*(int *)&negPos.v[0]);
-	gte_ldVZ0(negPos.z);
-#else
 	CTR_GteLoadSVec3V0(&negPos);
-#endif
-
-#ifndef CTR_NATIVE
-
-// gte_SetLightMatrix
-#define gte_r8(r0)  __asm__ volatile("ctc2   %0, $8" : : "r"(r0))
-#define gte_r9(r0)  __asm__ volatile("ctc2   %0, $9" : : "r"(r0))
-#define gte_r10(r0) __asm__ volatile("ctc2   %0, $10" : : "r"(r0))
-#define gte_r11(r0) __asm__ volatile("ctc2   %0, $11" : : "r"(r0))
-#define gte_r12(r0) __asm__ volatile("ctc2   %0, $12" : : "r"(r0))
-
-#endif
 
 	// CameraMatrix
 	uVar3 = CTR_ReadU32LE(&matrixDST->m[0][0]);
@@ -354,15 +334,7 @@ void PushBuffer_SetMatrixVP(struct PushBuffer *pb)
 
 	// load transpose camera matrix
 	// similar to gte_SetLightMatrix
-#ifndef CTR_NATIVE
-	gte_r8(view0);
-	gte_r9(view4);
-	gte_r10(view8);
-	gte_r11(viewC);
-	gte_r12(sVar7);
-#else
 	gte_SetLightMatrix(&pb->matrix_CameraTranspose);
-#endif
 
 	// multiply inverted camera position,
 	// by transpose camera matrix
@@ -419,14 +391,7 @@ void PushBuffer_SetMatrixVP(struct PushBuffer *pb)
 	// otherwise oxide intro cutscene bugs out,
 	// when crash is sleeping on the grassy hill
 
-#ifndef CTR_NATIVE
-	gte_r8(uVar3);
-	gte_r9(uVar4);
-	gte_r10(uVar5);
-	gte_r11(uVar6);
-#else
 	gte_SetLightMatrix(&scratch->cameraMatrix);
-#endif
 
 	return;
 }
@@ -541,14 +506,12 @@ static void PushBuffer_UpdateFrustum_ReadMAC(s32 *x, s32 *y, s32 *z)
 	*z = MFC2_S(27);
 }
 
-#if defined(CTR_NATIVE)
 global_variable s32 s_pushBufferFrustumSavedCameraZ;
 
 s32 PushBuffer_GetFrustumSavedCameraZ(void)
 {
 	return s_pushBufferFrustumSavedCameraZ;
 }
-#endif
 
 void PushBuffer_UpdateFrustum(struct PushBuffer *pb)
 {
@@ -591,9 +554,7 @@ void PushBuffer_UpdateFrustum(struct PushBuffer *pb)
 	cameraPosX = pb->pos.x;
 	cameraPosY = pb->pos.y;
 	cameraPosZ = pb->pos.z;
-#if defined(CTR_NATIVE)
 	s_pushBufferFrustumSavedCameraZ = cameraPosZ;
-#endif
 
 	val_X = pb->rect.w;
 	val_X = val_X / 2;
@@ -907,10 +868,8 @@ void PushBuffer_FadeOneWindow(struct PushBuffer *pb)
 			fadeStrength = currValue - 0x1000;
 		}
 
-#ifdef CTR_NATIVE
 		// NOTE(aalhendi): Native PsyCross needs dfe=1 for this full-window fade.
 		p->tpage |= 0x400; // set dfe=1
-#endif
 
 		// strength of fade
 		fadeStrength = fadeStrength >> 4;

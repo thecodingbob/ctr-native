@@ -1,6 +1,6 @@
 #include <common.h>
 
-#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+#if defined(CTR_INTERNAL)
 #include <platform/native_perf.h>
 #define MAINFRAME_PERF_BEGIN(bucket) NativePerf_BeginScope(bucket)
 #define MAINFRAME_PERF_END(bucket)   NativePerf_EndScope(bucket)
@@ -171,7 +171,6 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 				PickupBots_Update();
 			}
 
-#if defined(CTR_NATIVE)
 			// NOTE(aalhendi): Native menu/adventure-hub LEVs may publish no
 			// restart table. Retail lap stats assume the table exists whenever
 			// this caller reaches them; keep the retail lap path intact.
@@ -183,9 +182,6 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 					PlayLevel_UpdateLapStats();
 				}
 			}
-#else
-			PlayLevel_UpdateLapStats();
-#endif
 		}
 		MAINFRAME_PERF_END(NATIVE_PERF_BUCKET_MAINFRAME_POST_LEVEL);
 	}
@@ -219,10 +215,6 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 	MAINFRAME_PERF_BEGIN(NATIVE_PERF_BUCKET_MAINFRAME_RENDER_VSYNC);
 	RenderVSYNC(gGT);
 	MAINFRAME_PERF_END(NATIVE_PERF_BUCKET_MAINFRAME_RENDER_VSYNC);
-
-#ifndef CTR_NATIVE
-	RenderFMV();
-#endif
 
 	RenderSubmit(gGT);
 }
@@ -1240,15 +1232,6 @@ int ReadyToFlip(struct GameTracker *gGT)
 	    (gGT->bool_DrawOTag_InProgress == 0);
 }
 
-int ReadyToBreak(struct GameTracker *gGT)
-{
-	return
-
-	    // if more than 6 VSYNCs passed since
-	    // the last successful draw, FPS < 10fps
-	    gGT->vSync_between_drawSync > 6;
-}
-
 void RenderVSYNC(struct GameTracker *gGT)
 {
 	gGT->clockDurationStall = Timer_GetTime_Total();
@@ -1265,13 +1248,10 @@ void RenderVSYNC(struct GameTracker *gGT)
 
 	while (1)
 	{
-#ifdef CTR_NATIVE
-		// NOTE(aalhendi): Native host sync needs DrawSync polling here; retail
-		// falls through to the BreakDraw guard below instead.
-		// must be called in the loop,
-		// or else it wont properly sync
+		// Host sync needs DrawSync polling in the loop, or else it wont properly
+		// sync. Retail instead fell through to a BreakDraw guard that gave up
+		// once more than 6 VSYNCs passed without a flip.
 		DrawSync(0);
-#endif
 
 		if (ReadyToFlip(gGT))
 		{
@@ -1279,49 +1259,23 @@ void RenderVSYNC(struct GameTracker *gGT)
 			return;
 		}
 
-#ifdef CTR_NATIVE
 		// NOTE(aalhendi): Retail waits on GPU/vblank hardware here. Native
 		// owns that wait in VSync(), which also emits the VBlank callback.
 		VSync(0);
-#endif
 
-#ifndef CTR_NATIVE
-		if (ReadyToBreak(gGT))
-		{
-			// just quit and try the next frame
-			BreakDraw();
-			return;
-		}
-#endif
 	}
 }
-
-#ifndef CTR_NATIVE
-void RenderFMV()
-{
-	if (sdata->boolPlayVideoSTR == 1)
-	{
-		MM_Video_CheckIfFinished(1);
-
-		MoveImage(&sdata->videoSTR_src_vramRect, sdata->videoSTR_dst_vramX, sdata->videoSTR_dst_vramY);
-
-		DrawSync(0);
-	}
-}
-#endif
 
 void RenderSubmit(struct GameTracker *gGT)
 {
 	// 1 VSYNC = 60fps
 	// 2 VSYNCs = 30fps
 
-#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+#if defined(CTR_INTERNAL)
 	NativePerf_BeginScope(NATIVE_PERF_BUCKET_RENDER_SUBMIT);
 #endif
 
 	gGT->clockDurationStall = Timer_GetTime_Elapsed(gGT->clockDurationStall, 0);
-
-#if defined(CTR_NATIVE)
 
 	sdata->vsyncTillFlip = 2;
 
@@ -1331,27 +1285,6 @@ void RenderSubmit(struct GameTracker *gGT)
 	gGT->frontBuffer = &gGT->db[1 - gGT->swapchainIndex];
 	PutDispEnv(&gGT->frontBuffer->dispEnv);
 
-#else
-
-	// do I need the "if"? will it ever be nullptr?
-	if (gGT->frontBuffer != 0)
-	{
-		sdata->vsyncTillFlip = 2;
-		gGT->unk1cc4[5] = gGT->unk1cc4[0];
-
-		if ((sdata->boolDebugDispEnv & 1) != 0)
-			PutDispEnv(&sdata->blank_debug_DispEnv);
-		else
-			PutDispEnv(&gGT->frontBuffer->dispEnv);
-		PutDrawEnv(&gGT->frontBuffer->drawEnv);
-		gGT->frontBuffer = 0;
-	}
-
-	// swap=0, get db[1]
-	// swap=1, get db[0]
-	gGT->frontBuffer = &gGT->db[1 - gGT->swapchainIndex];
-#endif
-
 	gGT->bool_DrawOTag_InProgress = 1;
 
 	void *ot = &gGT->pushBuffer[0].ptrOT[0x3ff];
@@ -1360,7 +1293,7 @@ void RenderSubmit(struct GameTracker *gGT)
 
 	gGT->frameTimer_notPaused = gGT->frameTimer_VsyncCallback;
 
-#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+#if defined(CTR_INTERNAL)
 	NativePerf_EndScope(NATIVE_PERF_BUCKET_RENDER_SUBMIT);
 #endif
 }

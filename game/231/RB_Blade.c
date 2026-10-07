@@ -24,10 +24,8 @@ void RB_Blade_ThTick(struct Thread *t)
 		bladeInst->scale.x = 0x1000;
 
 		ThTick_FastRET(t);
-#ifdef CTR_NATIVE
 		// NOTE(aalhendi): Native dispatch calls each tick anew; retail resumes after the yield.
 		return;
-#endif
 	}
 }
 

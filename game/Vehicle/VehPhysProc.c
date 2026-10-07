@@ -121,10 +121,6 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 {
 	struct Driver *driver;
 	struct Thread *driverThread;
-#if !defined(CTR_NATIVE)
-	int mapCallStackPad0;
-	int mapCallStackPad1;
-#endif
 	int kartState;
 	register u8 heldItemID CTR_PSX_REGISTER("$3");
 	u8 hasJuicedWumpa;
@@ -152,11 +148,6 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 
 	int msPerFrameNeg;
 	int msPerFrame;
-#if !defined(CTR_NATIVE)
-	int distanceSpeed;
-	int distanceDriven;
-	int distanceScaled;
-#endif
 	register int reservesTimer CTR_PSX_REGISTER("$3");
 	register int turboTimer CTR_PSX_REGISTER("$4");
 	register int audioTimer CTR_PSX_REGISTER("$5");
@@ -196,19 +187,7 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 		// set racer's timer to the time on the clock
 		driver->timeElapsedInRace = GAME_TRACKER->elapsedEventTime;
 	}
-#if !defined(CTR_NATIVE)
-	// NOTE(aalhendi): Keep the thread live at retail's first scheduling
-	// boundary so GCC saves s5 before assigning the driver to s1.
-	__asm__("" : "+r"(driverThread));
-#endif
 	CTR_PSX_KEEP_VALUE(driver);
-#if !defined(CTR_NATIVE)
-	// NOTE(aalhendi): The matching call below writes its fifth argument
-	// explicitly. Preserve the two-word frame alignment GCC would remove.
-	CTR_PSX_OBSERVE_MEMORY(mapCallStackPad0);
-	CTR_PSX_OBSERVE_MEMORY(mapCallStackPad1);
-#endif
-
 
 	// === Count Timers ===
 
@@ -219,16 +198,8 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 
 	if ((GAME_TRACKER->elapsedEventTime < 10 * MINUTE) && ((driver->actionsFlagSet & ACTION_RACE_TIMER_FROZEN) == 0))
 	{
-#if defined(CTR_NATIVE)
 		driver->distanceDriven =
 		    CTR_MipsAddLo(driver->distanceDriven, CTR_MipsSra(CTR_MipsMulLo(driver->speedApprox, msPerFrame), VEH_PHYS_PROC_DISTANCE_SPEED_SHIFT));
-#else
-		distanceSpeed = driver->speedApprox;
-		__asm__("mult %0,%1" : : "r"(distanceSpeed), "r"(msPerFrame));
-		distanceDriven = driver->distanceDriven;
-		__asm__("mflo $24\n\tsra %0,$24,8" : "=r"(distanceScaled));
-		driver->distanceDriven = CTR_MipsAddLo(distanceDriven, distanceScaled);
-#endif
 	}
 
 	reservesTimer = driver->reserves;
@@ -468,12 +439,8 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 			scratchValue = CTR_MipsNegLo(scratchValue);
 		}
 
-#if defined(CTR_NATIVE)
 		normalVecIndex = (s16)clockReceiveRaw;
 		clockWaddleTimer = CTR_MipsSra(normalVecIndex, VEH_PHYS_PROC_CLOCK_WADDLE_TIMER_SHIFT);
-#else
-		__asm__("sll %2,%2,16\n\tsra %0,%2,16\n\tsra %1,%2,22" : "=r"(normalVecIndex), "=r"(clockWaddleTimer), "+r"(clockReceiveRaw));
-#endif
 		if (clockWaddleTimer > VEH_PHYS_PROC_CLOCK_WADDLE_TIMER_MAX)
 		{
 			clockWaddleTimer = VEH_PHYS_PROC_CLOCK_WADDLE_TIMER_MAX;
@@ -494,16 +461,9 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 
 		trigForce = CTR_MipsSra(approxTrig, VEH_PHYS_PROC_CLOCK_WADDLE_TRIG_FORCE_SHIFT);
 		CTR_PSX_KEEP_VALUE(trigForce);
-#if defined(CTR_NATIVE)
 		clockWaddleTimer = CTR_MipsAddLo(clockWaddleTimer, trigForce);
 		approximateSpeedRaw = approximateSpeed;
 		normalVecIndex = CTR_MipsSra(approximateSpeedRaw, VEH_PHYS_PROC_CLOCK_WADDLE_SPEED_SHIFT);
-#else
-		__asm__ volatile("lw %0,32($sp)\n\taddu %1,%1,%3\n\tsra %2,%0,8"
-		                 : "=r"(approximateSpeedRaw), "+r"(clockWaddleTimer), "=r"(normalVecIndex)
-		                 : "r"(trigForce)
-		                 : "memory");
-#endif
 		if (normalVecIndex > VEH_PHYS_PROC_CLOCK_WADDLE_SPEED_MAX)
 		{
 			normalVecIndex = VEH_PHYS_PROC_CLOCK_WADDLE_SPEED_MAX;
@@ -548,11 +508,7 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 	goto hazardDone;
 
 applyNormalHazard:
-#if defined(CTR_NATIVE)
 	approximateSpeedRaw = approximateSpeed;
-#else
-	__asm__ volatile("lw %0,32($sp)" : "=r"(approximateSpeedRaw) : : "memory");
-#endif
 	timerHazard = driver->hazardTimer;
 	trigForce = approximateSpeedRaw < (VEH_PHYS_PROC_HAZARD_MOVING_SPEED_MIN + 1);
 	CTR_PSX_KEEP_VALUE(trigForce);
@@ -986,9 +942,6 @@ CheckJumpDone:
 			register int gasCenterArg CTR_PSX_REGISTER("$5");
 			register struct RacingWheelData *gasWheelArg CTR_PSX_REGISTER("$6");
 
-#if !defined(CTR_NATIVE)
-			__asm__("" : "=r"(approximateSpeedRaw) : "0"(approximateSpeedRaw));
-#endif
 			gasStickArg = stickRY;
 			gasCenterArg = VEH_PHYS_PROC_STICK_CENTER;
 			gasWheelArg = NULL;
@@ -1077,11 +1030,7 @@ CheckJumpDone:
 			goto gasNoBrake;
 		}
 
-#if defined(CTR_NATIVE)
 		gasScratchValue = VehPhysJoystick_ReturnToRest(gasStickLY, VEH_PHYS_PROC_STICK_CENTER, NULL);
-#else
-		gasScratchValue = VehPhysJoystick_ReturnToRest(gasStickLY, VEH_PHYS_PROC_STICK_CENTER, (struct RacingWheelData *)gasTargetSpeed);
-#endif
 		if (gasScratchValue >= VEH_PHYS_PROC_REVERSE_STICK_THRESHOLD)
 		{
 			goto gasBrakeReverse;
@@ -1207,11 +1156,7 @@ CheckJumpDone:
 	gasReverseFromNeutral:
 		tireSpeedRaw = driver->const_BackwardSpeed;
 		CTR_PSX_OBSERVE_VALUE(tireSpeedRaw);
-#if defined(CTR_NATIVE)
 		trigForce = ACTION_REVERSING_ENGINE;
-#else
-		__asm__ volatile("lui %0,0x2" : "=r"(trigForce));
-#endif
 		actionsFlagSetCopy |= (u32)trigForce;
 		gasTargetSpeed = CTR_MipsNegLo(tireSpeedRaw);
 		goto gasClearSteerFlags;
@@ -1371,17 +1316,9 @@ CheckJumpDone:
 				// Base Speed = 0xB4 (at Cove water) * Base Speed >> 8
 				tireSpeedRaw = CTR_MipsMulLo(gasScratchValue, gasTargetSpeed);
 				CTR_PSX_OBSERVE_VALUE(tireSpeedRaw);
-#if defined(CTR_NATIVE)
 				gasTargetSpeed = CTR_MipsSra(tireSpeedRaw, VEH_PHYS_PROC_TERRAIN_SPEED_SHIFT);
 				approxTrig = CTR_MipsMulLo(gasScratchValue, targetBaseSpeed);
 				targetBaseSpeed = CTR_MipsSra(approxTrig, VEH_PHYS_PROC_TERRAIN_SPEED_SHIFT);
-#else
-				__asm__ volatile("nop\n\tnop\n\tmult %0,%1" : : "r"(gasScratchValue), "r"(targetBaseSpeed));
-				gasTargetSpeed = CTR_MipsSra(tireSpeedRaw, VEH_PHYS_PROC_TERRAIN_SPEED_SHIFT);
-				__asm__ volatile("mflo %0" : "=r"(trigForce));
-				CTR_PSX_OBSERVE_VALUE(trigForce);
-				targetBaseSpeed = CTR_MipsSra(trigForce, VEH_PHYS_PROC_TERRAIN_SPEED_SHIFT);
-#endif
 			}
 		}
 		driver->terrainScaledBaseSpeed = (s16)targetBaseSpeed;
@@ -1402,24 +1339,8 @@ CheckJumpDone:
 		}
 
 		// default steer strength from class stats
-#if defined(CTR_NATIVE)
 		steerStrength = CTR_MipsAddLo(driver->const_TurnRate,
 		                              CTR_MipsSll((s8)driver->turnConst, VEH_PHYS_PROC_STEER_TURN_CONST_SHIFT) / VEH_PHYS_PROC_STEER_TURN_CONST_DIVISOR);
-#else
-		tireSpeedRaw = 0x66666667;
-		trigForce = CTR_MipsSll((s8)driver->turnConst, VEH_PHYS_PROC_STEER_TURN_CONST_SHIFT);
-		__asm__("mult %0,%1" : : "r"(trigForce), "r"(tireSpeedRaw));
-		buttonsTapped = driver->const_TurnRate;
-		CTR_PSX_OBSERVE_VALUE(buttonsTapped);
-		trigForce = CTR_MipsSra(trigForce, 31);
-		__asm__("mfhi %0" : "=r"(approximateSpeedRaw) : "r"(trigForce));
-		CTR_PSX_OBSERVE_VALUE(approximateSpeedRaw);
-		tireSpeedRaw = CTR_MipsSra(approximateSpeedRaw, 1);
-		CTR_PSX_OBSERVE_VALUE(tireSpeedRaw);
-		tireSpeedRaw = CTR_MipsSubLo(tireSpeedRaw, trigForce);
-		CTR_PSX_OBSERVE_VALUE(tireSpeedRaw);
-		steerStrength = CTR_MipsAddLo((int)buttonsTapped, tireSpeedRaw);
-#endif
 
 		// if mashing X button
 		if (driver->accelTapCount < DRIVER_ACCEL_TAP_STEER_COUNT)
@@ -1470,14 +1391,7 @@ CheckJumpDone:
 
 			// absolute value driver speed
 			driverSpeedCopy = driver->speed;
-#if defined(CTR_NATIVE)
 			mapOutputMin = VEH_PHYS_PROC_STEER_BRAKE_STRENGTH;
-#else
-			// NOTE(aalhendi): Retail prepares the last two MapToRange arguments before
-			// the speed sign branch instead of in the call delay slot.
-			__asm__ volatile("li %0,%1" : "=r"(mapOutputMin) : "i"(VEH_PHYS_PROC_STEER_BRAKE_STRENGTH));
-			__asm__ volatile("sw %0,16($sp)" : : "r"(steerStrength) : "memory");
-#endif
 			if (driverSpeedCopy < 0)
 			{
 				driverSpeedCopy = CTR_MipsNegLo(driverSpeedCopy);
@@ -1891,9 +1805,7 @@ void VehPhysProc_PowerSlide_PhysAngular(struct Thread *th, struct Driver *driver
 	register int driftMapEnd CTR_PSX_REGISTER("$7");
 	register int driftTurnBase CTR_PSX_REGISTER("$8");
 	register int driftAngleScale CTR_PSX_REGISTER("$2");
-#if defined(CTR_NATIVE)
 	s64 driftTurnProduct;
-#endif
 	int numFramesDriftingAbs;
 	int turnWobbleAngleAbs;
 	int turnWobbleAngleCurrent;
@@ -2162,11 +2074,7 @@ driftFrameDone:
 	driftTurnScaled = CTR_MipsSll((s8)driver->turnConst, VEH_PHYS_PROC_DRIFT_TURN_CONST_SHIFT);
 	CTR_PSX_KEEP_VALUE_RELAXED(driftTurnScaled);
 	driftTurnMagic = 0x66666667;
-#if defined(CTR_NATIVE)
 	driftTurnProduct = (s64)driftTurnScaled * driftTurnMagic;
-#else
-	__asm__("mult %0,%1" : : "r"(driftTurnScaled), "r"(driftTurnMagic));
-#endif
 	driftTurnInputAbs = driftTurnInput;
 	if (driftTurnInput < 0)
 	{
@@ -2181,16 +2089,7 @@ driftFrameDone:
 	driftAngleScale = (int)driver->const_DriftTurnAngleScale;
 	CTR_PSX_KEEP_VALUE_RELAXED(driftAngleScale);
 	driftTurnScaled = CTR_MipsSra(driftTurnScaled, 31);
-#if !defined(CTR_NATIVE)
-	__asm__ volatile("sw %0,16($sp)" : : "r"(driftAngleScale) : "memory");
-#endif
-#if defined(CTR_NATIVE)
 	driftTurnQuotient = CTR_MipsSra((s32)(driftTurnProduct >> 32), 1);
-#else
-	__asm__("mfhi $9\n\t"
-	        "sra %0,$9,1"
-	        : "=r"(driftTurnQuotient));
-#endif
 	driftTurnQuotient = CTR_MipsSubLo(driftTurnQuotient, driftTurnScaled);
 	driftTurnAngleBase = VEH_MAP_TO_RANGE_STAGED_FIFTH(driftTurnInputAbs, driftMapZero, CTR_MipsAddLo(driftTurnBase, driftTurnQuotient), driftMapEnd, driftAngleScale);
 	if (driftTurnInput < 0)
@@ -2387,9 +2286,6 @@ driftFrameDone:
 	{
 		register int axisKick CTR_PSX_REGISTER("$16");
 		register int axisKickRate CTR_PSX_REGISTER("$3");
-#if !defined(CTR_NATIVE)
-		register int axisKickElapsed CTR_PSX_REGISTER("$2");
-#endif
 		register int axisKickProduct CTR_PSX_REGISTER("$9");
 		register int turnAngleForKick CTR_PSX_REGISTER("$2");
 
@@ -2403,27 +2299,13 @@ driftFrameDone:
 		}
 
 		axisKickRate = (u8)driver->const_DriftBoostAxisKickRate;
-#if defined(CTR_NATIVE)
 		axisKickProduct = CTR_MipsMulLo(axisKickRate, GAME_TRACKER->elapsedTimeMS);
-#else
-		axisKickElapsed = GAME_TRACKER->elapsedTimeMS;
-		__asm__("mult %0,%1" : : "r"(axisKickRate), "r"(axisKickElapsed));
-#endif
 		turnAngleForKick = driver->turnAngleCurr;
-#if !defined(CTR_NATIVE)
-		__asm__ volatile("mflo $9");
-		__asm__(".word 0x04410002\n\t"
-		        "sra %0,$9,5\n\t"
-		        "negu %0,%0"
-		        : "=r"(axisKick)
-		        : "r"(turnAngleForKick));
-#else
 		axisKick = CTR_MipsSra(axisKickProduct, VEH_PHYS_PROC_DRIFT_MS_SCALE_SHIFT);
 		if (turnAngleForKick < 0)
 		{
 			axisKick = CTR_MipsNegLo(axisKick);
 		}
-#endif
 		CTR_PSX_KEEP_VALUE(axisKick);
 
 		driver->axisRotationX = (s16)ANG_MODULO_TWO_PI(CTR_MipsAddLo((u16)driver->axisRotationX, axisKick));

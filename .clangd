@@ -4,7 +4,6 @@ CompileFlags:
     - -std=gnu99
     - -m32
     - -msse
-    - -DCTR_NATIVE
     - -DCTR_INTERNAL
     - -DBUILD=926
     - -Iinclude

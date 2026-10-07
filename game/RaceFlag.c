@@ -12,11 +12,7 @@
 
 // NOTE(aalhendi): The strip cursor starts one word before its first vertex.
 // Reserve that word inside native scratch RAM; PSX keeps its hardware addresses.
-#ifdef CTR_NATIVE
 #define RACE_FLAG_SCREEN_BASE CTR_SCRATCHPAD_PTR(u32, 4)
-#else
-#define RACE_FLAG_SCREEN_BASE CTR_SCRATCHPAD_PTR(u32, 0)
-#endif
 
 #ifndef RACE_FLAG_LOADING_STAGE
 #define RACE_FLAG_LOADING_STAGE sdata->Loading.stage
@@ -340,12 +336,10 @@ void RaceFlag_DrawLoadingString(void)
 	u32 *oldOT;
 	u8 glyph[3];
 
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Font loops look ahead before checking the glyph count.
 	// Keep that byte inside initialized storage for either one- or two-byte glyphs.
 	glyph[1] = 0;
 	glyph[2] = 0;
-#endif
 
 	// Draw loading text into the active swapchain's ordering table.
 	oldOT = (u32 *)gGT->pushBuffer_UI.ptrOT;
@@ -728,12 +722,12 @@ SkipText:
 							back->primMem.cursor = next + 1;
 						}
 
-#ifdef CTR_NATIVE
 						// NOTE(aalhendi): Retail reuses the last packet on exhaustion, which can
 						// create a cyclic OT link. Native stops before relinking that packet.
 						else
+						{
 							return;
-#endif
+						}
 						if (!poly)
 						{
 							return;

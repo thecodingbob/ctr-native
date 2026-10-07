@@ -1290,14 +1290,12 @@ void CS_Thread_Particles(struct Thread *t)
 		return;
 	}
 
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Retail also admits ID 8, but that points into opcode metadata,
 	// not a particle record. Reject it before dereferencing the table on native.
 	if ((u8)particleID >= sizeof(D233.particleConfigs) / sizeof(D233.particleConfigs[0]))
 	{
 		return;
 	}
-#endif
 
 	entry = &D233.particleConfigs[(int)particleID];
 

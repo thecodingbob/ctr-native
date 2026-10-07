@@ -55,10 +55,8 @@ void RB_Armadillo_ThTick_TurnAround(struct Thread *t)
 
 		RB_CheckHazardCollisions(armInst, t, 1, 0x2400, 0x71);
 		ThTick_FastRET(t);
-#ifdef CTR_NATIVE
 		// NOTE(aalhendi): Native ticks return as callbacks; retail yields through FastRET.
 		return;
-#endif
 	} while (1);
 }
 
@@ -119,10 +117,8 @@ void RB_Armadillo_ThTick_Rolling(struct Thread *t)
 		}
 
 		ThTick_FastRET(t);
-#ifdef CTR_NATIVE
 		// NOTE(aalhendi): Native ticks return as callbacks; retail yields through FastRET.
 		return;
-#endif
 	} while (1);
 }
 

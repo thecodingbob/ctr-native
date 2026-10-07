@@ -305,11 +305,9 @@ void UI_INSTANCE_InitAll(void)
 		sdata->ptrToken = UI_INSTANCE_BirthWithThread(STATIC_TOKEN, (int)UI_ThTick_Reward, UI_HUD_SLOT_TOKEN_OR_CTR, 0, 0, (int)sdata->s_token);
 
 		// make Crystal invisible
-#if defined(CTR_NATIVE)
 		// NOTE(aalhendi): Menu-storage can carry CRYSTAL_CHALLENGE into tracks
 		// that did not publish crystal HUD models.
 		if (sdata->ptrHudCrystal != NULL)
-#endif
 		{
 			sdata->ptrHudCrystal->flags |= HIDE_MODEL;
 		}
@@ -317,12 +315,10 @@ void UI_INSTANCE_InitAll(void)
 		// make copy of Token pointer
 		token = sdata->ptrToken;
 
-#if defined(CTR_NATIVE)
 		if (token == NULL)
 		{
 			return;
 		}
-#endif
 
 		// set Token scale (x, y, z) to zero
 		token->scale.x = 0;
@@ -351,7 +347,6 @@ void UI_INSTANCE_InitAll(void)
 	{
 		for (i = 0; i < UI_INSTANCE_DRIVER_COUNT; i++)
 		{
-#if defined(CTR_NATIVE)
 			// NOTE(aalhendi): PSX low-memory reads are non-fatal for unused driver slots.
 			if (gGT->drivers[i] == NULL)
 			{
@@ -359,7 +354,6 @@ void UI_INSTANCE_InitAll(void)
 			}
 			else
 			{
-#endif
 				data.rankIconsCurr[i] = gGT->drivers[i]->driverRank;
 			}
 
@@ -455,22 +449,16 @@ void UI_INSTANCE_InitAll(void)
 	// Make a token
 	sdata->ptrToken = UI_INSTANCE_BirthWithThread(STATIC_TOKEN, (int)UI_ThTick_Reward, UI_HUD_SLOT_TOKEN_OR_CTR, 0, 0, (int)sdata->s_token);
 
-#if defined(CTR_NATIVE)
 	// NOTE(aalhendi): PSX writes the hidden C/T/R flags through null HUD pointers in Garage; native cannot.
 	if (sdata->ptrHudC != NULL)
-#endif
 	{
 		sdata->ptrHudC->flags |= HIDE_MODEL;
 	}
-#if defined(CTR_NATIVE)
 	if (sdata->ptrHudT != NULL)
-#endif
 	{
 		sdata->ptrHudT->flags |= HIDE_MODEL;
 	}
-#if defined(CTR_NATIVE)
 	if (sdata->ptrHudR != NULL)
-#endif
 	{
 		sdata->ptrHudR->flags |= HIDE_MODEL;
 	}

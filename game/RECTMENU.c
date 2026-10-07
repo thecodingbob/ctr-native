@@ -19,14 +19,9 @@ void RECTMENU_DrawOuterRect_Edge(RECT *r, const Color *color, u32 param_3, u32 *
 	               : CTR_Box_DrawSolidBox(r, color, otMem, &sdata->gGT->backBuffer->primMem);
 }
 
-
-#if defined(CTR_NATIVE)
 // NOTE(aalhendi): Native does not expose EXE rdata; this mirrors 0x80011620.
 static const char s_rectMenuTimeFormat[] = "%ld:%ld%ld:%ld%ld";
 #define RECTMENU_TIME_FORMAT s_rectMenuTimeFormat
-#else
-#define RECTMENU_TIME_FORMAT rdata.s_timeString
-#endif
 
 char *RECTMENU_DrawTime(int milliseconds)
 {

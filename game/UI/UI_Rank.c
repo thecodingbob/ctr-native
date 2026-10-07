@@ -98,7 +98,6 @@ void UI_DrawRankedDrivers(void)
 			{
 				// player structure + 0x482 is your rank in the race
 				// 0 = 1st place, 1 = 2nd place, 2 = 3rd place, etc
-#ifdef CTR_NATIVE
 				// NOTE(aalhendi): Boss races only allocate P1 plus the boss.
 				// Retail reads driverRank before its later null check; if the
 				// slot is empty, PS1 low RAM is still readable, but native
@@ -107,9 +106,6 @@ void UI_DrawRankedDrivers(void)
 				{
 					data.rankIconsDesired[driverIndex] = gGT->drivers[driverIndex]->driverRank;
 				}
-#else
-				data.rankIconsDesired[driverIndex] = gGT->drivers[driverIndex]->driverRank;
-#endif
 			}
 
 			// if player structure pointer is not nullptr

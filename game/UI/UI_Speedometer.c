@@ -214,10 +214,8 @@ void UI_DrawSpeedBG(void)
 		p->p.v[2].pos.x = p2x;
 		p->p.v[2].pos.y = p2y;
 
-// NOTE(aalhendi): CTR_NATIVE keeps PsyCross display-area drawing enabled.
-#ifdef CTR_NATIVE
+		// Keep PsyCross display-area drawing enabled.
 		((TPage *)p)->texpage.bits.drawDisplayArea = 1;
-#endif
 
 		AddPrimitive(p, sdata->gGT->pushBuffer_UI.ptrOT);
 	}

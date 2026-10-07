@@ -1,12 +1,12 @@
 #include <common.h>
 
-#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+#if defined(CTR_INTERNAL)
 #include <platform/native_perf.h>
 #include <platform/native_replay_scheduler.h>
 #include <platform/native_savestate.h>
 #endif
 
-#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+#if defined(CTR_INTERNAL)
 static struct NativePerfFrameInfo MainPerf_FrameInfo(struct GameTracker *gGT)
 {
 	struct NativePerfFrameInfo info;
@@ -51,11 +51,7 @@ static struct NativeReplaySchedulerFrameInfo MainReplayScheduler_FrameInfo(struc
 }
 #endif
 
-#ifdef CTR_NATIVE
 u32 CTR_Main(void)
-#else
-u32 main(void)
-#endif
 {
 	u32 AddBitsConfig0;
 	u32 RemBitsConfig0;
@@ -72,22 +68,8 @@ u32 main(void)
 	struct GamepadSystem *gGS;
 	gGS = sdata->gGamepads;
 
-	// NOTE(aalhendi): Retail main calls __main before the state loop. Native has
-	// no linked __main body, so keep this as a CTR_NATIVE-only divergence.
-#ifndef CTR_NATIVE
-	__main();
-#endif
-
 	do
 	{
-#ifndef CTR_NATIVE
-		// wont happen under normal conditions
-		if (sdata->mainGameState == 5)
-		{
-			MainKillGame_StopCTR();
-			return 0;
-		}
-#endif
 
 		LOAD_NextQueuedFile();
 		CDSYS_XAPauseAtEnd();
@@ -315,7 +297,7 @@ u32 main(void)
 			sdata->frameCounter++;
 
 			// Process all gamepad input
-#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+#if defined(CTR_INTERNAL)
 			{
 				struct NativeReplaySchedulerFrameInfo replayFrameInfo = MainReplayScheduler_FrameInfo(gGT);
 
@@ -397,11 +379,11 @@ u32 main(void)
 
 			if ((gGT->gameMode1 & LOADING) == 0)
 			{
-#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+#if defined(CTR_INTERNAL)
 				NativePerf_BeginScope(NATIVE_PERF_BUCKET_GAME_LOGIC);
 #endif
 				MainFrame_GameLogic(gGT, gGS);
-#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+#if defined(CTR_INTERNAL)
 				NativePerf_EndScope(NATIVE_PERF_BUCKET_GAME_LOGIC);
 #endif
 			}
@@ -416,20 +398,16 @@ u32 main(void)
 			// reset vsync calls between drawsync
 			gGT->vSync_between_drawSync = 0;
 
-
-#ifdef CTR_NATIVE
 			Platform_BeginFrame();
-#endif
-#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+
+#if defined(CTR_INTERNAL)
 			NativePerf_BeginScope(NATIVE_PERF_BUCKET_RENDER_FRAME);
 #endif
 			MainFrame_RenderFrame(gGT, gGS);
-#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+#if defined(CTR_INTERNAL)
 			NativePerf_EndScope(NATIVE_PERF_BUCKET_RENDER_FRAME);
 #endif
-#ifdef CTR_NATIVE
 			Platform_EndFrame();
-#endif
 
 
 			// if mask is talking in Adventure Hub
@@ -437,7 +415,7 @@ u32 main(void)
 			{
 				AH_MaskHint_Update();
 			}
-#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+#if defined(CTR_INTERNAL)
 			{
 				struct NativeReplaySchedulerFrameInfo replayFrameInfo = MainReplayScheduler_FrameInfo(gGT);
 
@@ -454,34 +432,6 @@ u32 main(void)
 #endif
 			break;
 
-#ifndef CTR_NATIVE
-		// In theory, this is left over from the demos,
-		// which would "timeout" and restart after sitting idle
-		case 4:
-
-			// erase all data past the
-			// last 3 bookmarks, if there
-			// that many exist
-			MEMPACK_PopState();
-			MEMPACK_PopState();
-			MEMPACK_PopState();
-
-			CTR_ErrorScreen(0, 0, 0);
-			Music_Stop();
-
-			// clear backup, destroy music, destroy all fx
-			howl_StopAudio(1, 1, 1);
-			Bank_DestroyAll();
-			howl_Disable();
-
-			GAMEPAD_SetMainMode();
-
-			// Set vsync to 2 FPS
-			VSync(30);
-
-			// reboot game
-			sdata->mainGameState = 0;
-#endif
 		}
 	} while (true);
 }
@@ -573,11 +523,7 @@ void StateZero()
 	VSync(0);
 	GAMEPAD_GetNumConnected(gGS);
 
-#ifdef CTR_NATIVE
 #define BIGPATH "\\BIGFILE.BIG;1"
-#else
-#define BIGPATH rdata.s_PathTo_Bigfile
-#endif
 
 	// Get CD Position fo BIGFILE
 	sdata->ptrBigfile1 = LOAD_ReadDirectory(BIGPATH);
@@ -664,12 +610,10 @@ void StateZero()
 		while (sdata->XA_State != 0)
 		{
 			// WARNING: Read-only address (ram, 0x8008d888) is written
-			// NOTE(aalhendi): ASM-verified NTSC-U 926 0x8003c940-0x8003c948 for startup XA pause polling.
-	#ifdef CTR_NATIVE
-			// NOTE(aalhendi): Retail hardware interrupts keep XA/audio moving while
+			// ASM-verified NTSC-U 926 0x8003c940-0x8003c948 for startup XA pause polling.
+			// Retail hardware interrupts keep XA/audio moving while
 			// this loop spins. Native owns VBlank in VSync(), so pump it here.
 			VSync(0);
-	#endif
 			CDSYS_XAPauseAtEnd();
 		}
 	}

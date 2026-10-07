@@ -5,7 +5,6 @@ void (*mainMenuInit[])() = {MM_JumpTo_Title_FirstTime, MM_JumpTo_Characters, MM_
 // Fraction of the solo time limit a co-op crystal challenge is given.
 static const float LOAD_CRYSTAL_CHALLENGE_2P_TIME_FACTOR = 0.6f;
 
-#ifdef CTR_NATIVE
 enum
 {
 	LOAD_NATIVE_NDBOX_INTRO_SONG_SYNC_TIME = 0x11c0,
@@ -30,7 +29,6 @@ static void LOAD_NativeAudio_SetStateAfterBankReload(u32 state)
 
 	Audio_SetState_Safe(state);
 }
-#endif
 
 int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *bigfile)
 {
@@ -72,7 +70,6 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 		          MainInit_VRAMDisplay();
 		        }
 
-#ifdef CTR_NATIVE
 			// NOTE(aalhendi): SCEA is already held by XA playback in MainMain. The copyright
 			// TIM has no XA, so keep it visible until the intro CSEQ reaches
 			// the point retail normally reaches while loading the ND crate.
@@ -83,7 +80,6 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 				VSync(0);
 				Platform_PresentVRAMDisplay();
 			}
-#endif
 
 			gGT->db[0].drawEnv.isbg = 0;
 			gGT->db[1].drawEnv.isbg = 0;
@@ -658,11 +654,7 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 		{
 			audioState = AUDIO_GARAGE_ENTRY;
 		LAB_800346b0:
-#if defined(CTR_NATIVE)
 			LOAD_NativeAudio_SetStateAfterBankReload(audioState);
-#else
-			Audio_SetState_Safe(audioState);
-#endif
 			return loadingStage + 1;
 		}
 

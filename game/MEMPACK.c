@@ -5,7 +5,6 @@ void MEMPACK_Init(s32 ramSize)
 {
 	u32 startPtr;
 
-#if defined(CTR_NATIVE)
 	// NOTE(aalhendi): Native uses host-backed RAM; PSX reserves the arena after the largest overlay.
 	s32 packSize;
 	const struct PlatformMempackArena *arena = Platform_InitMempackArena();
@@ -22,57 +21,6 @@ void MEMPACK_Init(s32 ramSize)
 
 	printf("[CTR] MEMPACK native arena: start=%08x size=%08x end=%08x\n", startPtr, packSize, (u32)MEMPACK_ACTIVE->endOfAllocator);
 
-#else
-	u32 maxOverlayEnd;
-	struct Mempack *ptrMempack;
-	register u32 addressMask CTR_PSX_REGISTER("$3");
-	register u32 overlayBase CTR_PSX_REGISTER("$4");
-
-	// NOTE(aalhendi): Keep the two candidate lifetimes through the join so GCC retains retail's max-selection branches.
-	register u32 overlayEndA CTR_PSX_REGISTER("$4") = (u32)AH_EndOfFile;
-	register u32 overlayEndB CTR_PSX_REGISTER("$3") = (u32)RB_EndOfFile;
-	if (overlayEndA < overlayEndB)
-	{
-		overlayEndA = (u32)MM_EndOfFile;
-		if (overlayEndA >= overlayEndB)
-			maxOverlayEnd = overlayEndA;
-		else
-			maxOverlayEnd = overlayEndB;
-	}
-	else
-	{
-		overlayEndB = (u32)MM_EndOfFile;
-		CTR_PSX_KEEP_VALUE_RELAXED(overlayEndB);
-		if (overlayEndB >= overlayEndA)
-			maxOverlayEnd = overlayEndB;
-		else
-			maxOverlayEnd = overlayEndA;
-	}
-	CTR_PSX_OBSERVE_VALUE(overlayEndA);
-	CTR_PSX_OBSERVE_VALUE(overlayEndB);
-	overlayEndB = (u32)CS_EndOfFile;
-	if (overlayEndB >= maxOverlayEnd)
-		maxOverlayEnd = overlayEndB;
-	CTR_PSX_OBSERVE_VALUE(overlayEndB);
-
-	// Round the overlay footprint up to a CD sector, relative to its load address.
-	// Leave the final sector of RAM outside the allocator.
-	addressMask = MEMPACK_PS1_RAM_ADDRESS_MASK;
-	overlayBase = (u32)OVR_Region3;
-	startPtr = overlayBase + ((((maxOverlayEnd - overlayBase) + MEMPACK_PS1_OVERLAY_ALIGNMENT_MASK) >> 11) << 11);
-	addressMask &= startPtr;
-	ramSize -= addressMask;
-	ramSize -= MEMPACK_PS1_END_GUARD_SIZE;
-
-	ptrMempack = MEMPACK_ACTIVE;
-	ptrMempack->start = (void *)startPtr;
-	ptrMempack->endOfAllocator = (void *)(startPtr + ramSize);
-	ptrMempack->lastFreeByte = (void *)(startPtr + ramSize);
-	ptrMempack->packSize = ramSize;
-	ptrMempack->numBookmarks = 0;
-	ptrMempack->endOfMemory = (void *)MEMPACK_PS1_END_OF_MEMORY;
-	ptrMempack->firstFreeByte = ptrMempack->start;
-#endif
 }
 
 

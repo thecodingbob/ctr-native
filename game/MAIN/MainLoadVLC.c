@@ -5,10 +5,8 @@ void MainLoadVLC_Callback(struct LoadQueueSlot *param_1)
 	// VLC is now loaded
 	sdata->bool_IsLoaded_VlcTable = 1;
 
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Native keeps the loaded VLC pointer in host-visible state.
 	sdata->ptrVlcTable = param_1->ptrDestination;
-#endif
 }
 
 void MainLoadVLC(void)

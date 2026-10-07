@@ -328,14 +328,12 @@ void Audio_Update1(void)
 
 		Level_AmbientSound();
 
-#if defined(CTR_NATIVE)
 		// Demo mode converts P1 to ACTION_BOT, leaving retail's human-driver
 		// scan empty. PS1 can read low RAM through a null pointer; host cannot.
 		if (d == NULL)
 		{
 			break;
 		}
-#endif
 
 		// if race has more than 2 laps
 		if ((2 < sdata->gGT->numLaps) &&
@@ -362,7 +360,6 @@ void Audio_Update1(void)
 			d = 0;
 		}
 
-#if defined(CTR_NATIVE)
 		if (d == NULL)
 		{
 			if (((sdata->boolNeedXASeek != 0) && (sdata->XA_State == XA_IDLE)) && (9 < gGT->frameTimer_MainFrame_ResetDB - sdata->XA_PauseFrame))
@@ -373,7 +370,6 @@ void Audio_Update1(void)
 			Level_AmbientSound();
 			break;
 		}
-#endif
 
 		// if need to XASeek
 		if (((sdata->boolNeedXASeek != 0) && (sdata->XA_State == XA_IDLE)) && (9 < gGT->frameTimer_MainFrame_ResetDB - sdata->XA_PauseFrame))
@@ -437,12 +433,10 @@ void Audio_Update1(void)
 
 		Level_AmbientSound();
 
-#if defined(CTR_NATIVE)
 		if (d == NULL)
 		{
 			break;
 		}
-#endif
 
 		if (
 		    // if driver's lap is the last lap
@@ -471,7 +465,6 @@ void Audio_Update1(void)
 			d = 0;
 		}
 
-#if defined(CTR_NATIVE)
 		if (d == NULL)
 		{
 			if (((sdata->boolNeedXASeek != 0) && (sdata->XA_State == XA_IDLE)) && (9 < gGT->frameTimer_MainFrame_ResetDB - sdata->XA_PauseFrame))
@@ -482,7 +475,6 @@ void Audio_Update1(void)
 			Level_AmbientSound();
 			break;
 		}
-#endif
 
 		// if need to XASeek
 		if (((sdata->boolNeedXASeek != 0) && (sdata->XA_State == XA_IDLE)) && (9 < gGT->frameTimer_MainFrame_ResetDB - sdata->XA_PauseFrame))

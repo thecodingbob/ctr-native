@@ -1,19 +1,13 @@
 #ifndef CTR_NATIVE_GPU_H
 #define CTR_NATIVE_GPU_H
 
-#ifdef CTR_NATIVE
 #include <platform/native_gpu_links.h>
-#endif
 
 // PS1 primitive tags store the next OT link as 24 bits. Native routes this
 // through a GPU link-token bridge so the packet layout stays retail-shaped.
 static inline u32 CtrGpu_PrimToOTLink24(const void *prim)
 {
-#ifdef CTR_NATIVE
 	return NativeGpuLinks_FromHostPointer(prim);
-#else
-	return (u32)((u32)prim & 0xffffffu);
-#endif
 }
 
 static inline u32 CtrGpu_PackOTTag(u32 ot, u32 tag)
@@ -21,7 +15,6 @@ static inline u32 CtrGpu_PackOTTag(u32 ot, u32 tag)
 	return ((u32)ot & 0xffffffu) | tag;
 }
 
-#ifdef CTR_NATIVE
 static inline b32 CtrGpu_IsCurrentOTRange(const struct DB *db, const u32 *start, const u32 *end)
 {
 	u32 rangeStart;
@@ -47,7 +40,6 @@ static inline b32 CtrGpu_IsCurrentOTRange(const struct DB *db, const u32 *start,
 	return (rangeStart >= otStart) && (rangeEnd < otCursor);
 }
 
-#endif
 
 static inline u32 CtrGpu_PackColorCode(u32 color, u32 code)
 {
@@ -56,46 +48,30 @@ static inline u32 CtrGpu_PackColorCode(u32 color, u32 code)
 
 static inline void CtrGpu_WriteColorCode(u8 *r, u32 colorCode)
 {
-#ifdef CTR_NATIVE
 	r[0] = (u8)colorCode;
 	r[1] = (u8)(colorCode >> 8);
 	r[2] = (u8)(colorCode >> 16);
 	r[3] = (u8)(colorCode >> 24);
-#else
-	*(CtrPackedU32 *)r = colorCode;
-#endif
 }
 
 static inline void CtrGpu_WritePackedXY(VERTTYPE *x, u32 xy)
 {
-#ifdef CTR_NATIVE
 	x[0] = (VERTTYPE)xy;
 	x[1] = (VERTTYPE)(xy >> 16);
-#else
-	*(CtrPackedU32 *)x = xy;
-#endif
 }
 
 static inline void CtrGpu_WritePackedUV(u8 *u, u16 uv)
 {
-#ifdef CTR_NATIVE
 	u[0] = (u8)uv;
 	u[1] = (u8)(uv >> 8);
-#else
-	*(CtrPackedU16 *)u = uv;
-#endif
 }
 
 static inline void CtrGpu_WritePackedUVWord(u8 *u, u32 uvTpage)
 {
-#ifdef CTR_NATIVE
 	u[0] = (u8)uvTpage;
 	u[1] = (u8)(uvTpage >> 8);
 	u[2] = (u8)(uvTpage >> 16);
 	u[3] = (u8)(uvTpage >> 24);
-#else
-	*(CtrPackedU32 *)u = uvTpage;
-#endif
 }
 
 CTR_STATIC_ASSERT(sizeof(POLY_FT4) == 0x28);

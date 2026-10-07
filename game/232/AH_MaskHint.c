@@ -279,7 +279,6 @@ static inline s32 AH_MaskHint_DrawPromptText(void)
 	return DecalFont_DrawMultiLine(*message, 0x100, 0xb4, 400, FONT_SMALL, (s16)(JUSTIFY_CENTER | ORANGE));
 }
 
-#if defined(CTR_NATIVE)
 // NOTE(aalhendi): Native submits the prompt before DrawOTag; state and audio
 // progression still run later through AH_MaskHint_Update.
 static void AH_MaskHint_DrawRepeatPrompt(void)
@@ -295,7 +294,6 @@ static void AH_MaskHint_DrawRepeatPrompt(void)
 	r.h = height + 8;
 	RECTMENU_DrawInnerRect(&r, 4, GAME_TRACKER->backBuffer->otMem.uiOT);
 }
-#endif
 
 void AH_MaskHint_Update(void)
 {
@@ -455,22 +453,6 @@ void AH_MaskHint_Update(void)
 		// NOTE(aalhendi): Native draws only this shared prompt earlier from
 		// AH_Map_Main so synchronous DrawOTag sees it; the rest of this state
 		// remains retail-timed here.
-#if !defined(CTR_NATIVE)
-		{
-			b32 found = AH_MaskHint_IsListed();
-			// NOTE(aalhendi): Keep the search result separate from its loop flag.
-			CTR_PSX_KEEP_VALUE_RELAXED(found);
-			if (found)
-			{
-				s32 height = AH_MaskHint_DrawPromptText();
-				work.ui.r.x = -10;
-				work.ui.r.w = 0x214;
-				work.ui.r.y = 0xb0;
-				work.ui.r.h = height + 8;
-				RECTMENU_DrawInnerRect(&work.ui.r, 4, GAME_TRACKER->backBuffer->otMem.uiOT);
-			}
-		}
-#endif
 
 		AH_MaskHint_SetAnim(AH_MASKHINT_FULL_BLEND);
 

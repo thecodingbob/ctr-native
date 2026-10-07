@@ -38,7 +38,6 @@ enum
 #define VEH_TURBO_FIELD(cursor, type, offset) (*(type *)((cursor) + (offset)))
 
 // NOTE(aalhendi): Retail emits all three GTE result stores from one base; native reads the same emulated registers as ordinary C values.
-#if defined(CTR_NATIVE)
 #define VEH_TURBO_STORE_TRANSLATION(out) \
 	do                                   \
 	{                                    \
@@ -46,19 +45,6 @@ enum
 		(out)[1] = (s32)MFC2(10);        \
 		(out)[2] = (s32)MFC2(11);        \
 	} while (0)
-#else
-#define VEH_TURBO_STORE_TRANSLATION(out)      \
-	do                                        \
-	{                                         \
-		s32 *translation = (out);             \
-		__asm__ volatile("swc2 $9,0(%0)\n\t"  \
-		                 "swc2 $10,4(%0)\n\t" \
-		                 "swc2 $11,8(%0)"     \
-		                 :                    \
-		                 : "r"(translation)   \
-		                 : "memory");         \
-	} while (0)
-#endif
 
 void VehTurbo_ProcessBucket(struct Thread *turboThread)
 {
@@ -151,7 +137,8 @@ void VehTurbo_ThTick(struct Thread *turboThread)
 	int firstSecondaryMatrixElement;
 	s16 elapsedTime;
 	u8 kartState;
-	// NOTE(aalhendi): These transient bindings preserve the retail allocator choices; CTR_NATIVE ignores them and keeps the same C semantics.
+	// These transient bindings preserve the retail allocator
+	// choices; they are unused here and keep the same C semantics.
 	register u32 fireAudioDistort CTR_PSX_REGISTER("$4");
 	register int fireSfxVolume CTR_PSX_REGISTER("$3");
 	register u32 fireAudioDistortSource CTR_PSX_REGISTER("$2");
@@ -428,10 +415,8 @@ void VehTurbo_ThTick(struct Thread *turboThread)
 
 	ContinueTurbo:
 		ThTick_FastRET(turboThread);
-#if defined(CTR_NATIVE)
 		// NOTE(aalhendi): Native ticks are ordinary callbacks; the retail fast-return trampoline is a no-op there.
 		return;
-#endif
 	} while (1);
 }
 

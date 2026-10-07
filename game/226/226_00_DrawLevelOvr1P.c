@@ -376,7 +376,6 @@ static int DrawLevelOvr1P_IsPlausibleTextureLayout(const struct TextureLayout *t
 	return (texture->tpage & 0xfe00) == 0;
 }
 
-#ifdef CTR_NATIVE
 // NOTE(aalhendi): Native data-boundary shim. Retail ptrmap leaves PSX address
 // words in level data; native level loads store host-rebased pointers instead.
 static int DrawLevelOvr1P_MempackContains(const struct Mempack *pack, u32 ptr, u32 *span)
@@ -462,11 +461,9 @@ static int DrawLevelOvr1P_IsNativeLevelSpan(u32 ptr, u32 size)
 	return end <= (u32)pack->start + span;
 }
 
-#endif
 
 static int DrawLevelOvr1P_IsNativeLevelTexturePointer(u32 value)
 {
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Native classifies host-rebased level texture pointers at
 	// the data boundary; renderer control flow still follows retail sign tests.
 	u32 ptr = (u32)value;
@@ -477,10 +474,6 @@ static int DrawLevelOvr1P_IsNativeLevelTexturePointer(u32 value)
 	}
 
 	return DrawLevelOvr1P_IsPlausibleTextureLayout((const struct TextureLayout *)ptr);
-#else
-	(void)value;
-	return 0;
-#endif
 }
 
 static int DrawLevelOvr1P_TreatAsRetailNegativeTextureWord(u32 value)
@@ -505,7 +498,6 @@ static u32 DrawLevelOvr1P_GetProjectedOtSlotWord(const struct DrawLevelOvr1PScra
 	return slotWord;
 }
 
-#ifdef CTR_NATIVE
 static int DrawLevelOvr1P_TryConvertNativeMempackPointerToPsxWord(u32 hostWord, u32 *psxWord)
 {
 	const u32 psxRamBase = 0x80000000u;
@@ -529,11 +521,9 @@ static int DrawLevelOvr1P_TryConvertNativeMempackPointerToPsxWord(u32 hostWord, 
 	*psxWord = psxRamBase + (u32)(hostPtr - hostBase);
 	return 1;
 }
-#endif
 
 static struct TextureLayout *DrawLevelOvr1P_ResolveTexturePointerChecked(u32 texturePtr)
 {
-#ifdef CTR_NATIVE
 	struct TextureLayout *texture;
 
 	if (texturePtr == 0)
@@ -563,14 +553,10 @@ static struct TextureLayout *DrawLevelOvr1P_ResolveTexturePointerChecked(u32 tex
 	}
 
 	return DrawLevelOvr1P_IsPlausibleTextureLayout(texture) ? texture : NULL;
-#else
-	return DrawLevelOvr1P_ResolveTexturePointer(texturePtr);
-#endif
 }
 
 static s8 DrawLevelOvr1P_ReadRetailQuadBlockByte(const struct QuadBlock *block, u32 byteOffset)
 {
-#ifdef CTR_NATIVE
 	if (byteOffset >= 0x1c && byteOffset < 0x2c)
 	{
 		u32 pointerWordOffset = byteOffset & ~3u;
@@ -584,7 +570,6 @@ static s8 DrawLevelOvr1P_ReadRetailQuadBlockByte(const struct QuadBlock *block, 
 			return (s8)((psxWord >> ((byteOffset & 3u) * 8)) & 0xff);
 		}
 	}
-#endif
 
 	return *(const s8 *)((const u8 *)block + byteOffset);
 }
@@ -827,7 +812,6 @@ static void DrawLevelOvr1P_PrepareDeepestMosaicUv(const struct DrawLevelOvr1PScr
 	}
 
 	u32 mosaicBase = DrawLevelOvr1P_Scratch()->mosaicTextureWord;
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Retail uses scratch 0x84 directly. Native can inherit
 	// host-rebased pointer words when a wide slot preserves texture state, so
 	// only dereference values that are valid level texture data.
@@ -836,7 +820,7 @@ static void DrawLevelOvr1P_PrepareDeepestMosaicUv(const struct DrawLevelOvr1PScr
 		DrawLevelOvr1P_RestoreProjectedUvScratch();
 		return;
 	}
-#endif
+
 	// NOTE(aalhendi): Retail 0x800a8714/0x800aa334 restores saved UV scratch
 	// for positive inline sentinels, but rebased native hi-texture pointers must
 	// still follow PS1's negative-pointer reload path.
@@ -2738,25 +2722,10 @@ static int Ovr226_800aac00_EmitClipRecordGT3(struct PushBuffer *pb, struct PrimM
 
 static void DrawLevelOvr1P_StoreCurrentIrVector(s16 *out)
 {
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Native reads PsyCross-backed GTE IR registers directly.
 	out[0] = (s16)MFC2_S(9);
 	out[1] = (s16)MFC2_S(10);
 	out[2] = (s16)MFC2_S(11);
-#else
-	s32 ir0;
-	s32 ir1;
-	s32 ir2;
-
-	__asm__ volatile("mfc2 %0,$9\n"
-	                 "mfc2 %1,$10\n"
-	                 "mfc2 %2,$11\n"
-	                 : "=r"(ir0), "=r"(ir1), "=r"(ir2));
-
-	out[0] = (s16)ir0;
-	out[1] = (s16)ir1;
-	out[2] = (s16)ir2;
-#endif
 }
 
 static void Ovr226_800aaad0_PrepareClipRecordDepthScratch(struct DrawLevelOvr1PScratchVertex *projected, s32 threshold)
@@ -4489,7 +4458,6 @@ static void Ovr226_800a3f74_PrepareGround4x1DeepestUv(const struct DrawLevelOvr1
 	}
 
 	u32 mosaicBase = DrawLevelOvr1P_Scratch()->mosaicTextureWord;
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Retail dereferences scratch 0x84 directly. Native can
 	// carry host-rebased level words here, so only follow pointer-shaped
 	// values that belong to level texture data.
@@ -4498,7 +4466,7 @@ static void Ovr226_800a3f74_PrepareGround4x1DeepestUv(const struct DrawLevelOvr1
 		DrawLevelOvr1P_RestoreProjectedUvScratch();
 		return;
 	}
-#endif
+
 	if ((s32)mosaicBase > 0 && !DrawLevelOvr1P_IsNativeLevelTexturePointer(mosaicBase))
 	{
 		DrawLevelOvr1P_RestoreProjectedUvScratch();
@@ -4819,7 +4787,6 @@ static void Ovr226_800a4b54_PrepareGround4x1RenderedDeepestUv(const struct DrawL
 	}
 
 	u32 mosaicBase = DrawLevelOvr1P_Scratch()->mosaicTextureWord;
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Native keeps this as a data-boundary guard for
 	// host-rebased level texture words; non-native code follows retail.
 	if (mosaicBase == 0 || ((s32)mosaicBase < 0 && !DrawLevelOvr1P_IsNativeLevelTexturePointer(mosaicBase)))
@@ -4827,7 +4794,7 @@ static void Ovr226_800a4b54_PrepareGround4x1RenderedDeepestUv(const struct DrawL
 		DrawLevelOvr1P_RestoreProjectedUvScratch();
 		return;
 	}
-#endif
+
 	if ((s32)mosaicBase > 0 && !DrawLevelOvr1P_IsNativeLevelTexturePointer(mosaicBase))
 	{
 		DrawLevelOvr1P_RestoreProjectedUvScratch();

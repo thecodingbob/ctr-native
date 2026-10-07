@@ -46,18 +46,14 @@ void AH_SaveObj_ThTick(struct Thread *t)
 			driverInst->thread->funcThTick = NULL;
 
 			save->flags |= AH_SAVEOBJ_FLAG_HUD_RESTORED;
-#if defined(CTR_NATIVE)
 			// NOTE(aalhendi): Retail hides the HUD before queueing a hub
 			// load while levelID is temporarily MAIN_MENU_LEVEL. Native can
 			// keep this save object ticking during that transition, so do not
 			// restore the hub HUD/map until loading is idle again.
 			if (sdata->Loading.stage == LOAD_IDLE)
 			{
-#endif
 				GAME_TRACKER->hudFlags = (u8)save->hudFlagBackup;
-#if defined(CTR_NATIVE)
 			}
-#endif
 		}
 
 		// if camera is transitioning

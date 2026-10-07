@@ -628,7 +628,6 @@ struct OverlayDATA_233 D233 =
 #include "D233_data.inc"
     ;
 
-#ifdef CTR_NATIVE
 static const struct OverlayDATA_233 s_cutsceneInitialState =
 #include "D233_data.inc"
     ;
@@ -637,7 +636,6 @@ void CS_OVR233_ResetData(void)
 {
 	D233 = s_cutsceneInitialState;
 }
-#endif
 
 #undef OVR233_CS_OP_SET_AUDIO_VOLUME_AT
 #undef OVR233_CS_OP_WAIT_UI_FADE_AT

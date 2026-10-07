@@ -127,10 +127,8 @@ void DecalFont_DrawLineStrlen(char *str, s16 len, s16 posX, s16 posY, s16 fontTy
 			}
 			gGT = GAME_TRACKER;
 			group = gGT->iconGroup[iconGroupID];
-#ifdef CTR_NATIVE
 			// NOTE(aalhendi): Native can boot before every retail icon group is loaded.
 			if (group != NULL)
-#endif
 			{
 				if (iconID < group->numIcons)
 				{

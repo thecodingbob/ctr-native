@@ -450,14 +450,12 @@ update_garage_camera:
 		}
 	}
 
-#ifdef CTR_NATIVE
 	if (CS_DESIRED_MENU == &data.menuSubmitName)
 	{
 		// NOTE(aalhendi): Flush a pending native Enter press so it cannot
 		// submit the name immediately when the keyboard opens.
 		NikoGetEnterKey();
 	}
-#endif
 
 	if (CS_GARAGE_SELECTED == 0)
 	{

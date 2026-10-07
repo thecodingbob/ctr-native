@@ -1,8 +1,6 @@
 #include <common.h>
 
-#if defined(CTR_NATIVE)
 #include <platform/native_audio.h>
-#endif
 
 b32 CDSYS_Init(b32 boolUseDisc)
 {
@@ -83,7 +81,6 @@ void CDSYS_SetMode_StreamData()
 {
 	u8 buf[8];
 
-#if defined(CTR_NATIVE)
 	// NOTE(aalhendi): Native has no disc-mode switch, but retail force-stops
 	// XA on every data-mode entry via CDSYS_XAPauseForce when XNF is loaded.
 	// Mirror that safety net so any caller expecting XA to be stopped before
@@ -95,7 +92,6 @@ void CDSYS_SetMode_StreamData()
 		CDSYS_XAPauseForce();
 	}
 	return;
-#endif
 
 	// quit if using parallel
 	if (sdata->boolUseDisc == 0)
@@ -411,8 +407,6 @@ void CDSYS_SpuDisableIRQ()
 	sdata->XA_MaxSampleVal = 0;
 }
 
-
-#if defined(CTR_NATIVE)
 internal s32 CDSYS_NativeGetXAFadeAmount(s32 fadeSteps)
 {
 	if (fadeSteps <= 0)
@@ -483,7 +477,6 @@ void CDSYS_SpuGetMaxSampleAtOffset(int xaCurrOffset)
 
 	CDSYS_SpuGetMaxSample();
 }
-#endif
 
 void CDSYS_SpuGetMaxSample(void)
 {
@@ -491,13 +484,11 @@ void CDSYS_SpuGetMaxSample(void)
 	s16 max;
 	max = 0;
 
-#if defined(CTR_NATIVE)
 	if (sdata->boolUseDisc == 0)
 	{
 		CDSYS_SaveMaxSample(NativeAudio_GetXAMaxSample());
 		return;
 	}
-#endif
 
 	if (sdata->boolUseDisc == 0)
 	{
@@ -528,35 +519,7 @@ void CDSYS_SpuGetMaxSample(void)
 		}
 	}
 
-#if defined(CTR_NATIVE)
 	CDSYS_SaveMaxSample(max);
-#else
-	// save max for this block
-	sdata->XA_MaxSampleVal = max;
-	sdata->XA_MaxSampleValArr[sdata->XA_MaxSampleIndex] = max;
-
-	// Cycle through ring buffer
-	sdata->XA_MaxSampleIndex++;
-	if (sdata->XA_MaxSampleIndex >= CDSYS_XA_MAX_SAMPLE_WINDOW)
-		sdata->XA_MaxSampleIndex = 0;
-
-	if (sdata->XA_MaxSampleNumSaved < CDSYS_XA_MAX_SAMPLE_WINDOW)
-		sdata->XA_MaxSampleNumSaved++;
-
-	// Find max of last 3 block maxes,
-	// as long as 3 blocks have already passed
-	sdata->XA_MaxSampleValInArr = 0;
-	int index = sdata->XA_MaxSampleIndex;
-	for (int i = sdata->XA_MaxSampleNumSaved; i > 0; i--)
-	{
-		index--;
-		if (index < 0)
-			index = CDSYS_XA_MAX_SAMPLE_WINDOW - 1;
-
-		if (sdata->XA_MaxSampleValInArr < sdata->XA_MaxSampleValArr[index])
-			sdata->XA_MaxSampleValInArr = sdata->XA_MaxSampleValArr[index];
-	}
-#endif
 }
 
 
@@ -628,9 +591,7 @@ int CDSYS_XAGetTrackLength(int categoryID, int xaID)
 {
 	if (sdata->boolUseDisc == 0)
 	{
-#if defined(CTR_NATIVE)
 		return NativeAudio_GetXATrackLength(categoryID, xaID);
-#endif
 		return 0;
 	}
 
@@ -662,7 +623,6 @@ int CDSYS_XAPlay(int categoryID, int xaID)
 
 	if (sdata->boolUseDisc == 0)
 	{
-#if defined(CTR_NATIVE)
 		int nativeVol = (categoryID == CDSYS_XA_TYPE_MUSIC) ? sdata->vol_Music : sdata->vol_Voice;
 
 		// NOTE(aalhendi): Native CD has no CD-XA IRQ stream. Feed extracted
@@ -687,8 +647,6 @@ int CDSYS_XAPlay(int categoryID, int xaID)
 		}
 		sdata->XA_MaxSampleVal = 0;
 		sdata->XA_MaxSampleValInArr = 0;
-		return 1;
-#endif
 		return 1;
 	}
 
@@ -775,13 +733,11 @@ void CDSYS_XAPauseRequest()
 {
 	if (sdata->boolUseDisc == 0)
 	{
-#if defined(CTR_NATIVE)
 		if ((sdata->XA_State >= XA_STARTING) && (sdata->XA_State <= XA_PLAYING))
 		{
 			sdata->XA_State = XA_FADING;
 			sdata->XA_VolumeDeduct = CDSYS_XA_FADE_VOLUME_STEP;
 		}
-#endif
 		return;
 	}
 	if (sdata->bool_XnfLoaded == 0)
@@ -806,12 +762,10 @@ void CDSYS_XAPauseForce()
 {
 	if (sdata->boolUseDisc == 0)
 	{
-#if defined(CTR_NATIVE)
 		NativeAudio_StopXA();
 		sdata->XA_boolFinished = 0;
 		sdata->XA_State = XA_IDLE;
 		sdata->XA_PauseFrame = sdata->gGT->frameTimer_MainFrame_ResetDB;
-#endif
 		return;
 	}
 	if (sdata->bool_XnfLoaded == 0)
@@ -839,7 +793,6 @@ void CDSYS_XAPauseAtEnd()
 {
 	if (sdata->boolUseDisc == 0)
 	{
-#if defined(CTR_NATIVE)
 		int xaPlaying = NativeAudio_IsXAPlaying();
 		int fadeSteps = 0;
 
@@ -912,7 +865,6 @@ void CDSYS_XAPauseAtEnd()
 			sdata->XA_MaxSampleVal = 0;
 			sdata->XA_MaxSampleValInArr = 0;
 		}
-#endif
 		return;
 	}
 

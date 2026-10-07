@@ -184,7 +184,6 @@ void AH_WarpPad_SpinRewards(struct Instance *prizeInst, struct WarpPad *warppadO
 	prizeInst->matrix.t[2] = position.z + (trig * 0xA0 >> 0xc);
 }
 
-#ifdef CTR_NATIVE
 // NOTE(aalhendi): Synthetic cup IDs probe beyond metaDataLEV. Read through
 // the enclosing data image without indexing past the native array.
 static inline s16 AH_WarpPad_Champion(s32 levelID)
@@ -192,9 +191,6 @@ static inline s16 AH_WarpPad_Champion(s32 levelID)
 	return (s16)CTR_ReadU16AlignedLE((const u8 *)&data + offsetof(struct Data, metaDataLEV) + levelID * sizeof(struct MetaDataLEV) +
 	                                 offsetof(struct MetaDataLEV, characterID_Champion));
 }
-#else
-#define AH_WarpPad_Champion(levelID) (AH_LEVEL_METADATA[(levelID)].characterID_Champion)
-#endif
 
 void AH_WarpPad_ThTick(struct Thread *t)
 {
@@ -239,11 +235,9 @@ void AH_WarpPad_ThTick(struct Thread *t)
 	driver = GAME_TRACKER->drivers[0];
 	boolOpen = false;
 
-#if defined(CTR_NATIVE)
 	// NOTE(aalhendi): Retail can read PS1 low RAM when the hub-swap frame
 	// leaves this list null; native treats that as an empty visible-instance list.
 	if (visInstSrc != NULL)
-#endif
 	{
 		while (visInstSrc[0] != 0)
 		{

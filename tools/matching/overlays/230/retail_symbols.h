@@ -310,9 +310,9 @@
 #define MM_DRAW_SOLID_BOX_WITH_PRIM_MEM CTR_Box_DrawSolidBox
 #define MM_DRAW_LINE_WIDE_FLAGS mm_drawLineWideFlags
 
-// NOTE(aalhendi): The canonical call grows MM_CupSelect_MenuProc by two
+// The canonical call grows MM_CupSelect_MenuProc by two
 // instructions. This matching-only aggregate reproduces GCC 2.8.1's retail
-// outgoing-argument layout; CTR_NATIVE calls RECTMENU_DrawPolyGT4 directly.
+// outgoing-argument layout; the host build calls RECTMENU_DrawPolyGT4 directly.
 struct MMCupSelectDrawTrackArgs
 {
 	u32 *orderingTable;

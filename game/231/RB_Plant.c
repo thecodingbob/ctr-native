@@ -126,10 +126,8 @@ void RB_Plant_ThTick_Eat(struct Thread *t)
 			}
 		}
 		ThTick_FastRET(t);
-#ifdef CTR_NATIVE
 		// NOTE(aalhendi): Native ticks return as callbacks; retail yields through FastRET.
 		return;
-#endif
 	} while (1);
 }
 
@@ -187,10 +185,8 @@ void RB_Plant_ThTick_Grab(struct Thread *t)
 			}
 		}
 		ThTick_FastRET(t);
-#ifdef CTR_NATIVE
 		// NOTE(aalhendi): Native ticks return as callbacks; retail yields through FastRET.
 		return;
-#endif
 	} while (1);
 }
 
@@ -212,10 +208,8 @@ void RB_Plant_ThTick_Transition_HungryToRest(struct Thread *t)
 			ThTick_SetAndExec(t, RB_Plant_ThTick_Rest);
 		}
 		ThTick_FastRET(t);
-#ifdef CTR_NATIVE
 		// NOTE(aalhendi): Native ticks return as callbacks; retail yields through FastRET.
 		return;
-#endif
 	} while (1);
 }
 
@@ -288,10 +282,8 @@ void RB_Plant_ThTick_Hungry(struct Thread *t)
 		}
 	yield:
 		ThTick_FastRET(t);
-#ifdef CTR_NATIVE
 		// NOTE(aalhendi): Native ticks return as callbacks; retail yields through FastRET.
 		return;
-#endif
 	} while (1);
 }
 
@@ -346,10 +338,8 @@ void RB_Plant_ThTick_Rest(struct Thread *t)
 		}
 	yield:
 		ThTick_FastRET(t);
-#ifdef CTR_NATIVE
 		// NOTE(aalhendi): Native ticks return as callbacks; retail yields through FastRET.
 		return;
-#endif
 	} while (1);
 }
 

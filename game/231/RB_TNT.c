@@ -15,13 +15,9 @@ void RB_TNT_ThTick_ThrowOffHead(struct Thread *t)
 	// do NOT use parenthesis
 	inst->matrix.t[1] += (mw->velocity.y * GAME_TRACKER->elapsedTimeMS) >> 5;
 
-#if defined(CTR_NATIVE)
 	// NOTE(aalhendi): Retail reads through driverTarget blindly here. Boss-thrown TNT can have
 	// no target, and native cannot mirror PS1 low-memory null reads.
 	if ((mw->stopFallAtY == 0x3fff) && (mw->driverTarget != NULL))
-#else
-	if (mw->stopFallAtY == 0x3fff)
-#endif
 	{
 		mw->stopFallAtY = mw->driverTarget->instSelf->matrix.t[1];
 	}
@@ -44,16 +40,12 @@ void RB_TNT_ThTick_ThrowOffHead(struct Thread *t)
 		// this thread is now dead
 		t->flags |= THREAD_FLAG_DEAD;
 
-#if defined(CTR_NATIVE)
 		// NOTE(aalhendi): Retail writes through driverTarget blindly; boss-thrown TNT has no
 		// driver-owned instTntRecv slot to clear.
 		if (mw->driverTarget != NULL)
 		{
-#endif
 			mw->driverTarget->instTntRecv = 0;
-#ifdef CTR_NATIVE
 		}
-#endif
 	}
 
 	// decrease velocity (artificial gravity)
@@ -152,10 +144,8 @@ void RB_TNT_ThTick_SitOnHead(struct Thread *t)
 		mw->driverTarget->instTntRecv = 0;
 
 		ThTick_FastRET(t);
-#ifdef CTR_NATIVE
 		// NOTE(aalhendi): FastRET exits the retail tick; native uses a callback return.
 		return;
-#endif
 	}
 
 	if ((mw->driverTarget->actionsFlagSet & ACTION_BOT) != 0)
@@ -166,10 +156,8 @@ void RB_TNT_ThTick_SitOnHead(struct Thread *t)
 			goto advanceTimer;
 		}
 		RB_TNT_Detach(t, inst, mw);
-#ifdef CTR_NATIVE
 		// NOTE(aalhendi): Native transitions can return; do not resume the old tick.
 		return;
-#endif
 	}
 	else
 	{
@@ -186,9 +174,7 @@ void RB_TNT_ThTick_SitOnHead(struct Thread *t)
 		}
 		mw->jumpsRemaining = 0;
 		RB_TNT_Detach(t, inst, mw);
-#ifdef CTR_NATIVE
 		return;
-#endif
 	}
 
 advanceTimer:
@@ -232,10 +218,8 @@ advanceTimer:
 
 		mw->driverTarget->instTntRecv = NULL;
 		ThTick_FastRET(t);
-#ifdef CTR_NATIVE
 		// NOTE(aalhendi): FastRET exits before the expired timer indexes the scale table.
 		return;
-#endif
 	}
 
 	// set scale of TNT, given frame of animation
@@ -294,10 +278,8 @@ void RB_TNT_ThTick_ThrowOnHead(struct Thread *t)
 
 			// assign
 			ThTick_SetAndExec(t, RB_TNT_ThTick_SitOnHead);
-#ifdef CTR_NATIVE
 			// NOTE(aalhendi): Native transitions return; retail resumes the new tick directly.
 			return;
-#endif
 		}
 	}
 

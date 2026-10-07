@@ -10,10 +10,8 @@ void RB_Fruit_ThTick(struct Thread *fruitTh)
 		fruitInst->thread = NULL;
 		fruitTh->flags |= THREAD_FLAG_DEAD;
 		ThTick_FastRET(fruitTh);
-#ifdef CTR_NATIVE
 		// NOTE(aalhendi): Native ticks return as callbacks; retail yields through FastRET.
 		return;
-#endif
 	} while (1);
 }
 

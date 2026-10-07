@@ -70,7 +70,6 @@ enum
 // NOTE(aalhendi): These local seams reproduce the few instructions whose
 // register choices GCC 2.8.1 cannot express through C alone. Native builds
 // retain the same game-state operations without the PSX scheduling controls.
-#if defined(CTR_NATIVE)
 #define MM_CHARACTERS_LOAD_OUTLINE_GAME_TRACKER(gameTracker)    ((gameTracker) = (u32)GAME_TRACKER)
 #define MM_CHARACTERS_LOAD_OUTER_LOOP_GAME_TRACKER(gameTracker) ((gameTracker) = GAME_TRACKER)
 #define MM_CHARACTERS_LOAD_COLLISION_GAME_TRACKER(gameTracker)  ((gameTracker) = GAME_TRACKER)
@@ -83,29 +82,6 @@ enum
 		(gameTracker) = GAME_TRACKER;                                                  \
 		(transitionY) += (metadataY);                                                  \
 	} while (0)
-#else
-#define MM_CHARACTERS_LOAD_OUTLINE_GAME_TRACKER(gameTracker)  \
-	__asm__("lui $14,%hi(" RETAIL_GAME_TRACKER_ASM_NAME ")"); \
-	__asm__("lw %0,%%lo(" RETAIL_GAME_TRACKER_ASM_NAME ")($14)" : "=r"(gameTracker))
-#define MM_CHARACTERS_LOAD_OUTER_LOOP_GAME_TRACKER(gameTracker) \
-	__asm__("lui $11,%hi(" RETAIL_GAME_TRACKER_ASM_NAME ")");   \
-	__asm__("lw %0,%%lo(" RETAIL_GAME_TRACKER_ASM_NAME ")($11)" : "=r"(gameTracker))
-// NOTE(aalhendi): Retail keeps the existing absolute-address pages in $14 and
-// $13 across these collision checks; the compiler otherwise rebuilds them.
-#define MM_CHARACTERS_LOAD_COLLISION_GAME_TRACKER(gameTracker) \
-	__asm__ volatile("move %0,$14\n\tlw %0,%%lo(" RETAIL_GAME_TRACKER_ASM_NAME ")(%0)" : "=r"(gameTracker) : "m"(GAME_TRACKER_RELOAD()))
-#define MM_CHARACTERS_CAPTURE_FINAL_COLLISION_PAGE(gameTracker) __asm__ volatile("move %0,$13" : "=r"(gameTracker) : "m"(GAME_TRACKER_RELOAD()))
-// NOTE(aalhendi): These zero-byte assembler aliases make GCC's generated
-// by-value Color copies use retail's $12 scratch register instead of $14.
-#define MM_CHARACTERS_BEGIN_ICON_COLOR_COPY(characterMetadata)  __asm__ volatile(".set $14,$12" : : "r"(characterMetadata))
-#define MM_CHARACTERS_END_ICON_COLOR_COPY()                     __asm__ volatile(".set $14,$t6")
-// NOTE(aalhendi): Combining the load and add preserves retail's instruction
-// schedule; the native expansion performs the equivalent C assignments.
-#define MM_CHARACTERS_LOAD_HIGHLIGHT_GAME_TRACKER(gameTracker, transitionY, metadataY)    \
-	__asm__ volatile("lw %0,%%lo(" RETAIL_GAME_TRACKER_ASM_NAME ")($21)\n\taddu %1,%1,%3" \
-	                 : "=r"(gameTracker), "=r"(transitionY)                               \
-	                 : "1"(transitionY), "r"(metadataY), "m"(GAME_TRACKER))
-#endif
 
 extern unsigned char oxideModel[];
 
@@ -429,10 +405,8 @@ LAB_Characters_DrawWindows_Loop:
 				pb->rect.x = rectEnd;
 				pb->rect.w = 0;
 
-#ifdef CTR_NATIVE
 				// NOTE(aalhendi): Native renderer guard; retail leaves w at zero.
 				pb->rect.w = 1;
-#endif
 			}
 		}
 
@@ -457,10 +431,8 @@ LAB_Characters_DrawWindows_Loop:
 				pb->rect.y = rectEnd;
 				pb->rect.h = 0;
 
-#ifdef CTR_NATIVE
 				// NOTE(aalhendi): Native renderer guard; retail leaves h at zero.
 				pb->rect.h = 1;
-#endif
 			}
 		}
 	}
@@ -724,11 +696,7 @@ void MM_Characters_PreventOverlap(void)
 	s16 playerIndex;
 
 	// default 0,1,2,3,4,5,6,7
-#ifdef CTR_NATIVE
 	memcpy(&availableDefaultCharacters, MM_DEFAULT_CHARACTER_ID_WORDS, sizeof(availableDefaultCharacters));
-#else
-	availableDefaultCharacters = *(const struct PackedCharacterIDs *)MM_DEFAULT_CHARACTER_ID_WORDS;
-#endif
 
 	for (playerIndex = 0; playerIndex < GAME_TRACKER->numPlyrNextGame; playerIndex++)
 	{
@@ -862,9 +830,7 @@ void MM_Characters_RestoreIDs(void)
 		// set name string ID to the character ID of each player.
 		// The string will only draw if both these variables match
 		characterID = MM_CHARACTER_SELECT_DESIRED_IDS[playerIndex] = (MM_CHARACTER_SELECT_CURRENT_IDS[playerIndex] = GAME_CHARACTER_IDS[playerIndex]);
-#ifdef CTR_NATIVE
 		(void)characterID;
-#endif
 
 		// something to do with transitioning between icons
 		MM_CHARACTER_SELECT_MOVE_TIMERS[playerIndex] = 0;
@@ -1417,11 +1383,7 @@ outerPlayerLoopComplete:
 				                            (u32)MM_CHARACTER_SELECT_TRANSITION_META);
 				iconCharacterMetadata = (struct MetaDataCHAR *)MM_CHARACTER_METADATA_PAGE_VALUE;
 				CTR_PSX_FORGET_VALUE(iconCharacterMetadata);
-#if defined(CTR_NATIVE)
 				iconCharacterMetadata = GAME_CHARACTER_METADATA;
-#else
-				iconCharacterMetadata = (struct MetaDataCHAR *)((u8 *)iconCharacterMetadata + MM_CHARACTER_METADATA_PAGE_OFFSET);
-#endif
 				MM_CHARACTERS_BEGIN_ICON_COLOR_COPY(iconCharacterMetadata);
 				iconTransitionByteOffset += iconWork;
 				iconTransition = (struct TransitionMeta *)iconTransitionByteOffset;

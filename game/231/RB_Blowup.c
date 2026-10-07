@@ -48,10 +48,8 @@ void RB_Blowup_ThTick(struct Thread *t)
 			t->flags |= THREAD_FLAG_DEAD;
 		}
 		ThTick_FastRET(t);
-#ifdef CTR_NATIVE
 		// NOTE(aalhendi): The native scheduler resumes this callback on the next tick.
 		return;
-#endif
 	}
 }
 
@@ -75,14 +73,12 @@ void RB_Blowup_Init(struct Instance *weaponInst)
 	birth.parent = NULL;
 	effectInst = INSTANCE_BirthWithThread_Stack(&birth);
 
-#if defined(CTR_NATIVE)
 	// NOTE(aalhendi): Retail assumes the thread and instance pools have capacity. Native
 	// preserves the explosion damage when either optional visual cannot spawn.
 	if (effectInst == NULL)
 	{
 		goto ApplyDamage;
 	}
-#endif
 
 	effectInst->flags |= (VISIBLE_DURING_GAMEPLAY | DRAW_BILLBOARD);
 
@@ -114,12 +110,10 @@ void RB_Blowup_Init(struct Instance *weaponInst)
 
 	blowup->shockwave = effectInst;
 
-#if defined(CTR_NATIVE)
 	if (effectInst == NULL)
 	{
 		goto ApplyDamage;
 	}
-#endif
 
 	effectInst->flags |= PIXEL_LOD;
 
@@ -134,9 +128,7 @@ void RB_Blowup_Init(struct Instance *weaponInst)
 	headers[1].flags |= 2;
 	CTR_MatrixSetRotIdentity(&effectInst->matrix);
 
-#if defined(CTR_NATIVE)
 ApplyDamage:;
-#endif
 	sps = CTR_SCRATCHPAD_PTR(struct ScratchpadStruct, 0x108);
 
 	// put weapon position on scratchpad

@@ -245,7 +245,6 @@ void VehBirth_TeleportSelf(struct Driver *d, u32 spawnFlag, int spawnPosY)
 			CTR_PSX_KEEP_VALUE(spawnIndex);
 
 			driver->actionsFlagSet |= ACTION_BEHIND_START_LINE;
-#ifdef CTR_NATIVE
 			if (tracker->level1->ptr_restart_points == NULL)
 			{
 				// NOTE(aalhendi): Retail does an unguarded low-address read here;
@@ -253,7 +252,6 @@ void VehBirth_TeleportSelf(struct Driver *d, u32 spawnFlag, int spawnPosY)
 				driver->distanceToFinish_checkpoint = 0;
 			}
 			else
-#endif
 			{
 				driver->distanceToFinish_checkpoint = tracker->level1->ptr_restart_points[0].distToFinish << 3;
 			}
@@ -845,11 +843,9 @@ void VehBirth_NonGhost(struct Thread *t, int index)
 	d->instSelf = inst;
 
 	VehBirth_TireSprites(t);
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Retail leaves terrainMeta2 unset until COLL_FIXED;
 	// native cannot dereference the PS1 low-memory null-space before then.
 	d->terrainMeta2 = d->terrainMeta1;
-#endif
 	VehBirth_SetConsts(d);
 
 	// if you are in cutscene or in main menu

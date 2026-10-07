@@ -89,10 +89,8 @@ void RB_GenericMine_ThTick(struct Thread *t)
 			ThTick_SetAndExec(t, RB_TNT_ThTick_ThrowOffHead);
 		}
 
-#ifdef CTR_NATIVE
 		// NOTE(aalhendi): Native transitions can return; retail switches out of this tick.
 		return;
-#endif
 	}
 
 	// === If not "thrown" ===
@@ -294,10 +292,8 @@ void RB_GenericMine_ThTick(struct Thread *t)
 					mw->stopFallAtY = 0x3fff;
 
 					ThTick_SetAndExec(t, RB_TNT_ThTick_ThrowOnHead);
-#ifdef CTR_NATIVE
 					// NOTE(aalhendi): Do not resume this tick after a native transition.
 					return;
-#endif
 				}
 
 				// if this TNT has an InstDef, then it is part of LEV,

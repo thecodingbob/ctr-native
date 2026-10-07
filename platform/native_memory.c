@@ -34,10 +34,9 @@ u8 *gCTRNativeScratchpadBase;
 
 void Platform_InitScratchpad(void)
 {
-#if defined(CTR_NATIVE)
 	gCTRNativeScratchpadBase = &s_scratchpadMemory.bytes[0];
 	memset(&s_scratchpadMemory, 0, sizeof(s_scratchpadMemory));
-#endif
+
 }
 
 void Platform_ConfigureMempackArena(void)

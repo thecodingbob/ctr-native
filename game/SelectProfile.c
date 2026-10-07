@@ -35,14 +35,12 @@ void SelectProfile_ThTick(struct Thread *t)
 
 		icon->rot.y = (s16)(icon->rot.y + sdata->LoadSave_SpinRateY[slot]);
 
-#if defined(CTR_NATIVE)
 		// NOTE(aalhendi): Menu-storage can keep this thread alive when the
 		// load/save icon models were not published for the current level.
 		if (inst == NULL)
 		{
 			continue;
 		}
-#endif
 
 		ConvertRotToMatrix(&inst->matrix, &icon->rot);
 
@@ -99,12 +97,10 @@ static void SelectProfile_DrawAdvProfile_UpdateIcon(struct SelectProfileLoadSave
 {
 	struct Instance *inst = obj->icons[index].inst;
 
-#if defined(CTR_NATIVE)
 	if (inst == NULL)
 	{
 		return;
 	}
-#endif
 
 	inst->matrix.t[0] = SelectProfile_UI_ConvertX(posX, SELECT_PROFILE_UI_SCALE);
 	inst->matrix.t[1] = SelectProfile_UI_ConvertY(posY, SELECT_PROFILE_UI_SCALE);
@@ -226,13 +222,10 @@ void SelectProfile_GetTrackID()
 	sdata->advProgress.HubLevYouSavedOn = sdata->gGT->levelID;
 }
 
-
-#ifdef CTR_NATIVE
 // NOTE(aalhendi): Retail stores these debug names in EXE RDATA; native does not
 // expose the full retail RDATA struct.
 static char s_SelectProfileThreadName[] = "LoadSave";
 static char s_SelectProfileInstName[] = "loadsave";
-#endif
 
 static u32 SelectProfile_LoadSave_Color(int index, u32 flags)
 {
@@ -261,11 +254,7 @@ void SelectProfile_Init(u16 flags)
 
 	if (obj == NULL)
 	{
-#ifdef CTR_NATIVE
 		char *threadName = &s_SelectProfileThreadName[0];
-#else
-		char *threadName = rdata.s_LoadSave;
-#endif
 
 		t = PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(sizeof(struct SelectProfileLoadSaveObj), NONE, SMALL, OTHER), SelectProfile_ThTick, threadName,
 		                         NULL);
@@ -296,11 +285,7 @@ void SelectProfile_Init(u16 flags)
 		if (icon->inst == NULL)
 		{
 			struct Model *model = gGT->modelPtr[data.MetaDataLoadSave[i].modelID];
-#ifdef CTR_NATIVE
 			char *instName = &s_SelectProfileInstName[0];
-#else
-			char *instName = rdata.s_loadsave;
-#endif
 
 			if (model != NULL)
 			{
@@ -365,15 +350,11 @@ void SelectProfile_Destroy(void)
 			if (icon->inst != NULL)
 			{
 				INSTANCE_Death(icon->inst);
-#if defined(CTR_NATIVE)
 				icon->inst = NULL;
-#endif
 			}
 		}
 
-#if defined(CTR_NATIVE)
 		obj->thread->funcThTick = NULL;
-#endif
 		obj->thread->flags |= THREAD_FLAG_DEAD;
 		sdata->ptrLoadSaveObj = 0;
 	}

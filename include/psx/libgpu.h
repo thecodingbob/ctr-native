@@ -8,10 +8,8 @@
 #define LIBGPU_H
 
 #include <macros.h>
-#ifdef CTR_NATIVE
 #include <string.h>
 #include <platform/native_gpu_links.h>
-#endif
 
 typedef short VERTTYPE;
 
@@ -131,7 +129,6 @@ extern int (*GPU_printf)(const char *fmt, ...);
  * Primitive Handling Macros
  */
 
-#ifdef CTR_NATIVE
 static inline u32 CTR_GPU_ReadTagWord(const void *p)
 {
 	u32 word;
@@ -165,39 +162,14 @@ static inline void CTR_GPU_WriteTagAddrToken(void *p, u32 token)
 
 #define getlen(p)         (u8)(CTR_GPU_ReadTagWord(p) >> 24)
 #define getcode(p)        (u8)(((u8 *)(p))[7])
-#else
-#define isendprim(p)      ((((P_TAG *)(p))->addr) == 0xffffff)
-#define nextPrim(p)       (void *)(u32)(((P_TAG *)(p))->addr)
 
-#define setaddr(p, _addr) (((P_TAG *)(p))->addr = (u32)((u32)(_addr) & 0xffffffu))
-#define getaddr(p)        (u32)(((P_TAG *)(p))->addr)
-
-#define setlen(p, _len)   (((P_TAG *)(p))->len = (u8)(_len))
-#define setcode(p, _code) (((P_TAG *)(p))->code = (u8)(_code))
-
-#define getlen(p)         (u8)(((P_TAG *)(p))->len)
-#define getcode(p)        (u8)(((P_TAG *)(p))->code)
-#endif
-
-#ifdef CTR_NATIVE
 #define addPrim(ot, p)       CTR_GPU_WriteTagAddrToken((p), getaddr(ot)), setaddr((ot), (p))
 
 #define addPrims(ot, p0, p1) CTR_GPU_WriteTagAddrToken((p1), getaddr(ot)), setaddr((ot), (p0))
 
 #define catPrim(p0, p1)      setaddr((p0), (p1))
-#else
-#define addPrim(ot, p)       setaddr(p, getaddr(ot)), setaddr(ot, p)
 
-#define addPrims(ot, p0, p1) setaddr(p1, getaddr(ot)), setaddr(ot, p0)
-
-#define catPrim(p0, p1)      setaddr(p0, p1)
-#endif
-
-#ifdef CTR_NATIVE
 #define termPrim(p) CTR_GPU_WriteTagAddrToken((p), NATIVE_GPU_LINK_TERMINATOR)
-#else
-#define termPrim(p) (((P_TAG *)(p))->addr = 0xffffffu)
-#endif
 
 #define setSemiTrans(p, abe)    ((abe) ? setcode(p, getcode(p) | 0x02) : setcode(p, getcode(p) & ~0x02))
 

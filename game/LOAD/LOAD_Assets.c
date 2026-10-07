@@ -1,6 +1,6 @@
 #include <common.h>
 
-#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+#if defined(CTR_INTERNAL)
 #include <platform/native_checkpoint.h>
 #include <platform/native_config.h>
 #endif
@@ -329,7 +329,7 @@ void LOAD_RunPtrMap(char *origin, int *patchArr, int numPtrs)
 	{
 		int offset = (*ptrCurrOffset >> 2) << 2;
 		*(int *)&origin[offset] = *(int *)&origin[offset] + (int)origin;
-#if defined(CTR_NATIVE) && defined(CTR_INTERNAL)
+#if defined(CTR_INTERNAL)
 		NativeCheckpoint_RegisterPointerSlot(&origin[offset]);
 #endif
 	}

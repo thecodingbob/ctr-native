@@ -13,31 +13,10 @@ void LOAD_StringToUpper(char *path)
 	}
 }
 
-#ifdef CTR_NATIVE
 #include <platform/native_cd.h>
-#endif
 
 int LOAD_InitCDvol(void)
 {
-#ifndef CTR_NATIVE
-	if ((SPU_CURRENT_VOL_L == 0) && (SPU_CURRENT_VOL_R == 0))
-	{
-		SPU_MASTER_VOL_L = 0x3fff;
-		SPU_MASTER_VOL_R = 0x3fff;
-	}
-
-	SPU_CD_VOL_L = 0x3fff;
-	SPU_CD_VOL_R = 0x3fff;
-	SPU_CTRL = 0xc001;
-
-	CD_REG(0) = 2;
-	CD_REG(2) = 0x80;
-	CD_REG(3) = 0;
-	CD_REG(0) = 3;
-	CD_REG(1) = 0x80;
-	CD_REG(2) = 0;
-	CD_REG(3) = 0x20;
-#else
 	// NOTE(aalhendi): Retail CdInit calls this hook to reset SPU volume
 	// state before howl_InitGlobals re-applies game defaults. Native has
 	// no CdInit path (CDSYS_Init(0) skips it), so mirror the SPU CD
@@ -46,14 +25,12 @@ int LOAD_InitCDvol(void)
 	// by NativeAudio_SpuInit (0x3fff), matching retail's "only if zero"
 	// guard.
 	SpuSetCommonCDVolume(0x3fff, 0x3fff);
-#endif
 
 	return 0;
 }
 
 void LOAD_InitCD()
 {
-#ifdef CTR_NATIVE
 	NativeCD_Init();
 	CDSYS_Init(0);
 	// NOTE(aalhendi): Retail chains LOAD_InitCD -> CDSYS_Init(1) -> CdInit
@@ -61,7 +38,6 @@ void LOAD_InitCD()
 	// hook explicitly to preserve the same init ordering.
 	LOAD_InitCDvol();
 	return;
-#endif
 
 	CDSYS_Init(1);
 }
@@ -121,11 +97,7 @@ void LOAD_DramFileCallback(struct LoadQueueSlot *lqs)
 
 			LOAD_RunPtrMap(realFileBuf, (int *)DRAM_GETOFFSETS(dpm), dpm->numBytes >> 2);
 
-#if defined(CTR_NATIVE)
 			if ((lqs->flags & LT_MEMPACK) != 0)
-#else
-			if ((lqs->flags & LT_SETADDR) != 0)
-#endif
 			{
 				MEMPACK_ReallocMem(ptrMapOffset + 4);
 			}
@@ -138,13 +110,9 @@ void LOAD_DramFileCallback(struct LoadQueueSlot *lqs)
 		lqs->ptrDestination = &fileBuf[4];
 	}
 
-#if defined(CTR_NATIVE)
-	// NOTE(aalhendi): CTR_NATIVE keeps host callback pointers and queue sentinels.
+	// Host callback pointers and queue sentinels are preserved.
 	if ((callback != NULL) && (callback != LOAD_DramFileCallback) && (callback != (void (*)(struct LoadQueueSlot *))-1) &&
 	    (callback != LOAD_QUEUE_CALLBACK_SET_POINTER))
-#else
-	if ((callback != NULL) && (((u32)(u32)callback & 0xff000000) == 0x80000000))
-#endif
 	{
 		callback(lqs);
 	}
@@ -278,11 +246,7 @@ void LOAD_ReadFileASyncCallback(u8 result, u8 *unk)
 
 	if (result == CdlComplete)
 	{
-#if defined(CTR_NATIVE)
 		if ((lqs->flags & LT_MEMPACK) != 0)
-#else
-		if ((lqs->flags & LT_SETADDR) != 0)
-#endif
 		{
 			MEMPACK_ReallocMem(lqs->size_UNUSED);
 		}
@@ -296,11 +260,7 @@ void LOAD_ReadFileASyncCallback(u8 result, u8 *unk)
 	// CdlDiskError
 	else
 	{
-#if defined(CTR_NATIVE)
 		if ((lqs->flags & LT_MEMPACK) != 0)
-#else
-		if ((lqs->flags & LT_SETADDR) != 0)
-#endif
 		{
 			// undo allocation, try again
 			MEMPACK_PopState();
@@ -323,14 +283,12 @@ void *LOAD_ReadFile_ex(struct BigHeader *bigfile, u32 loadType, int subfileIndex
 	(void)loadType;
 	CDSYS_SetMode_StreamData();
 
-#if defined(CTR_NATIVE)
-	// NOTE(aalhendi): CTR_NATIVE preserves existing queues that pass 0 for the
-	// default bigfile; retail callers are expected to pass the real pointer.
+	// Existing queues that pass 0 for the default bigfile are
+	// preserved; retail callers are expected to pass the real pointer.
 	if (bigfile == NULL)
 	{
 		bigfile = sdata->ptrBigfile1;
 	}
-#endif
 
 	// get size and offset of subfile
 	struct BigEntry *entry = BIG_GETENTRY(bigfile);
@@ -349,11 +307,7 @@ void *LOAD_ReadFile_ex(struct BigHeader *bigfile, u32 loadType, int subfileIndex
 	// If no address given, then find one.
 	if (ptrDst == NULL)
 	{
-#if defined(CTR_NATIVE)
 		lqs->flags |= LT_MEMPACK;
-#else
-		lqs->flags |= LT_SETADDR;
-#endif
 
 		// allocate room for all sectors,
 		// remove alignment before next Read
@@ -366,19 +320,13 @@ void *LOAD_ReadFile_ex(struct BigHeader *bigfile, u32 loadType, int subfileIndex
 	}
 	else
 	{
-#if defined(CTR_NATIVE)
 		lqs->flags &= ~LT_MEMPACK;
-#else
-		lqs->flags &= ~LT_SETADDR;
-#endif
 	}
 
-#if defined(CTR_NATIVE)
 	// NOTE(aalhendi): native CD reads can call back before wrapper callers store
 	// the returned pointer back into data.currSlot.
 	lqs->ptrDestination = ptrDst;
 	lqs->size_UNUSED = eSize;
-#endif
 
 	while (1)
 	{

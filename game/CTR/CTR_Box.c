@@ -104,10 +104,8 @@ void CTR_Box_DrawClearBox(const RECT *r, const Color *color, s32 transparency, u
 	p->p.v[3].pos.x = bottomX;
 	p->p.v[3].pos.y = bottomY;
 
-// NOTE(aalhendi): CTR_NATIVE keeps PsyCross display-area drawing enabled.
-#ifdef CTR_NATIVE
+// Keep PsyCross display-area drawing enabled.
 	((TPage *)p)->texpage.bits.drawDisplayArea = 1;
-#endif
 
 	AddPrimitive(p, ot);
 }

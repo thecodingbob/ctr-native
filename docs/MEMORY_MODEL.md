@@ -155,8 +155,8 @@ u32 size : 8;
 ```
 
 Native keeps the retail packet layout and routes primitive/OT links through the
-native GPU link bridge. Under `CTR_NATIVE`, the 24-bit field is a bridge token,
-not a truncated host pointer.
+native GPU link bridge. The 24-bit field is a bridge token, not a truncated
+host pointer.
 
 Keep game-visible primitive packets retail-shaped; do not reintroduce
 PsyCross's widened primitive packets.
