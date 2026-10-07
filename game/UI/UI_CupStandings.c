@@ -26,8 +26,12 @@ enum
 	UI_CUP_STANDINGS_PANEL_W = 0x214,
 	UI_CUP_STANDINGS_PANEL_H = 0x32,
 	UI_CUP_STANDINGS_PANEL_MOVE_Y = 0x32,
-	UI_CUP_STANDINGS_PURPLE_GEM_VISIBLE_DRIVERS = 5,
-	UI_CUP_STANDINGS_TWO_PLAYER_ARCADE_DRIVER_COUNT = 6,
+	// Retail raced the Purple Gem Cup with five racers, and that is the only size
+	// that gets the cup's single centred row. Adventure multiplayer is capped at
+	// two players, so the co-op cup is the only other size it can race, at six.
+	UI_CUP_STANDINGS_PURPLE_GEM_RETAIL_DRIVERS = 5,
+	// Lineup that gets the shared three-over-three rows, in any cup.
+	UI_CUP_STANDINGS_SIX_DRIVER_COUNT = 6,
 	UI_CUP_STANDINGS_MAX_VISIBLE_AWARD_DRIVERS = 4,
 	UI_CUP_STANDINGS_ICON_SLOT_X = 0x60,
 	UI_CUP_STANDINGS_ICON_SLOT_W = 0x5a,
@@ -309,26 +313,21 @@ void UI_CupStandings_InputAndDraw(void)
 	{
 		s16 iconTargetY;
 		iconColumnOffset = (s16)i;
-		// If you are in Purple Gem Cup
-		if (gGT->cup.cupID == CUP_ID_PURPLE_GEM)
+		// If you are in Purple Gem Cup with retail's five-racer lineup
+		if ((gGT->cup.cupID == CUP_ID_PURPLE_GEM) && (numDrivers == UI_CUP_STANDINGS_PURPLE_GEM_RETAIL_DRIVERS))
 		{
-			if (i < UI_CUP_STANDINGS_PURPLE_GEM_VISIBLE_DRIVERS)
-			{
-				iconTargetY = UI_CUP_STANDINGS_ICON_PURPLE_GEM_ROW_Y;
-				iconTargetX = rectX;
-				iconColumnOffset = (s16)((rectW - UI_CUP_STANDINGS_ICON_LEFT_MARGIN) / UI_CUP_STANDINGS_PURPLE_GEM_VISIBLE_DRIVERS) * iconColumnOffset +
-				                   UI_CUP_STANDINGS_ICON_RIGHT_MARGIN;
-				goto AddIconColumnOffset;
-			}
-			iconTargetX = 0;
-			iconTargetY = 0;
+			iconTargetY = UI_CUP_STANDINGS_ICON_PURPLE_GEM_ROW_Y;
+			iconTargetX = rectX;
+			iconColumnOffset = (s16)((rectW - UI_CUP_STANDINGS_ICON_LEFT_MARGIN) / UI_CUP_STANDINGS_PURPLE_GEM_RETAIL_DRIVERS) * iconColumnOffset +
+			                   UI_CUP_STANDINGS_ICON_RIGHT_MARGIN;
+			goto AddIconColumnOffset;
 		}
 
-		// If this is not Purple Gem Cup
+		// Everything else, so a co-op Purple Gem Cup stands like any other six-racer cup
 		else
 		{
-			// Basically, if you're in 2P Arcade
-			if (numDrivers == UI_CUP_STANDINGS_TWO_PLAYER_ARCADE_DRIVER_COUNT)
+			// If you're in a six-racer lineup
+			if (numDrivers == UI_CUP_STANDINGS_SIX_DRIVER_COUNT)
 			{
 				iconTargetY = UI_CUP_STANDINGS_ICON_TOP_ROW_Y;
 
@@ -350,7 +349,7 @@ void UI_CupStandings_InputAndDraw(void)
 				}
 			}
 
-			// If you are not in 2P Arcade
+			// Every other lineup splits into two rows
 			else
 			{
 				// If VS cup of any kind
