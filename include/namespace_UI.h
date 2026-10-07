@@ -32,6 +32,18 @@ enum UIHudSlot
 	UI_HUD_SLOT_COUNT = 0x14,
 };
 
+// The frame ordering table is one chain of slots that the GPU walks from its last
+// slot down to the first, so a higher slot index is emitted first and therefore
+// sits at a lower layer. Primitives sharing one slot are emitted in reverse call
+// order. The UI table holds five slots: 0 is the default layer for HUD, prompt and
+// menu primitives, 3 carries the boxes and bars drawn under their own contents,
+// and 4 is the lowest layer, where the UI draw environment and full-screen
+// backgrounds go.
+enum UIHudOrderingSlot
+{
+	UI_HUD_ORDERING_SLOT_LOWEST = 0x4,
+};
+
 enum UIRaceClockFlags
 {
 	UI_RACE_CLOCK_SHOW_CURRENT_TIME = 0x0,

@@ -685,15 +685,17 @@ static void AH_Map_DrawMultiplayer(void)
 	}
 
 	char *label = GAME_LANGUAGE_STRINGS[LNG_2P];
-	int iconX;
+	// The indicator is ambient hub dressing, so it is emitted in the lowest UI
+	// layer: everything else must stay on top of it.
+	u32 *ot = &gGT->pushBuffer_UI.ptrOT[UI_HUD_ORDERING_SLOT_LOWEST];
 
-	iconX = AH_MAP_MULTIPLAYER_LABEL_X + DecalFont_GetLineWidth(label, FONT_BIG) + AH_MAP_MULTIPLAYER_ICON_GAP_X;
+	int iconX = AH_MAP_MULTIPLAYER_LABEL_X + DecalFont_GetLineWidth(label, FONT_BIG) + AH_MAP_MULTIPLAYER_ICON_GAP_X;
 
-	DecalFont_DrawLine(label, AH_MAP_MULTIPLAYER_LABEL_X, AH_MAP_MULTIPLAYER_LABEL_Y, FONT_BIG, ORANGE);
+	DecalFont_DrawLineOT(label, AH_MAP_MULTIPLAYER_LABEL_X, AH_MAP_MULTIPLAYER_LABEL_Y, FONT_BIG, ORANGE, ot);
 
 	DecalHUD_DrawPolyFT4(gGT->ptrIcons[data.MetaDataCharacters[characterID2].iconID], iconX,
 	                     AH_MAP_MULTIPLAYER_LABEL_Y + AH_MAP_MULTIPLAYER_ICON_OFFSET_Y, &gGT->backBuffer->primMem,
-	                     gGT->pushBuffer_UI.ptrOT, 0, AH_MAP_MULTIPLAYER_ICON_SCALE);
+	                     ot, 0, AH_MAP_MULTIPLAYER_ICON_SCALE);
 }
 
 void AH_Map_Main(void)
