@@ -133,16 +133,6 @@ void OVR233_InitData(void)
 	OVR233_ResetRuntimeState();
 }
 
-void CS_OVR233_ResetRuntimeState(void)
-{
-	OVR233_ResetRuntimeState();
-}
-
-void CS_OVR233_InitData(void)
-{
-	OVR233_InitData();
-}
-
 static void OVR233_ResetGarage(void)
 {
 	gGarage = s_gGarageInitialState;

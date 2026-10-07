@@ -1232,15 +1232,6 @@ int ReadyToFlip(struct GameTracker *gGT)
 	    (gGT->bool_DrawOTag_InProgress == 0);
 }
 
-int ReadyToBreak(struct GameTracker *gGT)
-{
-	return
-
-	    // if more than 6 VSYNCs passed since
-	    // the last successful draw, FPS < 10fps
-	    gGT->vSync_between_drawSync > 6;
-}
-
 void RenderVSYNC(struct GameTracker *gGT)
 {
 	gGT->clockDurationStall = Timer_GetTime_Total();
@@ -1257,10 +1248,9 @@ void RenderVSYNC(struct GameTracker *gGT)
 
 	while (1)
 	{
-		// NOTE(aalhendi): Native host sync needs DrawSync polling here; retail
-		// falls through to the BreakDraw guard below instead.
-		// must be called in the loop,
-		// or else it wont properly sync
+		// Host sync needs DrawSync polling in the loop, or else it wont properly
+		// sync. Retail instead fell through to a BreakDraw guard that gave up
+		// once more than 6 VSYNCs passed without a flip.
 		DrawSync(0);
 
 		if (ReadyToFlip(gGT))
