@@ -186,16 +186,16 @@ and are edited from the **Controls** section of the same menu. See
 
 ### General
 
-| Key                                 | Values                                                    | Default   | Description                                                                                       |
-|-------------------------------------|-----------------------------------------------------------|-----------|---------------------------------------------------------------------------------------------------|
-| `skip_intro`                        | `true` / `false`                                          | `false`   | Skip boot intros and go straight into main menu                                                   |
-| `mask_mode`                         | `Normal` / `Random` / `Inverted` / `All Uka` / `All Aku`  | `Normal`  | Mask assignment mode                                                                              |
-| `show_reserves_meter`               | `true` / `false`                                          | `false`   | Show the in-game reserves meter                                                                   |
-| `allow_oxide_station_multiplayer`   | `true` / `false`                                          | `false`   | Allow selecting Oxide Station in multiplayer                                                      |
-| `allow_race_tracks_in_battle`       | `true` / `false`                                          | `false`   | Add race tracks to the Battle mode track selector                                                 |
-| `extended_arcade_multiplayer`       | `true` / `false`                                          | `false`   | Enable 3P/4P Arcade races with AI opponents and 8 racers in 2P/3P/4P Arcade races                 |
-| `bot_selection_mode`                | `Vanilla` / `R. unlocked` / `R. all`                      | `Vanilla` | Choose the normal Arcade and Adventure bot roster; boss races and the Purple Gem Cup remain fixed |
-| `auto_end_race_when_others_finish`  | `true` / `false`                                          | `false`   | End the race once every other racer has arrived                                                   |
+| Key                                   | Values                                                       | Default   | Description                                                                                       |
+|---------------------------------------|--------------------------------------------------------------|-----------|---------------------------------------------------------------------------------------------------|
+| `skip_intro`                          | `true` / `false`                                             | `false`   | Skip boot intros and go straight into main menu                                                   |
+| `mask_mode`                           | `Normal` / `Random` / `Inverted` / `All Uka` / `All Aku`     | `Normal`  | Mask assignment mode                                                                              |
+| `show_reserves_meter`                 | `true` / `false`                                             | `false`   | Show the in-game reserves meter                                                                   |
+| `allow_oxide_station_multiplayer`     | `true` / `false`                                             | `false`   | Allow selecting Oxide Station in multiplayer                                                      |
+| `allow_race_tracks_in_battle`         | `true` / `false`                                             | `false`   | Add race tracks to the Battle mode track selector                                                 |
+| `extended_multiplayer`                | `true` / `false`                                             | `false`   | Allow 3P/4P Arcade races, and fill 2P/3P/4P races with 8 racers                                   |
+| `bot_selection_mode`                  | `Vanilla` / `R. unlocked` / `R. all`                         | `Vanilla` | Choose the normal Arcade and Adventure bot roster; boss races and the Purple Gem Cup remain fixed |
+| `auto_end_race_when_others_finish`    | `true` / `false`                                             | `false`   | End the race once every other racer has arrived                                                   |
 **Known limitation:** when race tracks are enabled in Battle mode, the turbo/invisibility
 weapon icons and battle points/lives icons will be missing on those tracks.
 

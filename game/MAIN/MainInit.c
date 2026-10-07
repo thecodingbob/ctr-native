@@ -413,8 +413,8 @@ void MainInit_Drivers(struct GameTracker *gGT)
 	        // Adventure Hub, Main Menu, Battle
 	        ((gameMode & 0x2c122020) == 0) &&
 
-		// Enabled 3P/4P Arcade fills every available grid slot with AIs.
-		(numPlyrCurrGame < 3 || ((gameMode & ARCADE_MODE) != 0 && g_config.extendedArcadeMultiplayer))) &&
+		// The extended multiplayer option fills every available grid slot with AIs.
+		(numPlyrCurrGame < 3 || LOAD_UsesExtendedMultiplayerGrid())) &&
 	    // in Arcade or Adventure
 	    (gameMode & (ARCADE_MODE | ADVENTURE_MODE)) != 0)
 	{
@@ -437,7 +437,11 @@ void MainInit_Drivers(struct GameTracker *gGT)
 			numDrivers = numPlyrCurrGame + 4;
 		}
 
-		else if (numPlyrCurrGame == 1 || g_config.extendedArcadeMultiplayer)
+		// Only a race that LOAD filled the whole grid for can run eight racers,
+		// which is what the extended multiplayer option does in Arcade and in
+		// Adventure. Every other race keeps the retail lineup, so filling the
+		// extra slots would spawn racers on character IDs nobody assigned.
+		else if (numPlyrCurrGame == 1 || LOAD_UsesExtendedMultiplayerGrid())
 		{
 			numDrivers = 8;
 		}
