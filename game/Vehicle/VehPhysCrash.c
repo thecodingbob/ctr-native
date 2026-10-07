@@ -272,20 +272,7 @@ static inline int VehPhysCrash_LastFeedbackFrame(void)
 
 static inline void VehPhysCrash_RecordFeedbackFrame(void)
 {
-#if defined(CTR_NATIVE)
 	sdata->audioDefaults[8] = VehPhysCrash_CurrentFrame();
-#else
-	// NOTE(aalhendi): Retail addresses this aliased audioDefaults slot
-	// absolutely and reuses v0 for both the tracker pointer and frame value.
-	register struct GameTracker *gameTracker CTR_PSX_REGISTER("$2");
-	register int currentFrame CTR_PSX_REGISTER("$2");
-	register u32 page CTR_PSX_REGISTER("$1");
-
-	VEH_LOAD_GAME_TRACKER(gameTracker);
-	currentFrame = gameTracker->frameTimer_MainFrame_ResetDB;
-	CTR_PSX_LOAD_SYMBOL_PAGE(page, VEH_LAST_FEEDBACK_FRAME_ASM_NAME);
-	__asm__ volatile("sw %0,%%lo(" VEH_LAST_FEEDBACK_FRAME_ASM_NAME ")(%1)" : : "r"(currentFrame), "r"(page) : "memory");
-#endif
 }
 
 void VehPhysCrash_AnyTwoCars(struct Thread *thread, struct DriverCollisionSearch *searchArg, Vec3 *selfVelArg)
@@ -363,13 +350,7 @@ void VehPhysCrash_AnyTwoCars(struct Thread *thread, struct DriverCollisionSearch
 				lhsWeight = selfDriver->const_CollisionWeight;
 				weightedVel.z = CTR_MipsDiv(CTR_MipsAddLo(CTR_MipsMulLo(selfVel->z, lhsWeight), CTR_MipsMulLo(otherVel.z, otherDriver->const_CollisionWeight)),
 				                            CTR_MipsAddLo(lhsWeight, otherDriver->const_CollisionWeight));
-#if defined(CTR_NATIVE)
 				hitDir = &search->hitDir;
-#else
-				// NOTE(aalhendi): Retail rematerializes this pointer after the weighted
-				// calculation; the dead s1 clobber preserves that allocation boundary.
-				__asm__("addiu %0,%1,24" : "+r"(hitDir) : "r"(search) : "$17");
-#endif
 
 				if (VehPhysCrash_BounceSelf(hitDir, &weightedVel, &otherVel, 1) < 0)
 				{

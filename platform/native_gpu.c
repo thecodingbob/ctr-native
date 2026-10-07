@@ -1078,7 +1078,6 @@ void ParsePrimitivesLinkedList(u32 *p, int singlePrimitive)
 
 	NativePerf_BeginScope(NATIVE_PERF_BUCKET_DRAW_OTAG_PARSE);
 
-#ifdef CTR_NATIVE
 	if (!singlePrimitive && !NativeGpuLinks_IsRegisteredHostPointer(p) && !isendprim(p))
 	{
 		char packetRegion[64];
@@ -1090,7 +1089,6 @@ void ParsePrimitivesLinkedList(u32 *p, int singlePrimitive)
 		NativePerf_EndScope(NATIVE_PERF_BUCKET_DRAW_OTAG_PARSE);
 		return;
 	}
-#endif
 
 	// setup single primitive flag (needed for AddSplits)
 	s_gpu.drawPrimMode = singlePrimitive;

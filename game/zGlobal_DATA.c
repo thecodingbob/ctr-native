@@ -1080,7 +1080,6 @@ struct Data
 
             .MetaDataModels =
                 {
-// leave on for CTR_NATIVE,
 #if 1
 
                     // 0x00 - NO_FUNC

@@ -1,9 +1,7 @@
 #include <common.h>
 
-#ifdef CTR_NATIVE
 static void OVR233_ResetGarage(void);
 static void OVR233_ResetCreditsBSS(void);
-#endif
 
 CTR_STATIC_ASSERT(sizeof(void *) == 4);
 
@@ -58,9 +56,7 @@ CTR_STATIC_ASSERT(sizeof(void *) == 4);
 	        },                                             \
 	}
 
-#ifdef CTR_NATIVE
 static const struct OVR233_Garage s_gGarageInitialState = OVR233_GARAGE_INITIALIZER;
-#endif
 
 struct OVR233_Garage gGarage CTR_PSX_MATCH_SECTION(".CS_garage_data") = OVR233_GARAGE_INITIALIZER;
 
@@ -71,13 +67,10 @@ struct OVR233_Garage gGarage CTR_PSX_MATCH_SECTION(".CS_garage_data") = OVR233_G
 	    .creditTextPosX = 0x14,                \
 	}
 
-#ifdef CTR_NATIVE
 static const struct Ovr233_Credits_BSS s_creditsBSSInitialState = OVR233_CREDITS_BSS_INITIALIZER;
-#endif
 
 struct Ovr233_Credits_BSS creditsBSS CTR_PSX_MATCH_SECTION(".CS_credits_data") = OVR233_CREDITS_BSS_INITIALIZER;
 
-#ifdef CTR_NATIVE
 struct Ovr233RetailPointerRange
 {
 	u32 retailStart;
@@ -127,9 +120,7 @@ char *CS_OVR233_TranslateRetailOpcodePointer(char *opCodeAt)
 
 #undef OVR233_OPCODE_RANGE
 #undef OVR233_RETAIL_BASE
-#endif
 
-#ifdef CTR_NATIVE
 void OVR233_ResetRuntimeState(void)
 {
 	CS_OVR233_ResetData();
@@ -162,7 +153,6 @@ static void OVR233_ResetCreditsBSS(void)
 	creditsBSS = s_creditsBSSInitialState;
 }
 
-#endif
 
 #undef OVR233_CREDITS_BSS_INITIALIZER
 #undef OVR233_GARAGE_INITIALIZER

@@ -12,7 +12,7 @@ quality-of-life options.
 unity build. Game code lives in `game/`, shared declarations and layouts in
 `include/`, and SDL3/OpenGL and host integrations in `platform/`.
 `externals/SDL/` is vendored; do not edit it for application changes. This is a
-32-bit C17 native target. CMake defines `CTR_NATIVE` and `CTR_INTERNAL`.
+32-bit C17 native target. CMake defines `CTR_INTERNAL`.
 
 Task-focused, provider-agnostic skills live under `.agents/skills/`. Each
 `SKILL.md` has a short description and instructions. Read the relevant skill
@@ -62,6 +62,8 @@ commit message.
 - Always use braces for `if` statements, including single-statement bodies.
 - Use named constants and enums instead of magic numbers.
 - Fix underlying issues rather than reverting a requested feature when an initial approach fails.
-- Do not introduce `#ifdef CTR_NATIVE` branches for new application code; this fork targets native builds.
+- Keep host-specific code behind the `platform/` boundary; there is one build
+  target, so do not reintroduce conditional compilation forks for application
+  code.
 - Avoid redundant parentheses.
 - Don't overexplain and don't repeat explanations over and over in comments.

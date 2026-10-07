@@ -412,12 +412,6 @@ static inline void MM_Title_UpdateTrophySpecLight(struct Instance *titleInst)
 	titleInst->specLightX = (s8)lightMac.vx;
 	titleInst->reflectionRGBA = (u32)lightMac.vz;
 
-#if !defined(CTR_NATIVE)
-	// NOTE(aalhendi): Retail normalizes this scratch vector before overwriting
-	// it. Preserve the call for matching without reading uninitialized native
-	// stack data.
-	MATH_VectorNormalize(viewPtr);
-#endif
 	view.x = titleInst->matrix.t[0] - pb->pos.x;
 	view.y = titleInst->matrix.t[1] - pb->pos.y;
 	view.z = titleInst->matrix.t[2] - pb->pos.z;
@@ -581,10 +575,6 @@ void MM_Title_Init(void)
 	void **pointers;
 	s16 instanceIndex;
 	s16 playerIndex;
-#if !defined(CTR_NATIVE)
-	register u16 introFrameRead CTR_PSX_REGISTER("$3");
-	register u32 introFramePage CTR_PSX_REGISTER("$4");
-#endif
 
 	if (
 	    // if "title" object is nullptr
@@ -621,13 +611,6 @@ void MM_Title_Init(void)
 		memset(title, 0, sizeof(*title));
 
 		titleInstanceSlot = title->i;
-
-#if !defined(CTR_NATIVE)
-		// NOTE(aalhendi): Retail reads the frame once before creating the title
-		// instances. The value is unused but affects register allocation.
-		CTR_PSX_LOAD_SYMBOL_PAGE(introFramePage, MM_TITLE_INTRO_FRAME_ASM_NAME);
-		introFrameRead = *(volatile u16 *)((u32)introFramePage + MM_TITLE_INTRO_FRAME_PAGE_OFFSET);
-#endif
 
 		title->t = t;
 

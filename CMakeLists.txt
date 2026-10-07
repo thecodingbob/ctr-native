@@ -108,7 +108,6 @@ set_target_properties(ctr_native PROPERTIES
 )
 target_include_directories(ctr_native PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_compile_definitions(ctr_native PRIVATE
-    CTR_NATIVE
     CTR_INTERNAL
     CTR_NATIVE_VERSION=\"${CTR_NATIVE_VERSION}\"
     CTR_NATIVE_BUILD_ID=\"${CTR_NATIVE_BUILD_ID}\"

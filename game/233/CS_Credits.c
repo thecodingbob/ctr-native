@@ -35,7 +35,6 @@ enum CreditsRuntimeConstants
 
 char *CS_Credits_GetNextString(char *str)
 {
-#if defined(CTR_NATIVE)
 	if (str == NULL)
 	{
 		// NOTE(aalhendi): Retail blindly reads the input pointer. Native
@@ -43,7 +42,6 @@ char *CS_Credits_GetNextString(char *str)
 		// reaches the end and the next pointer is PS1 null-space.
 		return NULL;
 	}
-#endif
 
 	while (*str != '\0')
 	{
@@ -242,7 +240,6 @@ int CS_Credits_NewCreditGhosts(void)
 	return 1;
 }
 
-#if defined(CTR_NATIVE)
 static void CS_Credits_RestorePodiumAudioForNativeHandoff(void)
 {
 	if ((CS_CONTROLS_AUDIO == 0) || (howl_VolumeGet(HOWL_VOLUME_TYPE_FX) != 0) || (CS_FX_VOLUME_BACKUP == 0))
@@ -260,16 +257,13 @@ static void CS_Credits_RestorePodiumAudioForNativeHandoff(void)
 	howl_VolumeSet(HOWL_VOLUME_TYPE_MUSIC, (u8)CS_MUSIC_VOLUME_BACKUP);
 	howl_VolumeSet(HOWL_VOLUME_TYPE_VOICE, (u8)CS_VOICE_VOLUME_BACKUP);
 }
-#endif
 
 void CS_Credits_End(void)
 {
 	int levID;
 	CS_Credits_DestroyCreditGhost();
 	CS_CREDITS_THREAD->flags |= THREAD_FLAG_DEAD;
-#ifdef CTR_NATIVE
 	CS_Credits_RestorePodiumAudioForNativeHandoff();
-#endif
 	if (CS_CREDITS_ALL_BLUE != 0)
 	{
 		sdata->mainMenuState = MAIN_MENU_SCRAPBOOK;
@@ -310,12 +304,12 @@ void CS_Credits_DrawNames(struct CreditsObj *co)
 	}
 	posY = co->creditsPosY;
 	str = co->creditsTopString;
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): The last line can scroll away above. Native cannot
 	// follow retail's subsequent read from address zero.
 	if (str == NULL)
+	{
 		return;
-#endif
+	}
 	while (posY < CS_CREDITS_NAME_END_Y)
 	{
 		char *nextStr;

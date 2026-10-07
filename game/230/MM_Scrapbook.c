@@ -11,7 +11,6 @@ void MM_Scrapbook_Init(void)
 	RECTMENU_ClearInput();
 }
 
-#ifdef CTR_NATIVE
 #include <platform.h>
 #include <platform/native_audio.h>
 #include <platform/native_renderer.h>
@@ -37,15 +36,10 @@ static void MM_Scrapbook_GetNativeSource(s16 *srcX, s16 *srcY, s16 *displayY)
 	*displayY = drawEnv->ofs[1];
 	*srcY = *displayY + SCRAPBOOK_NATIVE_FRAME_Y_PAD;
 }
-#endif
 
 void MM_Scrapbook_PlayMovie(struct RectMenu *menu)
 {
 	// NOTE(aalhendi): Native playback does not perform retail CD file lookup.
-#ifndef CTR_NATIVE
-	CdlFILE cdlFile;
-	s32 cdPos;
-#endif
 	// book state (0,1,2,3,4)
 	switch (D230.scrapbookState)
 	{
@@ -84,7 +78,6 @@ void MM_Scrapbook_PlayMovie(struct RectMenu *menu)
 
 		CDSYS_SetMode_StreamData();
 
-#ifdef CTR_NATIVE
 		if (NativeSTR_StartScrapbook() != 0)
 		{
 			// NOTE(aalhendi): Native video decoding skips interleaved XA records;
@@ -98,28 +91,6 @@ void MM_Scrapbook_PlayMovie(struct RectMenu *menu)
 			D230.scrapbookState = SCRAP_PLAY;
 			return;
 		}
-#else
-		// \TEST.STR;1
-		// if file was found
-		if (CdSearchFile(&cdlFile, R230.s_teststr1) != 0)
-		{
-			SpuSetCommonCDVolume(sdata_static.vol_Music << 7, sdata_static.vol_Music << 7);
-
-			// Alloc memory to store Scrapbook
-			MM_Video_AllocMem(SCRAPBOOK_VIDEO_WIDTH, SCRAPBOOK_VIDEO_HEIGHT, MM_VIDEO_FLAG_HAS_XA_AUDIO | MM_VIDEO_FLAG_SCRAPBOOK,
-			                  MM_VIDEO_DEFAULT_RING_SECTORS, 1);
-
-			cdPos = CdPosToInt(&cdlFile.pos);
-
-			// CD position of video, and stream frame count
-			MM_Video_StartStream(cdPos, SCRAPBOOK_STREAM_FRAMES);
-
-			// start playing movie
-			D230.scrapbookState = SCRAP_PLAY;
-
-			return;
-		}
-#endif
 
 		goto GO_BACK;
 	}
@@ -136,29 +107,9 @@ void MM_Scrapbook_PlayMovie(struct RectMenu *menu)
 		s16 nativeDisplayY;
 		int getButtonPress;
 
-#ifdef CTR_NATIVE
 		(void)stateValue;
 		(void)gameTracker;
 		(void)gameTrackerPage;
-#endif
-#ifndef CTR_NATIVE
-		CTR_PSX_LOAD_SYMBOL_PAGE(gameTrackerPage, RETAIL_GAME_TRACKER_ASM_NAME);
-		stateValue = 1;
-		// infinite loop (cause this is scrapbook),
-		// keep doing DecodeFrame and VSync until done
-		for (;;)
-		{
-			gameTracker = CTR_PSX_PAGE_LVALUE(struct GameTracker *, gameTrackerPage, MM_GAME_TRACKER_PAGE_OFFSET, GAME_TRACKER);
-			if (MM_Video_DecodeFrame(gameTracker->db[stateValue - gameTracker->swapchainIndex].drawEnv.ofs[0],
-			                         gameTracker->db[stateValue - gameTracker->swapchainIndex].drawEnv.ofs[1] + 4) != 0)
-			{
-				break;
-			}
-			VSync(0);
-		}
-
-		if ((MM_Video_CheckIfFinished(0) == stateValue) || ((MM_GAME_BUTTON_TAPS[0] & SCRAPBOOK_SKIP_INPUT) != 0))
-#else
 		getButtonPress = (MM_GAME_BUTTON_TAPS[0] & SCRAPBOOK_SKIP_INPUT);
 		nativeUploaded = 0;
 
@@ -171,7 +122,6 @@ void MM_Scrapbook_PlayMovie(struct RectMenu *menu)
 		}
 
 		if ((getButtonPress != 0) || (nativeUploaded == 0))
-#endif
 		{
 			if ((MM_GAME_BUTTON_TAPS[0] & SCRAPBOOK_SKIP_INPUT) != 0)
 			{
@@ -180,14 +130,11 @@ void MM_Scrapbook_PlayMovie(struct RectMenu *menu)
 
 			D230.scrapbookState = SCRAP_STOP;
 		}
-#ifdef CTR_NATIVE
 		else
 		{
 			Platform_PinVRAMDisplayRect(nativeSrcX, nativeDisplayY, SCRAPBOOK_NATIVE_DISPLAY_WIDTH, SCREEN_HEIGHT, 1);
 		}
-#endif
 
-#ifdef CTR_NATIVE
 		if ((getButtonPress == 0) && (nativeUploaded != 0))
 		{
 			// NOTE(aalhendi): Native decodes this frame on the CPU. Count any
@@ -200,25 +147,14 @@ void MM_Scrapbook_PlayMovie(struct RectMenu *menu)
 		{
 			VSync(SCRAPBOOK_FRAME_VBLANKS);
 		}
-#else
-		VSync(SCRAPBOOK_FRAME_VBLANKS);
-#endif
 		break;
 	}
 
 	// return disc to normal,
 	// return checkered flag to normal
 	case SCRAP_STOP:
-#ifndef CTR_NATIVE
-		SpuSetCommonCDVolume(0, 0);
-
-		MM_Video_StopStream();
-
-		MM_Video_ClearMem();
-#else
 		NativeAudio_StopXA();
 		NativeSTR_Stop();
-#endif
 
 		if (RaceFlag_IsFullyOffScreen() == 1)
 		{

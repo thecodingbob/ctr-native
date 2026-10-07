@@ -28,7 +28,6 @@ typedef s16 VehGroundShadowSignedHalfword CTR_MAY_ALIAS;
 #define VEH_GROUND_SHADOW_BYTE(base, offset)        (*(u8 *)((u8 *)(base) + (offset)))
 #define VEH_GROUND_SHADOW_SIGNED_BYTE(base, offset) (*(s8 *)((u8 *)(base) + (offset)))
 
-#ifdef CTR_NATIVE
 #define VehGroundShadow_LoadTransMatrix(vector)          gte_SetTransVector(vector)
 #define VehGroundShadow_LoadRotMatrix(matrix)            VehGroundShadow_LoadGteRotMatrix(matrix)
 #define VehGroundShadow_SetLocalVector(vector, scratch)  ((vector) = (scratch) + 0x48)
@@ -37,24 +36,6 @@ typedef s16 VehGroundShadowSignedHalfword CTR_MAY_ALIAS;
 #define VehGroundShadow_SetCounterZero(counter)          ((counter) = 0)
 #define VehGroundShadow_SetFirstTexture(texture)         ((texture) = (size_t)CTR_SCRATCHPAD_PTR(struct TextureLayout, 0x224))
 #define VehGroundShadow_SetIconIndex(index)              ((index) = NULL)
-#else
-// NOTE(aalhendi): These matching-only loads intentionally expose only their
-// base register; broader memory constraints perturb retail's instruction order.
-#define VehGroundShadow_LoadTransMatrix(vector) \
-	__asm__ volatile("lw $12,0(%0)\n\tlw $13,4(%0)\n\tlw $14,8(%0)\n\tctc2 $12,$5\n\tctc2 $13,$6\n\tctc2 $14,$7" : : "r"(vector) : "$12", "$13", "$14")
-#define VehGroundShadow_LoadRotMatrix(matrix)                                                                                                               \
-	__asm__ volatile("lw $12,0(%0)\n\tlw $13,4(%0)\n\tctc2 $12,$0\n\tctc2 $13,$1\n\tlw $12,8(%0)\n\tlw $13,12(%0)\n\tlw $14,16(%0)\n\tctc2 $12,$2\n\tctc2 " \
-	                 "$13,$3\n\tctc2 $14,$4"                                                                                                                \
-	                 :                                                                                                                                      \
-	                 : "r"(matrix)                                                                                                                          \
-	                 : "$12", "$13", "$14")
-#define VehGroundShadow_SetLocalVector(vector, scratch) __asm__("addiu %0,%1,72" : "=r"(vector) : "r"(scratch))
-#define VehGroundShadow_SetGeomOffset(x, y) __asm__ volatile("sll $12,%0,16\n\tsll $13,%1,16\n\tctc2 $12,$24\n\tctc2 $13,$25" : : "r"(x), "r"(y) : "$12", "$13")
-#define VehGroundShadow_AddPointer(result, base, offset) __asm__("addiu %0,%1,%2" : "=r"(result) : "r"(base), "I"(offset))
-#define VehGroundShadow_SetCounterZero(counter)          __asm__ volatile("move %0,$0" : "=r"(counter))
-#define VehGroundShadow_SetFirstTexture(texture)         __asm__("lui %0,0x1f80\n\tori %0,%0,0x224" : "=r"(texture))
-#define VehGroundShadow_SetIconIndex(index)              __asm__("move %0,$0" : "=r"(index))
-#endif
 
 /// @brief Copies texture layout data from icon to arbitrary mem address. Particularly used to copy kart shadow textures to scratchpad.
 /// @param dst - destination texture layout

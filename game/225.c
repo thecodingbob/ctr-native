@@ -68,7 +68,6 @@ global_variable s16 s_standingsSuffixStringIds225[VB_MAX_PLAYERS];
 
 // NOTE(aalhendi): The matching build replaces these defaults through its
 // private retail-symbol header. Native uses the canonical aggregates below.
-#ifdef CTR_NATIVE
 #define VB_GAME_TRACKER_PAGE                 0u
 #define VB_BATTLE_COLOR_PTR                  (&sdata->battleSetup_Color_UI_1)
 #define VB_STANDINGS_SUFFIX_PAGE             s_standingsSuffixStringIds225
@@ -100,7 +99,6 @@ static inline void VB_DrawOuterRect(RECT *rect, const u32 *packedColor, s16 tran
 
 #define VB_DRAW_OUTER_RECT VB_DrawOuterRect
 #define VB_DRAW_POLY_FT4   DecalHUD_DrawPolyFT4
-#endif
 
 VB_VALIDATE_MATCHING_CONSTANTS()
 

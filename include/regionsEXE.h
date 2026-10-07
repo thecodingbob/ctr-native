@@ -4200,7 +4200,6 @@ struct sData
 	// 8009AE28
 	char dataLibFiller[0x30];
 
-#ifdef CTR_NATIVE
 	// Full-detail 1P rendering can retain up to 256 quadblocks. Multiplayer
 	// needs that capacity and a terminator independently for each viewport.
 	b32 highDetailSplitScreenLevel;
@@ -4209,7 +4208,6 @@ struct sData
 	// Co-op Adventure settings of the profile in use. Mirrored from the card
 	// extension on load and written back on save.
 	struct AdvMultiplayerSettings advMultiplayer;
-#endif
 
 	// after dataLibFiller is 8009AE58,
 	// where psyq allocates globals
@@ -4248,12 +4246,7 @@ extern struct sData sdata_static;
 // 0x8008d668 - 0x8009f6fc
 extern struct BSS bss;
 
-#ifndef CTR_NATIVE
-// optimal use for modding
-register struct sData *sdata asm("gp");
-#else
 struct sData *sdata = &sdata_static;
-#endif
 
 CTR_STATIC_ASSERT(sizeof(struct MetaDataCHAR) == 0x10);
 CTR_STATIC_ASSERT(offsetof(struct MetaDataCHAR, iconID) == 0x8);

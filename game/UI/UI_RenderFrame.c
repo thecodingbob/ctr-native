@@ -9,7 +9,7 @@ enum
 	UI_RACE_CLOCK_HUD_Y = 0x8,
 };
 
-// CTR_NATIVE only adds an ST1 map-metadata null guard below.
+// Only adds an ST1 map-metadata null guard below, beyond the retail body.
 void UI_RenderFrame_Racing()
 {
 	s16 sVar1;
@@ -108,12 +108,8 @@ void UI_RenderFrame_Racing()
 		sdata->HudAndDebugFlags = 8;
 	}
 
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Native can load levels before ST1 map metadata is present.
 	if ((gGT->level1->ptrSpawnType1 != 0) && (gGT->level1->ptrSpawnType1->count != 0))
-#else
-	if (gGT->level1->ptrSpawnType1->count != 0)
-#endif
 	{
 		void **pointers = ST1_GETPOINTERS(gGT->level1->ptrSpawnType1);
 		levPtrMap = pointers[ST1_MAP];
@@ -1094,14 +1090,12 @@ void UI_RenderFrame_CrystChall(void)
 
 	if (!hasPendingPickup)
 	{
-#if defined(CTR_NATIVE)
 		// NOTE(aalhendi): Menu-storage can enter crystal HUD flow without
 		// a published crystal HUD model.
 		if (hudCrystal == NULL)
 		{
 			goto LAB_800545e8;
 		}
-#endif
 
 		// make invisible
 		hudCrystal->flags |= HIDE_MODEL;
@@ -1109,10 +1103,8 @@ void UI_RenderFrame_CrystChall(void)
 	}
 
 	// make visible
-#if defined(CTR_NATIVE)
 	if (hudCrystal != NULL)
 	{
-#endif
 		hudCrystal->flags &= ~HIDE_MODEL;
 	}
 
@@ -1124,9 +1116,7 @@ void UI_RenderFrame_CrystChall(void)
 	{
 		iVar5 = iVar5 + 0xff;
 	}
-#if defined(CTR_NATIVE)
 	if (hudCrystal != NULL)
-#endif
 	{
 		hudCrystal->matrix.t[0] = iVar5 >> 8;
 
@@ -1214,9 +1204,7 @@ void UI_RenderFrame_Wumpa3D_2P3P4P(struct GameTracker *gGT)
 		u32 *textureEnd = wumpaPushBuffer->renderBucketOTRangeEnd;
 		b32 shouldCycleTexture = (textureStart != NULL) && (textureEnd != NULL);
 
-#ifdef CTR_NATIVE
 		shouldCycleTexture = shouldCycleTexture && CtrGpu_IsCurrentOTRange(gGT->backBuffer, textureStart, textureEnd);
-#endif
 
 		PushBuffer_SetDrawEnv_DecalMP(textureEnd, gGT->backBuffer, viewport, viewport->x + (viewport->w >> 1) - 0x100, viewport->y + (viewport->h >> 1) - 0x6c,
 		                              0, 0, 0, 0, 1);

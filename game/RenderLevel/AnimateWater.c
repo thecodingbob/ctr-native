@@ -146,14 +146,12 @@ static u16 AnimateWater_ReadTextureHalf(const struct TextureLayout *layout, int 
 static void AnimateWater_Common(int timer, int numWaterVertices, struct WaterVert *waterVert, const struct TextureLayout *waterEnvMap, int numLists,
                                 int **visLists)
 {
-#if defined(CTR_NATIVE)
-	// NOTE(aalhendi): CTR_NATIVE divergence, not retail ASM: native tracks can
+	// Divergence from retail ASM: native tracks can
 	// supply empty water lists with null water data.
 	if (numWaterVertices == 0)
 	{
 		return;
 	}
-#endif
 
 	u16 colorOffset = AnimateWater_ReadTextureHalf(waterEnvMap, 0);
 	u32 visBits = 0;

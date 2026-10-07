@@ -3,7 +3,6 @@
 #define VEH_EMITTER_STRING_INNER(value) #value
 #define VEH_EMITTER_STRING(value)       VEH_EMITTER_STRING_INNER(value)
 
-#if defined(CTR_NATIVE)
 #define VEH_EMITTER_LOAD_TERRAIN_FLAGS(result, nativeValue)                     ((result) = (nativeValue))
 #define VEH_EMITTER_LOAD_THREAD_ARGUMENT_AFTER(result, nativeValue, dependency) ((result) = (nativeValue))
 #define VEH_EMITTER_TIE_THREAD_ARGUMENT(result, nativeValue)                    ((result) = (nativeValue))
@@ -19,34 +18,6 @@
 #define VEH_EMITTER_STORE_MAC_DIRECT(out)                                       CTR_GteStoreMAC((s32 *)(out))
 #define VEH_EMITTER_STORE_EXHAUST_VELOCITY(out)                                 VehEmitter_StoreMAC(&(out)->vx)
 #define VEH_EMITTER_ZERO_AFTER_LOAD(value, dependency)                          ((value) = 0)
-#else
-// NOTE(aalhendi): Retail overlaps the third spark-axis multiply with the first
-// two particle updates, then reads LO immediately before consuming that axis.
-#define VEH_EMITTER_LOAD_TERRAIN_FLAGS(result, nativeValue)                     __asm__ volatile("lw %0,56($sp)\n\tnop" : "=r"(result) : : "memory")
-#define VEH_EMITTER_LOAD_THREAD_ARGUMENT_AFTER(result, nativeValue, dependency) __asm__ volatile("lw %0,104($sp)" : "=r"(result) : "r"(dependency) : "memory")
-// NOTE(aalhendi): GCC 2.8.1 excludes specified local registers from its reload
-// pass. These empty constraints recover retail's t3 thread reload without
-// emitting instructions or exposing the register choice to native compilers.
-#define VEH_EMITTER_TIE_THREAD_ARGUMENT(result, nativeValue)                    __asm__("" : "=r"(result) : "0"(nativeValue))
-#define VEH_EMITTER_TIE_THREAD_ARGUMENT_AFTER(result, nativeValue, dependency)  __asm__("" : "=r"(result) : "0"(nativeValue), "r"(dependency))
-#define VEH_EMITTER_RETAIN_THREAD_ARGUMENT(result, dependency)                  __asm__("" : "=r"(result) : "0"(result), "r"(dependency))
-#define VEH_EMITTER_TERRAIN_FLAGS_ARG(nativeValue)                              0
-#define VEH_EMITTER_PATH_TAG(pathTag)                                           __asm__ volatile(".Lveh_emitter_skid_" VEH_EMITTER_STRING(pathTag) ":")
-#define VEH_EMITTER_MUL_BEGIN(result, lhs, rhs)                                 __asm__ volatile("nop\n\tnop\n\tmult %0,%1" : : "r"(lhs), "r"(rhs))
-#define VEH_EMITTER_MUL_READ_SHIFT(result, product)                             __asm__ volatile("mflo %1\n\tsra %0,%1,12" : "=r"(result), "=r"(product))
-#define VEH_EMITTER_MUL_RAW(lhs, rhs)                                           __asm__ volatile("mult %0,%1" : : "r"(lhs), "r"(rhs))
-#define VEH_EMITTER_READ_LO(result)                                             __asm__ volatile("mflo %0" : "=r"(result))
-#define VEH_EMITTER_HILO_DELAY()                                                __asm__ volatile("nop\n\tnop")
-#define VEH_EMITTER_STORE_MAC_DIRECT(out) __asm__ volatile("swc2 $25,0(%0)\n\tswc2 $26,4(%0)\n\tswc2 $27,8(%0)" : : "r"(out) : "memory")
-#define VEH_EMITTER_STORE_EXHAUST_VELOCITY(out) \
-	__asm__ volatile("mfc2 $2,$25\n\tmfc2 $3,$26\n\tmfc2 $4,$27\n\tsw $2,40($sp)\n\tsw $3,44($sp)\n\tsw $4,48($sp)" : : : "$2", "$3", "$4", "memory")
-#define VEH_EMITTER_ZERO_AFTER_LOAD(value, dependency) \
-	do                                                 \
-	{                                                  \
-		__asm__ volatile("nop" : : "r"(dependency));   \
-		(value) = 0;                                   \
-	} while (0)
-#endif
 
 enum
 {
@@ -729,13 +700,6 @@ static inline void VehEmitter_Skidmarks(struct Instance *instanceArg, struct Dri
 	register int posZ CTR_PSX_REGISTER("$7");
 	register int skidOffset CTR_PSX_REGISTER("$2");
 	register u8 forcedFlags CTR_PSX_REGISTER("$2");
-#if !defined(CTR_NATIVE)
-	int rawSin;
-	int rawWidthZ;
-	register int negWidthZ CTR_PSX_REGISTER("$2");
-	int angle;
-	register int widthProduct CTR_PSX_REGISTER("$3");
-#endif
 	int x;
 	int z;
 	register u32 frame CTR_PSX_REGISTER("$8");
@@ -760,7 +724,6 @@ skidColorDone:
 
 	color = rawColor + VEH_EMITTER_SKID_COLOR_BIAS;
 	MATH_Cos(d->axisRotationX);
-#if defined(CTR_NATIVE)
 	sin = MATH_Sin(d->axisRotationX);
 	lateralZ = VEH_EMITTER_SKID_LATERAL_SCALE;
 	CTR_PSX_KEEP_VALUE(lateralZ);
@@ -779,35 +742,6 @@ skidColorDone:
 	lateralZ = cos >> FRACTIONAL_BITS;
 	widthX >>= FRACTIONAL_BITS;
 	widthZ >>= FRACTIONAL_BITS;
-#else
-	rawSin = MATH_Sin(d->axisRotationX);
-	lateralZ = VEH_EMITTER_SKID_LATERAL_SCALE;
-	CTR_PSX_KEEP_VALUE(lateralZ);
-	VEH_EMITTER_MUL_RAW(rawSin, lateralZ);
-	angle = d->axisRotationX;
-	VEH_EMITTER_READ_LO(sin);
-	cos = MATH_Cos(angle);
-	lateralX = VEH_EMITTER_SKID_WIDTH_SCALE;
-	MATH_Sin(d->axisRotationX);
-	widthX = MATH_Cos(d->axisRotationX);
-	MATH_Sin(d->axisRotationX);
-	VEH_EMITTER_MUL_RAW(widthX, lateralX);
-	VEH_EMITTER_READ_LO(widthProduct);
-	VEH_EMITTER_HILO_DELAY();
-	VEH_EMITTER_MUL_RAW(cos, lateralZ);
-	angle = d->axisRotationX;
-	VEH_EMITTER_READ_LO(cos);
-	widthX = widthProduct >> FRACTIONAL_BITS;
-	MATH_Cos(angle);
-	angle = d->axisRotationX;
-	lateralZ = cos >> FRACTIONAL_BITS;
-	rawWidthZ = MATH_Sin(angle);
-	VEH_EMITTER_MUL_RAW(rawWidthZ, lateralX);
-	lateralX = sin >> FRACTIONAL_BITS;
-	VEH_EMITTER_READ_LO(widthProduct);
-	negWidthZ = -widthProduct;
-	widthZ = negWidthZ >> FRACTIONAL_BITS;
-#endif
 
 	VehGteSetRotTransMatrix(&inst->matrix);
 

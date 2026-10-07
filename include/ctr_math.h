@@ -133,28 +133,20 @@ static inline int FP_Mult(int x, int y)
 // undefined behavior; retail expressions remain visible to GCC 2.8.1 codegen.
 static inline s32 CTR_MipsSll(s32 value, u32 shift)
 {
-#if defined(CTR_NATIVE)
 	shift &= 0x1f;
-#endif
 
 	return (s32)((u32)value << shift);
 }
 
 static inline s32 CTR_MipsSra(s32 value, u32 shift)
 {
-#if defined(CTR_NATIVE)
 	shift &= 0x1f;
 	return (s32)(((u32)value >> shift) | ((value < 0) ? ~(0xffffffffu >> shift) : 0));
-#else
-	return value >> shift;
-#endif
 }
 
 static inline u32 CTR_MipsSrl(s32 value, u32 shift)
 {
-#if defined(CTR_NATIVE)
 	shift &= 0x1f;
-#endif
 
 	return (u32)value >> shift;
 }
@@ -191,35 +183,27 @@ static inline u32 CTR_PackS16Pair(s32 lo, s32 hi)
 
 static inline s32 CTR_MipsDiv(s32 dividend, s32 divisor)
 {
-#if defined(CTR_NATIVE)
 	const s32 minS32 = (-2147483647 - 1);
 
 	if ((divisor == 0) || ((divisor == -1) && (dividend == minS32)))
 	{
 		CTR_TRAP();
 	}
-#endif
 
 	return dividend / divisor;
 }
 
 static inline u32 CTR_MipsDivU(u32 dividend, u32 divisor)
 {
-#if defined(CTR_NATIVE)
 	if (divisor == 0)
 	{
 		CTR_TRAP();
 	}
-#endif
 
 	return dividend / divisor;
 }
 
 // misc //
-
-#ifndef CTR_NATIVE
-int abs(int value);
-#endif
 
 int clamp(int n, int lo, int hi);
 int max(int a, int b);

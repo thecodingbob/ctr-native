@@ -83,13 +83,9 @@ void LOAD_NextQueuedFile()
 
 			sdata->frameFinishedVRAM = 0;
 
-#if defined(CTR_NATIVE)
-			// NOTE(aalhendi): CTR_NATIVE marks Mempack allocations with a host-only
-			// flag while the retail path uses LT_SETADDR for the same ownership.
+			// Mempack allocations are marked with a host-only flag
+			// where the retail path uses LT_SETADDR for the same ownership.
 			if ((curr->flags & (LT_SETADDR | LT_MEMPACK)) != 0)
-#else
-			if ((curr->flags & LT_SETADDR) != 0)
-#endif
 			{
 				MEMPACK_PopState();
 			}

@@ -160,20 +160,10 @@
 
 // NOTE(aalhendi): These are the shared native/retail forms of the PsyQ
 // three-vector projection adapters used by the Vehicle render helpers.
-#if defined(CTR_NATIVE)
 #define VehGteLoadV0(vector)    CTR_GteLoadSV0(vector)
 #define VehGteLoadV3(vector)    CTR_GteLoadSV3(&(vector)[0], &(vector)[1], &(vector)[2])
 #define VehGteStoreSxy3(output) CTR_GteStoreSXY3(&(output)[0], &(output)[1], &(output)[2])
 #define VehGteStoreSz3(output)  gte_stsz3(&(output)[0], &(output)[1], &(output)[2])
-#else
-#define VehGteLoadV0(vector) __asm__ volatile("lwc2 $0,0(%0)\n\tlwc2 $1,4(%0)" : : "r"(vector), "m"(*(const SVECTOR *)(vector)))
-#define VehGteLoadV3(vector)                                                                                                 \
-	__asm__ volatile("lwc2 $0,0(%0)\n\tlwc2 $1,4(%0)\n\tlwc2 $2,8(%0)\n\tlwc2 $3,12(%0)\n\tlwc2 $4,16(%0)\n\tlwc2 $5,20(%0)" \
-	                 :                                                                                                       \
-	                 : "r"(vector), "m"(((const SVECTOR *)(vector))[0]), "m"(((const SVECTOR *)(vector))[1]), "m"(((const SVECTOR *)(vector))[2]))
-#define VehGteStoreSxy3(output) __asm__ volatile("swc2 $12,0(%0)\n\tswc2 $13,4(%0)\n\tswc2 $14,8(%0)" : : "r"(output) : "memory")
-#define VehGteStoreSz3(output)  __asm__ volatile("swc2 $17,0(%0)\n\tswc2 $18,4(%0)\n\tswc2 $19,8(%0)" : : "r"(output) : "memory")
-#endif
 
 static inline void VehGteSetRotTransMatrix(const MATRIX *matrix)
 {

@@ -4,56 +4,22 @@ typedef s16 VehPickupItemSignedHalfword CTR_MAY_ALIAS;
 
 // NOTE(aalhendi): Retail copies matrices as eight words. Native keeps the
 // typed assignment so host compilers retain their normal aliasing guarantees.
-#ifdef CTR_NATIVE
 static inline void VehPickupItem_CopyInstanceMatrix(struct Instance *dst, const struct Instance *src)
 {
 	dst->matrix = src->matrix;
 }
 #define VehPickupItem_CopyInstanceMatrixForPhysics(dst, src, matrix) ((void)(matrix), VehPickupItem_CopyInstanceMatrix((dst), (src)))
-#else
-#define VEH_PICKUP_COPY_MATRIX_INSTRUCTIONS \
-	"lw $9,48(%1)\n\t"                      \
-	"lw $10,52(%1)\n\t"                     \
-	"lw $11,56(%1)\n\t"                     \
-	"lw $12,60(%1)\n\t"                     \
-	"sw $9,48(%0)\n\t"                      \
-	"sw $10,52(%0)\n\t"                     \
-	"sw $11,56(%0)\n\t"                     \
-	"sw $12,60(%0)\n\t"                     \
-	"lw $9,64(%1)\n\t"                      \
-	"lw $10,68(%1)\n\t"                     \
-	"lw $11,72(%1)\n\t"                     \
-	"lw $12,76(%1)\n\t"                     \
-	"sw $9,64(%0)\n\t"                      \
-	"sw $10,68(%0)\n\t"                     \
-	"sw $11,72(%0)\n\t"                     \
-	"sw $12,76(%0)"
-#define VehPickupItem_CopyInstanceMatrix(dst, src) \
-	__asm__ volatile(VEH_PICKUP_COPY_MATRIX_INSTRUCTIONS : : "r"(dst), "r"(src) : "$9", "$10", "$11", "$12", "memory")
-#define VehPickupItem_CopyInstanceMatrixForPhysics(dst, src, matrix) \
-	__asm__ volatile(VEH_PICKUP_COPY_MATRIX_INSTRUCTIONS : : "r"(dst), "r"(src), "r"(matrix) : "$9", "$10", "$11", "$12", "memory")
-#endif
 
 // NOTE(aalhendi): Retail addresses the scratchpad normal with an OR; native
 // uses the typed member that occupies the same offset.
-#ifdef CTR_NATIVE
 #define VehPickupItem_SetWarpballMatrixPair(matrix, index, first, second) \
 	do                                                                    \
 	{                                                                     \
 		((s16 *)(matrix)->m)[(index)] = (first);                          \
 		((s16 *)(matrix)->m)[(index) + 1] = (second);                     \
 	} while (0)
-#else
-typedef u32 VehPickupItemMatrixWord CTR_MAY_ALIAS;
-#define VehPickupItem_SetWarpballMatrixPair(matrix, index, first, second) \
-	(*(VehPickupItemMatrixWord *)&((s16 *)(matrix)->m)[(index)] = ((u32)(u16)(first) | ((u32)(u16)(second) << 16)))
-#endif
 
-#ifdef CTR_NATIVE
 #define VehPickupItem_GetCollisionNormal(sps) CTR_VECTOR_DATA(&(sps)->hit.plane.normal)
-#else
-#define VehPickupItem_GetCollisionNormal(sps) ((s16 *)((u32)(sps) | 0x70))
-#endif
 
 enum
 {
@@ -334,11 +300,7 @@ struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, b32 bo
 			GAME_TRACKER->gameMode1 = (GAME_TRACKER->gameMode1 | AKU_SONG) & ~UKA_SONG;
 		}
 
-#ifdef CTR_NATIVE
 		beamName = "akubeam1";
-#else
-		beamName = rdata.s_akubeam1;
-#endif
 		maskThread = instance->thread;
 		beamThread = maskThread;
 		modelPtr = GAME_TRACKER->modelPtr[STATIC_AKUBEAM];
@@ -355,11 +317,7 @@ struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, b32 bo
 			GAME_TRACKER->gameMode1 = (GAME_TRACKER->gameMode1 | UKA_SONG) & ~AKU_SONG;
 		}
 
-#ifdef CTR_NATIVE
 		beamName = "akubeam1";
-#else
-		beamName = rdata.s_akubeam1;
-#endif
 		maskThread = instance->thread;
 		beamThread = maskThread;
 		modelPtr = GAME_TRACKER->modelPtr[STATIC_UKABEAM];
@@ -481,21 +439,12 @@ struct Driver *VehPickupItem_MissileGetTargetDriver(struct Driver *driver)
 		candidatePosition.y = (u16)candidate->instSelf->matrix.t[1];
 		candidatePosition.z = (u16)candidate->instSelf->matrix.t[2];
 
-#ifdef CTR_NATIVE
 		MTC2(CTR_PackS16Pair(candidatePosition.x, candidatePosition.y), 0);
 		MTC2((s32)candidatePosition.z, 1);
-#else
-		__asm__ volatile("lwc2 $0,0(%0)\n\t"
-		                 "lwc2 $1,4(%0)"
-		                 :
-		                 : "r"(&candidatePosition)
-		                 : "memory");
-#endif
 		CTR_PSX_GTE_PIPELINE_DELAY();
 		gte_rtps();
 		CTR_PSX_STORE_COP2_WORD(screenPositionPtr, 14);
 
-#ifdef CTR_NATIVE
 		{
 			register u32 flagValue CTR_PSX_REGISTER("$12");
 
@@ -503,19 +452,6 @@ struct Driver *VehPickupItem_MissileGetTargetDriver(struct Driver *driver)
 			CTR_PSX_GTE_READ_DELAY();
 			projection.gteFlag = flagValue;
 		}
-#else
-		{
-			register volatile s32 *flagPtr CTR_PSX_REGISTER("$2");
-
-			flagPtr = &projection.gteFlag;
-			__asm__ volatile("cfc2 $12,$31\n\t"
-			                 "nop\n\t"
-			                 "sw $12,0(%0)"
-			                 :
-			                 : "r"(flagPtr)
-			                 : "$12", "memory");
-		}
-#endif
 
 		if ((projection.gteFlag & MISSILE_TARGET_GTE_RTPS_OVERFLOW) != 0)
 		{
@@ -634,27 +570,10 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 	SVec3 mineProbeBottom;
 	SVec3 beakerProbeTop;
 	SVec3 beakerProbeBottom;
-#ifndef CTR_NATIVE
-	// NOTE(aalhendi): Taking each label's address keeps GCC's case blocks alive,
-	// while dispatch still reads the original resident jump table.
-	static void *const shootNowCaseLabels[] = {
-	    &&ShootNowTurbo, &&ShootNowDone,  &&ShootNowBombMissile, &&ShootNowMine, &&ShootNowBeaker, &&ShootNowDone,         &&ShootNowShield,
-	    &&ShootNowMask,  &&ShootNowClock, &&ShootNowWarpball,    &&ShootNowDone, &&ShootNowDone,   &&ShootNowInvisibility, &&ShootNowSuperEngine,
-	};
-
-	if ((u32)weaponID >= 14)
-	{
-		goto ShootNowDone;
-	}
-	VEH_PICKUP_SHOOT_NOW_DISPATCH(weaponID);
-#endif
 	switch (weaponID)
 	{
 	// Turbo
 	case WEAPON_ID_TURBO:
-#ifndef CTR_NATIVE
-	ShootNowTurbo:
-#endif
 	{
 		int boost = TURBO_ITEM_BOOST_NORMAL;
 		if (d->numWumpas >= DRIVER_WUMPA_JUICED_COUNT)
@@ -668,17 +587,11 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 
 	// Mask
 	case WEAPON_ID_MASK:
-#ifndef CTR_NATIVE
-	ShootNowMask:
-#endif
 		VehPickupItem_MaskUseWeapon(d, true);
 		break;
 
 	// Shared code for Bomb and Missile
 	case WEAPON_ID_BOMB_MISSILE:
-#ifndef CTR_NATIVE
-	ShootNowBombMissile:
-#endif
 	{
 		register struct Instance *weaponInst CTR_PSX_REGISTER("$18");
 		struct TrackerWeapon *tw;
@@ -709,10 +622,8 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 				for (i = 0; i < MISSILE_TARGET_DRIVER_COUNT; i++)
 				{
 					struct Driver *candidate = GAME_TRACKER->drivers[i];
-#ifdef CTR_NATIVE
 					int distX;
 					int distZ;
-#endif
 					register int dist CTR_PSX_REGISTER("$3");
 
 					if (candidate == 0)
@@ -736,32 +647,9 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 						continue;
 					}
 
-#ifdef CTR_NATIVE
 					distX = CTR_MipsSra(CTR_MipsSubLo(candidate->posCurr.x, d->posCurr.x), MISSILE_TARGET_POS_SHIFT);
 					distZ = CTR_MipsSra(CTR_MipsSubLo(candidate->posCurr.z, d->posCurr.z), MISSILE_TARGET_POS_SHIFT);
 					dist = CTR_MipsAddLo(CTR_MipsMulLo(distX, distX), CTR_MipsMulLo(distZ, distZ));
-#else
-					// NOTE(aalhendi): GCC otherwise assigns the second MFLO to t6.
-					// Keep retail's v1 reuse without exposing this schedule to native;
-					// a broad memory clobber also destroys the required allocation.
-					__asm__ volatile("lw $2,724(%1)\n\t"
-					                 "lw $3,724(%2)\n\t"
-					                 "nop\n\t"
-					                 "subu $2,$2,$3\n\t"
-					                 "sra $2,$2,8\n\t"
-					                 "mult $2,$2\n\t"
-					                 "lw $2,732(%1)\n\t"
-					                 "lw $3,732(%2)\n\t"
-					                 "mflo $5\n\t"
-					                 "subu $2,$2,$3\n\t"
-					                 "sra $2,$2,8\n\t"
-					                 "mult $2,$2\n\t"
-					                 "mflo %0\n\t"
-					                 "addu %0,$5,%0"
-					                 : "=r"(dist)
-					                 : "r"(candidate), "r"(d)
-					                 : "$2", "$5");
-#endif
 					if (dist < closest)
 					{
 						closest = dist;
@@ -894,9 +782,6 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 
 	// Clock
 	case WEAPON_ID_CLOCK:
-#ifndef CTR_NATIVE
-	ShootNowClock:
-#endif
 	{
 		int i;
 
@@ -938,9 +823,6 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 
 	// Shield Bubble
 	case WEAPON_ID_SHIELD:
-#ifndef CTR_NATIVE
-	ShootNowShield:
-#endif
 	{
 		register struct Instance *weaponInst CTR_PSX_REGISTER("$18");
 		register s32 scale CTR_PSX_REGISTER("$16");
@@ -1000,9 +882,6 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 
 	// Warpball
 	case WEAPON_ID_WARPBALL:
-#ifndef CTR_NATIVE
-	ShootNowWarpball:
-#endif
 	{
 		register struct Instance *weaponInst CTR_PSX_REGISTER("$18");
 		register struct TrackerWeapon *tw CTR_PSX_REGISTER("$16");
@@ -1118,9 +997,6 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 
 	// TNT/Nitro
 	case WEAPON_ID_MINE:
-#ifndef CTR_NATIVE
-	ShootNowMine:
-#endif
 	{
 		register struct Instance *weaponInst CTR_PSX_REGISTER("$18");
 		register struct MineWeapon *mw CTR_PSX_REGISTER("$16");
@@ -1277,9 +1153,6 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 
 	// Beaker
 	case WEAPON_ID_BEAKER:
-#ifndef CTR_NATIVE
-	ShootNowBeaker:
-#endif
 	{
 		register struct Instance *weaponInst CTR_PSX_REGISTER("$18");
 		register struct MineWeapon *mw CTR_PSX_REGISTER("$16");
@@ -1463,9 +1336,6 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 
 	// Super Engine
 	case WEAPON_ID_SUPER_ENGINE:
-#ifndef CTR_NATIVE
-	ShootNowSuperEngine:
-#endif
 	{
 		if (d->numWumpas >= DRIVER_WUMPA_JUICED_COUNT)
 		{
@@ -1479,9 +1349,6 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 
 	// invisibility
 	case WEAPON_ID_INVISIBILITY:
-#ifndef CTR_NATIVE
-	ShootNowInvisibility:
-#endif
 	{
 		register s32 time CTR_PSX_REGISTER("$2");
 
@@ -1511,9 +1378,6 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 	}
 	}
 
-#ifndef CTR_NATIVE
-ShootNowDone:
-#endif
     ;
 }
 

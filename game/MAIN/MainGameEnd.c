@@ -322,14 +322,12 @@ static int MainGameEnd_BattleLifeSlotNumLives(struct GameTracker *gGT, int slot)
 {
 	struct Driver *driver = gGT->drivers[slot];
 
-#if defined(CTR_NATIVE)
 	// NOTE(aalhendi): Retail NULL slots read low mirrored RAM instead of
 	// faulting. Native preserves the unused-slot zero-lives effect directly.
 	if (driver == NULL)
 	{
 		return 0;
 	}
-#endif
 
 	return driver->BattleHUD.numLives;
 }
@@ -338,14 +336,12 @@ static int MainGameEnd_BattleLifeSlotTeam(struct GameTracker *gGT, int slot)
 {
 	struct Driver *driver = gGT->drivers[slot];
 
-#if defined(CTR_NATIVE)
 	// NOTE(aalhendi): Preserve the same low-RAM NULL-slot quirk for retail's
 	// later team read without changing the mixed teamID/slot algorithm.
 	if (driver == NULL)
 	{
 		return 0;
 	}
-#endif
 
 	return driver->BattleHUD.teamID;
 }

@@ -139,13 +139,9 @@ enum
 
 static inline u16 VehPhysForce_QuadFlags(const struct QuadBlock *quad)
 {
-#if defined(CTR_NATIVE)
 	// NOTE(aalhendi): Native collision searches can leave a missing quad while
 	// retail reaches this helper only with a valid fixed-address quad pointer.
 	return quad != NULL ? quad->quadFlags : 0;
-#else
-	return quad->quadFlags;
-#endif
 }
 
 
@@ -179,12 +175,6 @@ void VehPhysForce_OnGravity(struct Driver *driver, Vec3 *velocity)
 	register int speedLimit CTR_PSX_REGISTER("$9");
 	TerrainFlags terrainFlags;
 	register int kartState CTR_PSX_REGISTER("$5");
-#if !defined(CTR_NATIVE)
-	register int lowGravityMagicAndQuotient CTR_PSX_REGISTER("$3");
-	register int lowGravityProductHigh CTR_PSX_REGISTER("$10");
-	int lowGravityNumerator;
-	register int lowGravitySign CTR_PSX_REGISTER("$2");
-#endif
 
 	CTR_PSX_OBSERVE_MEMORY(velocity);
 
@@ -259,20 +249,7 @@ void VehPhysForce_OnGravity(struct Driver *driver, Vec3 *velocity)
 	if ((quadFlags & VEH_PHYS_FORCE_QUAD_LOW_GRAVITY) != 0)
 	{
 		int scaledGravity = CTR_MipsAddLo(CTR_MipsSll(gravityY, 2), gravityY);
-#if defined(CTR_NATIVE)
 		gravityY = CTR_MipsAddLo(CTR_MipsSll(scaledGravity, 3), gravityY) / VEH_PHYS_FORCE_LOW_GRAVITY_DIVISOR;
-#else
-		lowGravityMagicAndQuotient = 0x51eb851f;
-		lowGravityNumerator = CTR_MipsAddLo(CTR_MipsSll(scaledGravity, 3), gravityY);
-		__asm__("mult %2,%3\n\t"
-		        "sra %1,%2,31\n\t"
-		        "mfhi %0"
-		        : "=r"(lowGravityProductHigh), "=r"(lowGravitySign)
-		        : "r"(lowGravityNumerator), "r"(lowGravityMagicAndQuotient));
-		__asm__("sra %0,%1,5" : "=r"(lowGravityMagicAndQuotient) : "r"(lowGravityProductHigh));
-		CTR_PSX_OBSERVE_VALUE(lowGravityMagicAndQuotient);
-		gravityY = CTR_MipsSubLo(lowGravityMagicAndQuotient, lowGravitySign);
-#endif
 	}
 
 	CTR_PSX_OBSERVE_MEMORY(elapsedTimeMS);
@@ -1085,22 +1062,11 @@ void VehPhysForce_CollideDrivers(struct Thread *thread, struct Driver *driver)
 		register int productZ CTR_PSX_REGISTER("$3");
 		register int dotProduct CTR_PSX_REGISTER("$2");
 		register int hitY CTR_PSX_REGISTER("$8");
-#if !defined(CTR_NATIVE)
-		register int normalX CTR_PSX_REGISTER("$4");
-		register int posX CTR_PSX_REGISTER("$2");
-		register int hitX CTR_PSX_REGISTER("$3");
-		register int floorPosY CTR_PSX_REGISTER("$2");
-		register int normalY CTR_PSX_REGISTER("$3");
-		register int posCurrZ CTR_PSX_REGISTER("$2");
-		register int hitZ CTR_PSX_REGISTER("$3");
-		register int normalZ CTR_PSX_REGISTER("$4");
-#endif
 		register int posZ CTR_PSX_REGISTER("$3");
 		register int velocityX CTR_PSX_REGISTER("$2");
 
 		// NOTE(aalhendi): GCC 2.8.1 otherwise shortens and reorders these
 		// multiply pipelines. The PSX path retains their retail HI/LO schedule.
-#if defined(CTR_NATIVE)
 		diffX = CTR_MipsSubLo(CTR_MipsSra(driver->posCurr.x, FRACTIONAL_BITS_8), driver->spsHitPos.x);
 		productX = CTR_MipsMulLo(driver->spsNormalVec.x, diffX);
 		posZ = driver->quadBlockHeight;
@@ -1111,41 +1077,6 @@ void VehPhysForce_CollideDrivers(struct Thread *thread, struct Driver *driver)
 		productZ = CTR_MipsMulLo(driver->spsNormalVec.z, diffZ);
 		dotProduct = CTR_MipsAddLo(CTR_MipsAddLo(productX, productY), productZ);
 		hitY = driver->spsHitPos.y;
-#else
-		posX = driver->posCurr.x;
-		CTR_PSX_MEMORY_BARRIER();
-		hitX = driver->spsHitPos.x;
-		normalX = driver->spsNormalVec.x;
-		posX = CTR_MipsSra(posX, FRACTIONAL_BITS_8);
-		__asm__("subu %0,%1,%2" : "=r"(diffX) : "r"(posX), "r"(hitX));
-		__asm__ volatile("mult %0,%1" : : "r"(normalX), "r"(diffX));
-		hitY = driver->spsHitPos.y;
-		CTR_PSX_MEMORY_BARRIER();
-		floorPosY = driver->quadBlockHeight;
-		CTR_PSX_MEMORY_BARRIER();
-		normalY = driver->spsNormalVec.y;
-		floorPosY = CTR_MipsSra(floorPosY, FRACTIONAL_BITS_8);
-		__asm__ volatile("mflo %0" : "=r"(productX));
-		floorDiffY = CTR_MipsSubLo(floorPosY, hitY);
-		floorDiffY = CTR_MipsAddLo(floorDiffY, VEH_PHYS_FORCE_SURFACE_PUSHBACK_Y_BIAS);
-		__asm__ volatile("mult %0,%1" : : "r"(normalY), "r"(floorDiffY));
-		posCurrZ = driver->posCurr.z;
-		CTR_PSX_OBSERVE_VALUE(posCurrZ);
-		posCurrZ = CTR_MipsSra(posCurrZ, FRACTIONAL_BITS_8);
-		hitZ = driver->spsHitPos.z;
-		CTR_PSX_OBSERVE_VALUE(hitZ);
-		__asm__ volatile("mflo %0" : "=r"(productY));
-		normalZ = driver->spsNormalVec.z;
-		CTR_PSX_MEMORY_BARRIER();
-		diffZ = CTR_MipsSubLo(posCurrZ, hitZ);
-		__asm__ volatile("mult %0,%1" : : "r"(normalZ), "r"(diffZ));
-		__asm__ volatile("addu %0,%1,%2\n\t"
-		                 "mflo $3\n\t"
-		                 "addu %0,%0,$3"
-		                 : "=r"(dotProduct)
-		                 : "r"(productX), "r"(productY)
-		                 : "$3");
-#endif
 
 		CTR_PSX_OBSERVE_MEMORY(retailStackPad0);
 		CTR_PSX_OBSERVE_MEMORY(retailStackPad1);
@@ -1165,14 +1096,8 @@ void VehPhysForce_CollideDrivers(struct Thread *thread, struct Driver *driver)
 			posZ = driver->posCurr.y;
 			velocityX = driver->velocity.x;
 
-#if defined(CTR_NATIVE)
 			diffY = CTR_MipsSubLo(CTR_MipsSra(posZ, FRACTIONAL_BITS_8), hitY);
 			shiftedDiffY = CTR_MipsSll(diffY, VEH_PHYS_FORCE_SURFACE_PUSHBACK_SHIFT);
-#else
-			diffY = CTR_MipsSubLo(CTR_MipsSra(posZ, FRACTIONAL_BITS_8), hitY);
-			CTR_PSX_OBSERVE_VALUE(diffY);
-			__asm__ volatile("sll %0,%1,6" : "=r"(shiftedDiffY) : "r"(diffY));
-#endif
 			driver->velocity.x = CTR_MipsAddLo(velocityX, diffX);
 			CTR_PSX_MEMORY_BARRIER();
 			velocityY = driver->velocity.y;
@@ -1384,26 +1309,9 @@ static inline void VehPhysForce_TranslateMatrix_UpdateInstanceMatrix(struct Inst
 		instMatrix = &inst->matrix;
 		facingWords = (const CtrPackedU32 *)&d->matrixFacingDir;
 		// NOTE(aalhendi): Preserve the retail array-index and MatrixRotate argument lifetimes.
-#if defined(CTR_NATIVE)
 		matrixArrayIndex = matrixArray;
 		facingArgument = (MATRIX *)facingWords;
 		entry = VehPhysForce_TranslateMatrix_GetBakedEntry(matrixArrayIndex, d->matrixIndex);
-#else
-		__asm__("move %0,%2\n\t"
-		        "move %1,%3"
-		        : "=r"(matrixArrayIndex), "=r"(facingArgument)
-		        : "r"(matrixArray), "r"(facingWords), "r"(instMatrix));
-		matrixArrayIndex = CTR_MipsSll(matrixArrayIndex, 3);
-		{
-			register CtrPackedU32 *tableBase CTR_PSX_REGISTER("$2");
-			register CtrPackedU32 *arraySlot CTR_PSX_REGISTER("$3");
-
-			CTR_PSX_LOAD_SYMBOL_PAGE(tableBase, VEH_BAKED_GTE_MATH_ASM_NAME);
-			CTR_PSX_ADD_SYMBOL_LOW(tableBase, tableBase, VEH_BAKED_GTE_MATH_ASM_NAME, (CtrPackedU32 *)data.bakedGteMath);
-			CTR_PSX_ADD_POINTER_OFFSET_OFFSET_FIRST(arraySlot, tableBase, matrixArrayIndex);
-			entry = &((struct MatrixND *)(u32)*arraySlot)[d->matrixIndex];
-		}
-#endif
 		entryVec = (s16 *)entry;
 		matrix = MatrixND_GetOverlapMatrix(entry);
 		MatrixRotate(instMatrix, facingArgument, (MATRIX *)matrix);
@@ -1508,9 +1416,6 @@ NegateMatrixSin:
 	trigOrSin = CTR_MipsNegLo(trigOrSin);
 
 RotationReady:
-#if !defined(CTR_NATIVE)
-	__asm__("" : : "r"(angle));
-#endif
 
 	*(CtrPackedU32 *)&wake->matrix.m[0][0] = (u32)matrixCos;
 	*(CtrPackedU32 *)&wake->matrix.m[0][2] = (u32)trigOrSin;
@@ -1780,21 +1685,12 @@ SQUASH_STRETCH_DONE:
 
 // NOTE(aalhendi): Native helpers preserve R3000 wraparound semantics without C
 // overflow UB. The direct operators keep GCC 2.8.1's retail signed-MULT shape.
-#if defined(CTR_NATIVE)
 #define VEH_ROT_MUL_LO(lhs, rhs)       CTR_MipsMulLo((lhs), (rhs))
 #define VEH_ROT_ADD_LO(lhs, rhs)       CTR_MipsAddLo((lhs), (rhs))
 #define VEH_ROT_SUB_LO(lhs, rhs)       CTR_MipsSubLo((lhs), (rhs))
 #define VEH_ROT_NEG_LO(value)          CTR_MipsNegLo(value)
 #define VEH_ROT_SRA(value, shift)      CTR_MipsSra((value), (shift))
 #define VEH_ROT_DIV(dividend, divisor) CTR_MipsDiv((dividend), (divisor))
-#else
-#define VEH_ROT_MUL_LO(lhs, rhs)       ((lhs) * (rhs))
-#define VEH_ROT_ADD_LO(lhs, rhs)       ((lhs) + (rhs))
-#define VEH_ROT_SUB_LO(lhs, rhs)       ((lhs) - (rhs))
-#define VEH_ROT_NEG_LO(value)          (-(value))
-#define VEH_ROT_SRA(value, shift)      ((value) >> (shift))
-#define VEH_ROT_DIV(dividend, divisor) ((dividend) / (divisor))
-#endif
 
 void VehPhysForce_RotAxisAngle(MATRIX *m, s16 *normVec, s32 angle)
 {
@@ -1824,24 +1720,9 @@ void VehPhysForce_RotAxisAngle(MATRIX *m, s16 *normVec, s32 angle)
 	CTR_PSX_CLOBBER("$3");
 	// NOTE(aalhendi): Retail overlaps the trig-table page setup with the normal-Z
 	// load and sign extension. Keep that scheduling detail out of native builds.
-#if defined(CTR_NATIVE)
 	normalZBits = (u16)normalVector[2];
-#else
-	__asm__ volatile("lui %0,%%hi(" VEH_TRIG_APPROX_ASM_NAME ")\n\t"
-	                 "lhu %1,4(%2)"
-	                 : "=r"(trigBase), "=r"(normalZBits)
-	                 : "r"(normalVector), "m"(normalVector[2]));
-#endif
 	CTR_PSX_ADD_SYMBOL_LOW(trigBase, trigBase, VEH_TRIG_APPROX_ASM_NAME, (const CtrPackedU32 *)data.trigApprox);
-#if defined(CTR_NATIVE)
 	normalZ = CTR_MipsSra(CTR_MipsSll((s32)normalZBits, 16), 16);
-#else
-	__asm__ volatile("sll $2,%1,16\n\t"
-	                 "sra %0,$2,16"
-	                 : "=r"(normalZ)
-	                 : "r"(normalZBits)
-	                 : "$2");
-#endif
 	matrix->m[2][1] = (s16)normalZBits;
 	packedTrig = trigBase[ANG_MODULO_HALF_PI(angle)];
 
@@ -1881,9 +1762,7 @@ TrigReady:
 	s32 scaledCosY = VEH_ROT_SRA(VEH_ROT_MUL_LO(trigCos, normalY), 12);
 	register s32 outX CTR_PSX_REGISTER("$11");
 	register s32 outZ CTR_PSX_REGISTER("$10");
-#if defined(CTR_NATIVE)
 	s32 outY;
-#endif
 	register int shift CTR_PSX_REGISTER("$3");
 	s16 generatedColumn[3];
 
@@ -1893,7 +1772,6 @@ TrigReady:
 
 	if (denom == 0)
 	{
-#if defined(CTR_NATIVE)
 		s32 dot;
 
 		dot = VEH_ROT_ADD_LO(VEH_ROT_MUL_LO((s32)packedTrig, normalX), VEH_ROT_MUL_LO(trigCos, normalZ));
@@ -1904,27 +1782,6 @@ TrigReady:
 		}
 
 		outY = VEH_ROT_SRA(VEH_ROT_NEG_LO(dot), 12);
-#else
-		// NOTE(aalhendi): The encoded local branch lets the shift occupy its delay
-		// slot; GNU assembler reorder mode would insert a nop for the mnemonic.
-		__asm__ volatile("mult %1,%2\n\t"
-		                 "mflo $2\n\t"
-		                 "nop\n\t"
-		                 "nop\n\t"
-		                 "mult %3,%4\n\t"
-		                 "mflo $3\n\t"
-		                 "addu $2,$2,$3\n\t"
-		                 "subu $2,$0,$2\n\t"
-		                 "lh $3,2(%5)\n\t"
-		                 "nop\n\t"
-		                 ".word 0x04610002\n\t"
-		                 "sra $5,$2,12\n\t"
-		                 "subu %0,$0,%0\n"
-		                 "1:"
-		                 : "+r"(scaledSinY)
-		                 : "r"(packedTrig), "r"(normalX), "r"(trigCos), "r"(normalZ), "r"(normalVector), "m"(normalVector[1])
-		                 : "$2", "$3");
-#endif
 		outX = scaledSinY;
 		outZ = scaledCosY;
 	}
@@ -1948,65 +1805,19 @@ TrigReady:
 		sinRemainder = VEH_ROT_SUB_LO((s32)packedTrig, scaledSinY);
 		cosRemainder = VEH_ROT_SUB_LO(trigCos, scaledCosY);
 		divX = VEH_ROT_DIV(VEH_ROT_ADD_LO(VEH_ROT_MUL_LO(sinRemainder, normalZSq), VEH_ROT_MUL_LO(cosRemainder, crossXZ)), denom);
-#if defined(CTR_NATIVE)
 		divZ = VEH_ROT_DIV(VEH_ROT_ADD_LO(VEH_ROT_MUL_LO(sinRemainder, crossXZ), VEH_ROT_MUL_LO(cosRemainder, normalXSq)), denom);
-#else
-		{
-			s32 sinZProduct = sinRemainder * crossXZ;
-
-			// NOTE(aalhendi): End the first HI/LO lifetime before precoloring the
-			// second product, matching retail without changing native arithmetic.
-			CTR_PSX_KEEP_VALUE(sinZProduct);
-			{
-				register s32 cosXProduct CTR_PSX_REGISTER("$2") = cosRemainder * normalXSq;
-
-				divZ = (sinZProduct + cosXProduct) / denom;
-			}
-		}
-#endif
 		CTR_PSX_CLOBBER("$12");
 		CTR_PSX_CLOBBER("$9");
 		dot = VEH_ROT_ADD_LO(VEH_ROT_MUL_LO((s32)packedTrig, normalX), VEH_ROT_MUL_LO(trigCos, normalZ));
 
-#if defined(CTR_NATIVE)
 		outX = VEH_ROT_ADD_LO(scaledSinY, divX);
 		outY = VEH_ROT_SRA(VEH_ROT_NEG_LO(dot), 12);
 		outZ = VEH_ROT_ADD_LO(scaledCosY, divZ);
-#else
-		(void)dot;
-		// NOTE(aalhendi): Preserve retail's final HI/LO issue order while the C
-		// operands and outputs remain the source of the calculation.
-		__asm__ volatile("nop\n\t"
-		                 "nop\n\t"
-		                 "mult %2,%3\n\t"
-		                 "mflo $2\n\t"
-		                 "nop\n\t"
-		                 "nop\n\t"
-		                 "mult %4,%5\n\t"
-		                 "addu %0,%6,%7\n\t"
-		                 "mflo $7\n\t"
-		                 "addu $2,$2,$7\n\t"
-		                 "subu $2,$0,$2\n\t"
-		                 "sra $5,$2,12\n\t"
-		                 "addu %1,%8,%9"
-		                 : "=r"(outX), "=r"(outZ)
-		                 : "r"(packedTrig), "r"(normalX), "r"(trigCos), "r"(normalZ), "r"(scaledSinY), "r"(divX), "r"(scaledCosY), "r"(divZ)
-		                 : "$2");
-#endif
 	}
 
 	generatedColumn[0] = (s16)outX;
 	matrix->m[0][2] = generatedColumn[0];
-#if defined(CTR_NATIVE)
 	generatedColumn[1] = (s16)outY;
-#else
-	{
-		register s32 outY CTR_PSX_REGISTER("$5");
-
-		__asm__ volatile("" : "=r"(outY));
-		generatedColumn[1] = (s16)outY;
-	}
-#endif
 	matrix->m[1][2] = generatedColumn[1];
 	generatedColumn[2] = (s16)outZ;
 	matrix->m[2][2] = generatedColumn[2];

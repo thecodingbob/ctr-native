@@ -62,10 +62,8 @@ void RB_MovingExplosive_ThTick(struct Thread *t)
 		struct Driver *visibleTarget = tw->driverTarget;
 
 		if (
-#ifdef CTR_NATIVE
 		    // NOTE(aalhendi): Shieldbombs can have no target; native cannot read PS1 null space.
 		    visibleTarget == NULL ||
-#endif
 		    visibleTarget->invisibleTimer != 0)
 		{
 			tw->driverTarget = NULL;

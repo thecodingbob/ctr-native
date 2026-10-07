@@ -2,7 +2,6 @@
 
 struct OverlayDATA_231 D231;
 
-#ifdef CTR_NATIVE
 static struct OverlayDATA_231 s_d231InitialState;
 static int s_d231InitialStateReady;
 
@@ -21,4 +20,3 @@ void OVR231_InitData(void)
 {
 	OVR231_ResetRuntimeState();
 }
-#endif

@@ -323,18 +323,6 @@ struct CutsceneObj
 	struct CsOpcodeMeta decodedOpcode;
 };
 
-#ifndef CTR_NATIVE
-CTR_STATIC_ASSERT(sizeof(struct CsOpcodeMeta) == 0x14);
-CTR_STATIC_ASSERT(OFFSETOF(struct CutsceneObj, rotPad) == 0x26);
-CTR_STATIC_ASSERT(OFFSETOF(struct CutsceneObj, pathProgress32) == 0x28);
-CTR_STATIC_ASSERT(OFFSETOF(struct CutsceneObj, particleID) == 0x44);
-CTR_STATIC_ASSERT(OFFSETOF(struct CutsceneObj, pad_45) == 0x45);
-CTR_STATIC_ASSERT(OFFSETOF(struct CutsceneObj, animIndex) == 0x47);
-CTR_STATIC_ASSERT(OFFSETOF(struct CutsceneObj, frameOverrideRoot) == 0x48);
-CTR_STATIC_ASSERT(OFFSETOF(struct CutsceneObj, decodedOpcode) == 0x4c);
-CTR_STATIC_ASSERT(sizeof(struct CutsceneObj) == 0x60);
-#endif
-
 enum BOSS_CUTSCENE_ORDER
 {
 	// Gemstone
@@ -860,11 +848,6 @@ struct CreditsLevHeader
 
 #define CREDITSHEADER_GETSTRINGS(x) ((u32)x + sizeof(struct CreditsLevHeader))
 
-#ifndef CTR_NATIVE
-CTR_STATIC_ASSERT(OFFSETOF(struct CreditsLevHeader, numStrings) == 0x4);
-CTR_STATIC_ASSERT(sizeof(struct CreditsLevHeader) == 0x8);
-#endif
-
 enum CreditsConstants
 {
 	CS_CREDITS_GHOST_COUNT = 5,
@@ -917,13 +900,6 @@ struct CreditsObj
 	// 800b97fa (33e)
 	s16 epiloguePosX_unused; // unused
 };
-
-#ifndef CTR_NATIVE
-CTR_STATIC_ASSERT(OFFSETOF(struct CreditsObj, countdown) == 0x320);
-CTR_STATIC_ASSERT(OFFSETOF(struct CreditsObj, creditsPosY) == 0x32c);
-CTR_STATIC_ASSERT(OFFSETOF(struct CreditsObj, creditsTopString) == 0x330);
-CTR_STATIC_ASSERT(sizeof(struct CreditsObj) == 0x340);
-#endif
 
 struct Ovr233_Credits_BSS
 {

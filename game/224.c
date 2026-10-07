@@ -49,11 +49,9 @@ extern struct RectMenu menu224NoSave;
 #define TT_DRAW_CLEAR_BOX CTR_Box_DrawClearBox
 #endif
 
-#if defined(CTR_NATIVE)
 // NOTE(aalhendi): Native uses the shared s16 declaration; retail preserves
 // overlay 224's wider caller-side x argument through its private ABI binding.
 #define TT_DRAW_LINE_WIDE_X DecalFont_DrawLine
-#endif
 
 void TT_EndEvent_DisplayTime(s32 paramX, s16 paramY, u32 raceClockFlags)
 {

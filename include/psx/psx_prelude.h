@@ -1,7 +1,6 @@
 #ifndef PSX_PRELUDE_H
 #define PSX_PRELUDE_H
 
-#if defined(CTR_NATIVE)
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,7 +14,6 @@
 #endif
 #ifndef ExitCriticalSection
 #define ExitCriticalSection()
-#endif
 #endif
 
 // PSX SDK-shaped headers used by game code.

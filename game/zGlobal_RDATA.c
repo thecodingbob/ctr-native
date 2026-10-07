@@ -1,6 +1,5 @@
 #include <common.h>
 
-#ifdef CTR_NATIVE
 struct rData rdata = {
     .s_asphalt2_thisAppearsTwice = "asphalt2",
 
@@ -60,4 +59,3 @@ struct rData rdata = {
     .s_highlight = "highlight",
     .s_warpball = "warpball",
 };
-#endif

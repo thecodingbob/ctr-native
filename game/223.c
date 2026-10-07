@@ -74,11 +74,9 @@ global_variable Color s_highScoreIconColor223;
 #define RR_DRAW_CLEAR_BOX CTR_Box_DrawClearBox
 #endif
 
-#if defined(CTR_NATIVE)
 // NOTE(aalhendi): Native uses the shared s16 declaration; retail preserves
 // overlay 223's wider caller-side x argument through its private ABI binding.
 #define RR_DRAW_LINE_WIDE_X DecalFont_DrawLine
-#endif
 
 // The tier time the team has to beat. Reading the shared accessor keeps the goal
 // shown on the results screen equal to the one the award was decided on.

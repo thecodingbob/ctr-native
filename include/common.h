@@ -39,9 +39,7 @@
 // a cached tracker. Qualify the access, not the shared declaration.
 #define GAME_TRACKER_RELOAD() (*(struct GameTracker *volatile *)&GAME_TRACKER)
 
-#if defined(CTR_NATIVE)
 #include <platform.h>
-#endif
 
 #include <platform/native_config.h>
 #include <widescreen.h>
@@ -50,7 +48,6 @@
 #include <functions.h>
 #include <gpu.h>
 
-#if defined(CTR_NATIVE)
 static inline void *CTR_PsyqMemmove(void *dest, const void *src, s32 count)
 {
 	// NOTE(aalhendi): Retail PSYQ memmove at 0x80077e38 returns
@@ -65,6 +62,5 @@ static inline void *CTR_PsyqMemmove(void *dest, const void *src, s32 count)
 }
 
 #define memmove(dest, src, count) CTR_PsyqMemmove((dest), (src), (s32)(count))
-#endif
 
 #endif

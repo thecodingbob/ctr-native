@@ -113,35 +113,11 @@ void VehPhysGeneral_PhysAngular(struct Thread *thread, struct Driver *driverArg)
 			previousRot = VehCalc_InterpBySpeed(driver->rotPrev.w, 8, lerpStep);
 		}
 		{
-#if defined(CTR_NATIVE)
 			register int frameTime CTR_PSX_REGISTER("$8") = elapsedTimeMS;
 
 			driver->rotPrev.w = (s16)previousRot;
 			frameTime = CTR_MipsMulLo(previousRot, frameTime);
 			interpolatedRot = VehCalc_InterpBySpeed(remainingRot, CTR_MipsSra(frameTime, 5), 0);
-#else
-			register int interpolationResult CTR_PSX_REGISTER("$2") = previousRot;
-			int hiState;
-			int loState;
-
-			// NOTE(aalhendi): Retail keeps the frame-time load, multiply result,
-			// store, and interpolation call in one fixed scheduling window. The
-			// operands and clobbers expose the embedded call's complete O32 boundary.
-			__asm__ volatile(".word 0x8fa8001c\n\t"
-			                 ".word 0x00000000\n\t"
-			                 ".word 0x00480018\n\t"
-			                 ".word 0x02002021\n\t"
-			                 ".word 0x00003021\n\t"
-			                 ".word 0xa64202fa\n\t"
-			                 ".word 0x00004012\n\t"
-			                 ".word 0x0c0163d5\n\t"
-			                 ".word 0x00082943\n\t"
-			                 "# %0 %3 %4 %5"
-			                 : "+r"(interpolationResult), "=h"(hiState), "=l"(loState)
-			                 : "r"(remainingRot), "r"(driver), "m"(elapsedTimeMS)
-			                 : "$1", "$3", "$4", "$5", "$6", "$7", "$8", "$9", "$10", "$11", "$12", "$13", "$14", "$15", "$24", "$25", "$31", "memory");
-			interpolatedRot = interpolationResult;
-#endif
 		}
 	}
 
@@ -193,17 +169,8 @@ void VehPhysGeneral_PhysAngular(struct Thread *thread, struct Driver *driverArg)
 		}
 		if (initialDirection < 0)
 		{
-#if defined(CTR_NATIVE)
 			rotCurrW_original = CTR_MipsNegLo(rotCurrW_original);
 			actionsFlagSet ^= ACTION_STEER_LEFT;
-#else
-			register u32 flippedActions CTR_PSX_REGISTER("$8");
-
-			__asm__("lw %0,%1" : "=r"(flippedActions) : "m"(actionsFlagSet));
-			rotCurrW_original = CTR_MipsNegLo(rotCurrW_original);
-			flippedActions ^= ACTION_STEER_LEFT;
-			__asm__("sw %1,%0" : "=m"(actionsFlagSet) : "r"(flippedActions));
-#endif
 		}
 		{
 			register u32 testedActions CTR_PSX_REGISTER("$8");
@@ -230,13 +197,7 @@ void VehPhysGeneral_PhysAngular(struct Thread *thread, struct Driver *driverArg)
 						register int mapMaximum CTR_PSX_REGISTER("$6") = VEH_PHYS_ANGULAR_STEER_SPEED_THRESHOLD;
 						register int rangeMinimum CTR_PSX_REGISTER("$7");
 
-#if defined(CTR_NATIVE)
 						rangeMinimum = 0;
-#else
-						// NOTE(aalhendi): Tying the zero to the preceding arguments keeps
-						// retail's final argument setup after the three immediate loads.
-						__asm__("move %0,$0" : "=r"(rangeMinimum) : "r"(mapValue), "r"(mapMinimum), "r"(mapMaximum));
-#endif
 						rotCurrW_original = VehCalc_MapToRange(mapValue, mapMinimum, mapMaximum, rangeMinimum, rotCurrW_original);
 					}
 				}
@@ -254,7 +215,6 @@ void VehPhysGeneral_PhysAngular(struct Thread *thread, struct Driver *driverArg)
 			CTR_PSX_LOAD_SIGNED_HALF(currentRate, driver, offsetof(struct Driver, rotationSpinRate), driver->rotationSpinRate);
 			if (rotCurrW_original == 0)
 			{
-#if defined(CTR_NATIVE)
 				int rate;
 
 				CTR_PSX_FORGET_VALUE(rotCurrW_original);
@@ -265,31 +225,6 @@ void VehPhysGeneral_PhysAngular(struct Thread *thread, struct Driver *driverArg)
 				                8);
 
 				currentRate = VehCalc_InterpBySpeed(currentRate, rate, 0);
-#else
-				int rateProduct;
-				int rateInput;
-				register int rateScale CTR_PSX_REGISTER("$4");
-				register int interpolationResult CTR_PSX_REGISTER("$2");
-				int hiState;
-
-				CTR_PSX_FORGET_VALUE(rotCurrW_original);
-				rateInput = CTR_MipsAddLo(driver->const_TurnInputDelay, (s8)driver->turnConst * VEH_PHYS_ANGULAR_TURN_RESPONSE_COAST_SCALE);
-				rateScale = terrain->turnResponseScale;
-				__asm__ volatile("mult %2,%3" : "=h"(hiState), "=l"(rateProduct) : "r"(rateInput), "r"(rateScale));
-				// NOTE(aalhendi): Retail consumes LO between its call setup and delay
-				// slot. Exposing both multiply results also models the embedded call's
-				// complete O32 boundary without changing that schedule.
-				__asm__ volatile(".word 0x00003021\n\t"
-				                 ".word 0x00a02021\n\t"
-				                 ".word 0x00004012\n\t"
-				                 ".word 0x0c0163d5\n\t"
-				                 ".word 0x00082a03\n\t"
-				                 "# %0 %1 %2 %3"
-				                 : "=r"(interpolationResult), "+r"(currentRate), "+l"(rateProduct), "+h"(hiState)
-				                 :
-				                 : "$1", "$3", "$4", "$6", "$7", "$8", "$9", "$10", "$11", "$12", "$13", "$14", "$15", "$24", "$25", "$31", "memory");
-				currentRate = interpolationResult;
-#endif
 			}
 			else
 			{
@@ -311,18 +246,12 @@ void VehPhysGeneral_PhysAngular(struct Thread *thread, struct Driver *driverArg)
 
 					CTR_PSX_RELOAD(terrain);
 					rateTerrain = terrain;
-#if defined(CTR_NATIVE)
 					(void)rateInput;
 					(void)rateScale;
 					rate = CTR_MipsSra(
 					    CTR_MipsMulLo(CTR_MipsAddLo(driver->const_TurnInputDelay, (s8)driver->turnConst * VEH_PHYS_ANGULAR_TURN_RESPONSE_ACCEL_SCALE),
 					                  rateTerrain->turnResponseScale),
 					    8);
-#else
-					rateInput = CTR_MipsAddLo(driver->const_TurnInputDelay, (s8)driver->turnConst * VEH_PHYS_ANGULAR_TURN_RESPONSE_ACCEL_SCALE);
-					rateScale = rateTerrain->turnResponseScale;
-					__asm__ volatile("mult %1,%2\n\tmflo $8\n\tsra %0,$8,8" : "=r"(rate) : "r"(rateInput), "r"(rateScale) : "$8");
-#endif
 					currentRate = CTR_MipsAddLo(currentRate, rate);
 					crossedTarget = rotCurrW_original < currentRate;
 					goto LAB_8005fee4;
@@ -336,18 +265,12 @@ void VehPhysGeneral_PhysAngular(struct Thread *thread, struct Driver *driverArg)
 
 					CTR_PSX_RELOAD(terrain);
 					rateTerrain = terrain;
-#if defined(CTR_NATIVE)
 					(void)rateInput;
 					(void)rateScale;
 					rate = CTR_MipsSra(
 					    CTR_MipsMulLo(CTR_MipsAddLo(driver->const_TurnInputDelay, (s8)driver->turnConst * VEH_PHYS_ANGULAR_TURN_RESPONSE_DECEL_SCALE),
 					                  rateTerrain->turnResponseScale),
 					    8);
-#else
-					rateInput = CTR_MipsAddLo(driver->const_TurnInputDelay, (s8)driver->turnConst * VEH_PHYS_ANGULAR_TURN_RESPONSE_DECEL_SCALE);
-					rateScale = rateTerrain->turnResponseScale;
-					__asm__ volatile("mult %1,%2\n\tmflo $8\n\tsra %0,$8,8" : "=r"(rate) : "r"(rateInput), "r"(rateScale) : "$8");
-#endif
 					currentRate = CTR_MipsSubLo(currentRate, rate);
 					crossedTarget = currentRate < rotCurrW_original;
 				LAB_8005fee4:
@@ -362,15 +285,7 @@ void VehPhysGeneral_PhysAngular(struct Thread *thread, struct Driver *driverArg)
 				}
 			}
 
-#if defined(CTR_NATIVE)
 			rotCurrW_original = (int)(s16)currentRate;
-#else
-			{
-				register int narrowedRate CTR_PSX_REGISTER("$2") = CTR_MipsSll(currentRate, 16);
-
-				__asm__("sra %0,%1,16" : "=r"(rotCurrW_original) : "r"(narrowedRate));
-			}
-#endif
 			driver->rotationSpinRate = (s16)currentRate;
 		}
 	}
@@ -390,20 +305,8 @@ void VehPhysGeneral_PhysAngular(struct Thread *thread, struct Driver *driverArg)
 			mapMinimum = 0;
 			mapMaximum = VEH_PHYS_ANGULAR_DRIFT_SPINOUT_TIME;
 			rangeMinimum = mapMinimum;
-#if defined(CTR_NATIVE)
 			spinoutTime = CTR_MipsSubLo(spinoutTime, elapsedTimeMS);
 			previousFrameDrift = (int)driver->previousFrameMultDrift;
-#else
-			// NOTE(aalhendi): Keep the elapsed-time reload and previous-frame
-			// load adjacent so the rotation store remains in the branch delay slot.
-			__asm__ volatile("lw $8,%2\n\t"
-			                 "lh %1,%4(%3)\n\t"
-			                 "subu %0,%0,$8"
-			                 : "+r"(spinoutTime), "=r"(previousFrameDrift)
-			                 : "m"(elapsedTimeMS), "r"(driver), "I"(offsetof(struct Driver, previousFrameMultDrift)), "r"(mapValue), "r"(mapMinimum),
-			                   "r"(mapMaximum), "r"(rangeMinimum)
-			                 : "$8");
-#endif
 			rotCurrW_interp = VehCalc_MapToRange(mapValue, mapMinimum, mapMaximum, rangeMinimum, previousFrameDrift);
 			rotCurrW_original = CTR_MipsAddLo(rotCurrW_original, rotCurrW_interp);
 			if (spinoutTime < 0)
@@ -428,13 +331,8 @@ void VehPhysGeneral_PhysAngular(struct Thread *thread, struct Driver *driverArg)
 		register u32 brakeActions CTR_PSX_REGISTER("$8");
 		register b32 brakeWithAccel CTR_PSX_REGISTER("$2");
 
-#if defined(CTR_NATIVE)
 		brakeActions = actionsFlagSet;
 		brakeWithAccel = (b32)(brakeActions & ACTION_BRAKE_WITH_ACCEL);
-#else
-		__asm__("lw %0,%1" : "=r"(brakeActions) : "m"(actionsFlagSet), "r"(modelRotVelocity));
-		__asm__("andi %0,%1,32" : "=r"(brakeWithAccel) : "r"(brakeActions), "r"(turnResistMaxBitshift));
-#endif
 		if (brakeWithAccel != 0)
 		{
 			turnResistMaxBitshift = CTR_MipsSra(turnResistMaxProduct, 9);
@@ -459,11 +357,6 @@ void VehPhysGeneral_PhysAngular(struct Thread *thread, struct Driver *driverArg)
 				CTR_PSX_LOAD_SIGNED_HALF(modelSpeed, driver, offsetof(struct Driver, speed), driver->speed);
 				CTR_PSX_LOAD_SIGNED_HALF(minModelVelocity, driver, offsetof(struct Driver, const_modelRotVelMin), driver->const_modelRotVelMin);
 				classHalfSpeed = CTR_MipsSra(classSpeedPacked, VEH_PHYS_ANGULAR_CLASS_SPEED_HALF_SHIFT);
-#if !defined(CTR_NATIVE)
-				// NOTE(aalhendi): Retail loads both signed arguments before shifting
-				// the packed class speed; this barrier preserves that local order.
-				__asm__ volatile("" : "+r"(modelSpeed), "+r"(classHalfSpeed), "+r"(minModelVelocity));
-#endif
 				if (modelSpeed < 0)
 				{
 					modelSpeed = CTR_MipsNegLo(modelSpeed);
@@ -482,13 +375,10 @@ void VehPhysGeneral_PhysAngular(struct Thread *thread, struct Driver *driverArg)
 		register int lerpTarget CTR_PSX_REGISTER("$7");
 		register int compareSpeed CTR_PSX_REGISTER("$8");
 		register b32 belowTurnResistance CTR_PSX_REGISTER("$2");
-#if defined(CTR_NATIVE)
 		register int resistanceMinArg CTR_PSX_REGISTER("$5") = turnResistMinBitshift;
 		register int resistanceMaxArg CTR_PSX_REGISTER("$6") = turnResistMaxBitshift;
-#endif
 
 		// this prevents you from steering sharp at low speeds
-#if defined(CTR_NATIVE)
 		driftAngleValue = CTR_MipsSll(CTR_MipsAddLo((u8)driver->const_TurnRate, CTR_MipsSll((s8)driver->turnConst, 1) / 5), 8);
 		driverSpeed = (int)driver->speed;
 		if (driverSpeed < 0)
@@ -496,46 +386,6 @@ void VehPhysGeneral_PhysAngular(struct Thread *thread, struct Driver *driverArg)
 			driverSpeed = CTR_MipsNegLo(driverSpeed);
 		}
 		turnResistance = VehCalc_MapToRange(driverSpeed, resistanceMinArg, resistanceMaxArg, driftAngleValue, 0);
-#else
-		register int divideMagic CTR_PSX_REGISTER("$2");
-		register int doubledTurn CTR_PSX_REGISTER("$3");
-		int hiState;
-		int loState;
-
-		divideMagic = 0x66660000;
-		doubledTurn = (s8)driver->turnConst;
-		divideMagic |= 0x6667;
-		doubledTurn = CTR_MipsSll(doubledTurn, 1);
-		// NOTE(aalhendi): Retail interleaves the signed division by five with
-		// the MapToRange argument setup. This bounded window preserves its HI
-		// latency, stack argument, call delay slot, and following speed reload.
-		__asm__ volatile(".word 0x00620018\n\t"
-		                 ".word 0x02602821\n\t"
-		                 ".word 0x9247043a\n\t"
-		                 ".word 0x8644038c\n\t"
-		                 ".word 0x02a03021\n\t"
-		                 ".word 0xafa00010\n\t"
-		                 ".word 0x04810002\n\t"
-		                 ".word 0x00000000\n\t"
-		                 ".word 0x00042023\n\t"
-		                 ".word 0x00031fc3\n\t"
-		                 ".word 0x00004010\n\t"
-		                 ".word 0x00081043\n\t"
-		                 ".word 0x00431023\n\t"
-		                 ".word 0x00e23821\n\t"
-		                 ".word 0x0007b200\n\t"
-		                 ".word 0x0c0163e7\n\t"
-		                 ".word 0x02c03821\n\t"
-		                 ".word 0x8fa80024\n\t"
-		                 ".word 0x0040a021\n\t"
-		                 "# %0 %1 %2 %3 %4 %5 %6 %7"
-		                 : "=r"(turnResistance), "=r"(driftAngleValue), "=r"(compareSpeed), "+r"(divideMagic), "+r"(doubledTurn)
-		                 : "r"(driver), "r"(turnResistMinBitshift), "r"(turnResistMaxBitshift)
-		                 : "$1", "$4", "$5", "$6", "$7", "$9", "$10", "$11", "$12", "$13", "$14", "$15", "$24", "$25", "$31", "memory");
-		// NOTE(aalhendi): Model the embedded call's HI/LO outputs without
-		// splitting the live argument window or emitting another instruction.
-		__asm__ volatile("" : "=h"(hiState), "=l"(loState));
-#endif
 		CTR_PSX_CAPTURE_REGISTER(compareSpeed, speedApprox);
 		CTR_PSX_KEEP_VALUE(compareSpeed);
 
@@ -577,23 +427,14 @@ void VehPhysGeneral_PhysAngular(struct Thread *thread, struct Driver *driverArg)
 			register struct Driver *lerpDriver CTR_PSX_REGISTER("$4");
 			register int lerpTurn CTR_PSX_REGISTER("$6");
 			register int lerpResult CTR_PSX_REGISTER("$2");
-#if !defined(CTR_NATIVE)
-			register int narrowedTurnAngle CTR_PSX_REGISTER("$3");
-#endif
 
 			CTR_PSX_COPY_VALUE(lerpDriver, driver);
 			CTR_PSX_LOAD_SIGNED_HALF(driftAngleValue, driver, offsetof(struct Driver, turnAngleCurr), driver->turnAngleCurr);
 			CTR_PSX_COPY_VALUE(lerpTurn, turnAngleValue);
 			lerpResult = VehPhysGeneral_LerpToForwards(lerpDriver, driftAngleValue, lerpTurn, lerpTarget);
 
-#if defined(CTR_NATIVE)
 			driver->turnAngleLerpVel = (s16)lerpResult;
 			turnAngleValue = (int)(s16)lerpResult;
-#else
-			narrowedTurnAngle = CTR_MipsSll(lerpResult, 16);
-			__asm__ volatile("sh %1,%0" : "=m"(driver->turnAngleLerpVel) : "r"(lerpResult));
-			__asm__("sra %0,%1,16" : "=r"(turnAngleValue) : "r"(narrowedTurnAngle));
-#endif
 		}
 	}
 
@@ -602,13 +443,7 @@ void VehPhysGeneral_PhysAngular(struct Thread *thread, struct Driver *driverArg)
 
 		if (turnTerrain->turnAngleScale != VEH_PHYS_ANGULAR_TERRAIN_SCALE_NEUTRAL)
 		{
-#if defined(CTR_NATIVE)
 			turnAngleValue = CTR_MipsSra(CTR_MipsMulLo(turnTerrain->turnAngleScale, turnAngleValue), 8);
-#else
-			int terrainProduct = CTR_MipsMulLo(turnTerrain->turnAngleScale, turnAngleValue);
-
-			__asm__("mflo $8\n\tsra %0,$8,8" : "=r"(turnAngleValue) : "l"(terrainProduct) : "$8");
-#endif
 		}
 	}
 	{
@@ -616,17 +451,7 @@ void VehPhysGeneral_PhysAngular(struct Thread *thread, struct Driver *driverArg)
 
 		CTR_PSX_LOAD_WORD(turnFrameTime, elapsedTimeMS);
 		CTR_PSX_KEEP_VALUE(turnFrameTime);
-#if defined(CTR_NATIVE)
 		driftAngleValue = CTR_MipsAddLo(driftAngleValue, CTR_MipsSra(CTR_MipsMulLo(turnAngleValue, turnFrameTime), VEH_PHYS_ANGULAR_TURN_INTEGRATION_SHIFT));
-#else
-		{
-			int integrationProduct = CTR_MipsMulLo(turnAngleValue, turnFrameTime);
-			int integrationStep;
-
-			__asm__("mflo $8\n\tsra %0,$8,5" : "=r"(integrationStep) : "l"(integrationProduct) : "$8");
-			driftAngleValue = CTR_MipsAddLo(driftAngleValue, integrationStep);
-		}
-#endif
 		CTR_PSX_KEEP_VALUE(driftAngleValue);
 	}
 	CTR_PSX_STORE_HALF(driver->turnAngleCurr, driftAngleValue);
@@ -662,18 +487,10 @@ void VehPhysGeneral_PhysAngular(struct Thread *thread, struct Driver *driverArg)
 					rotationRateAbs = CTR_MipsNegLo(rotationRateAbs);
 				}
 
-#if defined(CTR_NATIVE)
 				rotationRateScaled = CTR_MipsMulLo(rotationRateScaled, rotationRateAbs);
-#else
-				__asm__ volatile("mult %0,%1" : : "r"(rotationRateScaled), "r"(rotationRateAbs));
-#endif
 				steeringFrames = CTR_MipsAddLo(steeringFrames, 1);
 				steerAcceleration = steerAccelerationResult;
-#if defined(CTR_NATIVE)
 				rotationRateScaled = CTR_MipsSra(rotationRateScaled, 8);
-#else
-				__asm__ volatile("mflo $8\n\tsra %0,$8,8" : "=r"(rotationRateScaled) : : "$8");
-#endif
 				driver->numFramesSpentSteering = (s16)steeringFrames;
 
 				// the higher the value of steerAcceleration the more steering is "locked up"
@@ -824,15 +641,9 @@ void VehPhysGeneral_PhysAngular(struct Thread *thread, struct Driver *driverArg)
 			register int frameTime CTR_PSX_REGISTER("$8");
 			register int integratedAngle CTR_PSX_REGISTER("$2");
 
-#if defined(CTR_NATIVE)
 			mapSpeed = speedApprox;
 			mapMinimum = 0;
 			mapMaximum = VEH_PHYS_ANGULAR_AIR_TURN_SPEED_MAX;
-#else
-			__asm__("move %0,$0" : "=r"(mapMinimum));
-			__asm__("li %0,0x600" : "=r"(mapMaximum));
-			__asm__("lw %0,%1" : "=r"(mapSpeed) : "m"(speedApprox));
-#endif
 			CTR_PSX_LOAD_SIGNED_HALF(turnResistMinBitshift, driver, offsetof(struct Driver, angle), driver->angle);
 			CTR_PSX_OBSERVE_VALUE(turnResistMinBitshift);
 			driver->turnWobbleTimer = (s16)wobbleTimer;
@@ -857,15 +668,9 @@ void VehPhysGeneral_PhysAngular(struct Thread *thread, struct Driver *driverArg)
 			}
 			CTR_PSX_LOAD_WORD(frameTime, elapsedTimeMS);
 			CTR_PSX_KEEP_VALUE(frameTime);
-#if defined(CTR_NATIVE)
 			frameTime = CTR_MipsMulLo(rotCurrW_original, frameTime);
 			driver->ampTurnState = (s16)rotCurrW_original;
 			integratedAngle = CTR_MipsSra(frameTime, VEH_PHYS_ANGULAR_AXIS_INTEGRATION_SHIFT);
-#else
-			__asm__ volatile("mult %0,%1" : : "r"(rotCurrW_original), "r"(frameTime));
-			driver->ampTurnState = (s16)rotCurrW_original;
-			__asm__ volatile("mflo $8\n\tsra %0,$8,13" : "=r"(integratedAngle) : : "$8");
-#endif
 			integratedAngle = CTR_MipsAddLo(turnResistMinBitshift, integratedAngle);
 			CTR_PSX_OBSERVE_VALUE(integratedAngle);
 			turnResistMinBitshift = integratedAngle & VEH_PHYS_ANGULAR_ANGLE_MASK;
@@ -1268,15 +1073,9 @@ PROCESS_ACCEL:
 	MTC2((u32)(u16)acceleration, 1);
 	CTR_PSX_GTE_PIPELINE_DELAY();
 	gte_mvmva(1, 0, 0, 3, 0);
-#if defined(CTR_NATIVE)
 	rotatedX = MFC2_S(25);
 	rotatedY = MFC2_S(26);
 	rotatedZ = MFC2_S(27);
-#else
-	__asm__ volatile("mfc2 %0,$25" : "=r"(rotatedX));
-	__asm__ volatile("mfc2 %0,$26" : "=r"(rotatedY));
-	__asm__ volatile("mfc2 %0,$27" : "=r"(rotatedZ));
-#endif
 	{
 		register int directionOrImpulse CTR_PSX_REGISTER("$2") = d->baseSpeed;
 
@@ -1556,15 +1355,9 @@ CHECK_ANTI_GRAVITY:
 				MTC2(0, 1);
 				CTR_PSX_GTE_PIPELINE_DELAY();
 				gte_mvmva(1, 0, 0, 3, 0);
-#if defined(CTR_NATIVE)
 				rotatedX = MFC2_S(25);
 				rotatedY = MFC2_S(26);
 				rotatedZ = MFC2_S(27);
-#else
-				__asm__ volatile("mfc2 %0,$25" : "=r"(rotatedX));
-				__asm__ volatile("mfc2 %0,$26" : "=r"(rotatedY));
-				__asm__ volatile("mfc2 %0,$27" : "=r"(rotatedZ));
-#endif
 
 				movement.x = CTR_MipsAddLo(movement.x, rotatedX);
 				movement.y = CTR_MipsAddLo(movement.y, rotatedY);
@@ -1613,25 +1406,12 @@ NOT_JUMPING:
 
 				CTR_PSX_LOAD_SIGNED_HALF(needleValue, d, offsetof(struct Driver, speedometerNeedleValue), d->speedometerNeedleValue);
 				VEH_LOAD_GAME_TRACKER(gGT);
-#if defined(CTR_NATIVE)
 				blendedValue = needleValue * VEH_PHYS_JUMP_SPEEDOMETER_BLEND_OLD;
 				timerValue = gGT->timer & VEH_PHYS_JUMP_SPEEDOMETER_TIMER_MASK;
 				timerLowPart = CTR_MipsSll(timerValue, 8);
 				timerValue = CTR_MipsSll(timerValue, 9);
 				timerValue = CTR_MipsAddLo(timerValue, timerLowPart);
 				blendedValue = CTR_MipsAddLo(blendedValue, timerValue);
-#else
-				__asm__("sll %0,%1,1" : "=r"(blendedValue) : "r"(needleValue));
-				__asm__("addu %0,%0,%1" : "+r"(blendedValue) : "r"(needleValue));
-				__asm__("sll %0,%0,2" : "+r"(blendedValue));
-				__asm__("lw %0,7404(%1)" : "=r"(timerValue) : "r"(gGT), "m"(gGT->timer));
-				__asm__("addu %0,%0,%1" : "+r"(blendedValue) : "r"(needleValue));
-				__asm__("andi %0,%0,7" : "+r"(timerValue));
-				__asm__("sll %0,%1,8" : "=r"(timerLowPart) : "r"(timerValue));
-				__asm__("sll %0,%0,9" : "+r"(timerValue));
-				__asm__("addu %0,%0,%1" : "+r"(timerValue) : "r"(timerLowPart));
-				__asm__("addu %0,%0,%1" : "+r"(blendedValue) : "r"(timerValue));
-#endif
 				blendedValue = (s32)((u32)blendedValue >> VEH_PHYS_JUMP_SPEEDOMETER_BLEND_SHIFT);
 				nextNeedleValue = (s16)blendedValue;
 			}
@@ -1995,14 +1775,7 @@ int VehPhysGeneral_GetBaseSpeed(struct Driver *driver)
 	register int subtract CTR_PSX_REGISTER("$7");
 	int clockEffect;
 	register struct Driver *d CTR_PSX_REGISTER("$6") = driver;
-#if !defined(CTR_NATIVE)
-	register int divideMagic CTR_PSX_REGISTER("$4");
-#endif
 	int scaledSpeedStat;
-#if !defined(CTR_NATIVE)
-	int productHigh;
-	int productSign;
-#endif
 
 	CTR_PSX_LOAD_SIGNED_BYTE(speedAdditional, d, offsetof(struct Driver, numWumpas), d->numWumpas);
 	if (speedAdditional > VEH_BASE_SPEED_MAX_WUMPA)
@@ -2011,53 +1784,24 @@ int VehPhysGeneral_GetBaseSpeed(struct Driver *driver)
 	}
 	CTR_PSX_BIND_VALUE_CLOBBER(speedAdditional, "$5");
 	CTR_PSX_LOAD_SIGNED_BYTE(turboMultiplier, d, offsetof(struct Driver, turboConst), d->turboConst);
-#if !defined(CTR_NATIVE)
-	// NOTE(aalhendi): Retail keeps one signed-division magic value live
-	// across the clamp, then reuses it for both divisions below.
-	divideMagic = 0x66660000;
-#endif
 	if (turboMultiplier > VEH_BASE_SPEED_MAX_TURBO_MULTIPLIER)
 	{
 		turboMultiplier = VEH_BASE_SPEED_MAX_TURBO_MULTIPLIER;
 	}
-#if !defined(CTR_NATIVE)
-	CTR_PSX_KEEP_VALUE(divideMagic);
-#endif
 
-#if defined(CTR_NATIVE)
 	scaledSpeedStat = d->const_AccelSpeed_ClassStat;
 	statAdditional = d->const_Speed_ClassStat;
 	netSpeedStat = CTR_MipsSubLo(CTR_MipsSll(CTR_MipsSubLo(scaledSpeedStat, statAdditional), VEH_BASE_SPEED_STAT_BLEND_SHIFT) / VEH_BASE_SPEED_STAT_DIVISOR,
 	                             VEH_BASE_SPEED_STAT_OFFSET);
-#else
-	scaledSpeedStat = d->const_AccelSpeed_ClassStat;
-	__asm__("lh %0,%1" : "=r"(statAdditional) : "m"(d->const_Speed_ClassStat), "r"(scaledSpeedStat));
-	divideMagic |= 0x6667;
-	scaledSpeedStat = CTR_MipsSll(CTR_MipsSubLo(scaledSpeedStat, statAdditional), VEH_BASE_SPEED_STAT_BLEND_SHIFT);
-	__asm__("mult %1,%2" : "=h"(productHigh) : "r"(scaledSpeedStat), "r"(divideMagic));
-	productSign = CTR_MipsSra(scaledSpeedStat, 31);
-	netSpeedStat = CTR_MipsSubLo(CTR_MipsSubLo(CTR_MipsSra(productHigh, 1), productSign), VEH_BASE_SPEED_STAT_OFFSET);
-#endif
 
 	{
 		register int wumpaProduct CTR_PSX_REGISTER("$2");
 		register int speedSum CTR_PSX_REGISTER("$2");
 
 		wumpaProduct = CTR_MipsMulLo(speedAdditional, netSpeedStat);
-#if defined(CTR_NATIVE)
 		speedAdditional = wumpaProduct / VEH_BASE_SPEED_WUMPA_DIVISOR;
 		turboMultiplier = CTR_MipsMulLo(turboMultiplier, netSpeedStat);
-#else
-		// NOTE(aalhendi): Preserve the two-instruction gap emitted before the retail division multiply.
-		__asm__ volatile("nop\n\tnop");
-		__asm__ volatile("mult %1,%2" : "=h"(speedAdditional) : "r"(wumpaProduct), "r"(divideMagic));
-		turboMultiplier = CTR_MipsMulLo(turboMultiplier, netSpeedStat);
-#endif
 		CTR_PSX_BIND_VALUE_CLOBBER(turboMultiplier, "$12");
-#if !defined(CTR_NATIVE)
-		productSign = CTR_MipsSra(wumpaProduct, 31);
-		speedAdditional = CTR_MipsSubLo(CTR_MipsSra(speedAdditional, 2), productSign);
-#endif
 		CTR_PSX_BIND_VALUE_CLOBBER(speedAdditional, "$13");
 		speedSum = CTR_MipsAddLo(speedAdditional, turboMultiplier);
 		CTR_PSX_BIND_VALUE_CLOBBER(speedSum, "$11");

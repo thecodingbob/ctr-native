@@ -320,13 +320,11 @@ void RB_FlameJet_Particles(struct Instance *inst, struct FlameJet *fjObj)
 		return;
 	}
 
-#if defined(CTR_NATIVE)
 	// NOTE(aalhendi): Retail would read PS1 null-space if the fire particle allocation failed.
 	if (particle1 == NULL)
 	{
 		return;
 	}
-#endif
 
 	particle2 = Particle_Init(0, (struct IconGroup *)GAME_TRACKER->ptrSparkle, &emSet_fjHeat[0]);
 
@@ -382,10 +380,8 @@ void RB_FlameJet_ThTick(struct Thread *t)
 	{
 		fjObj->cooldown--;
 		ThTick_FastRET(t);
-#ifdef CTR_NATIVE
 		// NOTE(aalhendi): Native callbacks yield by returning to the scheduler.
 		return;
-#endif
 	}
 
 	do
@@ -435,10 +431,8 @@ void RB_FlameJet_ThTick(struct Thread *t)
 		fjObj->cycleTimer++;
 		Vector_SpecLightNoSpin3D(fjInst, &fjInst->instDef->rot, &light.direction);
 		ThTick_FastRET(t);
-#ifdef CTR_NATIVE
 		// NOTE(aalhendi): Retail resumes this loop after FastRET; native ticks return.
 		return;
-#endif
 	} while (1);
 }
 

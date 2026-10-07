@@ -61,8 +61,8 @@ the same RAM addresses.
 
 ## Native Build Behavior
 
-In ctr-native, the `#ifndef CTR_NATIVE` guards around `LOAD_AppendQueue` calls
-in `LOAD_OvrEndRace` and `LOAD_OvrLOD` skip runtime overlay streaming. Native
-has a host-file `Cd*` facade for asset loads, but overlay C code is compiled
-directly into the native binary, so every overlay function is always present
-regardless of which region it logically belongs to.
+Overlay C code is compiled directly into the native binary, so every overlay
+function is always present regardless of which region it logically belongs to.
+This is why the `LOAD_AppendQueue` calls in `LOAD_OvrEndRace` and `LOAD_OvrLOD`
+are absent: they exist only to drive retail overlay streaming, which the host
+build does not do.

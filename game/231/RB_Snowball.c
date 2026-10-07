@@ -72,10 +72,8 @@ void RB_Snowball_ThTick(struct Thread *t)
 
 		snowObj->pointIndex = (snowObj->pointIndex + 1) % (snowObj->numPoints * 2);
 		ThTick_FastRET(t);
-#ifdef CTR_NATIVE
 		// NOTE(aalhendi): Native ticks return as callbacks; retail yields through FastRET.
 		return;
-#endif
 	} while (1);
 }
 

@@ -951,7 +951,6 @@ struct OverlayDATA_230 D230 CTR_PSX_MATCH_SECTION(".D230") =
 
 struct OVR_230_VideoBSS V230;
 
-#ifdef CTR_NATIVE
 static struct OverlayDATA_230 s_d230InitialState;
 static int s_d230InitialStateReady;
 
@@ -971,7 +970,6 @@ void OVR230_InitData(void)
 {
 	OVR230_ResetRuntimeState();
 }
-#endif
 
 #undef CHEAT_N
 #undef CHEAT_U

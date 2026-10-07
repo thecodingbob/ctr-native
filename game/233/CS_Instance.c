@@ -221,14 +221,12 @@ b32 CS_Instance_BoolPlaySound(struct CutsceneObj *cs, struct Instance *desiredIn
 	// pointer to array of visible instances
 	visInstSrc = GAME_TRACKER->cameraDC[0].visInstSrc;
 
-#if defined(CTR_NATIVE)
 	// NOTE(aalhendi): Same native low-RAM guard as AH_WarpPad_ThTick:
 	// a null camera list behaves like "desired instance is not visible."
 	if (visInstSrc == NULL)
 	{
 		return 0;
 	}
-#endif
 
 	visible = *visInstSrc;
 	while (visible != NULL)

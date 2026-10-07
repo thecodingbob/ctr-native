@@ -33,9 +33,7 @@ void CDSYS_SpuCallbackTransfer(void);
 void CDSYS_SpuEnableIRQ(void);
 void CDSYS_SpuDisableIRQ(void);
 void CDSYS_SpuGetMaxSample(void);
-#if defined(CTR_NATIVE)
 void CDSYS_SpuGetMaxSampleAtOffset(int xaCurrOffset);
-#endif
 int CDSYS_XAGetNumTracks(int categoryID);
 int CDSYS_XAGetTrackLength(int categoryID, int xaID);
 int CDSYS_XAPlay(int categoryID, int xaID);
@@ -333,7 +331,6 @@ void LOAD_Callback_Overlay_230(void);
 void LOAD_Callback_Overlay_231(void);
 void LOAD_Callback_Overlay_232(void);
 void LOAD_Callback_Overlay_233(void);
-#ifdef CTR_NATIVE
 void OVR230_ResetRuntimeState(void);
 void OVR230_InitData(void);
 void OVR231_ResetRuntimeState(void);
@@ -342,7 +339,6 @@ void OVR232_ResetRuntimeState(void);
 void OVR232_InitData(void);
 void OVR233_ResetRuntimeState(void);
 void OVR233_InitData(void);
-#endif
 void LOAD_ReadFileASyncCallback(u8 result, u8 *unk);
 
 // same hack as AppendQueue, see notes there
@@ -613,9 +609,7 @@ void ThTick_SetAndExec(struct Thread *thread, void (*funcThTick)(struct Thread *
 
 void PushBuffer_Init(struct PushBuffer *pb, int id, int total);
 void PushBuffer_UpdateFrustum(struct PushBuffer *pb);
-#if defined(CTR_NATIVE)
 s32 PushBuffer_GetFrustumSavedCameraZ(void);
-#endif
 void PushBuffer_SetPsyqGeom(struct PushBuffer *pb);
 void PushBuffer_SetMatrixVP(struct PushBuffer *pb);
 
@@ -642,9 +636,7 @@ void RaceFlag_DrawSelf(void);
 s16 SubmitName_DrawMenu(u16 string);
 void SubmitName_MenuProc(struct RectMenu *menu);
 void SubmitName_RestoreName(s16 submitNameMode);
-#if defined(CTR_NATIVE)
 void SubmitName_UseKeyboard(int key);
-#endif
 
 void Timer_Init(void);
 void Timer_Destroy(void);

@@ -294,7 +294,6 @@ struct OverlayDATA_232 D232 =
         // the rest all initialize to zeros
 };
 
-#ifdef CTR_NATIVE
 static struct OverlayDATA_232 s_d232InitialState;
 static int s_d232InitialStateReady;
 
@@ -313,4 +312,3 @@ void OVR232_InitData(void)
 {
 	OVR232_ResetRuntimeState();
 }
-#endif

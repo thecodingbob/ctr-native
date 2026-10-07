@@ -6,13 +6,6 @@ void MainKillGame_StopCTR(void)
 	DrawSyncCallback((void (*)(void))sdata->MainDrawCb_DrawSyncPtr);
 	ExitCriticalSection();
 	StopCallback();
-
-#ifndef CTR_NATIVE
-	MEMCARD_CloseCard();
-#else
-	// NOTE(aalhendi): Native skips PSX memcard event teardown.
-#endif
-
 	PadStopCom();
 	ResetGraph(3);
 	VSyncCallback(0);
@@ -37,19 +30,10 @@ void MainKillGame_LaunchSpyro2(void)
 
 	MainKillGame_StopCTR();
 
-#ifdef CTR_NATIVE
 	// NOTE(aalhendi): Native cannot chain-load the Spyro executable.
 
 	while (1)
 	{
 	}
 
-#else
-
-	_96_remove();
-	_96_init();
-
-	LoadExec(rdata.s_PathTo_SpyroExe, 0x801fff00, 0);
-
-#endif
 }

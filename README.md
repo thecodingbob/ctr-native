@@ -292,13 +292,12 @@ main.c (entrypoint)
               +-- include/ (headers: structs, globals, declarations)
 ```
 
-- `CTR_NATIVE` is defined for native host/platform-specific code
 - First-party native code targets portable C17 with compiler extensions disabled
 - The default build uses 32-bit mode while remaining PSX address-shaped data and host-pointer contracts are audited. GPU primitive links are bridged through 24-bit native tokens; see `docs/MEMORY_MODEL.md`.
 
 ## Roadmap
 
-- Clean up `game/` copies strip byte budget hacks and route platform-specific code through `CTR_NATIVE`
+- Clean up `game/` copies strip byte budget hacks and keep host-specific code behind the `platform/` boundary
 - Keep reducing 32-bit host-pointer assumptions in PSX-shaped data, and keep pruning inherited compatibility code now owned in `include/` and `platform/`.
 
 ## AI Usage

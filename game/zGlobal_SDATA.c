@@ -1,8 +1,4 @@
 
-#ifndef CTR_NATIVE
-#define NO_BSS 1
-#endif
-
 #include <common.h>
 
 #if defined(__GNUC__)

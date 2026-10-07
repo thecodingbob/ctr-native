@@ -20,10 +20,8 @@ void RB_CrateAny_ThTick_Explode(struct Thread *t)
 		}
 
 		ThTick_FastRET(t);
-#ifdef CTR_NATIVE
 		// NOTE(aalhendi): Native ticks return as callbacks; retail resumes after the yield.
 		return;
-#endif
 	}
 }
 
@@ -75,10 +73,8 @@ void RB_CrateAny_ThTick_Grow(struct Thread *t)
 		}
 
 		ThTick_FastRET(t);
-#ifdef CTR_NATIVE
 		// NOTE(aalhendi): Native ticks return as callbacks; retail resumes after the yield.
 		return;
-#endif
 	}
 }
 

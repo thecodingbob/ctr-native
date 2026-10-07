@@ -291,19 +291,12 @@ void MM_Battle_Init(void)
 	MM_BATTLE_TRANSITION_STATE = ENTERING_MENU;
 }
 
-// NOTE(aalhendi): Retail carries several menu values in fixed MIPS registers.
-// Matching constraints preserve those lifetimes; CTR_NATIVE paths assign the
-// equivalent C values directly.
 void MM_Battle_MenuProc(struct RectMenu *unused)
 {
 	s16 settingIndex;
 	struct TransitionMeta *transitionMeta;
 	s16 menuHeight = 0;
-#ifdef CTR_NATIVE
 	s32 defaultMenuHeight = BATTLE_MENU_DEFAULT_HEIGHT;
-#else
-	s32 defaultMenuHeight;
-#endif
 	s16 lifeCountMenuHeight;
 	(void)unused;
 	// Restore the selected row for each battle setting menu.
@@ -763,11 +756,7 @@ LAB_Battle_ValidSetup:
 		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_TYPE], battleTransitions[BATTLE_ROW_TYPE_LABEL_META_INDEX].currX + BATTLE_LABEL_X_OFFSET,
 		                   battleTransitions[BATTLE_ROW_TYPE_LABEL_META_INDEX].currY + BATTLE_TYPE_ROW_Y_OFFSET, FONT_BIG, BATTLE_LABEL_TEXT_FLAGS);
 		battleTypeMenu = &MM_MENU_BATTLE_TYPE;
-#ifdef CTR_NATIVE
 		menuStateMask = ~(HIDE_ROW_HIGHLIGHT | SHOW_ONLY_HIGHLIT_ROW);
-#else
-		asm("li %0,-321" : "=r"(menuStateMask) : "r"(battleTypeMenu));
-#endif
 		transitionMeta = battleTransitions;
 		CTR_PSX_OBSERVE_VALUE(transitionMeta);
 		battleTypeMenu->state &= menuStateMask;
@@ -819,24 +808,15 @@ LAB_Battle_ValidSetup:
 		register s32 visibleState CTR_PSX_REGISTER("$2");
 		register s32 expandedRow CTR_PSX_REGISTER("$3");
 		register s32 highlightedRow CTR_PSX_REGISTER("$2");
-#ifdef CTR_NATIVE
 		selectedLengthRow = BATTLE_ROW_LENGTH;
 		visibleState = lengthMenu->state & menuStateMask;
 		expandedRow = MM_BATTLE_EXPAND_MENU;
-#else
-		asm("" : "=r"(selectedLengthRow));
-		asm("lw %0,8(%2)\n\tlh %1,%%lo(" MM_BATTLE_EXPAND_MENU_ASM_NAME ")($21)\n\tand %0,%0,$23" : "=&r"(visibleState), "=&r"(expandedRow) : "r"(lengthMenu));
-#endif
 		lengthMenu->state = visibleState;
 		if (expandedRow != selectedLengthRow)
 		{
 			lengthMenu->state |= SHOW_ONLY_HIGHLIT_ROW;
 		}
-#ifdef CTR_NATIVE
 		highlightedRow = MM_BATTLE_ROW_HIGHLIGHTED;
-#else
-		asm("lh %0,%%lo(" MM_BATTLE_ROW_HIGHLIGHTED_ASM_NAME ")($30)" : "=r"(highlightedRow));
-#endif
 		if (highlightedRow != selectedLengthRow)
 		{
 			lengthMenu->state |= HIDE_ROW_HIGHLIGHT;
@@ -859,11 +839,7 @@ LAB_Battle_ValidSetup:
 		}
 		{
 			register s32 highlightedRow CTR_PSX_REGISTER("$2");
-#ifdef CTR_NATIVE
 			highlightedRow = MM_BATTLE_ROW_HIGHLIGHTED;
-#else
-			asm("lh %0,%%lo(" MM_BATTLE_ROW_HIGHLIGHTED_ASM_NAME ")($30)" : "=r"(highlightedRow));
-#endif
 			if (highlightedRow != BATTLE_ROW_LENGTH)
 			{
 				MM_MENU_BATTLE_LENGTH_LIFE_TIME.state |= HIDE_ROW_HIGHLIGHT;
@@ -941,11 +917,7 @@ LAB_Battle_ValidSetup:
 		{
 			register s16 truncatedRemainingTeamWidth CTR_PSX_REGISTER("$2");
 			s32 paddedRemainingTeamWidth;
-#ifdef CTR_NATIVE
 			truncatedRemainingTeamWidth = (s16)remainingWidthResult;
-#else
-			asm("" : "=r"(truncatedRemainingTeamWidth) : "0"(remainingWidthResult));
-#endif
 			paddedRemainingTeamWidth = truncatedRemainingTeamWidth + 3;
 			if (paddedRemainingTeamWidth < 0)
 			{
@@ -1010,9 +982,6 @@ LAB_Battle_ValidSetup:
 		menuPanelRect.x = MM_BATTLE_TRANSITIONS[BATTLE_ROW_TEAM_META_INDEX].currX + BATTLE_TEAM_PANEL_X_OFFSET;
 		menuPanelRect.y = MM_BATTLE_TRANSITIONS[BATTLE_ROW_TEAM_META_INDEX].currY + afterLengthY;
 		teamIndex = afterLengthY + BATTLE_WEAPON_PANEL_Y_OFFSET;
-#ifndef CTR_NATIVE
-		asm("" : "+r"(afterLengthY) : "m"(menuPanelRect.y));
-#endif
 		weaponPanelY = teamIndex;
 		afterLengthY = weaponPanelY;
 		afterLengthY += 0x4a;

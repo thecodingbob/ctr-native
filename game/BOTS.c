@@ -188,7 +188,6 @@ internal void BOTS_Adv_CopySpawnOrder(s32 first, s32 second)
 
 internal s32 BOTS_GetTrackDistanceToFinish(struct GameTracker *gGT)
 {
-#if defined(CTR_NATIVE)
 	// NOTE(aalhendi): Menu-storage/wrong-warp can leave stale bot threads in
 	// levels without restart points. Retail blind-loads from low PSX memory;
 	// native uses zero so only stale AI spacing/rubberband math is affected.
@@ -196,7 +195,6 @@ internal s32 BOTS_GetTrackDistanceToFinish(struct GameTracker *gGT)
 	{
 		return 0;
 	}
-#endif
 
 	return CTR_MipsSll(gGT->level1->ptr_restart_points->distToFinish, 3);
 }
