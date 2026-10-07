@@ -1,6 +1,5 @@
 #include <common.h>
 
-#ifndef FONT_ICON_GROUP
 #define FONT_ICON_GROUP        data.font_IconGroupID
 #define FONT_CHAR_WIDTH        data.font_charPixWidth
 #define FONT_CHAR_HEIGHT       data.font_charPixHeight
@@ -12,13 +11,10 @@
 #define FONT_INDENT_ICONS      data.font_indentIconID
 #define FONT_INDENT_DIMENSIONS data.font_indentPixDimensions
 #define FONT_COLORS            data.ptrColor
-#endif
 
-#ifndef FONT_DRAW_POLY_GT4
 #define FONT_DRAW_POLY_GT4(icon, x, y, primMem, ot, c0, c1, c2, c3, transparency, scale)                                                                \
 	DecalHUD_DrawPolyGT4((icon), (x), (y), (primMem), (ot), ColorCode_Load(&(c0)), ColorCode_Load(&(c1)), ColorCode_Load(&(c2)), ColorCode_Load(&(c3)), \
 	                     (transparency), (scale))
-#endif
 
 s32 DecalFont_GetLineWidthStrlen(char *str, s16 len, s16 fontType)
 {

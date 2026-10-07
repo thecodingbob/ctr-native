@@ -58,7 +58,6 @@ global_variable const char s_countdownStartFormat223[4] = "-10";
 global_variable const char s_countdownFormat223[4] = "-%d";
 global_variable Color s_highScoreIconColor223;
 
-#ifndef RR_RELIC
 #define RR_RELIC            (sdata->ptrRelic)
 #define RR_TIMEBOX1         (sdata->ptrTimebox1)
 #define RR_RELIC_TIME_1MIN  (sdata->relicTime_1min)
@@ -66,13 +65,10 @@ global_variable Color s_highScoreIconColor223;
 #define RR_RELIC_TIME_1SEC  (sdata->relicTime_1sec)
 #define RR_RELIC_TIME_10MS  (sdata->relicTime_10ms)
 #define RR_RELIC_TIME_1MS   (sdata->relicTime_1ms)
-#endif
 
-#ifndef RR_DRAW_POLY_GT4
 #define RR_DRAW_POLY_GT4(icon, posX, posY, primMem, ot, color0, color1, color2, color3, transparency, scale) \
 	RECTMENU_DrawPolyGT4((icon), (s16)(posX), (s32)(posY), (primMem), (ot), (color0), (color1), (color2), (color3), (s8)(transparency), (s16)(scale))
 #define RR_DRAW_CLEAR_BOX CTR_Box_DrawClearBox
-#endif
 
 // NOTE(aalhendi): Native uses the shared s16 declaration; retail preserves
 // overlay 223's wider caller-side x argument through its private ABI binding.

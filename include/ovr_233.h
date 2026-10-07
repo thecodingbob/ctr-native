@@ -472,9 +472,7 @@ struct CsIntroNames
 
 extern const struct CsIntroNames csIntroNames;
 
-#ifndef CS_INTRO_NAME
 #define CS_INTRO_NAME(field) (csIntroNames.field)
-#endif
 
 struct CsCreditsNames
 {
@@ -632,7 +630,6 @@ struct OverlayDATA_233
 
 extern struct OverlayDATA_233 D233;
 
-#ifndef CS_VERT_SPLIT
 #define CS_VERT_SPLIT          (D233.VertSplitLine)
 #define CS_LOAD_NEXT_SWAP      (D233.boolLoadNextSwap)
 #define CS_CAN_SKIP            (D233.boolStartToSkip)
@@ -658,7 +655,6 @@ extern struct OverlayDATA_233 D233;
 #define CS_FRAME_COUNTER_LOW   ((u16)sdata->frameCounter)
 #define CS_BUTTONS_HOLD        (sdata->AnyPlayerHold)
 #define CS_DESIRED_MENU        (sdata->ptrDesiredMenu)
-#endif
 
 #define CS_BOSS_HEAD_MODEL     (CS_BOSS_MODELS[CS_BOSS_MODEL_HEAD])
 #define CS_BOSS_BODY_MODEL     (CS_BOSS_MODELS[CS_BOSS_MODEL_BODY])
@@ -667,21 +663,15 @@ extern struct OverlayDATA_233 D233;
 #define CS_MUSIC_VOLUME_BACKUP (CS_VOLUME_BACKUP[HOWL_VOLUME_TYPE_MUSIC])
 #define CS_VOICE_VOLUME_BACKUP (CS_VOLUME_BACKUP[HOWL_VOLUME_TYPE_VOICE])
 
-#ifndef CS_PODIUM_FIRST_NAME
 #define CS_PODIUM_FIRST_NAME      (csPodiumNames.s_first)
 #define CS_PODIUM_TAWNA_NAME      (csPodiumNames.s_tawna)
 #define CS_PODIUM_PRIZE_NAME      (csPodiumNames.s_prize)
 #define CS_PODIUM_VICTORYCAM_NAME (csPodiumNames.s_victorycam)
-#endif
 
-#ifndef CS_INTRO_MODEL_SCRIPTS
 #define CS_INTRO_MODEL_SCRIPTS (D233.introModelScripts)
 #define CS_BOX_MODEL_SCRIPTS   (D233.boxModelScripts)
-#endif
 
-#ifndef CS_SCRIPT
 #define CS_SCRIPT(field) (D233.field)
-#endif
 
 // Cutscene data begins at retail 0x800b0b7c; code is linked separately.
 #define OVR233_LAYOUT_ASSERT(ELEMENT, OFFSET, SIZE)                                    \
@@ -984,7 +974,6 @@ CTR_STATIC_ASSERT(sizeof(struct Ovr233_Credits_BSS) == 0x374);
 
 extern struct Ovr233_Credits_BSS creditsBSS;
 
-#ifndef CS_CREDITS_THREAD
 #define CS_CREDITS_THREAD        (creditsBSS.creditThread)
 #define CS_CREDITS_DANCER_THREAD (creditsBSS.dancerThread)
 #define CS_CREDITS_DANCER        (creditsBSS.dancerInst_invisible)
@@ -993,14 +982,10 @@ extern struct Ovr233_Credits_BSS creditsBSS;
 #define CS_CREDITS_ALL_BLUE      (creditsBSS.boolAllBlue)
 #define CS_CREDITS_GHOST_POS     (creditsBSS.creditGhostPos)
 #define CS_CREDITS_TEXT_X        (creditsBSS.creditTextPosX)
-#endif
 
-#ifndef CS_COLOR_POINTERS
 #define CS_COLOR_POINTERS       (data.ptrColor)
 #define CS_CREDITS_FADE_PALETTE (data.colors[CREDITS_FADE])
-#endif
 
-#ifndef CS_GARAGE_ZOOM_FRAMES
 #define CS_GARAGE_ZOOM_FRAMES   (gGarage.numFramesMax_Zoom)
 #define CS_GARAGE_MOVE_FRAME    (gGarage.numFramesCurr_GarageMove)
 #define CS_GARAGE_ZOOM_IN       (gGarage.numFramesCurr_ZoomIn)
@@ -1016,14 +1001,11 @@ extern struct Ovr233_Credits_BSS creditsBSS;
 #define CS_GARAGE_MOVE_FRAMES   (gGarage.numFramesMax_GarageMove)
 #define CS_GARAGE_FOV_MIN       (gGarage.fovMin)
 #define CS_GARAGE_FOV_MAX       (gGarage.fovMax)
-#endif
 
 extern const Color csGarageWhite;
 
-#ifndef CS_DECALHUD_ARROW_2D
 #define CS_DECALHUD_ARROW_2D(icon, x, y, prim, ot, c0, c1, c2, c3, transparency, scale, rotation)                                                \
 	DecalHUD_Arrow2D((icon), (x), (y), (prim), (ot), ColorCode_Load(&(c0)), ColorCode_Load(&(c1)), ColorCode_Load(&(c2)), ColorCode_Load(&(c3)), \
 	                 (transparency), (scale), (rotation))
-#endif
 
 #endif

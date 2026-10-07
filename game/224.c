@@ -38,16 +38,12 @@ global_variable Color s_highScoreIconColor224;
 extern struct RectMenu menu224;
 extern struct RectMenu menu224NoSave;
 
-#ifndef TT_FLAGS
 #define TT_FLAGS         (sdata->flags_timeTrialEndOfRace)
 #define TT_GHOST_TOO_BIG (sdata->boolGhostTooBigToSave)
-#endif
 
-#ifndef TT_DRAW_POLY_GT4
 #define TT_DRAW_POLY_GT4(icon, posX, posY, primMem, ot, color0, color1, color2, color3, transparency, scale) \
 	RECTMENU_DrawPolyGT4((icon), (s16)(posX), (s32)(posY), (primMem), (ot), (color0), (color1), (color2), (color3), (s8)(transparency), (s16)(scale))
 #define TT_DRAW_CLEAR_BOX CTR_Box_DrawClearBox
-#endif
 
 // NOTE(aalhendi): Native uses the shared s16 declaration; retail preserves
 // overlay 224's wider caller-side x argument through its private ABI binding.

@@ -2,9 +2,7 @@
 
 #define TIMER_RCNT RCntCNT1
 
-#ifndef TIMER_TOTAL_UNITS
 #define TIMER_TOTAL_UNITS sdata->rcntTotalUnits
-#endif
 
 enum TimerConstants
 {

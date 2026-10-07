@@ -1,22 +1,16 @@
 #include <common.h>
 #include <ctr_gte_transfer.h>
 
-#ifndef RACE_FLAG_MATRIX
 #define RACE_FLAG_MATRIX data.matrixTitleFlag
 #define RACE_FLAG_WAVE   data.checkerFlagVariables
 #define RACE_FLAG_TRIG   data.trigApprox
-#endif
-#ifndef RACE_FLAG_CAN_DRAW
 #define RACE_FLAG_CAN_DRAW sdata->RaceFlag_CanDraw
-#endif
 
 // NOTE(aalhendi): The strip cursor starts one word before its first vertex.
 // Reserve that word inside native scratch RAM; PSX keeps its hardware addresses.
 #define RACE_FLAG_SCREEN_BASE CTR_SCRATCHPAD_PTR(u32, 4)
 
-#ifndef RACE_FLAG_LOADING_STAGE
 #define RACE_FLAG_LOADING_STAGE sdata->Loading.stage
-#endif
 
 enum RaceFlagScratchConstants
 {

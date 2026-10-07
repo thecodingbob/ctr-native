@@ -13,9 +13,7 @@
 
 #include <game_layouts.h>
 
-// NOTE(aalhendi): Native and unbound PSX units use the canonical runtime
-// aggregates. Matching supplies direct resident bindings before this header.
-#ifndef GAME_TRACKER
+// These name the canonical runtime aggregates the whole game layer reads.
 #define GAME_TRACKER                 (sdata->gGT)
 #define GAME_LANGUAGE_STRINGS        (sdata->lngStrings)
 #define GAME_CHARACTER_METADATA      (data.MetaDataCharacters)
@@ -33,7 +31,6 @@
 #define GAME_ADD_CONFIG_0            (sdata->Loading.OnBegin.AddBitsConfig0)
 #define GAME_REMOVE_CONFIG_0         (sdata->Loading.OnBegin.RemBitsConfig0)
 #define GAME_DOOR_ACCESS_FLAGS       (sdata->doorAccessFlags)
-#endif
 
 // NOTE(aalhendi): Retail sometimes rereads the pointer slot rather than reusing
 // a cached tracker. Qualify the access, not the shared declaration.

@@ -24,10 +24,8 @@ extern struct RectMenu menu221;
 
 // NOTE(aalhendi): The overlay-private matching ABI overrides these defaults
 // before compiling the retail artifact.
-#ifndef CC_HUD_CRYSTAL
 #define CC_HUD_CRYSTAL             (sdata->ptrHudCrystal)
 #define CC_MENU_CRYSTAL            (sdata->ptrMenuCrystal)
-#endif
 
 static void CC_EndEvent_LogUnmodeledRewardOffset(const s32 levelID)
 {

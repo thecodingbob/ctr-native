@@ -18,13 +18,9 @@ enum MempackConstants
 
 #define MEMPACK_ALIGN_SIZE(size) (((size) + MEMPACK_ALIGNMENT_MASK) & MEMPACK_ALIGNMENT_CLEAR_MASK)
 
-#ifndef MEMPACK_ACTIVE
 #define MEMPACK_ACTIVE sdata->PtrMempack
-#endif
 
-#ifndef MEMPACK_POOLS
 #define MEMPACK_POOLS sdata->mempack
-#endif
 
 struct Mempack
 {

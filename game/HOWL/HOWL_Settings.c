@@ -1,6 +1,5 @@
 #include <common.h>
 
-#ifndef HOWL_AUDIO_ENABLED
 #define HOWL_AUDIO_ENABLED   sdata->boolAudioEnabled
 #define HOWL_STEREO          sdata->boolStereoEnabled
 #define HOWL_VOLUME_FX       sdata->vol_FX
@@ -14,7 +13,6 @@
 #define HOWL_SLIDER_PLAYING  sdata->OptionSlider_BoolPlay
 #define HOWL_SLIDER_ROW      sdata->OptionSlider_Index
 #define HOWL_SLIDER_SOUND    sdata->OptionSlider_soundID
-#endif
 
 b32 howl_Disable(void)
 {

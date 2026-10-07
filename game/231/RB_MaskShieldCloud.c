@@ -1,20 +1,12 @@
 #include <common.h>
 
-#ifndef RB_SHIELD_POP_SCALE
 #define RB_SHIELD_POP_SCALE R231.shieldPopScale
-#endif
 
-#ifndef RB_MASK_POSITION
 #define RB_MASK_POSITION R231.maskPosArr
-#endif
 
-#ifndef RB_SHIELD_GROW_SCALE
 #define RB_SHIELD_GROW_SCALE R231.shieldGrowScale
-#endif
 
-#ifndef RB_SHIELD_PULSE_SCALE
 #define RB_SHIELD_PULSE_SCALE R231.shieldPulseScale
-#endif
 
 void RB_MaskWeapon_FadeAway(struct Thread *t)
 {

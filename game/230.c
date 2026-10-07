@@ -1,4 +1,3 @@
-#ifndef MM_GAME_TRACKER_PAGE_VALUE
 #define MM_GAME_TRACKER_PAGE_VALUE                        0U
 #define MM_GAME_TRACKER_PAGE_UPPER_ASM                    ""
 #define MM_GAME_TRACKER_PAGE_OFFSET                       0
@@ -313,7 +312,6 @@
 #define MM_DRAW_CLEAR_BOX               CTR_Box_DrawClearBox
 #define MM_DRAW_SOLID_BOX_WITH_PRIM_MEM CTR_Box_DrawSolidBox
 #define MM_DRAW_LINE_WIDE_FLAGS         DecalFont_DrawLine
-#endif
 
 #include "230/R230.c"
 #include "230/D230.c"

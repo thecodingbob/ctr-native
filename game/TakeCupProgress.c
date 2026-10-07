@@ -1,9 +1,7 @@
 #include <common.h>
 
-#ifndef CUP_PROGRESS_STRING
 #define CUP_PROGRESS_STRING sdata->stringIndexSaveCupProgress
 #define CUP_PROGRESS_SAVE   sdata->boolSaveCupProgress
-#endif
 
 void TakeCupProgress_Activate(s16 stringIndex)
 {
