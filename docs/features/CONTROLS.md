@@ -69,7 +69,7 @@ things at once, that is the cause — reassign one of them.
 
 An analog stick that rests off centre steers on its own, and
 **DEADZONE** is the answer to that: `Left`/`Right` change it in steps of 5
-percent, and each change is saved straight away.
+percent.
 
 The figure is how much of the stick's travel to ignore around centre, from 0 to 90. **0 is the console's own behaviour** and trims nothing, so leave it there
 unless your stick actually drifts. 

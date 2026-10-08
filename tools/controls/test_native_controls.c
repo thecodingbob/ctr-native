@@ -1114,6 +1114,9 @@ static void TestDeadzoneRoundTripsPerDevice(void)
 	NativeControls_SetDeadzone(pads[1], 40);
 	Check(NativeControls_GetDeadzone(pads[0]) == 15, "the first pad keeps its own figure");
 
+	// The menu's flush is what reaches the file.
+	NativeControls_Save();
+
 	ResetModule();
 	NativeControls_Load();
 

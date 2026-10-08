@@ -704,7 +704,6 @@ void NativeControls_Save(void)
 	}
 
 	fclose(file);
-	Platform_Log("[Controls] Saved %s\n", path);
 }
 
 // ---------------------------------------------------------------------------
@@ -1282,7 +1281,6 @@ void NativeControls_SetDeadzone(int device, s32 percent)
 	}
 
 	s_profiles[profile].deadzone = NativeControls_ClampDeadzone(percent);
-	NativeControls_Save();
 }
 
 // ---------------------------------------------------------------------------

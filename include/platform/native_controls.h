@@ -151,7 +151,7 @@ void NativeControls_RestoreDeviceDefaults(int device);
 // NATIVE_CONTROLS_DEADZONE_MIN..MAX, or NATIVE_CONTROLS_DEADZONE_DEFAULT without a device.
 s32 NativeControls_GetDeadzone(int device);
 
-// Sets and persists the deadzone. The value is clamped, not refused.
+// Sets the deadzone in memory. The value is clamped, not refused.
 void NativeControls_SetDeadzone(int device, s32 percent);
 
 // Waits for the device to go neutral, then takes the next press on that device alone and
