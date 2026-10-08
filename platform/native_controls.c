@@ -22,8 +22,9 @@
 #define NATIVE_CONTROLS_SECTION_ASSIGNMENT "Assignment"
 #define NATIVE_CONTROLS_SECTION_PREFIX    "device "
 
-#define NATIVE_CONTROLS_KEY_NAME  "name"
-#define NATIVE_CONTROLS_KEY_NONE  "none"
+#define NATIVE_CONTROLS_KEY_NAME     "name"
+#define NATIVE_CONTROLS_KEY_NONE     "none"
+#define NATIVE_CONTROLS_KEY_DEADZONE "deadzone"
 #define NATIVE_CONTROLS_VALUE_AUTO     "auto"
 #define NATIVE_CONTROLS_VALUE_DISABLED "disabled"
 
@@ -61,6 +62,7 @@ struct NativeControlsProfile
 	int kind;
 	char key[NATIVE_CONTROLS_KEY_LENGTH];
 	char name[NATIVE_CONTROLS_NAME_LENGTH];
+	s32 deadzone;
 	s32 bindings[NATIVE_CONTROLS_BIND_COUNT];
 };
 
@@ -202,6 +204,23 @@ internal bool NativeControls_IsValidBinding(int binding)
 	return (binding >= 0) && (binding < NATIVE_CONTROLS_BIND_COUNT);
 }
 
+// Shared by the file loader and the setter so a hand-edited value and a menu edit cannot
+// disagree about what counts as a legal figure.
+internal s32 NativeControls_ClampDeadzone(s32 percent)
+{
+	if (percent < NATIVE_CONTROLS_DEADZONE_MIN)
+	{
+		return NATIVE_CONTROLS_DEADZONE_MIN;
+	}
+
+	if (percent > NATIVE_CONTROLS_DEADZONE_MAX)
+	{
+		return NATIVE_CONTROLS_DEADZONE_MAX;
+	}
+
+	return percent;
+}
+
 internal bool NativeControls_StrEqual(const char *a, const char *b)
 {
 	return (a != NULL) && (b != NULL) && (strcmp(a, b) == 0);
@@ -243,6 +262,7 @@ internal int NativeControls_CreateProfile(int kind, const char *key, const char 
 		profile->kind = kind;
 		snprintf(profile->key, sizeof(profile->key), "%s", key);
 		snprintf(profile->name, sizeof(profile->name), "%s", name);
+		profile->deadzone = NATIVE_CONTROLS_DEADZONE_DEFAULT;
 		memcpy(profile->bindings, NativeControls_DefaultsForKind(kind), sizeof(profile->bindings));
 		return i;
 	}
@@ -478,6 +498,21 @@ internal void NativeControls_ApplyDeviceKey(int profile, char *key, char *value)
 		return;
 	}
 
+	if (NativeControls_StrEqual(key, NATIVE_CONTROLS_KEY_DEADZONE))
+	{
+		// An unparseable figure leaves the default rather than silently trimming input.
+		char *end = NULL;
+		const long percent = strtol(value, &end, 10);
+
+		if ((end == value) || (*end != '\0'))
+		{
+			return;
+		}
+
+		s_profiles[profile].deadzone = NativeControls_ClampDeadzone((s32)percent);
+		return;
+	}
+
 	for (int binding = 0; binding < NATIVE_CONTROLS_BIND_COUNT; binding++)
 	{
 		if (!NativeControls_StrEqual(key, s_bindingInfo[binding].key))
@@ -658,6 +693,7 @@ void NativeControls_Save(void)
 
 		fprintf(file, "\n[%s%s]\n", NATIVE_CONTROLS_SECTION_PREFIX, s_profiles[i].key);
 		fprintf(file, "%s = %s\n", NATIVE_CONTROLS_KEY_NAME, s_profiles[i].name);
+		fprintf(file, "%s = %d\n", NATIVE_CONTROLS_KEY_DEADZONE, s_profiles[i].deadzone);
 
 		for (int binding = 0; binding < NATIVE_CONTROLS_BIND_COUNT; binding++)
 		{
@@ -1206,12 +1242,46 @@ void NativeControls_RestoreDeviceDefaults(int device)
 {
 	s32 *bindings = NativeControls_BindingsOfDevice(device);
 
-	if (bindings == NULL)
+	if (!NativeControls_IsValidDevice(device) || (bindings == NULL))
 	{
 		return;
 	}
 
 	memcpy(bindings, NativeControls_DefaultsForKind(s_devices[device].kind), sizeof(s_profiles[0].bindings));
+	s_profiles[s_devices[device].profile].deadzone = NATIVE_CONTROLS_DEADZONE_DEFAULT;
+	NativeControls_Save();
+}
+
+s32 NativeControls_GetDeadzone(int device)
+{
+	if (!NativeControls_IsValidDevice(device))
+	{
+		return NATIVE_CONTROLS_DEADZONE_DEFAULT;
+	}
+
+	int profile = s_devices[device].profile;
+	if (profile < 0)
+	{
+		return NATIVE_CONTROLS_DEADZONE_DEFAULT;
+	}
+
+	return s_profiles[profile].deadzone;
+}
+
+void NativeControls_SetDeadzone(int device, s32 percent)
+{
+	if (!NativeControls_IsValidDevice(device))
+	{
+		return;
+	}
+
+	int profile = s_devices[device].profile;
+	if (profile < 0)
+	{
+		return;
+	}
+
+	s_profiles[profile].deadzone = NativeControls_ClampDeadzone(percent);
 	NativeControls_Save();
 }
 

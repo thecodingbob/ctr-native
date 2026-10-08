@@ -34,6 +34,7 @@ enum ControlsRowKind
 {
 	CONTROLS_ROW_DEVICE = 0,
 	CONTROLS_ROW_BINDING,
+	CONTROLS_ROW_DEADZONE,
 	CONTROLS_ROW_RESTORE,
 };
 
@@ -66,7 +67,7 @@ static int s_scroll;
 
 // Rebuilt every frame from the selected player's device, because the device can
 // change under the cursor at any time via hotplug or the row above.
-static struct ControlsRow s_rows[NATIVE_CONTROLS_BIND_COUNT + 2];
+static struct ControlsRow s_rows[NATIVE_CONTROLS_BIND_COUNT + 3];
 static int s_rowCount;
 
 static char s_valueBuffer[80];
@@ -123,6 +124,15 @@ static void Controls_BuildRows(void)
 
 		s_rows[s_rowCount].kind = CONTROLS_ROW_BINDING;
 		s_rows[s_rowCount].binding = binding;
+		s_rowCount++;
+	}
+
+	// Only for a device with axes to trim: the keyboard's stick rows are hidden above, so
+	// a deadzone there would be a figure that changes nothing.
+	if (hasAnalog)
+	{
+		s_rows[s_rowCount].kind = CONTROLS_ROW_DEADZONE;
+		s_rows[s_rowCount].binding = -1;
 		s_rowCount++;
 	}
 
@@ -415,6 +425,30 @@ static void Controls_SelectPlayer(int player)
 	s_player = player;
 }
 
+// Nudges the deadzone by one step and commits it, which writes controls.ini. Reaching
+// either end is refused with a sound rather than silently writing the same value, so a
+// held direction says it has run out.
+static void Controls_AdjustDeadzone(int device, int direction)
+{
+	if (device == NATIVE_CONTROLS_NO_DEVICE)
+	{
+		OtherFX_Play(2, 1);
+		return;
+	}
+
+	const s32 step = (s32)direction * NATIVE_CONTROLS_DEADZONE_STEP;
+	const s32 wanted = NativeControls_GetDeadzone(device) + step;
+
+	if ((wanted < NATIVE_CONTROLS_DEADZONE_MIN) || (wanted > NATIVE_CONTROLS_DEADZONE_MAX))
+	{
+		OtherFX_Play(2, 1);
+		return;
+	}
+
+	NativeControls_SetDeadzone(device, wanted);
+	OtherFX_Play(1, 1);
+}
+
 static void Controls_HandleConfirm(int device, const struct ControlsRow *row)
 {
 	switch (row->kind)
@@ -422,6 +456,11 @@ static void Controls_HandleConfirm(int device, const struct ControlsRow *row)
 	case CONTROLS_ROW_DEVICE:
 		Controls_OpenPicker();
 		OtherFX_Play(0, 1);
+		break;
+
+	case CONTROLS_ROW_DEADZONE:
+		// Left and Right are the editing gesture here; Cross has nothing to confirm.
+		OtherFX_Play(2, 1);
 		break;
 
 	case CONTROLS_ROW_BINDING:
@@ -505,6 +544,12 @@ static void Controls_DrawValue(int device, const struct ControlsRow *row, int y,
 		text = NativeControls_GetDeviceName(device);
 		colour = WHITE;
 	}
+	else if (row->kind == CONTROLS_ROW_DEADZONE)
+	{
+		snprintf(s_valueBuffer, sizeof(s_valueBuffer), "%d%%", NativeControls_GetDeadzone(device));
+		text = s_valueBuffer;
+		colour = WHITE;
+	}
 	else
 	{
 		NativeControls_GetBindingLabel(device, row->binding, s_valueBuffer, sizeof(s_valueBuffer));
@@ -545,6 +590,9 @@ static void Controls_DrawRows(struct RectMenu *menu, struct GameTracker *gGT, ui
 				label = NativeControls_GetBindingName(row->binding);
 			}
 
+			break;
+		case CONTROLS_ROW_DEADZONE:
+			label = "Deadzone";
 			break;
 		case CONTROLS_ROW_RESTORE:
 			label = "Restore Defaults";
@@ -679,6 +727,10 @@ static void Controls_HandleInput(struct RectMenu *menu, u32 tapped, int device)
 	{
 		Controls_OpenPicker();
 		OtherFX_Play(0, 1);
+	}
+	else if ((s_rows[menu->rowSelected].kind == CONTROLS_ROW_DEADZONE) && ((tapped & (BTN_LEFT | BTN_RIGHT)) != 0))
+	{
+		Controls_AdjustDeadzone(device, ((tapped & BTN_LEFT) != 0) ? -1 : 1);
 	}
 
 	if ((tapped & BTN_CROSS) != 0)

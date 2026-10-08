@@ -65,6 +65,18 @@ same way. Restoring defaults on one of them restores both.
 Nothing stops you putting the same key on two controls. If a press then does two
 things at once, that is the cause — reassign one of them.
 
+## Stick deadzone
+
+An analog stick that rests off centre steers on its own, and
+**DEADZONE** is the answer to that: `Left`/`Right` change it in steps of 5
+percent, and each change is saved straight away.
+
+The figure is how much of the stick's travel to ignore around centre, from 0 to 90. **0 is the console's own behaviour** and trims nothing, so leave it there
+unless your stick actually drifts. 
+
+Like the bindings, the figure belongs to the device rather than the player, so
+it is shared by two identical controllers, and `Restore Defaults` puts it back to 0. The keyboard has no axes, so the row is not shown for it.
+
 ## Editing someone else's controls
 
 `L1` and `R1` on player 1's device switch between players, and the cursor jumps
@@ -97,6 +109,7 @@ l2 = Left Ctrl
 name = Xbox 360 Controller
 cross = A
 l2 = Left Trigger
+deadzone = 15
 ```
 
 Keyboard values are key names such as `C`, `Space` or `Left Shift`. Controller

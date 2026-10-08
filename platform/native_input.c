@@ -306,6 +306,41 @@ internal u16 NativeInput_ReadDeviceButtons(int device, SDL_Gamepad *gamepad)
 	return buttons;
 }
 
+// Pulls the axis in toward the centre until it clears the deadzone, then stretches what is
+// left of the travel back across the full range. Without that stretch a stick with any
+// deadzone could never report full deflection, and steering would quietly top out short.
+internal s32 NativeInput_ApplyDeadzone(s32 axis, s32 percent)
+{
+	if ((percent <= NATIVE_CONTROLS_DEADZONE_MIN) || (axis == 0))
+	{
+		return axis;
+	}
+
+	// An SDL axis runs one unit further negative than positive, so the negative end's
+	// magnitude is the full scale. Measuring against the shorter positive end instead would
+	// push the far negative end back outside the axis range.
+	const s32 full = -SDL_JOYSTICK_AXIS_MIN;
+	const s32 dead = percent * full / NATIVE_CONTROLS_DEADZONE_SCALE;
+	const s32 magnitude = (axis < 0) ? -axis : axis;
+
+	// A deadzone wide enough to cover the whole axis trims everything, which leaves nothing
+	// to stretch and a zero denominator. That end is reachable whatever maximum is
+	// configured, so the guard lives here rather than in the clamp on the setter.
+	if ((dead >= full) || (magnitude <= dead))
+	{
+		return 0;
+	}
+
+	// Rescaled rather than truncated: the travel above the deadzone is stretched back over
+	// the full scale, so trimming the centre does not cost the ends. What it costs instead
+	// is sensitivity just past the deadzone, which is the price of still reaching full
+	// deflection.
+	const s32 reach = full - dead;
+	const s32 stretched = (s32)(((long long)(magnitude - dead) * full) / reach);
+
+	return (axis < 0) ? -stretched : stretched;
+}
+
 internal void NativeInput_ApplyController(s32 slot)
 {
 	struct NativeInputController *nativeController = &s_controllers[slot];
@@ -319,6 +354,7 @@ internal void NativeInput_ApplyController(s32 slot)
 
 	int device = nativeController->device;
 	u16 buttons = NativeInput_ReadDeviceButtons(device, gamepad);
+	const s32 deadzone = NativeControls_GetDeadzone(device);
 
 	snapshot->connected = 1;
 	snapshot->status = 0;
@@ -330,10 +366,10 @@ internal void NativeInput_ApplyController(s32 slot)
 	s32 leftY = NativeInput_ControllerButtonState(gamepad, NativeControls_GetBinding(device, NATIVE_CONTROLS_BIND_AXIS_LEFT_Y));
 
 	NativeInput_SetSnapshotButtons(snapshot, buttons);
-	snapshot->analog[0] = NativeInput_AxisToByte(rightX);
-	snapshot->analog[1] = NativeInput_AxisToByte(rightY);
-	snapshot->analog[2] = NativeInput_AxisToByte(leftX);
-	snapshot->analog[3] = NativeInput_AxisToByte(leftY);
+	snapshot->analog[0] = NativeInput_AxisToByte(NativeInput_ApplyDeadzone(rightX, deadzone));
+	snapshot->analog[1] = NativeInput_AxisToByte(NativeInput_ApplyDeadzone(rightY, deadzone));
+	snapshot->analog[2] = NativeInput_AxisToByte(NativeInput_ApplyDeadzone(leftX, deadzone));
+	snapshot->analog[3] = NativeInput_AxisToByte(NativeInput_ApplyDeadzone(leftY, deadzone));
 }
 
 internal u16 NativeInput_ReadKeyboard(int device)
