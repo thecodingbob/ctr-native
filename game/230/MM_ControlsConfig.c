@@ -5,19 +5,16 @@
 #include <stdio.h>
 #include <string.h>
 
-// Frame and row highlight are shared with the section list. game/230.c includes
-// MM_ConfigMenu.c first, so these definitions are already in the translation unit;
-// they are redeclared here to make the dependency explicit.
+// Frame, row highlight and the option-row mechanics are shared with the section list.
+// game/230.c includes MM_ConfigMenu.c first, so these definitions are already in the
+// translation unit; they are redeclared here to make the dependency explicit.
 static void Config_DrawFrame(uint32_t *ot);
 static void Config_DrawRowHighlight(struct GameTracker *gGT, uint32_t *ot, int y);
+static bool Config_OptionStepDue(int held, int direction);
+static bool Config_OptionStep(int *value, int direction, int min, int max, int step);
+static void Config_DrawPercent(int percent, int y, uint32_t *ot);
 
-// Matches the geometry of the other config screens.
-#define CONTROLS_MAX_VISIBLE_ROWS 10
-#define CONTROLS_TITLE_Y           0x18
-#define CONTROLS_ROW_START_Y       0x3C
-#define CONTROLS_ROW_SPACING      0x0E
-#define CONTROLS_LABEL_X          0x38
-#define CONTROLS_VALUE_X          0x1DC
+// Row geometry comes from MM_ConfigMenu.c, which every screen in this menu shares.
 
 // Device picker popup. Width is measured from the longest entry rather than fixed,
 // bounded so a long controller name cannot push the box off screen or off the frame.
@@ -34,6 +31,7 @@ enum ControlsRowKind
 {
 	CONTROLS_ROW_DEVICE = 0,
 	CONTROLS_ROW_BINDING,
+	CONTROLS_ROW_DEADZONE,
 	CONTROLS_ROW_RESTORE,
 };
 
@@ -66,7 +64,7 @@ static int s_scroll;
 
 // Rebuilt every frame from the selected player's device, because the device can
 // change under the cursor at any time via hotplug or the row above.
-static struct ControlsRow s_rows[NATIVE_CONTROLS_BIND_COUNT + 2];
+static struct ControlsRow s_rows[NATIVE_CONTROLS_BIND_COUNT + 3];
 static int s_rowCount;
 
 static char s_valueBuffer[80];
@@ -123,6 +121,15 @@ static void Controls_BuildRows(void)
 
 		s_rows[s_rowCount].kind = CONTROLS_ROW_BINDING;
 		s_rows[s_rowCount].binding = binding;
+		s_rowCount++;
+	}
+
+	// Only for a device with axes to trim: the keyboard's stick rows are hidden above, so
+	// a deadzone there would be a figure that changes nothing.
+	if (hasAnalog)
+	{
+		s_rows[s_rowCount].kind = CONTROLS_ROW_DEADZONE;
+		s_rows[s_rowCount].binding = -1;
 		s_rowCount++;
 	}
 
@@ -367,6 +374,20 @@ u32 MM_Controls_MenuTapped(void)
 	return tapped;
 }
 
+// The held counterpart of MM_Controls_MenuTapped, for the option rows: a numeric option
+// reads a direction being held rather than the edge that opens a rebind.
+u32 MM_Controls_MenuHeld(void)
+{
+	u32 held = (u32)sdata->gGamepads->gamepad[0].buttonsHeldCurrFrame;
+
+	if (s_player != 0)
+	{
+		held |= (u32)sdata->gGamepads->gamepad[s_player].buttonsHeldCurrFrame;
+	}
+
+	return held;
+}
+
 // Handles input while the picker is up. Cross applies the highlighted choice,
 // Circle and Triangle/Start back out without changing anything.
 static void Controls_UpdatePicker(u32 tapped)
@@ -415,6 +436,34 @@ static void Controls_SelectPlayer(int player)
 	s_player = player;
 }
 
+// Nudges the deadzone like a config slider: same cadence for a held direction, same
+// clamping at the ends.
+static void Controls_AdjustDeadzone(int device, int held)
+{
+	if (device == NATIVE_CONTROLS_NO_DEVICE)
+	{
+		OtherFX_Play(2, 1);
+		return;
+	}
+
+	for (int direction = -1; direction <= 1; direction += 2)
+	{
+		if (!Config_OptionStepDue(held, direction))
+		{
+			continue;
+		}
+
+		int value = NativeControls_GetDeadzone(device);
+
+		if (Config_OptionStep(&value, direction, NATIVE_CONTROLS_DEADZONE_MIN, NATIVE_CONTROLS_DEADZONE_MAX,
+		                      NATIVE_CONTROLS_DEADZONE_STEP))
+		{
+			NativeControls_SetDeadzone(device, value);
+			OtherFX_Play(1, 1);
+		}
+	}
+}
+
 static void Controls_HandleConfirm(int device, const struct ControlsRow *row)
 {
 	switch (row->kind)
@@ -422,6 +471,11 @@ static void Controls_HandleConfirm(int device, const struct ControlsRow *row)
 	case CONTROLS_ROW_DEVICE:
 		Controls_OpenPicker();
 		OtherFX_Play(0, 1);
+		break;
+
+	case CONTROLS_ROW_DEADZONE:
+		// Left and Right are the editing gesture here; Cross has nothing to confirm.
+		OtherFX_Play(2, 1);
 		break;
 
 	case CONTROLS_ROW_BINDING:
@@ -461,7 +515,7 @@ static void Controls_DrawHint(const char *text, int x, bool rightJustify, uint32
 {
 	const int textWidth = DecalFont_GetLineWidth((char *)text, FONT_SMALL);
 	const int textX = rightJustify ? (x - textWidth) : x;
-	const int textY = CONTROLS_TITLE_Y + ((data.font_charPixHeight[FONT_BIG] - data.font_charPixHeight[FONT_SMALL]) / 2);
+	const int textY = CONFIG_TITLE_Y + ((data.font_charPixHeight[FONT_BIG] - data.font_charPixHeight[FONT_SMALL]) / 2);
 
 	DecalFont_DrawLineOT((char *)text, textX, textY, FONT_SMALL, ORANGE, ot);
 }
@@ -491,6 +545,12 @@ static void Controls_DrawValue(int device, const struct ControlsRow *row, int y,
 		return;
 	}
 
+	if ((row->kind == CONTROLS_ROW_DEADZONE) && (device != NATIVE_CONTROLS_NO_DEVICE))
+	{
+		Config_DrawPercent(NativeControls_GetDeadzone(device), y, ot);
+		return;
+	}
+
 	// Grey means there is nothing here to rebind, because the player has no device.
 	const char *text;
 	int colour;
@@ -512,15 +572,15 @@ static void Controls_DrawValue(int device, const struct ControlsRow *row, int y,
 		colour = WHITE;
 	}
 
-	Controls_DrawSafeText(text, CONTROLS_VALUE_X, y, JUSTIFY_RIGHT | colour, ot);
+	Controls_DrawSafeText(text, CONFIG_VALUE_X, y, JUSTIFY_RIGHT | colour, ot);
 }
 
 static void Controls_DrawRows(struct RectMenu *menu, struct GameTracker *gGT, uint32_t *ot, int device)
 {
 	int visibleEnd = s_rowCount;
-	if (visibleEnd > s_scroll + CONTROLS_MAX_VISIBLE_ROWS)
+	if (visibleEnd > s_scroll + CONFIG_MAX_VISIBLE_ROWS)
 	{
-		visibleEnd = s_scroll + CONTROLS_MAX_VISIBLE_ROWS;
+		visibleEnd = s_scroll + CONFIG_MAX_VISIBLE_ROWS;
 	}
 
 	// A rebind in progress is announced in the value column of its own row.
@@ -529,7 +589,7 @@ static void Controls_DrawRows(struct RectMenu *menu, struct GameTracker *gGT, ui
 	for (int i = s_scroll; i < visibleEnd; i++)
 	{
 		const struct ControlsRow *row = &s_rows[i];
-		const int y = CONTROLS_ROW_START_Y + (i - s_scroll) * CONTROLS_ROW_SPACING;
+		const int y = CONFIG_ROW_START_Y + (i - s_scroll) * CONFIG_ROW_SPACING;
 
 		const char *label = "";
 		switch (row->kind)
@@ -546,6 +606,9 @@ static void Controls_DrawRows(struct RectMenu *menu, struct GameTracker *gGT, ui
 			}
 
 			break;
+		case CONTROLS_ROW_DEADZONE:
+			label = "Deadzone";
+			break;
 		case CONTROLS_ROW_RESTORE:
 			label = "Restore Defaults";
 			break;
@@ -556,14 +619,14 @@ static void Controls_DrawRows(struct RectMenu *menu, struct GameTracker *gGT, ui
 		// Deliberately not filtered: this column is the one place the four button
 		// characters are meant to reach the font, and every other label here is a fixed
 		// string that needs no cleaning.
-		DecalFont_DrawLineOT((char *)label, CONTROLS_LABEL_X, y, FONT_SMALL, ORANGE, ot);
+		DecalFont_DrawLineOT((char *)label, CONFIG_LABEL_X, y, FONT_SMALL, ORANGE, ot);
 
 		if (capturing && (row->kind == CONTROLS_ROW_BINDING) && (i == menu->rowSelected))
 		{
 			// Which half is pending: take a key, then confirm it with Cross.
 			snprintf(s_valueBuffer, sizeof(s_valueBuffer), "%s",
 			         NativeControls_IsConfirming() ? "* to confirm" : "...");
-			DecalFont_DrawLineOT(s_valueBuffer, CONTROLS_VALUE_X, y, FONT_SMALL, JUSTIFY_RIGHT | RED, ot);
+			DecalFont_DrawLineOT(s_valueBuffer, CONFIG_VALUE_X, y, FONT_SMALL, JUSTIFY_RIGHT | RED, ot);
 		}
 		else
 		{
@@ -613,9 +676,9 @@ static void Controls_ClampSelection(struct RectMenu *menu)
 		s_scroll = menu->rowSelected;
 	}
 
-	if (menu->rowSelected >= s_scroll + CONTROLS_MAX_VISIBLE_ROWS)
+	if (menu->rowSelected >= s_scroll + CONFIG_MAX_VISIBLE_ROWS)
 	{
-		s_scroll = menu->rowSelected - CONTROLS_MAX_VISIBLE_ROWS + 1;
+		s_scroll = menu->rowSelected - CONFIG_MAX_VISIBLE_ROWS + 1;
 	}
 }
 
@@ -648,7 +711,7 @@ static void Controls_HandlePlayerSwitch(struct RectMenu *menu, u32 playerOneTapp
 
 // The picker owns input while it is up, and a rebind owns it while listening. Either one
 // suppresses the screen underneath so their presses are unambiguous.
-static void Controls_HandleInput(struct RectMenu *menu, u32 tapped, int device)
+static void Controls_HandleInput(struct RectMenu *menu, u32 tapped, u32 held, int device)
 {
 	if (s_pickerOpen)
 	{
@@ -680,6 +743,10 @@ static void Controls_HandleInput(struct RectMenu *menu, u32 tapped, int device)
 		Controls_OpenPicker();
 		OtherFX_Play(0, 1);
 	}
+	else if (s_rows[menu->rowSelected].kind == CONTROLS_ROW_DEADZONE)
+	{
+		Controls_AdjustDeadzone(device, held);
+	}
 
 	if ((tapped & BTN_CROSS) != 0)
 	{
@@ -707,7 +774,7 @@ static void Controls_DrawTitle(uint32_t *ot)
 	// Uppercase here, unlike the section name used in the options list: the retail
 	// titles this shares a font with are all caps.
 	snprintf(s_titleBuffer, sizeof(s_titleBuffer), "CONTROLS P%d", s_player + 1);
-	DecalFont_DrawLineOT(s_titleBuffer, 0x100, CONTROLS_TITLE_Y, FONT_BIG, JUSTIFY_CENTER | ORANGE, ot);
+	DecalFont_DrawLineOT(s_titleBuffer, 0x100, CONFIG_TITLE_Y, FONT_BIG, JUSTIFY_CENTER | ORANGE, ot);
 }
 
 void MM_MenuProc_Controls(struct RectMenu *menu)
@@ -720,7 +787,7 @@ void MM_MenuProc_Controls(struct RectMenu *menu)
 
 	// Read before the input handling, which can move the selection to another player.
 	const int device = NativeControls_GetPlayerDevice(s_player);
-	Controls_HandleInput(menu, MM_Controls_MenuTapped(), device);
+	Controls_HandleInput(menu, MM_Controls_MenuTapped(), MM_Controls_MenuHeld(), device);
 	Controls_PollCapture();
 
 	// This OT draws back to front: a primitive added later sits behind the ones already in
@@ -734,8 +801,8 @@ void MM_MenuProc_Controls(struct RectMenu *menu)
 	}
 
 	Controls_DrawTitle(ot);
-	Controls_DrawHint("L1", CONTROLS_LABEL_X, false, ot);
-	Controls_DrawHint("R1", CONTROLS_VALUE_X, true, ot);
+	Controls_DrawHint("L1", CONFIG_LABEL_X, false, ot);
+	Controls_DrawHint("R1", CONFIG_VALUE_X, true, ot);
 	Controls_DrawRows(menu, gGT, ot, NativeControls_GetPlayerDevice(s_player));
 	Config_DrawFrame(ot);
 }

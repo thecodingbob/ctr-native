@@ -680,6 +680,8 @@ static int GamePadBusView(u8 *port0, int *connectedPerPlayer)
 	return numPorts;
 }
 
+// Builds the slot table the way Platform_InputInit does, so every bus test below starts
+// from the real created default rather than an assumed one.
 static void ResetBusState(void)
 {
 	memset(s_controllers, 0, sizeof(s_controllers));
@@ -688,7 +690,7 @@ static void ResetBusState(void)
 		s_playerPref[player].kind = NATIVE_CONTROLS_PREF_AUTO;
 		s_playerPref[player].deviceKey[0] = '\0';
 		s_playerDevice[player] = NATIVE_CONTROLS_NO_DEVICE;
-		s_controllers[player].device = NATIVE_CONTROLS_NO_DEVICE;
+		NativeInput_ResetController(player);
 	}
 	s_refreshed = true;
 	s_generation++;
@@ -715,7 +717,7 @@ static int RunBusLayout(int gamepadCount, int *connectedPerPlayer)
 		{
 			s_controllers[slot].snapshot.connected = 1;
 			s_controllers[slot].snapshot.status = 0;
-			s_controllers[slot].snapshot.id = NATIVE_INPUT_PAD_DIGITAL;
+			s_controllers[slot].snapshot.id = NATIVE_INPUT_PAD_ANALOG;
 		}
 	}
 
@@ -814,7 +816,7 @@ static void TestChangingAPlayerDeviceReachesThePadBus(void)
 		{
 			s_controllers[slot].snapshot.connected = 1;
 			s_controllers[slot].snapshot.status = 0;
-			s_controllers[slot].snapshot.id = NATIVE_INPUT_PAD_DIGITAL;
+			s_controllers[slot].snapshot.id = NATIVE_INPUT_PAD_ANALOG;
 		}
 	}
 
@@ -875,7 +877,7 @@ static void TestDisabledPlayerLeavesAHole(void)
 		{
 			s_controllers[slot].snapshot.connected = 1;
 			s_controllers[slot].snapshot.status = 0;
-			s_controllers[slot].snapshot.id = NATIVE_INPUT_PAD_DIGITAL;
+			s_controllers[slot].snapshot.id = NATIVE_INPUT_PAD_ANALOG;
 		}
 	}
 
@@ -923,6 +925,320 @@ static int PadBusConnected(u8 *port0, int player)
 	struct TestPadSlot *slot = (struct TestPadSlot *)port0;
 
 	return slot->controllers[player].plugged == PLUGGED;
+}
+
+// === Analog mode ===
+
+// The id byte a pad's packet carries on the bus.
+static u8 PadBusControllerData(u8 *port0, int player)
+{
+	struct TestPadSlot *slot = (struct TestPadSlot *)port0;
+
+	return slot->controllers[player].controllerData;
+}
+
+// Mirrors GAMEPAD_ProcessSticks_IsAnalogLike, the predicate deciding whether the game reads
+// a pad's analog bytes or discards them.
+static int GameReadsAnalogAxes(u8 controllerData)
+{
+	return controllerData == ((PAD_ID_ANALOG_STICK << 4) | 3) || controllerData == ((PAD_ID_ANALOG << 4) | 3);
+}
+
+// Nothing distinguishes the keyboard on the bus. Its axes are unbound, so they read as the
+// centre value the game takes for neutral, and the controls screen keeps the stick rows off
+// it so there is nothing to misbind.
+static void TestTheKeyboardReportsAPadLikeAnyOtherDevice(void)
+{
+	printf("analog: the keyboard reports a pad like any other device\n");
+	ResetModule();
+	ResetBusState();
+
+	// Keyboard only: ApplyController dereferences a gamepad handle, so a frame cannot be
+	// driven while the fake pad handles are in the table.
+	int pads[4];
+	int keyboard;
+	DeclareDevicesForBus(0, pads, &keyboard);
+	NativeControls_ResolveAssignment();
+
+	u8 port0[NATIVE_INPUT_MULTITAP_HEADER + (NATIVE_INPUT_MAX_CONTROLLERS * NATIVE_INPUT_PAD_PACKET_BYTES)];
+	u8 port1[NATIVE_INPUT_PAD_PACKET_BYTES];
+	memset(port0, 0, sizeof(port0));
+	memset(port1, 0, sizeof(port1));
+	s_padSlotData[0] = port0;
+	s_padSlotData[1] = port1;
+
+	memset(s_testKeyboardState, 0, sizeof(s_testKeyboardState));
+	s_keyboardState = s_testKeyboardState;
+	s_inputInitialized = 1;
+
+	NativeInput_SyncDevices();
+	Platform_InputUpdate();
+
+	Check(PadBusConnected(port0, 0), "the keyboard is connected");
+	Check(PadBusControllerData(port0, 0) == NATIVE_INPUT_PAD_ANALOG, "the keyboard is reported as an analog pad");
+	Check(GameReadsAnalogAxes(PadBusControllerData(port0, 0)), "the game reads the packet as a pad with axes");
+
+	// Nothing is bound to the axes, so they must read as centre rather than as a
+	// deflection the game would steer with.
+	const struct ControllerPacket *packet = (const struct ControllerPacket *)&((struct TestPadSlot *)port0)->controllers[0];
+	Check(packet->payload.analog.leftX == 0x80, "the left X axis reads as centre");
+	Check(packet->payload.analog.leftY == 0x80, "the left Y axis reads as centre");
+	Check(packet->payload.analog.rightX == 0x80, "the right X axis reads as centre");
+	Check(packet->payload.analog.rightY == 0x80, "the right Y axis reads as centre");
+
+	s_inputInitialized = 0;
+	s_keyboardState = NULL;
+}
+
+// === Deadzone ===
+
+// The deadzone is what replaces the old digital mode as the answer to a drifting stick, so
+// what it has to guarantee is that a stick pushed to either end still reaches the end.
+// Trimming without stretching back would quietly cap steering.
+static void TestDeadzoneTrimsCentreAndKeepsFullTravel(void)
+{
+	printf("deadzone: trims the centre and still reaches full travel\n");
+
+	Check(NativeInput_ApplyDeadzone(0, 0) == 0, "a centred stick is centred at 0%");
+	Check(NativeInput_ApplyDeadzone(SDL_JOYSTICK_AXIS_MAX, 0) == SDL_JOYSTICK_AXIS_MAX,
+	      "a full-deflection stick is untouched at 0%");
+	Check(NativeInput_ApplyDeadzone(-SDL_JOYSTICK_AXIS_MAX - 1, 0) == -SDL_JOYSTICK_AXIS_MAX - 1,
+	      "the negative end is untouched at 0%");
+
+	// A stick resting slightly off centre reads as centred.
+	Check(NativeInput_ApplyDeadzone(500, 10) == 0, "a small positive drift is trimmed away");
+	Check(NativeInput_ApplyDeadzone(-500, 10) == 0, "a small negative drift is trimmed away");
+	Check(NativeInput_ApplyDeadzone(0, 10) == 0, "a centred stick stays centred");
+
+	// Just past the deadzone the axis has to have moved, not still read as the raw value.
+	Check(NativeInput_ApplyDeadzone(7000, 10) < 7000, "travel just past the deadzone is pulled toward centre");
+
+	// Pushed all the way, either way, the packet byte must still reach its extreme, or
+	// trimming the centre would quietly cost full throttle. Checked on the byte because
+	// that is what the game reads, and it is the level the guarantee has to hold at.
+	Check(NativeInput_AxisToByte(NativeInput_ApplyDeadzone(SDL_JOYSTICK_AXIS_MAX, 25)) == 0xff,
+	      "full positive travel still reaches the end");
+	Check(NativeInput_AxisToByte(NativeInput_ApplyDeadzone(SDL_JOYSTICK_AXIS_MIN, 25)) == 0x00,
+	      "full negative travel still reaches the end");
+	Check(NativeInput_AxisToByte(NativeInput_ApplyDeadzone(SDL_JOYSTICK_AXIS_MAX, NATIVE_CONTROLS_DEADZONE_MAX)) == 0xff,
+	      "the widest allowed deadzone still reaches the positive end");
+	Check(NativeInput_AxisToByte(NativeInput_ApplyDeadzone(SDL_JOYSTICK_AXIS_MIN, NATIVE_CONTROLS_DEADZONE_MAX)) == 0x00,
+	      "the widest allowed deadzone still reaches the negative end");
+
+	// Just past the deadzone the axis has to move the right way, not back toward centre.
+	Check(NativeInput_ApplyDeadzone(9000, 25) > 0, "pushing right past the deadzone reads positive");
+	Check(NativeInput_ApplyDeadzone(-9000, 25) < 0, "pushing left past the deadzone reads negative");
+
+	// A deadzone wide enough to cover the whole range must trim everything and stop there.
+	// The negative end of an SDL axis is one unit past the positive one, so it is the only
+	// value that reaches the rescale with nothing left to stretch, which is what turned the
+	// denominator into a division by zero.
+	Check(NativeInput_ApplyDeadzone(SDL_JOYSTICK_AXIS_MIN, 100) == 0, "a full-width deadzone trims the far negative end");
+	Check(NativeInput_ApplyDeadzone(SDL_JOYSTICK_AXIS_MAX, 100) == 0, "a full-width deadzone trims the far positive end");
+
+	// The widest the menu allows still leaves travel, so nothing is trimmed away for good.
+	Check(NativeInput_AxisToByte(NativeInput_ApplyDeadzone(SDL_JOYSTICK_AXIS_MIN, NATIVE_CONTROLS_DEADZONE_MAX)) == 0x00,
+	      "the widest allowed deadzone still reports the far negative end");
+
+	// Nothing at or above the top of the range may divide by zero, whatever it is asked for.
+	for (s32 percent = NATIVE_CONTROLS_DEADZONE_MAX; percent <= 100; percent++)
+	{
+		NativeInput_ApplyDeadzone(SDL_JOYSTICK_AXIS_MIN, percent);
+		NativeInput_ApplyDeadzone(SDL_JOYSTICK_AXIS_MAX, percent);
+	}
+
+	Check(NATIVE_CONTROLS_DEADZONE_MAX < 100, "the maximum leaves some travel at each end");
+
+	// Monotonic: more stick must never report less, or the steering would reverse.
+	s32 previous = 0;
+	for (s32 axis = 0; axis <= SDL_JOYSTICK_AXIS_MAX; axis += 512)
+	{
+		const s32 applied = NativeInput_ApplyDeadzone(axis, 20);
+		Check(applied >= previous, "the trimmed axis never moves backwards");
+		previous = applied;
+	}
+}
+
+// Restoring defaults has to take the deadzone with it, or a pad the player reset would
+// keep trimming input it no longer shows a figure for.
+static void TestRestoreDefaultsClearsTheDeadzone(void)
+{
+	printf("deadzone: restoring defaults clears it\n");
+	ResetModule();
+
+	int pads[4];
+	int keyboard;
+	SetupDevices(1, pads, &keyboard);
+
+	NativeControls_SetDeadzone(pads[0], 30);
+	Check(NativeControls_GetDeadzone(pads[0]) == 30, "the deadzone takes");
+
+	NativeControls_RestoreDeviceDefaults(pads[0]);
+	Check(NativeControls_GetDeadzone(pads[0]) == NATIVE_CONTROLS_DEADZONE_DEFAULT, "the default is back");
+}
+
+// The value is clamped at both ends however it arrives, so a hand-edited file cannot
+// produce a deadzone that trims the entire range.
+static void TestDeadzoneIsClamped(void)
+{
+	printf("deadzone: values are clamped to the allowed range\n");
+	ResetModule();
+
+	int pads[4];
+	int keyboard;
+	SetupDevices(1, pads, &keyboard);
+
+	NativeControls_SetDeadzone(pads[0], 5000);
+	Check(NativeControls_GetDeadzone(pads[0]) == NATIVE_CONTROLS_DEADZONE_MAX, "too high clamps to the maximum");
+
+	NativeControls_SetDeadzone(pads[0], -5000);
+	Check(NativeControls_GetDeadzone(pads[0]) == NATIVE_CONTROLS_DEADZONE_MIN, "too low clamps to the minimum");
+
+	Check(NativeControls_GetDeadzone(NATIVE_CONTROLS_NO_DEVICE) == NATIVE_CONTROLS_DEADZONE_DEFAULT,
+	      "no device reads the default");
+}
+
+// A deadzone belongs to the stick it trims, so it is saved beside that device's bindings
+// and must come back for the same device and no other.
+static void TestDeadzoneRoundTripsPerDevice(void)
+{
+	printf("deadzone: saved per device and read back\n");
+	ResetModule();
+
+	int pads[4];
+	int keyboard;
+	SetupDevices(2, pads, &keyboard);
+	NativeControls_ResolveAssignment();
+
+	NativeControls_SetDeadzone(pads[0], 15);
+	NativeControls_SetDeadzone(pads[1], 40);
+	Check(NativeControls_GetDeadzone(pads[0]) == 15, "the first pad keeps its own figure");
+
+	// The menu's flush is what reaches the file.
+	NativeControls_Save();
+
+	ResetModule();
+	NativeControls_Load();
+
+	int reloadedPads[4];
+	int reloadedKeyboard;
+	SetupDevices(2, reloadedPads, &reloadedKeyboard);
+
+	Check(NativeControls_GetDeadzone(reloadedPads[0]) == 15, "the first pad's figure survived");
+	Check(NativeControls_GetDeadzone(reloadedPads[1]) == 40, "the second pad's figure survived");
+	Check(NativeControls_GetDeadzone(reloadedKeyboard) == NATIVE_CONTROLS_DEADZONE_DEFAULT,
+	      "the keyboard has no figure of its own");
+}
+
+// A hand-edited file cannot set a deadzone past the configured maximum, so the value the
+// input layer is handed is always one it can actually rescale.
+static void TestAHandEditedDeadzoneCannotExceedTheMaximum(void)
+{
+	printf("deadzone: a hand-edited figure past the maximum is clamped\n");
+
+	char path[512];
+	TestFilePath(path, sizeof(path));
+
+	FILE *file = fopen(path, "w");
+	fprintf(file, "[%s%stest-guid-0]\n", NATIVE_CONTROLS_SECTION_PREFIX, "");
+	fprintf(file, "%s = 100\n", NATIVE_CONTROLS_KEY_DEADZONE);
+	fclose(file);
+
+	ResetModule();
+	NativeControls_Load();
+
+	int pads[4];
+	int keyboard;
+	SetupDevices(1, pads, &keyboard);
+
+	Check(NativeControls_GetDeadzone(pads[0]) == NATIVE_CONTROLS_DEADZONE_MAX, "it clamps to the maximum");
+
+	// And the clamped value is one the input layer can actually rescale.
+	Check(NativeInput_AxisToByte(NativeInput_ApplyDeadzone(SDL_JOYSTICK_AXIS_MIN, NativeControls_GetDeadzone(pads[0]))) == 0x00,
+	      "the clamped value keeps the far negative end rather than dividing by zero");
+}
+
+// An unreadable figure must leave the default rather than trim input nobody asked to trim.
+static void TestAnUnreadableDeadzoneKeepsTheDefault(void)
+{
+	printf("deadzone: an unreadable figure keeps the default\n");
+
+	char path[512];
+	TestFilePath(path, sizeof(path));
+
+	FILE *file = fopen(path, "w");
+	fprintf(file, "[%s%stest-guid-0]\n", NATIVE_CONTROLS_SECTION_PREFIX, "");
+	fprintf(file, "%s = not-a-number\n", NATIVE_CONTROLS_KEY_DEADZONE);
+	fprintf(file, "%s = 25\n", NATIVE_CONTROLS_KEY_DEADZONE);
+	fclose(file);
+
+	ResetModule();
+	NativeControls_Load();
+
+	int pads[4];
+	int keyboard;
+	SetupDevices(1, pads, &keyboard);
+
+	Check(NativeControls_GetDeadzone(pads[0]) == 25, "a good figure later in the file still applies");
+}
+
+// A pad with no figure at all must read as the console's behaviour rather than something
+// the profile table happened to be zeroed to by accident.
+static void TestDeadzoneDefaultsToNone(void)
+{
+	printf("deadzone: an unconfigured pad trims nothing\n");
+	ResetModule();
+
+	int pads[4];
+	int keyboard;
+	SetupDevices(1, pads, &keyboard);
+
+	Check(NativeControls_GetDeadzone(pads[0]) == 0, "the default trims nothing");
+	Check(NATIVE_CONTROLS_DEADZONE_DEFAULT == 0, "the default is the console's behaviour");
+}
+
+// The snapshot version in effect while the digital/analog toggle still existed. Its layout
+// carried two extra fields per slot, so a snapshot from that build is bigger than the
+// struct now and the size check in Platform_InputRestoreState does not catch it: the
+// version guard is the only thing standing between the two layouts.
+#define TEST_INPUT_STATE_VERSION_WITH_TOGGLE 2
+
+static void TestAnOlderInputSnapshotIsRefused(void)
+{
+	printf("state: an input snapshot from before the toggle is refused\n");
+	ResetBusState();
+
+	Check(NATIVE_INPUT_STATE_VERSION != TEST_INPUT_STATE_VERSION_WITH_TOGGLE,
+	      "the version was bumped past the layout that had the toggle fields");
+
+	const int size = Platform_InputGetStateSize();
+	u8 *buffer = calloc(1, (size_t)size);
+	Check(buffer != NULL, "the snapshot buffer is allocated");
+
+	if (buffer == NULL)
+	{
+		return;
+	}
+
+	// A successful restore writes the pad bus, so point it at this test's own buffers
+	// rather than inheriting a previous test's, which is out of scope by now.
+	u8 port0[NATIVE_INPUT_MULTITAP_HEADER + (NATIVE_INPUT_MAX_CONTROLLERS * NATIVE_INPUT_PAD_PACKET_BYTES)];
+	u8 port1[NATIVE_INPUT_PAD_PACKET_BYTES];
+	memset(port0, 0, sizeof(port0));
+	memset(port1, 0, sizeof(port1));
+	s_padSlotData[0] = port0;
+	s_padSlotData[1] = port1;
+
+	Check(Platform_InputCaptureState(buffer, size) == 1, "a snapshot is captured");
+
+	struct NativeInputStateSnapshot *snapshot = (struct NativeInputStateSnapshot *)buffer;
+	Check(snapshot->version == NATIVE_INPUT_STATE_VERSION, "the capture carries the current version");
+
+	// Stands in for a snapshot read from a checkpoint written by that older build.
+	snapshot->version = TEST_INPUT_STATE_VERSION_WITH_TOGGLE;
+	Check(Platform_InputRestoreState(buffer, size) == 0, "an older snapshot is refused");
+
+	free(buffer);
 }
 
 // Regression: Alt was suppressed by skipping the keyboard's whole contribution in
@@ -1392,6 +1708,15 @@ int main(void)
 	TestKeyboardOnPlayerTwoIsVisibleToTheGame();
 	TestAllFourPlayersAreReachable();
 	TestDisabledPlayerLeavesAHole();
+	TestTheKeyboardReportsAPadLikeAnyOtherDevice();
+	TestDeadzoneTrimsCentreAndKeepsFullTravel();
+	TestRestoreDefaultsClearsTheDeadzone();
+	TestDeadzoneIsClamped();
+	TestDeadzoneRoundTripsPerDevice();
+	TestAnUnreadableDeadzoneKeepsTheDefault();
+	TestAHandEditedDeadzoneCannotExceedTheMaximum();
+	TestDeadzoneDefaultsToNone();
+	TestAnOlderInputSnapshotIsRefused();
 	TestAltKeepsTheKeyboardPadConnected();
 	TestChangingAPlayerDeviceReachesThePadBus();
 	TestDisablingAPlayerReachesThePadBus();

@@ -14,6 +14,22 @@
 // Length of a device name, for callers sizing a buffer to render one.
 #define NATIVE_CONTROLS_NAME_LENGTH 64
 
+// Stick deadzone as a percentage of full deflection. Zero is the console's own behaviour:
+// nothing is trimmed, and a stick that drifts steers. The figure is per device, since it
+// answers how that particular stick rests rather than how the game reads input.
+//
+// The maximum stops short of the whole range on purpose: past it there is no travel left to
+// give back, so a deadzone that trimmed everything would only ever report centre.
+#define NATIVE_CONTROLS_DEADZONE_MIN     0
+#define NATIVE_CONTROLS_DEADZONE_MAX     90
+#define NATIVE_CONTROLS_DEADZONE_STEP    5
+#define NATIVE_CONTROLS_DEADZONE_DEFAULT 0
+
+// Figures are percentages of the full axis travel, so the scale stays 100 whatever the
+// maximum is allowed to be. Scaling by the maximum instead would quietly make every
+// figure mean a larger share of the stick than it says.
+#define NATIVE_CONTROLS_DEADZONE_SCALE 100
+
 // Returned by NativeControls_GetPlayerDevice when a player has no device. Also a
 // valid index into the device table, so callers can use one sentinel for both.
 #define NATIVE_CONTROLS_NO_DEVICE (-1)
@@ -130,6 +146,13 @@ void NativeControls_SetBinding(int device, int binding, s32 value);
 
 // Replaces every binding on one device with the shipped defaults, then persists.
 void NativeControls_RestoreDeviceDefaults(int device);
+
+// Stick deadzone for one device, as a percentage of full deflection clamped to
+// NATIVE_CONTROLS_DEADZONE_MIN..MAX, or NATIVE_CONTROLS_DEADZONE_DEFAULT without a device.
+s32 NativeControls_GetDeadzone(int device);
+
+// Sets the deadzone in memory. The value is clamped, not refused.
+void NativeControls_SetDeadzone(int device, s32 percent);
 
 // Waits for the device to go neutral, then takes the next press on that device alone and
 // applies it. The binding reads as unbound for the duration; if the capture is cancelled

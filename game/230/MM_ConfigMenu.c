@@ -99,6 +99,58 @@ static int s_currentSection = -1; // -1 = section selector, 0+ = submenu
 static int s_scrollOffset = 0;    // first visible row in submenu
 #define CONFIG_MAX_VISIBLE_ROWS 10
 
+// Row geometry shared with MM_ControlsConfig.c. Every screen in the options menu puts its
+// title and rows in the same places, so the numbers are named once here rather than being
+// restated by each screen that draws a list.
+#define CONFIG_TITLE_Y     0x18
+#define CONFIG_ROW_START_Y 0x3C
+#define CONFIG_ROW_SPACING 0x0E
+#define CONFIG_LABEL_X     0x38
+#define CONFIG_VALUE_X     0x1DC
+
+// One clamped step of an option row, and the cadence a held direction runs at. Lives here
+// beside the other helpers the Controls screen borrows, so a numeric option behaves the
+// same wherever it is edited rather than each screen inventing its own.
+
+// Frames a held Left/Right waits before it steps again, so one press moves a single step
+// and holding runs the value through its range at a pace that can be seen.
+#define CONFIG_STEP_REPEAT_FRAMES 3
+
+// True when a held direction should step this frame. Takes the button mask rather than a
+// pad, because a screen may answer for more than one player and each has its own mask.
+static bool Config_OptionStepDue(int held, int direction)
+{
+	const int button = (direction < 0) ? BTN_LEFT : BTN_RIGHT;
+
+	if ((held & button) == 0)
+	{
+		return false;
+	}
+
+	return (sdata->frameCounter % CONFIG_STEP_REPEAT_FRAMES) == 0;
+}
+
+// Applies one clamped step. Reports whether the value moved, so a caller can commit only on
+// a real change instead of once per frame while a direction is held.
+static bool Config_OptionStep(int *value, int direction, int min, int max, int step)
+{
+	const int before = *value;
+	int wanted = before + (direction * step);
+
+	if (wanted < min)
+	{
+		wanted = min;
+	}
+	else if (wanted > max)
+	{
+		wanted = max;
+	}
+
+	*value = wanted;
+
+	return *value != before;
+}
+
 // True when the section at this index is one of the screens that draws and edits
 // its own rows instead of going through g_configEntries values.
 static bool Config_IsCustomSection(int section)
@@ -122,25 +174,32 @@ static void Config_UpdateSlider(const struct GamepadBuffer *pad, const int rowSe
 {
 	if (rowSelected != localRow)
 		return;
-	const int held = pad->buttonsHeldCurrFrame;
-	if ((held & BTN_LEFT) != 0 && (sdata->frameCounter % 3) == 0)
+
+	for (int direction = -1; direction <= 1; direction += 2)
 	{
-		*value -= step;
-		if (*value < min) *value = min;
-	}
-	if ((held & BTN_RIGHT) != 0 && (sdata->frameCounter % 3) == 0)
-	{
-		*value += step;
-		if (*value > max) *value = max;
+		if (Config_OptionStepDue(pad->buttonsHeldCurrFrame, direction))
+		{
+			Config_OptionStep(value, direction, min, max, step);
+		}
 	}
 }
 
-static void Config_DrawValue(const ConfigEntry *e, const int valueX, int y, uint32_t *ot, char *buf)
+// A numeric option's value, in the shared value column. Every screen shows these as a
+// percentage, so the sign and the column are written once here rather than per screen.
+static void Config_DrawPercent(int percent, int y, uint32_t *ot)
+{
+	char text[8];
+
+	snprintf(text, sizeof(text), "%d%%", percent);
+	DecalFont_DrawLineOT(text, CONFIG_VALUE_X, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+}
+
+static void Config_DrawValue(const ConfigEntry *e, int y, uint32_t *ot)
 {
 	if (e->type == CFG_BOOL)
 	{
 		DecalFont_DrawLineOT(*(bool *)e->valuePtr ? "ON" : "OFF",
-			valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+			CONFIG_VALUE_X, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
 	}
 	else if (e->type == CFG_ENUM)
 	{
@@ -154,12 +213,11 @@ static void Config_DrawValue(const ConfigEntry *e, const int valueX, int y, uint
 				break;
 			}
 		}
-		DecalFont_DrawLineOT((char *)name, valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+		DecalFont_DrawLineOT((char *)name, CONFIG_VALUE_X, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
 	}
 	else
 	{
-		sprintf(buf, "%d%%", *(int *)e->valuePtr);
-		DecalFont_DrawLineOT(buf, valueX, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+		Config_DrawPercent(*(int *)e->valuePtr, y, ot);
 	}
 }
 
@@ -168,7 +226,6 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 	struct GameTracker *gGT = sdata->gGT;
 	uint32_t *ot = gGT->backBuffer->otMem.uiOT;
 	struct GamepadBuffer *pad = &sdata->gGamepads->gamepad[0];
-	char buf[32];
 
 	if (s_numSections == 0)
 		BuildSectionMap();
@@ -196,6 +253,7 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		else
 		{
 			NativeConfig_Save();
+			NativeControls_Save();
 			sdata->ptrDesiredMenu = &D230.menuMainMenu;
 		}
 	}
@@ -279,12 +337,7 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		}
 
 		DecalFont_DrawLineOT((char *)g_configEntries[firstEntry].section,
-			0x100, 0x18, FONT_BIG, JUSTIFY_CENTER | ORANGE, ot);
-
-		int labelX = 0x38;
-		int valueX = 0x1DC;
-		int startY = 0x3C;
-		int rowSpacing = 0x0E;
+			0x100, CONFIG_TITLE_Y, FONT_BIG, JUSTIFY_CENTER | ORANGE, ot);
 
 		int visibleEnd = numRows;
 		if (visibleEnd > s_scrollOffset + CONFIG_MAX_VISIBLE_ROWS)
@@ -293,10 +346,10 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		for (int j = s_scrollOffset; j < visibleEnd; j++)
 		{
 			const ConfigEntry *e = &g_configEntries[firstEntry + j];
-			int y = startY + (j - s_scrollOffset) * rowSpacing;
+			int y = CONFIG_ROW_START_Y + (j - s_scrollOffset) * CONFIG_ROW_SPACING;
 
-			DecalFont_DrawLineOT((char *)e->label, labelX, y, FONT_SMALL, ORANGE, ot);
-			Config_DrawValue(e, valueX, y, ot, buf);
+			DecalFont_DrawLineOT((char *)e->label, CONFIG_LABEL_X, y, FONT_SMALL, ORANGE, ot);
+			Config_DrawValue(e, y, ot);
 
 			if (j == menu->rowSelected)
 				Config_DrawRowHighlight(gGT, ot, y);
@@ -334,17 +387,13 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		}
 
 		DecalFont_DrawLineOT(sdata->lngStrings[LNG_OPTIONS],
-			0x100, 0x18, FONT_BIG, JUSTIFY_CENTER | ORANGE, ot);
-
-		int labelX = 0x38;
-		int startY = 0x3C;
-		int spacing = 0x0E;
+			0x100, CONFIG_TITLE_Y, FONT_BIG, JUSTIFY_CENTER | ORANGE, ot);
 
 		for (int i = 0; i < s_numSections; i++)
 		{
 			const ConfigEntry *e = &g_configEntries[s_sectionToEntry[i]];
-			int y = startY + i * spacing;
-			DecalFont_DrawLineOT((char *)e->section, labelX, y, FONT_SMALL, ORANGE, ot);
+			int y = CONFIG_ROW_START_Y + i * CONFIG_ROW_SPACING;
+			DecalFont_DrawLineOT((char *)e->section, CONFIG_LABEL_X, y, FONT_SMALL, ORANGE, ot);
 			if (i == menu->rowSelected)
 				Config_DrawRowHighlight(gGT, ot, y);
 		}
