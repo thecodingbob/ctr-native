@@ -16,17 +16,13 @@
 #define NATIVE_INPUT_PHYSICAL_SLOT_COUNT   2
 #define NATIVE_INPUT_PAD_PACKET_BYTES      8
 #define NATIVE_INPUT_MULTITAP_HEADER       2
-#define NATIVE_INPUT_PAD_DIGITAL           0x41
 #define NATIVE_INPUT_PAD_ANALOG            0x73
 #define NATIVE_INPUT_PAD_MULTITAP          0x80
 #define NATIVE_INPUT_PAD_DISCONNECT        0xff
 // NOTE(aalhendi): Little-endian tag `CTRI` = CTR native Input snapshot.
 #define NATIVE_INPUT_STATE_MAGIC           0x49525443
 
-// Bumped to 2: the device-to-slot placement moved into platform/native_controls.c
-// and is configuration rather than transient state, so keyboardControllerSlot and
-// controllerToSlotMapping left this snapshot.
-#define NATIVE_INPUT_STATE_VERSION         2
+#define NATIVE_INPUT_STATE_VERSION         3
 
 // NOTE(aalhendi): Native input preserves behavior from PsyCross's
 // MIT-licensed pad implementation while moving host ownership into ctr-native.
@@ -61,16 +57,12 @@ local_persist const u16 s_bindingButtonMask[NATIVE_CONTROLS_BIND_COUNT] = {
 struct NativeInputController
 {
 	struct PlatformInputPadSnapshot snapshot;
-	s32 analogEnabled;
-	s32 switchingAnalog;
 	int device;
 };
 
 struct NativeInputControllerStateSnapshot
 {
 	struct PlatformInputPadSnapshot snapshot;
-	s32 analogEnabled;
-	s32 switchingAnalog;
 };
 
 struct NativeInputStateSnapshot
@@ -119,12 +111,9 @@ internal void NativeInput_ResetSnapshot(s32 slot)
 	memset(snapshot->reserved, 0, sizeof(snapshot->reserved));
 }
 
-// A slot starts out in analog mode: the game zeroes the axes unless the packet's id
-// byte names an analog pad, so a digital default leaves the sticks unbound.
 internal void NativeInput_ResetController(s32 slot)
 {
 	s_controllers[slot].device = NATIVE_CONTROLS_NO_DEVICE;
-	s_controllers[slot].analogEnabled = 1;
 	NativeInput_ResetSnapshot(slot);
 	s_installedSnapshots[slot] = s_controllers[slot].snapshot;
 }
@@ -333,26 +322,12 @@ internal void NativeInput_ApplyController(s32 slot)
 
 	snapshot->connected = 1;
 	snapshot->status = 0;
-	snapshot->id = nativeController->analogEnabled ? NATIVE_INPUT_PAD_ANALOG : NATIVE_INPUT_PAD_DIGITAL;
+	snapshot->id = NATIVE_INPUT_PAD_ANALOG;
 
 	s32 rightX = NativeInput_ControllerButtonState(gamepad, NativeControls_GetBinding(device, NATIVE_CONTROLS_BIND_AXIS_RIGHT_X));
 	s32 rightY = NativeInput_ControllerButtonState(gamepad, NativeControls_GetBinding(device, NATIVE_CONTROLS_BIND_AXIS_RIGHT_Y));
 	s32 leftX = NativeInput_ControllerButtonState(gamepad, NativeControls_GetBinding(device, NATIVE_CONTROLS_BIND_AXIS_LEFT_X));
 	s32 leftY = NativeInput_ControllerButtonState(gamepad, NativeControls_GetBinding(device, NATIVE_CONTROLS_BIND_AXIS_LEFT_Y));
-
-	if (((buttons & 0x1) == 0) && ((buttons & 0x8) == 0))
-	{
-		buttons = 0xffff;
-		if (nativeController->switchingAnalog == 0)
-		{
-			nativeController->analogEnabled = nativeController->analogEnabled == 0;
-		}
-		nativeController->switchingAnalog = 1;
-	}
-	else
-	{
-		nativeController->switchingAnalog = 0;
-	}
 
 	NativeInput_SetSnapshotButtons(snapshot, buttons);
 	snapshot->analog[0] = NativeInput_AxisToByte(rightX);
@@ -407,8 +382,10 @@ internal s32 NativeInput_KeyboardSuppressed(void)
 	return s_keyboardState[SDL_SCANCODE_RALT] || s_keyboardState[SDL_SCANCODE_LALT];
 }
 
-// The keyboard is a device like any other: it is merged into whichever slot owns
-// it, which is not necessarily slot 0.
+// The keyboard is a device like any other: it is merged into whichever slot owns it, which
+// is not necessarily slot 0, and it reports an analog pad like every other device. That is
+// safe: unbound axes sit at the centre value the game reads as neutral, and the controls
+// screen keeps the stick rows off the keyboard.
 //
 // The Alt suppression applies to the buttons only. Skipping the keyboard's whole
 // contribution also skipped its connection flag, so holding Alt made the game report
@@ -434,7 +411,7 @@ internal void NativeInput_ApplyKeyboard(void)
 		{
 			snapshot->connected = 1;
 			snapshot->status = 0;
-			snapshot->id = NATIVE_INPUT_PAD_DIGITAL;
+			snapshot->id = NATIVE_INPUT_PAD_ANALOG;
 		}
 
 		if (suppressed != 0)
@@ -667,8 +644,6 @@ int Platform_InputCaptureState(void *dst, int dstSize)
 	{
 		snapshot->installedSnapshots[slot] = s_installedSnapshots[slot];
 		snapshot->controllers[slot].snapshot = s_controllers[slot].snapshot;
-		snapshot->controllers[slot].analogEnabled = s_controllers[slot].analogEnabled;
-		snapshot->controllers[slot].switchingAnalog = s_controllers[slot].switchingAnalog;
 	}
 
 	return 1;
@@ -692,17 +667,6 @@ int Platform_InputRestoreState(const void *src, int srcSize)
 	{
 		return 0;
 	}
-	for (slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
-	{
-		if ((snapshot->controllers[slot].analogEnabled < 0) || (snapshot->controllers[slot].analogEnabled > 1))
-		{
-			return 0;
-		}
-		if ((snapshot->controllers[slot].switchingAnalog < 0) || (snapshot->controllers[slot].switchingAnalog > 1))
-		{
-			return 0;
-		}
-	}
 
 	s_installedSnapshotsActive = snapshot->installedSnapshotsActive != 0;
 
@@ -710,8 +674,6 @@ int Platform_InputRestoreState(const void *src, int srcSize)
 	{
 		s_installedSnapshots[slot] = snapshot->installedSnapshots[slot];
 		s_controllers[slot].snapshot = snapshot->controllers[slot].snapshot;
-		s_controllers[slot].analogEnabled = snapshot->controllers[slot].analogEnabled;
-		s_controllers[slot].switchingAnalog = snapshot->controllers[slot].switchingAnalog;
 	}
 	NativeInput_WritePadBus();
 

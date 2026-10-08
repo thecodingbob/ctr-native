@@ -717,7 +717,7 @@ static int RunBusLayout(int gamepadCount, int *connectedPerPlayer)
 		{
 			s_controllers[slot].snapshot.connected = 1;
 			s_controllers[slot].snapshot.status = 0;
-			s_controllers[slot].snapshot.id = NATIVE_INPUT_PAD_DIGITAL;
+			s_controllers[slot].snapshot.id = NATIVE_INPUT_PAD_ANALOG;
 		}
 	}
 
@@ -816,7 +816,7 @@ static void TestChangingAPlayerDeviceReachesThePadBus(void)
 		{
 			s_controllers[slot].snapshot.connected = 1;
 			s_controllers[slot].snapshot.status = 0;
-			s_controllers[slot].snapshot.id = NATIVE_INPUT_PAD_DIGITAL;
+			s_controllers[slot].snapshot.id = NATIVE_INPUT_PAD_ANALOG;
 		}
 	}
 
@@ -877,7 +877,7 @@ static void TestDisabledPlayerLeavesAHole(void)
 		{
 			s_controllers[slot].snapshot.connected = 1;
 			s_controllers[slot].snapshot.status = 0;
-			s_controllers[slot].snapshot.id = NATIVE_INPUT_PAD_DIGITAL;
+			s_controllers[slot].snapshot.id = NATIVE_INPUT_PAD_ANALOG;
 		}
 	}
 
@@ -944,50 +944,94 @@ static int GameReadsAnalogAxes(u8 controllerData)
 	return controllerData == ((PAD_ID_ANALOG_STICK << 4) | 3) || controllerData == ((PAD_ID_ANALOG << 4) | 3);
 }
 
-// Regression: a controller was created in digital mode, and the game only reads a pad's
-// analog bytes when its id byte names an analog pad. Rebinding the sticks was then enough
-// to look right in controls.ini while the values were discarded on arrival, leaving the
-// d-pad as the only way to steer.
-static void TestControllersAreCreatedInAnalogMode(void)
+// Nothing distinguishes the keyboard on the bus. Its axes are unbound, so they read as the
+// centre value the game takes for neutral, and the controls screen keeps the stick rows off
+// it so there is nothing to misbind.
+static void TestTheKeyboardReportsAPadLikeAnyOtherDevice(void)
 {
-	printf("analog: every slot is created in analog mode\n");
+	printf("analog: the keyboard reports a pad like any other device\n");
 	ResetModule();
 	ResetBusState();
 
-	for (int slot = 0; slot < PLATFORM_INPUT_PAD_COUNT; slot++)
-	{
-		Check(s_controllers[slot].analogEnabled == 1, "the created default is analog");
-	}
-
-	// Which is what a gamepad-backed slot has to report for the game to read its axes.
-	Check(GameReadsAnalogAxes(s_controllers[0].analogEnabled ? NATIVE_INPUT_PAD_ANALOG : NATIVE_INPUT_PAD_DIGITAL),
-	      "a gamepad's packet names an analog pad");
-}
-
-// The mode is settled once, when the slot is created. Re-deciding it on every assignment
-// change is what put pads back to digital behind the player's back.
-static void TestTheCreatedModeIsNotRevisitedByAssignmentChanges(void)
-{
-	printf("analog: an assignment change does not re-decide the mode\n");
-	ResetModule();
-	ResetBusState();
-
+	// Keyboard only: ApplyController dereferences a gamepad handle, so a frame cannot be
+	// driven while the fake pad handles are in the table.
 	int pads[4];
 	int keyboard;
-	DeclareDevicesForBus(2, pads, &keyboard);
-	NativeControls_ResolveAndPublish();
+	DeclareDevicesForBus(0, pads, &keyboard);
+	NativeControls_ResolveAssignment();
+
+	u8 port0[NATIVE_INPUT_MULTITAP_HEADER + (NATIVE_INPUT_MAX_CONTROLLERS * NATIVE_INPUT_PAD_PACKET_BYTES)];
+	u8 port1[NATIVE_INPUT_PAD_PACKET_BYTES];
+	memset(port0, 0, sizeof(port0));
+	memset(port1, 0, sizeof(port1));
+	s_padSlotData[0] = port0;
+	s_padSlotData[1] = port1;
+
+	memset(s_testKeyboardState, 0, sizeof(s_testKeyboardState));
+	s_keyboardState = s_testKeyboardState;
+	s_inputInitialized = 1;
+
 	NativeInput_SyncDevices();
+	Platform_InputUpdate();
 
-	Check(s_controllers[0].analogEnabled == 1, "P1's slot keeps the created default");
+	Check(PadBusConnected(port0, 0), "the keyboard is connected");
+	Check(PadBusControllerData(port0, 0) == NATIVE_INPUT_PAD_ANALOG, "the keyboard is reported as an analog pad");
+	Check(GameReadsAnalogAxes(PadBusControllerData(port0, 0)), "the game reads the packet as a pad with axes");
 
-	// Stand in for the player taking the pad down with Select+Start.
-	s_controllers[0].analogEnabled = 0;
+	// Nothing is bound to the axes, so they must read as centre rather than as a
+	// deflection the game would steer with.
+	const struct ControllerPacket *packet = (const struct ControllerPacket *)&((struct TestPadSlot *)port0)->controllers[0];
+	Check(packet->payload.analog.leftX == 0x80, "the left X axis reads as centre");
+	Check(packet->payload.analog.leftY == 0x80, "the left Y axis reads as centre");
+	Check(packet->payload.analog.rightX == 0x80, "the right X axis reads as centre");
+	Check(packet->payload.analog.rightY == 0x80, "the right Y axis reads as centre");
 
-	Check(NativeControls_SetPlayerPref(0, NATIVE_CONTROLS_PREF_PINNED, pads[1]) == 1, "the reassignment is accepted");
-	NativeInput_SyncDevices();
+	s_inputInitialized = 0;
+	s_keyboardState = NULL;
+}
 
-	Check(s_controllers[0].device == pads[1], "pad slot 0 follows the second pad now");
-	Check(s_controllers[0].analogEnabled == 0, "the mode the slot was left in is kept");
+// The snapshot version in effect while the digital/analog toggle still existed. Its layout
+// carried two extra fields per slot, so a snapshot from that build is bigger than the
+// struct now and the size check in Platform_InputRestoreState does not catch it: the
+// version guard is the only thing standing between the two layouts.
+#define TEST_INPUT_STATE_VERSION_WITH_TOGGLE 2
+
+static void TestAnOlderInputSnapshotIsRefused(void)
+{
+	printf("state: an input snapshot from before the toggle is refused\n");
+	ResetBusState();
+
+	Check(NATIVE_INPUT_STATE_VERSION != TEST_INPUT_STATE_VERSION_WITH_TOGGLE,
+	      "the version was bumped past the layout that had the toggle fields");
+
+	const int size = Platform_InputGetStateSize();
+	u8 *buffer = calloc(1, (size_t)size);
+	Check(buffer != NULL, "the snapshot buffer is allocated");
+
+	if (buffer == NULL)
+	{
+		return;
+	}
+
+	// A successful restore writes the pad bus, so point it at this test's own buffers
+	// rather than inheriting a previous test's, which is out of scope by now.
+	u8 port0[NATIVE_INPUT_MULTITAP_HEADER + (NATIVE_INPUT_MAX_CONTROLLERS * NATIVE_INPUT_PAD_PACKET_BYTES)];
+	u8 port1[NATIVE_INPUT_PAD_PACKET_BYTES];
+	memset(port0, 0, sizeof(port0));
+	memset(port1, 0, sizeof(port1));
+	s_padSlotData[0] = port0;
+	s_padSlotData[1] = port1;
+
+	Check(Platform_InputCaptureState(buffer, size) == 1, "a snapshot is captured");
+
+	struct NativeInputStateSnapshot *snapshot = (struct NativeInputStateSnapshot *)buffer;
+	Check(snapshot->version == NATIVE_INPUT_STATE_VERSION, "the capture carries the current version");
+
+	// Stands in for a snapshot read from a checkpoint written by that older build.
+	snapshot->version = TEST_INPUT_STATE_VERSION_WITH_TOGGLE;
+	Check(Platform_InputRestoreState(buffer, size) == 0, "an older snapshot is refused");
+
+	free(buffer);
 }
 
 // Regression: Alt was suppressed by skipping the keyboard's whole contribution in
@@ -1457,9 +1501,8 @@ int main(void)
 	TestKeyboardOnPlayerTwoIsVisibleToTheGame();
 	TestAllFourPlayersAreReachable();
 	TestDisabledPlayerLeavesAHole();
-	TestControllersAreCreatedInAnalogMode();
-	TestTheKeyboardStillReportsDigital();
-	TestTheCreatedModeIsNotRevisitedByAssignmentChanges();
+	TestTheKeyboardReportsAPadLikeAnyOtherDevice();
+	TestAnOlderInputSnapshotIsRefused();
 	TestAltKeepsTheKeyboardPadConnected();
 	TestChangingAPlayerDeviceReachesThePadBus();
 	TestDisablingAPlayerReachesThePadBus();
