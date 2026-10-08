@@ -680,6 +680,8 @@ static int GamePadBusView(u8 *port0, int *connectedPerPlayer)
 	return numPorts;
 }
 
+// Builds the slot table the way Platform_InputInit does, so every bus test below starts
+// from the real created default rather than an assumed one.
 static void ResetBusState(void)
 {
 	memset(s_controllers, 0, sizeof(s_controllers));
@@ -688,7 +690,7 @@ static void ResetBusState(void)
 		s_playerPref[player].kind = NATIVE_CONTROLS_PREF_AUTO;
 		s_playerPref[player].deviceKey[0] = '\0';
 		s_playerDevice[player] = NATIVE_CONTROLS_NO_DEVICE;
-		s_controllers[player].device = NATIVE_CONTROLS_NO_DEVICE;
+		NativeInput_ResetController(player);
 	}
 	s_refreshed = true;
 	s_generation++;
@@ -923,6 +925,69 @@ static int PadBusConnected(u8 *port0, int player)
 	struct TestPadSlot *slot = (struct TestPadSlot *)port0;
 
 	return slot->controllers[player].plugged == PLUGGED;
+}
+
+// === Analog mode ===
+
+// The id byte a pad's packet carries on the bus.
+static u8 PadBusControllerData(u8 *port0, int player)
+{
+	struct TestPadSlot *slot = (struct TestPadSlot *)port0;
+
+	return slot->controllers[player].controllerData;
+}
+
+// Mirrors GAMEPAD_ProcessSticks_IsAnalogLike, the predicate deciding whether the game reads
+// a pad's analog bytes or discards them.
+static int GameReadsAnalogAxes(u8 controllerData)
+{
+	return controllerData == ((PAD_ID_ANALOG_STICK << 4) | 3) || controllerData == ((PAD_ID_ANALOG << 4) | 3);
+}
+
+// Regression: a controller was created in digital mode, and the game only reads a pad's
+// analog bytes when its id byte names an analog pad. Rebinding the sticks was then enough
+// to look right in controls.ini while the values were discarded on arrival, leaving the
+// d-pad as the only way to steer.
+static void TestControllersAreCreatedInAnalogMode(void)
+{
+	printf("analog: every slot is created in analog mode\n");
+	ResetModule();
+	ResetBusState();
+
+	for (int slot = 0; slot < PLATFORM_INPUT_PAD_COUNT; slot++)
+	{
+		Check(s_controllers[slot].analogEnabled == 1, "the created default is analog");
+	}
+
+	// Which is what a gamepad-backed slot has to report for the game to read its axes.
+	Check(GameReadsAnalogAxes(s_controllers[0].analogEnabled ? NATIVE_INPUT_PAD_ANALOG : NATIVE_INPUT_PAD_DIGITAL),
+	      "a gamepad's packet names an analog pad");
+}
+
+// The mode is settled once, when the slot is created. Re-deciding it on every assignment
+// change is what put pads back to digital behind the player's back.
+static void TestTheCreatedModeIsNotRevisitedByAssignmentChanges(void)
+{
+	printf("analog: an assignment change does not re-decide the mode\n");
+	ResetModule();
+	ResetBusState();
+
+	int pads[4];
+	int keyboard;
+	DeclareDevicesForBus(2, pads, &keyboard);
+	NativeControls_ResolveAndPublish();
+	NativeInput_SyncDevices();
+
+	Check(s_controllers[0].analogEnabled == 1, "P1's slot keeps the created default");
+
+	// Stand in for the player taking the pad down with Select+Start.
+	s_controllers[0].analogEnabled = 0;
+
+	Check(NativeControls_SetPlayerPref(0, NATIVE_CONTROLS_PREF_PINNED, pads[1]) == 1, "the reassignment is accepted");
+	NativeInput_SyncDevices();
+
+	Check(s_controllers[0].device == pads[1], "pad slot 0 follows the second pad now");
+	Check(s_controllers[0].analogEnabled == 0, "the mode the slot was left in is kept");
 }
 
 // Regression: Alt was suppressed by skipping the keyboard's whole contribution in
@@ -1392,6 +1457,9 @@ int main(void)
 	TestKeyboardOnPlayerTwoIsVisibleToTheGame();
 	TestAllFourPlayersAreReachable();
 	TestDisabledPlayerLeavesAHole();
+	TestControllersAreCreatedInAnalogMode();
+	TestTheKeyboardStillReportsDigital();
+	TestTheCreatedModeIsNotRevisitedByAssignmentChanges();
 	TestAltKeepsTheKeyboardPadConnected();
 	TestChangingAPlayerDeviceReachesThePadBus();
 	TestDisablingAPlayerReachesThePadBus();

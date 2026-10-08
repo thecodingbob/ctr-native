@@ -119,6 +119,16 @@ internal void NativeInput_ResetSnapshot(s32 slot)
 	memset(snapshot->reserved, 0, sizeof(snapshot->reserved));
 }
 
+// A slot starts out in analog mode: the game zeroes the axes unless the packet's id
+// byte names an analog pad, so a digital default leaves the sticks unbound.
+internal void NativeInput_ResetController(s32 slot)
+{
+	s_controllers[slot].device = NATIVE_CONTROLS_NO_DEVICE;
+	s_controllers[slot].analogEnabled = 1;
+	NativeInput_ResetSnapshot(slot);
+	s_installedSnapshots[slot] = s_controllers[slot].snapshot;
+}
+
 internal s32 NativeInput_IsValidControllerSlot(s32 slot)
 {
 	return (slot >= 0) && (slot < NATIVE_INPUT_MAX_CONTROLLERS);
@@ -448,9 +458,7 @@ int Platform_InputInit(void)
 	memset(s_padSlotData, 0, sizeof(s_padSlotData));
 	for (s32 slot = 0; slot < NATIVE_INPUT_MAX_CONTROLLERS; slot++)
 	{
-		s_controllers[slot].device = NATIVE_CONTROLS_NO_DEVICE;
-		NativeInput_ResetSnapshot(slot);
-		s_installedSnapshots[slot] = s_controllers[slot].snapshot;
+		NativeInput_ResetController(slot);
 	}
 
 	s_installedSnapshotsActive = 0;
