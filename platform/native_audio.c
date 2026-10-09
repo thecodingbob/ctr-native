@@ -23,7 +23,6 @@
 #define NATIVE_AUDIO_PITCH_BLOCK_SPAN        ((u32)NATIVE_AUDIO_ADPCM_SAMPLES_PER_BLOCK << NATIVE_AUDIO_PITCH_SAMPLE_SHIFT)
 #define NATIVE_AUDIO_FP_SHIFT                16
 #define NATIVE_AUDIO_FP_ONE                  (1 << NATIVE_AUDIO_FP_SHIFT)
-#define NATIVE_AUDIO_GAUSS_INDEX_SHIFT       8
 // NOTE(aalhendi): Matches PSX SPU Q15 direct-volume semantics. The SPU treats
 // each volume register (voice VOLL/VOLR, CD CDVOLL/CDVOLR, master MVOLL/MVOR)
 // as a signed 16-bit value with effective gain = value / 0x8000, so two stages

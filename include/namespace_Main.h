@@ -155,29 +155,9 @@ enum GameModeEnd
 {
 	PLAYER_GHOST_BEAT = 1,
 	DRAW_HIGH_SCORES = 2,
-
-
-#if 0
-	// Same as GameMode1	
-	BATTLE_MODE         = 0x20,
-#endif
-
-
 	// new flags
 	NTROPY_JUST_OPENED = 0x8000,
 	HIGH_SCORE_SAVED = 0x10000,
-
-
-#if 0
-	// Same as GameMode1
-	TIME_TRIAL          = 0x20000,
-	BETA_UNLIMITED		= 0x40000, // Spyro 2 demo
-	ADVENTURE_MODE      = 0x80000,
-	ADVENTURE_ARENA     = 0x100000,
-	END_OF_RACE 		= 0x200000,
-#endif
-
-
 	// new flags
 	NEW_NAME = 0x1000000,
 	NEW_RELIC = 0x2000000,

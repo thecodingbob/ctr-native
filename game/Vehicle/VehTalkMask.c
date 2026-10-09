@@ -1,8 +1,6 @@
 #include "VehCommon.h"
 
-#ifndef VEH_TALK_MASK_HEAD
 #define VEH_TALK_MASK_HEAD (sdata->s_head)
-#endif
 
 enum
 {

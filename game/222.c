@@ -81,7 +81,6 @@ extern struct RectMenu menu222_2P;
 // NOTE(aalhendi): The matching build overrides these defaults through its
 // private retail-symbol header. Native code reaches the same state through the
 // canonical aggregates.
-#ifndef gameHudC
 #define gameHudC                 (sdata->ptrHudC)
 #define gameHudT                 (sdata->ptrHudT)
 #define gameHudR                 (sdata->ptrHudR)
@@ -90,7 +89,6 @@ extern struct RectMenu menu222_2P;
 #define gameRemoveConfig8        (sdata->Loading.OnBegin.RemBitsConfig8)
 #define gameHudStructs           (data.hudStructPtr)
 #define gameMenuRetryExit        (data.menuRetryExit)
-#endif
 
 // The three CTR letters are a single shared resource: a co-op round is won on
 // them only if the pair collected all three between them, so the round total is

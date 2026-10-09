@@ -1,10 +1,8 @@
 #include <common.h>
 
-#ifndef RB_MINE_POOL_TAKEN
 #define RB_MINE_POOL_TAKEN D231.minePoolTaken
 #define RB_MINE_POOL_FREE  D231.minePoolFree
 #define RB_MINE_POOL_ITEMS D231.minePoolItem
-#endif
 
 static inline s32 RB_MinePool_Capacity(void)
 {

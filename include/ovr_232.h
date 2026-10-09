@@ -88,13 +88,6 @@ struct BossGarageDoor
 };
 
 CTR_STATIC_ASSERT(sizeof(struct BossGarageDoor) == 0x14);
-
-#if 0
-struct AdvPause {
-
-};
-#endif
-
 enum WoodDoorCamFlags
 {
 	WdCam_None = 0,
@@ -754,12 +747,9 @@ extern struct OverlayDATA_232 D232;
 #define AH_BOSS_CHARACTER_IDS     4, 0, 1, 2, 3
 #define AH_DOOR_KEY_SHRINK_SCALES 0x1333, 0x1599, 0x1666, 0x14cc, 0x1000, 0xb33, 0x800, 0x666, 0x4cc, 0x333, 0x199
 
-#ifndef AH_MASK_AUDIO_BACKUP
 #define AH_MASK_AUDIO_BACKUP D232.audioBackup
 #define AH_MASK_AUDIO_TARGET D232.maskAudioTargetVolume
-#endif
 
-#ifndef AH_HINT_MASK
 #define AH_HINT_MASK               sdata->instMaskHints3D
 #define AH_MASK_ROT                D232.maskRot
 #define AH_MASK_POS                D232.maskPos
@@ -850,6 +840,5 @@ extern struct OverlayDATA_232 D232;
 #define AH_WARP_MENU               D232.menuTokenRelic
 #define AH_WARP_BATTLE_TIMES       D232.battleCrystalEventTime
 #define AH_WARP_CUP_TRACKS         data.advCupTrackIDs
-#endif
 
 #endif

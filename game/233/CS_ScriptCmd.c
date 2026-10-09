@@ -1,10 +1,8 @@
 #include <common.h>
 
-#ifndef CS_OPCODE_META_TABLE
 // NOTE(aalhendi): Retail indexes the overlay bytes here, including the script
 // bytes following the metadata prefix for otherwise undefined opcode values.
 #define CS_OPCODE_META_TABLE ((const u8 *)&D233 + OFFSETOF(struct OverlayDATA_233, csOpcodeMetaPrefix))
-#endif
 
 s16 CS_ScriptCmd_ReadOpcode_GetShort(char **cursor)
 {

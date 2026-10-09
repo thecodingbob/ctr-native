@@ -1,13 +1,9 @@
 #include <common.h>
 #include <ctr_gte_transfer.h>
 
-#ifndef RB_WARPBALL_FADE_Y
 #define RB_WARPBALL_FADE_Y R231.warpballFadeY
-#endif
 
-#ifndef RB_WARPBALL_PARTICLE_HEIGHT
 #define RB_WARPBALL_PARTICLE_HEIGHT R231.warpballParticleHeight
-#endif
 
 void RB_Warpball_FadeAway(struct Thread *t)
 {

@@ -631,8 +631,3 @@ void ThTick_SetAndExec(struct Thread *thread, void (*funcThTick)(struct Thread *
 		longjmp(s_thTickContext->env, 1);
 	}
 }
-
-void ThTick_Set(struct Thread *thread, void (*funcThTick)(struct Thread *))
-{
-	thread->funcThTick = funcThTick;
-}

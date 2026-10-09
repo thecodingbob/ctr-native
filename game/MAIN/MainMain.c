@@ -528,26 +528,7 @@ void StateZero()
 	// Get CD Position fo BIGFILE
 	sdata->ptrBigfile1 = LOAD_ReadDirectory(BIGPATH);
 
-// Defrag to save heap space,
-// required because MEMPACK_Init moves heap
-#if 0
-	// NOTE(aalhendi): Retail main does not rewrite BIGFILE overlay sizes here.
-	extern char RB_NewEndFile[4];
-
-	// Dont load full overlay file, cut off the end
-	struct BigEntry *firstEntry = BIG_GETENTRY(sdata->ptrBigfile1);
-	firstEntry[231].size = 28 * 0x800;
-	// firstEntry[231].size = (u32)RB_NewEndFile - (u32)OVR_Region3;
-	// printf("Size: %08x\n", firstEntry[231].size);
-
-	// Cut off Region1 overlays at 2 sectors (not 3),
-	// This protects Region2 RAM so it is not overwritten
-	// during Region1 disc streaming, saves loading time
-	for (int i = 221; i <= 225; i++)
-		firstEntry[i].size = 2 * 0x800;
-#endif
-
-	// English=1
+	// Bigfile language slot; English is 1.
 	LOAD_LangFile((int)sdata->ptrBigfile1, 1);
 	GAMEPROG_NewGame_OnBoot();
 	gGT->overlayIndex_null_notUsed = 0;

@@ -304,7 +304,6 @@ typedef struct PolyFT4
 	FTVertex v[VertexCount_Quad];
 } PolyFT4;
 
-#define fPolyCode colorCode.code
 #define gPolyCode v[0].color.code
 #define polyClut  v[0].page.clut
 #define polyTpage v[1].page.tpage

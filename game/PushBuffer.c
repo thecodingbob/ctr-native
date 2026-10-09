@@ -543,12 +543,6 @@ void PushBuffer_UpdateFrustum(struct PushBuffer *pb)
 	int max_Z;
 
 	struct ScratchpadFrustum *spf = CTR_SCRATCHPAD_PTR(struct ScratchpadFrustum, 0);
-
-#if 0
-  // TRAP checks removed
-  // assume no divide by zero
-#endif
-
 	PushBuffer_SetMatrixVP(pb);
 
 	cameraPosX = pb->pos.x;

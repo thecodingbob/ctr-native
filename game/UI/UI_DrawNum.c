@@ -1,17 +1,13 @@
 #include <common.h>
 
-#ifndef UI_NUM_X
 #define UI_NUM_X      sdata->s_x
 #define UI_NUM_INT    sdata->s_int
 #define UI_NUM_LONG   sdata->s_longInt
 #define UI_NUM_COLORS data.ptrColor
-#endif
 
-#ifndef UI_NUM_DRAW_POLY_GT4
 #define UI_NUM_DRAW_POLY_GT4(icon, x, y, prim, ot, c0, c1, c2, c3, transparency, scale)                                                              \
 	DecalHUD_DrawPolyGT4((icon), (x), (y), (prim), (ot), ColorCode_Load(&(c0)), ColorCode_Load(&(c1)), ColorCode_Load(&(c2)), ColorCode_Load(&(c3)), \
 	                     (transparency), (scale))
-#endif
 
 enum
 {

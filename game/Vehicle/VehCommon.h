@@ -4,120 +4,70 @@
 #include <common.h>
 #include <ctr_gte_transfer.h>
 
-// NOTE(aalhendi): These defaults use the shared runtime layout. The matching
-// pipeline force-includes a private header that overrides only retail bindings
-// and call shapes that GCC 2.8.1 must see differently.
+// These bind vehicle call sites to the shared runtime layout. Page and
+// register arguments are inert here and exist to keep the call shapes uniform.
 
-#ifndef VEH_LOAD_GAME_TRACKER
 #define VEH_LOAD_GAME_TRACKER(result) ((result) = GAME_TRACKER)
-#endif
 
-#ifndef VEH_TUMBLE_INIT_PAGE
 #define VEH_TUMBLE_INIT_PAGE            0
 #define VEH_TUMBLE_INIT_FROM_PAGE(page) ((void)sizeof(page), VehStuckProc_Tumble_Init)
-#endif
 
-#ifndef VEH_LOAD_CHARACTER_IDS_PAGE
 #define VEH_LOAD_CHARACTER_IDS_PAGE(page) ((void)sizeof(page))
-#endif
 
-#ifndef VEH_ADD_CHARACTER_IDS_LOW
 #define VEH_ADD_CHARACTER_IDS_LOW(result, page) \
 	do                                          \
 	{                                           \
 		(void)sizeof(page);                     \
 		(result) = GAME_CHARACTER_IDS;          \
 	} while (0)
-#endif
 
 
-#ifndef VEH_XA_STATE
 #define VEH_XA_STATE (sdata->XA_State)
-#endif
 
-#ifndef VEH_MASK_THREAD_ALIVE
 #define VEH_MASK_THREAD_ALIVE (sdata->boolIsMaskThreadAlive)
-#endif
 
-#ifndef VEH_TALK_MASK_DEAD
 #define VEH_TALK_MASK_DEAD (sdata->talkMask_boolDead)
-#endif
 
-#ifndef VEH_PLAYER_THREAD_NAME
 #define VEH_PLAYER_THREAD_NAME (sdata->s_player)
-#endif
 
-#ifndef VEH_TURBO1_NAME
 #define VEH_TURBO1_NAME (sdata->s_turbo1)
-#endif
 
-#ifndef VEH_TURBO2_NAME
 #define VEH_TURBO2_NAME (sdata->s_turbo2)
-#endif
 
-#ifndef VEH_DRIVER_MODEL_EXTRAS
 #define VEH_DRIVER_MODEL_EXTRAS (data.driverModelExtras)
-#endif
 
-#ifndef VEH_PLAYER_OBJECT_LIST
 #define VEH_PLAYER_OBJECT_LIST ((struct Model **)sdata->PLYROBJECTLIST)
-#endif
 
-#ifndef VEH_META_PHYS
 #define VEH_META_PHYS (data.metaPhys)
-#endif
 
-#ifndef VEH_BAKED_GTE_PHYS_ENTRY
 #define VEH_BAKED_GTE_PHYS_ENTRY(index) (data.bakedGteMath[(index)].physEntry)
-#endif
 
-#ifndef VEH_BAKED_GTE_NUM_ENTRIES
 #define VEH_BAKED_GTE_NUM_ENTRIES(index) (data.bakedGteMath[(index)].numEntries)
-#endif
 
-#ifndef VEH_TRIG_APPROX
 #define VEH_TRIG_APPROX(index) CTR_ReadU32AlignedLE(&data.trigApprox[(index)])
-#endif
 
-#ifndef VEH_ADV_RNG
 #define VEH_ADV_RNG (sdata->advRng)
-#endif
 
 
-#ifndef VEH_KART_SPAWN_ORDER
 #define VEH_KART_SPAWN_ORDER (sdata->kartSpawnOrderArray)
-#endif
 
-#ifndef VEH_ITEM_SET_RACE1
 #define VEH_ITEM_SET_RACE1          (data.RNG_itemSetRace1)
 #define VEH_ITEM_SET_RACE2          (data.RNG_itemSetRace2)
 #define VEH_ITEM_SET_RACE3          (data.RNG_itemSetRace3)
 #define VEH_ITEM_SET_RACE4          (data.RNG_itemSetRace4)
 #define VEH_ITEM_SET_BOSS_RACE      (data.RNG_itemSetBossrace)
 #define VEH_ITEM_SET_BATTLE_DEFAULT (data.RNG_itemSetBattleDefault)
-#endif
 
-#ifndef VEH_MODEL_MASK_HINTS_3D
 #define VEH_MODEL_MASK_HINTS_3D (sdata->modelMaskHints3D)
-#endif
 
-#ifndef VEH_XA_MAX_SAMPLE_VALUE
 #define VEH_XA_MAX_SAMPLE_VALUE (sdata->XA_MaxSampleValInArr)
-#endif
 
-#ifndef VEH_BOT_CRASH_NAV_ROT_ARG
 #define VEH_BOT_CRASH_NAV_ROT_ARG (sdata->botCrashNavRot)
-#endif
 
-#ifndef VEH_PHYS_CRASH_FORWARD
 #define VEH_PHYS_CRASH_FORWARD (((struct VehPhysCrashAiScratch *)(void *)&sdata->dataLibFiller[0])->forward)
-#endif
 
-#ifndef VEH_PHYS_CRASH_MATRIX
 #define VEH_PHYS_CRASH_MATRIX (((struct VehPhysCrashAiScratch *)(void *)&sdata->dataLibFiller[0])->matrix)
-#endif
 
-#ifndef VEH_PICKUP_DOCTOR_NAME
 #define VEH_PICKUP_DOCTOR_NAME      (sdata->s_doctor1)
 #define VEH_PICKUP_BOMB_NAME        (sdata->s_bomb1)
 #define VEH_PICKUP_NITRO_NAME       (sdata->s_nitro1)
@@ -126,37 +76,24 @@
 #define VEH_PICKUP_SHIELD_NAME      (sdata->s_shield)
 #define VEH_PICKUP_SHIELD_DARK_NAME rdata.s_shielddark
 #define VEH_PICKUP_HIGHLIGHT_NAME   rdata.s_highlight
-#endif
 
-#ifndef VEH_PICKUP_SHOOT_NOW_DISPATCH
 #define VEH_PICKUP_SHOOT_NOW_DISPATCH(weaponId) ((void)(weaponId))
-#endif
 
-#ifndef VEH_CONVERT_VEC_TO_SPEED
 #define VEH_CONVERT_VEC_TO_SPEED(driver, velocity) VehPhysCrash_ConvertVecToSpeed((driver), (velocity))
-#endif
 
-#ifndef VEH_MAP_TO_RANGE_STAGED_FIFTH
 #define VEH_MAP_TO_RANGE_STAGED_FIFTH(value, inputMin, inputMax, outputMin, outputMax) \
 	VehCalc_MapToRange((value), (inputMin), (inputMax), (outputMin), (outputMax))
-#endif
 
-#ifndef VEH_EMITTER_JOG_CON2
 #define VEH_EMITTER_JOG_CON2 GAMEPAD_JogCon2
-#endif
 
-#ifndef VEH_EMITTER_JOG_CON1_CURRENT_DRIVER
 #define VEH_EMITTER_JOG_CON1_CURRENT_DRIVER(driver, value, duration) GAMEPAD_JogCon1((driver), (value), (duration))
-#endif
 
-#ifndef VEH_LOAD_META_PHYS_BASE
 #define VEH_LOAD_META_PHYS_BASE(result, page) \
 	do                                        \
 	{                                         \
 		(void)sizeof(page);                   \
 		(result) = VEH_META_PHYS;             \
 	} while (0)
-#endif
 
 // NOTE(aalhendi): These are the shared native/retail forms of the PsyQ
 // three-vector projection adapters used by the Vehicle render helpers.

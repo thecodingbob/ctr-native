@@ -388,20 +388,8 @@ void UI_DrawRankedDrivers(void)
 			{
 				continue;
 			}
-
-#if 0
-			if (trackLength == 0) trap(0x1c00);
-			if ((trackLength == -1) && (trackProgress == -0x80000000)) trap(0x1800);
-#endif
-
 			int remainingProgress = trackLength - wrappedProgress;
 			int trackScreenUnit = trackLength / UI_RANK_TRACK_SCREEN_DIVISOR;
-
-#if 0
-			if (trackScreenUnit == 0) trap(0x1c00);
-			if ((trackScreenUnit == -1) && (remainingProgress == -0x80000000)) trap(0x1800);
-#endif
-
 			int posX = (remainingProgress / trackScreenUnit) + UI_RANK_TRACK_ICON_POS_X_OFFSET;
 			int posY = UI_RANK_TRACK_ICON_POS_Y;
 

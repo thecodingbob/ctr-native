@@ -1,8 +1,6 @@
 #include <common.h>
 
-#ifndef RACECONFIG_OPTIONS_LOADED
 #define RACECONFIG_OPTIONS_LOADED sdata->boolHasLoadedOptions
-#endif
 
 void RaceConfig_LoadGameOptions(void)
 {

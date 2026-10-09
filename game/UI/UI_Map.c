@@ -152,12 +152,6 @@ void UI_Map_GetIconPos(struct UIMap *map, int *posX, int *posY)
 	int addY;
 	int worldRangeX;
 	int worldRangeY;
-
-#if 0
-  // trap() functions were removed from original,
-  // we assume dividing by zero will never happen
-#endif
-
 	// rendering mode (forward, sideways, etc)
 	mode = map->mode;
 
