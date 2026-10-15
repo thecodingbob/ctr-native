@@ -65,6 +65,15 @@ ctr_add_test_suite(test_race_field
     SOURCES test_race_field.c
 )
 
+# The Chaos catalogue and race gate, both header-only, for the same reason.
+ctr_add_test_suite(test_chaos_effect
+    SOURCES test_chaos_effect.c
+)
+
+ctr_add_test_suite(test_chaos_gate
+    SOURCES test_chaos_gate.c
+)
+
 # test_pgxp.c #includes platform/native_pgxp.c so it reaches the module's
 # file-static shadow tables; the repository root on the include path resolves it,
 # and it is deliberately absent from SOURCES so it is not compiled twice.

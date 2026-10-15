@@ -9,20 +9,22 @@ A configuration option exposes Chaos mode. Starting an Adventure file asks
 whether to arm it; answering yes opens a menu with an effect duration, a list of
 effects to toggle, an **effect resolution** (the trigger condition) and a trigger
 interval. Once armed, every Adventure race that is not the hub periodically
-activates one enabled effect, which deactivates itself when its timer expires.
+activates one more enabled effect. Effects accumulate: several can be running at
+once, each on its own timer, and each deactivates itself when its timer expires.
 
 | Question             | Decision                                                                                              |
 |----------------------|-------------------------------------------------------------------------------------------------------|
-| Prompt placement     | Title/adventure-start flow in `game/230`, after the save slot is bound. See §3                        |
+| Prompt placement     | Title/adventure-start flow, on the **new file** path only. See §3                                     |
 | Trigger condition    | `Random` / `Pickup` / `Interval` / `External`                                                         |
 | External provider    | File-drop watch on `chaos/inbox/`, polled once per frame. §6 Phase 6                                  |
 | Settings storage     | Inside the memory-card save, in `struct MemcardExtension`. Master switch stays in `config.ini`        |
+| Settings mutability  | Written once at creation, immutable afterwards. No runtime writer, and no Chaos section in the options menu |
 | Trigger cadence      | Fourth menu row, shown when resolution is `Interval` or `Random`                                      |
 | Who is affected      | Human players only. Effect table carries a scope field so bot effects need no structural change       |
 | Which levels         | Every Adventure race type — normal, boss, relic, crystal, gem cup. Never the hub, never the main menu |
 | Outside Adventure    | No. The gate is one pure predicate with the restriction on a single line. §4.5                        |
 | Pickup trigger       | Contact, not grant                                                                                    |
-| Re-prompt in the hub | No. Settings are written at creation and read back on load                                            |
+| Re-prompt            | Never. Loading a file reads its settings and asks nothing                                             |
 
 ## 2. Architecture
 
@@ -49,8 +51,8 @@ race (231)       Chaos_ArmRace()      at MainGameStart.c:17
                      ▼
                 Chaos_Update()        at MainFrame.c:285
                      │                 ├─ ChaosGate_IsRaceEligible()      pure
-                     │                 ├─ resolve trigger, pick an effect
-                     │                 └─ tick remainingMS, deactivate at 0
+                     │                 ├─ resolve trigger, add one effect
+                     │                 └─ tick each active entry, drop at 0
                      ▼
                 per-effect predicates  ChaosEffect_AppliesToDriver()  pure
 ```
@@ -68,6 +70,10 @@ Four layers, each testable alone:
 includes it for `CHAOS_EFFECT_COUNT`.
 
 ## 3. Prompt placement
+
+The settings are chosen once, when a save file is created, and are immutable
+after that. So the prompt and the settings menu belong on the **new file** path
+only — loading an existing file never asks, because there is nothing to decide.
 
 Adventure start chain:
 
@@ -87,15 +93,30 @@ MM_MenuProc_Main      case LNG_ADVENTURE      game/230/MM_MenuFlow.c:178
 `sdata->advProfileIndex = menu->rowSelected;` then hand off with
 `sdata->ptrDesiredMenu = QueueLoadTrack_GetMenuPtr();`.
 
-**Insertion:** route to the chaos prompt before that hand-off in both branches,
-when `g_config.chaosMode` is on. Factor the two hand-off lines into a helper so
-the prompt's funcPtr can re-enter them without duplicating the queueing code.
+**Insertion:** in the `ADV_NEW` branch only, and only when `g_config.chaosMode`
+is on, route to the chaos prompt before that hand-off. Factor the hand-off lines
+into a helper so the prompt's funcPtr can re-enter them without duplicating the
+queueing code.
 
-The hub green load/save menu (`SELECT_PROFILE_SCREEN_GREEN_LOAD_SAVE`,
-`:1437-1458`) is a separate entry into a loaded adventure and does not re-prompt.
+The `ADV_LOAD` branch is untouched, as is the hub green load/save menu
+(`SELECT_PROFILE_SCREEN_GREEN_LOAD_SAVE`, `:1437-1458`), which re-enters a loaded
+adventure from inside the hub.
 
-Consequence: chaos cannot be armed mid-session. Re-arming would need a hub menu
-entry — feasible (§7), not currently planned.
+### Consequences of choosing once
+
+- **A save created before this feature existed can never have chaos.** Its
+  settings are all-zero, which reads as "no chaos", and nothing offers a way to
+  change them afterwards. Enabling it means starting a new file.
+- **Declining the prompt is not a permanent opt-out.** The answer is per file,
+  and a later file asks again. What is permanent is the answer, not the question.
+- **No runtime writer.** The only code that writes the settings is the
+  creation-path menu. The in-game options menu must not gain a Chaos section, or
+  `g_config.chaosMode` becomes a second way in.
+- Because nothing rewrites them, the cached `enabledCount` (§4.1) cannot drift
+  from the effect array after creation. `ChaosEffect_Toggle` is the only writer
+  and is only ever called by the creation-path menu.
+- Chaos can never be armed or disarmed mid-session. That was already true given
+  the placement; it is now true by rule.
 
 ## 4. Data structures
 
@@ -108,16 +129,23 @@ profile size is baked into the on-disk magic: `GAMEPROG.c:244` writes
 literal `0x1600ffee`. Growing the profile invalidates existing saves.
 
 ```c
-// Chaos setup for one Adventure slot. All-zero reads as "no chaos", which is
-// what a save written before this feature existed reports.
+// Chaos setup for one Adventure slot, chosen once when the file is created and
+// never written again. All-zero reads as "no chaos", which is what a save
+// written before this feature existed reports.
 struct ChaosSettings
 {
 	u16 durationSeconds;              // how long one activation lasts
 	u16 triggerIntervalSeconds;       // cadence for Random and Interval
 	u8 trigger;                       // enum ChaosTrigger
+	u8 enabledCount;                  // how many entries below are on
     bool effects[CHAOS_EFFECT_COUNT]; // one entry per effect, in enum order
 };
 ```
+
+`enabledCount` is cached because a pick is uniform over it rather than over the
+array length, and it is written once at creation and recomputed on load. It
+cannot drift afterwards because nothing rewrites the array; `ChaosEffect_Toggle`
+is the only writer and only the creation-path menu calls it.
 
 **Sizing.** At 21 effects the struct is 26 bytes and `struct MemcardData` is
 `0x1600 + 0x10 + 4 * 26 == 0x1678`. Bump `MEMCARD_FILE_DATA_SIZE`
@@ -164,9 +192,11 @@ explosions and the item reel (`RB_Crate.c:139`, `:436`, `UI_Weapon.c:113`).
 
 ### 4.4 Per-race state — file-static
 
-Active effect, remaining time and interval countdown live in file-statics in
-`RB_Chaos.c`, following `MainFrame_Tow.c:29`. Nothing else reads them and they
-are re-initialised every level load. Reset from `Chaos_ArmRace()`.
+Because several effects can be running at once, this is a small ordered list
+rather than one slot: each entry an effect id and its remaining milliseconds, in
+activation order. Plus the interval countdown, and the baseline driving
+constants captured once per race — see Phase 5 step 7 for why the baselines
+matter more than a snapshot would.
 
 Not `D231`: `OVR231_InitData` runs only on an overlay *change*.
 
@@ -234,13 +264,17 @@ above the human slots, the same convention `LOAD_Assets.c:58-61` and
 
 Grouped by what the effect changes, which determines the hook site and the side
 effects to reason about. No effect needs a teardown hook: each completes on its
-own or is simply not triggered again.
+own, or simply stops being applied once its entry expires.
+
+Effects accumulate — several can be running at once, each on its own timer. What
+happens when two of them touch the same thing is the apply order's problem, not
+the catalogue's: later activation wins (Phase 5 step 7).
 
 | Tier | What it changes                                             | Undo contract                                      | Count |
 |------|-------------------------------------------------------------|----------------------------------------------------|-------|
-| A    | driving constants and input, evaluated continuously         | implicit; only `const_*` need a snapshot           | 8     |
+| A    | driving constants and input, evaluated continuously         | implicit; recomputed from a baseline each frame    | 8     |
 | B    | items, wumpa, the economy                                   | implicit for withholding; the reel resolves itself | 5     |
-| C    | things the game does *to* the driver, and control takeovers | implicit                                           | 3     |
+| C    | things the game does *to* the driver, and control takeovers | implicit, except the AI takeover                   | 3     |
 | D    | deferred                                                    | —                                                  | 5     |
 
 ### Tier A — per-frame modifiers
@@ -278,8 +312,10 @@ without raising those too — a separate deliberate change.
 `g_config.speedMultiplier` scales `const_Speed_ClassStat` only, at birth
 (`VehBirth.c:667-668`); no per-frame conflict.
 
-`SPEED_CAPPED` and `SUPER_SPEED` are mutually exclusive — one field, two
-directions. `Chaos_Pick` must refuse to co-select them.
+`SPEED_CAPPED` and `SUPER_SPEED` write the same field in opposite directions.
+Nothing arbitrates that. Both can be running at once and the one activated later
+wins, which is what "override the ones coming earlier" means; see the apply
+order in Phase 5 step 7.
 
 `NO_RESERVES`: `UI_DrawSlideMeter` reads `turbo_MeterRoomLeft`, not `reserves`
 (`UI_Meter.c:286-343`), so the HUD is unaffected. Zeroing `reserves` alone
@@ -505,9 +541,7 @@ count.
 6. Also in the effect suite: `ChaosEffect_AppliesToDriver` matches every id below
    the human count and none at or above; id 0 with 0 humans matches nothing; a
    negative id matches nothing.
-7. Also: `Chaos_Pick` never returns `SPEED_CAPPED` while `SUPER_SPEED` is active,
-   nor the reverse.
-8. Register in `tests/CMakeLists.txt` with `ctr_add_test_suite`.
+7. Register in `tests/CMakeLists.txt` with `ctr_add_test_suite`.
 
 ### Phase 2 — configuration gate
 
@@ -537,6 +571,11 @@ count.
    their `AdvMultiplayer` twins (`:727-753`). Load from
    `SelectProfile_LoadAdvProfile` (`:762`); clear in the profile delete branch
    next to `:1193-1194`.
+   `Load` recomputes `enabledCount` with `ChaosEffect_CountEnabled` and discards
+   whatever the file held, so a save written by a build with a different effect
+   list still reads correctly. `Save` is called only from the creation path
+   (§3) — that call site is the whole enforcement of write-once, so there is no
+   second one to add later.
 6. Resize `MEMCARD_FILE_DATA_SIZE` and the two `memcardBytes` arrays per §4.1.
 7. `tests/memcard/test_chaos_settings.c` — the first memcard suite in the repo.
    Cover: all-zero reads as chaos-off with every effect disabled; round trip
@@ -549,6 +588,9 @@ count.
    directory.
 
 ### Phase 4 — prompt and settings menu
+
+Reached only from the `ADV_NEW` branch (§3). The menu is written once and closed;
+it is not reachable again for that file, and not for any loaded file.
 
 1. Prompt `struct RectMenu` + rows in overlay 230 data, `include/ovr_230.h`.
    `D230` has no `OFFSETOF` assertions, so appending is free. Do **not** add the
@@ -569,18 +611,27 @@ count.
    `CONFIG_VALUE_X` / `CONFIG_MAX_VISIBLE_ROWS` from `MM_ConfigMenu.c:105-117`
    so the screens match. Scroll with the wrap-around from `:274-303` and the
    more-than-five-arrows affordance from `AH_HintMenu.c:162-191`.
-4. Rows: **Duration** (left/right seconds), one per effect (X/circle),
-   **Effect Resolution** (left/right cycles the four triggers), **Trigger
-   Interval** (left/right seconds). The last row draws only when resolution is
-   `Interval` or `Random`; otherwise it is hidden and the list closes the gap, so
-   the cursor never lands on an invisible row.
+4. Rows: **Duration** (left/right seconds), one per effect (X/circle, via
+   `ChaosEffect_Toggle` so the count follows), **Effect Resolution** (left/right
+   cycles the four triggers), **Trigger Interval** (left/right seconds). The
+   last row draws only when resolution is `Interval` or `Random`; otherwise it is
+   hidden and the list closes the gap, so the cursor never lands on an invisible
+   row.
 5. If `External` is selected but `chaos_external_commands` is off, draw the row
    unavailable rather than silently doing nothing.
-6. Commit on exit into `sdata->chaosSettings`. Register both menus for checkpoint
+6. Commit on exit into `sdata->chaosSettings`, then hand off. This is the only
+   writer of those fields in the whole tree. Register both menus for checkpoint
    relocation in `NativeCheckpoint_RelocateD230Pointers`
    (`native_checkpoint.c:1557`), the way `NativeCheckpoint_RelocateRectMenu`
    handles the `D232` menus (`:1649-1650`) — otherwise a quick state taken with
    the menu open restores a stale `rows` pointer.
+
+Validation: start a NEW file and confirm the prompt appears, that answering yes
+opens the settings menu, and that the answer reaches the save. Then LOAD that
+same file and confirm it asks nothing. Start a second new file and confirm it
+asks again. Toggle every effect and check `enabledCount` tracks. Scroll past the
+tenth row, back out with Triangle at each level, and confirm nothing leaks into
+the hub.
 
 ### Phase 5 — engine and effects
 
@@ -588,8 +639,8 @@ count.
    (`:249-286`). Prefix everything `Chaos_` — file-local identifiers collide
    across unity includes.
 2. `Chaos_ArmRace(gGT)` from `MainGameStart_Initialize`
-   (`MainGameStart.c:17`, beside `gGT->trafficLightsTimer = 0xf00;`). Resets
-   per-race state, snapshots `const_*` fields, no-ops when
+   (`MainGameStart.c:17`, beside `gGT->trafficLightsTimer = 0xf00;`). Captures
+   the baseline driving constants, empties the active list, no-ops when
    `!g_config.chaosMode || !sdata->chaosArmed`.
 3. `Chaos_Update(gGT)` from `MainFrame_GameLogic` (`MainFrame.c:285`, beside
    `MainFrame_Tow_Update`) — inside the `PAUSE_ALL == 0` guard, after
@@ -602,26 +653,41 @@ count.
                                  gGT->trafficLightsTimer < 1,
                                  CHAOS_GATE_ADVENTURE_ONLY)) return;
    ```
-4. Trigger resolution: `Random` — after each effect expires wait a gap drawn from
-   `sdata->chaosRng` in `[0.3, 1.0] × triggerIntervalSeconds`, then activate a
-   random enabled effect. `Pickup` — at the contact sites below. `Interval` —
-   every `triggerIntervalSeconds`. `External` — only from the IPC watcher.
-5. Timer: `remainingMS -= gGT->elapsedTimeMS` (ms, matching
-   `RB_MaskShieldCloud.c:184`), deactivate at `<= 0`.
-6. Deactivation in the same tick, plus a belt-and-braces reset in
-   `Chaos_ArmRace` and a clear in `MainGameEnd_Initialize`
-   (`MainGameEnd.c:669`) so a stale effect cannot survive into the hub or the next
-   race. Restore snapshotted `const_*`.
-7. `BOT_TAKES_THE_WHEEL` needs the new `BOTS_Driver_Decompare` (§5, Tier C).
+4. Trigger resolution: `Random` — each time a gap elapses wait a gap drawn from
+   `sdata->chaosRng` in `[0.3, 1.0] × triggerIntervalSeconds`, then activate one
+   more random enabled effect. `Pickup` — at the contact sites below, one
+   activation per contact. `Interval` — one activation every
+   `triggerIntervalSeconds`. `External` — only from the IPC watcher.
+   None of these wait for the previous effect to expire.
+5. Each active entry ticks on its own: `remainingMS -= gGT->elapsedTimeMS` (ms,
+   matching `RB_MaskShieldCloud.c:184`). Drop the entry at `<= 0`.
+6. Expiry removes an entry; the belt-and-braces clear empties the whole list in
+   `Chaos_ArmRace` and again in `MainGameEnd_Initialize`
+   (`MainGameEnd.c:669`), so no stale effect survives into the hub or the next
+   race.
+7. **Apply order decides overlap.** Each frame, for every active entry in
+   activation order: rewrite the driver's driving constants from their baselines,
+   then let each entry apply its own overrides. Two effects writing the same
+   constant therefore resolve to whichever was activated later, which is the
+   intended "override the ones coming earlier".
+   Recomputing from a baseline each frame, rather than snapshotting on
+   activation and restoring on expiry, is what makes overlap safe: a snapshot
+   taken while another effect had already modified the field would restore the
+   wrong value when it expires. Capture `const_Gravity`,
+   `const_Speed_ClassStat`, `const_AccelSpeed_ClassStat`, `const_Accel_ClassStat`
+   and `const_TerminalVelocity` once in `Chaos_ArmRace`.
+8. `BOT_TAKES_THE_WHEEL` needs the new `BOTS_Driver_Decompare` (§5, Tier C).
    Three easy-to-miss items: clearing `ACTION_RACE_TIMER_FROZEN`,
    `LIST_RemoveMember`, restoring `distanceDriven`. Skip the effect where
-   `BOTS_Driver_Convert` early-returns (`BOTS.c:3097`).
-8. Every per-frame site asks
+   `BOTS_Driver_Convert` early-returns (`BOTS.c:3097`). With overlapping
+   activations, this is the one effect that genuinely cannot stack, so its entry
+   is exclusive in practice — give it its own guard rather than a catalogue rule.
+9. Every per-frame site asks
    `ChaosEffect_AppliesToDriver(def->scope, driver->driverID, gGT->numPlyrCurrGame)`
    before touching a driver.
-9. Effect hooks: Tier A per §5; `ANXIOUS_MASK` inside `COLL.c:1491`–`:1667`;
-   `HARD_CRATES` at the three `RB_Crate.c` break sites; `CLEAR_BOOSTS` at
-   `VehPhysForce.c:1005`; `NO_ITEMS` / `PUNISHING_ITEMS` at `RB_Crate.c:192`.
+10. Effect hooks: Tier A per §5; `ANXIOUS_MASK` inside `COLL.c:1491`–`:1667`;
+    `HARD_CRATES` at the three `RB_Crate.c` break sites; `CLEAR_BOOSTS` at
+    `VehPhysForce.c:1005`; `NO_ITEMS` / `PUNISHING_ITEMS` at `RB_Crate.c:192`.
 
 Pickup trigger sites (contact, verified as the single point per collectible):
 
@@ -691,7 +757,6 @@ identically; `HARD_CRATES` and `BOT_TAKES_THE_WHEEL` will not (§7).
 | Risk                                         | Detail                                                                                                                              | Mitigation                                                                               |
 |----------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------|
 | `const_TerminalVelocity` is not top speed    | Clamps the kart-local **vertical** velocity at `VehPhysForce.c:355`; the name reads as a forward cap                                | Use `const_Speed_ClassStat` (§5, Tier A)                                                 |
-| `SPEED_CAPPED` vs `SUPER_SPEED`              | One field, two directions; co-active, evaluation order decides                                                                      | `Chaos_Pick` refuses to co-select (Phase 1.7)                                            |
 | `turbo_outsideTimer` travels with `reserves` | Zeroing only `reserves` desyncs `VehFire.c:342-357`                                                                                 | Always zero both                                                                         |
 | Mask grabs have no cooldown                  | `collisionFlags` zeroed every frame at `VehPhysForce.c:950`; nothing rate-limits; `numTimesMaskGrab` is write-only                  | Chaos-side per-driver ms timer                                                           |
 | Mask rescue is a checkpoint rollback         | `VehStuckProc.c:235` jumps to `ptr_restart_points[lastValid->checkpointIndex]` and overwrites `posCurr`                             | Decide in Phase 5 whether to accept or write a nearest-track variant                     |
@@ -706,8 +771,10 @@ identically; `HARD_CRATES` and `BOT_TAKES_THE_WHEEL` will not (§7).
 
 ## 8. Open questions
 
-1. **Hub pause-menu access.** Chaos cannot be armed mid-session. The layout
-   permits a hub entry (§7), it is just not planned.
+1. **Existing save files.** They can never gain chaos, since the settings are
+   chosen once at creation (§3). Accepting that is the default; the alternative
+   is a one-time migration that back-fills a default into old files, which is a
+   write to every existing save and so wants its own decision.
 2. **Battle arenas.** Out of scope today. When chaos widens past Adventure,
    `BATTLE_MODE` races come with it and need a battle-appropriate effect subset.
 3. **`ANXIOUS_MASK` destination.** Accept the checkpoint rollback, or write a
