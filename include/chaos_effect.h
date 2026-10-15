@@ -156,17 +156,17 @@ static inline u32 ChaosEffect_NextRandom(u32 *state)
 // Flips one entry and keeps the cached count in step with it. Every write to
 // the array goes through here, or through ChaosEffect_CountEnabled on load, so
 // the two cannot drift apart. Returns the new state of the entry.
-static inline b32 ChaosEffect_Toggle(bool *enabledEffects, int *enabledCount, ChaosEffectId id)
+static inline bool ChaosEffect_Toggle(bool *enabledEffects, u8 *enabledCount, ChaosEffectId id)
 {
 	if ((id < 0) || (id >= CHAOS_EFFECT_COUNT))
 	{
 		return false;
 	}
 
-	const b32 enabled = !enabledEffects[id];
+	const bool enabled = !enabledEffects[id];
 
 	enabledEffects[id] = enabled;
-	*enabledCount += enabled ? 1 : -1;
+	*enabledCount = (u8)(*enabledCount + (enabled ? 1 : -1));
 	return enabled;
 }
 

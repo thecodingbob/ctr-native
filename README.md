@@ -227,6 +227,7 @@ weapon icons and battle points/lives icons will be missing on those tracks.
 | `save_anywhere`             | `true` / `false`   | `false` | Allows to save/load anywhere in the adventure mode hubs by pressing select or the equivalent key |
 | `unlock_all_gates`          | `true` / `false`   | `false` | Opens all adventure wood gates bypassing the key requirements                                    |
 | `unlock_all_portals`        | `true` / `false`   | `false` | Unlock all warp pads and boss garages                                                            |
+| `chaos_mode`                | `true` / `false`   | `false` | Ask whether to arm Chaos mode when creating a new Adventure file                                 |
 
 ### Unlocks
 

@@ -12,19 +12,19 @@ interval. Once armed, every Adventure race that is not the hub periodically
 activates one more enabled effect. Effects accumulate: several can be running at
 once, each on its own timer, and each deactivates itself when its timer expires.
 
-| Question             | Decision                                                                                              |
-|----------------------|-------------------------------------------------------------------------------------------------------|
-| Prompt placement     | Title/adventure-start flow, on the **new file** path only. See §3                                     |
-| Trigger condition    | `Random` / `Pickup` / `Interval` / `External`                                                         |
-| External provider    | File-drop watch on `chaos/inbox/`, polled once per frame. §6 Phase 6                                  |
-| Settings storage     | Inside the memory-card save, in `struct MemcardExtension`. Master switch stays in `config.ini`        |
-| Settings mutability  | Written once at creation, immutable afterwards. No runtime writer, and no Chaos section in the options menu |
-| Trigger cadence      | Fourth menu row, shown when resolution is `Interval` or `Random`                                      |
-| Who is affected      | Human players only. Effect table carries a scope field so bot effects need no structural change       |
-| Which levels         | Every Adventure race type — normal, boss, relic, crystal, gem cup. Never the hub, never the main menu |
-| Outside Adventure    | No. The gate is one pure predicate with the restriction on a single line. §4.5                        |
-| Pickup trigger       | Contact, not grant                                                                                    |
-| Re-prompt            | Never. Loading a file reads its settings and asks nothing                                             |
+| Question            | Decision                                                                                                             |
+|---------------------|----------------------------------------------------------------------------------------------------------------------|
+| Prompt placement    | Title/adventure-start flow, on the **new file** path only. See §3                                                    |
+| Trigger condition   | `Random` / `Pickup` / `Interval` / `External`                                                                        |
+| External provider   | File-drop watch on `chaos/inbox/`, polled once per frame. One of the four trigger modes, chosen per save. §6 Phase 6 |
+| Settings storage    | Inside the memory-card save, in `struct MemcardExtension`. Master switch stays in `config.ini`                       |
+| Settings mutability | Written once at creation, immutable afterwards. No runtime writer, and no Chaos section in the options menu          |
+| Trigger cadence     | Fourth menu row, shown when resolution is `Interval` or `Random`                                                     |
+| Who is affected     | Human players only. Effect table carries a scope field so bot effects need no structural change                      |
+| Which levels        | Every Adventure race type — normal, boss, relic, crystal, gem cup. Never the hub, never the main menu                |
+| Outside Adventure   | No. The gate is one pure predicate with the restriction on a single line. §4.5                                       |
+| Pickup trigger      | Contact, not grant                                                                                                   |
+| Re-prompt           | Never. Loading a file reads its settings and asks nothing                                                            |
 
 ## 2. Architecture
 
@@ -545,17 +545,20 @@ count.
 
 ### Phase 2 — configuration gate
 
-1. `include/platform/native_config.h`: `bool chaosMode;` and
-   `bool chaosExternalCommands;`, plus a `ChaosTrigger` enum.
-2. `platform/native_config.c`: defaults in `g_config` (`false` both); two
-   `ConfigEntry` rows inside the contiguous `Adventure` run (`:168-209`) —
-   `chaos_mode` and `chaos_external_commands`, both `CFG_BOOL`.
-3. `default_config.ini`: rows under `[Adventure]` with `;` comments. Check key
-   names against `g_configEntries`, not the template — the template drifts.
-4. `README.md`: rows in the `### Adventure` table plus a link to
-   `docs/features/CHAOS.md`.
-5. Optionally hide `chaos_external_commands` unless `chaos_mode` is on, via the
-   pointer-identity switch in `NativeConfig_ApplyDependencies` (`:524-549`).
+One option, and it only gates the prompt. Everything a player actually chooses —
+which trigger, which effects, the durations — is chosen per save file at creation
+(§3), so none of it belongs in `NativeConfig`. In particular the external
+provider is a trigger mode like the other three, not a global switch: a separate
+option would let the behaviour of an already-created save change underneath it.
+
+1. `include/platform/native_config.h`: `bool chaosMode;`, after
+   `multiplayerAdventure`.
+2. `platform/native_config.c`: default `false` in `g_config`; one `ConfigEntry`
+   row appended to the contiguous `Adventure` run, `chaos_mode`, `CFG_BOOL`.
+3. `default_config.ini`: the row under `[Adventure]` with a `;` comment. Check
+   key names against `g_configEntries`, not the template — the template drifts.
+4. `README.md`: the row in the `### Adventure` table. The link to
+   `docs/features/CHAOS.md` comes with that document in Phase 7.
 
 ### Phase 3 — per-slot persistence
 
@@ -613,13 +616,11 @@ it is not reachable again for that file, and not for any loaded file.
    more-than-five-arrows affordance from `AH_HintMenu.c:162-191`.
 4. Rows: **Duration** (left/right seconds), one per effect (X/circle, via
    `ChaosEffect_Toggle` so the count follows), **Effect Resolution** (left/right
-   cycles the four triggers), **Trigger Interval** (left/right seconds). The
-   last row draws only when resolution is `Interval` or `Random`; otherwise it is
-   hidden and the list closes the gap, so the cursor never lands on an invisible
-   row.
-5. If `External` is selected but `chaos_external_commands` is off, draw the row
-   unavailable rather than silently doing nothing.
-6. Commit on exit into `sdata->chaosSettings`, then hand off. This is the only
+   cycles `Random` / `Pickup` / `Interval` / `External`), **Trigger Interval**
+   (left/right seconds). The last row draws only when resolution is `Interval` or
+   `Random`; otherwise it is hidden and the list closes the gap, so the cursor
+   never lands on an invisible row.
+5. Commit on exit into `sdata->chaosSettings`, then hand off. This is the only
    writer of those fields in the whole tree. Register both menus for checkpoint
    relocation in `NativeCheckpoint_RelocateD230Pointers`
    (`native_checkpoint.c:1557`), the way `NativeCheckpoint_RelocateRectMenu`
