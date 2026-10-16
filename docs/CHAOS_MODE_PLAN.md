@@ -147,15 +147,27 @@ array length, and it is written once at creation and recomputed on load. It
 cannot drift afterwards because nothing rewrites the array; `ChaosEffect_Toggle`
 is the only writer and only the creation-path menu calls it.
 
-**Sizing.** At 21 effects the struct is 26 bytes and `struct MemcardData` is
-`0x1600 + 0x10 + 4 * 26 == 0x1678`. Bump `MEMCARD_FILE_DATA_SIZE`
-(`namespace_Memcard.h:97`) to a round value covering it and use that constant for
-the RAM buffer instead of the bare literal — `sdata->memcardBytes[0x1680]`
-(`regionsEXE.h:3952`) and its GCC twin (`game/zGlobal_SDATA.c:5`). The adapter
-already I/Os through the constant (`platform/native_memcard.c:784`, `:806`), as
-does `SELECT_PROFILE_ADV_SAVE_BYTES` (`namespace_SelectProfile.h:40`). The
-assertion at `namespace_Memcard.h:659` then catches the next batch of effects
-landing without a resize.
+**Sizing, and why `MEMCARD_FILE_DATA_SIZE` stays where it is.** At 16 effects
+the struct is 22 bytes and `sizeof(struct MemcardData)` is `0x1668`; with all of
+Tier D's five extra effects it is `0x1678`. Both sit under the `0x167E` limit,
+so the assertion at `namespace_Memcard.h:659` passes and the buffer stays at
+`0x1680`.
+
+Raising it is **not** a one-line change, and an earlier draft of this plan said
+so wrongly. Every file on disk is written at exactly `0x100 + MEMCARD_FILE_DATA_SIZE`,
+and `NativeMemcard_ReadSaveData` returns `NATIVE_MEMCARD_IO_ERROR` on a short
+read (`platform/native_memcard.c:803`). So a larger value makes *every existing
+save* fail to load, with the memory-card error screen. Growing it means teaching
+the read path to accept a shorter file and the checksum
+(`MEMCARD_Checksum.c:29-32`) to cover only the bytes actually present — a format
+migration, not a resize.
+
+What this change does do is make that future migration one place instead of four:
+`sdata->memcardBytes` (`regionsEXE.h:3952`) and its GCC twin
+(`game/zGlobal_SDATA.c:5`) now take the constant instead of a bare literal, the
+adapter already I/Os through it (`native_memcard.c:784`, `:806`), and
+`SELECT_PROFILE_ADV_SAVE_BYTES` (`namespace_SelectProfile.h:40`) is the same
+number.
 
 The extension is already zero-initialised by `GAMEPROG_InitFullMemcard`
 (`GAMEPROG.c:238`) and already CRC-covered (`MEMCARD_Checksum.c:29-32`).
@@ -570,25 +582,30 @@ option would let the behaviour of an already-created save change underneath it.
 4. `game/GAMEPROG.c`: `GAMEPROG_ResetChaosSettings` beside
    `GAMEPROG_ResetAdvMultiplayer` (`:334-338`), called from
    `GAMEPROG_NewGame_OnBoot` (`:329`).
-5. `game/SelectProfile.c`: `SelectProfile_{Load,Save,Clear}ChaosSettings` beside
+5. `game/SelectProfile.c`: `SelectProfile_{Load,Clear}ChaosSettings` beside
    their `AdvMultiplayer` twins (`:727-753`). Load from
    `SelectProfile_LoadAdvProfile` (`:762`); clear in the profile delete branch
-   next to `:1193-1194`.
-   `Load` recomputes `enabledCount` with `ChaosEffect_CountEnabled` and discards
-   whatever the file held, so a save written by a build with a different effect
-   list still reads correctly. `Save` is called only from the creation path
-   (§3) — that call site is the whole enforcement of write-once, so there is no
-   second one to add later.
-6. Resize `MEMCARD_FILE_DATA_SIZE` and the two `memcardBytes` arrays per §4.1.
-7. `tests/memcard/test_chaos_settings.c` — the first memcard suite in the repo.
-   Cover: all-zero reads as chaos-off with every effect disabled; round trip
-   preserves every field including each individual toggle; a save without the
-   feature loads as chaos-off; the delete path clears the slot; and a struct with
-   *some* effects set round-trips without clearing its neighbours, which fails on
-   a loop bound that assumes a fixed effect count. Use the
-   `tests/controls/test_native_controls.c` include pattern; point
-   `NativeAssets_GetBaseDir` at `CtrTestScratch_Open`, never the working
-   directory.
+   next to `:1193-1194`. `Load` recomputes `enabledCount` with
+   `ChaosEffect_CountEnabled` and clamps an out-of-range trigger, so a file
+   written by a build with a different effect list still reads correctly.
+   **There is deliberately no save half yet** — the only writer is the
+   creation-path menu in Phase 4, which writes the slot's extension directly
+   rather than through `SelectProfile_SaveAdvProfile`, so an ordinary in-game
+   save cannot rewrite a file that already holds its settings. Adding the writer
+   here instead would need a "has this been written" sentinel, and all-zero is
+   already a legal answer.
+6. Make the buffer sizes derive from `MEMCARD_FILE_DATA_SIZE` rather than bare
+   literals: `sdata->memcardBytes`, its GCC twin, and
+   `SELECT_PROFILE_ADV_SAVE_BYTES`. The value itself does not change — see §4.1
+   for why raising it is a format migration.
+7. `tests/test_chaos_effect.c` drives the `enabledCount` invariant over the real
+   `struct ChaosSettings` rather than a mirror, and covers the all-zero save.
+   A dedicated memcard round-trip suite is **not** feasible as written:
+   `SelectProfile_LoadChaosSettings` is static inside a 3000-line file that
+   depends on the whole game, so there is nothing to include into a test
+   translation unit. Saving, loading from disk and the checksum therefore stay
+   manual validation in Phase 7 until that code is separated from the screen
+   flow. The static assertions cover the layout.
 
 ### Phase 4 — prompt and settings menu
 
