@@ -125,6 +125,7 @@ void GAMEPROG_NewGame_OnBoot(void);
 void GAMEPROG_GetPtrHighScoreTrack(void);
 void GAMEPROG_InitFullMemcard(struct MemcardData *mcd);
 void GAMEPROG_ResetAdvMultiplayer(struct AdvMultiplayerSettings *settings);
+void GAMEPROG_ResetChaosSettings(struct ChaosSettings *settings);
 int GAMEPROG_RelicTargetTime(int levelID, int tier);
 void GAMEPROG_SaveCupProgress(void);
 void GAMEPROG_SyncGameAndCard(struct GameProgress *memcardProg, struct GameProgress *currentProg);

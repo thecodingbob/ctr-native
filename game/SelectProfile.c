@@ -752,6 +752,32 @@ static void SelectProfile_ClearAdvMultiplayer(int slot)
 	memset(&SelectProfile_MemcardData()->extension.adventure[slot], 0, sizeof(struct AdvMultiplayerSettings));
 }
 
+// The count is recomputed rather than read back. It is derived from the array,
+// and a file written by a build with a different effect count would otherwise
+// carry a count that no longer matches what is behind it.
+static void SelectProfile_LoadChaosSettings(int slot)
+{
+	const struct ChaosSettings *saved = &SelectProfile_MemcardData()->extension.chaos[slot];
+
+	sdata->chaosSettings.durationSeconds = saved->durationSeconds;
+	sdata->chaosSettings.triggerIntervalSeconds = saved->triggerIntervalSeconds;
+	sdata->chaosSettings.trigger = (saved->trigger < CHAOS_TRIGGER_COUNT) ? saved->trigger : CHAOS_TRIGGER_RANDOM;
+	memcpy(sdata->chaosSettings.effects, saved->effects, sizeof(saved->effects));
+	sdata->chaosSettings.enabledCount = (u8)ChaosEffect_CountEnabled(sdata->chaosSettings.effects);
+}
+
+static void SelectProfile_ClearChaosSettings(int slot)
+{
+	memset(&SelectProfile_MemcardData()->extension.chaos[slot], 0, sizeof(struct ChaosSettings));
+}
+
+// There is deliberately no save half yet. The settings are written once, by the
+// creation-path menu in Phase 4, straight into this slot's extension rather than
+// through SelectProfile_SaveAdvProfile — so an ordinary in-game save cannot
+// rewrite a file that already holds its settings. Adding the writer here instead
+// would need a "has this been written" sentinel to tell a fresh slot from a
+// configured one, and all-zero is already a legal answer.
+
 static void SelectProfile_LoadAdvProfile(int slot)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -760,6 +786,7 @@ static void SelectProfile_LoadAdvProfile(int slot)
 	GAMEPROG_SyncGameAndCard(&memcard->gameSave.progress, &sdata->gameSave.progress);
 	sdata->advProgress = memcard->advProgress[slot];
 	SelectProfile_LoadAdvMultiplayer(slot);
+	SelectProfile_LoadChaosSettings(slot);
 	data.characterIDs[0] = sdata->advProgress.characterID;
 	SelectProfile_ApplyAdvMultiplayerCharacter();
 	memmove(gGT->prevNameEntered, sdata->advProgress.name, sizeof(gGT->prevNameEntered));
@@ -1192,6 +1219,7 @@ static int SelectProfile_HandleSelection(struct RectMenu *menu, int rowCount)
 	{
 		GAMEPROG_NewProfile_InsideAdv(&SelectProfile_MemcardProfile()->advProgress[menu->rowSelected]);
 		SelectProfile_ClearAdvMultiplayer(menu->rowSelected);
+		SelectProfile_ClearChaosSettings(menu->rowSelected);
 		MEMCARD_SetIcon(0);
 		RefreshCard_StartMemcardAction(3);
 		*(s16 *)&sdata->unk_memcardRelated_8008d928[0] = 1;

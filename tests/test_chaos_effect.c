@@ -16,30 +16,36 @@ struct sData sdata_static;
 #define CHAOS_TEST_SINGLE_SAMPLES 1000
 #define CHAOS_TEST_PICK_SEED 0x13579bdfu
 
-// A settings-shaped array with the cached count beside it, so the tests read
-// like the call sites do and exercise keeping the two in step.
-typedef struct
+// The real persisted struct, not a copy of it: namespace_Memcard.h includes
+// chaos_effect.h, so common.h above already brought it in. A hand-rolled mirror
+// would go stale the moment someone reordered or retyped a field, which is
+// exactly the change these tests exist to catch.
+static void ClearSettings(struct ChaosSettings *settings)
 {
-	u8 enabledCount;
-	bool effects[CHAOS_EFFECT_COUNT];
-} TestSettings;
+	memset(settings, 0, sizeof(*settings));
 
-static void SetOnlyEnabled(TestSettings *settings, ChaosEffectId id)
-{
-	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
-	{
-		settings->effects[i] = (i == id);
-	}
-	settings->enabledCount = 1;
+	// What an all-zero save means, plus the durations so the fields are not
+	// left holding garbage the compiler could not see.
+	settings->trigger = CHAOS_TRIGGER_RANDOM;
+	settings->durationSeconds = CHAOS_DURATION_DEFAULT_SECONDS;
+	settings->triggerIntervalSeconds = CHAOS_TRIGGER_INTERVAL_DEFAULT_SECONDS;
 }
 
-static void SetAllEnabled(TestSettings *settings)
+static void SetOnlyEnabled(struct ChaosSettings *settings, ChaosEffectId id)
 {
+	ClearSettings(settings);
+
+	ChaosEffect_Toggle(settings->effects, &settings->enabledCount, id);
+}
+
+static void SetAllEnabled(struct ChaosSettings *settings)
+{
+	ClearSettings(settings);
+
 	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
 	{
-		settings->effects[i] = true;
+		ChaosEffect_Toggle(settings->effects, &settings->enabledCount, (ChaosEffectId)i);
 	}
-	settings->enabledCount = CHAOS_EFFECT_COUNT;
 }
 
 // === Naming ===
@@ -87,7 +93,7 @@ static void TestEnablingOneEffectLeavesTheRest(void)
 {
 	CTR_TEST_SECTION("toggling an effect touches only its own entry");
 
-	TestSettings settings;
+	struct ChaosSettings settings;
 
 	for (int target = 0; target < CHAOS_EFFECT_COUNT; target++)
 	{
@@ -112,7 +118,7 @@ static void TestIsEnabledRejectsBadIds(void)
 {
 	CTR_TEST_SECTION("reading outside the array is refused, not indexed");
 
-	TestSettings settings;
+	struct ChaosSettings settings;
 
 	SetAllEnabled(&settings);
 
@@ -149,7 +155,7 @@ static void TestPickWithNothingEnabled(void)
 {
 	CTR_TEST_SECTION("with nothing enabled there is nothing to pick");
 
-	TestSettings settings;
+	struct ChaosSettings settings;
 
 	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
 	{
@@ -170,7 +176,7 @@ static void TestPickFindsTheOnlyEnabledEffect(void)
 	// the number of enabled effects, which strands the high ids.
 	for (int only = 0; only < CHAOS_EFFECT_COUNT; only++)
 	{
-		TestSettings settings;
+		struct ChaosSettings settings;
 		SetOnlyEnabled(&settings, (ChaosEffectId)only);
 
 		u32 rngState = CHAOS_TEST_PICK_SEED;
@@ -192,7 +198,7 @@ static void TestPickIsDeterministic(void)
 {
 	CTR_TEST_SECTION("the same seed picks the same sequence");
 
-	TestSettings settings;
+	struct ChaosSettings settings;
 	SetAllEnabled(&settings);
 
 	u32 firstState = CHAOS_TEST_PICK_SEED;
@@ -217,7 +223,7 @@ static void TestPickReachesEveryEffect(void)
 {
 	CTR_TEST_SECTION("no effect is unreachable from a full settings array");
 
-	TestSettings settings;
+	struct ChaosSettings settings;
 	SetAllEnabled(&settings);
 
 	u32 rngState = CHAOS_TEST_PICK_SEED;
@@ -254,7 +260,7 @@ static void TestCachedCountMatchesTheArray(void)
 {
 	CTR_TEST_SECTION("the cached count stays equal to the array it describes");
 
-	TestSettings settings;
+	struct ChaosSettings settings;
 
 	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
 	{
@@ -302,11 +308,35 @@ static void TestCachedCountMatchesTheArray(void)
 	}
 }
 
+static void TestAllZeroSettingsMeanChaosOff(void)
+{
+	CTR_TEST_SECTION("an all-zero save reads as chaos off");
+
+	// What a file written before this feature existed carries. ChaosSettings has
+	// no "is chaos on" flag: the effect array is the whole answer, so every entry
+	// off has to mean no effect can ever fire.
+	struct ChaosSettings settings;
+
+	memset(&settings, 0, sizeof(settings));
+
+	CTR_TEST_CHECK_EQ(settings.enabledCount, 0, "no effect is counted as enabled");
+	CTR_TEST_CHECK_EQ(ChaosEffect_CountEnabled(settings.effects), 0, "and none is");
+
+	u32 rngState = CHAOS_TEST_PICK_SEED;
+	CTR_TEST_CHECK(ChaosEffect_Pick(settings.effects, settings.enabledCount, &rngState) == CHAOS_EFFECT_NONE,
+				   "so nothing can be picked");
+
+	// The trigger still has to be a legal value, since an all-zero trigger is
+	// CHAOS_TRIGGER_RANDOM by construction.
+	CTR_TEST_CHECK_EQ(settings.trigger, CHAOS_TRIGGER_RANDOM, "a zeroed trigger is the random one");
+	CTR_TEST_CHECK(settings.trigger < CHAOS_TRIGGER_COUNT, "and it is in range");
+}
+
 static void TestToggleRejectsBadIds(void)
 {
 	CTR_TEST_SECTION("toggling outside the array changes nothing");
 
-	TestSettings settings;
+	struct ChaosSettings settings;
 	SetAllEnabled(&settings);
 
 	CTR_TEST_CHECK(!ChaosEffect_Toggle(settings.effects, &settings.enabledCount, CHAOS_EFFECT_NONE),
@@ -320,7 +350,7 @@ static void TestPickRefusesABadCount(void)
 {
 	CTR_TEST_SECTION("a count that cannot be right yields no effect");
 
-	TestSettings settings;
+	struct ChaosSettings settings;
 	SetAllEnabled(&settings);
 
 	u32 rngState = CHAOS_TEST_PICK_SEED;
@@ -339,7 +369,7 @@ static void TestPickSkipsDisabledEffects(void)
 
 	for (int off = 0; off < CHAOS_EFFECT_COUNT; off++)
 	{
-		TestSettings settings;
+		struct ChaosSettings settings;
 		SetAllEnabled(&settings);
 		settings.effects[off] = false;
 		settings.enabledCount = ChaosEffect_CountEnabled(settings.effects);
@@ -369,7 +399,7 @@ static void TestAnyEffectMayFollowAnother(void)
 	// the later one simply wins, because the engine deactivates the previous
 	// effect before activating the next. That ordering is the engine's job, so
 	// the catalogue has no opinion about it and shrinks the pool by nothing.
-	TestSettings settings;
+	struct ChaosSettings settings;
 	SetAllEnabled(&settings);
 
 	u32 rngState = CHAOS_TEST_PICK_SEED;
@@ -391,6 +421,7 @@ int main(void)
 	TestEnablingOneEffectLeavesTheRest();
 	TestIsEnabledRejectsBadIds();
 	TestScopeRespectsDriverSlots();
+	TestAllZeroSettingsMeanChaosOff();
 	TestCachedCountMatchesTheArray();
 	TestToggleRejectsBadIds();
 	TestPickWithNothingEnabled();

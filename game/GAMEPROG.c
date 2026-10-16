@@ -327,6 +327,7 @@ void GAMEPROG_NewGame_OnBoot(void)
 	GAMEPROG_NewProfile_OutsideAdv(&GAME_SAVE);
 	GAMEPROG_NewProfile_InsideAdv(&GAME_ADV_PROGRESS);
 	GAMEPROG_ResetAdvMultiplayer(&sdata->advMultiplayer);
+	GAMEPROG_ResetChaosSettings(&sdata->chaosSettings);
 	GAMEPROG_GetPtrHighScoreTrack();
 }
 
@@ -335,6 +336,19 @@ void GAMEPROG_ResetAdvMultiplayer(struct AdvMultiplayerSettings *settings)
 {
 	settings->numPlayers = ADV_MULTIPLAYER_DEFAULT_PLAYERS;
 	settings->characterID2 = ADV_MULTIPLAYER_NO_CHARACTER;
+}
+
+
+// Chaos off, which is what an all-zero save says too. The creation-path menu is
+// what turns effects on, so nothing is enabled here.
+void GAMEPROG_ResetChaosSettings(struct ChaosSettings *settings)
+{
+	settings->durationSeconds = CHAOS_DURATION_DEFAULT_SECONDS;
+	settings->triggerIntervalSeconds = CHAOS_TRIGGER_INTERVAL_DEFAULT_SECONDS;
+	settings->trigger = CHAOS_TRIGGER_RANDOM;
+	settings->enabledCount = 0;
+
+	memset(settings->effects, 0, sizeof(settings->effects));
 }
 
 

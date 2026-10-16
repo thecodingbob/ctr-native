@@ -3949,7 +3949,7 @@ struct sData
 	// 800992E4
 	// literally every byte of memory card,
 	// dumped into RAM, right here
-	char memcardBytes[0x1680];
+	char memcardBytes[MEMCARD_FILE_DATA_SIZE];
 
 	// 8009A964
 	int buttonHeldPerPlayer[4];
@@ -4091,6 +4091,18 @@ struct sData
 	// Co-op Adventure settings of the profile in use. Mirrored from the card
 	// extension on load and written back on save.
 	struct AdvMultiplayerSettings advMultiplayer;
+
+	// Chaos settings of the profile in use. Mirrored from the card extension
+	// when a file is loaded, and written once, when a file is created.
+	struct ChaosSettings chaosSettings;
+
+	// Armed by the title prompt for this session only. Never persisted: a new
+	// session asks again.
+	bool chaosArmed;
+
+	// The chaos system's own generator. Separate from sdata->randomNumber and
+	// the deadcoed pair, which the replay verifier compares every recorded frame.
+	u32 chaosRng;
 
 	// after dataLibFiller is 8009AE58,
 	// where psyq allocates globals
