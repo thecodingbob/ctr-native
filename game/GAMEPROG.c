@@ -346,6 +346,7 @@ void GAMEPROG_ResetChaosSettings(struct ChaosSettings *settings)
 	settings->durationSeconds = CHAOS_DURATION_DEFAULT_SECONDS;
 	settings->triggerIntervalSeconds = CHAOS_TRIGGER_INTERVAL_DEFAULT_SECONDS;
 	settings->trigger = CHAOS_TRIGGER_RANDOM;
+	settings->armed = false;
 	settings->enabledCount = 0;
 
 	memset(settings->effects, 0, sizeof(settings->effects));

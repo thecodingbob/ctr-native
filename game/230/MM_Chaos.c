@@ -30,5 +30,10 @@ void MM_MenuProc_Chaos(struct RectMenu *menu)
 	// session, and the row the cursor is on is what the box goes on showing.
 	sdata->chaosArmed = (row == 0);
 
+	// Either answer describes a file that is about to be created, so whatever a
+	// file made earlier in the session left in the live settings starts over here.
+	GAMEPROG_ResetChaosSettings(&sdata->chaosSettings);
+	sdata->chaosSettings.armed = sdata->chaosArmed;
+
 	MM_NewLoad_Advance(menu);
 }

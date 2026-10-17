@@ -3,6 +3,7 @@
 // Defined with the profile load and save helpers further down.
 static void SelectProfile_ApplyAdvMultiplayerCharacter(void);
 static const struct AdvMultiplayerSettings *SelectProfile_AdvSettingsToShow(const struct AdvProgress *adv, int slot);
+static b32 SelectProfile_CardSlotIsChaos(int slot);
 
 void SelectProfile_QueueLoadHub_MenuProc(struct RectMenu *menu)
 {
@@ -118,7 +119,7 @@ static void SelectProfile_DrawRacerIcon(struct GameTracker *gGT, int characterID
 		color, color, color, color, 1, 0x1000);
 }
 
-void SelectProfile_DrawAdvProfile(struct AdvProgress *adv, int posX, int posY, s16 isHighlighted, s16 slotIndex, u16 menuFlag)
+void SelectProfile_DrawAdvProfile(struct AdvProgress *adv, int posX, int posY, s16 isHighlighted, s16 slotIndex, b32 isChaos, u16 menuFlag)
 {
 	struct GameTracker *gGT = sdata->gGT;
 	RECT profileRect;
@@ -177,8 +178,20 @@ void SelectProfile_DrawAdvProfile(struct AdvProgress *adv, int posX, int posY, s
 		int characterID = adv->characterID;
 		SelectProfile_DrawRacerIcon(gGT, characterID, iconColor, firstIconX, firstIconY);
 
-
 		DecalFont_DrawLine(adv->name, posX + 0x6c, posY + 0x29, FONT_BIG, JUSTIFY_CENTER | nameColor);
+
+		if (isChaos)
+		{
+			const char *label = sdata->lngStrings[MM_Lng_PortStringIndex(LNG_PORT_CHAOS)];
+			int y = posY + SELECT_PROFILE_CHAOS_MARK_Y;
+
+			for (const char *c = label; *c != '\0'; c++, y += SELECT_PROFILE_CHAOS_MARK_STEP)
+			{
+				char letter[2] = {*c, '\0'};
+
+				DecalFont_DrawLine(letter, posX + SELECT_PROFILE_CHAOS_MARK_X, y, FONT_SMALL, numberColor);
+			}
+		}
 
 		int profileTextColor = JUSTIFY_RIGHT | numberColor;
 
@@ -258,11 +271,29 @@ void SelectProfile_Init(u16 flags)
 
 		t = PROC_BirthWithObject(SIZE_RELATIVE_POOL_BUCKET(sizeof(struct SelectProfileLoadSaveObj), NONE, SMALL, OTHER), SelectProfile_ThTick, threadName,
 		                         NULL);
+
 		// NOTE(aalhendi): Native low-RAM audit candidate only. Retail writes
 		// through this allocation result before its later null check; keep
 		// unpatched until a valid menu repro proves the allocation can fail.
+		// Proven, twice: PROC_BirthWithObject returns null both when no stack is
+		// free and when objectSize reaches THREAD_SMALL_STACK_SIZE minus
+		// sizeof(struct Item), and the menu is reachable from the main menu's
+		// Load entry. Without this the whole menu dies on that path.
+		if (t == NULL)
+		{
+			return;
+		}
+
 		obj = (struct SelectProfileLoadSaveObj *)t->object;
 		sdata->ptrLoadSaveObj = (int)obj;
+
+		// PROC_BirthWithObject hands back a recycled pool block without clearing it,
+		// and SelectProfile_Init only fills the fields it goes on to read. The Chaos
+		// marker is tested for NULL before it is born, so without this the stale
+		// contents decide the outcome and the tick writes through whatever pointer
+		// the block's previous owner left there.
+		memset(obj, 0, sizeof(struct SelectProfileLoadSaveObj));
+
 		obj->icons = &sdata->LoadSaveData[0];
 		memset(obj->icons, 0, sizeof(sdata->LoadSaveData));
 
@@ -332,6 +363,7 @@ void SelectProfile_Init(u16 flags)
 			inst->flags |= HIDE_MODEL;
 		}
 	}
+
 }
 
 
@@ -354,6 +386,8 @@ void SelectProfile_Destroy(void)
 			}
 		}
 
+		
+
 		obj->thread->funcThTick = NULL;
 		obj->thread->flags |= THREAD_FLAG_DEAD;
 		sdata->ptrLoadSaveObj = 0;
@@ -366,7 +400,9 @@ void SelectProfile_AdvPickMode_MenuProc(struct RectMenu *menu)
 	if (menu->funcState != RECTMENU_FUNC_STATE_INPUT)
 	{
 		SelectProfile_Init(menu->drawStyle);
-		SelectProfile_DrawAdvProfile(&sdata->advProgress, 0x92, 0x32, 0, 0, SELECT_PROFILE_DRAW_STYLE_GREEN);
+		// A file being written out has no slot yet, so the marker follows what was
+		// picked on the creation path rather than what any slot currently holds.
+		SelectProfile_DrawAdvProfile(&sdata->advProgress, 0x92, 0x32, 0, 0, sdata->chaosArmed, SELECT_PROFILE_DRAW_STYLE_GREEN);
 		return;
 	}
 
@@ -752,6 +788,19 @@ static void SelectProfile_ClearAdvMultiplayer(int slot)
 	memset(&SelectProfile_MemcardData()->extension.adventure[slot], 0, sizeof(struct AdvMultiplayerSettings));
 }
 
+// Whether the Adventure file sitting in this slot of the card was created with
+// Chaos. Read from the card extension rather than from sdata because the card
+// screen draws all four files at once while only one of them is ever loaded.
+static b32 SelectProfile_CardSlotIsChaos(int slot)
+{
+	if ((slot < 0) || (slot >= MEMCARD_ADV_PROFILE_COUNT))
+	{
+		return false;
+	}
+
+	return SelectProfile_MemcardData()->extension.chaos[slot].armed;
+}
+
 // The count is recomputed rather than read back. It is derived from the array,
 // and a file written by a build with a different effect count would otherwise
 // carry a count that no longer matches what is behind it.
@@ -762,8 +811,20 @@ static void SelectProfile_LoadChaosSettings(int slot)
 	sdata->chaosSettings.durationSeconds = saved->durationSeconds;
 	sdata->chaosSettings.triggerIntervalSeconds = saved->triggerIntervalSeconds;
 	sdata->chaosSettings.trigger = (saved->trigger < CHAOS_TRIGGER_COUNT) ? saved->trigger : CHAOS_TRIGGER_RANDOM;
+	sdata->chaosSettings.armed = saved->armed;
 	memcpy(sdata->chaosSettings.effects, saved->effects, sizeof(saved->effects));
 	sdata->chaosSettings.enabledCount = (u8)ChaosEffect_CountEnabled(sdata->chaosSettings.effects);
+}
+
+// The settings ride along with the profile rather than having a writer of their
+// own, for the same reason the racer count does. Nothing edits
+// sdata->chaosSettings once a file exists, so an ordinary in-game save writes
+// back exactly what it loaded and a configured file is never disturbed.
+static void SelectProfile_SaveChaosSettings(int slot)
+{
+	struct ChaosSettings *saved = &SelectProfile_MemcardData()->extension.chaos[slot];
+
+	*saved = sdata->chaosSettings;
 }
 
 static void SelectProfile_ClearChaosSettings(int slot)
@@ -800,6 +861,7 @@ static void SelectProfile_SaveAdvProfile(int slot)
 	SelectProfile_CopyGameProgressToCard();
 	memcard->advProgress[slot] = sdata->advProgress;
 	SelectProfile_SaveAdvMultiplayer(slot);
+	SelectProfile_SaveChaosSettings(slot);
 	MEMCARD_SetIcon(0);
 	RefreshCard_StartMemcardAction(3);
 	*(s16 *)&sdata->unk_memcardRelated_8008d928[0] = 1;
@@ -1003,7 +1065,7 @@ static void SelectProfile_DrawAdvRows(struct RectMenu *menu, int color)
 
 	for (i = 0; i < 4; i++)
 	{
-		SelectProfile_DrawAdvProfile(&memcard->advProgress[i], ((i & 1) * 0xea) + 0x1a, ((i >> 1) * 0x43) + 0x3c, i == menu->rowSelected, i, menu->drawStyle);
+		SelectProfile_DrawAdvProfile(&memcard->advProgress[i], ((i & 1) * 0xea) + 0x1a, ((i >> 1) * 0x43) + 0x3c, i == menu->rowSelected, i, SelectProfile_CardSlotIsChaos(i), menu->drawStyle);
 	}
 
 	if ((sdata->memcardAction == SELECT_PROFILE_ACTION_SAVE) && (sdata->boolMemcardDataValid != 0))
@@ -1026,7 +1088,7 @@ static void SelectProfile_DrawOverwriteMenu(struct RectMenu *menu)
 	}
 	else
 	{
-		SelectProfile_DrawAdvProfile(&SelectProfile_MemcardProfile()->advProgress[menu->rowSelected], 0x92, 0x3c, 0, menu->rowSelected, menu->drawStyle);
+		SelectProfile_DrawAdvProfile(&SelectProfile_MemcardProfile()->advProgress[menu->rowSelected], 0x92, 0x3c, 0, menu->rowSelected, SelectProfile_CardSlotIsChaos(menu->rowSelected), menu->drawStyle);
 	}
 }
 

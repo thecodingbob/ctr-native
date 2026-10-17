@@ -646,7 +646,7 @@ static const char *const s_portLngStrings[LNG_PORT_STRING_COUNT] =
 {
 	"Mode",
 	"Chaos",
-	"Regular",
+	"Regular"
 };
 
 // Whether the append below actually happened. Without it the arithmetic in

@@ -657,6 +657,7 @@ struct ChaosSettings
 	u8 trigger;                       // enum ChaosTrigger
 	u8 enabledCount;                  // how many entries below are on
 	bool effects[CHAOS_EFFECT_COUNT]; // one entry per effect, in enum order
+	bool armed;
 };
 
 // What this port adds to each profile, in the padding retail never wrote. A file
@@ -693,7 +694,7 @@ CTR_STATIC_ASSERT(sizeof(struct AdvProgress) == 0x50);
 CTR_STATIC_ASSERT(sizeof(struct MemcardProfile) == 0x1600);
 // No padding between the scalars and the effect array, so the per-profile
 // saving stays a flat byte count the checksum covers without a hole.
-CTR_STATIC_ASSERT(sizeof(struct ChaosSettings) == (CHAOS_EFFECT_COUNT + 6));
+CTR_STATIC_ASSERT(sizeof(struct ChaosSettings) == (CHAOS_EFFECT_COUNT + 8));
 CTR_STATIC_ASSERT(OFFSETOF(struct MemcardData, extension) == sizeof(struct MemcardProfile));
 CTR_STATIC_ASSERT(sizeof(struct MemcardData) <= (MEMCARD_FILE_DATA_SIZE - MEMCARD_FILE_CHECKSUM_SIZE));
 CTR_STATIC_ASSERT(sizeof(struct GhostProfile) == 0x34);
