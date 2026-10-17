@@ -1559,6 +1559,8 @@ internal void NativeCheckpoint_RelocateD230Pointers(const struct NativeCheckpoin
 	NativeCheckpoint_RelocateRectMenu(oldHeader, liveHeader, &D230.menuMainMenu);
 	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &D230.rowsPlayers1P2P);
 	NativeCheckpoint_RelocateRectMenu(oldHeader, liveHeader, &D230.menuPlayers1P2P);
+	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &D230.rowsChaosPrompt);
+	NativeCheckpoint_RelocateRectMenu(oldHeader, liveHeader, &D230.menuChaosPrompt);
 	NativeCheckpoint_RelocateRectMenu(oldHeader, liveHeader, &D230.menuPlayers2P3P4P);
 	NativeCheckpoint_RelocateRectMenu(oldHeader, liveHeader, &D230.menuDifficulty);
 	NativeCheckpoint_RelocateRectMenu(oldHeader, liveHeader, &D230.menuRaceType);

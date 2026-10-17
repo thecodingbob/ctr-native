@@ -164,7 +164,11 @@ static void TestPickWithNothingEnabled(void)
 
 	u32 rngState = CHAOS_TEST_PICK_SEED;
 
-	CTR_TEST_CHECK_EQ(ChaosEffect_CountEnabled(settings.effects), 0, "nothing is enabled");
+	// Derived the way the game derives it, so the count handed to Pick is never
+	// whatever the stack happened to hold.
+	settings.enabledCount = (u8)ChaosEffect_CountEnabled(settings.effects);
+
+	CTR_TEST_CHECK_EQ(settings.enabledCount, 0, "nothing is enabled");
 	CTR_TEST_CHECK(ChaosEffect_Pick(settings.effects, settings.enabledCount, &rngState) == CHAOS_EFFECT_NONE, "a pick returns no effect");
 }
 

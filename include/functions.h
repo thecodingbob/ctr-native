@@ -849,6 +849,22 @@ void MM_ToggleRows_Difficulty(void);
 void MM_MenuProc_Difficulty(struct RectMenu *menu);
 void MM_MenuProc_SingleCup(struct RectMenu *menu);
 void MM_MenuProc_NewLoad(struct RectMenu *menu);
+void MM_MenuProc_Chaos(struct RectMenu *menu);
+
+// Cascading menu navigation, the only place a menu box is linked to another or
+// The new-file chain: the screens between the Adventure new/load menu and a new
+// race. Each step is optional and gated on its own option, so "New" walks this
+// rather than any screen naming what follows it. A step stacks below the step
+// before it, so the boxes already answered stay on screen. MM_MenuProc_Chaos
+// calls the last two.
+void MM_NewLoad_Advance(struct RectMenu *screen);
+void MM_NewLoad_Retreat(struct RectMenu *screen);
+
+// Index of one of the strings this port appends past the retail .lng table, or
+// RECTMENU_STRING_NONE when the table could not be extended. The indices depend
+// on the asset's string count, so they must never be hardcoded.
+s16 MM_Lng_PortStringIndex(s32 portIndex);
+
 void MM_MenuProc_QuitConfirm(struct RectMenu *menu);
 struct RectMenu *MM_AdvNewLoad_GetMenuPtr(void);
 void MM_Characters_AnimateColors(u8 *colorData, s16 playerID, s16 flag);

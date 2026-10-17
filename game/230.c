@@ -24,6 +24,7 @@
 #define MM_MENU_DIFFICULTY                                (D230.menuDifficulty)
 #define MM_MENU_RACE_TYPE                                 (D230.menuRaceType)
 #define MM_MENU_ADVENTURE                                 (D230.menuAdventure)
+#define MM_MENU_CHAOS_PROMPT                              (D230.menuChaosPrompt)
 #define MM_MENU_POINTERS                                  (D230.arrayMenuPtrs)
 #define MM_MENU_CHARACTER_SELECT                          (D230.menuCharacterSelect)
 #define MM_MENU_HIGH_SCORES                               (D230.menuHighScores)
@@ -240,6 +241,7 @@
 #include "230/MM_ConfigMenu.c"
 #include "230/MM_ControlsConfig.c"
 #include "230/MM_MenuFlow.c"
+#include "230/MM_Chaos.c"
 #include "230/MM_QuickRace.c"
 #include "230/MM_Title.c"
 #include "230/MM_CheatCodes.c"
