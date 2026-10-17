@@ -1,6 +1,8 @@
 #ifndef CTR_NATIVE_NAMESPACE_MEMCARD_H
 #define CTR_NATIVE_NAMESPACE_MEMCARD_H
 
+#include <chaos_effect.h>
+
 // Modified from original game
 enum MC_STAGE
 {
@@ -624,12 +626,46 @@ struct AdvMultiplayerSettings
 	s16 characterID2;
 };
 
-// The co-op settings per profile, in the padding retail never wrote. A card
-// without them has zeroes here, so a racer count outside the range this port
-// writes means the same thing: the profile plays alone.
+// What makes an effect activate.
+enum ChaosTrigger
+{
+	CHAOS_TRIGGER_RANDOM = 0,
+	CHAOS_TRIGGER_PICKUP,
+	CHAOS_TRIGGER_INTERVAL,
+	CHAOS_TRIGGER_EXTERNAL,
+	CHAOS_TRIGGER_COUNT,
+};
+
+enum
+{
+	CHAOS_DURATION_DEFAULT_SECONDS = 10,
+	CHAOS_TRIGGER_INTERVAL_DEFAULT_SECONDS = 20,
+};
+
+// Chaos settings for one Adventure profile. Chosen once, when the file is
+// created, and never written again — the only writer is the creation-path menu.
+// The same shape is the live copy in sData and the per-profile copy in the card
+// extension.
+//
+// All zeroes read as "no chaos", which is what a file written before this
+// feature existed reports, and which is why the effect array defaults to off:
+// the menu is what turns effects on.
+struct ChaosSettings
+{
+	u16 durationSeconds;              // how long one activation lasts
+	u16 triggerIntervalSeconds;       // cadence for Random and Interval
+	u8 trigger;                       // enum ChaosTrigger
+	u8 enabledCount;                  // how many entries below are on
+	bool effects[CHAOS_EFFECT_COUNT]; // one entry per effect, in enum order
+};
+
+// What this port adds to each profile, in the padding retail never wrote. A file
+// written before either feature has zeroes here: a racer count outside the range
+// this port writes, and chaos off.
 struct MemcardExtension
 {
 	struct AdvMultiplayerSettings adventure[MEMCARD_ADV_PROFILE_COUNT];
+	struct ChaosSettings chaos[MEMCARD_ADV_PROFILE_COUNT];
 };
 
 // The whole SLOTS file payload: the retail profile followed by this port's
@@ -655,6 +691,9 @@ CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct AdvProgress, rewards, 5) == 0x14);
 CTR_STATIC_ASSERT(OFFSETOF(struct AdvProgress, name) == 0x18);
 CTR_STATIC_ASSERT(sizeof(struct AdvProgress) == 0x50);
 CTR_STATIC_ASSERT(sizeof(struct MemcardProfile) == 0x1600);
+// No padding between the scalars and the effect array, so the per-profile
+// saving stays a flat byte count the checksum covers without a hole.
+CTR_STATIC_ASSERT(sizeof(struct ChaosSettings) == (CHAOS_EFFECT_COUNT + 6));
 CTR_STATIC_ASSERT(OFFSETOF(struct MemcardData, extension) == sizeof(struct MemcardProfile));
 CTR_STATIC_ASSERT(sizeof(struct MemcardData) <= (MEMCARD_FILE_DATA_SIZE - MEMCARD_FILE_CHECKSUM_SIZE));
 CTR_STATIC_ASSERT(sizeof(struct GhostProfile) == 0x34);

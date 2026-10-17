@@ -18,6 +18,7 @@ typedef struct {
     bool skipHints;             // false = off (default), true = skip all mask hints in adventure mode
     bool extendedAdventureCharacterSelect; // false = garage, true = extended selector for new Adventure
     bool multiplayerAdventure;  // false = off (default), true = enable multiplayer Adventure setup
+    bool chaosMode;              // false = off (default), true = ask whether to arm Chaos mode when creating an Adventure file
     int speedMultiplier;        // percent, 10%..200%, 100 = 1.0x (default)
     int gravityMultiplier;      // percent, 10%..300%, 100 = 1.0x (default)
     int turnMultiplier;         // percent, 10%..400%, 100 = 1.0x (default)
