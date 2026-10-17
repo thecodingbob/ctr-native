@@ -81,6 +81,26 @@ struct OverlayDATA_230 D230 CTR_PSX_MATCH_SECTION(".D230") =
                 .funcPtr = MM_MenuProc_1p2p,
             },
 
+        // StringIndex has no value here and is resolved in OVR230_ResetRuntimeState,
+        // where the language table exists; until then these rows read as LNG_PAUSED,
+        // which nothing can reach because that runs on the first overlay load.
+        // Either direction swaps between the two rows, so neither is a dead end.
+        .rowsChaosPrompt =
+            {
+                {-1, 1, 1, 0, 0},
+                {-1, 0, 0, 1, 1},
+                {RECTMENU_STRING_NONE},
+            },
+
+        .menuChaosPrompt =
+            {
+                .stringIndexTitle = RECTMENU_STRING_NONE,
+
+                .state = CENTER_ON_X,
+                .rows = &D230.rowsChaosPrompt[0],
+                .funcPtr = MM_MenuProc_Chaos,
+            },
+
         .rowsPlayers2P3P4P =
             {
                 {0x55, 0, 1, 0, 0},
@@ -899,6 +919,17 @@ void OVR230_ResetRuntimeState(void)
 {
 	if (s_d230InitialStateReady == 0)
 	{
+		// The Chaos prompt's title and its two rows come from the strings this port
+		// appends to the language table, so they are resolved when the initial
+		// state is captured rather than in D230's static initialiser: the
+		// initialiser runs at program start and LOAD_LangFile does not run until
+		// boot (`MainMain.c:532`), so at initialiser time there is no table to
+		// read. This runs on the first overlay load, which is after it, and every
+		// restore below replays it.
+		D230.menuChaosPrompt.stringIndexTitle = MM_Lng_PortStringIndex(LNG_PORT_MODE);
+		D230.rowsChaosPrompt[0].stringIndex = MM_Lng_PortStringIndex(LNG_PORT_CHAOS);
+		D230.rowsChaosPrompt[1].stringIndex = MM_Lng_PortStringIndex(LNG_PORT_REGULAR);
+
 		s_d230InitialState = D230;
 		s_d230InitialStateReady = 1;
 	}

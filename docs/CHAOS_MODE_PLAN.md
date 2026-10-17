@@ -35,8 +35,8 @@ config.ini ──► g_config.chaosMode              (CFG_BOOL, "Adventure", def
 title flow          MM_MenuProc_Main → MM_MenuProc_NewLoad → profile select
                      │  sdata->advProfileIndex bound
                      ▼
-                Chaos_Prompt          YES/NO over the title flow
-                     │  YES
+                Chaos_Prompt          Chaos/Regular over the title flow
+                     │  Chaos
                      ▼
                 Chaos_SettingsMenu    duration / effect toggles / resolution / interval
                      │  commits into sdata->chaosSettings
@@ -609,47 +609,201 @@ option would let the behaviour of an already-created save change underneath it.
 
 ### Phase 4 — prompt and settings menu
 
-Reached only from the `ADV_NEW` branch (§3). The menu is written once and closed;
-it is not reachable again for that file, and not for any loaded file.
+Reached from `MM_MenuProc_NewLoad`'s "New" case (`MM_MenuFlow.c:652`), which is
+the Adventure new/load menu. That puts the prompt at the head of the new-file
+path, ahead of the racer count and character select, so the order is: Adventure,
+New, Chaos prompt, racer count, characters, save.
 
-1. Prompt `struct RectMenu` + rows in overlay 230 data, `include/ovr_230.h`.
-   `D230` has no `OFFSETOF` assertions, so appending is free. Do **not** add the
-   menus to `D230.arrayMenuPtrs` (`:702`, `MM_MENU_RESET_COUNT = 9`): that feeds
-   `MM_ResetAllMenus` (`MM_MenuFlow.c:704-728`), which only walks
-   `ptrNextBox_InHierarchy` chains, and the chaos prompt is reached via
-   `sdata->ptrDesiredMenu`. It needs its own reset on abort.
-2. Prompt behaviour mirrors `MM_MenuProc_QuitConfirm` (`MM_MenuFlow.c:302-318`) —
-   `RECTMENU_CLOSE_TRANSIENT`, `LNG_YES`/`LNG_NO`, cursor on NO,
-   `rowSelected == -1` is back. Back and NO both continue unarmed.
-3. Settings menu is a separate screen, not `MM_ConfigMenu`: the effect list is
-   dynamic in length, `CFG_INT` always renders as a percentage
-   (`MM_ConfigMenu.c:197-222`), `CFG_ENUM` cycling assumes values `0..n-1`
-   (`:327`), and the section list does not scroll and is capped at 16
-   (`:360-400`). Build rows per frame; draw with `DecalFont_DrawLineOT` and
-   `CTR_Box_DrawClearBox` into `gGT->pushBuffer_UI.ptrOT`; reuse
-   `CONFIG_ROW_START_Y` / `CONFIG_ROW_SPACING` / `CONFIG_LABEL_X` /
-   `CONFIG_VALUE_X` / `CONFIG_MAX_VISIBLE_ROWS` from `MM_ConfigMenu.c:105-117`
-   so the screens match. Scroll with the wrap-around from `:274-303` and the
-   more-than-five-arrows affordance from `AH_HintMenu.c:162-191`.
-4. Rows: **Duration** (left/right seconds), one per effect (X/circle, via
-   `ChaosEffect_Toggle` so the count follows), **Effect Resolution** (left/right
-   cycles `Random` / `Pickup` / `Interval` / `External`), **Trigger Interval**
-   (left/right seconds). The last row draws only when resolution is `Interval` or
-   `Random`; otherwise it is hidden and the list closes the gap, so the cursor
-   never lands on an invisible row.
-5. Commit on exit into `sdata->chaosSettings`, then hand off. This is the only
-   writer of those fields in the whole tree. Register both menus for checkpoint
-   relocation in `NativeCheckpoint_RelocateD230Pointers`
-   (`native_checkpoint.c:1557`), the way `NativeCheckpoint_RelocateRectMenu`
-   handles the `D232` menus (`:1649-1650`) — otherwise a quick state taken with
-   the menu open restores a stale `rows` pointer.
+Split in two, because the menu machinery is the hard part and the configuration
+screen is not:
 
-Validation: start a NEW file and confirm the prompt appears, that answering yes
-opens the settings menu, and that the answer reaches the save. Then LOAD that
-same file and confirm it asks nothing. Start a second new file and confirm it
-asks again. Toggle every effect and check `enabledCount` tracks. Scroll past the
-tenth row, back out with Triangle at each level, and confirm nothing leaks into
-the hub.
+- **Phase 4a (done)** — the on/off question alone. Nothing about effects yet.
+- **Phase 4b** — the settings screen, entered from 4a's answer of yes.
+
+The prompt follows the racer-count screen exactly, because that screen is the
+same thing behind the same kind of option gate and is known to work.
+
+**How a menu is added.** There are exactly two idioms. A *hierarchy child* —
+`ptrNextBox_InHierarchy` plus `ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY` on
+the parent — used by the racer-count screen, the difficulty menu and the quit
+prompt. Or *replacing the active menu* through `sdata->ptrDesiredMenu`, used by
+the options menu alone. Only the first is usable here:
+`MM_Title_MenuUpdate` runs from `MM_MenuProc_Main` (`MM_MenuFlow.c:82`), which is
+the root menu's own funcPtr, so a menu that takes over the active slot stops the
+title state machine and `TITLE_MENU_STATE_EXITING` never completes.
+
+**Navigation lives in one place.** Every screen in this overlay that opens
+another one does it the same way, and having it inline is what dropped the Chaos
+prompt when the player backed out of the racer-count screen:
+`MM_MenuProc_1p2p`'s `UNINITIALIZED` branch detaches "the parent" by clearing the
+parent's flags, which only reaches the previous step when the parent happens to
+have exactly one child. With a step in the middle there has to be a chain to
+walk. So `MM_Menu_Attach` / `MM_Menu_Detach` (`MM_MenuFlow.c`) are the only
+places a menu box is linked or unlinked, and the new-file chain is a list:
+
+```
+Adventure new/load ── NEW ─▶ [chaos prompt] ─▶ [racer count] ─▶ race
+```
+
+Each step is optional and gated on its own option, so `MM_NewLoad_Screen` is the
+only place that decides what is in the chain, and `MM_NewLoad_Begin`,
+`MM_NewLoad_Advance` and `MM_NewLoad_Retreat` are the only things that move along
+it. `Begin` walks forward to the first available step; `Advance` and `Retreat`
+walk to the next or previous available step and leave the title when there is no
+next one. `MM_MenuProc_Chaos` does nothing but read its row and call one of the
+three; `MM_MenuProc_1p2p` calls them when `MM_NewLoad_InChain()`, and
+`MM_MenuProc_QuitConfirm` and the main menu's VS path use `MM_Menu_Detach`.
+
+**Steps stack, they do not replace.** `Advance` attaches the next step to the step
+just answered rather than to the new/load menu, so the chain grows the way the
+main menu already does (main menu → racer count → difficulty). Every box an
+ancestor keeps ONLY_DRAW_TITLE, which collapses it to the row that was chosen
+(`RECTMENU.c:585`) and sizes it to a single row (`:666`, `borders.h = sVar7 + 8`),
+so what stays on screen is one row per answered step. That collapse is also why a
+non-collapsed parent cannot be used here: `RECTMENU_DrawSelf` places a child
+exactly one row below its parent's top (`:656`) regardless of how many rows the
+parent has, so a full-height parent would be overdrawn by its child. A collapsed
+step does not draw its title (`:551`), which retail accepts.
+
+Because a collapsed box draws only its selected row, the row left behind has to
+carry the answer rather than the button that was pressed. So the prompt has two
+row sets — the yes/no question in `rowsChaosPrompt`, and a single row in
+`rowsChaosAnswer` reading `CHAOS MODE` or `Regular` — and `MM_MenuProc_Chaos`
+swaps `menu->rows` to the answer when it is answered. `MM_NewLoad_AttachStep`
+puts the question back whenever the chain attaches the prompt, so a prompt that
+already carries an answer can be asked again. `CHAOS MODE` and `Regular` are both
+port strings, so neither is localised; that is a deliberate trade for reading
+correctly once the box is collapsed.
+
+Because a step can now hang off another step, `MM_MenuProc_1p2p` can no longer
+tell the chain from the main menu by its parent, and uses `MM_NewLoad_InChain()`
+instead.
+
+What each step hangs off is recorded per step in `s_newLoadParentOf[]`, not as a
+single "current parent". Backing out has to put a step back where *it* was, not
+where the step being left hangs off: in `adventure -> chaos -> racer count` the
+racer count hangs off chaos, so re-attaching chaos to the current parent points
+chaos at itself.
+
+Two rules keep a menu from ever becoming its own child, which is an infinite
+recursion in both `RECTMENU_DrawSelf` (`:656`) and `RECTMENU_ProcessInput`
+(`:877`) and therefore an immediate crash:
+
+- `MM_Menu_Attach` clears `ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY` on the
+  child. A screen that has just been linked is by definition the deepest, so it
+  must not be left collapsed from a time when it had a child of its own. Only
+  `RECTMENU_ProcessState` clears that, and only on the frame it promotes a menu.
+- `MM_NewLoad_Unwind` undoes every link the chain made, and runs when the chain is
+  finished. It has to be complete rather than a flag: `MM_ResetAllMenus` runs
+  only on the first entry to the title (`MM_JumpTo_Title_FirstTime`) and never on
+  a return, so a link left behind survives into the next visit, where attaching
+  a step to a step that still had the old one as its child closes the loop. That
+  was the crash on "New, pick a mode, go to character select, come back, pick a
+  mode again".
+
+**Where a box's position comes from.** Not the layout table. `menuPos` is `{0,0}`
+for every entry except `MAIN` (`{0x180, 0x6c}`) and the transitions only add 1-3
+pixels (`distX` 1, 1, 2, 3), so a child's real placement comes from accumulating
+down the chain in `RECTMENU_DrawSelf` (`RECTMENU.c:656`): X adds the parent's
+`posX_prev`, Y adds the parent's `posY_prev` plus one row height plus `0xc`. So
+the prompt needs **no** entry in the title layout and **no** change to
+`MM_Title.c`. Two earlier attempts added one and also predicted a title position
+by hand; both were wrong by the same kind of arithmetic, the first because the
+title was then a hardcoded `0x100` against a box whose `posX_curr` was still 0
+(`MM_Title` was not running), the second because the formula left out
+`mainMenu->posX_prev` and so missed `0x180`.
+
+**How the input behaves.** `funcPtr` is called only on CROSS/CIRCLE and
+TRIANGLE/SQUARE, never on UP/DOWN (`RECTMENU.c:797-855`), so a direction press
+only moves the cursor. `RECTMENU_ClearInput` runs at the end of each menu's pass
+(`:864`), so a child attached inside a parent's funcPtr never sees the press that
+caused the attach — an explicit clear for it is redundant. And a menu carrying
+`ONLY_DRAW_TITLE` has its whole input block skipped (`:760`), which is what keeps
+the new/load menu from re-attaching the prompt while it is up. Those three
+properties are why this needs no latch and no "already attached" guard: a latch
+made the question appear once per session, and testing `ptrNextBox_InHierarchy`
+for that cannot work because detaching clears the flag but leaves the pointer —
+exactly as `MM_MenuProc_1p2p`'s `UNINITIALIZED` branch does.
+
+**Titles.** A box can only be titled from the language table:
+`RECTMENU_DrawSelf` reads `stringIndexTitle` out of `sdata->lngStrings`
+(`RECTMENU.c:566`) and `RECTMENU_GetWidth` measures it from there too (`:440`).
+The retail `.lng` has nothing naming this screen and the asset is not to be
+modified, so `LOAD_LangFile` appends the port's own strings to a *copy* of the
+asset's pointer array and reports `numLngStrings` including them
+(`LOAD_Assets.c`, `MM_Lng_PortStringIndex`). The copy is allocated rather than
+written past the end of the asset's array, because that array is sized by the
+file. Their indices depend on the asset's string count, so they are never
+hardcoded and a caller falls back to an untitled box when the table could not be
+extended. `NativeCheckpoint_RelocateLanguagePointers` walks all `numLngStrings`
+entries but leaves any pointer it cannot map untouched
+(`native_checkpoint.c:455`), so the port's entries survive a quick-state load.
+
+The title is applied where the initial state is captured, not in `D230`'s
+static initialiser. The initialiser runs at program start and `LOAD_LangFile`
+does not run until boot (`MainMain.c:532`), so at initialiser time there is no
+table to read; `OVR230_ResetRuntimeState` captures `s_d230InitialState` on the
+first overlay load, which is after it (`D230.c:914`), and every restore replays
+what was captured.
+
+Not added to `D230.arrayMenuPtrs`: it holds exactly `MM_MENU_RESET_COUNT` (9)
+entries and is already full, and `MM_ResetAllMenus` walks the new/load menu's
+`ptrNextBox_InHierarchy` chain anyway (`MM_MenuFlow.c:728-745`), which clears
+the prompt's state and pointer for free. It is registered for checkpoint
+relocation alongside the racer-count screen.
+
+**4b, the settings screen**, is a separate screen, not `MM_ConfigMenu`: the effect
+list is dynamic in length, `CFG_INT` always renders as a percentage
+(`MM_ConfigMenu.c:197-222`), `CFG_ENUM` cycling assumes values `0..n-1` (`:327`),
+and the section list does not scroll and is capped at 16 (`:360-400`). Build rows
+per frame; reuse `CONFIG_ROW_START_Y` / `CONFIG_ROW_SPACING` / `CONFIG_LABEL_X` /
+`CONFIG_VALUE_X` / `CONFIG_MAX_VISIBLE_ROWS` from `MM_ConfigMenu.c:105-117` and
+its `Config_DrawFrame` / `Config_DrawRowHighlight` / `Config_OptionStep` helpers,
+which `MM_ControlsConfig.c` already forward declares for the same reason. Draw
+into `gGT->backBuffer->otMem.uiOT` (`MM_ConfigMenu.c:227`): the reused frame has
+to land in the same buffer as the rows, and it takes its `ot` as an argument.
+Rows: **Duration** (left/right seconds), one per effect (X/circle, via
+`ChaosEffect_Toggle` so the count follows), **Effect Resolution** (left/right
+cycles `Random` / `Pickup` / `Interval` / `External`), **Trigger Interval**
+(left/right seconds). The last row draws only when resolution is `Interval` or
+`Random`; otherwise it is hidden and the list closes the gap, so the cursor never
+lands on an invisible row. Effect Resolution is a cycle, not a clamped slider, so
+it does not use `Config_OptionStep`.
+
+The five-arrows scroll affordance from `AH_HintMenu.c:162-191` is **dropped**.
+`AH_HintMenu_FiveArrows` reads `D232.fiveArrowPos` and calls `AH_Map_HubArrow`,
+both overlay 232 resident data, and 232 is not resident on the title screen.
+`MainFreeze_ConfigDrawArrows` is in overlay 230 but draws left/right value hints,
+not an up/down scroll marker. Wrap-around, which is what `MM_ConfigMenu` itself
+relies on, is the substitute.
+
+The write half lives in `SelectProfile_SaveChaosSettings`, called from
+`SelectProfile_SaveAdvProfile` next to `SelectProfile_SaveAdvMultiplayer`. The
+prompt runs long before the save slot is chosen, so `sdata->advProfileIndex` is
+not known yet and the extension can only be written once the slot exists. Writing
+on every save is safe because `sdata->chaosSettings` is only ever modified at
+creation and is otherwise what was loaded, so the write is idempotent — which is
+also why no "has this been written" sentinel is needed. It runs before
+`RefreshCard_StartMemcardAction`, so the settings reach disk with the save.
+
+`chaosArmed` is derived, never sticky:
+
+- `SelectProfile_LoadChaosSettings` sets it from the loaded file
+  (`enabledCount != 0`), so loading a file with no effects enabled clears an
+  arming left behind by an earlier one.
+- The settings screen sets it the same way on the way out, so yes-with-nothing-
+  enabled and no both read as a file without Chaos.
+- "New" clears `sdata->chaosSettings` and `chaosArmed` before the prompt can arm
+  it, so a second new file in the same session cannot inherit the first one's.
+
+Validation for 4a: from the Adventure new/load menu, confirm New shows the prompt
+in the racer-count screen's place with its title, that the cursor moves between
+yes and no, and that answering either stacks the racer-count box *below* the
+answered one rather than replacing it — the chain should read "Adventure",
+"New", "CHAOS MODE" (or "Regular"), "Players"/"1P". Then walk the chain backwards:
+Triangle from the racer count must bring the Chaos prompt back **with its yes/no
+rows again**, and Triangle from there new/load. With each option off in turn the
+chain must be the same journey minus that step.
 
 ### Phase 5 — engine and effects
 

@@ -5,6 +5,199 @@ extern struct MenuRow s_rowsMainMenuBasicConfig[];
 extern struct MenuRow s_rowsMainMenuWithSBConfig[];
 extern struct RectMenu g_configMenu;
 
+// ================= cascading menu navigation =================
+
+// The only two places a menu box is linked to another or unlinked.
+
+static void MM_Menu_Attach(struct RectMenu *parent, struct RectMenu *child)
+{
+	parent->ptrNextBox_InHierarchy = child;
+	parent->state |= ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY;
+
+	// A screen that has just been linked is by definition the deepest one, so it
+	// must not be left collapsed from a time when it had a child of its own. Only
+	// RECTMENU_ProcessState clears this, and only on the frame it promotes a menu.
+	child->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
+	child->ptrNextBox_InHierarchy = NULL;
+
+	// Re-entering a screen starts it at its first row.
+	child->rowSelected = 0;
+}
+
+// Unlinks child from whatever it hangs off, leaving its parent holding whatever it
+// had before. The child's own links go either way: a stale ptrNextBox_InHierarchy
+// is what lets two menus end up pointing at each other, and both RECTMENU_DrawSelf
+// and RECTMENU_ProcessInput follow it for as long as it is set.
+static void MM_Menu_Detach(struct RectMenu *child)
+{
+	struct RectMenu *parent = child->ptrPrevBox_InHierarchy;
+
+	child->ptrNextBox_InHierarchy = NULL;
+	child->ptrPrevBox_InHierarchy = NULL;
+
+	if (parent != NULL)
+	{
+		parent->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
+	}
+}
+
+// The screens between the Adventure new/load menu and a new race, in order. Each
+// is optional and each is gated on its own option, so "New" walks this instead of
+// each screen hardcoding what comes after it. That is what lets the player back
+// out of the racer-count screen onto the Chaos prompt rather than over it.
+enum NewLoadStep
+{
+	NEWLOAD_STEP_CHAOS,
+	NEWLOAD_STEP_PLAYERS,
+	NEWLOAD_STEP_COUNT,
+};
+
+// Which step is in hand. -1 means the new/load menu itself, which is where the
+// chain starts and where it lands when there is nothing behind it.
+static int s_newLoadStep = -1;
+
+// What each step hangs off. Backing out has to put a step back where *it* was, not
+// where the step being left hangs off, which is a different menu once there is more
+// than one step: the racer count hangs off the Chaos prompt, not off the new/load
+// menu.
+static struct RectMenu *s_newLoadParentOf[NEWLOAD_STEP_COUNT];
+
+static struct RectMenu *MM_NewLoad_Screen(int step)
+{
+	switch (step)
+	{
+	case NEWLOAD_STEP_CHAOS:
+		return g_config.chaosMode ? &MM_MENU_CHAOS_PROMPT : NULL;
+	case NEWLOAD_STEP_PLAYERS:
+		return g_config.multiplayerAdventure ? &MM_MENU_PLAYERS_1P2P : NULL;
+	default:
+		return NULL;
+	}
+}
+
+// The first available step walking away from `from`, which is inclusive, or NULL
+// when the chain has run out in that direction. Steps whose option is off are
+// skipped rather than stopping the walk, so a missing step needs no special case
+// anywhere. Moves the chain onto whatever it finds.
+static struct RectMenu *MM_NewLoad_StepAway(int from, int walk)
+{
+	for (int step = from; (step >= 0) && (step < NEWLOAD_STEP_COUNT); step += walk)
+	{
+		struct RectMenu *screen = MM_NewLoad_Screen(step);
+
+		if (screen != NULL)
+		{
+			s_newLoadStep = step;
+			return screen;
+		}
+	}
+
+	return NULL;
+}
+
+// Undoes every link the chain made and leaves each step as it was found.
+//
+// Complete, not a flag. MM_ResetAllMenus runs only on the first entry to the title
+// (MM_JumpTo_Title_FirstTime) and never on a return, so a link left behind survives
+// into the next visit of the menu, where attaching a step to a step that still had
+// the old one as its child leaves the two pointing at each other — an infinite
+// recursion in RECTMENU_DrawSelf (`:656`) and RECTMENU_ProcessInput (`:877`), and
+// an immediate crash.
+static void MM_NewLoad_Unwind(void)
+{
+	for (int step = s_newLoadStep; step >= 0; step--)
+	{
+		struct RectMenu *screen = MM_NewLoad_Screen(step);
+		struct RectMenu *parent = s_newLoadParentOf[step];
+
+		s_newLoadParentOf[step] = NULL;
+
+		if (parent != NULL)
+		{
+			parent->ptrNextBox_InHierarchy = NULL;
+			parent->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
+		}
+
+		if (screen != NULL)
+		{
+			screen->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
+			screen->ptrNextBox_InHierarchy = NULL;
+			screen->ptrPrevBox_InHierarchy = NULL;
+		}
+	}
+
+	s_newLoadStep = -1;
+}
+
+// The chain is finished: leave the title the way "New" always did.
+static void MM_NewLoad_Exit(void)
+{
+	MM_NewLoad_Unwind();
+
+	MM_TITLE_MENU_STATE = TITLE_MENU_STATE_EXITING;
+	MM_DESIRED_MENU_INDEX = MM_EXIT_ROUTE_ADV_NEW;
+
+	// The new/load menu keeps its title bar, as it did when New left the title
+	// directly, so its rows do not redraw under the fade out.
+	MM_MENU_ADVENTURE.state |= ONLY_DRAW_TITLE;
+}
+
+static bool MM_NewLoad_InChain(void)
+{
+	return s_newLoadStep >= 0;
+}
+
+// Entering the chain, from "New" on the new/load menu.
+static void MM_NewLoad_Begin(struct RectMenu *parent)
+{
+	s_newLoadStep = -1;
+
+	struct RectMenu *screen = MM_NewLoad_StepAway(s_newLoadStep + 1, 1);
+
+	if (screen == NULL)
+	{
+		MM_NewLoad_Exit();
+		return;
+	}
+
+	s_newLoadParentOf[s_newLoadStep] = parent;
+	MM_Menu_Attach(parent, screen);
+}
+
+// A step in the chain was answered: show the next one below it, or leave the title
+// when there is none.
+void MM_NewLoad_Advance(struct RectMenu *screen)
+{
+	struct RectMenu *next = MM_NewLoad_StepAway(s_newLoadStep + 1, 1);
+
+	if (next == NULL)
+	{
+		MM_Menu_Detach(screen);
+		MM_NewLoad_Exit();
+		return;
+	}
+
+	s_newLoadParentOf[s_newLoadStep] = screen;
+	MM_Menu_Attach(screen, next);
+}
+
+// A step in the chain was backed out of: put the step before it back where it was,
+// or leave the new/load menu alone when it is already behind it.
+void MM_NewLoad_Retreat(struct RectMenu *screen)
+{
+	MM_Menu_Detach(screen);
+
+	struct RectMenu *previous = MM_NewLoad_StepAway(s_newLoadStep - 1, -1);
+
+	if (previous == NULL)
+	{
+		s_newLoadStep = -1;
+		return;
+	}
+
+	MM_Menu_Attach(s_newLoadParentOf[s_newLoadStep], previous);
+}
+
 s32 MM_TransitionInOut(struct TransitionMeta *meta, s32 framesPassed, s32 numFrames)
 {
 	s16 negativeTransitionState;
@@ -303,7 +496,7 @@ void MM_MenuProc_QuitConfirm(struct RectMenu *menu)
 {
 	if (menu->rowSelected < 0)
 	{
-		menu->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
+		MM_Menu_Detach(menu);
 		return;
 	}
 	// Called every frame from RECTMENU_ProcessState with funcState=1;
@@ -314,7 +507,7 @@ void MM_MenuProc_QuitConfirm(struct RectMenu *menu)
 	if (menu->rowSelected == 0) // YES
 		exit(0);
 	// NO - go back
-	menu->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
+	MM_Menu_Detach(menu);
 }
 
 void MM_ToggleRows_PlayerCount(void)
@@ -366,7 +559,6 @@ void MM_MenuProc_1p2p(struct RectMenu *menu)
 {
 	s16 selectableRowCount = 0;
 
-	struct RectMenu *previousMenuOwner = menu;
 	const s16 row = menu->rowSelected;
 
 	// if uninitialized
@@ -392,11 +584,13 @@ void MM_MenuProc_1p2p(struct RectMenu *menu)
 
 	// row N is (N+1)P
 	GAME_TRACKER->numPlyrNextGame = row + 1;
-	if (menu->ptrPrevBox_InHierarchy == &MM_MENU_ADVENTURE)
+
+	// The same screen is reached from the main menu, where it leads to the
+	// difficulty box, and from the new-file chain, where answering it just moves
+	// to the next step.
+	if (MM_NewLoad_InChain())
 	{
-		MM_TITLE_MENU_STATE = TITLE_MENU_STATE_EXITING;
-		MM_DESIRED_MENU_INDEX = MM_EXIT_ROUTE_ADV_NEW;
-		menu->state |= ONLY_DRAW_TITLE;
+		MM_NewLoad_Advance(menu);
 		return;
 	}
 
@@ -407,7 +601,16 @@ void MM_MenuProc_1p2p(struct RectMenu *menu)
 	return;
 
 UNINITIALIZED:
-	previousMenuOwner->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
+	if (MM_NewLoad_InChain())
+	{
+		// "Previous" from a step of the new-file chain, which is the screen before
+		// it,  not the new/load menu it came off.
+		MM_NewLoad_Retreat(menu);
+	}
+	else
+	{
+		MM_Menu_Detach(menu);
+	}
 
 	GAME_TRACKER->numPlyrNextGame = 1;
 
@@ -596,10 +799,8 @@ UNINITIALIZED:
 
 void MM_MenuProc_SingleCup(struct RectMenu *menu)
 {
-	struct RectMenu *previousMenuOwner;
 	s16 row;
 
-	previousMenuOwner = menu;
 	row = menu->rowSelected;
 
 	if (row == -1)
@@ -646,7 +847,7 @@ void MM_MenuProc_SingleCup(struct RectMenu *menu)
 	return;
 
 UNINITIALIZED:
-	previousMenuOwner->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
+	MM_Menu_Detach(menu);
 }
 
 void MM_MenuProc_NewLoad(struct RectMenu *menu)
@@ -659,21 +860,9 @@ void MM_MenuProc_NewLoad(struct RectMenu *menu)
 	switch (row)
 	{
 	case 0:
-		if (g_config.multiplayerAdventure)
-		{
-			menu->ptrNextBox_InHierarchy = &MM_MENU_PLAYERS_1P2P;
-			menu->ptrNextBox_InHierarchy->rowSelected = 0;
-			menu->state |= ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY;
-			return;
-		}
-
-		// MM_Title transitioning out
-		MM_TITLE_MENU_STATE = TITLE_MENU_STATE_EXITING;
-
-		// New was chosen
-		MM_DESIRED_MENU_INDEX = MM_EXIT_ROUTE_ADV_NEW;
-
-		menu->state |= ONLY_DRAW_TITLE;
+		// "New" enters the chain; the chain decides which screens are actually
+		// in it, from the options.
+		MM_NewLoad_Begin(menu);
 		return;
 
 	case 1:
