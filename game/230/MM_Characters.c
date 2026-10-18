@@ -961,12 +961,14 @@ void MM_Characters_MenuProc(struct RectMenu *unused)
 			}
 
 			// if returning to main menu
-			if (MM_NewLoad_ReturnsToRacerCount())
+			struct RectMenu *previous = MM_NewLoad_PreviousMenu();
+
+			if (previous != NULL)
 			{
-				// This character select was reached through the new-file chain, which
-				// puts the racer count in front of it. Going back to the title alone
-				// would skip that screen, so the chain is rebuilt up to it.
-				MM_NewLoad_ResumeFromCharacterSelect();
+				// This character select was reached through the new-file chain, so the
+				// screen it came from is rebuilt and the return goes there instead of to
+				// the title, which would skip it.
+				MM_NewLoad_ResumeFromCharacterSelect(previous);
 			}
 			else
 			{

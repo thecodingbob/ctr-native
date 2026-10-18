@@ -3,6 +3,8 @@
 #ifndef CTR_NATIVE_MM_FULLSCREEN_MENU_C
 #define CTR_NATIVE_MM_FULLSCREEN_MENU_C
 
+#include <stdio.h>
+
 // ================= shared full-screen menu layout and navigation =================
 //
 // Any menu that is a full-screen box: an opaque frame, a title, and a scrolling list of
@@ -76,6 +78,50 @@ static void FullScreenMenu_DrawPercent(int percent, int y, uint32_t *ot)
 
 	snprintf(text, sizeof(text), "%d%%", percent);
 	DecalFont_DrawLineOT(text, FULLSCREEN_MENU_VALUE_X, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+}
+
+// ================= value column =================
+//
+// Everything that can sit in the value column goes through here, so the column, the font
+// and the colour are written once. What a value looks like is the only thing that differs
+// between rows, and that is what these four are for.
+
+// A piece of text: an option's name, or what a row that has no number of its own shows.
+static void FullScreenMenu_DrawValueText(const char *text, int y, uint32_t *ot)
+{
+	DecalFont_DrawLineOT((char *)text, FULLSCREEN_MENU_VALUE_X, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+}
+
+static void FullScreenMenu_DrawOnOff(bool on, int y, uint32_t *ot)
+{
+	FullScreenMenu_DrawValueText(on ? "ON" : "OFF", y, ot);
+}
+
+// A number with a unit after it, for a setting that is not a percentage: seconds, frames,
+// megabytes. The unit is what tells two settings apart when both are plain numbers.
+static void FullScreenMenu_DrawValueWithSuffix(int value, const char *suffix, int y, uint32_t *ot)
+{
+	char text[16];
+
+	snprintf(text, sizeof(text), "%d%s", value, suffix);
+	FullScreenMenu_DrawValueText(text, y, ot);
+}
+
+// One name out of a list, drawn where its value goes. A value outside the list falls back
+// to the first name, so a setting restored from a file cannot leave its row blank.
+static const char *FullScreenMenu_ChoiceName(const char *const *choices, int count, int value)
+{
+	if ((choices == NULL) || (count <= 0))
+	{
+		return "";
+	}
+
+	if ((value < 0) || (value >= count))
+	{
+		return choices[0];
+	}
+
+	return choices[value];
 }
 
 // Frames a held Left/Right waits before it steps again, so one press moves a single step
@@ -215,6 +261,145 @@ static int FullScreenMenu_MoveRow(struct FullScreenMenu_Scroll *scroll, int sele
 	scroll->offset = FullScreenMenu_ScrollOffsetFor(scroll, selected, numRows);
 
 	return selected;
+}
+
+// ================= settings list =================
+//
+// A list of labelled rows that each hold one value. This is the shape the options menu
+// builds for a section, and the shape any other screen that only sets values can use
+// instead of drawing its own rows: Up/Down choose a row, Left/Right step its value, X
+// cycles it, and the screen answers the rows marked as actions itself.
+
+enum FullScreenMenu_RowKind
+{
+	FULLSCREEN_ROW_TOGGLE, // ON or OFF
+	FULLSCREEN_ROW_CHOICE, // one name out of a list
+	FULLSCREEN_ROW_STEP,   // a number in a range, drawn with a unit
+	FULLSCREEN_ROW_ACTION, // no value of its own; the screen answers it
+};
+
+struct FullScreenMenu_Row
+{
+	const char *label;
+	enum FullScreenMenu_RowKind kind;
+	const char *const *choices; // FULLSCREEN_ROW_CHOICE names
+	int count;                  // choices, or the top of the range for a step row
+	int min;                    // FULLSCREEN_ROW_STEP
+	int step;                   // FULLSCREEN_ROW_STEP
+	const char *suffix;         // FULLSCREEN_ROW_STEP unit
+};
+
+struct FullScreenMenu_List
+{
+	const struct FullScreenMenu_Row *rows;
+	int numRows;
+	int *values; // one per row, owned by the screen
+	struct FullScreenMenu_Scroll scroll;
+};
+
+static void FullScreenMenu_DrawRowValue(const struct FullScreenMenu_Row *row, int value, int y, uint32_t *ot)
+{
+	switch (row->kind)
+	{
+	case FULLSCREEN_ROW_TOGGLE:
+		FullScreenMenu_DrawOnOff(value != 0, y, ot);
+		break;
+
+	case FULLSCREEN_ROW_CHOICE:
+		FullScreenMenu_DrawValueText(FullScreenMenu_ChoiceName(row->choices, row->count, value), y, ot);
+		break;
+
+	case FULLSCREEN_ROW_STEP:
+		FullScreenMenu_DrawValueWithSuffix(value, row->suffix, y, ot);
+		break;
+
+	case FULLSCREEN_ROW_ACTION:
+		// An action row has no value to put in the column.
+		break;
+	}
+}
+
+// What a direction does to a row. Only a row with a range to move within answers one, which
+// is what the options menu does with its sliders: a choice and a toggle are changed by the
+// confirm button and not by the directions, so a held direction cannot run them. Reports
+// whether the value moved.
+static bool FullScreenMenu_ListStep(struct FullScreenMenu_List *list, int row, int direction)
+{
+	const struct FullScreenMenu_Row *spec = &list->rows[row];
+	int *value = &list->values[row];
+
+	if (spec->kind != FULLSCREEN_ROW_STEP)
+	{
+		return false;
+	}
+
+	return FullScreenMenu_OptionStep(value, direction, spec->min, spec->count, spec->step);
+}
+
+// What the confirm button does to a row that holds a value: a toggle flips and a choice
+// moves to the next name, round the end of the list and back to the first. A row with a
+// range has no single next value, so the button leaves it to the directions, and neither
+// touches a row the screen answers itself. Reports whether the value moved.
+static bool FullScreenMenu_ListActivate(struct FullScreenMenu_List *list, int row)
+{
+	const struct FullScreenMenu_Row *spec = &list->rows[row];
+	int *value = &list->values[row];
+
+	switch (spec->kind)
+	{
+	case FULLSCREEN_ROW_TOGGLE:
+		*value = (*value != 0) ? 0 : 1;
+		return true;
+
+	case FULLSCREEN_ROW_CHOICE:
+	{
+		if (spec->count <= 0)
+		{
+			return false;
+		}
+
+		*value = (*value + 1) % spec->count;
+		return true;
+	}
+
+	case FULLSCREEN_ROW_STEP:
+	case FULLSCREEN_ROW_ACTION:
+		return false;
+	}
+
+	return false;
+}
+
+// Whether a row is one the screen has to answer, rather than one that only holds a value.
+static bool FullScreenMenu_RowIsAction(const struct FullScreenMenu_Row *row)
+{
+	return row->kind == FULLSCREEN_ROW_ACTION;
+}
+
+// Keeps the selection inside the list and the list scrolled to it, for when rows have been
+// added or taken away since the last frame.
+static void FullScreenMenu_ListFollow(struct FullScreenMenu_List *list, int *selected)
+{
+	*selected = FullScreenMenu_ClampRow(*selected, list->numRows);
+	list->scroll.offset = FullScreenMenu_ScrollOffsetFor(&list->scroll, *selected, list->numRows);
+}
+
+static void FullScreenMenu_DrawList(struct FullScreenMenu_List *list, int selected, struct GameTracker *gGT, uint32_t *ot)
+{
+	const int visibleEnd = FullScreenMenu_VisibleEnd(&list->scroll, list->numRows);
+
+	for (int i = list->scroll.offset; i < visibleEnd; i++)
+	{
+		const int y = FullScreenMenu_RowY(i - list->scroll.offset);
+
+		FullScreenMenu_DrawRowLabel(list->rows[i].label, y, ot);
+		FullScreenMenu_DrawRowValue(&list->rows[i], list->values[i], y, ot);
+
+		if (i == selected)
+		{
+			FullScreenMenu_DrawRowHighlight(gGT, ot, y);
+		}
+	}
 }
 
 #endif // CTR_NATIVE_MM_FULLSCREEN_MENU_C

@@ -954,6 +954,21 @@ identically; `HARD_CRATES` and `BOT_TAKES_THE_WHEEL` will not (§7).
    entirely.
 4. **`HARD_CRATES` RNG.** Accept that it breaks replay verification, or
    snapshot-and-restore `sdata->randomNumber` around the tumble?
+5. **Tests for the setup screens and the menu chain.** Deferred until the flow stops
+   moving. Two extractions, both of which only need `common.h` and a header:
+   - `include/chaos_setting_rows.h` — the settings row indices and count as pure
+     functions of the trigger. Pins the invariant that `Confirm` is the last row and
+     that a timed trigger keeps one row more than an untimed one.
+   - `game/230/MM_NewLoadChain.c` — the walk, the links and `parentOf` extracted out of
+     `MM_MenuFlow.c`, which keeps only the glue: `g_config`, the chaos hand-over, the
+     title state. `struct RectMenu` is header-only, so a suite can drive the whole
+     state machine without the game.
+
+   Both exist because the flow shipped several defects that a test would have caught
+   first time: one press walking three screens in a frame, a per-session guard that
+   froze navigation for the rest of the session, a `NULL` parent on retreat (crash to
+   desktop), the previous menu read after the unwind had cleared it, and a row count
+   that double-counted the interval row.
 
 ## 9. Estimated shape
 
