@@ -25,13 +25,10 @@ void MM_MenuProc_Chaos(struct RectMenu *menu)
 		return;
 	}
 
-	// Row 0 is "Chaos", row 1 is "Regular". The settings that go with the answer
-	// are the next step of this work; this only records the switch for the
-	// session, and the row the cursor is on is what the box goes on showing.
+	// Row 0 is "Chaos", row 1 is "Regular". Either answer describes a file that is about
+	// to be created, so whatever a file made earlier in the session left in the live
+	// settings starts over here.
 	sdata->chaosArmed = (row == 0);
-
-	// Either answer describes a file that is about to be created, so whatever a
-	// file made earlier in the session left in the live settings starts over here.
 	GAMEPROG_ResetChaosSettings(&sdata->chaosSettings);
 	sdata->chaosSettings.armed = sdata->chaosArmed;
 

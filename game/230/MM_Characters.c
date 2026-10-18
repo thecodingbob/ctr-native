@@ -961,7 +961,17 @@ void MM_Characters_MenuProc(struct RectMenu *unused)
 			}
 
 			// if returning to main menu
-			MM_JumpTo_Title_Returning();
+			if (MM_NewLoad_ReturnsToRacerCount())
+			{
+				// This character select was reached through the new-file chain, which
+				// puts the racer count in front of it. Going back to the title alone
+				// would skip that screen, so the chain is rebuilt up to it.
+				MM_NewLoad_ResumeFromCharacterSelect();
+			}
+			else
+			{
+				MM_JumpTo_Title_Returning();
+			}
 			MM_Characters_HideDrivers();
 			return;
 		}

@@ -5,6 +5,10 @@ extern struct MenuRow s_rowsMainMenuBasicConfig[];
 extern struct MenuRow s_rowsMainMenuWithSBConfig[];
 extern struct RectMenu g_configMenu;
 
+// Defined in MM_ChaosConfig.c, which 230.c includes after this file.
+extern struct RectMenu MM_menuChaosConfig;
+extern struct RectMenu MM_menuChaosEffects;
+
 // ================= cascading menu navigation =================
 
 // The only two places a menu box is linked to another or unlinked.
@@ -56,6 +60,20 @@ enum NewLoadStep
 // chain starts and where it lands when there is nothing behind it.
 static int s_newLoadStep = -1;
 
+// Whether the Chaos setup screens have already been offered for the file being created.
+//
+// The chain hands over to them on its way out, so without this a file created with Chaos
+// would be offered the settings again every time the chain closed, and finishing the
+// settings would hand back to itself forever.
+static bool s_chaosSetupOffered;
+
+// Whether the racer count is the screen character select should come back to.
+//
+// Set when the new-file chain closes, cleared when the chain starts and when a save is
+// loaded instead, so it can only ever apply to a character select that this chain sent
+// the player to.
+static bool s_returnToRacerCount;
+
 // What each step hangs off. Backing out has to put a step back where *it* was, not
 // where the step being left hangs off, which is a different menu once there is more
 // than one step: the racer count hangs off the Chaos prompt, not off the new/load
@@ -105,6 +123,8 @@ static struct RectMenu *MM_NewLoad_StepAway(int from, int walk)
 // an immediate crash.
 static void MM_NewLoad_Unwind(void)
 {
+	s_chaosSetupOffered = false;
+
 	for (int step = s_newLoadStep; step >= 0; step--)
 	{
 		struct RectMenu *screen = MM_NewLoad_Screen(step);
@@ -132,10 +152,32 @@ static void MM_NewLoad_Unwind(void)
 // The chain is finished: leave the title the way "New" always did.
 static void MM_NewLoad_Exit(void)
 {
+	// A file being created with Chaos still has its settings to pick, and those screens
+	// are not steps of the chain, so the chain stops here and hands over instead of
+	// closing. Offering them is recorded, which is what keeps MM_NewLoad_FinishChaosSetup
+	// from handing back to itself for ever.
+	if (sdata->chaosArmed && !s_chaosSetupOffered)
+	{
+		s_chaosSetupOffered = true;
+		sdata->ptrDesiredMenu = &MM_MENU_CHAOS_CONFIG;
+		return;
+	}
+
 	MM_NewLoad_Unwind();
+
+	// The Chaos screens and the racer count both ran as menus in their own right, so the
+	// title menu may not be the active one any more. Nothing drives the fade-out below
+	// until it is, so hand it back before asking to leave.
+	if (sdata->ptrActiveMenu != &MM_MENU_MAIN)
+	{
+		sdata->ptrDesiredMenu = &MM_MENU_MAIN;
+	}
 
 	MM_TITLE_MENU_STATE = TITLE_MENU_STATE_EXITING;
 	MM_DESIRED_MENU_INDEX = MM_EXIT_ROUTE_ADV_NEW;
+
+	// Character select is the next screen, and backing out of it lands here again.
+	s_returnToRacerCount = true;
 
 	// The new/load menu keeps its title bar, as it did when New left the title
 	// directly, so its rows do not redraw under the fade out.
@@ -151,6 +193,15 @@ static bool MM_NewLoad_InChain(void)
 static void MM_NewLoad_Begin(struct RectMenu *parent)
 {
 	s_newLoadStep = -1;
+	s_chaosSetupOffered = false;
+	s_returnToRacerCount = false;
+
+	// The answer for a file being created starts as Regular, and only answering Chaos on
+	// the prompt turns it on. Without this the answer survives from whatever the last file
+	// in the session left behind: with the prompt turned off nothing ever writes it, so a
+	// file created with Chaos earlier would still be offered the settings, and its card
+	// slot would still be marked.
+	sdata->chaosArmed = false;
 
 	struct RectMenu *screen = MM_NewLoad_StepAway(s_newLoadStep + 1, 1);
 
@@ -195,7 +246,104 @@ void MM_NewLoad_Retreat(struct RectMenu *screen)
 		return;
 	}
 
-	MM_Menu_Attach(s_newLoadParentOf[s_newLoadStep], previous);
+	struct RectMenu *parent = s_newLoadParentOf[s_newLoadStep];
+
+	// A step with no parent recorded cannot be put back anywhere, and handing a NULL
+	// parent to MM_Menu_Attach would be a write through it. Treat it as leaving the chain,
+	// which is where the screen behind it was already going.
+	if (parent == NULL)
+	{
+		s_newLoadStep = -1;
+		return;
+	}
+
+	MM_Menu_Attach(parent, previous);
+}
+
+// The Chaos settings have been picked: let the chain close for real.
+void MM_NewLoad_FinishChaosSetup(void)
+{
+	// Recorded before the close, because the close is what would otherwise hand back here.
+	s_chaosSetupOffered = true;
+
+	MM_NewLoad_Exit();
+}
+
+// The Chaos settings were left before they were finished, so the player can still change
+// their mind.
+//
+// The title menu is put back rather than one of the chain's steps promoted. The chain was
+// handed over before MM_NewLoad_Unwind ran, so it is still linked up, and restoring the
+// title brings the whole hierarchy with it: the step that was last answered ends up in
+// front, and the title transitions put it where it belongs. Promoting a step on its own
+// would draw it in the top left, because the chain's boxes are positioned by the title
+// update and never meant to stand alone.
+void MM_NewLoad_ReturnFromChaosSetup(void)
+{
+	// Cleared so that answering the step again offers the settings again, which is the
+	// point of coming back: the player is here because they want to change something.
+	s_chaosSetupOffered = false;
+
+	sdata->ptrDesiredMenu = &MM_MENU_MAIN;
+}
+
+// Whether the racer count is the screen character select should come back to. Read once
+// and consumed, so a character select reached any other way later in the session cannot
+// inherit the answer.
+bool MM_NewLoad_ReturnsToRacerCount(void)
+{
+	const bool returning = s_returnToRacerCount;
+
+	s_returnToRacerCount = false;
+
+	return returning;
+}
+
+// Coming back from character select after the new-file chain.
+//
+// Retail returns to the title from here, which used to land on the new/load menu because
+// the racer count did not exist yet. The chain puts it in front of character select, so
+// skipping it now throws away a screen the player was just on.
+//
+// The chain is closed by the time this runs, so it is rebuilt here by walking forward the
+// way MM_NewLoad_Begin does. Every step has to be rebuilt, not just the racer count:
+// MM_NewLoad_Unwind cleared s_newLoadParentOf, and rebuilding only the last step would
+// leave the step before it with no parent to hang off, which is a NULL write the first
+// time the player backs out of the racer count.
+void MM_NewLoad_ResumeFromCharacterSelect(void)
+{
+	MM_JumpTo_Title_Returning();
+
+	if (MM_NewLoad_Screen(NEWLOAD_STEP_PLAYERS) == NULL)
+	{
+		// The racer count is off, so there is nothing to come back to and the title is
+		// where the return belongs, exactly as it was before the chain existed.
+		return;
+	}
+
+	s_chaosSetupOffered = false;
+
+	// Same walk as MM_NewLoad_Begin: each step hangs off the one before it, and only the
+	// steps the chain would have walked are rebuilt, so a config with the prompt turned
+	// off does not get one back.
+	struct RectMenu *parent = &MM_MENU_ADVENTURE;
+
+	for (int step = NEWLOAD_STEP_CHAOS; step <= NEWLOAD_STEP_PLAYERS; step++)
+	{
+		struct RectMenu *screen = MM_NewLoad_Screen(step);
+
+		if (screen == NULL)
+		{
+			continue;
+		}
+
+		s_newLoadParentOf[step] = parent;
+		s_newLoadStep = step;
+
+		MM_Menu_Attach(parent, screen);
+
+		parent = screen;
+	}
 }
 
 s32 MM_TransitionInOut(struct TransitionMeta *meta, s32 framesPassed, s32 numFrames)
@@ -872,6 +1020,10 @@ void MM_MenuProc_NewLoad(struct RectMenu *menu)
 
 		// Load was chosen
 		MM_DESIRED_MENU_INDEX = MM_EXIT_ROUTE_ADV_LOAD;
+
+		// Loading a save is not the new-file chain, so nothing must send character
+		// select back to a racer count.
+		s_returnToRacerCount = false;
 
 		menu->state |= ONLY_DRAW_TITLE;
 		return;

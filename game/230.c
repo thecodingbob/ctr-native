@@ -25,6 +25,11 @@
 #define MM_MENU_RACE_TYPE                                 (D230.menuRaceType)
 #define MM_MENU_ADVENTURE                                 (D230.menuAdventure)
 #define MM_MENU_CHAOS_PROMPT                              (D230.menuChaosPrompt)
+// The Chaos setup screens are plain globals rather than D230 members: they draw and edit
+// their own rows and keep their scroll position in file statics, and an overlay restore
+// replaying D230 must not be able to reach them.
+#define MM_MENU_CHAOS_CONFIG                               (MM_menuChaosConfig)
+#define MM_MENU_CHAOS_EFFECTS                              (MM_menuChaosEffects)
 #define MM_MENU_POINTERS                                  (D230.arrayMenuPtrs)
 #define MM_MENU_CHARACTER_SELECT                          (D230.menuCharacterSelect)
 #define MM_MENU_HIGH_SCORES                               (D230.menuHighScores)
@@ -242,6 +247,7 @@
 #include "230/MM_ControlsConfig.c"
 #include "230/MM_MenuFlow.c"
 #include "230/MM_Chaos.c"
+#include "230/MM_ChaosConfig.c"
 #include "230/MM_QuickRace.c"
 #include "230/MM_Title.c"
 #include "230/MM_CheatCodes.c"
