@@ -31,8 +31,6 @@ enum DrawLevelOvr1PDepth
 	DRAW_LEVEL_OVR1P_MAX_OT_INDEX = 1020,
 	DRAW_LEVEL_OVR1P_RECURSION_FRAME_SIZE = 0xb8,
 	DRAW_LEVEL_OVR1P_MAX_NEAR_SUBDIV_DEPTH = 2,
-	DRAW_LEVEL_OVR1P_CLIP_RECORD_GT3_SIZE = 0x30,
-	DRAW_LEVEL_OVR1P_CLIP_RECORD_GT4_SIZE = 0x3c,
 	DRAW_LEVEL_OVR1P_CLIP_RECORD_PRIM_RESERVE = 0xd68,
 	DRAW_LEVEL_OVR1P_BUCKET_RESERVE_4X1 = 0x1040,
 	DRAW_LEVEL_OVR1P_BUCKET_RESERVE_4X2 = 0x1380,
@@ -942,20 +940,6 @@ static u8 *DrawLevelOvr1P_GetClipRecordEnd(void)
 	}
 
 	return start + ((u32)MainDB_GetClipSize(gGT->levelID, gGT->numPlyrCurrGame) << 2);
-}
-
-static u32 DrawLevelOvr1P_GetClipRecordSize(int count)
-{
-	return count == 4 ? DRAW_LEVEL_OVR1P_CLIP_RECORD_GT4_SIZE : DRAW_LEVEL_OVR1P_CLIP_RECORD_GT3_SIZE;
-}
-
-static int DrawLevelOvr1P_HasClipRecordSpace(u32 size)
-{
-	u8 *start = DrawLevelOvr1P_GetClipRecordStart();
-	u8 *cursor = DrawLevelOvr1P_GetClipRecordCursor();
-	u8 *end = DrawLevelOvr1P_GetClipRecordEnd();
-
-	return start != NULL && cursor != NULL && end != NULL && cursor >= start && cursor <= end && size <= (u32)(end - cursor);
 }
 
 static u8 DrawLevelOvr1P_MipsSubuSignBit(u32 lhs, u32 rhs)
@@ -2421,77 +2405,6 @@ static void DrawLevelOvr1P_AdjustFullDynamicMidVertices(struct DrawLevelOvr1PScr
 	Ovr226_800a1408_AdjustFullDynamicMidVertex(projected, vertices, block, 8, 2, 3);
 }
 
-static u32 DrawLevelOvr1P_GetPreparedProjectedMaxDepthCount(const struct DrawLevelOvr1PScratchVertex *projected, const int *indices, int count)
-{
-	u32 maxDepth = projected[indices[0]].depth;
-
-	for (s32 vertexIndex = 1; vertexIndex < count; vertexIndex++)
-	{
-		if (maxDepth < projected[indices[vertexIndex]].depth)
-		{
-			maxDepth = projected[indices[vertexIndex]].depth;
-		}
-	}
-
-	return maxDepth;
-}
-
-static int DrawLevelOvr1P_SourceInsideClipRecordWindow(const struct DrawLevelOvr1PScratchVertex *src)
-{
-	const s16 *center = CTR_VECTOR_DATA(&(DrawLevelOvr1P_Scratch()->projectedCenter));
-	s32 x = (s32)src->pos[0] - center[0];
-	s32 y = (s32)src->pos[1] - center[1];
-	s32 z = (s32)src->pos[2] - center[2];
-
-	if (x < 0)
-	{
-		x = -x;
-	}
-
-	if (y < 0)
-	{
-		y = -y;
-	}
-
-	if (z < 0)
-	{
-		z = -z;
-	}
-
-	// NOTE(aalhendi): Retail 0x800a4f38/0x800a3640 use the sign bit of these
-	// extent checks ANDed together; negative means the source point is inside.
-	u32 insideBits = (u32)(x - 0x100) & (u32)(y - 0x180) & (u32)(z - 0x100);
-	return (s32)insideBits < 0;
-}
-
-static int DrawLevelOvr1P_ShouldWriteRenderedClippedRecord(const struct DrawLevelOvr1PScratchVertex *projected, const int *indices, int count)
-{
-	for (s32 vertexIndex = 0; vertexIndex < count; vertexIndex++)
-	{
-		if (DrawLevelOvr1P_SourceInsideClipRecordWindow(&projected[indices[vertexIndex]]))
-		{
-			return 1;
-		}
-	}
-
-	return 0;
-}
-
-static void DrawLevelOvr1P_CopyClipRecordVertex(struct DrawLevelOvr1PClipRecordVertex *dst, const struct DrawLevelOvr1PScratchVertex *src)
-{
-	CTR_COPY_VEC3(dst->pos, src->pos);
-	dst->flags = src->flags;
-	DrawLevelOvr1P_CopyColorWord(dst->color_hi, src->color_hi);
-	if (NATIVE_PGXP_ACTIVE())
-	{
-		NativePgxp_CopyPosition(&dst->pos[0], &src->pos[0], &src->pos[0]);
-	}
-
-	// NOTE(aalhendi): Retail 0x800a4f78/0x800a3680 OR scratch byte 0x13 into
-	// the record color/code word; the 0x800aa790 consumer uses it for near masks.
-	dst->color_hi[3] |= src->clipHalfNear;
-}
-
 static void DrawLevelOvr1P_StoreRenderedClipRecordHeader(u32 tableWord)
 {
 	// NOTE(aalhendi): Retail rendered helpers 0x800a84dc/0x800aa0fc store
@@ -2499,134 +2412,7 @@ static void DrawLevelOvr1P_StoreRenderedClipRecordHeader(u32 tableWord)
 	DrawLevelOvr1P_Scratch()->clipRecordHeader = (DrawLevelOvr1P_GetActiveDrawOrderLow() & 0x80000000u) | ((tableWord & 0x80000000u) >> 1);
 }
 
-static u32 DrawLevelOvr1P_GetRenderedClipRecordHeader(const struct QuadBlock *block, int count)
-{
-	u32 header = DrawLevelOvr1P_Scratch()->clipRecordHeader;
-
-	(void)block;
-
-	// NOTE(aalhendi): Retail 0x800a4dcc/0x800a4e70 ORs the GT4 count bit into
-	// the stored scratch 0x80 polarity word when writing clipped records.
-	if (count == 4)
-	{
-		header |= 1;
-	}
-
-	return header;
-}
-
-static int DrawLevelOvr1P_WriteRenderedClippedRecordAtOt(struct PushBuffer *pb, const struct QuadBlock *block,
-                                                         const struct DrawLevelOvr1PScratchVertex *projected, const int *indices, int count, int faceIndex,
-                                                         const struct TextureLayout *texture, int otIndexOverride)
-{
-	struct DrawLevelOvr1PClipRecord *record;
-	u8 *cursor = DrawLevelOvr1P_GetClipRecordCursor();
-	u32 recordSize = DrawLevelOvr1P_GetClipRecordSize(count);
-	u32 maxDepth;
-	int otIndex;
-
-	(void)texture;
-
-	if (!DrawLevelOvr1P_ShouldWriteRenderedClippedRecord(projected, indices, count))
-	{
-		return 1;
-	}
-
-	if (!DrawLevelOvr1P_HasClipRecordSpace(recordSize))
-	{
-		return 1;
-	}
-
-	maxDepth = DrawLevelOvr1P_GetPreparedProjectedMaxDepthCount(projected, indices, count);
-	otIndex = DrawLevelOvr1P_ResolveProjectedOtIndex(block, projected, maxDepth, faceIndex, otIndexOverride);
-
-	record = (struct DrawLevelOvr1PClipRecord *)cursor;
-	record->header = DrawLevelOvr1P_GetRenderedClipRecordHeader(block, count);
-	record->otEntry = (u32)(u32)&pb->ptrOT[otIndex];
-	// NOTE(aalhendi): Retail terminal near writers 0x800a89dc/0x800aa5fc
-	// store the freshly selected scratch UV metadata, not the caller texture.
-	record->tpage = DrawLevelOvr1P_Scratch()->uv.uv1.halves.high;
-	record->clut = DrawLevelOvr1P_Scratch()->uv.uv0.halves.high;
-
-	for (s32 vertexIndex = 0; vertexIndex < count; vertexIndex++)
-	{
-		DrawLevelOvr1P_CopyClipRecordVertex(&record->vertex[vertexIndex], &projected[indices[vertexIndex]]);
-	}
-
-	DrawLevelOvr1P_SetClipRecordCursor(cursor + recordSize);
-	return 1;
-}
-
-static int DrawLevelOvr1P_WriteWaterRenderedClippedRecordAtOt(struct PushBuffer *pb, const struct QuadBlock *block,
-                                                              const struct DrawLevelOvr1PScratchVertex *projected, const int *indices, int count, int faceIndex,
-                                                              int otIndexOverride)
-{
-	struct DrawLevelOvr1PClipRecord *record;
-	u8 *cursor = DrawLevelOvr1P_GetClipRecordCursor();
-	u32 recordSize = DrawLevelOvr1P_GetClipRecordSize(count);
-	u32 maxDepth;
-	int otIndex;
-
-	if (!DrawLevelOvr1P_ShouldWriteRenderedClippedRecord(projected, indices, count))
-	{
-		return 1;
-	}
-
-	if (!DrawLevelOvr1P_HasClipRecordSpace(recordSize))
-	{
-		return 1;
-	}
-
-	maxDepth = DrawLevelOvr1P_GetPreparedProjectedMaxDepthCount(projected, indices, count);
-	otIndex = DrawLevelOvr1P_ResolveProjectedOtIndex(block, projected, maxDepth, faceIndex, otIndexOverride);
-
-	record = (struct DrawLevelOvr1PClipRecord *)cursor;
-	// NOTE(aalhendi): Retail water direct helpers 0x800a34d4/0x800a3578 set
-	// bit 31 on clipped-record headers so the consumer keeps the NCLIP result.
-	record->header = count == 4 ? 0x80000001u : 0x80000000u;
-	record->otEntry = (u32)(u32)&pb->ptrOT[otIndex];
-	record->tpage = DrawLevelOvr1P_Scratch()->uv.uv1.halves.high;
-	record->clut = DrawLevelOvr1P_Scratch()->uv.uv0.halves.high;
-
-	for (s32 vertexIndex = 0; vertexIndex < count; vertexIndex++)
-	{
-		DrawLevelOvr1P_CopyClipRecordVertex(&record->vertex[vertexIndex], &projected[indices[vertexIndex]]);
-	}
-
-	DrawLevelOvr1P_SetClipRecordCursor(cursor + recordSize);
-	return 1;
-}
-
-static int Ovr226_800a34d4_WriteWaterRenderedClippedRecordAtOtEntry(struct PushBuffer *pb, const struct DrawLevelOvr1PScratchVertex *projected,
-                                                                    const int *indices, int count, u32 *otEntry)
-{
-	struct DrawLevelOvr1PClipRecord *record;
-	u8 *cursor = DrawLevelOvr1P_GetClipRecordCursor();
-	u32 recordSize = DrawLevelOvr1P_GetClipRecordSize(count);
-
-	(void)pb;
-
-	if (!DrawLevelOvr1P_ShouldWriteRenderedClippedRecord(projected, indices, count))
-	{
-		return 1;
-	}
-
-	record = (struct DrawLevelOvr1PClipRecord *)cursor;
-	// NOTE(aalhendi): Retail water-rendered clipped-record writers
-	// 0x800a34d4/0x800a3578 store the inherited GP/OT pointer directly.
-	record->header = count == 4 ? 0x80000001u : 0x80000000u;
-	record->otEntry = (u32)(u32)otEntry;
-	record->tpage = DrawLevelOvr1P_Scratch()->uv.uv1.halves.high;
-	record->clut = DrawLevelOvr1P_Scratch()->uv.uv0.halves.high;
-
-	for (s32 vertexIndex = 0; vertexIndex < count; vertexIndex++)
-	{
-		DrawLevelOvr1P_CopyClipRecordVertex(&record->vertex[vertexIndex], &projected[indices[vertexIndex]]);
-	}
-
-	DrawLevelOvr1P_SetClipRecordCursor(cursor + recordSize);
-	return 1;
-}
+#include "226_clip_records.h"
 
 static int DrawLevelOvr1P_ShouldEmitClipRecordNclip(s32 nclip, const struct DrawLevelOvr1PClipRecord *record)
 {
@@ -4914,40 +4700,6 @@ static void Ovr226_800a4950_StoreGround4x1RenderedClipHeader(u32 tableWord)
 	DrawLevelOvr1P_StoreRenderedClipRecordHeader(tableWord);
 }
 
-static int Ovr226_800a4dcc_WriteGround4x1RenderedClippedRecordAtOtEntry(struct PushBuffer *pb, const struct QuadBlock *block,
-                                                                        const struct DrawLevelOvr1PScratchVertex *projected, const int *indices, int count,
-                                                                        u32 *otEntry)
-{
-	u8 *cursor = DrawLevelOvr1P_GetClipRecordCursor();
-	u32 recordSize = DrawLevelOvr1P_GetClipRecordSize(count);
-
-	(void)pb;
-
-	if (otEntry == NULL)
-	{
-		return 1;
-	}
-
-	if (!DrawLevelOvr1P_ShouldWriteRenderedClippedRecord(projected, indices, count))
-	{
-		return 1;
-	}
-
-	struct DrawLevelOvr1PClipRecord *record = (struct DrawLevelOvr1PClipRecord *)cursor;
-	record->header = DrawLevelOvr1P_GetRenderedClipRecordHeader(block, count);
-	record->otEntry = (u32)(u32)otEntry;
-	record->tpage = DrawLevelOvr1P_Scratch()->uv.uv1.halves.high;
-	record->clut = DrawLevelOvr1P_Scratch()->uv.uv0.halves.high;
-
-	for (s32 vertexIndex = 0; vertexIndex < count; vertexIndex++)
-	{
-		DrawLevelOvr1P_CopyClipRecordVertex(&record->vertex[vertexIndex], &projected[indices[vertexIndex]]);
-	}
-
-	DrawLevelOvr1P_SetClipRecordCursor(cursor + recordSize);
-	return 1;
-}
-
 static int Ovr226_800a4c14_EmitGround4x1RenderedGT3RawOrClip(struct PushBuffer *pb, struct PrimMem *primMem, const struct QuadBlock *block,
                                                              const struct DrawLevelOvr1PScratchVertex *projected, const int *indices,
                                                              const struct TextureLayout *texture, u32 *inheritedOtEntry, int secondary)
@@ -6237,40 +5989,6 @@ static void Ovr226_800a6970_WriteGround4x2RenderedUv(struct DrawLevelOvr1PScratc
 	DrawLevelOvr1P_WriteProjectedUv(projected, indices, texture, tableWord);
 }
 
-static int Ovr226_800a6d6c_WriteGround4x2RenderedClippedRecordAtOtEntry(struct PushBuffer *pb, const struct QuadBlock *block,
-                                                                        const struct DrawLevelOvr1PScratchVertex *projected, const int *indices, int count,
-                                                                        u32 *otEntry)
-{
-	u8 *cursor = DrawLevelOvr1P_GetClipRecordCursor();
-	u32 recordSize = DrawLevelOvr1P_GetClipRecordSize(count);
-
-	(void)pb;
-
-	if (otEntry == NULL)
-	{
-		return 1;
-	}
-
-	if (!DrawLevelOvr1P_ShouldWriteRenderedClippedRecord(projected, indices, count))
-	{
-		return 1;
-	}
-
-	struct DrawLevelOvr1PClipRecord *record = (struct DrawLevelOvr1PClipRecord *)cursor;
-	record->header = DrawLevelOvr1P_GetRenderedClipRecordHeader(block, count);
-	record->otEntry = (u32)(u32)otEntry;
-	record->tpage = DrawLevelOvr1P_Scratch()->uv.uv1.halves.high;
-	record->clut = DrawLevelOvr1P_Scratch()->uv.uv0.halves.high;
-
-	for (s32 vertexIndex = 0; vertexIndex < count; vertexIndex++)
-	{
-		DrawLevelOvr1P_CopyClipRecordVertex(&record->vertex[vertexIndex], &projected[indices[vertexIndex]]);
-	}
-
-	DrawLevelOvr1P_SetClipRecordCursor(cursor + recordSize);
-	return 1;
-}
-
 static int Ovr226_800a6bb4_EmitGround4x2RenderedGT3RawOrClip(struct PushBuffer *pb, struct PrimMem *primMem, const struct QuadBlock *block,
                                                              const struct DrawLevelOvr1PScratchVertex *projected, const int *indices,
                                                              const struct TextureLayout *texture, u32 *inheritedOtEntry, int secondary)
@@ -6698,41 +6416,6 @@ static void Ovr226_800a85b0_WriteDynamicRenderedUv(struct DrawLevelOvr1PScratchV
 	DrawLevelOvr1P_WriteProjectedUv(projected, indices, texture, tableWord);
 }
 
-static int Ovr226_800a898c_WriteDynamicRenderedClippedRecordAtOtEntry(struct PushBuffer *pb, const struct QuadBlock *block,
-                                                                      const struct DrawLevelOvr1PScratchVertex *projected, const int *indices, int count,
-                                                                      u32 *otEntry)
-{
-	struct DrawLevelOvr1PClipRecord *record;
-	u8 *cursor = DrawLevelOvr1P_GetClipRecordCursor();
-	u32 recordSize = DrawLevelOvr1P_GetClipRecordSize(count);
-
-	(void)pb;
-
-	if (otEntry == NULL)
-	{
-		return 1;
-	}
-
-	if (!DrawLevelOvr1P_ShouldWriteRenderedClippedRecord(projected, indices, count))
-	{
-		return 1;
-	}
-
-	record = (struct DrawLevelOvr1PClipRecord *)cursor;
-	record->header = DrawLevelOvr1P_GetRenderedClipRecordHeader(block, count);
-	record->otEntry = (u32)(u32)otEntry;
-	record->tpage = DrawLevelOvr1P_Scratch()->uv.uv1.halves.high;
-	record->clut = DrawLevelOvr1P_Scratch()->uv.uv0.halves.high;
-
-	for (s32 vertexIndex = 0; vertexIndex < count; vertexIndex++)
-	{
-		DrawLevelOvr1P_CopyClipRecordVertex(&record->vertex[vertexIndex], &projected[indices[vertexIndex]]);
-	}
-
-	DrawLevelOvr1P_SetClipRecordCursor(cursor + recordSize);
-	return 1;
-}
-
 static int Ovr226_800a87d4_EmitDynamicRenderedGT3RawOrClip(struct PushBuffer *pb, struct PrimMem *primMem, const struct QuadBlock *block,
                                                            const struct DrawLevelOvr1PScratchVertex *projected, const int *indices,
                                                            const struct TextureLayout *texture, u32 *inheritedOtEntry, int secondary)
@@ -7125,40 +6808,6 @@ static void Ovr226_800aa1d0_WriteQuad4x4RenderedUv(struct DrawLevelOvr1PScratchV
                                                    u32 tableWord)
 {
 	DrawLevelOvr1P_WriteProjectedUv(projected, indices, texture, tableWord);
-}
-
-static int Ovr226_800aa5ac_WriteQuad4x4RenderedClippedRecordAtOtEntry(struct PushBuffer *pb, const struct QuadBlock *block,
-                                                                      const struct DrawLevelOvr1PScratchVertex *projected, const int *indices, int count,
-                                                                      u32 *otEntry)
-{
-	u8 *cursor = DrawLevelOvr1P_GetClipRecordCursor();
-	u32 recordSize = DrawLevelOvr1P_GetClipRecordSize(count);
-
-	(void)pb;
-
-	if (otEntry == NULL)
-	{
-		return 1;
-	}
-
-	if (!DrawLevelOvr1P_ShouldWriteRenderedClippedRecord(projected, indices, count))
-	{
-		return 1;
-	}
-
-	struct DrawLevelOvr1PClipRecord *record = (struct DrawLevelOvr1PClipRecord *)cursor;
-	record->header = DrawLevelOvr1P_GetRenderedClipRecordHeader(block, count);
-	record->otEntry = (u32)(u32)otEntry;
-	record->tpage = DrawLevelOvr1P_Scratch()->uv.uv1.halves.high;
-	record->clut = DrawLevelOvr1P_Scratch()->uv.uv0.halves.high;
-
-	for (s32 vertexIndex = 0; vertexIndex < count; vertexIndex++)
-	{
-		DrawLevelOvr1P_CopyClipRecordVertex(&record->vertex[vertexIndex], &projected[indices[vertexIndex]]);
-	}
-
-	DrawLevelOvr1P_SetClipRecordCursor(cursor + recordSize);
-	return 1;
 }
 
 static int Ovr226_800aa3f4_EmitQuad4x4RenderedGT3RawOrClip(struct PushBuffer *pb, struct PrimMem *primMem, const struct QuadBlock *block,
