@@ -98,5 +98,9 @@ ctr_add_test_suite(test_level_memory_budget
     SOURCES test_level_memory_budget.c
 )
 
+ctr_add_test_suite(test_clip_records
+    SOURCES test_clip_records.c
+)
+
 # Builds the suites without the game, for when only they are in need.
 add_custom_target(tests DEPENDS ${CTR_TEST_SUITES})
