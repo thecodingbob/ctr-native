@@ -1,5 +1,6 @@
 #include <common.h>
 #include <platform/native_draw_distance.h>
+#include "RenderBucket_PgxpTranslation.h"
 
 
 struct RenderBucketEntry
@@ -1201,58 +1202,6 @@ static void RenderBucket_StoreMvpTranslation(struct InstDrawPerPlayer *idpp, con
 	CTC2(viewPos->vz, 7);
 }
 
-// Exact counterpart of GetViewPosition + AdjustViewPositionForMvp, so a model's
-// sub-pixel vertices go through the same view transform its retail neighbours
-// did. Without this every model polygon stays retail and splits against the
-// level geometry beside it.
-static void RenderBucket_StoreMvpTranslationPrecise(struct PushBuffer *pb, struct Instance *inst, struct InstDrawPerPlayer *idpp, const VECTOR *viewPos)
-{
-	if (!NATIVE_PGXP_ACTIVE())
-	{
-		return;
-	}
-
-	double view[9], unused[3], result[3], rotation[9];
-	float cameraPos[3];
-
-	NativePgxp_GetPosition(&pb->pos, &pb->pos.x, cameraPos);
-	NativePgxp_GetTransform(&pb->matrix_ViewProj, &pb->matrix_ViewProj.m[0][0], pb->matrix_ViewProj.t, view, unused);
-
-	if (inst->flags & SCREENSPACE_INSTANCE)
-	{
-		for (int i = 0; i < 3; i++)
-		{
-			result[i] = inst->matrix.t[i];
-		}
-	}
-	else
-	{
-		NativePgxp_ModelViewTranslation(view, inst->matrix.t, &pb->pos.x, cameraPos, result);
-	}
-
-	// Mirror RenderBucket_AdjustViewPositionForMvp: near instances are shifted up
-	// to the full-scale model matrix, and DRAW_HUGE shifts them back down.
-	if ((s32)((u32)viewPos->vz - 0x1000u) < 0)
-	{
-		result[0] *= 4.0;
-		result[1] *= 4.0;
-		result[2] *= 4.0;
-	}
-	if ((inst->flags & DRAW_HUGE) != 0)
-	{
-		result[0] *= 0.25;
-		result[1] *= 0.25;
-		result[2] *= 0.25;
-	}
-
-	for (int i = 0; i < 9; i++)
-	{
-		rotation[i] = (&idpp->mvp.m[0][0])[i];
-	}
-	NativePgxp_SetTransform(&idpp->mvp, &idpp->mvp.m[0][0], idpp->mvp.t, rotation, result);
-	NativePgxp_LoadTransform(&idpp->mvp, &idpp->mvp.m[0][0], idpp->mvp.t, 4);
-}
-
 static struct ModelHeader *RenderBucket_SelectModelHeader(struct Instance *inst, struct PushBuffer *pb, int *lodIndexOut, int *lodExhaustedOut, int viewDepth)
 {
 	struct ModelHeader *mh;
@@ -2114,7 +2063,7 @@ static struct RenderBucketEntry *RenderBucket_QueueDraw(struct Instance *inst, s
 
 	RenderBucket_AdjustViewPositionForMvp(inst, &viewPos);
 	RenderBucket_StoreMvpTranslation(idpp, &viewPos);
-	RenderBucket_StoreMvpTranslationPrecise(pb, inst, idpp, &viewPos);
+	RenderBucket_StoreMvpTranslationPrecise(pb, inst, idpp, viewDepth);
 	mh = RenderBucket_SelectModelHeader(inst, pb, &lodIndex, &lodExhausted, viewDepth);
 	if (mh == 0)
 	{
