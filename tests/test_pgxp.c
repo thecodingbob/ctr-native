@@ -15,6 +15,7 @@
 // build the `test_pgxp` target and run the binary directly.
 
 #include <shared/ctr_test.h>
+#include <common.h>
 
 #include <math.h>
 
@@ -28,8 +29,10 @@
 // native_pgxp.c only reads the mode, so a default instance is enough; the real
 // one is defined in native_config.c.
 NativeConfig g_config;
+struct sData sdata_static;
 
 #include "platform/native_pgxp.c"
+#include "game/RenderBucket/RenderBucket_PgxpTranslation.h"
 
 static u32 PackSxy(int x, int y)
 {
@@ -584,6 +587,71 @@ static void TestVertexLayout(void)
 	CTR_TEST_CHECK_EQ((int)(vertex.w == 0.0f), 1, "a zeroed vertex has no perspective divisor");
 }
 
+static void TestInstanceTranslationScaling(void)
+{
+	CTR_TEST_SECTION("issue #83: instance PGXP translation matches retail across depth thresholds");
+	static const struct
+	{
+		int depth;
+		int retailDepth;
+	} cases[] = {
+		{512, 2048}, {1023, 4092}, {1024, 4096}, {2048, 8192},
+		{4095, 16380}, {4096, 4096}, {4097, 4097}, {8192, 8192},
+	};
+	static const u32 flags[] = {0, DRAW_HUGE, SCREENSPACE_INSTANCE, DRAW_HUGE | SCREENSPACE_INSTANCE};
+
+	for (int mode = PGXP_MODE_GEOMETRY; mode <= PGXP_MODE_PERSPECTIVE; mode++)
+	{
+		for (size_t f = 0; f < len(flags); f++)
+		{
+			for (size_t c = 0; c < len(cases); c++)
+			{
+				Reset();
+				g_config.pgxpMode = mode;
+				struct PushBuffer pb = {0};
+				struct Instance inst = {0};
+				struct InstDrawPerPlayer idpp = {0};
+				pb.matrix_ViewProj.m[0][0] = 4096;
+				pb.matrix_ViewProj.m[1][1] = 4096;
+				pb.matrix_ViewProj.m[2][2] = 4096;
+				pb.pos.x = 7;
+				pb.pos.y = -11;
+				pb.pos.z = 13;
+				inst.flags = flags[f];
+				const int original[3] = {64, -32, cases[c].depth};
+				const int camera[3] = {pb.pos.x, pb.pos.y, pb.pos.z};
+				const double scale = (double)cases[c].retailDepth / cases[c].depth;
+				for (int axis = 0; axis < 3; axis++)
+				{
+					inst.matrix.t[axis] = original[axis] + ((flags[f] & SCREENSPACE_INSTANCE) ? 0 : camera[axis]);
+					idpp.mvp.t[axis] = (int)(original[axis] * scale);
+					if (flags[f] & DRAW_HUGE)
+					{
+						idpp.mvp.t[axis] >>= 2;
+					}
+				}
+
+				// Before the fix this tested the already-scaled retailDepth, losing
+				// the near factor in [1024, 4095] and applying it twice for far DRAW_HUGE.
+				RenderBucket_StoreMvpTranslationPrecise(&pb, &inst, &idpp, cases[c].depth);
+				double rotation[9], translation[3];
+				NativePgxp_GetTransform(&idpp.mvp, &idpp.mvp.m[0][0], idpp.mvp.t, rotation, translation);
+				const double identity[9] = {4096, 0, 0, 0, 4096, 0, 0, 0, 4096};
+				const double zero[3] = {0, 0, 0};
+				double transformed[3];
+				NativePgxp_Transform(0, 0, identity, zero, zero, transformed);
+				for (int axis = 0; axis < 3; axis++)
+				{
+					const double expected = original[axis] * scale * ((flags[f] & DRAW_HUGE) ? 0.25 : 1.0);
+					CTR_TEST_CHECK_NEAR(translation[axis], expected, "stored PGXP translation uses the original depth's scale");
+					CTR_TEST_CHECK_NEAR(transformed[axis] / 4096.0, expected, "live GTE translation uses the same scale as the stored transform");
+				}
+			}
+		}
+	}
+	Reset();
+}
+
 int main(void)
 {
 	CTR_TEST_SECTION("sub-pixel vertex precision");
@@ -602,6 +670,7 @@ int main(void)
 	TestNclipAgreement();
 	TestNclipUnknownVertices();
 	TestVertexLayout();
+	TestInstanceTranslationScaling();
 
 	return CtrTest_Summary();
 }
