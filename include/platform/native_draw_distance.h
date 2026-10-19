@@ -49,6 +49,8 @@ static inline int NativeDrawDistance_BspLodThreshold(int retailThreshold, bool e
 	return extended ? retailThreshold * NATIVE_DRAW_DISTANCE_SCALE : retailThreshold;
 }
 
+// Scale both texture selection and top-level/recursive subdivision: mosaic
+// textures only load their highest-resolution UVs in the deepest helper frame.
 static inline int NativeDrawDistance_TextureLodThreshold(int retailThreshold, bool extended)
 {
 	return extended ? retailThreshold * NATIVE_DRAW_DISTANCE_SCALE : retailThreshold;

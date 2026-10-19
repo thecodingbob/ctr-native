@@ -1,4 +1,5 @@
 #include <common.h>
+#include <platform/native_draw_distance.h>
 
 struct DrawLevelOvr1PFaceSelector
 {
@@ -7932,10 +7933,10 @@ static int Ovr226_800a0ef4_DrawFullDynamicBspList(struct VisMemBspListNode *slot
 static void DrawLevelOvr1P_SetSplitGroundThresholdScratch(void)
 {
 	DrawLevelOvr1P_RenderScratch()->depthScale = 0x780;
-	DrawLevelOvr1P_RenderScratch()->textureLodDepthThreshold0 = 0x640;
-	DrawLevelOvr1P_RenderScratch()->textureLodDepthThreshold1 = 0x500;
-	DrawLevelOvr1P_RenderScratch()->topLevelNearDepthThreshold = 0x280;
-	DrawLevelOvr1P_RenderScratch()->recursiveNearDepthThreshold = 0x140;
+	DrawLevelOvr1P_RenderScratch()->textureLodDepthThreshold0 = NativeDrawDistance_TextureLodThreshold(0x640, g_config.increaseDrawDistance);
+	DrawLevelOvr1P_RenderScratch()->textureLodDepthThreshold1 = NativeDrawDistance_TextureLodThreshold(0x500, g_config.increaseDrawDistance);
+	DrawLevelOvr1P_RenderScratch()->topLevelNearDepthThreshold = NativeDrawDistance_TextureLodThreshold(0x280, g_config.increaseDrawDistance);
+	DrawLevelOvr1P_RenderScratch()->recursiveNearDepthThreshold = NativeDrawDistance_TextureLodThreshold(0x140, g_config.increaseDrawDistance);
 }
 
 static int DrawLevelOvr1P_ProjectSplitGroundListALowGrid(struct LevVertex *vertices, const struct QuadBlock *block,

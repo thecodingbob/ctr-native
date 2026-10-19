@@ -875,11 +875,11 @@ static void RenderAllLevelGeometry_Init1PLodScratch(struct GameTracker *gGT)
 	if ((gGT->levelID == ADVENTURE_GARAGE) || (((gGT->gameMode1 & GAME_CUTSCENE) != 0) && (gGT->levelID != INTRO_CRASH)))
 	{
 		scratch->depthScale = 0x1e00;
-		scratch->bspLodDistanceThreshold = 0x640;
-		scratch->textureLodDepthThreshold0 = 0x640;
-		scratch->textureLodDepthThreshold1 = 0x500;
-		scratch->topLevelNearDepthThreshold = 0x280;
-		scratch->recursiveNearDepthThreshold = 0x140;
+		scratch->bspLodDistanceThreshold = NativeDrawDistance_BspLodThreshold(0x640, g_config.increaseDrawDistance);
+		scratch->textureLodDepthThreshold0 = NativeDrawDistance_TextureLodThreshold(0x640, g_config.increaseDrawDistance);
+		scratch->textureLodDepthThreshold1 = NativeDrawDistance_TextureLodThreshold(0x500, g_config.increaseDrawDistance);
+		scratch->topLevelNearDepthThreshold = NativeDrawDistance_TextureLodThreshold(0x280, g_config.increaseDrawDistance);
+		scratch->recursiveNearDepthThreshold = NativeDrawDistance_TextureLodThreshold(0x140, g_config.increaseDrawDistance);
 		scratch->fullDynamicFadeDepthStart = scratch->bspLodDistanceThreshold + MAIN_RENDER_LEVEL_GEOMETRY_FULL_DYNAMIC_FADE_OFFSET;
 	}
 	else
@@ -894,7 +894,9 @@ static void RenderAllLevelGeometry_Init1PLodScratch(struct GameTracker *gGT)
 		    NativeDrawDistance_TextureLodThreshold(CTR_MipsMulLo(distToScreen, 0xc), g_config.increaseDrawDistance);
 		scratch->topLevelNearDepthThreshold =
 		    NativeDrawDistance_TextureLodThreshold(CTR_MipsMulLo(distToScreen, 7), g_config.increaseDrawDistance);
-		scratch->recursiveNearDepthThreshold = RenderAllLevelGeometry_ScaleDistanceShift8(distToScreen, 0x380);
+		// Mosaic high-resolution textures are reached through recursive subdivision.
+		scratch->recursiveNearDepthThreshold = NativeDrawDistance_TextureLodThreshold(
+		    RenderAllLevelGeometry_ScaleDistanceShift8(distToScreen, 0x380), g_config.increaseDrawDistance);
 		scratch->fullDynamicFadeDepthStart = CTR_MipsAddLo(scratch->bspLodDistanceThreshold, MAIN_RENDER_LEVEL_GEOMETRY_FULL_DYNAMIC_FADE_OFFSET);
 	}
 
