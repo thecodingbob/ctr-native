@@ -1,5 +1,5 @@
 #include <common.h>
-#include <platform/native_draw_distance.h>
+#include "RenderLevelLod.h"
 
 enum RenderListsScratchOffset
 {
@@ -241,8 +241,8 @@ static int RenderLists_Walk1P2P(struct BSP *bspRoot, const int *visLeafList, str
 	struct RenderListsScratchRecord *stackEnd = CTR_SCRATCHPAD_PTR(struct RenderListsScratchRecord, CTR_SCRATCHPAD_SIZE);
 	struct RenderListsScratchRecord *stack = stackBase;
 	struct BSP *branch = bspRoot;
-	int lodDistanceThreshold = (numPlyr == 1) ? CTR_SCRATCHPAD_PTR(struct MainRenderLevelGeometryScratch, 0)->bspLodDistanceThreshold
-	                                       : NativeDrawDistance_BspLodThreshold(0x1540, g_config.increaseDrawDistance);
+	int lodDistanceThreshold = RenderLevelLod_BspThreshold(CTR_SCRATCHPAD_PTR(struct MainRenderLevelGeometryScratch, 0), numPlyr,
+	                                                     g_config.increaseDrawDistance);
 	int count = 0;
 
 	if (bspRoot == 0 || pb == 0)
