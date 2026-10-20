@@ -132,7 +132,8 @@ timers and cadence. `armed` gates execution independently of `chaos_mode`.
 Activations are ordered entries, including duplicates. Expiry runs before
 timed scheduling; new entries receive their full duration. Interval uses the
 configured gap; Random draws each gap between 30% and 100% of that interval,
-including the first one. Both retain frame overshoot. The queue holds 128 entries;
+including the first one. Both retain frame overshoot. The queue holds four entries,
+including repeated activations of the same effect;
 overflow rejects the new request,
 preserving existing entries. A rejected scheduled event consumes its gap but no
 RNG choice. Race resets preserve settings and the dedicated RNG stream.
@@ -173,7 +174,7 @@ Docked labels use 50% of the small font, six-pixel row spacing and a shared righ
 show at most the four most recently activated distinct docked effects, newest
 first; the 2P list starts at Y=32, above the lap counter. Docked labels and docking
 animations use UI OT slot 1, behind lap statistics in the normal HUD layer. This display
-limit does not remove running activations. Duplicates use the newest surviving
+limit matches the runtime activation cap. Duplicates use the newest surviving
 activation's announcement and remain eligible until final expiry. Drawing uses
 the full-screen UI OT. Final Lap is submitted
 after the HUD so its timer still reserves space on its last visible frame.

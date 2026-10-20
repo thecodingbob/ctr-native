@@ -253,6 +253,7 @@ static void TestCapacityAndValidation(void)
 		CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 5000 + i), "each available slot accepts an independent activation");
 	}
 	const struct ChaosRuntime full = sdata->chaosRuntime;
+	CTR_TEST_CHECK_EQ(full.numActive, 4, "at most four activations can run, including repeated effects");
 	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 9999), "a full queue rejects a new request");
 	CTR_TEST_CHECK(memcmp(&full, &sdata->chaosRuntime, sizeof(full)) == 0, "overflow does not evict or refresh existing activations");
 	sdata->chaosRuntime.intervalRemainingMS = 1;
@@ -385,8 +386,26 @@ static void TestRandomTrigger(void)
 		const int gap = sdata->chaosRuntime.intervalRemainingMS;
 		CTR_TEST_CHECK(gap >= 1500 && gap <= 5000, "every new Random gap stays within the configured bounds");
 		varied |= gap != firstGap;
+		int surviving = 0;
+		for (int entry = 0; entry < sdata->chaosRuntime.numActive; entry++)
+		{
+			if (sdata->chaosRuntime.active[entry].remainingMS > gap)
+			{
+				surviving++;
+			}
+		}
+		const int soundsBefore = s_activationSounds;
 		Tick(gap);
-		CTR_TEST_CHECK_EQ(LatestNoticeRemaining(), CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS, "each elapsed Random gap produces a fresh activation");
+		if (surviving < CHAOS_MAX_ACTIVATIONS)
+		{
+			CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, surviving + 1, "Random activates after expiry frees capacity");
+			CTR_TEST_CHECK_EQ(LatestNoticeRemaining(), CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS, "an accepted Random event starts a fresh announcement");
+		}
+		else
+		{
+			CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 4, "Random cannot exceed four simultaneous activations");
+			CTR_TEST_CHECK_EQ(s_activationSounds, soundsBefore, "a Random event rejected at capacity cannot announce an activation");
+		}
 	}
 	CTR_TEST_CHECK(varied, "Random does not silently use a fixed Interval cadence");
 	const struct ChaosRuntime saved = sdata->chaosRuntime;
@@ -722,7 +741,7 @@ static void TestActiveEffectList(void)
 	sdata->finalLapTextTimer[0] = 30;
 	sdata->finalLapTextTimer[1] = 30;
 	DrawNotice();
-	CTR_TEST_CHECK_EQ(s_noticeDraws, CHAOS_EFFECT_COUNT, "a full set of simultaneous announcements remains visible");
+	CTR_TEST_CHECK_EQ(s_noticeDraws, CHAOS_MAX_ACTIVATIONS, "all four accepted simultaneous announcements remain visible");
 	for (int i = 0; i < s_noticeDraws; i++)
 	{
 		CTR_TEST_CHECK(s_drawY[i] + UI_CHAOS_COMPACT_BANNER_ROW_HEIGHT <= SCREEN_HEIGHT,
@@ -733,7 +752,7 @@ static void TestActiveEffectList(void)
 	Tick(CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS);
 	DrawNotice();
 	CTR_TEST_CHECK_EQ(s_noticeDraws, UI_CHAOS_MAX_DOCKED, "the docked table shows at most the four latest distinct effects");
-	CTR_TEST_CHECK(s_noticeY + UI_CHAOS_LIST_ROW_HEIGHT <= SCREEN_HEIGHT, "the full catalogue fits within the screen height");
+	CTR_TEST_CHECK(s_noticeY + UI_CHAOS_LIST_ROW_HEIGHT <= SCREEN_HEIGHT, "all active docked effects fit within the screen height");
 	Chaos_Reset();
 	Chaos_BeginRace(&s_tracker);
 	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 100);
@@ -744,7 +763,7 @@ static void TestActiveEffectList(void)
 
 static void TestHudVisibilityAndDockLimit(void)
 {
-	CTR_TEST_SECTION("1P and 2P show only the four latest docked effects and hide the HUD when racing ends");
+	CTR_TEST_SECTION("1P and 2P show all four active effects and hide the HUD when racing ends");
 	EnableInputEffects();
 	sdata->chaosSettings.trigger = CHAOS_TRIGGER_EXTERNAL;
 	for (int effect = 0; effect < CHAOS_EFFECT_COUNT; effect++)
@@ -758,27 +777,28 @@ static void TestHudVisibilityAndDockLimit(void)
 	s_tracker.backBuffer = &buffer;
 	s_tracker.hudFlags = HUD_FLAG_RACE_HUD;
 	s_tracker.numPlyrCurrGame = 2;
-	for (int effect = 0; effect < 5; effect++)
+	for (int effect = 0; effect < CHAOS_MAX_ACTIVATIONS; effect++)
 	{
-		Chaos_Activate((ChaosEffectId)effect, 30000);
+		Chaos_Activate((ChaosEffectId)effect, effect == 0 ? 5000 : 30000);
 	}
-	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 30000);
+	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 30000), "a fifth activation cannot refresh an already active effect");
 	Tick(CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS);
 	DrawNotice();
 	CTR_TEST_CHECK_EQ(s_noticeDraws, 4, "2P limits the docked list to four distinct effects");
-	CTR_TEST_CHECK(strcmp(s_drawText[0], "Inverted Steering") == 0, "reactivation moves an existing effect to the newest row");
-	CTR_TEST_CHECK(strcmp(s_drawText[1], "Heavy Karts") == 0 && strcmp(s_drawText[3], "Wobble Steering") == 0,
-	               "the docked list keeps the latest activations rather than the first catalogue entries");
+	CTR_TEST_CHECK(strcmp(s_drawText[0], "Low Gravity") == 0, "the latest accepted activation occupies the newest row");
+	CTR_TEST_CHECK(strcmp(s_drawText[1], "Wobble Steering") == 0 && strcmp(s_drawText[3], "Inverted Steering") == 0,
+	               "the docked list orders all four accepted effects by activation recency");
 	CTR_TEST_CHECK_EQ(s_drawY[0], UI_CHAOS_LIST_MULTIPLAYER_TOP, "the 2P docked list starts near the top edge");
 	const int firstPlayerLapCounterY = 71;
 	CTR_TEST_CHECK(s_drawY[3] + UI_CHAOS_LIST_ROW_HEIGHT < firstPlayerLapCounterY,
 	               "all four 2P docked rows stay above the lap counter");
-	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 30000);
+	Tick(5000 - CHAOS_ACTIVATION_NOTICE_MS - CHAOS_ACTIVATION_DOCK_MS);
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 30000), "expiry frees a slot for a new activation");
 	Tick(UI_CHAOS_NOTICE_SLIDE_MS);
 	DrawNotice();
-	CTR_TEST_CHECK_EQ(s_noticeDraws, 5, "a central announcement can coexist with four docked effects");
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 4, "a central announcement can coexist with the three surviving docked effects");
 	CTR_TEST_CHECK_EQ(s_noticeX, SCREEN_WIDTH / 2, "the new 2P announcement is horizontally centered");
-	CTR_TEST_CHECK_EQ(s_noticeY, UI_CHAOS_NOTICE_MULTIPLAYER_Y, "four docked effects cannot push a new 2P announcement toward the bottom");
+	CTR_TEST_CHECK_EQ(s_noticeY, UI_CHAOS_NOTICE_MULTIPLAYER_Y, "docked effects cannot push a new 2P announcement toward the bottom");
 	s_allHumansFinished = true;
 	DrawNotice();
 	CTR_TEST_CHECK_EQ(s_noticeDraws, 0, "all humans finishing hides both central and docked messages before results initialization");
@@ -792,7 +812,7 @@ static void TestHudVisibilityAndDockLimit(void)
 	DrawNotice();
 	CTR_TEST_CHECK_EQ(s_noticeDraws, 4, "1P uses the same four-effect docked limit");
 	CTR_TEST_CHECK(strcmp(s_drawText[0], "Speed Capped") == 0, "the latest newly docked effect occupies the first row");
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 7, "the display limit does not remove any running activation");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 4, "the HUD preserves all four running activations");
 }
 
 static void TestHudLayeringAndSoloStack(void)
@@ -862,7 +882,7 @@ static void TestBannerBaselineWithDockedEffects(void)
 	s_tracker.hudFlags = HUD_FLAG_RACE_HUD;
 	s_tracker.numPlyrCurrGame = 1;
 	s_tracker.pushBuffer[0].rect = (RECT){0, 0, SCREEN_WIDTH, 200};
-	for (int effect = 0; effect < UI_CHAOS_MAX_DOCKED; effect++)
+	for (int effect = 0; effect < CHAOS_MAX_ACTIVATIONS - 1; effect++)
 	{
 		Chaos_Activate((ChaosEffectId)effect, 30000);
 	}
@@ -883,7 +903,7 @@ static void TestBannerBaselineWithDockedEffects(void)
 	s_tracker.numPlyrCurrGame = 2;
 	DrawNotice();
 	CTR_TEST_CHECK_EQ(s_noticeY, UI_CHAOS_NOTICE_MULTIPLAYER_Y,
-	                  "four docked rows do not shift the shared 2P center");
+	                  "three docked rows do not shift the shared 2P center");
 	CTR_TEST_CHECK_EQ(s_drawY[0], 32, "tighter row spacing preserves the user's 2P dock position");
 }
 

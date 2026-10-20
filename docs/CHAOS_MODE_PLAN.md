@@ -34,7 +34,7 @@ The implemented core stores ordered activations and cadence in
 `sdata->chaosRuntime`. Race initialization follows vehicle teleport; updates run
 before driver stages and check eligibility, `armed`, menus and pending loads.
 Pause freezes game-time timers. Expiry precedes scheduling; new entries receive
-full duration and cadence retains overshoot. The 128-entry queue rejects overflow
+full duration and cadence retains overshoot. The four-entry queue rejects overflow
 without eviction/refresh; rejected scheduled events consume their gap but no RNG.
 Race end, retry teardown and level-load stage 0 clear the state.
 
