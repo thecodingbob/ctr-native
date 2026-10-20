@@ -9,6 +9,8 @@ enum
 	CHAOS_STICK_RANGE = 0x80,
 	CHAOS_WOBBLE_RANGE_NUMERATOR = 3,
 	CHAOS_WOBBLE_RANGE_DENOMINATOR = 4,
+	CHAOS_LOW_GRAVITY_DIVISOR = 4,
+	CHAOS_HEAVY_GRAVITY_MULTIPLIER = 3,
 };
 
 static s32 Chaos_NextTriggerGap(void)
@@ -63,6 +65,14 @@ static void Chaos_RemoveConflictingEffects(ChaosEffectId effect)
 	else if (effect == CHAOS_EFFECT_WOBBLE_STEERING)
 	{
 		replaced = CHAOS_EFFECT_INVERTED_STEERING;
+	}
+	else if (effect == CHAOS_EFFECT_LOW_GRAVITY)
+	{
+		replaced = CHAOS_EFFECT_HEAVY_KARTS;
+	}
+	else if (effect == CHAOS_EFFECT_HEAVY_KARTS)
+	{
+		replaced = CHAOS_EFFECT_LOW_GRAVITY;
 	}
 	if (replaced == CHAOS_EFFECT_NONE)
 	{
@@ -126,6 +136,20 @@ bool Chaos_IsActiveForDriver(ChaosEffectId effect, const struct Driver *driver)
 	       (driver->actionsFlagSet & ACTION_RACE_FINISHED) == 0 &&
 	       ChaosEffect_AppliesToDriver(def->scope, driver->driverID, sdata->gGT->numPlyrCurrGame) &&
 	       Chaos_IsActive(effect);
+}
+
+int Chaos_GravityForDriver(const struct Driver *driver)
+{
+	const int gravity = driver->const_Gravity;
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_LOW_GRAVITY, driver))
+	{
+		return gravity / CHAOS_LOW_GRAVITY_DIVISOR;
+	}
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_HEAVY_KARTS, driver))
+	{
+		return gravity * CHAOS_HEAVY_GRAVITY_MULTIPLIER;
+	}
+	return gravity;
 }
 
 static int Chaos_WobbleSteering(const struct ChaosActivation *entry, const struct GamepadBuffer *pad)

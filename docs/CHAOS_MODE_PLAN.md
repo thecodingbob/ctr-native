@@ -4,7 +4,8 @@
 
 Implemented: catalogue/selection helpers, race gate, creation flow, per-slot
 persistence, save marker, pause inspection and runtime timers/Interval/Random scheduling.
-Inverted Steering, No Hopping and Wobble Steering are connected, with an activation-name overlay.
+Inverted Steering, No Hopping, Wobble Steering, Low Gravity and Heavy Karts are
+connected, with an activation-name overlay.
 Pending: remaining effects, Pickup/External triggers, provider and player guide.
 Save layouts and checkpoint ownership are documented in [CHAOS_STATE.md](CHAOS_STATE.md).
 
@@ -79,7 +80,7 @@ for a central dispatcher; generic level collisions also include hazards.
 
 ## Effect hooks
 
-All 16 effects have catalogue IDs/toggles. The first three are implemented; the
+All 16 effects have catalogue IDs/toggles. The first five are implemented; the
 remaining rows are source leads to verify during implementation.
 
 | Effects | Candidate mechanism |
@@ -87,7 +88,7 @@ remaining rows are source leads to verify during implementation.
 | Inverted Steering — done | Mirror a local axis about the active controller center; D-pad already feeds stick resolution; duplicates do not cancel |
 | No Hopping — done | Clear resolved manual hop latch/buffer; preserve drift input/states, forced jumps and rain-cloud ownership |
 | Wobble Steering — done | Two-second sine wave at 75% of the controller range, clamped around its center; deactivates Inverted Steering and vice versa |
-| Low Gravity / Heavy Karts | Override `const_Gravity` |
+| Low Gravity / Heavy Karts — done | Derive effective gravity from the live constant at 1/3 or 2×, before terrain rules; deactivate each other |
 | Speed Capped / Super Speed | Override speed class; Super Speed also needs acceleration constants |
 | No Reserves | Clear `reserves` and `turbo_outsideTimer` together |
 | No Items / Punishing Items | Audit crate and final reel resolution; replacing the roulette sentinel alone is not verified |
@@ -133,7 +134,8 @@ currently recorded, so provider-driven replay verification is not guaranteed.
 ## Delivery and checks
 
 1. Verify the playable effects in game: Interval/Random with only Inverted Steering,
-   No Hopping and Wobble Steering selected; check steering and the activation banner in 1P/2P.
+   No Hopping, Wobble Steering, Low Gravity and Heavy Karts selected; check steering,
+   jumps and the activation banner in 1P/2P.
 2. Baseline/ordered modifier application, remaining effects and contact
    triggers, then External.
 3. `docs/features/CHAOS.md` + README links: creation, scope, stacking, effects,

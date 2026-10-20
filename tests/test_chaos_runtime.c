@@ -592,6 +592,83 @@ static void TestWobbleSteering(void)
 	    "replacement preserves the other unrelated activation and its ordering");
 }
 
+static void TestGravityEffects(void)
+{
+	CTR_TEST_SECTION("gravity effects derive from live driver constants without accumulating or overwriting them");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_HEAVY_KARTS] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_NO_HOPPING] = true;
+	sdata->chaosSettings.enabledCount += 2;
+	struct Driver human = {.driverID = 0, .const_Gravity = 1000, .const_JumpForce = 800};
+	struct Driver partner = {.driverID = 1, .const_Gravity = 1500};
+	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT, .const_Gravity = 2000};
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 1000, "inactive Chaos preserves normal gravity");
+	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 2000);
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 333, "Low Gravity applies one third of the human driver's gravity");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 333, "repeated physics reads do not repeatedly divide gravity");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&partner), 500, "the co-op partner uses their own gravity baseline");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&bot), 2000, "gravity effects leave bots unchanged");
+	CTR_TEST_CHECK_EQ(human.const_Gravity, 1000, "Chaos does not overwrite the stored gravity constant");
+	CTR_TEST_CHECK_EQ(human.const_JumpForce, 800, "Low Gravity preserves the jump impulse");
+	human.const_Gravity = 1200;
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 400, "legitimate constant changes immediately become the new baseline");
+	Tick(500);
+	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 500);
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 400, "duplicate Low Gravity entries do not compound");
+	Tick(500);
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 400, "one copy expiring does not cancel a surviving copy");
+	Tick(1000);
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 1200, "final expiry immediately uses the current baseline rather than a stale snapshot");
+	Chaos_Activate(CHAOS_EFFECT_HEAVY_KARTS, 3000);
+	Chaos_Activate(CHAOS_EFFECT_HEAVY_KARTS, 3000);
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 2400, "Heavy Karts doubles gravity once even with duplicate entries");
+	CTR_TEST_CHECK_EQ(human.const_JumpForce, 800, "Heavy Karts changes gravity without disabling the jump impulse");
+	human.const_Gravity = 32767;
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 65534, "effective gravity remains a full integer rather than overflowing the stored halfword");
+	human.const_Gravity = 1200;
+	const struct ChaosRuntime saved = sdata->chaosRuntime;
+	s_tracker.gameMode1 |= PAUSE_1;
+	Tick(5000);
+	CTR_TEST_CHECK(memcmp(&saved, &sdata->chaosRuntime, sizeof(saved)) == 0, "pause freezes gravity effect lifetimes");
+	s_tracker.gameMode1 &= ~PAUSE_1;
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 2400, "unpausing retains the gravity modifier");
+	human.actionsFlagSet = ACTION_RACE_FINISHED;
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 1200, "finished humans immediately use normal gravity");
+	human.actionsFlagSet = 0;
+	Tick(3000);
+	sdata->chaosRuntime = saved;
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 2400, "resident restoration needs no separate baseline repair");
+	Chaos_Reset();
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 1200, "reset leaves no modified driver constants behind");
+
+	CTR_TEST_SECTION("opposite gravity effects deactivate each other while preserving jumping and unrelated effects");
+	Chaos_BeginRace(&s_tracker);
+	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 10000);
+	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 3000);
+	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 2000);
+	Chaos_Activate(CHAOS_EFFECT_HEAVY_KARTS, 1000);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 2, "Heavy Karts replaces every Low Gravity copy but preserves unrelated effects");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_LOW_GRAVITY), "replaced Low Gravity entries are permanently deactivated");
+	CTR_TEST_CHECK(Chaos_IsActive(CHAOS_EFFECT_NO_HOPPING), "gravity replacement leaves No Hopping active");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 2400, "the latest gravity effect takes effect immediately");
+	Tick(1000);
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 1200, "expiry of Heavy Karts cannot revive replaced Low Gravity");
+	Chaos_Activate(CHAOS_EFFECT_HEAVY_KARTS, 3000);
+	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 1000);
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_HEAVY_KARTS), "Low Gravity also permanently deactivates Heavy Karts");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 400, "Low Gravity can replace Heavy Karts without multiplying modified values");
+	Tick(1000);
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 1200, "expiry of Low Gravity cannot revive replaced Heavy Karts");
+	Chaos_Reset();
+	Chaos_BeginRace(&s_tracker);
+	Chaos_Activate(CHAOS_EFFECT_HEAVY_KARTS, 1000);
+	CTR_TEST_CHECK((PreparedJump(&human, BTN_L1, BTN_L1, RAIN_CLOUD_EFFECT_NONE, 0) & ACTION_JUMP_BUTTON_HELD) != 0,
+	    "Heavy Karts still allows manual hops");
+	CTR_TEST_CHECK_EQ(human.jump_TenBuffer, 10, "Heavy Karts retains the retail hop buffer");
+	s_tracker.gameMode1 |= ADVENTURE_ARENA;
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 1200, "Adventure hubs cannot receive gravity modifiers");
+}
+
 static void TestHopInputAndCloudOwnership(void)
 {
 	CTR_TEST_SECTION("No Hopping clears pending manual jumps without overwriting retail cloud effects");
@@ -881,7 +958,7 @@ static void TestHudVisibilityAndDockLimit(void)
 	s_tracker.numPlyrCurrGame = 2;
 	const ChaosEffectId effects[] = {
 		CHAOS_EFFECT_INVERTED_STEERING, CHAOS_EFFECT_NO_HOPPING,
-		CHAOS_EFFECT_LOW_GRAVITY, CHAOS_EFFECT_HEAVY_KARTS,
+		CHAOS_EFFECT_LOW_GRAVITY, CHAOS_EFFECT_NO_ITEMS,
 	};
 	for (int effect = 0; effect < (int)len(effects); effect++)
 	{
@@ -891,7 +968,7 @@ static void TestHudVisibilityAndDockLimit(void)
 	Tick(CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS);
 	DrawNotice();
 	CTR_TEST_CHECK_EQ(s_noticeDraws, 4, "2P limits the docked list to four distinct effects");
-	CTR_TEST_CHECK(strcmp(s_drawText[0], "Heavy Karts") == 0, "the latest accepted activation occupies the newest row");
+	CTR_TEST_CHECK(strcmp(s_drawText[0], "No Items") == 0, "the latest accepted activation occupies the newest row");
 	CTR_TEST_CHECK(strcmp(s_drawText[1], "Low Gravity") == 0 && strcmp(s_drawText[3], "Inverted Steering") == 0,
 	               "the docked list orders all four accepted effects by activation recency");
 	CTR_TEST_CHECK_EQ(s_drawY[0], UI_CHAOS_LIST_MULTIPLAYER_TOP, "the 2P docked list starts near the top edge");
@@ -996,7 +1073,7 @@ static void TestBannerBaselineWithDockedEffects(void)
 		Chaos_Activate(docked[effect], 30000);
 	}
 	Tick(CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS);
-	Chaos_Activate(CHAOS_EFFECT_HEAVY_KARTS, 30000);
+	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 30000);
 	Tick(UI_CHAOS_NOTICE_SLIDE_MS);
 	DrawNotice();
 	CTR_TEST_CHECK_EQ(s_noticeY, 50, "a solo banner uses exactly the viewport quarter-height used by Final Lap");
@@ -1083,6 +1160,7 @@ int main(void)
 	TestRandomTrigger();
 	TestSteeringAndDriverScope();
 	TestWobbleSteering();
+	TestGravityEffects();
 	TestHopInputAndCloudOwnership();
 	TestDriverApplication();
 	TestActivationNotice();

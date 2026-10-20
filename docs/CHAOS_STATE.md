@@ -162,6 +162,16 @@ leave effects untouched. Duplicates of the same effect retain independent timers
 without compounding; the newest Wobble supplies the phase. No controller input
 is stored or overwritten, and final expiry/reset returns to live input.
 
+Low Gravity uses one third of the driver's gravity; Heavy Karts doubles it.
+`Chaos_GravityForDriver` derives the effective value from the current
+`const_Gravity` when human physics reads it, before retail terrain multipliers.
+The stored constant, jump impulse and terminal velocity are untouched, so there
+is no baseline snapshot or restoration state. Heavy Karts permits manual hops;
+the greater downward force shortens airtime. Both effects apply only to unfinished
+humans in eligible races, never bots or hubs. Duplicate entries do not compound.
+Activating either gravity effect removes all copies of the opposite effect;
+the replaced effect cannot return when the newer one expires.
+
 Each activation has an independent three-second announcement, followed by 320 ms
 of docking. Successful activations play the transition swish (`0x65`) once;
 rejected requests and HUD redraws do not play it.

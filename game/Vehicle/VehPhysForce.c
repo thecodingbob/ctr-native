@@ -224,7 +224,7 @@ void VehPhysForce_OnGravity(struct Driver *driver, Vec3 *velocity)
 		localZ = MFC2_S(27);
 	}
 	gameTracker = GAME_TRACKER;
-	gravityConstant = driver->const_Gravity;
+	gravityConstant = Chaos_GravityForDriver(driver);
 	CTR_PSX_OBSERVE_VALUE(gravityConstant);
 	gravityY = CTR_MipsNegLo(gravityConstant);
 	CTR_PSX_KEEP_VALUE(gravityY);
