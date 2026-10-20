@@ -153,6 +153,15 @@ Forced jumps remain available. Neither effect writes the shared gamepad or
 replaces retail cloud effects. Normal input resumes on final expiry without a
 snapshot.
 
+Wobble Steering offsets the live axis with a two-second sine wave at 75% of the
+controller range, clamping around the calibrated center (standard pad: 128 ± 128).
+Per-activation elapsed game time owns its phase, freezes on pause and is captured
+in resident state. Inverted Steering deactivates all Wobble activations and vice
+versa, freeing their slots before the capacity check. Rejected invalid requests
+leave effects untouched. Duplicates of the same effect retain independent timers
+without compounding; the newest Wobble supplies the phase. No controller input
+is stored or overwritten, and final expiry/reset returns to live input.
+
 Each activation has an independent three-second announcement, followed by 320 ms
 of docking. Successful activations play the transition swish (`0x65`) once;
 rejected requests and HUD redraws do not play it.

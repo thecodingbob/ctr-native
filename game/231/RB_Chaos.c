@@ -6,6 +6,9 @@ enum
 	CHAOS_RANDOM_GAP_MIN_PERCENT = 30,
 	CHAOS_PERCENT_SCALE = 100,
 	CHAOS_STICK_CENTER = 0x80,
+	CHAOS_STICK_RANGE = 0x80,
+	CHAOS_WOBBLE_RANGE_NUMERATOR = 3,
+	CHAOS_WOBBLE_RANGE_DENOMINATOR = 4,
 };
 
 static s32 Chaos_NextTriggerGap(void)
@@ -50,12 +53,44 @@ void Chaos_BeginRace(struct GameTracker *gGT)
 	sdata->chaosRuntime.intervalRemainingMS = Chaos_NextTriggerGap();
 }
 
+static void Chaos_RemoveConflictingEffects(ChaosEffectId effect)
+{
+	ChaosEffectId replaced = CHAOS_EFFECT_NONE;
+	if (effect == CHAOS_EFFECT_INVERTED_STEERING)
+	{
+		replaced = CHAOS_EFFECT_WOBBLE_STEERING;
+	}
+	else if (effect == CHAOS_EFFECT_WOBBLE_STEERING)
+	{
+		replaced = CHAOS_EFFECT_INVERTED_STEERING;
+	}
+	if (replaced == CHAOS_EFFECT_NONE)
+	{
+		return;
+	}
+	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	int kept = 0;
+	for (int i = 0; i < runtime->numActive; i++)
+	{
+		if (runtime->active[i].effect != replaced)
+		{
+			runtime->active[kept++] = runtime->active[i];
+		}
+	}
+	memset(&runtime->active[kept], 0, (runtime->numActive - kept) * sizeof(runtime->active[0]));
+	runtime->numActive = kept;
+}
+
 bool Chaos_Activate(ChaosEffectId effect, s32 durationMS)
 {
 	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
 	if (!Chaos_IsRunning(sdata->gGT) || durationMS <= 0 ||
-	    !ChaosEffect_IsEnabled(sdata->chaosSettings.effects, effect) ||
-	    runtime->numActive == CHAOS_MAX_ACTIVATIONS)
+	    !ChaosEffect_IsEnabled(sdata->chaosSettings.effects, effect))
+	{
+		return false;
+	}
+	Chaos_RemoveConflictingEffects(effect);
+	if (runtime->numActive == CHAOS_MAX_ACTIVATIONS)
 	{
 		return false;
 	}
@@ -93,6 +128,28 @@ bool Chaos_IsActiveForDriver(ChaosEffectId effect, const struct Driver *driver)
 	       Chaos_IsActive(effect);
 }
 
+static int Chaos_WobbleSteering(const struct ChaosActivation *entry, const struct GamepadBuffer *pad)
+{
+	const int center = pad->rwd != NULL ? pad->rwd->gamepadCenter : CHAOS_STICK_CENTER;
+	const int range = pad->rwd != NULL ? pad->rwd->range : CHAOS_STICK_RANGE;
+	if (range <= 0)
+	{
+		return pad->stickLX;
+	}
+	const int amplitude = range * CHAOS_WOBBLE_RANGE_NUMERATOR / CHAOS_WOBBLE_RANGE_DENOMINATOR;
+	const u32 angle = (entry->elapsedMS % CHAOS_WOBBLE_PERIOD_MS) * ANG_TWO_PI / CHAOS_WOBBLE_PERIOD_MS;
+	int steering = pad->stickLX + MATH_Sin(angle) * amplitude / FP(1.0);
+	if (steering < center - range)
+	{
+		steering = center - range;
+	}
+	else if (steering > center + range)
+	{
+		steering = center + range;
+	}
+	return steering;
+}
+
 u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, int *steering, u32 actions)
 {
 	const struct ChaosRuntime *runtime = &sdata->chaosRuntime;
@@ -114,6 +171,11 @@ u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, in
 			// Resolve from the baseline so duplicates do not invert twice; keep 256 signed.
 			*steering = 2 * center - pad->stickLX;
 		}
+		else if (effect == CHAOS_EFFECT_WOBBLE_STEERING)
+		{
+			// Resolve from live input so repeated Wobble activations do not add waves.
+			*steering = Chaos_WobbleSteering(&runtime->active[i], pad);
+		}
 		else if (effect == CHAOS_EFFECT_NO_HOPPING)
 		{
 			driver->jump_TenBuffer = 0;
@@ -133,6 +195,7 @@ static void Chaos_TickActivations(s32 elapsedMS)
 		if (entry.remainingMS > elapsedMS)
 		{
 			entry.remainingMS -= elapsedMS;
+			entry.elapsedMS += elapsedMS;
 			entry.noticeRemainingMS -= elapsedMS;
 			if (entry.noticeRemainingMS < 0)
 			{

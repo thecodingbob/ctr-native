@@ -9,6 +9,7 @@ enum ChaosRuntimeConstants
 	CHAOS_MILLISECONDS_PER_SECOND = 1000,
 	CHAOS_ACTIVATION_NOTICE_MS = 3000,
 	CHAOS_ACTIVATION_DOCK_MS = 320,
+	CHAOS_WOBBLE_PERIOD_MS = 2000,
 };
 
 struct ChaosActivation
@@ -16,6 +17,7 @@ struct ChaosActivation
 	ChaosEffectId effect;
 	s32 remainingMS;
 	s32 noticeRemainingMS;
+	s32 elapsedMS;
 };
 
 // Race-only state, captured in SDATA; array order is activation order.

@@ -4,7 +4,7 @@
 
 Implemented: catalogue/selection helpers, race gate, creation flow, per-slot
 persistence, save marker, pause inspection and runtime timers/Interval/Random scheduling.
-Inverted Steering and No Hopping are connected, with an activation-name overlay.
+Inverted Steering, No Hopping and Wobble Steering are connected, with an activation-name overlay.
 Pending: remaining effects, Pickup/External triggers, provider and player guide.
 Save layouts and checkpoint ownership are documented in [CHAOS_STATE.md](CHAOS_STATE.md).
 
@@ -23,7 +23,7 @@ Save layouts and checkpoint ownership are documented in [CHAOS_STATE.md](CHAOS_S
   lists selected effects, not running activations, without ON/OFF or empty text.
 - Effects target humans in all Adventure race types, never hubs or other modes.
 - Pickup means contact. Activations accumulate with independent timers, including
-  repeats; later conflicting activations win.
+repeats; later conflicting activations deactivate the previous conflicting effects.
 
 ## Runtime core
 
@@ -79,14 +79,14 @@ for a central dispatcher; generic level collisions also include hazards.
 
 ## Effect hooks
 
-All 16 effects have catalogue IDs/toggles. The first two are implemented; the
+All 16 effects have catalogue IDs/toggles. The first three are implemented; the
 remaining rows are source leads to verify during implementation.
 
 | Effects | Candidate mechanism |
 | --- | --- |
 | Inverted Steering — done | Mirror a local axis about the active controller center; D-pad already feeds stick resolution; duplicates do not cancel |
 | No Hopping — done | Clear resolved manual hop latch/buffer; preserve drift input/states, forced jumps and rain-cloud ownership |
-| Wobble Steering | Offset steering strength before steering-state storage |
+| Wobble Steering — done | Two-second sine wave at 75% of the controller range, clamped around its center; deactivates Inverted Steering and vice versa |
 | Low Gravity / Heavy Karts | Override `const_Gravity` |
 | Speed Capped / Super Speed | Override speed class; Super Speed also needs acceleration constants |
 | No Reserves | Clear `reserves` and `turbo_outsideTimer` together |
@@ -132,8 +132,8 @@ currently recorded, so provider-driven replay verification is not guaranteed.
 
 ## Delivery and checks
 
-1. Verify the first playable slice in game: Interval/Random with only Inverted Steering
-   and No Hopping selected; check the activation banner in 1P/2P.
+1. Verify the playable effects in game: Interval/Random with only Inverted Steering,
+   No Hopping and Wobble Steering selected; check steering and the activation banner in 1P/2P.
 2. Baseline/ordered modifier application, remaining effects and contact
    triggers, then External.
 3. `docs/features/CHAOS.md` + README links: creation, scope, stacking, effects,

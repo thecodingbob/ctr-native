@@ -2,6 +2,7 @@
 #include <common.h>
 
 struct sData sdata_static;
+struct Data data;
 NativeConfig g_config;
 static struct GameTracker s_tracker;
 static bool s_teleported;
@@ -28,14 +29,7 @@ static u32 *s_drawOT[CHAOS_EFFECT_COUNT];
 #include <game/Vehicle/VehPhysProc_Input.c>
 #include <game/UI/UI_Lerp2D.c>
 #include <game/UI/UI_Chaos.c>
-
-// Only the unused angular helper needs this dependency; the banner uses real linear interpolation.
-int MATH_Sin(u32 angle)
-{
-	(void)angle;
-	CtrTest_Bail("the Chaos banner must not use angular HUD interpolation");
-	return 0;
-}
+#include <game/MATH/MATH_0_Sin.c>
 
 s32 DecalFont_GetLineWidth(char *text, s16 font)
 {
@@ -490,6 +484,114 @@ static void TestSteeringAndDriverScope(void)
 	CTR_TEST_CHECK(!Chaos_IsActiveForDriver(CHAOS_EFFECT_INVERTED_STEERING, NULL), "a missing driver cannot receive an effect");
 }
 
+static void EnableWobble(void)
+{
+	EnableInputEffects();
+	sdata->chaosSettings.trigger = CHAOS_TRIGGER_EXTERNAL;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_WOBBLE_STEERING] = true;
+	sdata->chaosSettings.enabledCount++;
+	// Cardinal samples exercise the game's real sine lookup and quadrant handling.
+	data.trigApprox[0] = (struct TrigTable){ .sin = 0, .cos = FP(1.0) };
+}
+
+static void TestWobbleSteering(void)
+{
+	CTR_TEST_SECTION("Wobble oscillates in game time with calibrated limits and human-only scope");
+	EnableWobble();
+	struct Driver human = {.driverID = 0};
+	struct Driver partner = {.driverID = 1};
+	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT};
+	struct GamepadBuffer pad = {.stickLX = 128};
+	Chaos_Activate(CHAOS_EFFECT_WOBBLE_STEERING, 6000);
+	const u32 rng = sdata->chaosRng;
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 128, "Wobble begins at the live steering input");
+	Tick(500);
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 224, "a quarter period produces the positive steering peak beyond the retail dead zone");
+	CTR_TEST_CHECK_EQ(PreparedSteering(&partner, &pad), 224, "the co-op partner receives the same phase");
+	CTR_TEST_CHECK_EQ(PreparedSteering(&bot, &pad), 128, "Wobble does not change a bot's steering");
+	human.actionsFlagSet = ACTION_RACE_FINISHED;
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 128, "Wobble leaves finished humans alone");
+	human.actionsFlagSet = 0;
+	CTR_TEST_CHECK_EQ(pad.stickLX, 128, "Wobble does not overwrite shared controller input");
+	pad.stickLX = 255;
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 256, "the positive peak clamps to the signed controller limit without wrapping");
+	pad.stickLX = 128;
+	struct RacingWheelData wheel = {.gamepadCenter = 100, .range = 64};
+	pad.rwd = &wheel;
+	pad.stickLX = 100;
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 148, "wheel oscillation scales to the calibrated range");
+	pad.stickLX = 160;
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 164, "wheel steering clamps around its calibrated center");
+	wheel.range = 0;
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 160, "a wheel without a usable range preserves its live input");
+	pad.rwd = NULL;
+	pad.stickLX = 128;
+	const struct ChaosRuntime saved = sdata->chaosRuntime;
+	s_tracker.gameMode1 |= PAUSE_1;
+	Tick(1000);
+	CTR_TEST_CHECK(memcmp(&saved, &sdata->chaosRuntime, sizeof(saved)) == 0, "pause freezes the oscillator together with effect timers");
+	s_tracker.gameMode1 &= ~PAUSE_1;
+	Tick(1000);
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 32, "three quarters of a period produces the opposite steering peak");
+	pad.stickLX = 0;
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 0, "the negative peak clamps without reversing a full steering input");
+	pad.stickLX = 128;
+	sdata->chaosRuntime = saved;
+	Tick(1000);
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 32, "restoring resident runtime reproduces the oscillator phase");
+	Tick(500);
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 128, "a full two-second period returns to the live input");
+	CTR_TEST_CHECK_EQ(sdata->chaosRng, rng, "Wobble phase consumes no random choices");
+	Chaos_Reset();
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 128, "reset leaves no synthetic steering behind");
+
+	CTR_TEST_SECTION("ordered steering modifiers retain independent lifetimes without accumulating duplicates");
+	EnableWobble();
+	Chaos_Activate(CHAOS_EFFECT_WOBBLE_STEERING, 6000);
+	Tick(500);
+	Chaos_Activate(CHAOS_EFFECT_WOBBLE_STEERING, 1000);
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 128, "a new Wobble activation uses its own phase instead of adding both waves");
+	Tick(500);
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 224, "the latest Wobble supplies one oscillation amplitude");
+	Tick(500);
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 32, "expiry of the newest Wobble reveals the older activation at its continuing phase");
+	pad.stickLX = 64;
+	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 500);
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 192, "later Inverted Steering overrides the older Wobble");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_WOBBLE_STEERING), "Inverted Steering immediately deactivates conflicting Wobble entries");
+	Tick(500);
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 64, "expiry of Inverted Steering returns to live input without reviving Wobble");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 0, "replaced effects do not remain dormant in the activation queue");
+	EnableWobble();
+	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 4000);
+	Chaos_Activate(CHAOS_EFFECT_WOBBLE_STEERING, 1000);
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_INVERTED_STEERING), "Wobble immediately deactivates conflicting Inverted Steering");
+	Tick(500);
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 160, "later Wobble overrides Inverted Steering using live input");
+	Tick(500);
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 64, "expiry of Wobble returns to live input without reviving Inverted Steering");
+	Tick(3000);
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 64, "final expiry restores ordinary input without a stored snapshot");
+
+	CTR_TEST_SECTION("conflict replacement frees capacity and preserves unrelated effects");
+	EnableWobble();
+	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 6000);
+	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 6000);
+	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 5000);
+	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 5000);
+	Tick(500);
+	const struct ChaosActivation firstHop = sdata->chaosRuntime.active[0];
+	const struct ChaosActivation secondHop = sdata->chaosRuntime.active[3];
+	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_WOBBLE_STEERING, 0), "invalid activation cannot cancel conflicting running effects");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 4, "a rejected conflict replacement preserves all running activations");
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_WOBBLE_STEERING, 1000), "a conflicting replacement can activate even when all four slots were occupied");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 3, "replacement removes all conflicting copies before adding the new activation");
+	CTR_TEST_CHECK(memcmp(&firstHop, &sdata->chaosRuntime.active[0], sizeof(firstHop)) == 0,
+	    "replacement preserves the first unrelated activation and its timers");
+	CTR_TEST_CHECK(memcmp(&secondHop, &sdata->chaosRuntime.active[1], sizeof(secondHop)) == 0,
+	    "replacement preserves the other unrelated activation and its ordering");
+}
+
 static void TestHopInputAndCloudOwnership(void)
 {
 	CTR_TEST_SECTION("No Hopping clears pending manual jumps without overwriting retail cloud effects");
@@ -777,16 +879,20 @@ static void TestHudVisibilityAndDockLimit(void)
 	s_tracker.backBuffer = &buffer;
 	s_tracker.hudFlags = HUD_FLAG_RACE_HUD;
 	s_tracker.numPlyrCurrGame = 2;
-	for (int effect = 0; effect < CHAOS_MAX_ACTIVATIONS; effect++)
+	const ChaosEffectId effects[] = {
+		CHAOS_EFFECT_INVERTED_STEERING, CHAOS_EFFECT_NO_HOPPING,
+		CHAOS_EFFECT_LOW_GRAVITY, CHAOS_EFFECT_HEAVY_KARTS,
+	};
+	for (int effect = 0; effect < (int)len(effects); effect++)
 	{
-		Chaos_Activate((ChaosEffectId)effect, effect == 0 ? 5000 : 30000);
+		Chaos_Activate(effects[effect], effect == 0 ? 5000 : 30000);
 	}
 	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 30000), "a fifth activation cannot refresh an already active effect");
 	Tick(CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS);
 	DrawNotice();
 	CTR_TEST_CHECK_EQ(s_noticeDraws, 4, "2P limits the docked list to four distinct effects");
-	CTR_TEST_CHECK(strcmp(s_drawText[0], "Low Gravity") == 0, "the latest accepted activation occupies the newest row");
-	CTR_TEST_CHECK(strcmp(s_drawText[1], "Wobble Steering") == 0 && strcmp(s_drawText[3], "Inverted Steering") == 0,
+	CTR_TEST_CHECK(strcmp(s_drawText[0], "Heavy Karts") == 0, "the latest accepted activation occupies the newest row");
+	CTR_TEST_CHECK(strcmp(s_drawText[1], "Low Gravity") == 0 && strcmp(s_drawText[3], "Inverted Steering") == 0,
 	               "the docked list orders all four accepted effects by activation recency");
 	CTR_TEST_CHECK_EQ(s_drawY[0], UI_CHAOS_LIST_MULTIPLAYER_TOP, "the 2P docked list starts near the top edge");
 	const int firstPlayerLapCounterY = 71;
@@ -882,9 +988,12 @@ static void TestBannerBaselineWithDockedEffects(void)
 	s_tracker.hudFlags = HUD_FLAG_RACE_HUD;
 	s_tracker.numPlyrCurrGame = 1;
 	s_tracker.pushBuffer[0].rect = (RECT){0, 0, SCREEN_WIDTH, 200};
-	for (int effect = 0; effect < CHAOS_MAX_ACTIVATIONS - 1; effect++)
+	const ChaosEffectId docked[] = {
+		CHAOS_EFFECT_INVERTED_STEERING, CHAOS_EFFECT_NO_HOPPING, CHAOS_EFFECT_LOW_GRAVITY,
+	};
+	for (int effect = 0; effect < (int)len(docked); effect++)
 	{
-		Chaos_Activate((ChaosEffectId)effect, 30000);
+		Chaos_Activate(docked[effect], 30000);
 	}
 	Tick(CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS);
 	Chaos_Activate(CHAOS_EFFECT_HEAVY_KARTS, 30000);
@@ -973,6 +1082,7 @@ int main(void)
 	TestResidentRestore();
 	TestRandomTrigger();
 	TestSteeringAndDriverScope();
+	TestWobbleSteering();
 	TestHopInputAndCloudOwnership();
 	TestDriverApplication();
 	TestActivationNotice();
