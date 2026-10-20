@@ -17,8 +17,8 @@
 typedef enum {
 	CHAOS_EFFECT_NONE = -1,
 
-	// Tier A: driving constants and input, evaluated every frame. Undoing one
-	// is implicit, because the game stops overriding the value.
+	// Tier A: continuous driving/input modifiers. Restore Chaos-owned baseline
+	// constants once per driver before applying active overrides in order.
 	CHAOS_EFFECT_INVERTED_STEERING = 0,
 	CHAOS_EFFECT_NO_HOPPING = 1,
 	CHAOS_EFFECT_WOBBLE_STEERING = 2,
@@ -35,7 +35,7 @@ typedef enum {
 	CHAOS_EFFECT_CLOCK_CURSE = 11,
 	CHAOS_EFFECT_CLEAR_BOOSTS = 12,
 
-	// Tier C: things the game does to the driver, and control takeovers.
+	// Tier C: driver interventions; AI takeover also needs explicit hand-back.
 	CHAOS_EFFECT_ANXIOUS_MASK = 13,
 	CHAOS_EFFECT_HARD_CRATES = 14,
 	CHAOS_EFFECT_BOT_TAKES_THE_WHEEL = 15,

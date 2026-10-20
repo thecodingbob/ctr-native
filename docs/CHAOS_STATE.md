@@ -52,7 +52,15 @@ format and migration strategy. There are still 14 unused payload bytes before
 the checksum. The retail profile and co-op extension remain in their original
 locations.
 
-  ## In-game inspection
+## Creation and in-game inspection
+
+Every New resets live settings to Regular with all catalogue effects selected.
+`chaos_mode` gates only the Mode prompt; choosing Chaos sets `armed` and opens
+setup after the optional player-count step. Confirm requires at least one
+selected effect. With none, it remains visible in gray and activation plays
+`MENU_SFX_LOCKED` without leaving setup. Re-enabling an effect enables Confirm.
+This creation constraint does not reinterpret an armed file with an empty
+selection as Regular when loading or inspecting it.
 
 An armed Adventure file adds **Chaos Rules** after Options in the hub, race
 and gem-cup pause menus. Regular files and other modes have no such action.

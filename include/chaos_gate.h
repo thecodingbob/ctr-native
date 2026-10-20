@@ -5,11 +5,9 @@
 
 #include <stdbool.h>
 
-// Decides whether Chaos may do anything at all this frame.
-//
-// Chaos is armed once per session but the effect engine runs every frame in
-// every level, so "should it be running" has to be answerable from mode bits
-// alone.
+// Pure race eligibility check. The engine must separately check the loaded
+// file's chaosSettings.armed flag and any active menu; the creation-prompt
+// option does not control a loaded file.
 //
 // The inputs are gGT->gameMode1 and gGT->overlayIndex_Threads. The latter is not
 // one of the thirteen overlay binaries: it is the thread group, of which there
