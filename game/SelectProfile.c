@@ -1,4 +1,5 @@
 #include <common.h>
+#include <chaos_save.h>
 
 // Defined with the profile load and save helpers further down.
 static void SelectProfile_ApplyAdvMultiplayerCharacter(void);
@@ -799,21 +800,13 @@ static b32 SelectProfile_CardSlotIsChaos(int slot)
 		return false;
 	}
 
-	return SelectProfile_MemcardData()->extension.chaos[slot].armed;
+	return ChaosSave_IsArmed(&SelectProfile_MemcardData()->extension.chaos[slot]);
 }
 
-// The count is derived from the stored flags, not trusted as independent state.
-// This reads the current on-card layout; it does not migrate other layouts.
+// Decode the tagged bitset into live settings.
 static void SelectProfile_LoadChaosSettings(int slot)
 {
-	const struct ChaosSettings *saved = &SelectProfile_MemcardData()->extension.chaos[slot];
-
-	sdata->chaosSettings.durationSeconds = saved->durationSeconds;
-	sdata->chaosSettings.triggerIntervalSeconds = saved->triggerIntervalSeconds;
-	sdata->chaosSettings.trigger = (saved->trigger < CHAOS_TRIGGER_COUNT) ? saved->trigger : CHAOS_TRIGGER_RANDOM;
-	sdata->chaosSettings.armed = saved->armed;
-	memcpy(sdata->chaosSettings.effects, saved->effects, sizeof(saved->effects));
-	sdata->chaosSettings.enabledCount = (u8)ChaosEffect_CountEnabled(sdata->chaosSettings.effects);
+	ChaosSave_Decode(&SelectProfile_MemcardData()->extension.chaos[slot], &sdata->chaosSettings);
 }
 
 // The settings ride along with the profile rather than having a writer of their
@@ -822,14 +815,12 @@ static void SelectProfile_LoadChaosSettings(int slot)
 // back exactly what it loaded and a configured file is never disturbed.
 static void SelectProfile_SaveChaosSettings(int slot)
 {
-	struct ChaosSettings *saved = &SelectProfile_MemcardData()->extension.chaos[slot];
-
-	*saved = sdata->chaosSettings;
+	ChaosSave_Encode(&sdata->chaosSettings, &SelectProfile_MemcardData()->extension.chaos[slot]);
 }
 
 static void SelectProfile_ClearChaosSettings(int slot)
 {
-	memset(&SelectProfile_MemcardData()->extension.chaos[slot], 0, sizeof(struct ChaosSettings));
+	memset(&SelectProfile_MemcardData()->extension.chaos[slot], 0, sizeof(struct ChaosSettingsSaved));
 }
 
 static void SelectProfile_LoadAdvProfile(int slot)

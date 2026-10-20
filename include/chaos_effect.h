@@ -3,7 +3,7 @@
 
 // The Chaos effect catalogue.
 //
-// Three consumers have to agree on this list: the enabled-effect array
+// Three consumers have to agree on this list: the enabled-effect bits
 // persisted per Adventure slot (include/namespace_Memcard.h), the settings menu
 // that draws one row per effect, and the external provider protocol, which
 // names effects by slug so a provider survives the list growing.
@@ -20,28 +20,28 @@ typedef enum {
 	// Tier A: driving constants and input, evaluated every frame. Undoing one
 	// is implicit, because the game stops overriding the value.
 	CHAOS_EFFECT_INVERTED_STEERING = 0,
-	CHAOS_EFFECT_NO_HOPPING,
-	CHAOS_EFFECT_WOBBLE_STEERING,
-	CHAOS_EFFECT_LOW_GRAVITY,
-	CHAOS_EFFECT_HEAVY_KARTS,
-	CHAOS_EFFECT_SPEED_CAPPED,
-	CHAOS_EFFECT_SUPER_SPEED,
-	CHAOS_EFFECT_NO_RESERVES,
+	CHAOS_EFFECT_NO_HOPPING = 1,
+	CHAOS_EFFECT_WOBBLE_STEERING = 2,
+	CHAOS_EFFECT_LOW_GRAVITY = 3,
+	CHAOS_EFFECT_HEAVY_KARTS = 4,
+	CHAOS_EFFECT_SPEED_CAPPED = 5,
+	CHAOS_EFFECT_SUPER_SPEED = 6,
+	CHAOS_EFFECT_NO_RESERVES = 7,
 
 	// Tier B: items, wumpa, the economy.
-	CHAOS_EFFECT_NO_ITEMS,
-	CHAOS_EFFECT_PUNISHING_ITEMS,
-	CHAOS_EFFECT_WUMPA_DRAIN,
-	CHAOS_EFFECT_CLOCK_CURSE,
-	CHAOS_EFFECT_CLEAR_BOOSTS,
+	CHAOS_EFFECT_NO_ITEMS = 8,
+	CHAOS_EFFECT_PUNISHING_ITEMS = 9,
+	CHAOS_EFFECT_WUMPA_DRAIN = 10,
+	CHAOS_EFFECT_CLOCK_CURSE = 11,
+	CHAOS_EFFECT_CLEAR_BOOSTS = 12,
 
 	// Tier C: things the game does to the driver, and control takeovers.
-	CHAOS_EFFECT_ANXIOUS_MASK,
-	CHAOS_EFFECT_HARD_CRATES,
-	CHAOS_EFFECT_BOT_TAKES_THE_WHEEL,
+	CHAOS_EFFECT_ANXIOUS_MASK = 13,
+	CHAOS_EFFECT_HARD_CRATES = 14,
+	CHAOS_EFFECT_BOT_TAKES_THE_WHEEL = 15,
 
-	// Derived catalogue size. Growth also requires reviewing the on-card layout
-	// contract in namespace_Memcard.h; stored indices must keep their identity.
+	// IDs are saved bit positions: append new IDs, never renumber or reuse one.
+	// Growth within the saved bitset capacity does not change its layout.
 	CHAOS_EFFECT_COUNT,
 } ChaosEffectId;
 
@@ -62,22 +62,22 @@ typedef struct
 
 static const ChaosEffectDef g_chaosEffectDefs[CHAOS_EFFECT_COUNT] =
 {
-	{ "inverted-steering", "Inverted Steering", CHAOS_SCOPE_HUMANS },
-	{ "no-hopping", "No Hopping", CHAOS_SCOPE_HUMANS },
-	{ "wobble-steering", "Wobble Steering", CHAOS_SCOPE_HUMANS },
-	{ "low-gravity", "Low Gravity", CHAOS_SCOPE_HUMANS },
-	{ "heavy-karts", "Heavy Karts", CHAOS_SCOPE_HUMANS },
-	{ "speed-capped", "Speed Capped", CHAOS_SCOPE_HUMANS },
-	{ "super-speed", "Super Speed", CHAOS_SCOPE_HUMANS },
-	{ "no-reserves", "No Reserves", CHAOS_SCOPE_HUMANS },
-	{ "no-items", "No Items", CHAOS_SCOPE_HUMANS },
-	{ "punishing-items", "Punishing Items", CHAOS_SCOPE_HUMANS },
-	{ "wumpa-drain", "Wumpa Drain", CHAOS_SCOPE_HUMANS },
-	{ "clock-curse", "Clock Curse", CHAOS_SCOPE_HUMANS },
-	{ "clear-boosts", "Clear Boosts", CHAOS_SCOPE_HUMANS },
-	{ "anxious-mask", "Anxious Mask", CHAOS_SCOPE_HUMANS },
-	{ "hard-crates", "Hard Crates", CHAOS_SCOPE_HUMANS },
-	{ "bot-takes-wheel", "Bot Takes Wheel", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_INVERTED_STEERING] = { "inverted-steering", "Inverted Steering", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_NO_HOPPING] = { "no-hopping", "No Hopping", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_WOBBLE_STEERING] = { "wobble-steering", "Wobble Steering", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_LOW_GRAVITY] = { "low-gravity", "Low Gravity", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_HEAVY_KARTS] = { "heavy-karts", "Heavy Karts", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_SPEED_CAPPED] = { "speed-capped", "Speed Capped", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_SUPER_SPEED] = { "super-speed", "Super Speed", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_NO_RESERVES] = { "no-reserves", "No Reserves", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_NO_ITEMS] = { "no-items", "No Items", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_PUNISHING_ITEMS] = { "punishing-items", "Punishing Items", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_WUMPA_DRAIN] = { "wumpa-drain", "Wumpa Drain", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_CLOCK_CURSE] = { "clock-curse", "Clock Curse", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_CLEAR_BOOSTS] = { "clear-boosts", "Clear Boosts", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_ANXIOUS_MASK] = { "anxious-mask", "Anxious Mask", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_HARD_CRATES] = { "hard-crates", "Hard Crates", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_BOT_TAKES_THE_WHEEL] = { "bot-takes-wheel", "Bot Takes Wheel", CHAOS_SCOPE_HUMANS },
 };
 
 static inline const ChaosEffectDef *ChaosEffect_Def(ChaosEffectId id)

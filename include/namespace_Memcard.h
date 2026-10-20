@@ -630,9 +630,9 @@ struct AdvMultiplayerSettings
 enum ChaosTrigger
 {
 	CHAOS_TRIGGER_RANDOM = 0,
-	CHAOS_TRIGGER_PICKUP,
-	CHAOS_TRIGGER_INTERVAL,
-	CHAOS_TRIGGER_EXTERNAL,
+	CHAOS_TRIGGER_PICKUP = 1,
+	CHAOS_TRIGGER_INTERVAL = 2,
+	CHAOS_TRIGGER_EXTERNAL = 3,
 	CHAOS_TRIGGER_COUNT,
 };
 
@@ -642,9 +642,8 @@ enum
 	CHAOS_TRIGGER_INTERVAL_DEFAULT_SECONDS = 20,
 };
 
-// Chosen at creation and preserved by normal saves. The live copy in sData and
-// the per-profile card extension share this layout. All-zero legacy settings
-// are unarmed; new files start unarmed with all effects selected.
+// Live settings only. Disk encoding is independent of this growable array.
+// All-zero settings are unarmed; new files select every implemented effect.
 struct ChaosSettings
 {
 	u16 durationSeconds;              // how long one activation lasts
@@ -655,14 +654,31 @@ struct ChaosSettings
 	bool armed;
 };
 
-// Current unversioned on-card layout: four co-op entries, then four Chaos
-// entries. Changing effect order/count or settings layout requires an explicit
-// format migration; recomputing enabledCount is not a migration.
-// Files predating these extensions have zeroes here and load as Regular.
+enum ChaosSaveConstants
+{
+	CHAOS_SAVE_EFFECT_BYTES = 16,
+	CHAOS_SAVE_EFFECT_CAPACITY = CHAOS_SAVE_EFFECT_BYTES * 8,
+	// Low byte identifies Chaos ('C'); high byte is the format version.
+	CHAOS_SAVE_FORMAT_V1 = 0x0143,
+};
+
+// Fixed 24-byte disk entry. Unassigned effect bits are always written as zero.
+struct ChaosSettingsSaved
+{
+	u16 durationSeconds;
+	u16 triggerIntervalSeconds;
+	u8 trigger;
+	u8 armed;
+	u8 effectBits[CHAOS_SAVE_EFFECT_BYTES];
+	u16 format;
+};
+
+// Four co-op entries followed by four independently tagged Chaos entries.
+// Zeroed entries have no Chaos settings and load as Regular.
 struct MemcardExtension
 {
 	struct AdvMultiplayerSettings adventure[MEMCARD_ADV_PROFILE_COUNT];
-	struct ChaosSettings chaos[MEMCARD_ADV_PROFILE_COUNT];
+	struct ChaosSettingsSaved chaos[MEMCARD_ADV_PROFILE_COUNT];
 };
 
 // The whole SLOTS file payload: the retail profile followed by this port's
@@ -688,17 +704,15 @@ CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct AdvProgress, rewards, 5) == 0x14);
 CTR_STATIC_ASSERT(OFFSETOF(struct AdvProgress, name) == 0x18);
 CTR_STATIC_ASSERT(sizeof(struct AdvProgress) == 0x50);
 CTR_STATIC_ASSERT(sizeof(struct MemcardProfile) == 0x1600);
-// On-card contracts, not catalogue limits. If these trip, revise the format and
-// its reader/writer together. The final byte of ChaosSettings is tail padding.
-CTR_STATIC_ASSERT(sizeof(bool) == 1);
-CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettings, durationSeconds) == 0x0);
-CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettings, triggerIntervalSeconds) == 0x2);
-CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettings, trigger) == 0x4);
-CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettings, enabledCount) == 0x5);
-CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettings, effects) == 0x6);
-CTR_STATIC_ASSERT(sizeof(((struct ChaosSettings *)0)->effects) == 0x10);
-CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettings, armed) == 0x16);
-CTR_STATIC_ASSERT(sizeof(struct ChaosSettings) == 0x18);
+// Only the disk shape is pinned; catalogue growth leaves the slot stride alone.
+CTR_STATIC_ASSERT((int)CHAOS_EFFECT_COUNT <= (int)CHAOS_SAVE_EFFECT_CAPACITY);
+CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettingsSaved, durationSeconds) == 0x0);
+CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettingsSaved, triggerIntervalSeconds) == 0x2);
+CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettingsSaved, trigger) == 0x4);
+CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettingsSaved, armed) == 0x5);
+CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettingsSaved, effectBits) == 0x6);
+CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettingsSaved, format) == 0x16);
+CTR_STATIC_ASSERT(sizeof(struct ChaosSettingsSaved) == 0x18);
 CTR_STATIC_ASSERT(OFFSETOF(struct MemcardExtension, chaos) == 0x10);
 CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct MemcardExtension, chaos, 1) == 0x28);
 CTR_STATIC_ASSERT(sizeof(struct MemcardExtension) == 0x70);

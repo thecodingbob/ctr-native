@@ -4,40 +4,53 @@
 
 `MemcardData` is copied into the SLOTS payload with its native 32-bit,
 little-endian layout. Its retail profile is still `0x1600` bytes and its
-header continues to advertise that retail size. The extension is unversioned:
+header continues to advertise that retail size. Each Chaos slot carries its own
+format tag; the co-op extension keeps its existing layout:
 
 | Payload offset | Contents |
 | --- | --- |
 | `0x1600` | Four `AdvMultiplayerSettings` entries, 4 bytes each |
-| `0x1610` | Four `ChaosSettings` entries, 24 bytes each |
+| `0x1610` | Four `ChaosSettingsSaved` entries, 24 bytes each |
 | `0x1670` | Remaining unused payload bytes |
 | `0x167e` | Two-byte checksum |
 
-Within each Chaos entry:
+Within each V1 Chaos entry:
 
 | Offset | Contents |
 | --- | --- |
 | `0x00` | `u16 durationSeconds` |
 | `0x02` | `u16 triggerIntervalSeconds` |
 | `0x04` | `u8 trigger`, using the current `ChaosTrigger` values |
-| `0x05` | `u8 enabledCount`, a cache recomputed from the flags on load |
-| `0x06` | 16 one-byte `bool` effect flags, in `ChaosEffectId` order |
-| `0x16` | One-byte `bool armed` |
-| `0x17` | Compiler tail padding, with no semantic meaning |
+| `0x05` | `u8 armed` |
+| `0x06` | 16-byte bitset, with capacity for 128 effects |
+| `0x16` | `u16 format`, currently `0x0143` (`'C'`, version 1) |
+
+Effect ID `n` maps to bit `n % 8` of byte `n / 8`, least-significant bit first.
+IDs are explicit and stable: append new IDs, never renumber or reuse an existing
+one. Designated catalogue entries bind names to those IDs independently of their
+source order. Existing code presents the dense ID sequence in the menu.
+
+The live `ChaosSettings` keeps `bool effects[CHAOS_EFFECT_COUNT]` and the derived
+`enabledCount`. `chaos_save.h` translates between that growable runtime shape and
+the fixed disk shape. Every encode starts with a zeroed entry and sets only
+implemented, selected effect bits. Unassigned bits are zero, so later effects
+start disabled in existing files. New files still select all implemented effects.
+Unknown bits do not contribute to the decoded count and are cleared on rewrite.
 
 `armed` distinguishes Regular from Chaos even when every effect is disabled.
 The menu changes only the live settings during creation. Normal Adventure
-save/load copies those settings to/from the selected slot; clearing a slot
+save/load encodes/decodes those settings for the selected slot; clearing a slot
 zeroes its settings. Loading never consults the creation-prompt option.
-Legacy files with a zeroed extension are Regular.
+Files without Chaos settings have a zeroed extension and are Regular. Only the
+V1 tag is decoded; missing or unsupported tags produce unarmed, empty live
+settings. There is no migration from unreleased development formats.
 
-The assertions in `namespace_Memcard.h` pin these offsets and the slot stride.
-They are migration tripwires, not a limit on the effect catalogue. Adding or
-reordering effects, changing trigger IDs, or changing these fields requires an
-explicit encoding/version and migration strategy before accepting old files.
-Recomputing `enabledCount` cannot repair a shifted `armed` field or slot stride.
-Growing the native array alone is not supported. There are only 14 unused bytes
-before the current checksum, so a future encoding must also review payload size.
+The assertions in `namespace_Memcard.h` pin disk offsets, stride and capacity.
+Adding effects up to ID 127 does not change the save layout or version. Growing
+beyond that, changing the field encoding or changing trigger IDs requires a new
+format and migration strategy. There are still 14 unused payload bytes before
+the checksum. The retail profile and co-op extension remain in their original
+locations.
 
 ## Whole-machine checkpoints
 
