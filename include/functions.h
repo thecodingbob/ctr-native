@@ -1294,10 +1294,14 @@ void DebugFont_Init(struct GameTracker *gGT);
 void RB_Bubbles_RoosTubes(void);
 
 void Chaos_Reset(void);
+bool Chaos_IsRunning(const struct GameTracker *gGT);
 void Chaos_BeginRace(struct GameTracker *gGT);
 void Chaos_Update(struct GameTracker *gGT);
 bool Chaos_Activate(ChaosEffectId effect, s32 durationMS);
 bool Chaos_IsActive(ChaosEffectId effect);
+bool Chaos_IsActiveForDriver(ChaosEffectId effect, const struct Driver *driver);
+u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, int *steering, u32 actions);
+void UI_Chaos_DrawActivation(struct GameTracker *gGT);
 b32 LOAD_IsOpen_Podiums(void);
 void RB_Spider_DrawWebs(struct Thread *t, struct PushBuffer *pb);
 b32 LOAD_IsOpen_MainMenu(void);

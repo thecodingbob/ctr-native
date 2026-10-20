@@ -3,8 +3,9 @@
 ## Status
 
 Implemented: catalogue/selection helpers, race gate, creation flow, per-slot
-persistence, save marker, pause inspection and runtime timers/Interval scheduling.
-Pending: gameplay effects, other triggers, external provider and player guide.
+persistence, save marker, pause inspection and runtime timers/Interval/Random scheduling.
+Inverted Steering and No Hopping are connected, with an activation-name overlay.
+Pending: remaining effects, Pickup/External triggers, provider and player guide.
 Save layouts and checkpoint ownership are documented in [CHAOS_STATE.md](CHAOS_STATE.md).
 
 ### Established rules
@@ -60,7 +61,7 @@ Use `sdata->chaosRng` for scheduling/selection, never retail RNG.
 | Trigger | Behavior |
 | --- | --- |
 | Interval | One selected effect each configured interval |
-| Random | One selected effect per randomized gap; prior proposal: `[0.3, 1.0] × interval`, still to finalize |
+| Random | One selected effect per randomized gap in `[0.3, 1.0] × interval`, including the first gap |
 | Pickup | One activation per eligible human contact |
 | External | Provider commands only |
 
@@ -78,13 +79,13 @@ for a central dispatcher; generic level collisions also include hazards.
 
 ## Effect hooks
 
-All 16 effects have catalogue IDs/toggles; gameplay implementations are pending.
-These are source leads to verify when implementing each effect.
+All 16 effects have catalogue IDs/toggles. The first two are implemented; the
+remaining rows are source leads to verify during implementation.
 
 | Effects | Candidate mechanism |
 | --- | --- |
-| Inverted Steering | Mirror resolved steering about the active controller center in `VehPhysProc.c`; D-pad already feeds stick resolution |
-| No Hopping | Jump/slide lockout consumers in `VehPhysProc.c`; preserve retail rain-cloud ownership |
+| Inverted Steering — done | Mirror a local axis about the active controller center; D-pad already feeds stick resolution; duplicates do not cancel |
+| No Hopping — done | Clear resolved manual hop latch/buffer; preserve drift input/states, forced jumps and rain-cloud ownership |
 | Wobble Steering | Offset steering strength before steering-state storage |
 | Low Gravity / Heavy Karts | Override `const_Gravity` |
 | Speed Capped / Super Speed | Override speed class; Super Speed also needs acceleration constants |
@@ -131,15 +132,22 @@ currently recorded, so provider-driven replay verification is not guaranteed.
 
 ## Delivery and checks
 
-1. First playable slice: Inverted Steering and No Hopping on the runtime core.
-2. Baseline/ordered modifier application, remaining effects, Random and contact
+1. Verify the first playable slice in game: Interval/Random with only Inverted Steering
+   and No Hopping selected; check the activation banner in 1P/2P.
+2. Baseline/ordered modifier application, remaining effects and contact
    triggers, then External.
 3. `docs/features/CHAOS.md` + README links: creation, scope, stacking, effects,
    pause inspection and provider/replay limitations.
 
 Existing suites: `test_chaos_effect`, `test_chaos_gate`, `test_chaos_new_file`,
 `test_chaos_setup`, `test_menu_strings`, `test_chaos_save`, `test_chaos_runtime`.
-Runtime tests cover timers, ordering, overflow, cadence, gates and resident restore.
+Runtime tests cover timers, ordering, overflow, cadence, gates, resident restore,
+direct driver application, retained drifts and banner submissions. Effects apply
+after retail hop-input resolution, before jump/steering consumption, with no
+stored input copy.
+The latest activation name is shown for
+three gameplay seconds: Final Lap placement in solo, shared full-screen center
+in multiplayer. Pause freezes its timer and hides it.
 Add modifier-restoration tests with the effects. Build with `cmake --build build -j`;
 run focused CTest.
 

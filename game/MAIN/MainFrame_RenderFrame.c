@@ -516,6 +516,7 @@ void RenderAllHUD(struct GameTracker *gGT)
 		// if hud
 		else
 		{
+			UI_Chaos_DrawActivation(gGT);
 			// if not adv hub
 			if ((gameMode1 & ADVENTURE_ARENA) == 0)
 			{

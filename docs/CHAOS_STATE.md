@@ -94,7 +94,7 @@ The existing SDATA checkpoint region captures:
 
 - `chaosSettings` and the dedicated `chaosRng`;
 - `chaosRuntime`: race initialization, ordered activation entries with independent
-  remaining milliseconds, and the Interval countdown;
+  remaining milliseconds, the timed-trigger countdown and activation-notice ID/timer;
 - `newLoad`: current chain step, setup handover flag, parent links and the
   character-select return context;
 - `chaosMenu`: the standalone `RectMenu`, current page, scroll offsets, visible
@@ -130,13 +130,31 @@ Adventure gameplay after GO, with no active menu or pending load. Pause freezes
 timers and cadence. `armed` gates execution independently of `chaos_mode`.
 
 Activations are ordered entries, including duplicates. Expiry runs before
-Interval scheduling; new entries receive their full duration. Interval retains
-frame overshoot. The queue holds 128 entries; overflow rejects the new request,
+timed scheduling; new entries receive their full duration. Interval uses the
+configured gap; Random draws each gap between 30% and 100% of that interval,
+including the first one. Both retain frame overshoot. The queue holds 128 entries;
+overflow rejects the new request,
 preserving existing entries. A rejected scheduled event consumes its gap but no
 RNG choice. Race resets preserve settings and the dedicated RNG stream.
 
 Race end, retry teardown and level-load stage 0 clear runtime state before driver
 storage is reused. The runtime contains no pointers and needs no new relocator.
 Future driver baselines, cooldowns, contact latches and takeover state must join
-captured storage as effects are implemented. Gameplay modifiers and triggers
-other than Interval are still pending.
+captured storage as effects are implemented.
+
+`Chaos_ApplyDriver` runs in driving physics after retail hop-input resolution,
+before jump and steering consumers. It applies active entries in order to the
+driver and local physics values, checking catalogue scope and excluding finished
+racers. There is no stored copy of per-driver input. Steering mirrors the baseline
+axis around the controller center, so duplicates do not invert twice. No Hopping
+clears the resolved hop latch and buffer; drift input and states remain retail.
+Forced jumps remain available. Neither effect writes the shared gamepad or
+replaces retail cloud effects. Normal input resumes on final expiry without a
+snapshot.
+
+Successful activations show the latest effect name for three gameplay seconds,
+sliding in/out with big orange text. Solo uses the Final Lap quarter-height
+position; multiplayer uses the full-screen center/continue-prompt baseline.
+The announcement uses the full-screen UI OT, freezes with gameplay and is hidden
+in pause/menus. Rejected activations leave it unchanged; reset clears it. Other
+effects and the Pickup/External triggers are still pending.

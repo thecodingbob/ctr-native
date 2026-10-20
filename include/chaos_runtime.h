@@ -7,6 +7,7 @@ enum ChaosRuntimeConstants
 {
 	CHAOS_MAX_ACTIVATIONS = 128,
 	CHAOS_MILLISECONDS_PER_SECOND = 1000,
+	CHAOS_ACTIVATION_NOTICE_MS = 3000,
 };
 
 struct ChaosActivation
@@ -21,6 +22,8 @@ struct ChaosRuntime
 	struct ChaosActivation active[CHAOS_MAX_ACTIVATIONS];
 	int numActive;
 	s32 intervalRemainingMS;
+	ChaosEffectId noticeEffect;
+	s32 noticeRemainingMS;
 	bool raceInitialized;
 };
 

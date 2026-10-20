@@ -148,10 +148,15 @@ static inline int ChaosEffect_CountEnabled(const bool *enabledEffects)
 // The chaos system's own generator, kept separate from MixRNG_Scramble and
 // RngDeadCoed because both of those are compared every recorded frame by the
 // replay verifier. Its state lives in sdata->chaosRng.
+enum ChaosRandomConstants
+{
+	CHAOS_RANDOM_SAMPLE_MAX = 0x7fff,
+};
+
 static inline u32 ChaosEffect_NextRandom(u32 *state)
 {
 	*state = *state * 1103515245u + 12345u;
-	return (*state >> 16) & 0x7fff;
+	return (*state >> 16) & CHAOS_RANDOM_SAMPLE_MAX;
 }
 
 // Flips one entry and keeps the cached count in step with it. Every write to

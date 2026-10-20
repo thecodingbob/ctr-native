@@ -5,9 +5,44 @@ struct sData sdata_static;
 NativeConfig g_config;
 static struct GameTracker s_tracker;
 static bool s_teleported;
+static int s_noticeDraws;
+static const char *s_noticeText;
+static s16 s_noticeX;
+static s16 s_noticeY;
+static s16 s_noticeFont;
+static u16 s_noticeFlags;
+static u32 *s_noticeOT;
 
 #include <game/231/RB_Chaos.c>
 #include <game/MAIN/MainGameStart.c>
+#include <game/Vehicle/VehPhysProc_Input.c>
+#include <game/UI/UI_Lerp2D.c>
+#include <game/UI/UI_Chaos.c>
+
+// Only the unused angular helper needs this dependency; the banner uses real linear interpolation.
+int MATH_Sin(u32 angle)
+{
+	(void)angle;
+	CtrTest_Bail("the Chaos banner must not use angular HUD interpolation");
+	return 0;
+}
+
+s32 DecalFont_GetLineWidth(char *text, s16 font)
+{
+	(void)font;
+	return (s32)strlen(text) * 8;
+}
+
+void DecalFont_DrawLineOT(char *text, s16 x, s16 y, s16 font, s16 flags, u32 *ot)
+{
+	s_noticeDraws++;
+	s_noticeText = text;
+	s_noticeX = x;
+	s_noticeY = y;
+	s_noticeFont = font;
+	s_noticeFlags = (u16)flags;
+	s_noticeOT = ot;
+}
 
 void VehBirth_TeleportAll(struct GameTracker *gGT, u32 spawnFlags)
 {
@@ -224,13 +259,13 @@ static void TestResetAndInvalidSettings(void)
 	CTR_TEST_CHECK_EQ(sdata->chaosRng, 0, "invalid duration does not draw RNG");
 	for (int trigger = 0; trigger < CHAOS_TRIGGER_COUNT; trigger++)
 	{
-		if (trigger == CHAOS_TRIGGER_INTERVAL)
+		if (trigger == CHAOS_TRIGGER_INTERVAL || trigger == CHAOS_TRIGGER_RANDOM)
 		{
 			continue;
 		}
 		SetupRace(trigger);
 		Tick(5000);
-		CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 0, "other trigger modes do not fall back to Interval scheduling");
+		CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 0, "contact and external triggers do not fall back to timed scheduling");
 	}
 }
 
@@ -262,6 +297,316 @@ static void TestResidentRestore(void)
 	CTR_TEST_CHECK_EQ(sdata->randomNumber, saved.randomNumber, "Chaos scheduling leaves retail RNG untouched");
 }
 
+static void EnableInputEffects(void)
+{
+	SetupRace(CHAOS_TRIGGER_INTERVAL);
+	memset(sdata->chaosSettings.effects, 0, sizeof(sdata->chaosSettings.effects));
+	sdata->chaosSettings.effects[CHAOS_EFFECT_INVERTED_STEERING] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_NO_HOPPING] = true;
+	sdata->chaosSettings.enabledCount = 2;
+}
+
+static void TestRandomTrigger(void)
+{
+	CTR_TEST_SECTION("Random schedules selected gameplay effects with bounded, reproducible gaps");
+	EnableInputEffects();
+	sdata->chaosSettings.trigger = CHAOS_TRIGGER_RANDOM;
+	Chaos_BeginRace(&s_tracker);
+	const int firstGap = sdata->chaosRuntime.intervalRemainingMS;
+	CTR_TEST_CHECK(firstGap >= 1500 && firstGap <= 5000, "the first Random gap is between 30 and 100 percent of the configured interval");
+	Tick(firstGap - 1);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 0, "Random waits for its initial gap instead of activating immediately");
+	Tick(1);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 1, "Random activates at its first deadline");
+	const ChaosEffectId first = sdata->chaosRuntime.active[0].effect;
+	struct Driver driver = {.driverID = 0};
+	CTR_TEST_CHECK(Chaos_IsActiveForDriver(first, &driver), "a Random activation reaches the gameplay effect query");
+	CTR_TEST_CHECK(first == CHAOS_EFFECT_INVERTED_STEERING || first == CHAOS_EFFECT_NO_HOPPING,
+	               "Random chooses only the effects selected for this file");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.noticeRemainingMS, 3000, "Random activation also starts the visual announcement");
+	const struct ChaosRuntime beforePause = sdata->chaosRuntime;
+	const u32 pausedRng = sdata->chaosRng;
+	s_tracker.gameMode1 |= PAUSE_1;
+	Tick(5000);
+	CTR_TEST_CHECK(memcmp(&beforePause, &sdata->chaosRuntime, sizeof(beforePause)) == 0, "pause preserves the Random deadline and active timers");
+	CTR_TEST_CHECK_EQ(sdata->chaosRng, pausedRng, "pause does not redraw the Random gap");
+	s_tracker.gameMode1 &= ~PAUSE_1;
+	bool varied = false;
+	for (int i = 0; i < 32; i++)
+	{
+		const int gap = sdata->chaosRuntime.intervalRemainingMS;
+		CTR_TEST_CHECK(gap >= 1500 && gap <= 5000, "every new Random gap stays within the configured bounds");
+		varied |= gap != firstGap;
+		Tick(gap);
+		CTR_TEST_CHECK_EQ(sdata->chaosRuntime.noticeRemainingMS, 3000, "each elapsed Random gap produces a fresh activation");
+	}
+	CTR_TEST_CHECK(varied, "Random does not silently use a fixed Interval cadence");
+	const struct ChaosRuntime saved = sdata->chaosRuntime;
+	const u32 savedRng = sdata->chaosRng;
+	Tick(saved.intervalRemainingMS);
+	const struct ChaosRuntime expected = sdata->chaosRuntime;
+	const u32 expectedRng = sdata->chaosRng;
+	sdata->chaosRuntime = saved;
+	sdata->chaosRng = savedRng;
+	Tick(saved.intervalRemainingMS);
+	CTR_TEST_CHECK(memcmp(&expected, &sdata->chaosRuntime, sizeof(expected)) == 0, "restoring Random state reproduces the next effect and gap");
+	CTR_TEST_CHECK_EQ(sdata->chaosRng, expectedRng, "Random uses the captured dedicated RNG stream");
+	CTR_TEST_CHECK_EQ(sdata->randomNumber, 0, "Random scheduling leaves retail RNG untouched");
+
+	sdata->chaosSettings.triggerIntervalSeconds = 120;
+	Chaos_BeginRace(&s_tracker);
+	bool longGap = false;
+	for (int i = 0; i < 32; i++)
+	{
+		const int gap = sdata->chaosRuntime.intervalRemainingMS;
+		CTR_TEST_CHECK(gap >= 36000 && gap <= 120000, "long configured intervals retain the full Random range");
+		longGap |= gap > 90000;
+		Tick(gap);
+	}
+	CTR_TEST_CHECK(longGap, "15-bit RNG samples are scaled rather than truncating long gaps with a modulus");
+}
+
+static int PreparedSteering(struct Driver *driver, const struct GamepadBuffer *pad)
+{
+	int steering = pad->stickLX;
+	Chaos_ApplyDriver(driver, pad, &steering, driver->actionsFlagSet);
+	return steering;
+}
+
+static u32 PreparedJump(struct Driver *driver, u32 tapped, u32 held, int rainCloudEffect, u32 actions)
+{
+	const struct GamepadBuffer pad = {.buttonsTapped = tapped, .buttonsHeldCurrFrame = held};
+	driver->actionsFlagSet = actions;
+	actions = VehPhysProc_JumpInput(driver, tapped, held, rainCloudEffect, actions);
+	int steering = pad.stickLX;
+	return Chaos_ApplyDriver(driver, &pad, &steering, actions);
+}
+
+static void TestSteeringAndDriverScope(void)
+{
+	CTR_TEST_SECTION("steering is mirrored once around the active center for unfinished humans only");
+	EnableInputEffects();
+	struct Driver human = {.driverID = 0};
+	struct Driver partner = {.driverID = 1};
+	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT};
+	struct GamepadBuffer pad = {.stickLX = 0};
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 0, "inactive steering preserves the axis");
+	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 1000);
+	const int axes[] = {0, 1, 64, 127, 128, 129, 192, 255};
+	for (int i = 0; i < (int)len(axes); i++)
+	{
+		pad.stickLX = (s16)axes[i];
+		CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 256 - axes[i], "analog and resolved D-pad extremes mirror without byte wrapping");
+		CTR_TEST_CHECK_EQ(pad.stickLX, axes[i], "steering never overwrites the shared gamepad axis");
+	}
+	pad.stickLX = 64;
+	CTR_TEST_CHECK_EQ(PreparedSteering(&partner, &pad), 192, "the second human receives the same effect");
+	CTR_TEST_CHECK_EQ(PreparedSteering(&bot, &pad), 64, "the first bot above the human slots is unaffected");
+	human.actionsFlagSet = ACTION_RACE_FINISHED;
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 64, "a finished human is unaffected while the partner continues");
+	human.actionsFlagSet = 0;
+	struct RacingWheelData wheel = {.gamepadCenter = 100};
+	pad.rwd = &wheel;
+	pad.stickLX = 60;
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 140, "calibrated wheel steering mirrors around its own center");
+	pad.stickLX = 100;
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 100, "the wheel's neutral position stays neutral");
+	pad.stickLX = 60;
+	Tick(500);
+	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 1000);
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 140, "duplicate activations do not invert twice and cancel");
+	Tick(500);
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 140, "the later activation keeps steering inverted after the first expires");
+	Tick(500);
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 60, "steering returns to the live input after final expiry");
+	CTR_TEST_CHECK(!Chaos_IsActiveForDriver(CHAOS_EFFECT_NONE, &human), "invalid effect IDs cannot apply to a driver");
+	CTR_TEST_CHECK(!Chaos_IsActiveForDriver(CHAOS_EFFECT_INVERTED_STEERING, NULL), "a missing driver cannot receive an effect");
+}
+
+static void TestHopInputAndCloudOwnership(void)
+{
+	CTR_TEST_SECTION("No Hopping clears pending manual jumps without overwriting retail cloud effects");
+	EnableInputEffects();
+	struct Driver driver = {.driverID = 0, .kartState = KS_NORMAL};
+	const u32 unrelated = ACTION_TOUCH_GROUND | ACTION_MASK_WEAPON;
+	u32 actions = PreparedJump(&driver, BTN_L1, BTN_L1, RAIN_CLOUD_EFFECT_NONE, unrelated);
+	CTR_TEST_CHECK((actions & ACTION_JUMP_BUTTON_HELD) != 0, "ordinary hop input still latches the shoulder button");
+	CTR_TEST_CHECK_EQ(driver.jump_TenBuffer, 10, "ordinary hop input still fills the retail buffer");
+	CTR_TEST_CHECK_EQ(driver.buttonUsedToStartDrift, BTN_L1, "a single tapped shoulder selects its drift button");
+	PreparedJump(&driver, BTN_L1 | BTN_R1, BTN_L1 | BTN_R1, RAIN_CLOUD_EFFECT_NONE, unrelated);
+	CTR_TEST_CHECK_EQ(driver.buttonUsedToStartDrift, BTN_R1, "simultaneous shoulder taps preserve the retail R1 preference");
+	driver.jump_TenBuffer = 4;
+	actions = PreparedJump(&driver, 0, BTN_R1, RAIN_CLOUD_EFFECT_NONE, unrelated | ACTION_JUMP_BUTTON_HELD);
+	CTR_TEST_CHECK_EQ(driver.jump_TenBuffer, 4, "holding an already-latched shoulder does not refresh the retail buffer");
+	actions = PreparedJump(&driver, 0, 0, RAIN_CLOUD_EFFECT_NONE, actions);
+	CTR_TEST_CHECK_EQ(actions, unrelated, "releasing the shoulders clears the ordinary jump latch");
+	CTR_TEST_CHECK_EQ(driver.jump_TenBuffer, 0, "releasing the shoulders clears the ordinary jump buffer");
+	driver.rainCloudEffect = RAIN_CLOUD_EFFECT_ITEM_ROLL;
+	driver.jump_TenBuffer = 4;
+	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 1000);
+	actions = PreparedJump(&driver, BTN_R1, BTN_R1, driver.rainCloudEffect, unrelated | ACTION_JUMP_BUTTON_HELD);
+	CTR_TEST_CHECK_EQ(actions, unrelated, "active No Hopping clears only the jump latch");
+	CTR_TEST_CHECK_EQ(driver.jump_TenBuffer, 0, "a hop buffered before activation cannot fire later");
+	CTR_TEST_CHECK_EQ(driver.rainCloudEffect, RAIN_CLOUD_EFFECT_ITEM_ROLL, "Chaos does not replace the real cloud's item effect");
+	CTR_TEST_CHECK_EQ(PreparedJump(&driver, 0, BTN_L1, RAIN_CLOUD_EFFECT_NONE, unrelated), unrelated,
+	                  "holding a shoulder cannot refill the buffer during No Hopping");
+	Tick(500);
+	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 1000);
+	Tick(500);
+	CTR_TEST_CHECK_EQ(PreparedJump(&driver, BTN_R1, BTN_R1, RAIN_CLOUD_EFFECT_NONE, unrelated), unrelated,
+	                  "the second independent activation continues blocking hops");
+	Tick(500);
+	actions = PreparedJump(&driver, BTN_R1, BTN_R1, driver.rainCloudEffect, unrelated);
+	CTR_TEST_CHECK((actions & ACTION_JUMP_BUTTON_HELD) != 0, "hop input resumes on final expiry even while a different cloud effect exists");
+	driver.jump_TenBuffer = 0;
+	actions = PreparedJump(&driver, BTN_R1, BTN_R1, RAIN_CLOUD_EFFECT_JUMP_LOCKOUT, unrelated);
+	CTR_TEST_CHECK_EQ(actions, unrelated, "retail cloud lockout still blocks hops after Chaos expires");
+	CTR_TEST_CHECK_EQ(driver.jump_TenBuffer, 0, "Chaos expiry does not clear the retail cloud's jump lockout");
+
+	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 1000);
+	driver.driverID = 2;
+	actions = PreparedJump(&driver, BTN_L1, BTN_L1, RAIN_CLOUD_EFFECT_NONE, unrelated);
+	CTR_TEST_CHECK((actions & ACTION_JUMP_BUTTON_HELD) != 0, "No Hopping does not suppress input for a bot slot");
+	driver.driverID = 1;
+	actions = PreparedJump(&driver, BTN_L1, BTN_L1, RAIN_CLOUD_EFFECT_NONE, unrelated);
+	CTR_TEST_CHECK_EQ(actions, unrelated, "No Hopping applies to the second human too");
+	driver.driverID = 0;
+	Chaos_Reset();
+	actions = PreparedJump(&driver, BTN_L1, BTN_L1, RAIN_CLOUD_EFFECT_NONE, unrelated);
+	CTR_TEST_CHECK((actions & ACTION_JUMP_BUTTON_HELD) != 0, "race reset leaves no synthetic jump lockout behind");
+}
+
+static void TestDriverApplication(void)
+{
+	CTR_TEST_SECTION("direct application removes resolved hops while preserving drift state and shared input");
+	EnableInputEffects();
+	struct Driver driver = {
+		.driverID = 0, .kartState = KS_DRIFTING, .jump_TenBuffer = 4,
+		.actionsFlagSet = ACTION_TOUCH_GROUND | ACTION_JUMP_BUTTON_HELD,
+		.forcedJumpType = FORCED_JUMP_HIGH,
+	};
+	struct Driver partner = {.driverID = 1};
+	const struct GamepadBuffer pad = {
+		.stickLX = 32,
+		.buttonsHeldCurrFrame = BTN_R1 | BTN_CROSS_one,
+		.buttonsTapped = BTN_L1 | BTN_CIRCLE,
+	};
+	const struct GamepadBuffer original = pad;
+	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 1000);
+	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 1000);
+	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 1000);
+	int steering = pad.stickLX;
+	u32 actions = VehPhysProc_JumpInput(&driver, pad.buttonsTapped, pad.buttonsHeldCurrFrame,
+	                                   RAIN_CLOUD_EFFECT_NONE, driver.actionsFlagSet);
+	CTR_TEST_CHECK((actions & ACTION_JUMP_BUTTON_HELD) != 0, "retail input resolves its hop latch before Chaos application");
+	actions = Chaos_ApplyDriver(&driver, &pad, &steering, actions);
+	CTR_TEST_CHECK_EQ(steering, 224, "steering and No Hopping are applied in the same pass");
+	CTR_TEST_CHECK_EQ(driver.kartState, KS_DRIFTING, "an existing drift continues without a forced state transition");
+	CTR_TEST_CHECK_EQ(actions, ACTION_TOUCH_GROUND, "application removes the resolved jump latch without clearing other actions");
+	CTR_TEST_CHECK_EQ(driver.jump_TenBuffer, 0, "pending hops are removed before jump physics can consume them");
+	CTR_TEST_CHECK_EQ(driver.forcedJumpType, FORCED_JUMP_HIGH, "forced jumps are not removed by application");
+	CTR_TEST_CHECK(memcmp(&pad, &original, sizeof(pad)) == 0, "neither effect writes any shared gamepad field");
+	CTR_TEST_CHECK((pad.buttonsHeldCurrFrame & BTN_R1) != 0, "drift still sees its held shoulder");
+	CTR_TEST_CHECK((pad.buttonsTapped & BTN_L1) != 0, "drift still sees its boost tap");
+	for (int frame = 0; frame < 3; frame++)
+	{
+		actions = VehPhysProc_JumpInput(&driver, 0, BTN_R1, RAIN_CLOUD_EFFECT_NONE, actions);
+		actions = Chaos_ApplyDriver(&driver, &pad, &steering, actions);
+		CTR_TEST_CHECK_EQ(actions, ACTION_TOUCH_GROUND, "held shoulders cannot retain a resolved hop on later frames");
+		CTR_TEST_CHECK_EQ(driver.jump_TenBuffer, 0, "held shoulders cannot retain a jump buffer on later frames");
+	}
+	const struct GamepadBuffer partnerPad = {.stickLX = 200, .buttonsHeldCurrFrame = BTN_SQUARE_one};
+	CTR_TEST_CHECK_EQ(PreparedSteering(&partner, &partnerPad), 56, "each player resolves their own steering baseline");
+	CTR_TEST_CHECK_EQ(steering, 224, "applying player two preserves player one's local steering");
+	driver.kartState = KS_CRASHING;
+	Chaos_ApplyDriver(&driver, &pad, &steering, actions);
+	CTR_TEST_CHECK_EQ(driver.kartState, KS_CRASHING, "No Hopping does not replace damage states with normal driving");
+	Tick(1000);
+	CTR_TEST_CHECK_EQ(PreparedSteering(&driver, &pad), pad.stickLX, "expiry uses live steering without restoring a snapshot");
+	actions = PreparedJump(&driver, BTN_R1, BTN_R1, RAIN_CLOUD_EFFECT_NONE, ACTION_TOUCH_GROUND);
+	CTR_TEST_CHECK((actions & ACTION_JUMP_BUTTON_HELD) != 0, "expiry lets retail hop input resume without restoring a snapshot");
+	CTR_TEST_CHECK_EQ(driver.jump_TenBuffer, 10, "expiry lets retail input fill the jump buffer again");
+}
+
+static void DrawNotice(void)
+{
+	s_noticeDraws = 0;
+	UI_Chaos_DrawActivation(&s_tracker);
+}
+
+static void TestActivationNotice(void)
+{
+	CTR_TEST_SECTION("activation notices use Final Lap styling and a shared full-screen center in 2P");
+	EnableInputEffects();
+	static struct DB buffer;
+	u32 uiOT[5];
+	u32 viewportOT[5];
+	buffer.otMem.uiOT = uiOT;
+	s_tracker.backBuffer = &buffer;
+	s_tracker.pushBuffer[0].ptrOT = viewportOT;
+	s_tracker.hudFlags = HUD_FLAG_RACE_HUD;
+	s_tracker.numPlyrCurrGame = 1;
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 0, "there is no message before an activation");
+	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 10000);
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 1, "a successful activation submits its notice");
+	CTR_TEST_CHECK(strcmp(s_noticeText, "Inverted Steering") == 0, "the notice uses the catalogue effect name");
+	CTR_TEST_CHECK(s_noticeX >= SCREEN_WIDTH, "the activation name begins its entrance off the right edge");
+	Tick(320);
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeX, SCREEN_WIDTH / 2, "the name settles horizontally centered");
+	CTR_TEST_CHECK_EQ(s_noticeY, SCREEN_HEIGHT / 4, "solo placement follows the Final Lap quarter-height position");
+	CTR_TEST_CHECK_EQ(s_noticeFont, FONT_BIG, "the activation name uses the Final Lap font");
+	CTR_TEST_CHECK_EQ(s_noticeFlags, JUSTIFY_CENTER | ORANGE, "the activation name uses centered orange text");
+	CTR_TEST_CHECK(s_noticeOT == uiOT, "the message uses the full-screen UI ordering table");
+	const struct ChaosRuntime beforeDraw = sdata->chaosRuntime;
+	DrawNotice();
+	CTR_TEST_CHECK(memcmp(&beforeDraw, &sdata->chaosRuntime, sizeof(beforeDraw)) == 0, "drawing cannot advance notification or effect timers");
+
+	s_tracker.numPlyrCurrGame = 2;
+	s_tracker.pushBuffer[0].rect = (RECT){0, 0, SCREEN_WIDTH, SCREEN_HEIGHT / 2};
+	s_tracker.pushBuffer[1].rect = (RECT){0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2};
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 1, "2P gets one shared announcement rather than two viewport messages");
+	CTR_TEST_CHECK_EQ(s_noticeX, 256, "the 2P announcement is horizontally centered on the whole screen");
+	CTR_TEST_CHECK_EQ(s_noticeY, 100, "the 2P announcement matches the central continue-prompt baseline");
+	CTR_TEST_CHECK(s_noticeOT == uiOT && s_noticeOT != viewportOT, "2P text is not clipped to either player's OT");
+
+	s_tracker.gameMode1 |= PAUSE_1;
+	Tick(1000);
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 0, "pause hides the activation announcement");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.noticeRemainingMS, 2680, "pause freezes announcement time together with effect timers");
+	s_tracker.gameMode1 &= ~PAUSE_1;
+	s_tracker.hudFlags = 0;
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 0, "a disabled race HUD hides the announcement");
+	s_tracker.hudFlags = HUD_FLAG_RACE_HUD;
+	sdata->ptrActiveMenu = &sdata->chaosMenu.menu;
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 0, "menu screens do not receive the race announcement");
+	sdata->ptrActiveMenu = NULL;
+	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 10000);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.noticeRemainingMS, 3000, "a later activation restarts the announcement lifetime");
+	Tick(320);
+	DrawNotice();
+	CTR_TEST_CHECK(strcmp(s_noticeText, "No Hopping") == 0, "the newest activation replaces the displayed name");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 2, "replacing the announcement preserves both running effects");
+	const struct ChaosRuntime beforeReject = sdata->chaosRuntime;
+	Chaos_Activate(CHAOS_EFFECT_NO_ITEMS, 1000);
+	CTR_TEST_CHECK(memcmp(&beforeReject, &sdata->chaosRuntime, sizeof(beforeReject)) == 0, "a rejected activation cannot replace the current announcement");
+	Tick(2500);
+	DrawNotice();
+	CTR_TEST_CHECK(s_noticeX < SCREEN_WIDTH / 2, "the name slides left during its exit");
+	Tick(180);
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 0, "the notice disappears after three seconds of gameplay");
+	CTR_TEST_CHECK(Chaos_IsActive(CHAOS_EFFECT_NO_HOPPING), "notification expiry does not expire the effect itself");
+	Chaos_Reset();
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.noticeRemainingMS, 0, "race reset also clears pending announcement state");
+}
+
 int main(void)
 {
 	TestIntervalCadence();
@@ -270,5 +615,10 @@ int main(void)
 	TestCapacityAndValidation();
 	TestResetAndInvalidSettings();
 	TestResidentRestore();
+	TestRandomTrigger();
+	TestSteeringAndDriverScope();
+	TestHopInputAndCloudOwnership();
+	TestDriverApplication();
+	TestActivationNotice();
 	return CtrTest_Summary();
 }
