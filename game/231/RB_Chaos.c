@@ -64,6 +64,7 @@ bool Chaos_Activate(ChaosEffectId effect, s32 durationMS)
 		.remainingMS = durationMS,
 		.noticeRemainingMS = CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS,
 	};
+	OtherFX_Play_LowLevel(HOWL_SFX_SWISH, 1, HOWL_SFX_DEFAULT_FLAGS | HOWL_SFX_GAIN_DOUBLE_FLAG);
 	return true;
 }
 

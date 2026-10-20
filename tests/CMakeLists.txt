@@ -78,6 +78,15 @@ ctr_add_test_suite(test_chaos_runtime
     SOURCES test_chaos_runtime.c
 )
 
+ctr_add_test_suite(test_howl_sample
+    SOURCES test_howl_sample.c
+)
+
+ctr_add_test_suite(test_native_cd
+    SOURCES test_native_cd.c
+    LIBRARIES SDL3::SDL3
+)
+
 ctr_add_test_suite(test_chaos_new_file
     SOURCES test_chaos_new_file.c
 )

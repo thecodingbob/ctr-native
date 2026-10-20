@@ -6,6 +6,9 @@ NativeConfig g_config;
 static struct GameTracker s_tracker;
 static bool s_teleported;
 static bool s_allHumansFinished;
+static int s_activationSounds;
+static u32 s_lastSound;
+static u32 s_lastSoundFlags;
 static int s_noticeDraws;
 static const char *s_noticeText;
 static s16 s_noticeX;
@@ -87,6 +90,15 @@ void VehBirth_TeleportAll(struct GameTracker *gGT, u32 spawnFlags)
 }
 
 void Music_Stop(void) {}
+int OtherFX_Play_LowLevel(u32 soundID, u8 antiSpam, u32 flags)
+{
+	(void)antiSpam;
+	s_activationSounds++;
+	s_lastSound = soundID;
+	s_lastSoundFlags = flags;
+	return 0;
+}
+
 void howl_StopAudio(b32 backup, b32 music, b32 fx)
 {
 	(void)backup;
@@ -97,6 +109,7 @@ void howl_StopAudio(b32 backup, b32 music, b32 fx)
 static void SetupRace(int trigger)
 {
 	s_allHumansFinished = false;
+	s_activationSounds = 0;
 	memset(&sdata_static, 0, sizeof(sdata_static));
 	memset(&s_tracker, 0, sizeof(s_tracker));
 	memset(&g_config, 0, sizeof(g_config));
@@ -584,6 +597,9 @@ static void TestActivationNotice(void)
 	DrawNotice();
 	CTR_TEST_CHECK_EQ(s_noticeDraws, 0, "there is no message before an activation");
 	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 10000);
+	CTR_TEST_CHECK_EQ(s_activationSounds, 1, "a successful activation plays one notification sound");
+	CTR_TEST_CHECK_EQ(s_lastSound, 0x65u, "the activation sound is the transition swish");
+	CTR_TEST_CHECK((s_lastSoundFlags & HOWL_SFX_GAIN_DOUBLE_FLAG) != 0, "Chaos requests double gain for its notification");
 	DrawNotice();
 	CTR_TEST_CHECK_EQ(s_noticeDraws, 1, "a successful activation submits its notice");
 	CTR_TEST_CHECK(strcmp(s_noticeText, "Inverted Steering") == 0, "the notice uses the catalogue effect name");
@@ -598,6 +614,7 @@ static void TestActivationNotice(void)
 	const struct ChaosRuntime beforeDraw = sdata->chaosRuntime;
 	DrawNotice();
 	CTR_TEST_CHECK(memcmp(&beforeDraw, &sdata->chaosRuntime, sizeof(beforeDraw)) == 0, "drawing cannot advance notification or effect timers");
+	CTR_TEST_CHECK_EQ(s_activationSounds, 1, "rendering an ongoing banner does not replay the activation sound");
 
 	s_tracker.numPlyrCurrGame = 2;
 	s_tracker.pushBuffer[0].rect = (RECT){0, 0, SCREEN_WIDTH, SCREEN_HEIGHT / 2};
@@ -623,6 +640,7 @@ static void TestActivationNotice(void)
 	CTR_TEST_CHECK_EQ(s_noticeDraws, 0, "menu screens do not receive the race announcement");
 	sdata->ptrActiveMenu = NULL;
 	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 10000);
+	CTR_TEST_CHECK_EQ(s_activationSounds, 2, "a second successful activation requests its own swish");
 	CTR_TEST_CHECK_EQ(LatestNoticeRemaining(), CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS, "a later activation starts its own announcement lifetime");
 	Tick(320);
 	DrawNotice();
@@ -630,6 +648,7 @@ static void TestActivationNotice(void)
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 2, "replacing the announcement preserves both running effects");
 	const struct ChaosRuntime beforeReject = sdata->chaosRuntime;
 	Chaos_Activate(CHAOS_EFFECT_NO_ITEMS, 1000);
+	CTR_TEST_CHECK_EQ(s_activationSounds, 2, "a rejected activation does not request a sound");
 	CTR_TEST_CHECK(memcmp(&beforeReject, &sdata->chaosRuntime, sizeof(beforeReject)) == 0, "a rejected activation cannot replace the current announcement");
 	Tick(2840);
 	DrawNotice();

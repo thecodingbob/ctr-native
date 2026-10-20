@@ -153,7 +153,16 @@ replaces retail cloud effects. Normal input resumes on final expiry without a
 snapshot.
 
 Each activation has an independent three-second announcement, followed by 320 ms
-of docking. Separate borderless tables keep docked labels from pushing banners
+of docking. Successful activations play the transition swish (`0x65`) once;
+rejected requests and HUD redraws do not play it.
+The swish is preloaded after race banks and music for Chaos files. OtherFX's shared
+playback path resolves missing samples from their source banks on demand into a
+level-local cache bank; ordinary bank teardown releases it. Positional native
+reads preserve the CD cursor/callbacks and do not use MEMPACK. Unexpected cache
+misses perform synchronous reads; preloading avoids that work at activation.
+Chaos requests double gain (+6 dB), subject to the channel's normal saturation
+and Effects volume slider. Menu and PERFECT swishes retain their normal gain.
+Separate borderless tables keep docked labels from pushing banners
 down the screen. Central banners reserve the viewport rows occupied by Final Lap;
 docked rows stay fixed and do not displace central banners. The newest
 banner starts at the same viewport quarter-height as solo Final Lap, or the shared multiplayer continue-prompt

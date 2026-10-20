@@ -30,7 +30,7 @@ s32 MM_TransitionInOut(struct TransitionMeta *meta, s32 framesPassed, s32 numFra
 		if ((framesLeft == MM_TRANSITION_SWISH_FRAME) && (transitionIndex == 0))
 		{
 			// Play "swoosh" sound for menu transition
-			OtherFX_Play(MM_TRANSITION_SWISH_SFX, 0);
+			OtherFX_Play(HOWL_SFX_SWISH, 0);
 		}
 
 		if (framesLeft < 1)

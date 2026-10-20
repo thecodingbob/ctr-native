@@ -75,6 +75,7 @@
 #include "HOWL/HOWL_Reverb.c"
 #include "HOWL/HOWL_CseqMusic.c"
 #include "HOWL/HOWL_Bank.c"
+#include "HOWL/HOWL_Sample.c"
 #include "HOWL/HOWL_Load.c"
 #include "HOWL/HOWL_CseqOpcode.c"
 #include "HOWL/HOWL_SongPool.c"

@@ -129,7 +129,8 @@ void UpdateChannelVol_EngineFX_All(void)
 		else if (curr->type == HOWL_CHANNEL_TYPE_OTHER_FX)
 		{
 			HOWL_CHANNEL_UPDATES[curr->channelID] |= HOWL_CHANNEL_UPDATE_VOLUME;
-			UpdateChannelVol_OtherFX(&sdata->howl_metaOtherFX[curr->soundID & 0xffff], &HOWL_CHANNEL_ATTRS[curr->channelID], curr->vol, curr->LR);
+			UpdateChannelVol_OtherFX(&sdata->howl_metaOtherFX[curr->soundID & 0xffff], &HOWL_CHANNEL_ATTRS[curr->channelID],
+			    HowlChannel_EffectiveVolume(curr), curr->LR);
 		}
 	}
 }
@@ -170,7 +171,8 @@ void UpdateChannelVol_OtherFX_All(void)
 		HOWL_CHANNEL_UPDATES[curr->channelID] |= HOWL_CHANNEL_UPDATE_VOLUME;
 
 		attr = &HOWL_CHANNEL_ATTRS[curr->channelID];
-		UpdateChannelVol_OtherFX(&sdata->howl_metaOtherFX[curr->soundID & 0xffff], attr, curr->vol, curr->LR);
+		UpdateChannelVol_OtherFX(&sdata->howl_metaOtherFX[curr->soundID & 0xffff], attr,
+		    HowlChannel_EffectiveVolume(curr), curr->LR);
 	}
 }
 

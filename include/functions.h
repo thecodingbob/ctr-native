@@ -169,6 +169,7 @@ int Bank_AssignSpuAddrs(void);
 void Bank_Destroy(struct Bank *ptrLastBank);
 void Bank_ClearInRange(u16 min, u16 max);
 int Bank_Load(int bankID, struct Bank *ptrBank);
+bool Bank_EnsureOtherFX(u16 soundID);
 int Bank_DestroyLast(void);
 void Bank_DestroyUntilIndex(int index);
 void Bank_DestroyAll(void);
