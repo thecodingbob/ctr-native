@@ -191,8 +191,7 @@ static void Chaos_ValuesToSettings(void)
 	}
 }
 
-// Called when the chain promotes this screen, so the list reads the settings that were
-// just reset by answering the prompt rather than whatever the last visit left behind.
+// Refresh the list from the current new-file settings whenever the chain opens this screen.
 void MM_ChaosConfig_OnEnter(void)
 {
 	s_settingsLoaded = false;

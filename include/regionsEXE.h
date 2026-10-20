@@ -4092,13 +4092,9 @@ struct sData
 	// extension on load and written back on save.
 	struct AdvMultiplayerSettings advMultiplayer;
 
-	// Chaos settings of the profile in use. Mirrored from the card extension
-	// when a file is loaded, and written once, when a file is created.
+	// Chaos settings of the profile in use. Initialised on New, configured at creation,
+	// and mirrored to/from the card extension on save/load.
 	struct ChaosSettings chaosSettings;
-
-	// Armed by the title prompt for this session only. Never persisted: a new
-	// session asks again.
-	bool chaosArmed;
 
 	// The chaos system's own generator. Separate from sdata->randomNumber and
 	// the deadcoed pair, which the replay verifier compares every recorded frame.

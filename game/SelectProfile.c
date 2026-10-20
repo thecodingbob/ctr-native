@@ -402,7 +402,7 @@ void SelectProfile_AdvPickMode_MenuProc(struct RectMenu *menu)
 		SelectProfile_Init(menu->drawStyle);
 		// A file being written out has no slot yet, so the marker follows what was
 		// picked on the creation path rather than what any slot currently holds.
-		SelectProfile_DrawAdvProfile(&sdata->advProgress, 0x92, 0x32, 0, 0, sdata->chaosArmed, SELECT_PROFILE_DRAW_STYLE_GREEN);
+		SelectProfile_DrawAdvProfile(&sdata->advProgress, 0x92, 0x32, 0, 0, sdata->chaosSettings.armed, SELECT_PROFILE_DRAW_STYLE_GREEN);
 		return;
 	}
 

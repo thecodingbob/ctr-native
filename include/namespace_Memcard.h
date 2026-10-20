@@ -642,14 +642,9 @@ enum
 	CHAOS_TRIGGER_INTERVAL_DEFAULT_SECONDS = 20,
 };
 
-// Chaos settings for one Adventure profile. Chosen once, when the file is
-// created, and never written again — the only writer is the creation-path menu.
-// The same shape is the live copy in sData and the per-profile copy in the card
-// extension.
-//
-// All zeroes read as "no chaos", which is what a file written before this
-// feature existed reports, and which is why the effect array defaults to off:
-// the menu is what turns effects on.
+// Chosen at creation and preserved by normal saves. The live copy in sData and
+// the per-profile card extension share this layout. All-zero legacy settings
+// are unarmed; new files start unarmed with all effects selected.
 struct ChaosSettings
 {
 	u16 durationSeconds;              // how long one activation lasts

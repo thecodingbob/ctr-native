@@ -74,6 +74,10 @@ ctr_add_test_suite(test_chaos_gate
     SOURCES test_chaos_gate.c
 )
 
+ctr_add_test_suite(test_chaos_new_file
+    SOURCES test_chaos_new_file.c
+)
+
 # test_pgxp.c #includes platform/native_pgxp.c so it reaches the module's
 # file-static shadow tables; the repository root on the include path resolves it,
 # and it is deliberately absent from SOURCES so it is not compiled twice.

@@ -25,12 +25,8 @@ void MM_MenuProc_Chaos(struct RectMenu *menu)
 		return;
 	}
 
-	// Row 0 is "Chaos", row 1 is "Regular". Either answer describes a file that is about
-	// to be created, so whatever a file made earlier in the session left in the live
-	// settings starts over here.
-	sdata->chaosArmed = (row == 0);
-	GAMEPROG_ResetChaosSettings(&sdata->chaosSettings);
-	sdata->chaosSettings.armed = sdata->chaosArmed;
+	// Row 0 is "Chaos", row 1 is "Regular".
+	sdata->chaosSettings.armed = (row == 0);
 
 	MM_NewLoad_Advance(menu);
 }
