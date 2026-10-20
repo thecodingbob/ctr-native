@@ -91,6 +91,10 @@ ctr_add_test_suite(test_draw_distance
     SOURCES test_draw_distance.c
 )
 
+ctr_add_test_suite(test_level_lod
+    SOURCES test_level_lod.c
+)
+
 # Compiles game/MAIN/MainDB.c into its own translation unit so the arena budget is
 # checked against the real size tables, and platform/native_memory.c for the real
 # mempack backing size.

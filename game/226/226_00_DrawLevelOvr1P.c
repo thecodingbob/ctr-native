@@ -1,4 +1,5 @@
 #include <common.h>
+#include "../RenderLevel/RenderLevelLod.h"
 
 struct DrawLevelOvr1PFaceSelector
 {
@@ -7931,11 +7932,7 @@ static int Ovr226_800a0ef4_DrawFullDynamicBspList(struct VisMemBspListNode *slot
 
 static void DrawLevelOvr1P_SetSplitGroundThresholdScratch(void)
 {
-	DrawLevelOvr1P_RenderScratch()->depthScale = 0x780;
-	DrawLevelOvr1P_RenderScratch()->textureLodDepthThreshold0 = 0x640;
-	DrawLevelOvr1P_RenderScratch()->textureLodDepthThreshold1 = 0x500;
-	DrawLevelOvr1P_RenderScratch()->topLevelNearDepthThreshold = 0x280;
-	DrawLevelOvr1P_RenderScratch()->recursiveNearDepthThreshold = 0x140;
+	RenderLevelLod_InitSplitGround(DrawLevelOvr1P_RenderScratch(), g_config.increaseDrawDistance);
 }
 
 static int DrawLevelOvr1P_ProjectSplitGroundListALowGrid(struct LevVertex *vertices, const struct QuadBlock *block,

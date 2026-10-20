@@ -1,14 +1,10 @@
 #include <common.h>
+#include "../RenderLevel/RenderLevelLod.h"
 #include "../RenderLevel/DrawLevelOvr_shared.h"
 
 enum Ovr227DrawLevelConstants
 {
 	OVR227_PRIM_RESERVE_BIAS = 0xd00,
-	OVR227_DEPTH_SCALE = 0x19c0,
-	OVR227_TEXTURE_LOD_DEPTH_THRESHOLD0 = 0x1000,
-	OVR227_TEXTURE_LOD_DEPTH_THRESHOLD1 = 0x800,
-	OVR227_TOP_LEVEL_NEAR_DEPTH_THRESHOLD = 0x600,
-	OVR227_RECURSIVE_NEAR_DEPTH_THRESHOLD = 0x300,
 };
 
 static void DrawLevelOvr2P_CopyClipRecordJumpTable(void);
@@ -105,11 +101,7 @@ static void DrawLevelOvr2P_SeedSharedHelperThresholdScratch(void)
 	// NOTE(aalhendi): Retail 227 bakes these thresholds as immediates in
 	// copied BSP handler bodies. Native reuses 226 C helpers that still read
 	// the equivalent thresholds from scratch, so seed the shared-helper view.
-	DrawLevelOvr1P_RenderScratch()->depthScale = OVR227_DEPTH_SCALE;
-	DrawLevelOvr1P_RenderScratch()->textureLodDepthThreshold0 = OVR227_TEXTURE_LOD_DEPTH_THRESHOLD0;
-	DrawLevelOvr1P_RenderScratch()->textureLodDepthThreshold1 = OVR227_TEXTURE_LOD_DEPTH_THRESHOLD1;
-	DrawLevelOvr1P_RenderScratch()->topLevelNearDepthThreshold = OVR227_TOP_LEVEL_NEAR_DEPTH_THRESHOLD;
-	DrawLevelOvr1P_RenderScratch()->recursiveNearDepthThreshold = OVR227_RECURSIVE_NEAR_DEPTH_THRESHOLD;
+	RenderLevelLod_Init2P(DrawLevelOvr1P_RenderScratch(), g_config.increaseDrawDistance);
 }
 
 static const struct DrawLevelOvr1PBucket *DrawLevelOvr2P_FindBucketByHandler(u32 handlerAddress)

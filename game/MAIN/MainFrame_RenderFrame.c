@@ -1,5 +1,6 @@
 #include <common.h>
 #include <platform/native_draw_distance.h>
+#include "../RenderLevel/RenderLevelLod.h"
 #include <platform/native_pgxp.h>
 
 #if defined(CTR_INTERNAL)
@@ -855,48 +856,11 @@ void RenderAllHeatParticles(struct GameTracker *gGT)
 	Torch_Main(gGT->particleList_heatWarp, &gGT->pushBuffer[0], &gGT->backBuffer->primMem, gGT->numPlyrCurrGame, gGT->swapchainIndex * 0x128);
 }
 
-static s32 RenderAllLevelGeometry_ScaleDistanceShift8(s32 distToScreen, s32 scale)
-{
-	s32 product = CTR_MipsMulLo(distToScreen, scale);
-
-	if (product < 0)
-	{
-		product = CTR_MipsAddLo(product, 0xff);
-	}
-
-	return CTR_MipsSra(product, 8);
-}
-
 static void RenderAllLevelGeometry_Init1PLodScratch(struct GameTracker *gGT)
 {
 	struct MainRenderLevelGeometryScratch *scratch = CTR_SCRATCHPAD_PTR(struct MainRenderLevelGeometryScratch, 0);
 	struct PushBuffer *pushBuffer = &gGT->pushBuffer[0];
-
-	if ((gGT->levelID == ADVENTURE_GARAGE) || (((gGT->gameMode1 & GAME_CUTSCENE) != 0) && (gGT->levelID != INTRO_CRASH)))
-	{
-		scratch->depthScale = 0x1e00;
-		scratch->bspLodDistanceThreshold = 0x640;
-		scratch->textureLodDepthThreshold0 = 0x640;
-		scratch->textureLodDepthThreshold1 = 0x500;
-		scratch->topLevelNearDepthThreshold = 0x280;
-		scratch->recursiveNearDepthThreshold = 0x140;
-		scratch->fullDynamicFadeDepthStart = scratch->bspLodDistanceThreshold + MAIN_RENDER_LEVEL_GEOMETRY_FULL_DYNAMIC_FADE_OFFSET;
-	}
-	else
-	{
-		s32 distToScreen = pushBuffer->distanceToScreen_PREV;
-
-		scratch->depthScale = RenderAllLevelGeometry_ScaleDistanceShift8(distToScreen, 0x2080);
-		scratch->bspLodDistanceThreshold = NativeDrawDistance_BspLodThreshold(CTR_MipsMulLo(distToScreen, 0x1a), g_config.increaseDrawDistance);
-		scratch->textureLodDepthThreshold0 =
-		    NativeDrawDistance_TextureLodThreshold(CTR_MipsMulLo(distToScreen, 0x18), g_config.increaseDrawDistance);
-		scratch->textureLodDepthThreshold1 =
-		    NativeDrawDistance_TextureLodThreshold(CTR_MipsMulLo(distToScreen, 0xc), g_config.increaseDrawDistance);
-		scratch->topLevelNearDepthThreshold =
-		    NativeDrawDistance_TextureLodThreshold(CTR_MipsMulLo(distToScreen, 7), g_config.increaseDrawDistance);
-		scratch->recursiveNearDepthThreshold = RenderAllLevelGeometry_ScaleDistanceShift8(distToScreen, 0x380);
-		scratch->fullDynamicFadeDepthStart = CTR_MipsAddLo(scratch->bspLodDistanceThreshold, MAIN_RENDER_LEVEL_GEOMETRY_FULL_DYNAMIC_FADE_OFFSET);
-	}
+	RenderLevelLod_Init1P(scratch, gGT->levelID, gGT->gameMode1, pushBuffer->distanceToScreen_PREV, g_config.increaseDrawDistance);
 
 	RenderLists_PreInit();
 }

@@ -266,7 +266,7 @@ weapon icons and battle points/lives icons will be missing on those tracks.
 
 | Key                        | Values                                 | Default   | Description                                                                                             |
 |----------------------------|----------------------------------------|-----------|---------------------------------------------------------------------------------------------------------|
-| `increase_draw_distance`   | `true` / `false`                       | `false`   | Renders farther objects and uses higher poly models at higher distances                                 |
+| `increase_draw_distance`   | `true` / `false`                       | `false`   | Extends viewing, model LOD, and texture detail distances to 4x the original distances                   |
 | `disable_split_screen_lod` | `true` / `false`                       | `false`   | Use full-detail tracks, models, and effects in split-screen                                             |
 | `fullscreen`               | `true` / `false`                       | `false`   | Borderless fullscreen on startup                                                                        |
 | `aspect_ratio`             | `4:3`, `16:9`, `16:10`, `21:9`         | `4:3`     | Display aspect ratio                                                                                    |
