@@ -225,7 +225,7 @@ enum ChaosPage
 	CHAOS_PAGE_COUNT,
 };
 
-// Resident creation state survives overlay resets and whole-machine checkpoints.
+// Resident creation and inspection state survives overlays and checkpoints.
 // Titles and row specifications are immutable and stay in the menu implementation.
 struct NewLoadState
 {
@@ -238,11 +238,18 @@ struct NewLoadState
 struct ChaosMenuState
 {
 	struct RectMenu menu;
+	// Non-NULL selects the read-only pause view and its return destination.
+	struct RectMenu *returnMenu;
 	enum ChaosPage page;
 	struct FullScreenMenu_Scroll scroll[CHAOS_PAGE_COUNT];
 	enum ChaosSetting visibleSettings[CHAOS_SETTING_COUNT];
 	int numSettings;
 	int effectsRow;
+};
+
+enum
+{
+	CHAOS_PAUSE_ROW_CAPACITY = 6, // five actions and a terminator
 };
 
 CTR_STATIC_ASSERT(sizeof(struct MenuRow) == 6);

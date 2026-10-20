@@ -1508,6 +1508,7 @@ internal void NativeCheckpoint_RelocateSDataPointers(const struct NativeCheckpoi
 	NativeCheckpoint_RelocatePointerOrImageSlot(oldHeader, liveHeader, &sdata_static.ptrActiveMenu);
 	NativeCheckpoint_RelocatePointerOrImageSlot(oldHeader, liveHeader, &sdata_static.ptrDesiredMenu);
 	NativeCheckpoint_RelocateRectMenu(oldHeader, liveHeader, &sdata_static.chaosMenu.menu);
+	NativeCheckpoint_RelocatePointerOrImageSlot(oldHeader, liveHeader, &sdata_static.chaosMenu.returnMenu);
 	NativeCheckpoint_RelocatePointerOrImageSlot(oldHeader, liveHeader, &sdata_static.newLoad.previousMenu);
 	for (u32 i = 0; i < len(sdata_static.newLoad.parentOf); i++)
 	{

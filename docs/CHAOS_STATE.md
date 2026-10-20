@@ -52,6 +52,23 @@ format and migration strategy. There are still 14 unused payload bytes before
 the checksum. The retail profile and co-op extension remain in their original
 locations.
 
+  ## In-game inspection
+
+An armed Adventure file adds **Chaos Rules** after Options in the hub, race
+and gem-cup pause menus. Regular files and other modes have no such action.
+Visibility uses the loaded file's `armed` flag, independently of the
+creation-prompt option and the number of selected effects.
+
+The pause view reuses the creation screen's rows and rendering, with no Confirm
+row and no value editing. **Active Effects** lists only effects enabled in the
+file, without an ON/OFF column.
+These are the file's enabled effects, not a list of currently running timers.
+The creation screen retains its full editable effect catalogue.
+Up/Down navigates; Cross/Circle opens Active Effects. Triangle returns from
+Active Effects to Chaos Rules, then to the pause menu.
+Start or Square returns directly to pause from either page. The pause menu keeps
+its selection, and the game remains paused.
+
 ## Whole-machine checkpoints
 
 Adventure saves and checkpoints serve different lifetimes. Checkpoints also
@@ -63,12 +80,16 @@ The existing SDATA checkpoint region captures:
 - `newLoad`: current chain step, setup handover flag, parent links and the
   character-select return context;
 - `chaosMenu`: the standalone `RectMenu`, current page, scroll offsets, visible
-  setting identities, row count and Effects action position.
+  setting identities, row count, Effects action position and pause return menu.
+  A non-NULL return menu also identifies the read-only view;
+- `chaosPauseRows`: the extra pause action and navigation links, built from the
+  unchanged retail rows each time an Adventure pause menu is requested.
 
 D230 captures the ordinary chain menus, their selections and hierarchy links.
 `NativeCheckpoint_RelocateSDataPointers` relocates the standalone menu's pointer
-fields and the chain's parent/return pointers. Active/desired menu pointers can
-therefore target the resident standalone menu as well as overlay menus.
+fields, its pause return pointer and the chain's parent/return pointers.
+Active/desired menu pointers can therefore target the resident standalone menu
+as well as overlay menus.
 The callback address uses image relocation; resident and overlay addresses use
 their recorded address ranges.
 

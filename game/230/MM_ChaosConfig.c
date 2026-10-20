@@ -1,7 +1,7 @@
 #include <common.h>
 #include "MM_FullScreenMenu.c"
 
-// Standalone creation screen, entered after Players and before character selection.
+// Shared full-screen settings: editable during creation, read-only from pause.
 // Page changes draw immediately; leaving the screen happens after drawing.
 static void MM_MenuProc_ChaosConfig(struct RectMenu *menu);
 
@@ -48,6 +48,11 @@ static const char *const s_chaosPageTitles[CHAOS_PAGE_COUNT] = {
 	[CHAOS_PAGE_EFFECTS] = "CHAOS EFFECTS",
 };
 
+static const char *const s_chaosReadOnlyPageTitles[CHAOS_PAGE_COUNT] = {
+	[CHAOS_PAGE_SETTINGS] = "CHAOS RULES",
+	[CHAOS_PAGE_EFFECTS] = "ACTIVE EFFECTS",
+};
+
 static void Chaos_BuildSettingRows(void)
 {
 	struct ChaosMenuState *state = &sdata->chaosMenu;
@@ -55,6 +60,10 @@ static void Chaos_BuildSettingRows(void)
 
 	for (int setting = 0; setting < CHAOS_SETTING_COUNT; setting++)
 	{
+		if (setting == CHAOS_SETTING_CONFIRM && state->returnMenu != NULL)
+		{
+			continue;
+		}
 		if (setting == CHAOS_SETTING_INTERVAL && !Chaos_TriggerIsTimed(sdata->chaosSettings.trigger))
 		{
 			continue;
@@ -126,7 +135,7 @@ static void Chaos_EditSetting(enum ChaosSetting setting, int direction)
 	}
 }
 
-void MM_ChaosConfig_OnEnter(void)
+static void Chaos_OnEnter(struct RectMenu *returnMenu)
 {
 	sdata->chaosMenu = (struct ChaosMenuState){
 		.menu = {
@@ -135,8 +144,42 @@ void MM_ChaosConfig_OnEnter(void)
 			.funcPtr = MM_MenuProc_ChaosConfig,
 		},
 		.page = CHAOS_PAGE_SETTINGS,
+		.returnMenu = returnMenu,
 	};
 	Chaos_BuildSettingRows();
+}
+
+void MM_ChaosConfig_OnEnter(void)
+{
+	Chaos_OnEnter(NULL);
+}
+
+void MM_ChaosConfig_OpenReadOnly(struct RectMenu *returnMenu)
+{
+	Chaos_OnEnter(returnMenu);
+	RECTMENU_ClearInput();
+	sdata->ptrDesiredMenu = &sdata->chaosMenu.menu;
+}
+
+static ChaosEffectId Chaos_EffectForRow(int row)
+{
+	if (sdata->chaosMenu.returnMenu == NULL)
+	{
+		return ChaosEffect_FromIndex(row);
+	}
+	for (int id = 0; id < CHAOS_EFFECT_COUNT; id++)
+	{
+		if (!sdata->chaosSettings.effects[id])
+		{
+			continue;
+		}
+		if (row == 0)
+		{
+			return (ChaosEffectId)id;
+		}
+		row--;
+	}
+	return CHAOS_EFFECT_NONE;
 }
 
 static void Chaos_DrawRow(const void *context, int row, int y, bool selected, uint32_t *ot)
@@ -145,22 +188,31 @@ static void Chaos_DrawRow(const void *context, int row, int y, bool selected, ui
 	(void)selected;
 	if (sdata->chaosMenu.page == CHAOS_PAGE_EFFECTS)
 	{
-		const ChaosEffectId effect = ChaosEffect_FromIndex(row);
+		const ChaosEffectId effect = Chaos_EffectForRow(row);
 		FullScreenMenu_DrawRowLabel(ChaosEffect_Def(effect)->label, y, ot);
-		FullScreenMenu_DrawOnOff(ChaosEffect_IsEnabled(sdata->chaosSettings.effects, effect), y, ot);
+		if (sdata->chaosMenu.returnMenu == NULL)
+		{
+			FullScreenMenu_DrawOnOff(ChaosEffect_IsEnabled(sdata->chaosSettings.effects, effect), y, ot);
+		}
 	}
 	else
 	{
 		const enum ChaosSetting setting = sdata->chaosMenu.visibleSettings[row];
 		const struct FullScreenMenu_Row *spec = &s_chaosSettings[setting];
-		FullScreenMenu_DrawRowLabel(spec->label, y, ot);
+		const char *label = setting == CHAOS_SETTING_EFFECTS && sdata->chaosMenu.returnMenu != NULL
+		                        ? "Active Effects" : spec->label;
+		FullScreenMenu_DrawRowLabel(label, y, ot);
 		FullScreenMenu_DrawRowValue(spec, Chaos_SettingValue(setting), y, ot);
 	}
 }
 
 static int Chaos_PageRowCount(const struct ChaosMenuState *state)
 {
-	return state->page == CHAOS_PAGE_SETTINGS ? state->numSettings : CHAOS_EFFECT_COUNT;
+	if (state->page == CHAOS_PAGE_SETTINGS)
+	{
+		return state->numSettings;
+	}
+	return state->returnMenu != NULL ? sdata->chaosSettings.enabledCount : CHAOS_EFFECT_COUNT;
 }
 
 static void MM_MenuProc_ChaosConfig(struct RectMenu *menu)
@@ -169,12 +221,22 @@ static void MM_MenuProc_ChaosConfig(struct RectMenu *menu)
 	uint32_t *ot = gGT->backBuffer->otMem.uiOT;
 	struct GamepadBuffer *pad = &sdata->gGamepads->gamepad[0];
 	struct ChaosMenuState *state = &sdata->chaosMenu;
+	const bool readOnly = state->returnMenu != NULL;
+	struct GamepadBuffer pauseInput;
+	if (readOnly)
+	{
+		pauseInput = (struct GamepadBuffer){
+			.buttonsTapped = sdata->AnyPlayerTap,
+			.buttonsHeldCurrFrame = sdata->AnyPlayerHold,
+		};
+		pad = &pauseInput;
+	}
 	s16 selected = menu->rowSelected;
 	bool leave = false;
 	bool finish = false;
 
 	FullScreenMenu_NavScroll(pad, &state->scroll[state->page], &selected, Chaos_PageRowCount(state));
-	if (state->page == CHAOS_PAGE_SETTINGS)
+	if (!readOnly && state->page == CHAOS_PAGE_SETTINGS)
 	{
 		for (int direction = -1; direction <= 1; direction += 2)
 		{
@@ -185,7 +247,8 @@ static void MM_MenuProc_ChaosConfig(struct RectMenu *menu)
 		}
 	}
 
-	if ((pad->buttonsTapped & (BTN_CROSS | BTN_CIRCLE)) != 0)
+	const bool effectsAction = state->page == CHAOS_PAGE_SETTINGS && state->visibleSettings[selected] == CHAOS_SETTING_EFFECTS;
+	if ((pad->buttonsTapped & (BTN_CROSS | BTN_CIRCLE)) != 0 && (!readOnly || effectsAction))
 	{
 		OtherFX_Play(1, 1);
 		if (state->page == CHAOS_PAGE_EFFECTS)
@@ -228,12 +291,18 @@ static void MM_MenuProc_ChaosConfig(struct RectMenu *menu)
 			leave = true;
 		}
 	}
+	if (readOnly && (pad->buttonsTapped & (BTN_START | BTN_SQUARE_one)) != 0)
+	{
+		OtherFX_Play(2, 1);
+		leave = true;
+	}
 
 	struct FullScreenMenu_Scroll *scroll = &state->scroll[state->page];
 	const int numRows = Chaos_PageRowCount(state);
 	FullScreenMenu_FollowScroll(scroll, &selected, numRows);
 	menu->rowSelected = selected;
-	FullScreenMenu_DrawScreen(s_chaosPageTitles[state->page], 0, scroll, numRows, selected,
+	const char *title = readOnly ? s_chaosReadOnlyPageTitles[state->page] : s_chaosPageTitles[state->page];
+	FullScreenMenu_DrawScreen(title, 0, scroll, numRows, selected,
 	                          Chaos_DrawRow, NULL, gGT, ot);
 
 	if (finish)
@@ -242,6 +311,14 @@ static void MM_MenuProc_ChaosConfig(struct RectMenu *menu)
 	}
 	else if (leave)
 	{
-		MM_NewLoad_ReturnFromChaosSetup();
+		if (readOnly)
+		{
+			RECTMENU_ClearInput();
+			sdata->ptrDesiredMenu = state->returnMenu;
+		}
+		else
+		{
+			MM_NewLoad_ReturnFromChaosSetup();
+		}
 	}
 }

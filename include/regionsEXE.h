@@ -4102,6 +4102,7 @@ struct sData
 
 	struct NewLoadState newLoad;
 	struct ChaosMenuState chaosMenu;
+	struct MenuRow chaosPauseRows[CHAOS_PAUSE_ROW_CAPACITY];
 
 	// after dataLibFiller is 8009AE58,
 	// where psyq allocates globals

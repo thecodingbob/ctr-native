@@ -859,6 +859,7 @@ void MM_MenuProc_Chaos(struct RectMenu *menu);
 // calls the last two.
 void MM_NewLoad_Advance(struct RectMenu *screen);
 void MM_NewLoad_Retreat(struct RectMenu *screen);
+void MM_ChaosConfig_OpenReadOnly(struct RectMenu *returnMenu);
 
 // Index of one of the strings this port appends past the retail .lng table, or
 // RECTMENU_STRING_NONE when the table could not be extended. The indices depend

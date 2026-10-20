@@ -634,19 +634,12 @@ struct LngFile
 // copy of its pointer array, which puts them at the last LNG_PORT_STRING_COUNT
 // indices. Those indices are not known until the asset is read, so nothing may
 // hardcode them: ask for one by MM_Lng_PortStringIndex.
-enum PortLngString
-{
-	LNG_PORT_MODE = 0,
-	LNG_PORT_CHAOS,
-	LNG_PORT_REGULAR,
-	LNG_PORT_STRING_COUNT,
-};
-
 static const char *const s_portLngStrings[LNG_PORT_STRING_COUNT] =
 {
 	"Mode",
 	"Chaos",
-	"Regular"
+	"Regular",
+	"Chaos Rules"
 };
 
 // Whether the append below actually happened. Without it the arithmetic in

@@ -1,6 +1,17 @@
 #ifndef CTR_NATIVE_NAMESPACE_LNG_H
 #define CTR_NATIVE_NAMESPACE_LNG_H
 
+// Strings appended by the port; resolve their runtime indices through
+// MM_Lng_PortStringIndex rather than mixing them with retail LNG indices.
+enum PortLngString
+{
+	LNG_PORT_MODE = 0,
+	LNG_PORT_CHAOS,
+	LNG_PORT_REGULAR,
+	LNG_PORT_CHAOS_RULES,
+	LNG_PORT_STRING_COUNT,
+};
+
 // Generated from assets/bigfile/lang/en.lng. Values are retail LNG string indices.
 enum LngStringId
 {
