@@ -145,9 +145,13 @@ Runtime tests cover timers, ordering, overflow, cadence, gates, resident restore
 direct driver application, retained drifts and banner submissions. Effects apply
 after retail hop-input resolution, before jump/steering consumption, with no
 stored input copy.
-The latest activation name is shown for
-three gameplay seconds: Final Lap placement in solo, shared full-screen center
-in multiplayer. Pause freezes its timer and hides it.
+Each activation is announced for three gameplay seconds, then docks to the right
+at 50% of the small font. Separate borderless tables keep the newest banner at
+the center baseline; older banners stack down in 1P and up in 2P, avoiding Final
+Lap rows. Docked rows remain fixed behind lap statistics. The list shows only the
+four latest distinct effects in both 1P and 2P, with a higher 2P position above
+the lap counter. All messages disappear when the race ends. Pause freezes the
+animation and hides the overlay.
 Add modifier-restoration tests with the effects. Build with `cmake --build build -j`;
 run focused CTest.
 

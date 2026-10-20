@@ -1216,6 +1216,7 @@ void GAMEPROG_NewProfile_InsideAdv(struct AdvProgress *adv);
 s32 RaceFlag_MoveModels(s32 frameIndex, s32 numFrames);
 void MainKillGame_LaunchSpyro2(void);
 void DecalFont_DrawLineOT(char *str, s16 posX, s16 posY, s16 fontType, s16 flags, u32 *ot);
+void DecalFont_DrawLineScaledOT(char *str, s16 posX, s16 posY, s16 fontType, s16 flags, s32 scale, u32 *ot);
 void DecalHUD_Arrow2D(struct Icon *icon, s32 posX, s32 posY, struct PrimMem *primMem, u32 *ot, Color color0, Color color1, Color color2, Color color3,
                       u8 transparency, s16 scale, u16 rot);
 void RaceFlag_SetDrawOrder(b32 drawAfterFlag);

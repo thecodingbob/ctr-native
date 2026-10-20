@@ -59,9 +59,11 @@ bool Chaos_Activate(ChaosEffectId effect, s32 durationMS)
 	{
 		return false;
 	}
-	runtime->active[runtime->numActive++] = (struct ChaosActivation){effect, durationMS};
-	runtime->noticeEffect = effect;
-	runtime->noticeRemainingMS = CHAOS_ACTIVATION_NOTICE_MS;
+	runtime->active[runtime->numActive++] = (struct ChaosActivation){
+		.effect = effect,
+		.remainingMS = durationMS,
+		.noticeRemainingMS = CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS,
+	};
 	return true;
 }
 
@@ -130,6 +132,11 @@ static void Chaos_TickActivations(s32 elapsedMS)
 		if (entry.remainingMS > elapsedMS)
 		{
 			entry.remainingMS -= elapsedMS;
+			entry.noticeRemainingMS -= elapsedMS;
+			if (entry.noticeRemainingMS < 0)
+			{
+				entry.noticeRemainingMS = 0;
+			}
 			runtime->active[kept++] = entry;
 		}
 	}
@@ -145,14 +152,6 @@ void Chaos_Update(struct GameTracker *gGT)
 	}
 	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
 	const struct ChaosSettings *settings = &sdata->chaosSettings;
-	if (runtime->noticeRemainingMS > 0)
-	{
-		runtime->noticeRemainingMS -= gGT->elapsedTimeMS;
-		if (runtime->noticeRemainingMS < 0)
-		{
-			runtime->noticeRemainingMS = 0;
-		}
-	}
 	Chaos_TickActivations(gGT->elapsedTimeMS);
 
 	if ((settings->trigger != CHAOS_TRIGGER_INTERVAL && settings->trigger != CHAOS_TRIGGER_RANDOM) ||

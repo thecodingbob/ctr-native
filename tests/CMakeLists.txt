@@ -90,6 +90,10 @@ ctr_add_test_suite(test_menu_strings
     SOURCES test_menu_strings.c
 )
 
+ctr_add_test_suite(test_decal_font_scale
+    SOURCES test_decal_font_scale.c
+)
+
 ctr_add_test_suite(test_chaos_save
     SOURCES test_chaos_save.c
 )

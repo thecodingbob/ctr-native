@@ -23,7 +23,6 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 
 	MAINFRAME_PERF_BEGIN(NATIVE_PERF_BUCKET_MAINFRAME_SETUP);
 	DrawUnpluggedMsg(gGT, gGamepads);
-	DrawFinalLap(gGT);
 
 	ElimBG_HandleState(gGT);
 
@@ -89,6 +88,8 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 
 	MAINFRAME_PERF_BEGIN(NATIVE_PERF_BUCKET_MAINFRAME_HUD);
 	RenderAllHUD(gGT);
+	// HUD layout reserves Final Lap's row before drawing decrements its timer.
+	DrawFinalLap(gGT);
 	MAINFRAME_PERF_END(NATIVE_PERF_BUCKET_MAINFRAME_HUD);
 
 	NativePgxp_SetWorldPhase(1);

@@ -94,7 +94,7 @@ The existing SDATA checkpoint region captures:
 
 - `chaosSettings` and the dedicated `chaosRng`;
 - `chaosRuntime`: race initialization, ordered activation entries with independent
-  remaining milliseconds, the timed-trigger countdown and activation-notice ID/timer;
+  effect/announcement timers and the timed-trigger countdown;
 - `newLoad`: current chain step, setup handover flag, parent links and the
   character-select return context;
 - `chaosMenu`: the standalone `RectMenu`, current page, scroll offsets, visible
@@ -152,9 +152,21 @@ Forced jumps remain available. Neither effect writes the shared gamepad or
 replaces retail cloud effects. Normal input resumes on final expiry without a
 snapshot.
 
-Successful activations show the latest effect name for three gameplay seconds,
-sliding in/out with big orange text. Solo uses the Final Lap quarter-height
-position; multiplayer uses the full-screen center/continue-prompt baseline.
-The announcement uses the full-screen UI OT, freezes with gameplay and is hidden
-in pause/menus. Rejected activations leave it unchanged; reset clears it. Other
-effects and the Pickup/External triggers are still pending.
+Each activation has an independent three-second announcement, followed by 320 ms
+of docking. Separate borderless tables keep docked labels from pushing banners
+down the screen. Central banners reserve the viewport rows occupied by Final Lap;
+docked rows stay fixed and do not displace central banners. The newest
+banner starts at the same viewport quarter-height as solo Final Lap, or the shared multiplayer continue-prompt
+baseline; concurrent banners stack downward in 1P and upward in 2P. Crowded layouts use compact rows.
+Docked labels use 50% of the small font, six-pixel row spacing and a shared right edge. Both 1P and 2P
+show at most the four most recently activated distinct docked effects, newest
+first; the 2P list starts at Y=32, above the lap counter. Docked labels and docking
+animations use UI OT slot 1, behind lap statistics in the normal HUD layer. This display
+limit does not remove running activations. Duplicates use the newest surviving
+activation's announcement and remain eligible until final expiry. Drawing uses
+the full-screen UI OT. Final Lap is submitted
+after the HUD so its timer still reserves space on its last visible frame.
+The overlay also disappears as soon as all humans finish, before results setup.
+Pause freezes announcements and hides the overlay; menus hide it too. Rejected
+activations leave announcements unchanged; reset clears them. Other effects and
+the Pickup/External triggers are still pending.

@@ -5,6 +5,7 @@ struct sData sdata_static;
 NativeConfig g_config;
 static struct GameTracker s_tracker;
 static bool s_teleported;
+static bool s_allHumansFinished;
 static int s_noticeDraws;
 static const char *s_noticeText;
 static s16 s_noticeX;
@@ -12,6 +13,12 @@ static s16 s_noticeY;
 static s16 s_noticeFont;
 static u16 s_noticeFlags;
 static u32 *s_noticeOT;
+static const char *s_drawText[CHAOS_EFFECT_COUNT];
+static s16 s_drawX[CHAOS_EFFECT_COUNT];
+static s16 s_drawY[CHAOS_EFFECT_COUNT];
+static s16 s_drawFont[CHAOS_EFFECT_COUNT];
+static s32 s_drawScale[CHAOS_EFFECT_COUNT];
+static u32 *s_drawOT[CHAOS_EFFECT_COUNT];
 
 #include <game/231/RB_Chaos.c>
 #include <game/MAIN/MainGameStart.c>
@@ -29,12 +36,21 @@ int MATH_Sin(u32 angle)
 
 s32 DecalFont_GetLineWidth(char *text, s16 font)
 {
-	(void)font;
-	return (s32)strlen(text) * 8;
+	return (s32)strlen(text) * (font == FONT_SMALL ? 4 : 8);
 }
 
 void DecalFont_DrawLineOT(char *text, s16 x, s16 y, s16 font, s16 flags, u32 *ot)
 {
+	if (s_noticeDraws >= CHAOS_EFFECT_COUNT)
+	{
+		CtrTest_Bail("the Chaos HUD must draw at most one label per catalogue effect");
+	}
+	s_drawText[s_noticeDraws] = text;
+	s_drawX[s_noticeDraws] = x;
+	s_drawY[s_noticeDraws] = y;
+	s_drawFont[s_noticeDraws] = font;
+	s_drawOT[s_noticeDraws] = ot;
+	s_drawScale[s_noticeDraws] = FP(1.0);
 	s_noticeDraws++;
 	s_noticeText = text;
 	s_noticeX = x;
@@ -42,6 +58,24 @@ void DecalFont_DrawLineOT(char *text, s16 x, s16 y, s16 font, s16 flags, u32 *ot
 	s_noticeFont = font;
 	s_noticeFlags = (u16)flags;
 	s_noticeOT = ot;
+}
+
+void DecalFont_DrawLineScaledOT(char *text, s16 x, s16 y, s16 font, s16 flags, s32 scale, u32 *ot)
+{
+	DecalFont_DrawLineOT(text, x, y, font, flags, ot);
+	s_drawScale[s_noticeDraws - 1] = scale;
+}
+
+static s32 LatestNoticeRemaining(void)
+{
+	const struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	return runtime->numActive > 0 ? runtime->active[runtime->numActive - 1].noticeRemainingMS : 0;
+}
+
+b32 MainGameEnd_AllHumansFinished(struct GameTracker *gGT)
+{
+	(void)gGT;
+	return s_allHumansFinished;
 }
 
 void VehBirth_TeleportAll(struct GameTracker *gGT, u32 spawnFlags)
@@ -62,6 +96,7 @@ void howl_StopAudio(b32 backup, b32 music, b32 fx)
 
 static void SetupRace(int trigger)
 {
+	s_allHumansFinished = false;
 	memset(&sdata_static, 0, sizeof(sdata_static));
 	memset(&s_tracker, 0, sizeof(s_tracker));
 	memset(&g_config, 0, sizeof(g_config));
@@ -323,7 +358,7 @@ static void TestRandomTrigger(void)
 	CTR_TEST_CHECK(Chaos_IsActiveForDriver(first, &driver), "a Random activation reaches the gameplay effect query");
 	CTR_TEST_CHECK(first == CHAOS_EFFECT_INVERTED_STEERING || first == CHAOS_EFFECT_NO_HOPPING,
 	               "Random chooses only the effects selected for this file");
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.noticeRemainingMS, 3000, "Random activation also starts the visual announcement");
+	CTR_TEST_CHECK_EQ(LatestNoticeRemaining(), CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS, "Random activation also starts the visual announcement");
 	const struct ChaosRuntime beforePause = sdata->chaosRuntime;
 	const u32 pausedRng = sdata->chaosRng;
 	s_tracker.gameMode1 |= PAUSE_1;
@@ -338,7 +373,7 @@ static void TestRandomTrigger(void)
 		CTR_TEST_CHECK(gap >= 1500 && gap <= 5000, "every new Random gap stays within the configured bounds");
 		varied |= gap != firstGap;
 		Tick(gap);
-		CTR_TEST_CHECK_EQ(sdata->chaosRuntime.noticeRemainingMS, 3000, "each elapsed Random gap produces a fresh activation");
+		CTR_TEST_CHECK_EQ(LatestNoticeRemaining(), CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS, "each elapsed Random gap produces a fresh activation");
 	}
 	CTR_TEST_CHECK(varied, "Random does not silently use a fixed Interval cadence");
 	const struct ChaosRuntime saved = sdata->chaosRuntime;
@@ -577,7 +612,7 @@ static void TestActivationNotice(void)
 	Tick(1000);
 	DrawNotice();
 	CTR_TEST_CHECK_EQ(s_noticeDraws, 0, "pause hides the activation announcement");
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.noticeRemainingMS, 2680, "pause freezes announcement time together with effect timers");
+	CTR_TEST_CHECK_EQ(LatestNoticeRemaining(), 3000, "pause freezes announcement time together with effect timers");
 	s_tracker.gameMode1 &= ~PAUSE_1;
 	s_tracker.hudFlags = 0;
 	DrawNotice();
@@ -588,7 +623,7 @@ static void TestActivationNotice(void)
 	CTR_TEST_CHECK_EQ(s_noticeDraws, 0, "menu screens do not receive the race announcement");
 	sdata->ptrActiveMenu = NULL;
 	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 10000);
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.noticeRemainingMS, 3000, "a later activation restarts the announcement lifetime");
+	CTR_TEST_CHECK_EQ(LatestNoticeRemaining(), CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS, "a later activation starts its own announcement lifetime");
 	Tick(320);
 	DrawNotice();
 	CTR_TEST_CHECK(strcmp(s_noticeText, "No Hopping") == 0, "the newest activation replaces the displayed name");
@@ -596,15 +631,297 @@ static void TestActivationNotice(void)
 	const struct ChaosRuntime beforeReject = sdata->chaosRuntime;
 	Chaos_Activate(CHAOS_EFFECT_NO_ITEMS, 1000);
 	CTR_TEST_CHECK(memcmp(&beforeReject, &sdata->chaosRuntime, sizeof(beforeReject)) == 0, "a rejected activation cannot replace the current announcement");
-	Tick(2500);
+	Tick(2840);
 	DrawNotice();
-	CTR_TEST_CHECK(s_noticeX < SCREEN_WIDTH / 2, "the name slides left during its exit");
-	Tick(180);
+	CTR_TEST_CHECK(s_drawX[0] > SCREEN_WIDTH / 2 && s_drawX[0] < UI_CHAOS_LIST_RIGHT, "the newest name moves toward the right-hand table after its initial three seconds");
+	CTR_TEST_CHECK_EQ(s_drawFont[0], FONT_SMALL, "the docking name changes to the compact font");
+	CTR_TEST_CHECK_EQ(s_drawY[0], UI_CHAOS_LIST_MULTIPLAYER_TOP, "the newest docking effect occupies the high first row");
+	Tick(160);
 	DrawNotice();
-	CTR_TEST_CHECK_EQ(s_noticeDraws, 0, "the notice disappears after three seconds of gameplay");
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 2, "both running effects remain visible after the announcement finishes");
+	CTR_TEST_CHECK_EQ(s_noticeX, UI_CHAOS_LIST_RIGHT, "the persistent names share a right-hand anchor");
+	CTR_TEST_CHECK_EQ(s_noticeFlags, JUSTIFY_RIGHT | ORANGE, "persistent rows are right-aligned orange text");
 	CTR_TEST_CHECK(Chaos_IsActive(CHAOS_EFFECT_NO_HOPPING), "notification expiry does not expire the effect itself");
 	Chaos_Reset();
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.noticeRemainingMS, 0, "race reset also clears pending announcement state");
+	CTR_TEST_CHECK_EQ(LatestNoticeRemaining(), 0, "race reset also clears pending announcement state");
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 0, "race reset removes the persistent list too");
+}
+
+static void TestActiveEffectList(void)
+{
+	CTR_TEST_SECTION("the borderless effect list deduplicates independent timers and removes expired rows");
+	EnableInputEffects();
+	sdata->chaosSettings.trigger = CHAOS_TRIGGER_EXTERNAL;
+	static struct DB buffer;
+	u32 uiOT[5];
+	buffer.otMem.uiOT = uiOT;
+	s_tracker.backBuffer = &buffer;
+	s_tracker.hudFlags = HUD_FLAG_RACE_HUD;
+	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 10000);
+	Tick(CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS);
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 1, "a docked effect remains visible without a running notice timer");
+	CTR_TEST_CHECK_EQ(s_noticeFont, FONT_SMALL, "docked effects use the compact font");
+	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 12000);
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 2, "a new banner does not hide older active effects");
+	CTR_TEST_CHECK_EQ(s_drawFont[0], FONT_SMALL, "the earlier effect stays in its compact table row during a new banner");
+	CTR_TEST_CHECK_EQ(s_noticeFont, FONT_BIG, "the newest activation still gets its large announcement");
+	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 15000);
+	Tick(CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS);
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 2, "overlapping copies of one effect share a single row");
+	CTR_TEST_CHECK(strcmp(s_drawText[0], "Inverted Steering") == 0 && strcmp(s_drawText[1], "No Hopping") == 0,
+	               "distinct rows follow activation order");
+	CTR_TEST_CHECK_EQ(s_drawX[0], s_drawX[1], "all table rows use the same horizontal anchor");
+	CTR_TEST_CHECK_EQ(s_drawY[1] - s_drawY[0], UI_CHAOS_LIST_ROW_HEIGHT, "table rows use a fixed vertical spacing");
+	Tick(3360);
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 2, "expiry of the original copy preserves the later activation's row");
+	Tick(5320);
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 1, "a fully expired effect no longer occupies a row");
+	CTR_TEST_CHECK(strcmp(s_noticeText, "Inverted Steering") == 0, "only the surviving effect remains listed");
+	CTR_TEST_CHECK_EQ(s_noticeY, UI_CHAOS_LIST_MULTIPLAYER_TOP, "the surviving 2P rows compact without gaps");
+	Tick(3000);
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 0, "the final expiry empties the table");
+
+	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
+	{
+		sdata->chaosSettings.effects[i] = true;
+	}
+	sdata->chaosSettings.enabledCount = CHAOS_EFFECT_COUNT;
+	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
+	{
+		Chaos_Activate((ChaosEffectId)i, 30000);
+	}
+	s_tracker.numPlyrCurrGame = 2;
+	s_tracker.pushBuffer[0].rect = (RECT){0, 0, SCREEN_WIDTH, SCREEN_HEIGHT / 2};
+	s_tracker.pushBuffer[1].rect = (RECT){0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2};
+	sdata->finalLapTextTimer[0] = 30;
+	sdata->finalLapTextTimer[1] = 30;
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, CHAOS_EFFECT_COUNT, "a full set of simultaneous announcements remains visible");
+	for (int i = 0; i < s_noticeDraws; i++)
+	{
+		CTR_TEST_CHECK(s_drawY[i] + UI_CHAOS_COMPACT_BANNER_ROW_HEIGHT <= SCREEN_HEIGHT,
+		               "crowded announcements fit on screen even with both Final Lap messages");
+	}
+	sdata->finalLapTextTimer[0] = 0;
+	sdata->finalLapTextTimer[1] = 0;
+	Tick(CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS);
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, UI_CHAOS_MAX_DOCKED, "the docked table shows at most the four latest distinct effects");
+	CTR_TEST_CHECK(s_noticeY + UI_CHAOS_LIST_ROW_HEIGHT <= SCREEN_HEIGHT, "the full catalogue fits within the screen height");
+	Chaos_Reset();
+	Chaos_BeginRace(&s_tracker);
+	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 100);
+	Tick(100);
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 0, "a short-lived effect cannot leave a banner or table row after expiry");
+}
+
+static void TestHudVisibilityAndDockLimit(void)
+{
+	CTR_TEST_SECTION("1P and 2P show only the four latest docked effects and hide the HUD when racing ends");
+	EnableInputEffects();
+	sdata->chaosSettings.trigger = CHAOS_TRIGGER_EXTERNAL;
+	for (int effect = 0; effect < CHAOS_EFFECT_COUNT; effect++)
+	{
+		sdata->chaosSettings.effects[effect] = true;
+	}
+	sdata->chaosSettings.enabledCount = CHAOS_EFFECT_COUNT;
+	static struct DB buffer;
+	u32 uiOT[5];
+	buffer.otMem.uiOT = uiOT;
+	s_tracker.backBuffer = &buffer;
+	s_tracker.hudFlags = HUD_FLAG_RACE_HUD;
+	s_tracker.numPlyrCurrGame = 2;
+	for (int effect = 0; effect < 5; effect++)
+	{
+		Chaos_Activate((ChaosEffectId)effect, 30000);
+	}
+	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 30000);
+	Tick(CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS);
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 4, "2P limits the docked list to four distinct effects");
+	CTR_TEST_CHECK(strcmp(s_drawText[0], "Inverted Steering") == 0, "reactivation moves an existing effect to the newest row");
+	CTR_TEST_CHECK(strcmp(s_drawText[1], "Heavy Karts") == 0 && strcmp(s_drawText[3], "Wobble Steering") == 0,
+	               "the docked list keeps the latest activations rather than the first catalogue entries");
+	CTR_TEST_CHECK_EQ(s_drawY[0], UI_CHAOS_LIST_MULTIPLAYER_TOP, "the 2P docked list starts near the top edge");
+	const int firstPlayerLapCounterY = 71;
+	CTR_TEST_CHECK(s_drawY[3] + UI_CHAOS_LIST_ROW_HEIGHT < firstPlayerLapCounterY,
+	               "all four 2P docked rows stay above the lap counter");
+	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 30000);
+	Tick(UI_CHAOS_NOTICE_SLIDE_MS);
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 5, "a central announcement can coexist with four docked effects");
+	CTR_TEST_CHECK_EQ(s_noticeX, SCREEN_WIDTH / 2, "the new 2P announcement is horizontally centered");
+	CTR_TEST_CHECK_EQ(s_noticeY, UI_CHAOS_NOTICE_MULTIPLAYER_Y, "four docked effects cannot push a new 2P announcement toward the bottom");
+	s_allHumansFinished = true;
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 0, "all humans finishing hides both central and docked messages before results initialization");
+	s_allHumansFinished = false;
+	s_tracker.gameMode1 |= END_OF_RACE;
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 0, "the results mode also hides central and docked messages");
+	s_tracker.gameMode1 &= ~END_OF_RACE;
+	s_tracker.numPlyrCurrGame = 1;
+	Tick(CHAOS_ACTIVATION_NOTICE_MS);
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 4, "1P uses the same four-effect docked limit");
+	CTR_TEST_CHECK(strcmp(s_drawText[0], "Speed Capped") == 0, "the latest newly docked effect occupies the first row");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 7, "the display limit does not remove any running activation");
+}
+
+static void TestHudLayeringAndSoloStack(void)
+{
+	CTR_TEST_SECTION("solo banners stack downward and docked labels keep fixed rows behind lap statistics");
+	EnableInputEffects();
+	sdata->chaosSettings.trigger = CHAOS_TRIGGER_EXTERNAL;
+	static struct DB buffer;
+	u32 uiOT[5];
+	buffer.otMem.uiOT = uiOT;
+	s_tracker.backBuffer = &buffer;
+	s_tracker.hudFlags = HUD_FLAG_RACE_HUD;
+	s_tracker.numPlyrCurrGame = 1;
+	s_tracker.pushBuffer[0].rect = (RECT){0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 20000);
+	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 20000);
+	Tick(UI_CHAOS_NOTICE_SLIDE_MS);
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_drawY[1], SCREEN_HEIGHT / 4, "the newest solo banner stays on the normal row");
+	CTR_TEST_CHECK_EQ(s_drawY[0], SCREEN_HEIGHT / 4 + UI_CHAOS_BANNER_ROW_HEIGHT,
+	                  "the other solo banner goes below the normal row instead of over the item icon");
+	Tick(CHAOS_ACTIVATION_NOTICE_MS);
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 2, "both effects finish docking");
+	sdata->finalLapTextTimer[0] = 30;
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_drawY[0], UI_CHAOS_LIST_TOP, "Final Lap does not move the first solo docked row");
+	CTR_TEST_CHECK_EQ(s_drawY[1], UI_CHAOS_LIST_TOP + UI_CHAOS_LIST_ROW_HEIGHT,
+	                  "Final Lap does not insert gaps into the docked list");
+	s_tracker.numPlyrCurrGame = 2;
+	s_tracker.pushBuffer[0].rect = (RECT){0, 0, SCREEN_WIDTH, SCREEN_HEIGHT / 2};
+	s_tracker.pushBuffer[1].rect = (RECT){0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2};
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_drawY[0], 32, "the 2P dock preserves the user's adjusted vertical position even during Final Lap");
+	for (int row = 0; row < s_noticeDraws; row++)
+	{
+		CTR_TEST_CHECK_EQ(s_drawScale[row], FP(0.5), "docked glyphs preserve the user's half-size scale");
+		CTR_TEST_CHECK(s_drawOT[row] == &uiOT[UI_HUD_ORDERING_SLOT_BEHIND_HUD],
+		               "docked effects use the lower UI layer behind finishing lap statistics");
+	}
+	sdata->chaosSettings.effects[CHAOS_EFFECT_WOBBLE_STEERING] = true;
+	sdata->chaosSettings.enabledCount++;
+	Chaos_Activate(CHAOS_EFFECT_WOBBLE_STEERING, 20000);
+	Tick(UI_CHAOS_NOTICE_SLIDE_MS);
+	DrawNotice();
+	CTR_TEST_CHECK(s_noticeOT == uiOT, "central banners retain the normal foreground UI layer");
+	Tick(2840);
+	DrawNotice();
+	CTR_TEST_CHECK(s_drawOT[0] == &uiOT[UI_HUD_ORDERING_SLOT_BEHIND_HUD],
+	               "a label already moves behind lap statistics during its docking animation");
+}
+
+static void TestBannerBaselineWithDockedEffects(void)
+{
+	CTR_TEST_SECTION("docked rows do not displace the Final Lap baseline or the shared 2P center");
+	EnableInputEffects();
+	sdata->chaosSettings.trigger = CHAOS_TRIGGER_EXTERNAL;
+	for (int effect = 0; effect < CHAOS_EFFECT_COUNT; effect++)
+	{
+		sdata->chaosSettings.effects[effect] = true;
+	}
+	sdata->chaosSettings.enabledCount = CHAOS_EFFECT_COUNT;
+	static struct DB buffer;
+	u32 uiOT[5];
+	buffer.otMem.uiOT = uiOT;
+	s_tracker.backBuffer = &buffer;
+	s_tracker.hudFlags = HUD_FLAG_RACE_HUD;
+	s_tracker.numPlyrCurrGame = 1;
+	s_tracker.pushBuffer[0].rect = (RECT){0, 0, SCREEN_WIDTH, 200};
+	for (int effect = 0; effect < UI_CHAOS_MAX_DOCKED; effect++)
+	{
+		Chaos_Activate((ChaosEffectId)effect, 30000);
+	}
+	Tick(CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS);
+	Chaos_Activate(CHAOS_EFFECT_HEAVY_KARTS, 30000);
+	Tick(UI_CHAOS_NOTICE_SLIDE_MS);
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeY, 50, "a solo banner uses exactly the viewport quarter-height used by Final Lap");
+	CTR_TEST_CHECK_EQ(s_drawY[1] - s_drawY[0], 6, "half-size docked labels use the tighter six-pixel row spacing");
+	CTR_TEST_CHECK_EQ(s_drawScale[0], FP(0.5), "tighter spacing preserves the user's docked font scale");
+	sdata->finalLapTextTimer[0] = 30;
+	DrawNotice();
+	CTR_TEST_CHECK(s_noticeY >= 50 + UI_CHAOS_FINAL_LAP_HEIGHT,
+	               "a visible Final Lap message reserves the normal solo banner row");
+	sdata->finalLapTextTimer[0] = 0;
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeY, 50, "the banner returns to the normal row as soon as Final Lap releases it");
+	s_tracker.numPlyrCurrGame = 2;
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeY, UI_CHAOS_NOTICE_MULTIPLAYER_Y,
+	                  "four docked rows do not shift the shared 2P center");
+	CTR_TEST_CHECK_EQ(s_drawY[0], 32, "tighter row spacing preserves the user's 2P dock position");
+}
+
+static void TestNotificationRows(void)
+{
+	CTR_TEST_SECTION("Final Lap, simultaneous activations and docked effects occupy disjoint rows");
+	EnableInputEffects();
+	sdata->chaosSettings.trigger = CHAOS_TRIGGER_EXTERNAL;
+	static struct DB buffer;
+	u32 uiOT[5];
+	buffer.otMem.uiOT = uiOT;
+	s_tracker.backBuffer = &buffer;
+	s_tracker.hudFlags = HUD_FLAG_RACE_HUD;
+	s_tracker.numPlyrCurrGame = 1;
+	s_tracker.pushBuffer[0].rect = (RECT){0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 20000);
+	Tick(1000);
+	const s32 firstNoticeTime = LatestNoticeRemaining();
+	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 20000);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[0].noticeRemainingMS, firstNoticeTime,
+	                  "a second activation does not replace or restart the first announcement");
+	Tick(320);
+	sdata->finalLapTextTimer[0] = 1;
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, 2, "both recent activations remain visible at once");
+	CTR_TEST_CHECK_EQ(s_drawFont[0], FONT_BIG, "the first activation retains its introductory banner");
+	CTR_TEST_CHECK_EQ(s_drawFont[1], FONT_BIG, "the second activation also gets a large banner");
+	CTR_TEST_CHECK(s_drawY[0] >= SCREEN_HEIGHT / 4 + UI_CHAOS_FINAL_LAP_HEIGHT,
+	               "even the last rendered frame of Final Lap reserves its row");
+	CTR_TEST_CHECK(s_drawY[0] >= s_drawY[1] + UI_CHAOS_BANNER_ROW_HEIGHT,
+	               "concurrent activation banners cannot overlap vertically");
+	sdata->finalLapTextTimer[0] = 0;
+	Tick(2000);
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_drawFont[0], FONT_SMALL, "the older activation docks while the newer one is still announcing");
+	CTR_TEST_CHECK_EQ(s_drawScale[0], FP(0.5), "docked text preserves the user-selected half-size font");
+	CTR_TEST_CHECK_EQ(s_drawFont[1], FONT_BIG, "docking an older activation does not shrink a newer banner");
+	CTR_TEST_CHECK_EQ(s_drawY[1], SCREEN_HEIGHT / 4,
+	                  "the solo banner keeps its normal baseline while older effects are docked");
+
+	s_tracker.numPlyrCurrGame = 2;
+	s_tracker.pushBuffer[0].rect = (RECT){0, 0, SCREEN_WIDTH, SCREEN_HEIGHT / 2};
+	s_tracker.pushBuffer[1].rect = (RECT){0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2};
+	sdata->finalLapTextTimer[0] = 30;
+	sdata->finalLapTextTimer[1] = 30;
+	DrawNotice();
+	const int bottomLapY = SCREEN_HEIGHT / 2 + SCREEN_HEIGHT / 8;
+	for (int i = 0; i < s_noticeDraws; i++)
+	{
+		CTR_TEST_CHECK(s_drawY[i] + UI_CHAOS_FINAL_LAP_HEIGHT <= bottomLapY ||
+		               s_drawY[i] >= bottomLapY + UI_CHAOS_FINAL_LAP_HEIGHT,
+		               "the shared 2P table avoids player two's Final Lap row");
+	}
+	const struct ChaosRuntime beforeDraw = sdata->chaosRuntime;
+	DrawNotice();
+	CTR_TEST_CHECK(memcmp(&beforeDraw, &sdata->chaosRuntime, sizeof(beforeDraw)) == 0,
+	               "table layout and drawing do not advance independent notice timers");
 }
 
 int main(void)
@@ -620,5 +937,10 @@ int main(void)
 	TestHopInputAndCloudOwnership();
 	TestDriverApplication();
 	TestActivationNotice();
+	TestActiveEffectList();
+	TestHudVisibilityAndDockLimit();
+	TestHudLayeringAndSoloStack();
+	TestBannerBaselineWithDockedEffects();
+	TestNotificationRows();
 	return CtrTest_Summary();
 }
