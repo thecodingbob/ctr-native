@@ -5,12 +5,6 @@
 // Page changes draw immediately; leaving the screen happens after drawing.
 static void MM_MenuProc_ChaosConfig(struct RectMenu *menu);
 
-struct RectMenu MM_menuChaosConfig = {
-	.stringIndexTitle = RECTMENU_STRING_NONE,
-	.state = EXECUTE_FUNCPTR | DISABLE_INPUT_ALLOW_FUNCPTRS,
-	.funcPtr = MM_MenuProc_ChaosConfig,
-};
-
 enum
 {
 	CHAOS_DURATION_MIN_SECONDS = 5,
@@ -33,17 +27,6 @@ static bool Chaos_TriggerIsTimed(int trigger)
 	return trigger == CHAOS_TRIGGER_RANDOM || trigger == CHAOS_TRIGGER_INTERVAL;
 }
 
-// Setting identities are independent of their visible positions.
-enum ChaosSetting
-{
-	CHAOS_SETTING_DURATION,
-	CHAOS_SETTING_TRIGGER,
-	CHAOS_SETTING_INTERVAL,
-	CHAOS_SETTING_EFFECTS,
-	CHAOS_SETTING_CONFIRM,
-	CHAOS_SETTING_COUNT,
-};
-
 static const struct FullScreenMenu_Row s_chaosSettings[CHAOS_SETTING_COUNT] = {
 	[CHAOS_SETTING_DURATION] = {
 		.label = "Duration", .kind = FULLSCREEN_ROW_STEP,
@@ -60,31 +43,15 @@ static const struct FullScreenMenu_Row s_chaosSettings[CHAOS_SETTING_COUNT] = {
 	[CHAOS_SETTING_CONFIRM] = {.label = "Confirm", .kind = FULLSCREEN_ROW_ACTION},
 };
 
-enum ChaosPage
-{
-	CHAOS_PAGE_SETTINGS,
-	CHAOS_PAGE_EFFECTS,
+static const char *const s_chaosPageTitles[CHAOS_PAGE_COUNT] = {
+	[CHAOS_PAGE_SETTINGS] = "CHAOS SETUP",
+	[CHAOS_PAGE_EFFECTS] = "CHAOS EFFECTS",
 };
-
-struct ChaosMenuPage
-{
-	const char *title;
-	struct FullScreenMenu_Scroll scroll;
-	int numRows;
-};
-
-static struct ChaosMenuPage s_chaosPages[] = {
-	[CHAOS_PAGE_SETTINGS] = {.title = "CHAOS SETUP"},
-	[CHAOS_PAGE_EFFECTS] = {.title = "CHAOS EFFECTS", .numRows = CHAOS_EFFECT_COUNT},
-};
-static enum ChaosPage s_page;
-static enum ChaosSetting s_visibleSettings[CHAOS_SETTING_COUNT];
-static int s_effectsRow;
 
 static void Chaos_BuildSettingRows(void)
 {
-	struct ChaosMenuPage *page = &s_chaosPages[CHAOS_PAGE_SETTINGS];
-	page->numRows = 0;
+	struct ChaosMenuState *state = &sdata->chaosMenu;
+	state->numSettings = 0;
 
 	for (int setting = 0; setting < CHAOS_SETTING_COUNT; setting++)
 	{
@@ -94,9 +61,9 @@ static void Chaos_BuildSettingRows(void)
 		}
 		if (setting == CHAOS_SETTING_EFFECTS)
 		{
-			s_effectsRow = page->numRows;
+			state->effectsRow = state->numSettings;
 		}
-		s_visibleSettings[page->numRows++] = (enum ChaosSetting)setting;
+		state->visibleSettings[state->numSettings++] = (enum ChaosSetting)setting;
 	}
 }
 
@@ -161,10 +128,14 @@ static void Chaos_EditSetting(enum ChaosSetting setting, int direction)
 
 void MM_ChaosConfig_OnEnter(void)
 {
-	s_page = CHAOS_PAGE_SETTINGS;
-	s_chaosPages[CHAOS_PAGE_SETTINGS].scroll.offset = 0;
-	s_chaosPages[CHAOS_PAGE_EFFECTS].scroll.offset = 0;
-	MM_menuChaosConfig.rowSelected = 0;
+	sdata->chaosMenu = (struct ChaosMenuState){
+		.menu = {
+			.stringIndexTitle = RECTMENU_STRING_NONE,
+			.state = EXECUTE_FUNCPTR | DISABLE_INPUT_ALLOW_FUNCPTRS,
+			.funcPtr = MM_MenuProc_ChaosConfig,
+		},
+		.page = CHAOS_PAGE_SETTINGS,
+	};
 	Chaos_BuildSettingRows();
 }
 
@@ -172,7 +143,7 @@ static void Chaos_DrawRow(const void *context, int row, int y, bool selected, ui
 {
 	(void)context;
 	(void)selected;
-	if (s_page == CHAOS_PAGE_EFFECTS)
+	if (sdata->chaosMenu.page == CHAOS_PAGE_EFFECTS)
 	{
 		const ChaosEffectId effect = ChaosEffect_FromIndex(row);
 		FullScreenMenu_DrawRowLabel(ChaosEffect_Def(effect)->label, y, ot);
@@ -180,11 +151,16 @@ static void Chaos_DrawRow(const void *context, int row, int y, bool selected, ui
 	}
 	else
 	{
-		const enum ChaosSetting setting = s_visibleSettings[row];
+		const enum ChaosSetting setting = sdata->chaosMenu.visibleSettings[row];
 		const struct FullScreenMenu_Row *spec = &s_chaosSettings[setting];
 		FullScreenMenu_DrawRowLabel(spec->label, y, ot);
 		FullScreenMenu_DrawRowValue(spec, Chaos_SettingValue(setting), y, ot);
 	}
+}
+
+static int Chaos_PageRowCount(const struct ChaosMenuState *state)
+{
+	return state->page == CHAOS_PAGE_SETTINGS ? state->numSettings : CHAOS_EFFECT_COUNT;
 }
 
 static void MM_MenuProc_ChaosConfig(struct RectMenu *menu)
@@ -192,19 +168,19 @@ static void MM_MenuProc_ChaosConfig(struct RectMenu *menu)
 	struct GameTracker *gGT = sdata->gGT;
 	uint32_t *ot = gGT->backBuffer->otMem.uiOT;
 	struct GamepadBuffer *pad = &sdata->gGamepads->gamepad[0];
-	struct ChaosMenuPage *page = &s_chaosPages[s_page];
+	struct ChaosMenuState *state = &sdata->chaosMenu;
 	s16 selected = menu->rowSelected;
 	bool leave = false;
 	bool finish = false;
 
-	FullScreenMenu_NavScroll(pad, &page->scroll, &selected, page->numRows);
-	if (s_page == CHAOS_PAGE_SETTINGS)
+	FullScreenMenu_NavScroll(pad, &state->scroll[state->page], &selected, Chaos_PageRowCount(state));
+	if (state->page == CHAOS_PAGE_SETTINGS)
 	{
 		for (int direction = -1; direction <= 1; direction += 2)
 		{
 			if (FullScreenMenu_OptionStepDue(pad->buttonsHeldCurrFrame, direction))
 			{
-				Chaos_EditSetting(s_visibleSettings[selected], direction);
+				Chaos_EditSetting(state->visibleSettings[selected], direction);
 			}
 		}
 	}
@@ -212,17 +188,17 @@ static void MM_MenuProc_ChaosConfig(struct RectMenu *menu)
 	if ((pad->buttonsTapped & (BTN_CROSS | BTN_CIRCLE)) != 0)
 	{
 		OtherFX_Play(1, 1);
-		if (s_page == CHAOS_PAGE_EFFECTS)
+		if (state->page == CHAOS_PAGE_EFFECTS)
 		{
 			ChaosEffect_Toggle(sdata->chaosSettings.effects, &sdata->chaosSettings.enabledCount,
 			                   ChaosEffect_FromIndex(selected));
 		}
 		else
 		{
-			switch (s_visibleSettings[selected])
+			switch (state->visibleSettings[selected])
 			{
 			case CHAOS_SETTING_EFFECTS:
-				s_page = CHAOS_PAGE_EFFECTS;
+				state->page = CHAOS_PAGE_EFFECTS;
 				selected = 0;
 				break;
 			case CHAOS_SETTING_CONFIRM:
@@ -231,7 +207,7 @@ static void MM_MenuProc_ChaosConfig(struct RectMenu *menu)
 			case CHAOS_SETTING_DURATION:
 			case CHAOS_SETTING_TRIGGER:
 			case CHAOS_SETTING_INTERVAL:
-				Chaos_EditSetting(s_visibleSettings[selected], 0);
+				Chaos_EditSetting(state->visibleSettings[selected], 0);
 				break;
 			case CHAOS_SETTING_COUNT:
 				break;
@@ -242,10 +218,10 @@ static void MM_MenuProc_ChaosConfig(struct RectMenu *menu)
 	if ((pad->buttonsTapped & BTN_TRIANGLE) != 0)
 	{
 		OtherFX_Play(2, 1);
-		if (s_page == CHAOS_PAGE_EFFECTS)
+		if (state->page == CHAOS_PAGE_EFFECTS)
 		{
-			s_page = CHAOS_PAGE_SETTINGS;
-			selected = s_effectsRow;
+			state->page = CHAOS_PAGE_SETTINGS;
+			selected = state->effectsRow;
 		}
 		else
 		{
@@ -253,10 +229,11 @@ static void MM_MenuProc_ChaosConfig(struct RectMenu *menu)
 		}
 	}
 
-	page = &s_chaosPages[s_page];
-	FullScreenMenu_FollowScroll(&page->scroll, &selected, page->numRows);
+	struct FullScreenMenu_Scroll *scroll = &state->scroll[state->page];
+	const int numRows = Chaos_PageRowCount(state);
+	FullScreenMenu_FollowScroll(scroll, &selected, numRows);
 	menu->rowSelected = selected;
-	FullScreenMenu_DrawScreen(page->title, 0, &page->scroll, page->numRows, selected,
+	FullScreenMenu_DrawScreen(s_chaosPageTitles[state->page], 0, scroll, numRows, selected,
 	                          Chaos_DrawRow, NULL, gGT, ot);
 
 	if (finish)

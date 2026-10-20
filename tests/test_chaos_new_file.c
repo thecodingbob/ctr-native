@@ -6,7 +6,6 @@ struct Data data;
 struct rData rdata;
 struct OverlayDATA_230 D230;
 NativeConfig g_config;
-struct RectMenu MM_menuChaosConfig;
 
 // Match the overlay's aliases without including its renderer and asset loaders.
 #define MM_MENU_MAIN (D230.menuMainMenu)
@@ -14,7 +13,7 @@ struct RectMenu MM_menuChaosConfig;
 #define MM_MENU_PLAYERS_1P2P (D230.menuPlayers1P2P)
 #define MM_MENU_ADVENTURE (D230.menuAdventure)
 #define MM_MENU_CHAOS_PROMPT (D230.menuChaosPrompt)
-#define MM_MENU_CHAOS_CONFIG (MM_menuChaosConfig)
+#define MM_MENU_CHAOS_CONFIG (sdata->chaosMenu.menu)
 #define MM_DESIRED_MENU_INDEX (D230.desiredMenuIndex)
 
 static int s_setupEntries;
@@ -215,6 +214,50 @@ static void TestCharacterSelectForwardConsumesReturn(void)
 	CTR_TEST_CHECK(!MM_NewLoad_InChain(), "the garage route leaves no extended-character-select return context");
 }
 
+static void TestResidentCreationRestore(void)
+{
+	CTR_TEST_SECTION("restoring SDATA and D230 restores the setup handover and return context");
+	ResetFixture();
+	CTR_TEST_CHECK(!MM_NewLoad_InChain(), "zero-initialized resident state has no active creation");
+	g_config.chaosMode = true;
+	g_config.multiplayerAdventure = true;
+	g_config.extendedAdventureCharacterSelect = true;
+	MM_NewLoad_Begin(&MM_MENU_ADVENTURE);
+	MM_MENU_CHAOS_PROMPT.funcState = RECTMENU_FUNC_STATE_INPUT;
+	MM_MenuProc_Chaos(&MM_MENU_CHAOS_PROMPT);
+	MM_MENU_PLAYERS_1P2P.rowSelected = 1;
+	MM_NewLoad_Advance(&MM_MENU_PLAYERS_1P2P);
+	static struct sData resident;
+	static struct OverlayDATA_230 overlay;
+	memcpy(&resident, &sdata_static, sizeof(resident));
+	memcpy(&overlay, &D230, sizeof(overlay));
+	MM_NewLoad_FinishChaosSetup();
+	MM_NewLoad_OnCharacterSelectExit(true);
+	MM_NewLoad_Begin(&MM_MENU_ADVENTURE);
+
+	// Same resident/overlay regions as a checkpoint; no menu re-entry hooks.
+	memcpy(&sdata_static, &resident, sizeof(resident));
+	memcpy(&D230, &overlay, sizeof(overlay));
+	MM_NewLoad_Advance(&MM_MENU_PLAYERS_1P2P);
+	CTR_TEST_CHECK_EQ(s_setupEntries, 1, "resuming after setup was offered cannot offer it a second time");
+	CTR_TEST_CHECK(!MM_NewLoad_InChain(), "the restored chain finishes normally");
+	CTR_TEST_CHECK(MM_MENU_ADVENTURE.ptrNextBox_InHierarchy == NULL, "unwind uses the restored parent links");
+	sdata->advMultiplayer.numPlayers = 2;
+	memcpy(&resident, &sdata_static, sizeof(resident));
+	memcpy(&overlay, &D230, sizeof(overlay));
+	MM_NewLoad_OnCharacterSelectExit(true);
+	MM_NewLoad_Begin(&MM_MENU_ADVENTURE);
+	memcpy(&sdata_static, &resident, sizeof(resident));
+	memcpy(&D230, &overlay, sizeof(overlay));
+	MM_NewLoad_OnCharacterSelectExit(false);
+	CTR_TEST_CHECK(MM_NewLoad_InChain(), "a saved character-select return context is available again after restore");
+	CTR_TEST_CHECK_EQ(MM_MENU_CHAOS_PROMPT.rowSelected, 0, "the restored return keeps Chaos selected");
+	CTR_TEST_CHECK_EQ(MM_MENU_PLAYERS_1P2P.rowSelected, 1, "the restored return keeps 2P selected");
+	MM_NewLoad_Retreat(&MM_MENU_PLAYERS_1P2P);
+	MM_NewLoad_Retreat(&MM_MENU_CHAOS_PROMPT);
+	CTR_TEST_CHECK(!MM_NewLoad_InChain(), "Back can unwind the restored chain completely");
+}
+
 int main(void)
 {
 	TestNewAfterChaosCreation();
@@ -222,5 +265,6 @@ int main(void)
 	TestCharacterSelectBackPreservesChoices();
 	TestCharacterSelectBackWithOptionalSteps();
 	TestCharacterSelectForwardConsumesReturn();
+	TestResidentCreationRestore();
 	return CtrTest_Summary();
 }

@@ -1507,6 +1507,12 @@ internal void NativeCheckpoint_RelocateSDataPointers(const struct NativeCheckpoi
 	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.ptrLoadSaveObj);
 	NativeCheckpoint_RelocatePointerOrImageSlot(oldHeader, liveHeader, &sdata_static.ptrActiveMenu);
 	NativeCheckpoint_RelocatePointerOrImageSlot(oldHeader, liveHeader, &sdata_static.ptrDesiredMenu);
+	NativeCheckpoint_RelocateRectMenu(oldHeader, liveHeader, &sdata_static.chaosMenu.menu);
+	NativeCheckpoint_RelocatePointerOrImageSlot(oldHeader, liveHeader, &sdata_static.newLoad.previousMenu);
+	for (u32 i = 0; i < len(sdata_static.newLoad.parentOf); i++)
+	{
+		NativeCheckpoint_RelocatePointerOrImageSlot(oldHeader, liveHeader, &sdata_static.newLoad.parentOf[i]);
+	}
 	NativeCheckpoint_RelocatePointerOrImageSlot(oldHeader, liveHeader, &sdata_static.activeSubMenu);
 	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.ptrPushBufferUI);
 	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.ptrFruitDisp);

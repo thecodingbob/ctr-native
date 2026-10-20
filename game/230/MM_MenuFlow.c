@@ -684,7 +684,7 @@ void MM_MenuProc_NewLoad(struct RectMenu *menu)
 
 		// Loading a save is not the new-file chain, so nothing must send character
 		// select back to a step of it.
-		s_previousMenu = NULL;
+		sdata->newLoad.previousMenu = NULL;
 
 		menu->state |= ONLY_DRAW_TITLE;
 		return;

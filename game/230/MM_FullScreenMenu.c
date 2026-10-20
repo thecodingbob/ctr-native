@@ -157,11 +157,6 @@ static bool FullScreenMenu_OptionStep(int *value, int direction, int min, int ma
 
 // ================= shared list navigation =================
 
-struct FullScreenMenu_Scroll
-{
-	int offset; // first visible row
-};
-
 // First visible row, given the current selection and how many rows there are.
 static int FullScreenMenu_ScrollOffsetFor(const struct FullScreenMenu_Scroll *scroll, int selected, int numRows)
 {

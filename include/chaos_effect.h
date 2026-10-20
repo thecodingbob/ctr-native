@@ -40,7 +40,8 @@ typedef enum {
 	CHAOS_EFFECT_HARD_CRATES,
 	CHAOS_EFFECT_BOT_TAKES_THE_WHEEL,
 
-	// Derived, so adding an effect above is the only edit the list needs.
+	// Derived catalogue size. Growth also requires reviewing the on-card layout
+	// contract in namespace_Memcard.h; stored indices must keep their identity.
 	CHAOS_EFFECT_COUNT,
 } ChaosEffectId;
 

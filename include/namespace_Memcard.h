@@ -655,9 +655,10 @@ struct ChaosSettings
 	bool armed;
 };
 
-// What this port adds to each profile, in the padding retail never wrote. A file
-// written before either feature has zeroes here: a racer count outside the range
-// this port writes, and chaos off.
+// Current unversioned on-card layout: four co-op entries, then four Chaos
+// entries. Changing effect order/count or settings layout requires an explicit
+// format migration; recomputing enabledCount is not a migration.
+// Files predating these extensions have zeroes here and load as Regular.
 struct MemcardExtension
 {
 	struct AdvMultiplayerSettings adventure[MEMCARD_ADV_PROFILE_COUNT];
@@ -687,10 +688,22 @@ CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct AdvProgress, rewards, 5) == 0x14);
 CTR_STATIC_ASSERT(OFFSETOF(struct AdvProgress, name) == 0x18);
 CTR_STATIC_ASSERT(sizeof(struct AdvProgress) == 0x50);
 CTR_STATIC_ASSERT(sizeof(struct MemcardProfile) == 0x1600);
-// No padding between the scalars and the effect array, so the per-profile
-// saving stays a flat byte count the checksum covers without a hole.
-CTR_STATIC_ASSERT(sizeof(struct ChaosSettings) == (CHAOS_EFFECT_COUNT + 8));
+// On-card contracts, not catalogue limits. If these trip, revise the format and
+// its reader/writer together. The final byte of ChaosSettings is tail padding.
+CTR_STATIC_ASSERT(sizeof(bool) == 1);
+CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettings, durationSeconds) == 0x0);
+CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettings, triggerIntervalSeconds) == 0x2);
+CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettings, trigger) == 0x4);
+CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettings, enabledCount) == 0x5);
+CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettings, effects) == 0x6);
+CTR_STATIC_ASSERT(sizeof(((struct ChaosSettings *)0)->effects) == 0x10);
+CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettings, armed) == 0x16);
+CTR_STATIC_ASSERT(sizeof(struct ChaosSettings) == 0x18);
+CTR_STATIC_ASSERT(OFFSETOF(struct MemcardExtension, chaos) == 0x10);
+CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct MemcardExtension, chaos, 1) == 0x28);
+CTR_STATIC_ASSERT(sizeof(struct MemcardExtension) == 0x70);
 CTR_STATIC_ASSERT(OFFSETOF(struct MemcardData, extension) == sizeof(struct MemcardProfile));
+CTR_STATIC_ASSERT(sizeof(struct MemcardData) == 0x1670);
 CTR_STATIC_ASSERT(sizeof(struct MemcardData) <= (MEMCARD_FILE_DATA_SIZE - MEMCARD_FILE_CHECKSUM_SIZE));
 CTR_STATIC_ASSERT(sizeof(struct GhostProfile) == 0x34);
 CTR_STATIC_ASSERT(OFFSETOF(struct GameOptions, rwd) == 0x6);

@@ -1,6 +1,5 @@
 #include <common.h>
 
-extern struct RectMenu MM_menuChaosConfig;
 extern void MM_ChaosConfig_OnEnter(void);
 
 static void MM_Menu_Attach(struct RectMenu *parent, struct RectMenu *child)
@@ -24,25 +23,13 @@ static void MM_Menu_Detach(struct RectMenu *child)
 	}
 }
 
-enum NewLoadStep
-{
-	NEWLOAD_STEP_CHAOS,
-	NEWLOAD_STEP_PLAYERS,
-	NEWLOAD_STEP_COUNT,
-};
-
-static int s_newLoadStep = -1;
-static bool s_chaosSetupOffered;
-static struct RectMenu *s_previousMenu;
-static struct RectMenu *s_newLoadParentOf[NEWLOAD_STEP_COUNT];
-
 static bool MM_NewLoad_YieldsToChaosSetup(void)
 {
-	if (!sdata->chaosSettings.armed || s_chaosSetupOffered)
+	if (!sdata->chaosSettings.armed || sdata->newLoad.chaosSetupOffered)
 	{
 		return false;
 	}
-	s_chaosSetupOffered = true;
+	sdata->newLoad.chaosSetupOffered = true;
 	sdata->ptrDesiredMenu = &MM_MENU_CHAOS_CONFIG;
 	MM_ChaosConfig_OnEnter();
 	return true;
@@ -63,12 +50,12 @@ static struct RectMenu *MM_NewLoad_Screen(int step)
 
 static struct RectMenu *MM_NewLoad_StepAway(int from, int walk)
 {
-	for (int step = from; (step >= 0) && (step < NEWLOAD_STEP_COUNT); step += walk)
+	for (int step = from; step > NEWLOAD_STEP_NONE && step < NEWLOAD_STEP_COUNT; step += walk)
 	{
 		struct RectMenu *screen = MM_NewLoad_Screen(step);
 		if (screen != NULL)
 		{
-			s_newLoadStep = step;
+			sdata->newLoad.step = (enum NewLoadStep)step;
 			return screen;
 		}
 	}
@@ -78,12 +65,12 @@ static struct RectMenu *MM_NewLoad_StepAway(int from, int walk)
 // Clear every link so a later visit cannot form a cycle through a stale child.
 static void MM_NewLoad_Unwind(void)
 {
-	s_chaosSetupOffered = false;
-	for (int step = s_newLoadStep; step >= 0; step--)
+	sdata->newLoad.chaosSetupOffered = false;
+	for (int step = sdata->newLoad.step; step > NEWLOAD_STEP_NONE; step--)
 	{
 		struct RectMenu *screen = MM_NewLoad_Screen(step);
-		struct RectMenu *parent = s_newLoadParentOf[step];
-		s_newLoadParentOf[step] = NULL;
+		struct RectMenu *parent = sdata->newLoad.parentOf[step];
+		sdata->newLoad.parentOf[step] = NULL;
 		if (parent != NULL)
 		{
 			parent->ptrNextBox_InHierarchy = NULL;
@@ -96,7 +83,7 @@ static void MM_NewLoad_Unwind(void)
 			screen->ptrPrevBox_InHierarchy = NULL;
 		}
 	}
-	s_newLoadStep = -1;
+	sdata->newLoad.step = NEWLOAD_STEP_NONE;
 }
 
 static void MM_NewLoad_Exit(void)
@@ -107,8 +94,8 @@ static void MM_NewLoad_Exit(void)
 		return;
 	}
 	// The garage does not use the character-select return path.
-	s_previousMenu = (g_config.extendedAdventureCharacterSelect && s_newLoadStep >= 0)
-	                     ? MM_NewLoad_Screen(s_newLoadStep) : NULL;
+	sdata->newLoad.previousMenu = (g_config.extendedAdventureCharacterSelect && sdata->newLoad.step != NEWLOAD_STEP_NONE)
+	                                  ? MM_NewLoad_Screen(sdata->newLoad.step) : NULL;
 	MM_NewLoad_Unwind();
 	if (sdata->ptrActiveMenu != &MM_MENU_MAIN)
 	{
@@ -121,36 +108,34 @@ static void MM_NewLoad_Exit(void)
 
 static bool MM_NewLoad_InChain(void)
 {
-	return s_newLoadStep >= 0;
+	return sdata->newLoad.step != NEWLOAD_STEP_NONE;
 }
 
 static void MM_NewLoad_Begin(struct RectMenu *parent)
 {
-	s_newLoadStep = -1;
-	s_chaosSetupOffered = false;
-	s_previousMenu = NULL;
+	sdata->newLoad = (struct NewLoadState){0};
 	// Every new file starts Regular with fresh defaults, even when the prompt is disabled.
 	GAMEPROG_ResetChaosSettings(&sdata->chaosSettings);
-	struct RectMenu *screen = MM_NewLoad_StepAway(s_newLoadStep + 1, 1);
+	struct RectMenu *screen = MM_NewLoad_StepAway(NEWLOAD_STEP_CHAOS, 1);
 	if (screen == NULL)
 	{
 		MM_NewLoad_Exit();
 		return;
 	}
-	s_newLoadParentOf[s_newLoadStep] = parent;
+	sdata->newLoad.parentOf[sdata->newLoad.step] = parent;
 	screen->rowSelected = 0;
 	MM_Menu_Attach(parent, screen);
 }
 
 void MM_NewLoad_Advance(struct RectMenu *screen)
 {
-	struct RectMenu *next = MM_NewLoad_StepAway(s_newLoadStep + 1, 1);
+	struct RectMenu *next = MM_NewLoad_StepAway(sdata->newLoad.step + 1, 1);
 	if (next == NULL)
 	{
 		MM_NewLoad_Exit();
 		return;
 	}
-	s_newLoadParentOf[s_newLoadStep] = screen;
+	sdata->newLoad.parentOf[sdata->newLoad.step] = screen;
 	next->rowSelected = 0;
 	MM_Menu_Attach(screen, next);
 }
@@ -158,16 +143,16 @@ void MM_NewLoad_Advance(struct RectMenu *screen)
 void MM_NewLoad_Retreat(struct RectMenu *screen)
 {
 	MM_Menu_Detach(screen);
-	struct RectMenu *previous = MM_NewLoad_StepAway(s_newLoadStep - 1, -1);
+	struct RectMenu *previous = MM_NewLoad_StepAway(sdata->newLoad.step - 1, -1);
 	if (previous == NULL)
 	{
-		s_newLoadStep = -1;
+		sdata->newLoad.step = NEWLOAD_STEP_NONE;
 		return;
 	}
-	struct RectMenu *parent = s_newLoadParentOf[s_newLoadStep];
+	struct RectMenu *parent = sdata->newLoad.parentOf[sdata->newLoad.step];
 	if (parent == NULL)
 	{
-		s_newLoadStep = -1;
+		sdata->newLoad.step = NEWLOAD_STEP_NONE;
 		return;
 	}
 	MM_Menu_Attach(parent, previous);
@@ -175,19 +160,19 @@ void MM_NewLoad_Retreat(struct RectMenu *screen)
 
 void MM_NewLoad_FinishChaosSetup(void)
 {
-	s_chaosSetupOffered = true;
+	sdata->newLoad.chaosSetupOffered = true;
 	MM_NewLoad_Exit();
 }
 
 void MM_NewLoad_ReturnFromChaosSetup(void)
 {
-	s_chaosSetupOffered = false;
+	sdata->newLoad.chaosSetupOffered = false;
 	sdata->ptrDesiredMenu = &MM_MENU_MAIN;
 }
 
 static void MM_NewLoad_ResumeFromCharacterSelect(struct RectMenu *previous)
 {
-	int lastStep = -1;
+	int lastStep = NEWLOAD_STEP_NONE;
 	for (int step = NEWLOAD_STEP_CHAOS; step < NEWLOAD_STEP_COUNT; step++)
 	{
 		if (MM_NewLoad_Screen(step) == previous)
@@ -196,11 +181,11 @@ static void MM_NewLoad_ResumeFromCharacterSelect(struct RectMenu *previous)
 			break;
 		}
 	}
-	if (lastStep < 0)
+	if (lastStep == NEWLOAD_STEP_NONE)
 	{
 		return;
 	}
-	s_chaosSetupOffered = false;
+	sdata->newLoad.chaosSetupOffered = false;
 	// Rebuild every ancestor: retreat needs each step's original parent.
 	struct RectMenu *parent = &MM_MENU_ADVENTURE;
 	for (int step = NEWLOAD_STEP_CHAOS; step <= lastStep; step++)
@@ -210,8 +195,8 @@ static void MM_NewLoad_ResumeFromCharacterSelect(struct RectMenu *previous)
 		{
 			continue;
 		}
-		s_newLoadParentOf[step] = parent;
-		s_newLoadStep = step;
+		sdata->newLoad.parentOf[step] = parent;
+		sdata->newLoad.step = (enum NewLoadStep)step;
 		// These choices survive overlay resets in the profile's live settings.
 		screen->rowSelected = (step == NEWLOAD_STEP_CHAOS)
 		                          ? !sdata->chaosSettings.armed
@@ -223,8 +208,8 @@ static void MM_NewLoad_ResumeFromCharacterSelect(struct RectMenu *previous)
 
 void MM_NewLoad_OnCharacterSelectExit(bool advance)
 {
-	struct RectMenu *previous = s_previousMenu;
-	s_previousMenu = NULL;
+	struct RectMenu *previous = sdata->newLoad.previousMenu;
+	sdata->newLoad.previousMenu = NULL;
 
 	if (advance)
 	{

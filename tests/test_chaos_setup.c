@@ -2,6 +2,7 @@
 #include <common.h>
 
 struct sData sdata_static;
+#define MM_menuChaosConfig (sdata->chaosMenu.menu)
 static struct GameTracker s_tracker;
 static struct DB s_buffer;
 static int s_drawnRows;
@@ -184,10 +185,49 @@ static void TestLiveValuesAndInputKinds(void)
 	CTR_TEST_CHECK_EQ(sdata->chaosSettings.durationSeconds, 40, "re-entering setup preserves the current creation's values");
 }
 
+static void TestResidentRestore(void)
+{
+	CTR_TEST_SECTION("restoring resident state resumes Effects and the saved settings layout");
+	EnterSetup();
+	// Snapshot precisely the resident aggregate owned by the SDATA checkpoint
+	// region. Leaving page/scroll/cache state file-static breaks this round trip.
+	MM_menuChaosConfig.rowSelected = 1;
+	Frame(BTN_CROSS, 0); // Pickup hides Interval.
+	MM_menuChaosConfig.rowSelected = 2;
+	Frame(BTN_CROSS, 0); // Effects.
+	MM_menuChaosConfig.rowSelected = CHAOS_EFFECT_COUNT - 1;
+	Frame(BTN_CROSS, 0);
+	static struct sData snapshot;
+	memcpy(&snapshot, &sdata_static, sizeof(snapshot));
+	const int savedScroll = sdata->chaosMenu.scroll[CHAOS_PAGE_EFFECTS].offset;
+	CTR_TEST_CHECK(savedScroll > 0, "the saved Effects page is scrolled beyond its first row");
+
+	Frame(BTN_TRIANGLE, 0);
+	MM_menuChaosConfig.rowSelected = 1;
+	Frame(BTN_CROSS, 0); // Interval restores the hidden row.
+	MM_ChaosConfig_OnEnter();
+	memcpy(&sdata_static, &snapshot, sizeof(snapshot));
+	Frame(0, 0);
+	CTR_TEST_CHECK(s_drawnTitle != NULL && strcmp(s_drawnTitle, "CHAOS EFFECTS") == 0,
+	               "an idle frame resumes the saved page rather than the later visit");
+	CTR_TEST_CHECK_EQ(MM_menuChaosConfig.rowSelected, CHAOS_EFFECT_COUNT - 1, "the saved cursor resumes on the last effect");
+	CTR_TEST_CHECK_EQ(sdata->chaosMenu.scroll[CHAOS_PAGE_EFFECTS].offset, savedScroll, "the saved scroll position survives the next frame");
+	CTR_TEST_CHECK(!sdata->chaosSettings.effects[CHAOS_EFFECT_COUNT - 1], "the saved toggle survives without a stale value mirror");
+	CTR_TEST_CHECK(MM_menuChaosConfig.funcPtr == MM_MenuProc_ChaosConfig, "the resident menu retains its input callback");
+	Frame(BTN_TRIANGLE, 0);
+	CTR_TEST_CHECK_EQ(MM_menuChaosConfig.rowSelected, 2, "Back uses the saved Effects action position");
+	CTR_TEST_CHECK_EQ(s_drawnRows, 4, "Back resumes the saved untimed layout");
+	CTR_TEST_CHECK(!s_drewInterval && s_drewEffects && s_drewConfirm, "the restored row cache agrees with the restored trigger");
+	MM_menuChaosConfig.rowSelected = 3;
+	Frame(BTN_CROSS, 0);
+	CTR_TEST_CHECK_EQ(s_finishes, 1, "Confirm still proceeds from the restored layout");
+}
+
 int main(void)
 {
 	TestTriggerLayoutAndIntervalRetention();
 	TestEffectsCommitAndPageTransitions();
 	TestLiveValuesAndInputKinds();
+	TestResidentRestore();
 	return CtrTest_Summary();
 }

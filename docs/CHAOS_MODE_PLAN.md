@@ -1,7 +1,9 @@
 # Chaos Mode — Implementation Plan
 
-Plan only, no code written. Phases are sized to be separately buildable and
-reviewable.
+Historical implementation plan; the creation menus and persistence are now
+implemented. See [Chaos state contracts](CHAOS_STATE.md) for the current save
+layout and checkpoint ownership. The remaining engine plan below still needs
+consolidation against the implementation.
 
 ## 1. What is being built
 

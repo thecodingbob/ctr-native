@@ -182,7 +182,8 @@ void SelectProfile_DrawAdvProfile(struct AdvProgress *adv, int posX, int posY, s
 
 		if (isChaos)
 		{
-			const char *label = sdata->lngStrings[MM_Lng_PortStringIndex(LNG_PORT_CHAOS)];
+			const int labelIndex = MM_Lng_PortStringIndex(LNG_PORT_CHAOS);
+			const char *label = labelIndex != RECTMENU_STRING_NONE ? sdata->lngStrings[labelIndex] : "CHAOS";
 			int y = posY + SELECT_PROFILE_CHAOS_MARK_Y;
 
 			for (const char *c = label; *c != '\0'; c++, y += SELECT_PROFILE_CHAOS_MARK_STEP)
@@ -801,9 +802,8 @@ static b32 SelectProfile_CardSlotIsChaos(int slot)
 	return SelectProfile_MemcardData()->extension.chaos[slot].armed;
 }
 
-// The count is recomputed rather than read back. It is derived from the array,
-// and a file written by a build with a different effect count would otherwise
-// carry a count that no longer matches what is behind it.
+// The count is derived from the stored flags, not trusted as independent state.
+// This reads the current on-card layout; it does not migrate other layouts.
 static void SelectProfile_LoadChaosSettings(int slot)
 {
 	const struct ChaosSettings *saved = &SelectProfile_MemcardData()->extension.chaos[slot];
@@ -831,13 +831,6 @@ static void SelectProfile_ClearChaosSettings(int slot)
 {
 	memset(&SelectProfile_MemcardData()->extension.chaos[slot], 0, sizeof(struct ChaosSettings));
 }
-
-// There is deliberately no save half yet. The settings are written once, by the
-// creation-path menu in Phase 4, straight into this slot's extension rather than
-// through SelectProfile_SaveAdvProfile — so an ordinary in-game save cannot
-// rewrite a file that already holds its settings. Adding the writer here instead
-// would need a "has this been written" sentinel to tell a fresh slot from a
-// configured one, and all-zero is already a legal answer.
 
 static void SelectProfile_LoadAdvProfile(int slot)
 {

@@ -25,7 +25,7 @@
 #define MM_MENU_RACE_TYPE                                 (D230.menuRaceType)
 #define MM_MENU_ADVENTURE                                 (D230.menuAdventure)
 #define MM_MENU_CHAOS_PROMPT                              (D230.menuChaosPrompt)
-#define MM_MENU_CHAOS_CONFIG                               (MM_menuChaosConfig)
+#define MM_MENU_CHAOS_CONFIG                               (sdata->chaosMenu.menu)
 #define MM_MENU_POINTERS                                  (D230.arrayMenuPtrs)
 #define MM_MENU_CHARACTER_SELECT                          (D230.menuCharacterSelect)
 #define MM_MENU_HIGH_SCORES                               (D230.menuHighScores)

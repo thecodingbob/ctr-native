@@ -4100,6 +4100,9 @@ struct sData
 	// the deadcoed pair, which the replay verifier compares every recorded frame.
 	u32 chaosRng;
 
+	struct NewLoadState newLoad;
+	struct ChaosMenuState chaosMenu;
+
 	// after dataLibFiller is 8009AE58,
 	// where psyq allocates globals
 
