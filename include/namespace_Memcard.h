@@ -638,8 +638,8 @@ enum ChaosTrigger
 
 enum
 {
-	CHAOS_DURATION_DEFAULT_SECONDS = 10,
-	CHAOS_TRIGGER_INTERVAL_DEFAULT_SECONDS = 20,
+	CHAOS_DURATION_DEFAULT_SECONDS = 30,
+	CHAOS_TRIGGER_INTERVAL_DEFAULT_SECONDS = 35,
 };
 
 // Live settings only. Disk encoding is independent of this growable array.
