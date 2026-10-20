@@ -248,6 +248,7 @@
 
 #include "231/R231.c"
 #include "231/D231.c"
+#include "231/RB_Chaos.c"
 #include "231/RB_Instance.c"
 #include "231/RB_Player.c"
 #include "231/RB_MinePool.c"

@@ -285,6 +285,7 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 		}
 
 		MainFrame_Tow_Update(gGT, gGamepads);
+		Chaos_Update(gGT);
 
 		for (iVar4 = 0; iVar4 < PAUSE; iVar4++)
 		{

@@ -3,8 +3,8 @@
 ## Status
 
 Implemented: catalogue/selection helpers, race gate, creation flow, per-slot
-persistence, vertical save marker and read-only Adventure pause inspection.
-Pending: runtime engine, gameplay effects, external provider and player guide.
+persistence, save marker, pause inspection and runtime timers/Interval scheduling.
+Pending: gameplay effects, other triggers, external provider and player guide.
 Save layouts and checkpoint ownership are documented in [CHAOS_STATE.md](CHAOS_STATE.md).
 
 ### Established rules
@@ -26,30 +26,30 @@ Save layouts and checkpoint ownership are documented in [CHAOS_STATE.md](CHAOS_S
 
 ## Runtime core
 
-Proposed owner: `game/231/RB_Chaos.c`, registered in `game/game_unity.h`.
-Declarations belong in `include/functions.h`; host IO stays in `platform/`.
+Owner: `game/231/RB_Chaos.c`, registered in `game/game_unity.h`, with declarations
+in `include/functions.h`. Host IO stays in `platform/`.
 
-1. Store ordered activations, cadence, baselines and effect-specific state in
-   checkpoint-captured storage. Include cooldowns, contact latches and takeover
-   state; relocate retained pointers. File-static mutable state alone is insufficient.
-2. Initialize on race start/retry **after** vehicle constants are ready. Verify
-   ordering around `MainGameStart_Initialize` and vehicle birth. Overlay 231 may
-   remain loaded between races, so overlay initialization is not a race reset.
-3. Update before affected physics/input consumers in `MainFrame_GameLogic`.
-   Check `armed`, `ChaosGate_IsRaceEligible` with Adventure scope, and active
-   menus. Pause freezes timers/cadence; temporary ineligibility must not reset them.
-4. Use `gGT->elapsedTimeMS`. Define expiry/trigger ordering and whether new entries
-   tick immediately. Each activation keeps its own timer; repeats never refresh
-   an existing entry instead.
-5. Restore Chaos-owned baseline constants **once per driver**, then apply active
+The implemented core stores ordered activations and cadence in
+`sdata->chaosRuntime`. Race initialization follows vehicle teleport; updates run
+before driver stages and check eligibility, `armed`, menus and pending loads.
+Pause freezes game-time timers. Expiry precedes scheduling; new entries receive
+full duration and cadence retains overshoot. The 128-entry queue rejects overflow
+without eviction/refresh; rejected scheduled events consume their gap but no RNG.
+Race end, retry teardown and level-load stage 0 clear the state.
+
+For gameplay effects:
+
+1. Add baselines, cooldowns, contact latches and takeover state to captured storage;
+   relocate retained pointers. File-static mutable state alone is insufficient.
+2. Restore Chaos-owned baseline constants **once per driver**, then apply active
    overrides in activation order. Restore even after the last entry expires.
    Per-entry baseline resets erase unrelated effects; activation snapshots can
    capture another effect's modified values.
-6. Separate one-shot events, periodic pulses, continuous modifiers and ownership
+3. Separate one-shot events, periodic pulses, continuous modifiers and ownership
    transitions. AI takeover acquires control once and hands back after the last
    relevant activation expires.
-7. Clean up on race end, retry and level departure before drivers are destroyed.
-   No activation survives into a hub. Define capacity/overflow before storage.
+4. Extend reset hooks to undo temporary ownership before drivers are destroyed.
+   Overlay changes alone are insufficient: 231 may stay loaded between races.
 
 Capture effective gravity/speed/acceleration baselines after character/config
 initialization. Preserve legitimate game changes outside Chaos-owned fields.
@@ -131,17 +131,17 @@ currently recorded, so provider-driven replay verification is not guaranteed.
 
 ## Delivery and checks
 
-1. Runtime core + Interval: lifecycle, independent timers, ordered application,
-   capacity policy and checkpoint state.
-2. First playable slice: Inverted Steering and No Hopping.
-3. Remaining effects, Random and contact triggers, then External.
-4. `docs/features/CHAOS.md` + README links: creation, scope, stacking, effects,
+1. First playable slice: Inverted Steering and No Hopping on the runtime core.
+2. Baseline/ordered modifier application, remaining effects, Random and contact
+   triggers, then External.
+3. `docs/features/CHAOS.md` + README links: creation, scope, stacking, effects,
    pause inspection and provider/replay limitations.
 
 Existing suites: `test_chaos_effect`, `test_chaos_gate`, `test_chaos_new_file`,
-`test_chaos_setup`, `test_menu_strings`, `test_chaos_save`.
-Add runtime tests for duplicate expiry, ordering, last-expiry restoration,
-overflow, cadence and pause. Build with `cmake --build build -j`; run focused CTest.
+`test_chaos_setup`, `test_menu_strings`, `test_chaos_save`, `test_chaos_runtime`.
+Runtime tests cover timers, ordering, overflow, cadence, gates and resident restore.
+Add modifier-restoration tests with the effects. Build with `cmake --build build -j`;
+run focused CTest.
 
 In-game checks: all Adventure race types, untouched bots, both 2P humans,
 pause/retry/results/hub transitions, sustained pad contact, rescue destination,

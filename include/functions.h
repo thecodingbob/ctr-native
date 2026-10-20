@@ -1292,6 +1292,12 @@ void LOAD_OvrThreads(u32 overlayIndex);
 void LibraryOfModels_Clear(struct GameTracker *gGT);
 void DebugFont_Init(struct GameTracker *gGT);
 void RB_Bubbles_RoosTubes(void);
+
+void Chaos_Reset(void);
+void Chaos_BeginRace(struct GameTracker *gGT);
+void Chaos_Update(struct GameTracker *gGT);
+bool Chaos_Activate(ChaosEffectId effect, s32 durationMS);
+bool Chaos_IsActive(ChaosEffectId effect);
 b32 LOAD_IsOpen_Podiums(void);
 void RB_Spider_DrawWebs(struct Thread *t, struct PushBuffer *pb);
 b32 LOAD_IsOpen_MainMenu(void);

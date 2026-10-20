@@ -74,6 +74,10 @@ ctr_add_test_suite(test_chaos_gate
     SOURCES test_chaos_gate.c
 )
 
+ctr_add_test_suite(test_chaos_runtime
+    SOURCES test_chaos_runtime.c
+)
+
 ctr_add_test_suite(test_chaos_new_file
     SOURCES test_chaos_new_file.c
 )

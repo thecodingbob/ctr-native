@@ -4099,6 +4099,7 @@ struct sData
 	// The chaos system's own generator. Separate from sdata->randomNumber and
 	// the deadcoed pair, which the replay verifier compares every recorded frame.
 	u32 chaosRng;
+	struct ChaosRuntime chaosRuntime;
 
 	struct NewLoadState newLoad;
 	struct ChaosMenuState chaosMenu;

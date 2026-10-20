@@ -93,6 +93,8 @@ restore an in-progress creation, including its menu navigation.
 The existing SDATA checkpoint region captures:
 
 - `chaosSettings` and the dedicated `chaosRng`;
+- `chaosRuntime`: race initialization, ordered activation entries with independent
+  remaining milliseconds, and the Interval countdown;
 - `newLoad`: current chain step, setup handover flag, parent links and the
   character-select return context;
 - `chaosMenu`: the standalone `RectMenu`, current page, scroll offsets, visible
@@ -120,7 +122,21 @@ Adding these resident fields changes SDATA's size, so checkpoints from the prior
 layout are rejected rather than partially restored. Cross-build checkpoint
 migration is not an Adventure-save migration.
 
-Future active-effect timers, activation order, trigger cadence and takeover
-state must join captured runtime storage (or gain an explicit checkpoint region)
-when the engine is introduced. File-static mutable effect lists alone would not
-meet this contract.
+## Race runtime
+
+`RB_Chaos.c` initializes after `VehBirth_TeleportAll` in
+`MainGameStart_Initialize`. Updates run before driver stages, only in eligible
+Adventure gameplay after GO, with no active menu or pending load. Pause freezes
+timers and cadence. `armed` gates execution independently of `chaos_mode`.
+
+Activations are ordered entries, including duplicates. Expiry runs before
+Interval scheduling; new entries receive their full duration. Interval retains
+frame overshoot. The queue holds 128 entries; overflow rejects the new request,
+preserving existing entries. A rejected scheduled event consumes its gap but no
+RNG choice. Race resets preserve settings and the dedicated RNG stream.
+
+Race end, retry teardown and level-load stage 0 clear runtime state before driver
+storage is reused. The runtime contains no pointers and needs no new relocator.
+Future driver baselines, cooldowns, contact latches and takeover state must join
+captured storage as effects are implemented. Gameplay modifiers and triggers
+other than Interval are still pending.
