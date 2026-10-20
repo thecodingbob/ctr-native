@@ -167,6 +167,8 @@ down the screen. Central banners reserve the viewport rows occupied by Final Lap
 docked rows stay fixed and do not displace central banners. The newest
 banner starts at the same viewport quarter-height as solo Final Lap, or the shared multiplayer continue-prompt
 baseline; concurrent banners stack downward in 1P and upward in 2P. Crowded layouts use compact rows.
+Downscaled GT4 glyphs combine font scale and widescreen compression before
+rounding their width, so small letters retain the selected display proportions.
 Docked labels use 50% of the small font, six-pixel row spacing and a shared right edge. Both 1P and 2P
 show at most the four most recently activated distinct docked effects, newest
 first; the 2P list starts at Y=32, above the lap counter. Docked labels and docking

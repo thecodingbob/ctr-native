@@ -3,79 +3,109 @@
 
 struct sData sdata_static;
 struct Data data;
+NativeConfig g_config;
 static struct GameTracker s_tracker;
-static int s_draws;
-static s32 s_x[4];
-static s32 s_y[4];
-static s16 s_scale[4];
-static u32 *s_ot;
+static struct DB s_buffer;
+static struct Icon s_icon;
+static struct { struct IconGroup group; struct Icon *icons[1]; } s_atlas;
+static POLY_GT4 s_glyphs[4];
+static u32 s_originalOT[5];
+static u32 s_targetOT[5];
 
+#include <platform/native_gpu_links.c>
+#include <game/widescreen.c>
+#include <game/DecalHUD.c>
 #include <game/DecalFont.c>
 
-void DecalHUD_DrawPolyGT4(struct Icon *icon, s32 x, s32 y, struct PrimMem *primMem, u32 *ot,
-                         Color c0, Color c1, Color c2, Color c3, u8 transparency, s16 scale)
+void NativePgxp_BindWrittenXY(const void *destination, u32 value)
 {
-	(void)icon;
-	(void)primMem;
-	(void)c0;
-	(void)c1;
-	(void)c2;
-	(void)c3;
-	(void)transparency;
-	if (s_draws >= (int)len(s_x))
+	(void)destination;
+	(void)value;
+}
+
+static void ResetDrawing(void)
+{
+	memset(s_glyphs, 0, sizeof(s_glyphs));
+	s_buffer.primMem.cursor = s_glyphs;
+	for (int i = 0; i < 5; i++)
 	{
-		CtrTest_Bail("unexpected glyph count");
+		s_originalOT[i] = s_targetOT[i] = NATIVE_GPU_LINK_TERMINATOR;
 	}
-	s_x[s_draws] = x;
-	s_y[s_draws] = y;
-	s_scale[s_draws++] = scale;
-	s_ot = ot;
+}
+
+static int GlyphWidth(int index)
+{
+	return s_glyphs[index].x1 - s_glyphs[index].x0;
 }
 
 int main(void)
 {
-	static struct DB buffer;
-	static struct Icon icon;
-	static struct { struct IconGroup group; struct Icon *icons[1]; } atlas;
 	static u32 colors[4];
-	u32 originalOT[5];
-	u32 targetOT[5];
 	sdata->gGT = &s_tracker;
-	s_tracker.backBuffer = &buffer;
-	s_tracker.pushBuffer_UI.ptrOT = originalOT;
-	atlas.group.numIcons = 1;
-	atlas.icons[0] = &icon;
-	s_tracker.iconGroup[0] = &atlas.group;
+	s_tracker.backBuffer = &s_buffer;
+	s_tracker.pushBuffer_UI.ptrOT = s_originalOT;
+	s_atlas.group.numIcons = 1;
+	s_atlas.icons[0] = &s_icon;
+	s_tracker.iconGroup[0] = &s_atlas.group;
+	s_icon.texLayout.u1 = s_icon.texLayout.u3 = 12;
+	s_icon.texLayout.v2 = s_icon.texLayout.v3 = 10;
 	data.ptrColor[ORANGE] = colors;
 	data.font_charPixWidth[FONT_SMALL] = 13;
+	NativeGpuLinks_RegisterRangeChecked("font test primitives", s_glyphs, sizeof(s_glyphs));
 
-	CTR_TEST_SECTION("scaled font geometry preserves right alignment, fractional advances and OT ownership");
-	DecalFont_DrawLineScaledOT("AB", 100, 40, FONT_SMALL, JUSTIFY_RIGHT | ORANGE, FP(0.5), targetOT);
-	CTR_TEST_CHECK_EQ(s_draws, 2, "scaled drawing emits both glyphs");
-	CTR_TEST_CHECK_EQ(s_x[0], 87, "the right-aligned origin uses the scaled total width");
-	CTR_TEST_CHECK_EQ(s_x[1], 93, "glyph positions scale the cumulative advance");
-	CTR_TEST_CHECK_EQ(s_y[0], 40, "scaling preserves the requested baseline");
-	CTR_TEST_CHECK_EQ(s_scale[0], FP(0.5), "the glyph geometry receives the compact scale");
-	CTR_TEST_CHECK(s_ot == targetOT, "scaled glyphs use the requested ordering table");
-	CTR_TEST_CHECK(s_tracker.pushBuffer_UI.ptrOT == originalOT, "scaled drawing restores the caller's ordering table");
+	CTR_TEST_SECTION("scaled font emits real geometry with alignment and ordering-table ownership");
+	ResetDrawing();
+	DecalFont_DrawLineScaledOT("AB", 100, 40, FONT_SMALL, JUSTIFY_RIGHT | ORANGE, FP(0.5), s_targetOT);
+	CTR_TEST_CHECK(s_buffer.primMem.cursor == s_glyphs + 2, "scaled drawing emits both glyph packets");
+	CTR_TEST_CHECK_EQ(s_glyphs[0].x0, 87, "the right-aligned origin uses the scaled total width");
+	CTR_TEST_CHECK_EQ(s_glyphs[1].x0, 93, "glyph positions scale the cumulative advance");
+	CTR_TEST_CHECK_EQ(s_glyphs[0].y0, 40, "scaling preserves the requested baseline");
+	CTR_TEST_CHECK_EQ(GlyphWidth(0), 6, "half-scale glyph geometry has half the atlas width in 4:3");
+	CTR_TEST_CHECK_EQ(s_glyphs[0].y2 - s_glyphs[0].y0, 5, "half-scale glyph geometry has half the atlas height");
+	CTR_TEST_CHECK(NativeGpuLinks_ToHostPointer(s_targetOT[0]) == &s_glyphs[1], "glyphs are linked into the requested ordering table");
+	CTR_TEST_CHECK(NativeGpuLinks_ToHostPointer(s_glyphs[1].tag & 0xffffffu) == &s_glyphs[0], "glyphs retain their primitive chain");
+	CTR_TEST_CHECK_EQ(s_originalOT[0], NATIVE_GPU_LINK_TERMINATOR, "the caller's ordering table receives no glyph packets");
+	CTR_TEST_CHECK(s_tracker.pushBuffer_UI.ptrOT == s_originalOT, "scaled drawing restores the caller's ordering table");
 
-	s_draws = 0;
-	DecalFont_DrawLineScaledOT("AB", 100, 40, FONT_SMALL, JUSTIFY_CENTER | ORANGE, FP(0.5), targetOT);
-	CTR_TEST_CHECK_EQ(s_x[0], 94, "center alignment uses half the scaled width");
-	s_draws = 0;
+	ResetDrawing();
+	DecalFont_DrawLineScaledOT("AB", 100, 40, FONT_SMALL, JUSTIFY_CENTER | ORANGE, FP(0.5), s_targetOT);
+	CTR_TEST_CHECK_EQ(s_glyphs[0].x0, 94, "center alignment uses half the scaled width");
+	ResetDrawing();
 	data.font_indentPixDimensions[FONT_SMALL * 2] = 2;
 	data.font_indentPixDimensions[FONT_SMALL * 2 + 1] = 4;
-	DecalFont_DrawLineScaledOT("\1A", 100, 40, FONT_SMALL, ORANGE, FP(0.5), targetOT);
-	CTR_TEST_CHECK_EQ(s_x[0], 101, "accent horizontal offsets scale with their glyphs");
-	CTR_TEST_CHECK_EQ(s_y[0], 42, "accent vertical offsets scale with their glyphs");
-	CTR_TEST_CHECK_EQ(s_x[1], 100, "accent placeholders still have zero advance");
+	DecalFont_DrawLineScaledOT("\1A", 100, 40, FONT_SMALL, ORANGE, FP(0.5), s_targetOT);
+	CTR_TEST_CHECK_EQ(s_glyphs[0].x0, 101, "accent horizontal offsets scale with their glyphs");
+	CTR_TEST_CHECK_EQ(s_glyphs[0].y0, 42, "accent vertical offsets scale with their glyphs");
+	CTR_TEST_CHECK_EQ(s_glyphs[1].x0, 100, "accent placeholders still have zero advance");
 
-	CTR_TEST_SECTION("ordinary font calls retain full-size retail geometry");
-	s_draws = 0;
-	DecalFont_DrawLineOT("AB", 100, 40, FONT_SMALL, JUSTIFY_RIGHT | ORANGE, targetOT);
-	CTR_TEST_CHECK_EQ(s_x[0], 74, "ordinary drawing retains the unscaled right-aligned origin");
-	CTR_TEST_CHECK_EQ(s_x[1], 87, "ordinary drawing retains the full character advance");
-	CTR_TEST_CHECK_EQ(s_scale[0], FP(1.0), "ordinary drawing retains full-size glyphs");
-	CTR_TEST_CHECK(s_tracker.pushBuffer_UI.ptrOT == originalOT, "ordinary drawing still restores the ordering table");
+	CTR_TEST_SECTION("small glyphs retain widescreen compression after fractional scaling");
+	const int halfWidths[] = { 6, 5, 5, 3 };
+	const int fractionalWidths[] = { 6, 5, 5, 4 };
+	const int fullWidths[] = { 13, 11, 11, 9 };
+	for (int aspect = 0; aspect < 4; aspect++)
+	{
+		g_config.aspectRatio = aspect;
+		s_icon.texLayout.u1 = s_icon.texLayout.u3 = 12;
+		ResetDrawing();
+		DecalFont_DrawLineScaledOT("AB", 100, 40, FONT_SMALL, JUSTIFY_RIGHT | ORANGE, FP(0.5), s_targetOT);
+		CTR_TEST_CHECK_EQ(GlyphWidth(0), halfWidths[aspect], "half-size glyphs use the requested display proportions");
+		CTR_TEST_CHECK_EQ(s_glyphs[1].x0 - s_glyphs[0].x0, 6, "aspect correction preserves the text's cumulative advance");
+		CTR_TEST_CHECK_EQ(s_glyphs[0].y0, 40, "aspect correction preserves the text baseline");
+		CTR_TEST_CHECK_EQ(s_glyphs[0].y2 - s_glyphs[0].y0, 5, "aspect correction does not alter glyph height");
+		CTR_TEST_CHECK_EQ(s_glyphs[0].x2, s_glyphs[0].x0, "the lower left edge follows the corrected upper edge");
+		CTR_TEST_CHECK_EQ(s_glyphs[0].x3, s_glyphs[0].x1, "the lower right edge follows the corrected upper edge");
+
+		// 13 * .49 truncates to 6; combining the transforms first rounds 21:9 to 4, not 3.
+		s_icon.texLayout.u1 = s_icon.texLayout.u3 = 13;
+		ResetDrawing();
+		DecalFont_DrawLineScaledOT("A", 100, 40, FONT_SMALL, ORANGE, FP(0.49), s_targetOT);
+		CTR_TEST_CHECK_EQ(GlyphWidth(0), fractionalWidths[aspect], "fractional scale and aspect are combined before rounding");
+
+		ResetDrawing();
+		DecalFont_DrawLineOT("AB", 100, 40, FONT_SMALL, JUSTIFY_RIGHT | ORANGE, s_targetOT);
+		CTR_TEST_CHECK_EQ(GlyphWidth(0), fullWidths[aspect], "ordinary drawing retains its original aspect-corrected geometry");
+		CTR_TEST_CHECK_EQ(s_glyphs[1].x0 - s_glyphs[0].x0, 13, "ordinary drawing retains the full character advance");
+		CTR_TEST_CHECK(s_tracker.pushBuffer_UI.ptrOT == s_originalOT, "ordinary drawing restores the ordering table");
+	}
 	return CtrTest_Summary();
 }

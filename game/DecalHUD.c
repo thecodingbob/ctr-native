@@ -237,7 +237,7 @@ void DecalHUD_DrawPolyGT4(struct Icon *icon, s32 posX, s32 inputY, struct PrimMe
 	CtrGpu_WritePackedXY(&p->x1, xy1);
 	CtrGpu_WritePackedXY(&p->x2, xy2);
 	CtrGpu_WritePackedXY(&p->x3, xy3);
-        Widescreen_CompressGT4(p);
+	Widescreen_CompressGT4Scaled(p, (uv1 & 0xff) - (uv0 & 0xff), scale);
 	CtrGpu_WriteColorCode(&p->r1, ColorCode_GetPacked(&color1));
 	CtrGpu_WriteColorCode(&p->r2, ColorCode_GetPacked(&color2));
 	CtrGpu_WriteColorCode(&p->r3, ColorCode_GetPacked(&color3));
