@@ -18,10 +18,7 @@
 #define FULLSCREEN_MENU_LABEL_X     0x38
 #define FULLSCREEN_MENU_VALUE_X     0x1DC
 
-// Screens whose title is not a single all-caps FONT_BIG line nudge the title down by this
-// much, to sit on the same baseline as the FONT_SMALL rows under it. Naming it here is the
-// point: the options menu does not nudge and Controls does, and without a name for the
-// difference a screen picks one by memory.
+// Vertically centres FONT_SMALL hints alongside a FONT_BIG title.
 #define FULLSCREEN_MENU_TITLE_BASELINE_NUDGE_Y \
 	((data.font_charPixHeight[FONT_BIG] - data.font_charPixHeight[FONT_SMALL]) / 2)
 
@@ -70,16 +67,6 @@ static void FullScreenMenu_DrawRowLabel(const char *label, int y, uint32_t *ot)
 
 // ================= option rows: for menus that edit settings =================
 
-// A numeric value, in the shared value column. Every settings screen shows these as a
-// percentage, so the sign and the column are written once here rather than per screen.
-static void FullScreenMenu_DrawPercent(int percent, int y, uint32_t *ot)
-{
-	char text[8];
-
-	snprintf(text, sizeof(text), "%d%%", percent);
-	DecalFont_DrawLineOT(text, FULLSCREEN_MENU_VALUE_X, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
-}
-
 // ================= value column =================
 //
 // Everything that can sit in the value column goes through here, so the column, the font
@@ -105,6 +92,11 @@ static void FullScreenMenu_DrawValueWithSuffix(int value, const char *suffix, in
 
 	snprintf(text, sizeof(text), "%d%s", value, suffix);
 	FullScreenMenu_DrawValueText(text, y, ot);
+}
+
+static void FullScreenMenu_DrawPercent(int percent, int y, uint32_t *ot)
+{
+	FullScreenMenu_DrawValueWithSuffix(percent, "%", y, ot);
 }
 
 // One name out of a list, drawn where its value goes. A value outside the list falls back
@@ -378,28 +370,78 @@ static bool FullScreenMenu_RowIsAction(const struct FullScreenMenu_Row *row)
 
 // Keeps the selection inside the list and the list scrolled to it, for when rows have been
 // added or taken away since the last frame.
-static void FullScreenMenu_ListFollow(struct FullScreenMenu_List *list, int *selected)
+static void FullScreenMenu_FollowScroll(struct FullScreenMenu_Scroll *scroll, s16 *selected, int numRows)
 {
-	*selected = FullScreenMenu_ClampRow(*selected, list->numRows);
-	list->scroll.offset = FullScreenMenu_ScrollOffsetFor(&list->scroll, *selected, list->numRows);
+	*selected = (s16)FullScreenMenu_ClampRow(*selected, numRows);
+	scroll->offset = FullScreenMenu_ScrollOffsetFor(scroll, *selected, numRows);
 }
 
-static void FullScreenMenu_DrawList(struct FullScreenMenu_List *list, int selected, struct GameTracker *gGT, uint32_t *ot)
+static void FullScreenMenu_ListFollow(struct FullScreenMenu_List *list, s16 *selected)
 {
-	const int visibleEnd = FullScreenMenu_VisibleEnd(&list->scroll, list->numRows);
+	FullScreenMenu_FollowScroll(&list->scroll, selected, list->numRows);
+}
 
-	for (int i = list->scroll.offset; i < visibleEnd; i++)
+// ================= driving a full-screen list =================
+
+static void FullScreenMenu_NavScroll(struct GamepadBuffer *pad, struct FullScreenMenu_Scroll *scroll, s16 *selected, int numRows)
+{
+	FullScreenMenu_FollowScroll(scroll, selected, numRows);
+
+	if ((pad->buttonsTapped & BTN_UP) != 0)
 	{
-		const int y = FullScreenMenu_RowY(i - list->scroll.offset);
+		*selected = (s16)FullScreenMenu_MoveRow(scroll, *selected, -1, numRows);
+		OtherFX_Play(0, 1);
+	}
 
-		FullScreenMenu_DrawRowLabel(list->rows[i].label, y, ot);
-		FullScreenMenu_DrawRowValue(&list->rows[i], list->values[i], y, ot);
+	if ((pad->buttonsTapped & BTN_DOWN) != 0)
+	{
+		*selected = (s16)FullScreenMenu_MoveRow(scroll, *selected, 1, numRows);
+		OtherFX_Play(0, 1);
+	}
+}
+
+static void FullScreenMenu_NavList(struct GamepadBuffer *pad, struct FullScreenMenu_List *list, s16 *selected)
+{
+	FullScreenMenu_NavScroll(pad, &list->scroll, selected, list->numRows);
+}
+
+// Menus supply row content; clipping, placement and highlighting stay shared.
+typedef void (*FullScreenMenu_DrawRow)(const void *context, int row, int y, bool selected, uint32_t *ot);
+
+static void FullScreenMenu_DrawRows(const struct FullScreenMenu_Scroll *scroll, int numRows, int selected,
+                                   FullScreenMenu_DrawRow drawRow, const void *context,
+                                   struct GameTracker *gGT, uint32_t *ot)
+{
+	const int visibleEnd = FullScreenMenu_VisibleEnd(scroll, numRows);
+
+	for (int i = scroll->offset; i < visibleEnd; i++)
+	{
+		const int y = FullScreenMenu_RowY(i - scroll->offset);
+
+		drawRow(context, i, y, i == selected, ot);
 
 		if (i == selected)
 		{
 			FullScreenMenu_DrawRowHighlight(gGT, ot, y);
 		}
 	}
+}
+
+static void FullScreenMenu_DrawSettingRow(const void *context, int row, int y, bool selected, uint32_t *ot)
+{
+	const struct FullScreenMenu_List *list = context;
+	(void)selected;
+	FullScreenMenu_DrawRowLabel(list->rows[row].label, y, ot);
+	FullScreenMenu_DrawRowValue(&list->rows[row], list->values[row], y, ot);
+}
+
+static void FullScreenMenu_DrawScreen(const char *title, int nudgeY, const struct FullScreenMenu_Scroll *scroll,
+                                     int numRows, int selected, FullScreenMenu_DrawRow drawRow, const void *context,
+                                     struct GameTracker *gGT, uint32_t *ot)
+{
+	FullScreenMenu_DrawTitle(title, nudgeY, ot);
+	FullScreenMenu_DrawRows(scroll, numRows, selected, drawRow, context, gGT, ot);
+	FullScreenMenu_DrawFrame(ot);
 }
 
 #endif // CTR_NATIVE_MM_FULLSCREEN_MENU_C

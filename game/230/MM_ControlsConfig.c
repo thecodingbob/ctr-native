@@ -564,64 +564,47 @@ static void Controls_DrawValue(int device, const struct ControlsRow *row, int y,
 	Controls_DrawSafeText(text, FULLSCREEN_MENU_VALUE_X, y, JUSTIFY_RIGHT | colour, ot);
 }
 
-static void Controls_DrawRows(struct RectMenu *menu, struct GameTracker *gGT, uint32_t *ot, int device)
+static void Controls_DrawRow(const void *context, int index, int y, bool selected, uint32_t *ot)
 {
-	int visibleEnd = FullScreenMenu_VisibleEnd(&s_scroll, s_rowCount);
-
-	// A rebind in progress is announced in the value column of its own row.
+	const int device = *(const int *)context;
+	const struct ControlsRow *row = &s_rows[index];
 	const bool capturing = NativeControls_IsCapturing();
+	const char *label = "";
 
-	for (int i = s_scroll.offset; i < visibleEnd; i++)
+	switch (row->kind)
 	{
-		const struct ControlsRow *row = &s_rows[i];
-		const int y = FullScreenMenu_RowY(i - s_scroll.offset);
-
-		const char *label = "";
-		switch (row->kind)
+	case CONTROLS_ROW_DEVICE:
+		label = "DEVICE";
+		break;
+	case CONTROLS_ROW_BINDING:
+		label = s_bindingGlyphs[row->binding];
+		if (label == NULL)
 		{
-		case CONTROLS_ROW_DEVICE:
-			label = "DEVICE";
-			break;
-		case CONTROLS_ROW_BINDING:
-			label = s_bindingGlyphs[row->binding];
-
-			if (label == NULL)
-			{
-				label = NativeControls_GetBindingName(row->binding);
-			}
-
-			break;
-		case CONTROLS_ROW_DEADZONE:
-			label = "Deadzone";
-			break;
-		case CONTROLS_ROW_RESTORE:
-			label = "Restore Defaults";
-			break;
-		default:
-			break;
+			label = NativeControls_GetBindingName(row->binding);
 		}
+		break;
+	case CONTROLS_ROW_DEADZONE:
+		label = "Deadzone";
+		break;
+	case CONTROLS_ROW_RESTORE:
+		label = "Restore Defaults";
+		break;
+	default:
+		break;
+	}
 
-		// Deliberately not filtered: this column is the one place the four button
-		// characters are meant to reach the font, and every other label here is a fixed
-		// string that needs no cleaning.
-		FullScreenMenu_DrawRowLabel(label, y, ot);
+	// Binding glyphs must reach the font without filtering.
+	FullScreenMenu_DrawRowLabel(label, y, ot);
 
-		if (capturing && (row->kind == CONTROLS_ROW_BINDING) && (i == menu->rowSelected))
-		{
-			// Which half is pending: take a key, then confirm it with Cross.
-			snprintf(s_valueBuffer, sizeof(s_valueBuffer), "%s",
-			         NativeControls_IsConfirming() ? "* to confirm" : "...");
-			DecalFont_DrawLineOT(s_valueBuffer, FULLSCREEN_MENU_VALUE_X, y, FONT_SMALL, JUSTIFY_RIGHT | RED, ot);
-		}
-		else
-		{
-			Controls_DrawValue(device, row, y, ot);
-		}
-
-		if (i == menu->rowSelected)
-		{
-			FullScreenMenu_DrawRowHighlight(gGT, ot, y);
-		}
+	if (capturing && row->kind == CONTROLS_ROW_BINDING && selected)
+	{
+		snprintf(s_valueBuffer, sizeof(s_valueBuffer), "%s",
+		         NativeControls_IsConfirming() ? "* to confirm" : "...");
+		DecalFont_DrawLineOT(s_valueBuffer, FULLSCREEN_MENU_VALUE_X, y, FONT_SMALL, JUSTIFY_RIGHT | RED, ot);
+	}
+	else
+	{
+		Controls_DrawValue(device, row, y, ot);
 	}
 }
 
@@ -634,26 +617,15 @@ b32 MM_Controls_IsPickerOpen(void)
 // stays visible, and so does a player switch.
 static void Controls_MoveSelection(struct RectMenu *menu, int delta)
 {
-	const int count = s_rowCount;
-
-	if (delta < 0)
-	{
-		menu->rowSelected = (menu->rowSelected > 0) ? menu->rowSelected - 1 : count - 1;
-	}
-	else
-	{
-		menu->rowSelected = (menu->rowSelected < count - 1) ? menu->rowSelected + 1 : 0;
-	}
-
+	menu->rowSelected = (s16)FullScreenMenu_MoveRow(&s_scroll, menu->rowSelected, delta, s_rowCount);
+	// Controls anchors the selection at the top instead of using minimal scrolling.
 	s_scroll.offset = menu->rowSelected;
 	OtherFX_Play(0, 1);
 }
 
 static void Controls_ClampSelection(struct RectMenu *menu)
 {
-	menu->rowSelected = FullScreenMenu_ClampRow(menu->rowSelected, s_rowCount);
-
-	s_scroll.offset = FullScreenMenu_ScrollOffsetFor(&s_scroll, menu->rowSelected, s_rowCount);
+	FullScreenMenu_FollowScroll(&s_scroll, &menu->rowSelected, s_rowCount);
 }
 
 // Player switching stays on player 1's shoulders only. Reading it from the selected player
@@ -748,7 +720,7 @@ static void Controls_DrawTitle(uint32_t *ot)
 	// Uppercase here, unlike the section name used in the options list: the retail
 	// titles this shares a font with are all caps.
 	snprintf(s_titleBuffer, sizeof(s_titleBuffer), "CONTROLS P%d", s_player + 1);
-	FullScreenMenu_DrawTitle(s_titleBuffer, FULLSCREEN_MENU_TITLE_BASELINE_NUDGE_Y, ot);
+	FullScreenMenu_DrawTitle(s_titleBuffer, 0, ot);
 }
 
 void MM_MenuProc_Controls(struct RectMenu *menu)
@@ -777,6 +749,7 @@ void MM_MenuProc_Controls(struct RectMenu *menu)
 	Controls_DrawTitle(ot);
 	Controls_DrawHint("L1", FULLSCREEN_MENU_LABEL_X, false, ot);
 	Controls_DrawHint("R1", FULLSCREEN_MENU_VALUE_X, true, ot);
-	Controls_DrawRows(menu, gGT, ot, NativeControls_GetPlayerDevice(s_player));
+	const int drawDevice = NativeControls_GetPlayerDevice(s_player);
+	FullScreenMenu_DrawRows(&s_scroll, s_rowCount, menu->rowSelected, Controls_DrawRow, &drawDevice, gGT, ot);
 	FullScreenMenu_DrawFrame(ot);
 }

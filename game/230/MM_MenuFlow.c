@@ -67,11 +67,15 @@ static int s_newLoadStep = -1;
 // settings would hand back to itself forever.
 static bool s_chaosSetupOffered;
 
-// A file being created with Chaos still has its settings to pick, and those screens are
-// not steps of the chain. They are promoted to be the active menu instead, and the chain is
-// left linked up underneath, for two reasons: the screens draw themselves over everything
-// only while nothing else is the active menu, and coming back from them has to land on the
-// step the player last answered rather than on the title.
+// The menu the chain was on when it closed, which is where the player came from and so
+// where backing out of the next screen has to land. NULL when no chain was involved.
+static struct RectMenu *s_previousMenu;
+
+// A file being created with Chaos still has its settings to pick, and those screens are not
+// steps of the chain. They are promoted to be the active menu instead, and the chain is left
+// linked up underneath, for two reasons: the screens draw themselves over everything only
+// while nothing else is the active menu, and coming back from them has to land on the step
+// the player last answered rather than on the title.
 //
 // Recorded once per visit, which is what keeps MM_NewLoad_FinishChaosSetup from handing back
 // to itself, and which is cleared when the chain is rewound or the settings are left.
@@ -89,10 +93,6 @@ static bool MM_NewLoad_YieldsToChaosSetup(void)
 
 	return true;
 }
-
-// The menu the chain was on when it closed, which is where the player came from and so
-// where backing out of the next screen has to land. NULL when no chain was involved.
-static struct RectMenu *s_previousMenu;
 
 // What each step hangs off. Backing out has to put a step back where *it* was, not
 // where the step being left hangs off, which is a different menu once there is more

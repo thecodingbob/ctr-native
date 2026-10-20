@@ -46,9 +46,14 @@ u32 MM_Controls_MenuTapped(void);
 
 #include "MM_FullScreenMenu.c"
 
-// Section lookup built from g_configEntries at first use
-static int s_sectionToEntry[16];
-static int s_sectionCount[16];
+// Section lookup built from g_configEntries at first use.
+enum
+{
+	CONFIG_MAX_SECTIONS = 16,
+};
+
+static int s_sectionToEntry[CONFIG_MAX_SECTIONS];
+static int s_sectionCount[CONFIG_MAX_SECTIONS];
 static int s_numSections = 0;
 
 static void BuildSectionMap(void)
@@ -68,6 +73,11 @@ static void BuildSectionMap(void)
 		}
 		if (curSection == NULL || strcmp(g_configEntries[i].section, curSection) != 0)
 		{
+			if (s_numSections >= CONFIG_MAX_SECTIONS)
+			{
+				break;
+			}
+
 			curSection = g_configEntries[i].section;
 			s_sectionToEntry[s_numSections] = i;
 			s_sectionCount[s_numSections] = 0;
@@ -104,7 +114,9 @@ static void Config_UpdateSlider(const struct GamepadBuffer *pad, const int rowSe
                               const int localRow, int *value, const int min, const int max, const int step)
 {
 	if (rowSelected != localRow)
+	{
 		return;
+	}
 
 	for (int direction = -1; direction <= 1; direction += 2)
 	{
@@ -119,8 +131,7 @@ static void Config_DrawValue(const ConfigEntry *e, int y, uint32_t *ot)
 {
 	if (e->type == CFG_BOOL)
 	{
-		DecalFont_DrawLineOT(*(bool *)e->valuePtr ? "ON" : "OFF",
-			FULLSCREEN_MENU_VALUE_X, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+		FullScreenMenu_DrawOnOff(*(bool *)e->valuePtr, y, ot);
 	}
 	else if (e->type == CFG_ENUM)
 	{
@@ -134,12 +145,27 @@ static void Config_DrawValue(const ConfigEntry *e, int y, uint32_t *ot)
 				break;
 			}
 		}
-		DecalFont_DrawLineOT((char *)name, FULLSCREEN_MENU_VALUE_X, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+		FullScreenMenu_DrawValueText(name, y, ot);
 	}
 	else
 	{
 		FullScreenMenu_DrawPercent(*(int *)e->valuePtr, y, ot);
 	}
+}
+
+static void Config_DrawRow(const void *context, int row, int y, bool selected, uint32_t *ot)
+{
+	const ConfigEntry *entries = context;
+	(void)selected;
+	FullScreenMenu_DrawRowLabel(entries[row].label, y, ot);
+	Config_DrawValue(&entries[row], y, ot);
+}
+
+static void Config_DrawSectionRow(const void *context, int row, int y, bool selected, uint32_t *ot)
+{
+	(void)context;
+	(void)selected;
+	FullScreenMenu_DrawRowLabel(g_configEntries[s_sectionToEntry[row]].section, y, ot);
 }
 
 static void MM_MenuProc_Config(struct RectMenu *menu)
@@ -149,7 +175,9 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 	struct GamepadBuffer *pad = &sdata->gGamepads->gamepad[0];
 
 	if (s_numSections == 0)
+	{
 		BuildSectionMap();
+	}
 
 	// Inside the Controls section the back button belongs to player 1's device and the
 	// selected player's own, so read it through the same union that screen uses.
@@ -192,16 +220,7 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		const int numRows = s_sectionCount[sec];
 		const int firstEntry = s_sectionToEntry[sec];
 
-		if ((pad->buttonsTapped & BTN_UP) != 0)
-		{
-			menu->rowSelected = FullScreenMenu_MoveRow(&s_configScroll, menu->rowSelected, -1, numRows);
-			OtherFX_Play(0, 1);
-		}
-		if ((pad->buttonsTapped & BTN_DOWN) != 0)
-		{
-			menu->rowSelected = FullScreenMenu_MoveRow(&s_configScroll, menu->rowSelected, 1, numRows);
-			OtherFX_Play(0, 1);
-		}
+		FullScreenMenu_NavScroll(pad, &s_configScroll, &menu->rowSelected, numRows);
 
 		if ((pad->buttonsTapped & (BTN_CROSS | BTN_CIRCLE)) != 0)
 		{
@@ -234,39 +253,24 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		{
 			const ConfigEntry *e = &g_configEntries[firstEntry + j];
 			if (e->type == CFG_INT)
+			{
 				Config_UpdateSlider(pad, menu->rowSelected, j, (int *)e->valuePtr, e->min, e->max, e->step);
+			}
 		}
 
-		FullScreenMenu_DrawTitle(g_configEntries[firstEntry].section, 0, ot);
-
-		int visibleEnd = FullScreenMenu_VisibleEnd(&s_configScroll, numRows);
-
-		for (int j = s_configScroll.offset; j < visibleEnd; j++)
-		{
-			const ConfigEntry *e = &g_configEntries[firstEntry + j];
-			int y = FullScreenMenu_RowY(j - s_configScroll.offset);
-
-			FullScreenMenu_DrawRowLabel(e->label, y, ot);
-			Config_DrawValue(e, y, ot);
-
-			if (j == menu->rowSelected)
-				FullScreenMenu_DrawRowHighlight(gGT, ot, y);
-		}
-
-
+		FullScreenMenu_DrawScreen(g_configEntries[firstEntry].section, 0, &s_configScroll,
+		                          numRows, menu->rowSelected, Config_DrawRow,
+		                          &g_configEntries[firstEntry], gGT, ot);
 	}
 	else
 	{
-		if ((pad->buttonsTapped & BTN_UP) != 0)
+		// Refresh visibility before navigating or drawing the section list.
+		if (s_numSections == 0 || (sdata->frameCounter % 30) == 0)
 		{
-			menu->rowSelected = (menu->rowSelected > 0) ? menu->rowSelected - 1 : s_numSections - 1;
-			OtherFX_Play(0, 1);
+			BuildSectionMap();
 		}
-		if ((pad->buttonsTapped & BTN_DOWN) != 0)
-		{
-			menu->rowSelected = (menu->rowSelected < s_numSections - 1) ? menu->rowSelected + 1 : 0;
-			OtherFX_Play(0, 1);
-		}
+
+		FullScreenMenu_NavScroll(pad, &s_configScroll, &menu->rowSelected, s_numSections);
 
 		if ((pad->buttonsTapped & (BTN_CROSS | BTN_CIRCLE)) != 0)
 		{
@@ -276,25 +280,7 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 			s_configScroll.offset = 0;
 		}
 
-		// If visibility changes (e.g. cheat enabled), rebuild map
-		if (s_numSections == 0 || (sdata->frameCounter % 30) == 0)
-		{
-			BuildSectionMap();
-			if (menu->rowSelected >= s_numSections && s_numSections > 0)
-				menu->rowSelected = s_numSections - 1;
-		}
-
-		FullScreenMenu_DrawTitle(sdata->lngStrings[LNG_OPTIONS], 0, ot);
-
-		for (int i = 0; i < s_numSections; i++)
-		{
-			const ConfigEntry *e = &g_configEntries[s_sectionToEntry[i]];
-			int y = FullScreenMenu_RowY(i);
-			FullScreenMenu_DrawRowLabel(e->section, y, ot);
-			if (i == menu->rowSelected)
-				FullScreenMenu_DrawRowHighlight(gGT, ot, y);
-		}
+		FullScreenMenu_DrawScreen(sdata->lngStrings[LNG_OPTIONS], 0, &s_configScroll,
+		                          s_numSections, menu->rowSelected, Config_DrawSectionRow, NULL, gGT, ot);
 	}
-
-	FullScreenMenu_DrawFrame(ot);
 }

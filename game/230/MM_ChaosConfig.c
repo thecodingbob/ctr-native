@@ -21,10 +21,9 @@
 
 static void MM_MenuProc_ChaosConfig(struct RectMenu *menu);
 
-// The row table exists only because the generic code reads menu->rows without a guard, and
-// it has to end on a real terminator rather than on zeroes: RECTMENU_STRING_NONE is -1 and
-// a zeroed entry is 0, which reads as a live row. A menu with DISABLE_INPUT_ALLOW_FUNCPTRS
-// never has its rows walked, so this is belt and braces rather than something relied on.
+// Only here because the generic code reads menu->rows without a guard, and it has to hold a
+// real terminator: RECTMENU_STRING_NONE is -1 and a zeroed entry is 0, which reads as a live
+// row. Nothing ever walks it, since the screen skips RECTMENU_ProcessInput entirely.
 static struct MenuRow s_chaosRows[1] = {{RECTMENU_STRING_NONE, 0, 0, 0, 0}};
 
 struct RectMenu MM_menuChaosConfig = {
@@ -117,17 +116,10 @@ static int Chaos_SettingNumRows(void)
 }
 
 // The interval row is the only one that comes and goes, so the table is rebuilt whenever
-// the trigger changes and the row count follows it.
-// Sized from the enum, so a row added there cannot leave the arrays short.
+// the trigger changes and the row count follows it. Sized from the enum, so a row added
+// there cannot leave the arrays short.
 static struct FullScreenMenu_Row s_settingRows[CHAOS_SETTING_ROWS_MAX];
 static int s_settingValues[CHAOS_SETTING_ROWS_MAX];
-
-// Tripwire: every index this file computes has to land inside the arrays the list reads
-// from. A mismatch here is a write past the end of one of them, which is silent until the
-// row that goes past it is drawn.
-CTR_STATIC_ASSERT(CHAOS_SETTING_INTERVAL == 2);
-CTR_STATIC_ASSERT(CHAOS_SETTING_EFFECTS == 3);
-CTR_STATIC_ASSERT(CHAOS_SETTING_CONFIRM == 4);
 
 // Written at the computed positions rather than at the ones the names above carry: the
 // interval row shifts every row after it, and a row written at its own name's index would
@@ -160,16 +152,17 @@ static void Chaos_BuildSettingRows(void)
 static struct FullScreenMenu_List s_settingList;
 
 // The list works on its own ints and starts out as zeroes, so it has to be filled from the
-// stored settings before the first frame writes them back. Done once per visit to the
-// screen rather than on a value, because a duration of zero is a legal thing to store.
+// stored settings before the first frame writes them back. Done once per visit rather than on
+// a value, because a duration of zero is a legal thing to store.
 static bool s_settingsLoaded;
 
-// The list works on its own ints and the settings are the shape the file stores, which is
-// u8 and u16. Reading and writing through the list rather than casting the stored address
-// is what keeps a step from writing four bytes over the field beside it.
-// The interval is read and written only while its row is there. A trigger that is not
-// timed hides the row, and hiding it must not forget the setting: the row reads the stored
-// value again when the trigger goes back to one of the two timed ones.
+// The settings are the shape the file stores, which is u8 and u16. Reading and writing
+// through the list rather than casting a stored address is what keeps a step from writing
+// four bytes over the field beside it.
+//
+// The interval is read and written only while its row is there. A trigger that is not timed
+// hides the row, and hiding it must not forget the setting: the row reads the stored value
+// again when the trigger goes back to one of the two timed ones.
 static void Chaos_SettingsToValues(void)
 {
 	const struct ChaosSettings *settings = &sdata->chaosSettings;
@@ -253,7 +246,7 @@ static void Chaos_ValuesToEffects(void)
 	{
 		const ChaosEffectId id = ChaosEffect_FromIndex(i);
 
-		if (ChaosEffect_IsEnabled(sdata->chaosSettings.effects, id) != ((s_effectValues[i] != 0) ? true : false))
+		if (ChaosEffect_IsEnabled(sdata->chaosSettings.effects, id) != (s_effectValues[i] != 0))
 		{
 			ChaosEffect_Toggle(sdata->chaosSettings.effects, &sdata->chaosSettings.enabledCount, id);
 		}
@@ -262,9 +255,16 @@ static void Chaos_ValuesToEffects(void)
 
 // ---------------------------------------------------------------- screen
 
-static void Chaos_EnterPage(enum ChaosPage page)
+// Both ways out of the effects page, Cross on its last row and Triangle, land on the row
+// that opened it, so the player comes back to where they left the settings.
+static void Chaos_LeaveEffectsPage(s16 *selected)
 {
-	s_page = page;
+	// Written before the page changes, because the per-frame sync below picks the page it
+	// syncs from.
+	Chaos_ValuesToEffects();
+
+	*selected = Chaos_SettingEffectsRow();
+	s_page = CHAOS_PAGE_SETTINGS;
 }
 
 // The list for the page that is up, built fresh because a page can change while the input
@@ -310,22 +310,9 @@ void MM_MenuProc_ChaosConfig(struct RectMenu *menu)
 	const char *title;
 	struct FullScreenMenu_List *list = Chaos_PageList(&title);
 
-	// The list works on ints and the menu field is a short, so the selection is held here.
-	int selected = menu->rowSelected;
+	s16 selected = menu->rowSelected;
 
-	FullScreenMenu_ListFollow(list, &selected);
-
-	if ((pad->buttonsTapped & BTN_UP) != 0)
-	{
-		selected = FullScreenMenu_MoveRow(&list->scroll, selected, -1, list->numRows);
-		OtherFX_Play(0, 1);
-	}
-
-	if ((pad->buttonsTapped & BTN_DOWN) != 0)
-	{
-		selected = FullScreenMenu_MoveRow(&list->scroll, selected, 1, list->numRows);
-		OtherFX_Play(0, 1);
-	}
+	FullScreenMenu_NavList(pad, list, &selected);
 
 	for (int direction = -1; direction <= 1; direction += 2)
 	{
@@ -348,18 +335,14 @@ void MM_MenuProc_ChaosConfig(struct RectMenu *menu)
 		}
 		else if (s_page == CHAOS_PAGE_EFFECTS)
 		{
-			// The only action row on this page is the way back out of it, and coming back
-			// lands on the row that opened it.
-			Chaos_ValuesToEffects();
-			selected = Chaos_SettingEffectsRow();
-			Chaos_EnterPage(CHAOS_PAGE_SETTINGS);
+			Chaos_LeaveEffectsPage(&selected);
 		}
 		else if (selected == Chaos_SettingEffectsRow())
 		{
 			Chaos_SettingsToValues();
 			Chaos_EffectsToValues();
 			selected = 0;
-			Chaos_EnterPage(CHAOS_PAGE_EFFECTS);
+			s_page = CHAOS_PAGE_EFFECTS;
 		}
 		else
 		{
@@ -373,9 +356,7 @@ void MM_MenuProc_ChaosConfig(struct RectMenu *menu)
 
 		if (s_page == CHAOS_PAGE_EFFECTS)
 		{
-			Chaos_ValuesToEffects();
-			selected = Chaos_SettingEffectsRow();
-			Chaos_EnterPage(CHAOS_PAGE_SETTINGS);
+			Chaos_LeaveEffectsPage(&selected);
 		}
 		else
 		{
@@ -401,9 +382,8 @@ void MM_MenuProc_ChaosConfig(struct RectMenu *menu)
 
 	menu->rowSelected = selected;
 
-	FullScreenMenu_DrawTitle(title, 0, ot);
-	FullScreenMenu_DrawList(list, selected, gGT, ot);
-	FullScreenMenu_DrawFrame(ot);
+	FullScreenMenu_DrawScreen(title, 0, &list->scroll, list->numRows, selected,
+	                          FullScreenMenu_DrawSettingRow, list, gGT, ot);
 
 	if (finish)
 	{
