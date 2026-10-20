@@ -339,17 +339,19 @@ void GAMEPROG_ResetAdvMultiplayer(struct AdvMultiplayerSettings *settings)
 }
 
 
-// Chaos off, which is what an all-zero save says too. The creation-path menu is
-// what turns effects on, so nothing is enabled here.
+// All effects are selected by default; the creation menu arms Chaos separately.
 void GAMEPROG_ResetChaosSettings(struct ChaosSettings *settings)
 {
 	settings->durationSeconds = CHAOS_DURATION_DEFAULT_SECONDS;
 	settings->triggerIntervalSeconds = CHAOS_TRIGGER_INTERVAL_DEFAULT_SECONDS;
 	settings->trigger = CHAOS_TRIGGER_RANDOM;
 	settings->armed = false;
-	settings->enabledCount = 0;
+	settings->enabledCount = CHAOS_EFFECT_COUNT;
 
-	memset(settings->effects, 0, sizeof(settings->effects));
+	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
+	{
+		settings->effects[i] = true;
+	}
 }
 
 

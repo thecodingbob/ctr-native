@@ -213,8 +213,8 @@ static void Chaos_EnsureSettingsLoaded(void)
 // One toggle per effect, in catalogue order, so the order on screen is the order the effects
 // are declared in chaos_effect.h. The counts are toggles rather than a list of names
 // because the catalogue already holds the label each one draws.
-static struct FullScreenMenu_Row s_effectRows[CHAOS_EFFECT_COUNT + 1];
-static int s_effectValues[CHAOS_EFFECT_COUNT + 1];
+static struct FullScreenMenu_Row s_effectRows[CHAOS_EFFECT_COUNT];
+static int s_effectValues[CHAOS_EFFECT_COUNT];
 
 static void Chaos_BuildEffectRows(void)
 {
@@ -223,9 +223,6 @@ static void Chaos_BuildEffectRows(void)
 		s_effectRows[i] = (struct FullScreenMenu_Row){
 			ChaosEffect_Def(ChaosEffect_FromIndex(i))->label, FULLSCREEN_ROW_TOGGLE, NULL, 0, 0, 0, NULL};
 	}
-
-	s_effectRows[CHAOS_EFFECT_COUNT] = (struct FullScreenMenu_Row){
-		"Back", FULLSCREEN_ROW_ACTION, NULL, 0, 0, 0, NULL};
 }
 
 static struct FullScreenMenu_List s_effectList;
@@ -255,8 +252,7 @@ static void Chaos_ValuesToEffects(void)
 
 // ---------------------------------------------------------------- screen
 
-// Both ways out of the effects page, Cross on its last row and Triangle, land on the row
-// that opened it, so the player comes back to where they left the settings.
+// Return to the settings row that opened the effects page.
 static void Chaos_LeaveEffectsPage(s16 *selected)
 {
 	// Written before the page changes, because the per-frame sync below picks the page it
@@ -276,7 +272,7 @@ static struct FullScreenMenu_List *Chaos_PageList(const char **title)
 		Chaos_BuildEffectRows();
 
 		s_effectList.rows = s_effectRows;
-		s_effectList.numRows = CHAOS_EFFECT_COUNT + 1;
+		s_effectList.numRows = CHAOS_EFFECT_COUNT;
 		s_effectList.values = s_effectValues;
 
 		*title = "CHAOS EFFECTS";
@@ -332,10 +328,6 @@ void MM_MenuProc_ChaosConfig(struct RectMenu *menu)
 		if (!FullScreenMenu_RowIsAction(&list->rows[selected]))
 		{
 			FullScreenMenu_ListActivate(list, selected);
-		}
-		else if (s_page == CHAOS_PAGE_EFFECTS)
-		{
-			Chaos_LeaveEffectsPage(&selected);
 		}
 		else if (selected == Chaos_SettingEffectsRow())
 		{
