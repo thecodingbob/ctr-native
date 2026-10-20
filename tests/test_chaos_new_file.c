@@ -18,6 +18,7 @@ struct RectMenu MM_menuChaosConfig;
 #define MM_DESIRED_MENU_INDEX (D230.desiredMenuIndex)
 
 static int s_setupEntries;
+static int s_titleReturns;
 
 void MM_ChaosConfig_OnEnter(void)
 {
@@ -26,6 +27,7 @@ void MM_ChaosConfig_OnEnter(void)
 
 void MM_JumpTo_Title_Returning(void)
 {
+	s_titleReturns++;
 }
 
 b32 MainGameEnd_IsCoopRace(struct GameTracker *gGT)
@@ -46,6 +48,7 @@ static void ResetFixture(void)
 	memset(&g_config, 0, sizeof(g_config));
 	sdata->ptrActiveMenu = &MM_MENU_MAIN;
 	s_setupEntries = 0;
+	s_titleReturns = 0;
 }
 
 static void CheckFreshSettings(void)
@@ -117,9 +120,107 @@ static void TestNewAfterLoadedChaosSettings(void)
 	CTR_TEST_CHECK_EQ(MM_DESIRED_MENU_INDEX, MM_EXIT_ROUTE_ADV_NEW, "New continues through the normal creation route");
 }
 
+static void ReachCharacterSelect(bool prompt, bool chaos, bool players, int playerCount, bool extended)
+{
+	ResetFixture();
+	g_config.chaosMode = prompt;
+	g_config.multiplayerAdventure = players;
+	g_config.extendedAdventureCharacterSelect = extended;
+	MM_NewLoad_Begin(&MM_MENU_ADVENTURE);
+	if (prompt)
+	{
+		MM_MENU_CHAOS_PROMPT.funcState = RECTMENU_FUNC_STATE_INPUT;
+		MM_MENU_CHAOS_PROMPT.rowSelected = chaos ? 0 : 1;
+		MM_MenuProc_Chaos(&MM_MENU_CHAOS_PROMPT);
+	}
+	if (players)
+	{
+		MM_MENU_PLAYERS_1P2P.rowSelected = playerCount - 1;
+		MM_NewLoad_Advance(&MM_MENU_PLAYERS_1P2P);
+	}
+	if (chaos)
+	{
+		MM_NewLoad_FinishChaosSetup();
+	}
+	// MM_Title captures the player count before character selection starts.
+	sdata->advMultiplayer.numPlayers = playerCount;
+}
+
+static void TestCharacterSelectBackPreservesChoices(void)
+{
+	CTR_TEST_SECTION("character-select Back restores Mode and Players after an overlay reset");
+	for (int chaos = 0; chaos <= 1; chaos++)
+	{
+		for (int players = 1; players <= 2; players++)
+		{
+			ReachCharacterSelect(true, chaos != 0, true, players, true);
+			memset(&D230, 0, sizeof(D230));
+			MM_NewLoad_OnCharacterSelectExit(false);
+			CTR_TEST_CHECK_EQ(s_titleReturns, 1, "Back starts the title return transition once");
+			CTR_TEST_CHECK_EQ(MM_MENU_CHAOS_PROMPT.rowSelected, chaos ? 0 : 1, "the collapsed Mode row keeps the chosen mode");
+			CTR_TEST_CHECK_EQ(MM_MENU_PLAYERS_1P2P.rowSelected, players - 1, "Players keeps the chosen player count");
+			CTR_TEST_CHECK(MM_MENU_ADVENTURE.ptrNextBox_InHierarchy == &MM_MENU_CHAOS_PROMPT,
+			               "the restored chain includes Mode before Players");
+			CTR_TEST_CHECK(MM_MENU_CHAOS_PROMPT.ptrNextBox_InHierarchy == &MM_MENU_PLAYERS_1P2P,
+			               "Players is attached below the chosen mode");
+			CTR_TEST_CHECK(MM_MENU_PLAYERS_1P2P.ptrPrevBox_InHierarchy == &MM_MENU_CHAOS_PROMPT,
+			               "Players can retreat without depending on a render pass");
+			CTR_TEST_CHECK((MM_MENU_PLAYERS_1P2P.state & ONLY_DRAW_TITLE) == 0, "the last choice is editable");
+			CTR_TEST_CHECK(sdata->chaosSettings.armed == (chaos != 0), "Back preserves the actual mode as well as its display");
+
+			MM_NewLoad_Retreat(&MM_MENU_PLAYERS_1P2P);
+			CTR_TEST_CHECK_EQ(MM_MENU_CHAOS_PROMPT.rowSelected, chaos ? 0 : 1, "retreat to Mode keeps its previous selection");
+			CTR_TEST_CHECK(MM_MENU_CHAOS_PROMPT.ptrNextBox_InHierarchy == NULL, "retreat removes the Players link");
+			MM_NewLoad_Retreat(&MM_MENU_CHAOS_PROMPT);
+			CTR_TEST_CHECK(!MM_NewLoad_InChain(), "retreat past Mode finishes the chain");
+			CTR_TEST_CHECK(MM_MENU_ADVENTURE.ptrNextBox_InHierarchy == NULL, "no stale child remains on New/Load");
+		}
+	}
+}
+
+static void TestCharacterSelectBackWithOptionalSteps(void)
+{
+	CTR_TEST_SECTION("Back returns to the last enabled step");
+	ReachCharacterSelect(false, false, true, 2, true);
+	MM_NewLoad_OnCharacterSelectExit(false);
+	CTR_TEST_CHECK(MM_MENU_ADVENTURE.ptrNextBox_InHierarchy == &MM_MENU_PLAYERS_1P2P, "a disabled prompt is not reconstructed");
+	CTR_TEST_CHECK_EQ(MM_MENU_PLAYERS_1P2P.rowSelected, 1, "2P survives a return with no Mode step");
+	MM_NewLoad_Retreat(&MM_MENU_PLAYERS_1P2P);
+
+	ReachCharacterSelect(true, false, false, 1, true);
+	MM_NewLoad_OnCharacterSelectExit(false);
+	CTR_TEST_CHECK(MM_MENU_ADVENTURE.ptrNextBox_InHierarchy == &MM_MENU_CHAOS_PROMPT, "Mode is the last choice when Players is disabled");
+	CTR_TEST_CHECK_EQ(MM_MENU_CHAOS_PROMPT.rowSelected, 1, "Regular remains selected without a Players step");
+	MM_NewLoad_Retreat(&MM_MENU_CHAOS_PROMPT);
+
+	ReachCharacterSelect(false, false, false, 1, true);
+	MM_NewLoad_OnCharacterSelectExit(false);
+	CTR_TEST_CHECK(!MM_NewLoad_InChain(), "no chain is invented when both steps are disabled");
+	CTR_TEST_CHECK_EQ(s_titleReturns, 1, "an ordinary Back still returns to the title");
+}
+
+static void TestCharacterSelectForwardConsumesReturn(void)
+{
+	CTR_TEST_SECTION("finishing creation cannot redirect a later character-select Back");
+	ReachCharacterSelect(true, true, true, 2, true);
+	MM_NewLoad_OnCharacterSelectExit(true);
+	CTR_TEST_CHECK_EQ(s_titleReturns, 0, "proceeding does not start a title return");
+	MM_NewLoad_OnCharacterSelectExit(false);
+	CTR_TEST_CHECK(!MM_NewLoad_InChain(), "a later Back cannot restore the completed Adventure chain");
+	CTR_TEST_CHECK(MM_MENU_ADVENTURE.ptrNextBox_InHierarchy == NULL, "a later mode does not gain an Adventure submenu");
+	CTR_TEST_CHECK_EQ(s_titleReturns, 1, "a later Back follows the ordinary title return");
+
+	ReachCharacterSelect(true, false, true, 2, false);
+	MM_NewLoad_OnCharacterSelectExit(false);
+	CTR_TEST_CHECK(!MM_NewLoad_InChain(), "the garage route leaves no extended-character-select return context");
+}
+
 int main(void)
 {
 	TestNewAfterChaosCreation();
 	TestNewAfterLoadedChaosSettings();
+	TestCharacterSelectBackPreservesChoices();
+	TestCharacterSelectBackWithOptionalSteps();
+	TestCharacterSelectForwardConsumesReturn();
 	return CtrTest_Summary();
 }

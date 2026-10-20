@@ -922,6 +922,7 @@ void MM_Characters_MenuProc(struct RectMenu *unused)
 			// Make a backup of the characters
 			// you selected in character selection screen
 			MM_Characters_BackupIDs();
+			MM_NewLoad_OnCharacterSelectExit(MM_CHARACTER_SELECT_EXITS_FORWARD != 0);
 
 			// if advancing to cup or track selection
 			if (MM_CHARACTER_SELECT_EXITS_FORWARD != 0)
@@ -960,20 +961,6 @@ void MM_Characters_MenuProc(struct RectMenu *unused)
 				return;
 			}
 
-			// if returning to main menu
-			struct RectMenu *previous = MM_NewLoad_PreviousMenu();
-
-			if (previous != NULL)
-			{
-				// This character select was reached through the new-file chain, so the
-				// screen it came from is rebuilt and the return goes there instead of to
-				// the title, which would skip it.
-				MM_NewLoad_ResumeFromCharacterSelect(previous);
-			}
-			else
-			{
-				MM_JumpTo_Title_Returning();
-			}
 			MM_Characters_HideDrivers();
 			return;
 		}

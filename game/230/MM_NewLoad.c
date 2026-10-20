@@ -8,8 +8,8 @@ static void MM_Menu_Attach(struct RectMenu *parent, struct RectMenu *child)
 	parent->ptrNextBox_InHierarchy = child;
 	parent->state |= ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY;
 	child->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
+	child->ptrPrevBox_InHierarchy = parent;
 	child->ptrNextBox_InHierarchy = NULL;
-	child->rowSelected = 0;
 }
 
 static void MM_Menu_Detach(struct RectMenu *child)
@@ -19,6 +19,7 @@ static void MM_Menu_Detach(struct RectMenu *child)
 	child->ptrPrevBox_InHierarchy = NULL;
 	if (parent != NULL)
 	{
+		parent->ptrNextBox_InHierarchy = NULL;
 		parent->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
 	}
 }
@@ -105,7 +106,9 @@ static void MM_NewLoad_Exit(void)
 	{
 		return;
 	}
-	s_previousMenu = (s_newLoadStep >= 0) ? MM_NewLoad_Screen(s_newLoadStep) : NULL;
+	// The garage does not use the character-select return path.
+	s_previousMenu = (g_config.extendedAdventureCharacterSelect && s_newLoadStep >= 0)
+	                     ? MM_NewLoad_Screen(s_newLoadStep) : NULL;
 	MM_NewLoad_Unwind();
 	if (sdata->ptrActiveMenu != &MM_MENU_MAIN)
 	{
@@ -135,6 +138,7 @@ static void MM_NewLoad_Begin(struct RectMenu *parent)
 		return;
 	}
 	s_newLoadParentOf[s_newLoadStep] = parent;
+	screen->rowSelected = 0;
 	MM_Menu_Attach(parent, screen);
 }
 
@@ -143,15 +147,11 @@ void MM_NewLoad_Advance(struct RectMenu *screen)
 	struct RectMenu *next = MM_NewLoad_StepAway(s_newLoadStep + 1, 1);
 	if (next == NULL)
 	{
-		if (MM_NewLoad_YieldsToChaosSetup())
-		{
-			return;
-		}
-		MM_Menu_Detach(screen);
 		MM_NewLoad_Exit();
 		return;
 	}
 	s_newLoadParentOf[s_newLoadStep] = screen;
+	next->rowSelected = 0;
 	MM_Menu_Attach(screen, next);
 }
 
@@ -185,16 +185,8 @@ void MM_NewLoad_ReturnFromChaosSetup(void)
 	sdata->ptrDesiredMenu = &MM_MENU_MAIN;
 }
 
-struct RectMenu *MM_NewLoad_PreviousMenu(void)
+static void MM_NewLoad_ResumeFromCharacterSelect(struct RectMenu *previous)
 {
-	struct RectMenu *previous = s_previousMenu;
-	s_previousMenu = NULL;
-	return previous;
-}
-
-void MM_NewLoad_ResumeFromCharacterSelect(struct RectMenu *previous)
-{
-	MM_JumpTo_Title_Returning();
 	int lastStep = -1;
 	for (int step = NEWLOAD_STEP_CHAOS; step < NEWLOAD_STEP_COUNT; step++)
 	{
@@ -220,7 +212,28 @@ void MM_NewLoad_ResumeFromCharacterSelect(struct RectMenu *previous)
 		}
 		s_newLoadParentOf[step] = parent;
 		s_newLoadStep = step;
+		// These choices survive overlay resets in the profile's live settings.
+		screen->rowSelected = (step == NEWLOAD_STEP_CHAOS)
+		                          ? !sdata->chaosSettings.armed
+		                          : sdata->advMultiplayer.numPlayers - 1;
 		MM_Menu_Attach(parent, screen);
 		parent = screen;
+	}
+}
+
+void MM_NewLoad_OnCharacterSelectExit(bool advance)
+{
+	struct RectMenu *previous = s_previousMenu;
+	s_previousMenu = NULL;
+
+	if (advance)
+	{
+		return;
+	}
+
+	MM_JumpTo_Title_Returning();
+	if (previous != NULL)
+	{
+		MM_NewLoad_ResumeFromCharacterSelect(previous);
 	}
 }
