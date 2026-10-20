@@ -82,6 +82,10 @@ ctr_add_test_suite(test_chaos_setup
     SOURCES test_chaos_setup.c
 )
 
+ctr_add_test_suite(test_menu_strings
+    SOURCES test_menu_strings.c
+)
+
 ctr_add_test_suite(test_chaos_save
     SOURCES test_chaos_save.c
 )

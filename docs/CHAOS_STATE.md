@@ -69,6 +69,14 @@ Active Effects to Chaos Rules, then to the pause menu.
 Start or Square returns directly to pause from either page. The pause menu keeps
 its selection, and the game remains paused.
 
+The prompt, pause action and profile marker share the custom string catalogue
+in `game/RECTMENU_Text.c`. `RECTMENU_GetString` resolves retail LNG indices and
+custom IDs starting at `0x4000`, stripping the locked-row flag for either kind.
+Both menu drawing and width measurement use this resolver. Custom strings are
+available before language loading, and their IDs can be assigned in static
+menu initializers. The loader keeps the retail pointer table and string count;
+it allocates no extension and needs no custom-string installation state.
+
 ## Whole-machine checkpoints
 
 Adventure saves and checkpoints serve different lifetimes. Checkpoints also

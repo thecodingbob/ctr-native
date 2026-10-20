@@ -11,11 +11,11 @@ static const char *s_drawnTitle;
 static bool s_drewInterval;
 static bool s_drewEffects;
 static bool s_drewConfirm;
+static s16 s_confirmColor;
 static bool s_drewOnOff;
 static int s_finishes;
 static int s_returns;
 static bool s_drewBeforeExit;
-static s16 s_pauseLabel = 900;
 
 void MM_NewLoad_FinishChaosSetup(void)
 {
@@ -34,11 +34,6 @@ void MM_NewLoad_ReturnFromChaosSetup(void)
 #include <game/MAIN/MainFreeze_Chaos.c>
 
 static const char *s_drawnLabels[FULLSCREEN_MENU_MAX_VISIBLE_ROWS];
-
-s16 MM_Lng_PortStringIndex(s32 portIndex)
-{
-	return portIndex == LNG_PORT_CHAOS_RULES ? s_pauseLabel : RECTMENU_STRING_NONE;
-}
 
 void RECTMENU_ClearInput(void)
 {
@@ -73,6 +68,10 @@ void DecalFont_DrawLineOT(char *text, s16 x, s16 y, s16 font, s16 flags, u32 *ot
 		s_drewInterval |= strcmp(text, "Interval") == 0;
 		s_drewEffects |= strcmp(text, "Effects") == 0 || strcmp(text, "Active Effects") == 0;
 		s_drewConfirm |= strcmp(text, "Confirm") == 0;
+		if (strcmp(text, "Confirm") == 0)
+		{
+			s_confirmColor = flags;
+		}
 	}
 	else if (x == FULLSCREEN_MENU_VALUE_X)
 	{
@@ -135,6 +134,7 @@ static void Frame(int tapped, int held)
 	s_drewInterval = false;
 	s_drewEffects = false;
 	s_drewConfirm = false;
+	s_confirmColor = -1;
 	s_drewOnOff = false;
 	memset(s_drawnLabels, 0, sizeof(s_drawnLabels));
 	sdata->gGamepads->gamepad[0].buttonsTapped = tapped;
@@ -188,6 +188,37 @@ static void TestEffectsCommitAndPageTransitions(void)
 	Frame(BTN_CROSS, 0);
 	CTR_TEST_CHECK_EQ(s_finishes, 1, "Confirm proceeds once");
 	CTR_TEST_CHECK(s_drewBeforeExit, "Confirm draws before handing control back to the chain");
+}
+
+static void TestConfirmRequiresAnEffect(void)
+{
+	CTR_TEST_SECTION("Confirm requires at least one selected effect and updates after toggling");
+	EnterSetup();
+	MM_menuChaosConfig.rowSelected = sdata->chaosMenu.effectsRow;
+	Frame(BTN_CROSS, 0);
+	for (int effect = 0; effect < CHAOS_EFFECT_COUNT; effect++)
+	{
+		MM_menuChaosConfig.rowSelected = effect;
+		Frame(BTN_CROSS, 0);
+	}
+	CTR_TEST_CHECK_EQ(sdata->chaosSettings.enabledCount, 0, "all effects can be deselected during creation");
+	Frame(BTN_TRIANGLE, 0);
+	CTR_TEST_CHECK(s_drewConfirm && s_confirmColor == GRAY, "Confirm remains visible but gray with no effects selected");
+	MM_menuChaosConfig.rowSelected = sdata->chaosMenu.numSettings - 1;
+	Frame(BTN_CROSS, 0);
+	Frame(BTN_CIRCLE, 0);
+	CTR_TEST_CHECK_EQ(s_finishes, 0, "neither activation button can finish an empty Chaos selection");
+	CTR_TEST_CHECK_EQ(s_returns, 0, "a disabled Confirm keeps the creation settings open");
+	MM_menuChaosConfig.rowSelected = sdata->chaosMenu.effectsRow;
+	Frame(BTN_CROSS, 0);
+	Frame(BTN_CROSS, 0);
+	CTR_TEST_CHECK_EQ(sdata->chaosSettings.enabledCount, 1, "one effect can be re-enabled without reopening setup");
+	Frame(BTN_TRIANGLE, 0);
+	CTR_TEST_CHECK_EQ(s_confirmColor, ORANGE, "Confirm regains its normal color as soon as an effect is selected");
+	MM_menuChaosConfig.rowSelected = sdata->chaosMenu.numSettings - 1;
+	Frame(BTN_CROSS, 0);
+	CTR_TEST_CHECK_EQ(s_finishes, 1, "one selected effect is sufficient to confirm creation");
+	CTR_TEST_CHECK(s_drewBeforeExit, "re-enabled Confirm preserves the draw-before-exit handoff");
 }
 
 static void TestLiveValuesAndInputKinds(void)
@@ -295,7 +326,7 @@ static void TestPauseEntryVisibility(void)
 				CTR_TEST_CHECK((pause.rows == sdata->chaosPauseRows) == visible, "the action requires a Chaos Adventure file in hub, race or cup for either player count");
 				if (visible)
 				{
-					CTR_TEST_CHECK_EQ(pause.rows[3].stringIndex, s_pauseLabel, "Chaos Rules is appended after Options");
+					CTR_TEST_CHECK_EQ(pause.rows[3].stringIndex, LNG_PORT_CHAOS_RULES, "Chaos Rules is appended after Options");
 					CTR_TEST_CHECK_EQ(pause.rows[0].rowOnPressUp, 3, "Up from Resume wraps to Chaos Rules");
 					CTR_TEST_CHECK_EQ(pause.rows[2].rowOnPressDown, 3, "Down from Options reaches Chaos Rules");
 					CTR_TEST_CHECK_EQ(pause.rows[3].rowOnPressDown, 0, "Down from Chaos Rules wraps to Resume");
@@ -310,10 +341,6 @@ static void TestPauseEntryVisibility(void)
 	sdata->chaosSettings.enabledCount = 0;
 	MainFreeze_ChaosPauseMenu(&pause, base, 3);
 	CTR_TEST_CHECK(pause.rows == sdata->chaosPauseRows, "Chaos with zero selected effects still exposes its settings");
-	s_pauseLabel = RECTMENU_STRING_NONE;
-	MainFreeze_ChaosPauseMenu(&pause, base, 3);
-	CTR_TEST_CHECK(pause.rows == base, "an unavailable language label cannot terminate the list prematurely");
-	s_pauseLabel = 900;
 	CTR_TEST_CHECK_EQ(base[0].rowOnPressUp, 2, "building the extra action never edits the base rows");
 }
 
@@ -428,6 +455,7 @@ int main(void)
 {
 	TestTriggerLayoutAndIntervalRetention();
 	TestEffectsCommitAndPageTransitions();
+	TestConfirmRequiresAnEffect();
 	TestLiveValuesAndInputKinds();
 	TestResidentRestore();
 	TestPauseEntryVisibility();

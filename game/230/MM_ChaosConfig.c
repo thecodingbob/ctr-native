@@ -149,6 +149,11 @@ static void Chaos_OnEnter(struct RectMenu *returnMenu)
 	Chaos_BuildSettingRows();
 }
 
+static bool Chaos_CanConfirm(void)
+{
+	return sdata->chaosSettings.enabledCount > 0;
+}
+
 void MM_ChaosConfig_OnEnter(void)
 {
 	Chaos_OnEnter(NULL);
@@ -201,7 +206,14 @@ static void Chaos_DrawRow(const void *context, int row, int y, bool selected, ui
 		const struct FullScreenMenu_Row *spec = &s_chaosSettings[setting];
 		const char *label = setting == CHAOS_SETTING_EFFECTS && sdata->chaosMenu.returnMenu != NULL
 		                        ? "Active Effects" : spec->label;
-		FullScreenMenu_DrawRowLabel(label, y, ot);
+		if (setting == CHAOS_SETTING_CONFIRM && !Chaos_CanConfirm())
+		{
+			DecalFont_DrawLineOT((char *)label, FULLSCREEN_MENU_LABEL_X, y, FONT_SMALL, GRAY, ot);
+		}
+		else
+		{
+			FullScreenMenu_DrawRowLabel(label, y, ot);
+		}
 		FullScreenMenu_DrawRowValue(spec, Chaos_SettingValue(setting), y, ot);
 	}
 }
@@ -248,7 +260,13 @@ static void MM_MenuProc_ChaosConfig(struct RectMenu *menu)
 	}
 
 	const bool effectsAction = state->page == CHAOS_PAGE_SETTINGS && state->visibleSettings[selected] == CHAOS_SETTING_EFFECTS;
-	if ((pad->buttonsTapped & (BTN_CROSS | BTN_CIRCLE)) != 0 && (!readOnly || effectsAction))
+	const bool confirmDisabled = state->page == CHAOS_PAGE_SETTINGS &&
+	                             state->visibleSettings[selected] == CHAOS_SETTING_CONFIRM && !Chaos_CanConfirm();
+	if ((pad->buttonsTapped & (BTN_CROSS | BTN_CIRCLE)) != 0 && confirmDisabled)
+	{
+		OtherFX_Play(MENU_SFX_LOCKED, 1);
+	}
+	if ((pad->buttonsTapped & (BTN_CROSS | BTN_CIRCLE)) != 0 && (!readOnly || effectsAction) && !confirmDisabled)
 	{
 		OtherFX_Play(1, 1);
 		if (state->page == CHAOS_PAGE_EFFECTS)

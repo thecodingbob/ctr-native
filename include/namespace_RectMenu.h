@@ -71,6 +71,11 @@ enum RectMenuState
 	RECTMENU_STATE_INVISIBLE_CALLBACK = RECTMENU_STATE_CALLBACK | INVISIBLE,
 };
 
+enum MenuSfx
+{
+	MENU_SFX_LOCKED = 5,
+};
+
 enum MenuRowFlags
 {
 	RECTMENU_STRING_NONE = -1,

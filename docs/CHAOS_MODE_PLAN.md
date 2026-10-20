@@ -727,26 +727,12 @@ made the question appear once per session, and testing `ptrNextBox_InHierarchy`
 for that cannot work because detaching clears the flag but leaves the pointer —
 exactly as `MM_MenuProc_1p2p`'s `UNINITIALIZED` branch does.
 
-**Titles.** A box can only be titled from the language table:
-`RECTMENU_DrawSelf` reads `stringIndexTitle` out of `sdata->lngStrings`
-(`RECTMENU.c:566`) and `RECTMENU_GetWidth` measures it from there too (`:440`).
-The retail `.lng` has nothing naming this screen and the asset is not to be
-modified, so `LOAD_LangFile` appends the port's own strings to a *copy* of the
-asset's pointer array and reports `numLngStrings` including them
-(`LOAD_Assets.c`, `MM_Lng_PortStringIndex`). The copy is allocated rather than
-written past the end of the asset's array, because that array is sized by the
-file. Their indices depend on the asset's string count, so they are never
-hardcoded and a caller falls back to an untitled box when the table could not be
-extended. `NativeCheckpoint_RelocateLanguagePointers` walks all `numLngStrings`
-entries but leaves any pointer it cannot map untouched
-(`native_checkpoint.c:455`), so the port's entries survive a quick-state load.
-
-The title is applied where the initial state is captured, not in `D230`'s
-static initialiser. The initialiser runs at program start and `LOAD_LangFile`
-does not run until boot (`MainMain.c:532`), so at initialiser time there is no
-table to read; `OVR230_ResetRuntimeState` captures `s_d230InitialState` on the
-first overlay load, which is after it (`D230.c:914`), and every restore replays
-what was captured.
+**Titles and labels.** `RECTMENU_GetString` resolves retail language indices and
+stable custom IDs for both drawing and width measurement. Custom IDs live in
+the `0x4000` range, below the locked-row flag, and resolve to immutable program
+strings. The prompt title and rows are assigned those IDs directly in `D230`'s
+static initializer. `LOAD_LangFile` loads only the retail table; there is no
+extended allocation, dynamic custom index or installation flag to capture.
 
 Not added to `D230.arrayMenuPtrs`: it holds exactly `MM_MENU_RESET_COUNT` (9)
 entries and is already full, and `MM_ResetAllMenus` walks the new/load menu's

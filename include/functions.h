@@ -577,6 +577,7 @@ void RECTMENU_DrawRwdBlueRect(RECT *rect, char *metas, u32 *ot, struct PrimMem *
 void RECTMENU_DrawRwdTriangle(s16 *position, char *color, u32 *otMem, struct PrimMem *primMem);
 void RECTMENU_GetHeight(struct RectMenu *m, s16 *height, b32 boolCheckSubmenu);
 void RECTMENU_GetWidth(struct RectMenu *m, s16 *width, b32 boolCheckSubmenu);
+const char *RECTMENU_GetString(s32 stringIndex);
 void RECTMENU_Hide(struct RectMenu *m);
 void RECTMENU_Show(struct RectMenu *m);
 
@@ -864,7 +865,6 @@ void MM_ChaosConfig_OpenReadOnly(struct RectMenu *returnMenu);
 // Index of one of the strings this port appends past the retail .lng table, or
 // RECTMENU_STRING_NONE when the table could not be extended. The indices depend
 // on the asset's string count, so they must never be hardcoded.
-s16 MM_Lng_PortStringIndex(s32 portIndex);
 
 void MM_MenuProc_QuitConfirm(struct RectMenu *menu);
 struct RectMenu *MM_AdvNewLoad_GetMenuPtr(void);

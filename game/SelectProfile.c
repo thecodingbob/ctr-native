@@ -183,8 +183,7 @@ void SelectProfile_DrawAdvProfile(struct AdvProgress *adv, int posX, int posY, s
 
 		if (isChaos)
 		{
-			const int labelIndex = MM_Lng_PortStringIndex(LNG_PORT_CHAOS);
-			const char *label = labelIndex != RECTMENU_STRING_NONE ? sdata->lngStrings[labelIndex] : "CHAOS";
+			const char *label = RECTMENU_GetString(LNG_PORT_CHAOS);
 			int y = posY + SELECT_PROFILE_CHAOS_MARK_Y;
 
 			for (const char *c = label; *c != '\0'; c++, y += SELECT_PROFILE_CHAOS_MARK_STEP)

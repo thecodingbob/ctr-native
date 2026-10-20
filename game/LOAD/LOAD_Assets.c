@@ -626,40 +626,6 @@ struct LngFile
 	char strings[1];
 };
 
-// Strings this port needs that the retail .lng asset does not have. A menu box can
-// only be titled from the language table, and there is no retail string naming the
-// Chaos prompt, so it gets one from here.
-//
-// The asset is retail data and is not modified. LOAD_LangFile appends these to a
-// copy of its pointer array, which puts them at the last LNG_PORT_STRING_COUNT
-// indices. Those indices are not known until the asset is read, so nothing may
-// hardcode them: ask for one by MM_Lng_PortStringIndex.
-static const char *const s_portLngStrings[LNG_PORT_STRING_COUNT] =
-{
-	"Mode",
-	"Chaos",
-	"Regular",
-	"Chaos Rules"
-};
-
-// Whether the append below actually happened. Without it the arithmetic in
-// MM_Lng_PortStringIndex cannot tell a port string from the tail of the retail
-// table, which is exactly what a failed MEMPACK_AllocMem leaves behind: the table
-// is then entirely retail but still numLngStrings long.
-static bool s_portLngStringsInstalled;
-
-// Index of one of the strings above, or RECTMENU_STRING_NONE when there are none to
-// hand out, so a caller can fall back to an untitled box.
-s16 MM_Lng_PortStringIndex(s32 portIndex)
-{
-	if (!s_portLngStringsInstalled || (portIndex < 0) || (portIndex >= LNG_PORT_STRING_COUNT))
-	{
-		return RECTMENU_STRING_NONE;
-	}
-
-	return (s16)(sdata->numLngStrings - LNG_PORT_STRING_COUNT + portIndex);
-}
-
 // param_1 - Pointer to "cd position of bigfile"
 // param_2 - language index - 0 ja, 1 en, 2 en2, 3 fr, 4 de, 5 it, 6 es, 7 ne
 void LOAD_LangFile(int bigfilePtr, int lang)
@@ -696,32 +662,6 @@ void LOAD_LangFile(int bigfilePtr, int lang)
 		strArray[i] = (char *)((u32)strArray[i] + (u32)lngFile);
 	}
 
-	// Append the port's own strings to a copy of the asset's pointer array rather
-	// than writing past the end of it, which is sized by the file and has no
-	// guarantee of room for one more pointer. The retail entries are copied as they
-	// are, so every reader of sdata->lngStrings is unaffected apart from the extra
-	// indices at the end.
-	const int totalStrings = numStrings + LNG_PORT_STRING_COUNT;
-	char **extended = MEMPACK_AllocMem(sizeof(char *) * totalStrings, "port lng table");
-
-	if (extended == NULL)
-	{
-		return;
-	}
-
-	for (i = 0; i < numStrings; i++)
-	{
-		extended[i] = strArray[i];
-	}
-
-	for (i = 0; i < LNG_PORT_STRING_COUNT; i++)
-	{
-		extended[numStrings + i] = (char *)s_portLngStrings[i];
-	}
-
-	s_portLngStringsInstalled = true;
-	sdata->lngStrings = extended;
-	sdata->numLngStrings = totalStrings;
 }
 
 int LOAD_GetBigfileIndex(u32 levelID, int lod, int fileIndexInGroup)

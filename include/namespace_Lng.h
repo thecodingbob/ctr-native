@@ -1,15 +1,16 @@
 #ifndef CTR_NATIVE_NAMESPACE_LNG_H
 #define CTR_NATIVE_NAMESPACE_LNG_H
 
-// Strings appended by the port; resolve their runtime indices through
-// MM_Lng_PortStringIndex rather than mixing them with retail LNG indices.
+// Stable custom menu IDs, separate from retail indices and below MENU_ROW_LOCKED.
+// Resolve either kind through RECTMENU_GetString.
 enum PortLngString
 {
-	LNG_PORT_MODE = 0,
+	LNG_PORT_STRING_BASE = 0x4000,
+	LNG_PORT_MODE = LNG_PORT_STRING_BASE,
 	LNG_PORT_CHAOS,
 	LNG_PORT_REGULAR,
 	LNG_PORT_CHAOS_RULES,
-	LNG_PORT_STRING_COUNT,
+	LNG_PORT_STRING_COUNT = LNG_PORT_CHAOS_RULES - LNG_PORT_STRING_BASE + 1,
 };
 
 // Generated from assets/bigfile/lang/en.lng. Values are retail LNG string indices.

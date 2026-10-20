@@ -1,4 +1,5 @@
 #include <common.h>
+#include "RECTMENU_Text.c"
 
 
 void RECTMENU_DrawPolyGT4(struct Icon *icon, s32 posX, s32 posY, struct PrimMem *primMem, u32 *ot, Color color0, Color color1, Color color2, Color color3,
@@ -399,71 +400,12 @@ void RECTMENU_GetHeight(struct RectMenu *m, s16 *height, b32 boolCheckSubmenu)
 }
 
 
-void RECTMENU_GetWidth(struct RectMenu *m, s16 *width, b32 boolCheckSubmenu)
-{
-	int fontType;
-	struct MenuRow *row;
-	int lineWidth;
-
-	fontType = FONT_BIG;
-
-	// if menu should have tiny text
-	if ((m->state & USE_SMALL_FONT) != 0)
-	{
-		fontType = FONT_SMALL;
-	}
-
-	// handle rows
-	for (row = m->rows; row->stringIndex != -1; row++)
-	{
-		// width of string in each row
-		lineWidth = DecalFont_GetLineWidth(sdata->lngStrings[row->stringIndex & 0x7fff], fontType);
-
-		// set new width if new max is found
-		if (*width < (lineWidth + 1))
-		{
-			*width = lineWidth + 1;
-		}
-	}
-
-	// handle menu title
-	if (m->stringIndexTitle >= 0)
-	{
-		// if force title to be big
-		if ((m->state & BIG_TEXT_IN_TITLE) != 0)
-		{
-			// override
-			fontType = FONT_BIG;
-		}
-
-		// width of string in each row
-		lineWidth = DecalFont_GetLineWidth(sdata->lngStrings[m->stringIndexTitle & 0x7fff], fontType);
-
-		// set new width if new max is found
-		if (*width < (lineWidth + 1))
-		{
-			*width = lineWidth + 1;
-		}
-	}
-
-	// if submenu needs to be drawn
-	if ((m->state & DRAW_NEXT_MENU_IN_HIERARCHY) != 0)
-	{
-		if ((boolCheckSubmenu & 0xffff) != 0)
-		{
-			// recursively check height for more submenus
-			RECTMENU_GetWidth(m->ptrNextBox_InHierarchy, width, 1);
-		}
-	}
-}
-
-
 void RECTMENU_DrawSelf(struct RectMenu *menu, int posX, s16 posY, s16 menuWidth)
 {
 	u16 textFlags;
 	u32 state;
 	int index;
-	char *titleString;
+	const char *titleString;
 	s16 offsetX;
 	s16 sVar4;
 	Color *rgb;
@@ -563,15 +505,15 @@ LAB_80045e94:
 			{
 				uVar5 = uVar8 | 0x8000;
 			}
-			titleString = sdata->lngStrings[index];
+			titleString = RECTMENU_GetString(index);
 		}
 		else
 		{
 			uVar5 = uVar8 | 0x8000;
-			titleString = sdata->lngStrings[index];
+			titleString = RECTMENU_GetString(index);
 			offsetX = (s16)(posX + menu->posX_prev + (menuWidth / 2));
 		}
-		DecalFont_DrawLine(titleString, offsetX, posY_prev, sVar4, uVar5);
+		DecalFont_DrawLine((char *)titleString, offsetX, posY_prev, sVar4, uVar5);
 		posY_prev = local_48 + posY_prev + 6;
 	}
 
@@ -599,17 +541,17 @@ LAB_80045e94:
 						{
 							textFlags |= 0x8000;
 						}
-						titleString = sdata->lngStrings[uVar5 & 0x7fff];
+						titleString = RECTMENU_GetString(uVar5);
 						index = local_2c;
 					}
 					else
 					{
 						textFlags |= 0x8000;
-						titleString = sdata->lngStrings[uVar5 & 0x7fff];
+						titleString = RECTMENU_GetString(uVar5);
 						sVar4 = (s16)(posX + menu->posX_prev + local_30);
 						index = posX_prev;
 					}
-					DecalFont_DrawLine(titleString, sVar4, posY_prev, index, textFlags);
+					DecalFont_DrawLine((char *)titleString, sVar4, posY_prev, index, textFlags);
 				}
 				posY_prev += sVar7;
 			}
@@ -857,7 +799,7 @@ int RECTMENU_ProcessInput(struct RectMenu *m)
 			else if ((m->state & MUTE_SOUND_OF_MOVING_CURSOR) == 0)
 			{
 				// "womp" sound for LOCKED row
-				OtherFX_Play(5, 1);
+				OtherFX_Play(MENU_SFX_LOCKED, 1);
 			}
 		}
 

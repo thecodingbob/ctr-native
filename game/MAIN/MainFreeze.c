@@ -907,7 +907,7 @@ void MainFreeze_MenuPtrDefault(struct RectMenu *menu)
 	// get stringID from selected row
 	stringID = menu->rows[menu->rowSelected].stringIndex;
 
-	if (stringID == MM_Lng_PortStringIndex(LNG_PORT_CHAOS_RULES))
+	if (stringID == LNG_PORT_CHAOS_RULES)
 	{
 		MainFreeze_SafeAdvDestroy();
 		MM_ChaosConfig_OpenReadOnly(menu);
