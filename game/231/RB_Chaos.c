@@ -152,6 +152,15 @@ int Chaos_GravityForDriver(const struct Driver *driver)
 	return gravity;
 }
 
+void Chaos_ApplyReserveRules(struct Driver *driver)
+{
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_NO_RESERVES, driver))
+	{
+		driver->reserves = 0;
+		driver->turbo_outsideTimer = 0;
+	}
+}
+
 static int Chaos_WobbleSteering(const struct ChaosActivation *entry, const struct GamepadBuffer *pad)
 {
 	const int center = pad->rwd != NULL ? pad->rwd->gamepadCenter : CHAOS_STICK_CENTER;
@@ -204,6 +213,10 @@ u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, in
 		{
 			driver->jump_TenBuffer = 0;
 			actions &= ~ACTION_JUMP_BUTTON_HELD;
+		}
+		else if (effect == CHAOS_EFFECT_NO_RESERVES)
+		{
+			Chaos_ApplyReserveRules(driver);
 		}
 	}
 	return actions;

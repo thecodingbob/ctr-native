@@ -27,6 +27,7 @@ static u32 *s_drawOT[CHAOS_EFFECT_COUNT];
 #include <game/231/RB_Chaos.c>
 #include <game/MAIN/MainGameStart.c>
 #include <game/Vehicle/VehPhysProc_Input.c>
+#include <game/Vehicle/VehFire.c>
 #include <game/UI/UI_Lerp2D.c>
 #include <game/UI/UI_Chaos.c>
 #include <game/MATH/MATH_0_Sin.c>
@@ -98,6 +99,58 @@ void howl_StopAudio(b32 backup, b32 music, b32 fx)
 	(void)backup;
 	(void)music;
 	(void)fx;
+}
+
+void GhostTape_WriteBoosts(int addReserve, u32 type, int speedCap)
+{
+	(void)addReserve;
+	(void)type;
+	(void)speedCap;
+}
+
+void Voiceline_RequestPlay(u32 voiceID, u32 characterID, u32 characterID2)
+{
+	(void)voiceID;
+	(void)characterID;
+	(void)characterID2;
+}
+
+void GAMEPAD_ShockForce1(struct Driver *driver, int frame, int value)
+{
+	(void)driver;
+	(void)frame;
+	(void)value;
+}
+
+struct Instance *INSTANCE_BirthWithThread(s32 modelID, const char *name, s32 poolType,
+                                        s32 bucket, void *tick, s32 objSize, struct Thread *parent)
+{
+	(void)modelID;
+	(void)name;
+	(void)poolType;
+	(void)bucket;
+	(void)tick;
+	(void)objSize;
+	(void)parent;
+	return NULL;
+}
+
+struct Instance *INSTANCE_Birth3D(struct Model *model, const char *name, struct Thread *thread)
+{
+	(void)model;
+	(void)name;
+	(void)thread;
+	return NULL;
+}
+
+void VehTurbo_ThTick(struct Thread *thread)
+{
+	(void)thread;
+}
+
+void VehTurbo_ThDestroy(struct Thread *thread)
+{
+	(void)thread;
 }
 
 static void SetupRace(int trigger)
@@ -604,40 +657,40 @@ static void TestGravityEffects(void)
 	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT, .const_Gravity = 2000};
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 1000, "inactive Chaos preserves normal gravity");
 	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 2000);
-	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 333, "Low Gravity applies one third of the human driver's gravity");
-	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 333, "repeated physics reads do not repeatedly divide gravity");
-	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&partner), 500, "the co-op partner uses their own gravity baseline");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 250, "Low Gravity applies one quarter of the human driver's gravity");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 250, "repeated physics reads do not repeatedly divide gravity");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&partner), 375, "the co-op partner uses their own gravity baseline");
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&bot), 2000, "gravity effects leave bots unchanged");
 	CTR_TEST_CHECK_EQ(human.const_Gravity, 1000, "Chaos does not overwrite the stored gravity constant");
 	CTR_TEST_CHECK_EQ(human.const_JumpForce, 800, "Low Gravity preserves the jump impulse");
 	human.const_Gravity = 1200;
-	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 400, "legitimate constant changes immediately become the new baseline");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 300, "legitimate constant changes immediately become the new baseline");
 	Tick(500);
 	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 500);
-	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 400, "duplicate Low Gravity entries do not compound");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 300, "duplicate Low Gravity entries do not compound");
 	Tick(500);
-	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 400, "one copy expiring does not cancel a surviving copy");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 300, "one copy expiring does not cancel a surviving copy");
 	Tick(1000);
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 1200, "final expiry immediately uses the current baseline rather than a stale snapshot");
 	Chaos_Activate(CHAOS_EFFECT_HEAVY_KARTS, 3000);
 	Chaos_Activate(CHAOS_EFFECT_HEAVY_KARTS, 3000);
-	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 2400, "Heavy Karts doubles gravity once even with duplicate entries");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 3600, "Heavy Karts triples gravity once even with duplicate entries");
 	CTR_TEST_CHECK_EQ(human.const_JumpForce, 800, "Heavy Karts changes gravity without disabling the jump impulse");
 	human.const_Gravity = 32767;
-	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 65534, "effective gravity remains a full integer rather than overflowing the stored halfword");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 98301, "effective gravity remains a full integer rather than overflowing the stored halfword");
 	human.const_Gravity = 1200;
 	const struct ChaosRuntime saved = sdata->chaosRuntime;
 	s_tracker.gameMode1 |= PAUSE_1;
 	Tick(5000);
 	CTR_TEST_CHECK(memcmp(&saved, &sdata->chaosRuntime, sizeof(saved)) == 0, "pause freezes gravity effect lifetimes");
 	s_tracker.gameMode1 &= ~PAUSE_1;
-	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 2400, "unpausing retains the gravity modifier");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 3600, "unpausing retains the gravity modifier");
 	human.actionsFlagSet = ACTION_RACE_FINISHED;
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 1200, "finished humans immediately use normal gravity");
 	human.actionsFlagSet = 0;
 	Tick(3000);
 	sdata->chaosRuntime = saved;
-	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 2400, "resident restoration needs no separate baseline repair");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 3600, "resident restoration needs no separate baseline repair");
 	Chaos_Reset();
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 1200, "reset leaves no modified driver constants behind");
 
@@ -650,13 +703,13 @@ static void TestGravityEffects(void)
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 2, "Heavy Karts replaces every Low Gravity copy but preserves unrelated effects");
 	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_LOW_GRAVITY), "replaced Low Gravity entries are permanently deactivated");
 	CTR_TEST_CHECK(Chaos_IsActive(CHAOS_EFFECT_NO_HOPPING), "gravity replacement leaves No Hopping active");
-	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 2400, "the latest gravity effect takes effect immediately");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 3600, "the latest gravity effect takes effect immediately");
 	Tick(1000);
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 1200, "expiry of Heavy Karts cannot revive replaced Low Gravity");
 	Chaos_Activate(CHAOS_EFFECT_HEAVY_KARTS, 3000);
 	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 1000);
 	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_HEAVY_KARTS), "Low Gravity also permanently deactivates Heavy Karts");
-	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 400, "Low Gravity can replace Heavy Karts without multiplying modified values");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 300, "Low Gravity can replace Heavy Karts without multiplying modified values");
 	Tick(1000);
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 1200, "expiry of Low Gravity cannot revive replaced Heavy Karts");
 	Chaos_Reset();
@@ -667,6 +720,97 @@ static void TestGravityEffects(void)
 	CTR_TEST_CHECK_EQ(human.jump_TenBuffer, 10, "Heavy Karts retains the retail hop buffer");
 	s_tracker.gameMode1 |= ADVENTURE_ARENA;
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 1200, "Adventure hubs cannot receive gravity modifiers");
+}
+
+static void TestNoReserves(void)
+{
+	CTR_TEST_SECTION("No Reserves clears fuel at driver application while boost grants remain retail");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_NO_RESERVES] = true;
+	sdata->chaosSettings.enabledCount++;
+	struct Thread thread = {.modelIndex = DYNAMIC_PLAYER};
+	struct Instance inst = {.thread = &thread};
+	struct Driver human = {
+		.driverID = 0, .instSelf = &inst, .reserves = 2000, .turbo_outsideTimer = 1000,
+		.kartState = KS_NORMAL, .baseSpeed = 1000, .const_SingleTurboSpeed = 100,
+		.const_SacredFireSpeed = 200, .rainCloudEffect = RAIN_CLOUD_EFFECT_NONE,
+	};
+	struct GamepadBuffer pad = {.stickLX = 128};
+	int steering = pad.stickLX;
+	Chaos_ApplyReserveRules(&human);
+	CTR_TEST_CHECK_EQ(human.reserves, 2000, "inactive Chaos leaves accumulated reserves alone");
+	CTR_TEST_CHECK_EQ(human.turbo_outsideTimer, 1000, "inactive Chaos leaves the outside turbo timer alone");
+	Chaos_Activate(CHAOS_EFFECT_NO_RESERVES, 2000);
+	const u32 actions = ACTION_JUMP_BUTTON_HELD | ACTION_MASK_WEAPON;
+	CTR_TEST_CHECK_EQ(Chaos_ApplyDriver(&human, &pad, &steering, actions), actions,
+	                  "No Reserves preserves manual hops and mask input flags");
+	CTR_TEST_CHECK_EQ(human.reserves, 0, "the existing driver hook clears accumulated reserves before physics consumers");
+	CTR_TEST_CHECK_EQ(human.turbo_outsideTimer, 0, "the existing driver hook also clears outside turbo bookkeeping");
+	CTR_TEST_CHECK_EQ(human.baseSpeed, 1000, "No Reserves does not overwrite base speed");
+	CTR_TEST_CHECK_EQ(steering, 128, "No Reserves does not change steering");
+	const u32 types[] = {
+		POWER_SLIDE_HANG_TIME,
+		TURBO_PAD | FREEZE_RESERVES_ON_TURBO_PAD,
+		TURBO_ITEM | FREEZE_RESERVES_ON_TURBO_PAD,
+		TURBO_PAD | SUPER_ENGINE,
+	};
+	for (int i = 0; i < (int)(sizeof(types) / sizeof(types[0])); i++)
+	{
+		human.reserves = 500;
+		human.turbo_outsideTimer = 100;
+		VehFire_Increment(&human, 1000, types[i], 100);
+		CTR_TEST_CHECK(human.reserves > 0, "retail boost grants can supply fuel until the next driver application");
+		Chaos_ApplyDriver(&human, &pad, &steering, human.actionsFlagSet);
+		CTR_TEST_CHECK_EQ(human.reserves, 0, "the next driver application clears newly granted reserves");
+		CTR_TEST_CHECK_EQ(human.turbo_outsideTimer, 0, "the next driver application clears outside turbo time too");
+		CTR_TEST_CHECK((human.actionsFlagSet & ACTION_NEW_BOOST) != 0, "retail boost event flags remain available for presentation");
+	}
+	struct Driver partner = {.driverID = 1, .reserves = 500, .turbo_outsideTimer = 200};
+	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT, .reserves = 700, .turbo_outsideTimer = 300};
+	Chaos_ApplyReserveRules(&partner);
+	Chaos_ApplyReserveRules(&bot);
+	Chaos_ApplyReserveRules(NULL);
+	CTR_TEST_CHECK_EQ(partner.reserves, 0, "No Reserves also applies to the co-op partner");
+	CTR_TEST_CHECK_EQ(partner.turbo_outsideTimer, 0, "the partner's two fuel fields are cleared together");
+	CTR_TEST_CHECK_EQ(bot.reserves, 700, "No Reserves preserves bot reserves");
+	CTR_TEST_CHECK_EQ(bot.turbo_outsideTimer, 300, "No Reserves preserves bot outside turbo time");
+	human.actionsFlagSet |= ACTION_RACE_FINISHED;
+	VehFire_Increment(&human, 1000, TURBO_PAD | FREEZE_RESERVES_ON_TURBO_PAD, 100);
+	Chaos_ApplyDriver(&human, &pad, &steering, human.actionsFlagSet);
+	CTR_TEST_CHECK_EQ(human.reserves, 1000, "finished humans can receive ordinary retail boosts");
+	CTR_TEST_CHECK_EQ(human.turbo_outsideTimer, 1000, "finished humans retain outside turbo time");
+	human.actionsFlagSet &= ~ACTION_RACE_FINISHED;
+	human.reserves = 0;
+	human.turbo_outsideTimer = 0;
+	s_tracker.gameMode1 |= PAUSE_1;
+	const struct ChaosRuntime saved = sdata->chaosRuntime;
+	Tick(5000);
+	CTR_TEST_CHECK(memcmp(&saved, &sdata->chaosRuntime, sizeof(saved)) == 0, "pause freezes No Reserves lifetimes");
+	s_tracker.gameMode1 &= ~PAUSE_1;
+	Tick(1000);
+	Chaos_Activate(CHAOS_EFFECT_NO_RESERVES, 500);
+	Tick(500);
+	VehFire_Increment(&human, 1000, POWER_SLIDE_HANG_TIME, 100);
+	Chaos_ApplyDriver(&human, &pad, &steering, human.actionsFlagSet);
+	CTR_TEST_CHECK_EQ(human.reserves, 0, "expiry of one duplicate does not lift the surviving restriction");
+	Tick(500);
+	CTR_TEST_CHECK_EQ(human.reserves, 0, "final expiry does not restore reserves erased earlier");
+	VehFire_Increment(&human, 1000, POWER_SLIDE_HANG_TIME, 100);
+	Chaos_ApplyDriver(&human, &pad, &steering, human.actionsFlagSet);
+	CTR_TEST_CHECK_EQ(human.reserves, 1000, "new reserves can accumulate normally after final expiry");
+	sdata->chaosRuntime = saved;
+	Chaos_ApplyReserveRules(&human);
+	CTR_TEST_CHECK_EQ(human.reserves, 0, "resident restoration restores the restriction without a separate driver snapshot");
+	Chaos_Reset();
+	VehFire_Increment(&human, 1000, TURBO_PAD | FREEZE_RESERVES_ON_TURBO_PAD, 100);
+	Chaos_ApplyDriver(&human, &pad, &steering, human.actionsFlagSet);
+	CTR_TEST_CHECK_EQ(human.reserves, 1000, "reset immediately restores normal boost grants");
+	CTR_TEST_CHECK_EQ(human.turbo_outsideTimer, 1000, "reset also restores ordinary outside turbo bookkeeping");
+	Chaos_BeginRace(&s_tracker);
+	Chaos_Activate(CHAOS_EFFECT_NO_RESERVES, 1000);
+	s_tracker.gameMode1 |= ADVENTURE_ARENA;
+	Chaos_ApplyReserveRules(&human);
+	CTR_TEST_CHECK_EQ(human.reserves, 1000, "Adventure hubs do not receive reserve restrictions");
 }
 
 static void TestHopInputAndCloudOwnership(void)
@@ -1161,6 +1305,7 @@ int main(void)
 	TestSteeringAndDriverScope();
 	TestWobbleSteering();
 	TestGravityEffects();
+	TestNoReserves();
 	TestHopInputAndCloudOwnership();
 	TestDriverApplication();
 	TestActivationNotice();

@@ -162,7 +162,7 @@ leave effects untouched. Duplicates of the same effect retain independent timers
 without compounding; the newest Wobble supplies the phase. No controller input
 is stored or overwritten, and final expiry/reset returns to live input.
 
-Low Gravity uses one third of the driver's gravity; Heavy Karts doubles it.
+Low Gravity uses one quarter of the driver's gravity; Heavy Karts triples it.
 `Chaos_GravityForDriver` derives the effective value from the current
 `const_Gravity` when human physics reads it, before retail terrain multipliers.
 The stored constant, jump impulse and terminal velocity are untouched, so there
@@ -171,6 +171,15 @@ the greater downward force shortens airtime. Both effects apply only to unfinish
 humans in eligible races, never bots or hubs. Duplicate entries do not compound.
 Activating either gravity effect removes all copies of the opposite effect;
 the replaced effect cannot return when the newer one expires.
+
+No Reserves clears `reserves` and `turbo_outsideTimer` together through
+`Chaos_ApplyReserveRules`, called only by the existing driver-input hook.
+Retail boost grants remain unchanged: fuel granted after the hook can persist
+until the next driver application. This applies to drift/hang-time, turbo pads,
+turbo items and Super Engine. Retail boost presentation, input, mask behavior
+and base speed are preserved. Only unfinished humans in eligible races are
+affected. Duplicate lifetimes remain independent; expiry/reset allows new
+reserves without restoring erased fuel. No driver snapshot is needed.
 
 Each activation has an independent three-second announcement, followed by 320 ms
 of docking. Successful activations play the transition swish (`0x65`) once;
