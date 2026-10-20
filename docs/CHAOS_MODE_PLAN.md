@@ -4,8 +4,8 @@
 
 Implemented: catalogue/selection helpers, race gate, creation flow, per-slot
 persistence, save marker, pause inspection and runtime timers/Interval/Random scheduling.
-Inverted Steering, No Hopping, Wobble Steering, Low Gravity, Heavy Karts and No Reserves are
-connected, with an activation-name overlay.
+Inverted Steering, No Hopping, Wobble Steering, Low Gravity, Heavy Karts,
+Speed Capped, Super Speed and No Reserves are connected, with an activation-name overlay.
 Pending: remaining effects, Pickup/External triggers, provider and player guide.
 Save layouts and checkpoint ownership are documented in [CHAOS_STATE.md](CHAOS_STATE.md).
 
@@ -80,7 +80,7 @@ for a central dispatcher; generic level collisions also include hazards.
 
 ## Effect hooks
 
-All 16 effects have catalogue IDs/toggles. Six are implemented; the
+All 16 effects have catalogue IDs/toggles. Eight are implemented; the
 remaining rows are source leads to verify during implementation.
 
 | Effects | Candidate mechanism |
@@ -89,7 +89,7 @@ remaining rows are source leads to verify during implementation.
 | No Hopping — done | Clear resolved manual hop latch/buffer; preserve drift input/states, forced jumps and rain-cloud ownership |
 | Wobble Steering — done | Two-second sine wave at 75% of the controller range, clamped around its center; deactivates Inverted Steering and vice versa |
 | Low Gravity / Heavy Karts — done | Derive effective gravity from the live constant at 1/4 or 3×, before terrain rules; deactivate each other |
-| Speed Capped / Super Speed | Override speed class; Super Speed also needs acceleration constants |
+| Speed Capped / Super Speed — done | Cap the forward target at half the live class speed / double resolved forward target and acceleration; retain retail hard limit and deactivate each other |
 | No Reserves — done | Clear both fuel timers only in the existing driver hook; retail boost grants persist until the next application; allow new fuel after expiry |
 | No Items / Punishing Items | Audit crate and final reel resolution; replacing the roulette sentinel alone is not verified |
 | Wumpa Drain / Clock Curse | Explicit pulse/activation timing using existing wumpa/clock paths |
@@ -100,8 +100,9 @@ remaining rows are source leads to verify during implementation.
 
 Key implementation constraints:
 
-- `const_TerminalVelocity` caps vertical velocity, not forward speed. Base/fire
-  speed is recomputed; use class constants. Existing hard clamps limit Super Speed.
+- `const_TerminalVelocity` caps vertical velocity, not forward speed. Speed effects
+  derive local targets/acceleration without overwriting constants. The existing
+  `0x6400` target clamp limits Super Speed; slopes/collisions remain retail.
 - Rescue needs captured per-driver cooldowns, grounded/off-road/state checks and
   valid restart data. Stock rescue returns to a checkpoint, changes camera/input,
   wipes turbo and can cost wumpa. Destination and speed ceiling remain open.
@@ -134,8 +135,9 @@ currently recorded, so provider-driven replay verification is not guaranteed.
 ## Delivery and checks
 
 1. Verify the playable effects in game: Interval/Random with only Inverted Steering,
-   No Hopping, Wobble Steering, Low Gravity, Heavy Karts and No Reserves selected;
-   check steering, jumps, reserve suppression and the activation banner in 1P/2P.
+   No Hopping, Wobble Steering, Low Gravity, Heavy Karts, Speed Capped, Super Speed
+   and No Reserves selected; check steering, jumps, speed/acceleration, reserve
+   suppression and the activation banner in 1P/2P.
 2. Baseline/ordered modifier application, remaining effects and contact
    triggers, then External.
 3. `docs/features/CHAOS.md` + README links: creation, scope, stacking, effects,

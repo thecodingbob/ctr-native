@@ -1303,6 +1303,8 @@ bool Chaos_Activate(ChaosEffectId effect, s32 durationMS);
 bool Chaos_IsActive(ChaosEffectId effect);
 bool Chaos_IsActiveForDriver(ChaosEffectId effect, const struct Driver *driver);
 int Chaos_GravityForDriver(const struct Driver *driver);
+int Chaos_SpeedForDriver(const struct Driver *driver, int speed);
+int Chaos_AccelerationForDriver(const struct Driver *driver, int acceleration);
 void Chaos_ApplyReserveRules(struct Driver *driver);
 u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, int *steering, u32 actions);
 void UI_Chaos_DrawActivation(struct GameTracker *gGT);

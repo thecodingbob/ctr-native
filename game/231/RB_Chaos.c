@@ -11,6 +11,8 @@ enum
 	CHAOS_WOBBLE_RANGE_DENOMINATOR = 4,
 	CHAOS_LOW_GRAVITY_DIVISOR = 4,
 	CHAOS_HEAVY_GRAVITY_MULTIPLIER = 3,
+	CHAOS_SPEED_CAP_DIVISOR = 2,
+	CHAOS_SUPER_SPEED_MULTIPLIER = 2,
 };
 
 static s32 Chaos_NextTriggerGap(void)
@@ -73,6 +75,14 @@ static void Chaos_RemoveConflictingEffects(ChaosEffectId effect)
 	else if (effect == CHAOS_EFFECT_HEAVY_KARTS)
 	{
 		replaced = CHAOS_EFFECT_LOW_GRAVITY;
+	}
+	else if (effect == CHAOS_EFFECT_SPEED_CAPPED)
+	{
+		replaced = CHAOS_EFFECT_SUPER_SPEED;
+	}
+	else if (effect == CHAOS_EFFECT_SUPER_SPEED)
+	{
+		replaced = CHAOS_EFFECT_SPEED_CAPPED;
 	}
 	if (replaced == CHAOS_EFFECT_NONE)
 	{
@@ -150,6 +160,37 @@ int Chaos_GravityForDriver(const struct Driver *driver)
 		return gravity * CHAOS_HEAVY_GRAVITY_MULTIPLIER;
 	}
 	return gravity;
+}
+
+int Chaos_SpeedForDriver(const struct Driver *driver, int speed)
+{
+	if (speed <= 0)
+	{
+		return speed;
+	}
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SPEED_CAPPED, driver))
+	{
+		const int cap = driver->const_Speed_ClassStat / CHAOS_SPEED_CAP_DIVISOR;
+		if (speed > cap)
+		{
+			return cap;
+		}
+	}
+	else if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SUPER_SPEED, driver))
+	{
+		return speed * CHAOS_SUPER_SPEED_MULTIPLIER;
+	}
+	return speed;
+}
+
+int Chaos_AccelerationForDriver(const struct Driver *driver, int acceleration)
+{
+	if (driver->baseSpeed > 0 && acceleration > 0 &&
+	    Chaos_IsActiveForDriver(CHAOS_EFFECT_SUPER_SPEED, driver))
+	{
+		return acceleration * CHAOS_SUPER_SPEED_MULTIPLIER;
+	}
+	return acceleration;
 }
 
 void Chaos_ApplyReserveRules(struct Driver *driver)

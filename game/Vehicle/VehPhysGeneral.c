@@ -1064,10 +1064,12 @@ PROCESS_ACCEL:
 	register int rotatedZ CTR_PSX_REGISTER("$6");
 	u32 movementLengthSq;
 	b32 clampToForwardImpulse;
-	int accelerationProduct = CTR_MipsMulLo(acceleration, GAME_TRACKER->elapsedTimeMS);
+	int accelerationProduct;
 	int speedMagnitude;
 	register int lossBaseSpeed CTR_PSX_REGISTER("$3");
 
+	acceleration = Chaos_AccelerationForDriver(d, acceleration);
+	accelerationProduct = CTR_MipsMulLo(acceleration, GAME_TRACKER->elapsedTimeMS);
 	CTR_PSX_SHIFT_RIGHT_ARITHMETIC(acceleration, accelerationProduct, 5);
 	MTC2(0, 0);
 	MTC2((u32)(u16)acceleration, 1);
@@ -1860,6 +1862,7 @@ int VehPhysGeneral_GetBaseSpeed(struct Driver *driver)
 	}
 
 	statAdditional = CTR_MipsSubLo(statAdditional, subtract);
+	statAdditional = Chaos_SpeedForDriver(d, statAdditional);
 
 	if (VEH_BASE_SPEED_NET_CAP < statAdditional)
 	{

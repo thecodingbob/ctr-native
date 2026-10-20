@@ -172,6 +172,22 @@ humans in eligible races, never bots or hubs. Duplicate entries do not compound.
 Activating either gravity effect removes all copies of the opposite effect;
 the replaced effect cannot return when the newer one expires.
 
+Speed Capped limits the resolved forward speed target to half the driver's live
+`const_Speed_ClassStat`, including when reserves or a mask raise that target.
+Already lower targets remain lower. Super Speed doubles the resolved forward
+target. `Chaos_SpeedForDriver` runs after retail wumpa/boost/damage calculations
+and before the existing `0x6400` hard limit; Super Speed therefore does not
+guarantee twice the actual speed when that limit is reached. Throttle, terrain,
+slope and collision processing remain retail; Speed Capped is a target ceiling,
+not a clamp on the full velocity vector.
+`Chaos_AccelerationForDriver` doubles positive forward acceleration for Super
+Speed after retail selection (ordinary, reserve or turbo-pad), before frame-time
+scaling. Reverse targets/acceleration are unchanged. Neither hook changes stored
+constants or boost fuel; expiry/reset uses current retail values without a
+baseline snapshot. Both effects apply to unfinished humans only, with independent
+duplicate lifetimes that do not compound. Activating either removes all copies
+of the opposite speed effect permanently.
+
 No Reserves clears `reserves` and `turbo_outsideTimer` together through
 `Chaos_ApplyReserveRules`, called only by the existing driver-input hook.
 Retail boost grants remain unchanged: fuel granted after the hook can persist

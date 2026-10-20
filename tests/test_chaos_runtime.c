@@ -722,6 +722,111 @@ static void TestGravityEffects(void)
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 1200, "Adventure hubs cannot receive gravity modifiers");
 }
 
+static void TestSpeedEffects(void)
+{
+	CTR_TEST_SECTION("speed effects derive targets and acceleration from live values without overwriting kart constants");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_SPEED_CAPPED] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_SUPER_SPEED] = true;
+	sdata->chaosSettings.enabledCount += 2;
+	struct Driver human = {
+		.driverID = 0, .baseSpeed = 12000, .const_Speed_ClassStat = 12000,
+		.const_Accel_ClassStat = 100, .const_Accel_Reserves = 200,
+		.reserves = 3000, .turbo_outsideTimer = 1000, .fireSpeedCap = 5000,
+	};
+	struct Driver partner = {.driverID = 1, .baseSpeed = 14000, .const_Speed_ClassStat = 14000};
+	struct Driver bot = {.driverID = 2, .baseSpeed = 12000, .const_Speed_ClassStat = 12000, .actionsFlagSet = ACTION_BOT};
+	const struct Driver original = human;
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 15000), 15000, "inactive Chaos preserves the resolved speed target");
+	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 100), 100, "inactive Chaos preserves acceleration");
+	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 2000);
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 6000, "Speed Capped limits the target to half the unboosted class speed");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 6000, "boosted targets cannot bypass the class-based ceiling");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 4000), 4000, "a slower target from damage or partial speed remains below the ceiling");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 0), 0, "Speed Capped does not introduce motion at rest");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, -3000), -3000, "Speed Capped leaves reverse targets unchanged");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&partner, 18000), 7000, "the co-op partner retains their own class-based ceiling");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&bot, 18000), 18000, "Speed Capped does not affect bots");
+	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 100), 100, "Speed Capped preserves normal acceleration");
+	CTR_TEST_CHECK(memcmp(&human, &original, sizeof(human)) == 0, "speed queries do not overwrite constants, motion or boost fuel");
+	human.const_Speed_ClassStat = 14000;
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 7000, "legitimate class changes immediately update the ceiling");
+	Tick(500);
+	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 500);
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 7000, "duplicate caps do not repeatedly halve the ceiling");
+	Tick(500);
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 7000, "one cap expiring leaves the surviving restriction active");
+	Tick(1000);
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 20000, "final cap expiry returns the current retail target");
+
+	Chaos_Activate(CHAOS_EFFECT_SUPER_SPEED, 2000);
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 24000, "Super Speed doubles the resolved forward target before the retail hard limit");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 4000), 8000, "Super Speed scales the current damaged target rather than restoring an old one");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 0), 0, "Super Speed preserves a zero target");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, -3000), -3000, "Super Speed leaves reverse targets unchanged");
+	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 100), 200, "Super Speed doubles ordinary forward acceleration");
+	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 200), 400, "Super Speed also doubles reserve acceleration");
+	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 500), 1000, "Super Speed also scales turbo-pad acceleration");
+	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 0), 0, "Super Speed does not create acceleration from zero");
+	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, -100), -100, "Super Speed preserves negative acceleration");
+	human.baseSpeed = -3000;
+	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 100), 100, "Super Speed preserves reverse acceleration");
+	human.baseSpeed = 12000;
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&partner, 14000), 28000, "Super Speed applies to the co-op partner before the retail clamp");
+	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&partner, 100), 200, "the co-op partner also gets increased acceleration");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&bot, 12000), 12000, "Super Speed preserves bot targets");
+	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&bot, 100), 100, "Super Speed preserves bot acceleration");
+	Tick(500);
+	Chaos_Activate(CHAOS_EFFECT_SUPER_SPEED, 500);
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 24000, "duplicate Super Speed entries do not compound speed");
+	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 100), 200, "duplicate Super Speed entries do not compound acceleration");
+	Tick(500);
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 24000, "one Super Speed copy expiring preserves the survivor");
+	const struct ChaosRuntime saved = sdata->chaosRuntime;
+	s_tracker.gameMode1 |= PAUSE_1;
+	Tick(5000);
+	CTR_TEST_CHECK(memcmp(&saved, &sdata->chaosRuntime, sizeof(saved)) == 0, "pause freezes speed effect lifetimes");
+	s_tracker.gameMode1 &= ~PAUSE_1;
+	human.actionsFlagSet |= ACTION_RACE_FINISHED;
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 12000, "finished humans immediately use normal targets");
+	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 100), 100, "finished humans immediately use normal acceleration");
+	human.actionsFlagSet &= ~ACTION_RACE_FINISHED;
+	Tick(1000);
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 12000, "final Super Speed expiry restores the current retail target");
+	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 100), 100, "final Super Speed expiry restores retail acceleration");
+	sdata->chaosRuntime = saved;
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 24000, "resident restoration restores speed rules without baseline repair");
+	Chaos_Reset();
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 12000, "reset restores normal speed rules");
+	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 100), 100, "reset restores normal acceleration rules");
+
+	CTR_TEST_SECTION("opposite speed effects permanently replace each other and preserve unrelated activations");
+	Chaos_BeginRace(&s_tracker);
+	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 10000);
+	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 3000);
+	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 3000);
+	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 3000);
+	const struct ChaosActivation gravity = sdata->chaosRuntime.active[0];
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_SUPER_SPEED, 1000), "Super Speed can replace all caps at full capacity");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 2, "replacement removes every cap but keeps the unrelated gravity effect");
+	CTR_TEST_CHECK(memcmp(&gravity, &sdata->chaosRuntime.active[0], sizeof(gravity)) == 0, "replacement preserves unrelated timers and order");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_SPEED_CAPPED), "replaced caps are deactivated immediately");
+	Tick(1000);
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 12000, "Super Speed expiry cannot revive replaced caps");
+	Chaos_Activate(CHAOS_EFFECT_SUPER_SPEED, 3000);
+	Chaos_Activate(CHAOS_EFFECT_SUPER_SPEED, 3000);
+	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 1000);
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_SUPER_SPEED), "Speed Capped removes all Super Speed copies");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 7000, "the replacement cap uses the live unmodified class speed");
+	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 100), 100, "the replacement cap removes increased acceleration immediately");
+	Tick(1000);
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 12000, "cap expiry cannot revive replaced Super Speed");
+	Chaos_Activate(CHAOS_EFFECT_SUPER_SPEED, 1000);
+	s_tracker.gameMode1 |= ADVENTURE_ARENA;
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 12000, "Adventure hubs preserve ordinary speed targets");
+	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 100), 100, "Adventure hubs preserve ordinary acceleration");
+}
+
 static void TestNoReserves(void)
 {
 	CTR_TEST_SECTION("No Reserves clears fuel at driver application while boost grants remain retail");
@@ -1305,6 +1410,7 @@ int main(void)
 	TestSteeringAndDriverScope();
 	TestWobbleSteering();
 	TestGravityEffects();
+	TestSpeedEffects();
 	TestNoReserves();
 	TestHopInputAndCloudOwnership();
 	TestDriverApplication();
