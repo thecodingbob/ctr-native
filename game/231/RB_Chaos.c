@@ -193,6 +193,15 @@ int Chaos_SpeedForDriver(const struct Driver *driver, int speed)
 	{
 		return speed;
 	}
+	if (driver->reserves != 0 && Chaos_IsActiveForDriver(CHAOS_EFFECT_DEFECTIVE_BOOSTS, driver))
+	{
+		// Retail already added the fire bonus; subtract it twice to invert it.
+		speed -= 2 * driver->fireSpeedCap;
+		if (speed <= 0)
+		{
+			return 0;
+		}
+	}
 	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SPEED_CAPPED, driver))
 	{
 		const int cap = driver->const_Speed_ClassStat / CHAOS_SPEED_CAP_DIVISOR;

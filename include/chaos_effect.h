@@ -33,7 +33,7 @@ typedef enum {
 	CHAOS_EFFECT_EXPLOSIVE_CRATES = 9,
 	CHAOS_EFFECT_WUMPA_DRAIN = 10,
 	CHAOS_EFFECT_CLOCK_CURSE = 11,
-	CHAOS_EFFECT_CLEAR_BOOSTS = 12,
+	CHAOS_EFFECT_DEFECTIVE_BOOSTS = 12,
 
 	// Tier C: driver interventions; AI takeover also needs explicit hand-back.
 	CHAOS_EFFECT_ANXIOUS_MASK = 13,
@@ -74,7 +74,7 @@ static const ChaosEffectDef g_chaosEffectDefs[CHAOS_EFFECT_COUNT] =
 	[CHAOS_EFFECT_EXPLOSIVE_CRATES] = { "explosive-crates", "Explosive Crates", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_WUMPA_DRAIN] = { "wumpa-drain", "Wumpa Drain", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_CLOCK_CURSE] = { "clock-curse", "Clock Curse", CHAOS_SCOPE_HUMANS },
-	[CHAOS_EFFECT_CLEAR_BOOSTS] = { "clear-boosts", "Clear Boosts", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_DEFECTIVE_BOOSTS] = { "defective-boosts", "Defective Boosts", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_ANXIOUS_MASK] = { "anxious-mask", "Anxious Mask", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_HARD_CRATES] = { "hard-crates", "Hard Crates", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_BOT_TAKES_THE_WHEEL] = { "bot-takes-wheel", "Bot Takes Wheel", CHAOS_SCOPE_HUMANS },

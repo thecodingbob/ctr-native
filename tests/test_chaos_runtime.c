@@ -917,6 +917,82 @@ static void TestSpeedEffects(void)
 	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 100), 100, "Adventure hubs preserve ordinary acceleration");
 }
 
+static void TestDefectiveBoosts(void)
+{
+	CTR_TEST_SECTION("Defective Boosts inverts fire speed while retaining ordinary reserve grants");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_DEFECTIVE_BOOSTS] = true;
+	sdata->chaosSettings.enabledCount++;
+	struct Thread thread = {.modelIndex = DYNAMIC_PLAYER};
+	struct Instance inst = {.thread = &thread};
+	const struct Driver initial = {
+		.driverID = 0, .instSelf = &inst, .kartState = KS_NORMAL,
+		.const_SingleTurboSpeed = 1000, .const_SacredFireSpeed = 2000,
+	};
+	const u32 types[] = {
+		0, POWER_SLIDE_HANG_TIME,
+		TURBO_PAD | FREEZE_RESERVES_ON_TURBO_PAD,
+		TURBO_ITEM | FREEZE_RESERVES_ON_TURBO_PAD,
+		TURBO_PAD | SUPER_ENGINE,
+	};
+	struct Driver retail[len(types)];
+	for (size_t i = 0; i < len(types); i++)
+	{
+		retail[i] = initial;
+		VehFire_Increment(&retail[i], 1000, types[i], 128);
+	}
+	struct Driver human = initial;
+	human.reserves = 1000;
+	human.fireSpeedCap = 3000;
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 15000), 15000, "inactive Defective Boosts retains the ordinary fire bonus");
+	Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_BOOSTS, 5000);
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 15000), 9000, "the existing three-thousand fire bonus becomes a three-thousand penalty");
+	for (size_t i = 0; i < len(types); i++)
+	{
+		human = initial;
+		VehFire_Increment(&human, 1000, types[i], 128);
+		CTR_TEST_CHECK_EQ(human.reserves, retail[i].reserves, "start, drift, hang-time, pad, item and Super Engine grants retain retail reserves");
+		CTR_TEST_CHECK_EQ(human.turbo_outsideTimer, retail[i].turbo_outsideTimer, "pad and item outside-reserve bookkeeping remains retail");
+		CTR_TEST_CHECK_EQ(human.fireSpeedCap, retail[i].fireSpeedCap, "the stored fire level stays positive and unchanged");
+		CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000 + human.fireSpeedCap), 12000 - human.fireSpeedCap,
+		                  "each boost source subtracts its live bonus rather than adding it");
+	}
+	human = initial;
+	VehFire_Increment(&human, 1000, POWER_SLIDE_HANG_TIME, 128);
+	VehFire_Increment(&human, 1000, POWER_SLIDE_HANG_TIME, 256);
+	CTR_TEST_CHECK_EQ(human.reserves, 2000, "repeated boosts accumulate reserves instead of clearing fuel");
+	CTR_TEST_CHECK_EQ(human.fireSpeedCap, 2000, "a stronger boost raises the stored fire level normally");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 14000), 10000, "stronger fire produces a larger speed penalty");
+	human.reserves = 1;
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 14000), 10000, "the last remaining reserve keeps the penalty active");
+	human.reserves = 0;
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 12000, "empty reserves remove the penalty even if the stored fire level remains");
+	human.reserves = 1000;
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 3000), 0, "an oversized penalty stops at zero without creating reverse acceleration");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, -3000), -3000, "reverse targets remain unchanged");
+	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 200), 200, "reserve acceleration stays retail and approaches the reduced speed target");
+	struct Driver partner = human;
+	partner.driverID = 1;
+	struct Driver bot = human;
+	bot.driverID = 2;
+	bot.actionsFlagSet = ACTION_BOT;
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&partner, 14000), 10000, "the co-op partner also receives defective boosts");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&bot, 14000), 14000, "bot boost bonuses remain ordinary");
+	human.actionsFlagSet |= ACTION_RACE_FINISHED;
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 14000), 14000, "finished humans retain ordinary boost bonuses");
+	human.actionsFlagSet &= ~ACTION_RACE_FINISHED;
+	s_tracker.gameMode1 |= ADVENTURE_ARENA;
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 14000), 14000, "Adventure hubs retain ordinary boost bonuses");
+	s_tracker.gameMode1 &= ~ADVENTURE_ARENA;
+	Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_BOOSTS, 1000);
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 14000), 10000, "duplicate activations invert the bonus only once");
+	Tick(1000);
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 14000), 10000, "the surviving activation retains the penalty");
+	Tick(4000);
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 14000), 14000, "final expiry restores the bonus from current reserves");
+	CTR_TEST_CHECK_EQ(human.reserves, 1000, "effect expiry never restores or discards fuel");
+}
+
 static void TestNoReserves(void)
 {
 	CTR_TEST_SECTION("No Reserves clears fuel at driver application while boost grants remain retail");
@@ -1990,6 +2066,7 @@ int main(void)
 	TestGravityEffects();
 	TestSpeedEffects();
 	TestNoReserves();
+	TestDefectiveBoosts();
 	TestNoItems();
 	TestWumpaDrain();
 	TestClockCurse();

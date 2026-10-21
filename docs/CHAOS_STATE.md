@@ -229,6 +229,18 @@ or boost fuel. It is a direct modifier rather than damage; mask protection does
 not block it. Already drained fruit is not restored on expiry/reset, and pulses
 consume no RNG. Newly scheduled entries receive their full first second.
 
+Defective Boosts (stable ID 12, formerly Clear Boosts) inverts the live fire-speed
+bonus through `Chaos_SpeedForDriver`. Retail has already added `fireSpeedCap`, so
+the modifier subtracts twice that amount while reserves are nonzero, clamping
+the resulting forward target to zero. Stored fire levels, reserve accumulation,
+outside-pad bookkeeping and ordinary fuel consumption remain unchanged. This
+covers drift, hang-time, starting boosts, normal/super pads, Turbo and Super
+Engine. Existing reserves also become a penalty when the effect activates;
+empty reserves remove it, and final effect expiry restores the current bonus.
+Only unfinished humans in eligible races are affected. Duplicate activations
+do not compound the inversion. No new timer, driver field or boost-event hook
+is needed; reverse targets and retail acceleration remain unchanged.
+
 Explosive Crates (stable ID 9, formerly Punishing Items) triggers on direct kart
 contact with item, Wumpa and time crates. The three crate handlers call
 `Chaos_ApplyCrateRules` only when a visible crate actually breaks and the hitter

@@ -5,7 +5,8 @@
 Implemented: catalogue/selection helpers, race gate, creation flow, per-slot
 persistence, save marker, pause inspection and runtime timers/Interval/Random scheduling.
 Inverted Steering, No Hopping, Wobble Steering, Low Gravity, Heavy Karts,
-Speed Capped, Super Speed, No Reserves, No Items, Wumpa Drain, Clock Curse and Explosive Crates are
+Speed Capped, Super Speed, No Reserves, No Items, Wumpa Drain, Clock Curse,
+Explosive Crates and Defective Boosts are
 connected, with an activation-name overlay.
 Pending: remaining effects, Pickup/External triggers, provider and player guide.
 Save layouts and checkpoint ownership are documented in [CHAOS_STATE.md](CHAOS_STATE.md).
@@ -81,7 +82,7 @@ for a central dispatcher; generic level collisions also include hazards.
 
 ## Effect hooks
 
-All 16 effects have catalogue IDs/toggles. Twelve are implemented; the
+All 16 effects have catalogue IDs/toggles. Thirteen are implemented; the
 remaining rows are source leads to verify during implementation.
 
 | Effects | Candidate mechanism |
@@ -96,7 +97,7 @@ remaining rows are source leads to verify during implementation.
 | Explosive Crates — done | Direct kart contact with item, Wumpa or time crates triggers an explosion and blast damage, bypassing protection; retain normal rewards |
 | Wumpa Drain — done | Detect crossed seconds from each activation's elapsed time in the existing driver hook; independent duplicate pulses, stop at zero and preserve pending pickup awards |
 | Clock Curse — done | One-off spin hit, clock audio and full 32-bit received-clock timer, bypassing protection; new activations overwrite earlier clocks |
-| Clear Boosts | Clear both reserve fields at the intended pickup/boost event; qualifying contacts remain to define |
+| Defective Boosts — done | Invert the live fire-speed bonus while reserves remain; preserve normal fuel grants, accumulation and consumption for every boost source |
 | Anxious Mask | Request rescue during current-frame collision processing, before mask-request consumption |
 | Hard Crates | Shared damage helper across three crate handlers, validating victim and collision type |
 | Bot Takes Wheel | Guarded `BOTS_Driver_Convert` plus explicit human-control hand-back |
