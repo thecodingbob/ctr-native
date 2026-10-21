@@ -229,6 +229,19 @@ or boost fuel. It is a direct modifier rather than damage; mask protection does
 not block it. Already drained fruit is not restored on expiry/reset, and pulses
 consume no RNG. Newly scheduled entries receive their full first second.
 
+Anxious Mask requests retail rescue when an unfinished human
+touches slowing terrain (`speedMultiplier < 0x100`) while grounded. It reads the
+physical quad's terrain rather than a cloud-overridden terrain value; airborne
+passage over off-road surfaces does not trigger it. `Chaos_ApplyRescueRules`
+runs in `COLL_FIXED_PlayerSearch` before checkpoint progress, preserving
+`lastValid` when it adds `DRIVER_COLL_FLAG_MASK_GRAB_REQUEST`. The normal collision
+consumer handles rescue eligibility and initialization later in the same callback,
+including the existing rescue state, `lastValid`, suppression surfaces and the
+retail debug disable flag. Chaos does not filter requests by kart state;
+there is no additional cooldown or effect-specific runtime state. The retail
+rescue owns destination, camera/input changes,
+reserve loss and fruit penalties; Chaos adds no speed ceiling or damage hit.
+
 Defective Boosts (stable ID 12, formerly Clear Boosts) inverts the live fire-speed
 bonus through `Chaos_SpeedForDriver`. Retail has already added `fireSpeedCap`, so
 the modifier subtracts twice that amount while reserves are nonzero, clamping

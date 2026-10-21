@@ -236,6 +236,19 @@ void Chaos_ApplyReserveRules(struct Driver *driver)
 	}
 }
 
+void Chaos_ApplyRescueRules(struct Driver *driver)
+{
+	if (!Chaos_IsActiveForDriver(CHAOS_EFFECT_ANXIOUS_MASK, driver))
+	{
+		return;
+	}
+	const struct Terrain *terrain = VehAfterColl_GetTerrain(driver->currBlockTouching->terrain_type);
+	if (terrain->speedMultiplier < VEH_PHYS_FORCE_TERRAIN_SCALE_NEUTRAL)
+	{
+		driver->collisionFlags |= DRIVER_COLL_FLAG_MASK_GRAB_REQUEST;
+	}
+}
+
 void Chaos_ApplyCrateRules(struct Driver *driver, struct Instance *crateInst)
 {
 	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_EXPLOSIVE_CRATES, driver))

@@ -1458,6 +1458,7 @@ void COLL_FIXED_PlayerSearch(struct Thread *t, struct Driver *d)
 		goto DriverAirborne;
 	}
 
+	Chaos_ApplyRescueRules(d);
 	if (COLL_FIXED_PlayerSearch_CheckMaskGrabProgress(d, quad) != 0)
 	{
 		d->collisionFlags |= DRIVER_COLL_FLAG_MASK_GRAB_REQUEST;
@@ -1665,7 +1666,7 @@ UpdateGroundOffset:
 	}
 
 	if ((d->kartState != KS_MASK_GRABBED) && ((d->collisionFlags & DRIVER_COLL_FLAG_MASK_GRAB_REQUEST) != 0) && (d->lastValid != NULL) &&
-	    ((sdata->HudAndDebugFlags & 0x1000) == 0) && ((d->stepFlagSet & COLL_STEP_TRIGGER_SUPPRESS_MASK_GRAB) == 0))
+	    ((sdata->HudAndDebugFlags & HUD_FLAG_DISABLE_MASK_RESCUE) == 0) && ((d->stepFlagSet & COLL_STEP_TRIGGER_SUPPRESS_MASK_GRAB) == 0))
 	{
 		VehStuckProc_MaskGrab_Init(t, d);
 	}

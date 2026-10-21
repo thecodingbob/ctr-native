@@ -31,11 +31,15 @@ static u32 *s_drawOT[CHAOS_EFFECT_COUNT];
 // VehPickupItem.c precedes Chaos in the game unity build.
 enum { SOUND_CLOCK = 0x44 };
 
+// VehPhysForce.c precedes Chaos in the game unity build.
+enum { VEH_PHYS_FORCE_TERRAIN_SCALE_NEUTRAL = 0x100 };
+
 #include <game/Vehicle/VehPickState.c>
 #include <game/231/RB_Chaos.c>
 #include <game/MAIN/MainGameStart.c>
 #include <game/Vehicle/VehPhysProc_Input.c>
 #include <game/Vehicle/VehFire.c>
+#include <game/Vehicle/VehAfterColl.c>
 #include <game/UI/UI_Lerp2D.c>
 #include <game/UI/UI_Chaos.c>
 #include <game/MATH/MATH_0_Sin.c>
@@ -1353,6 +1357,109 @@ static void TestWumpaDrain(void)
 	CTR_TEST_CHECK_EQ(human.numWumpas, 9, "only the older activation can pulse while the new duplicate is still at zero");
 }
 
+static void TestAnxiousMask(void)
+{
+	CTR_TEST_SECTION("Anxious Mask requests rescue on grounded off-road contact before checkpoint progress");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_ANXIOUS_MASK] = true;
+	sdata->chaosSettings.enabledCount++;
+	struct CheckpointNode restartPoints[2] = {0};
+	struct Level level = {.ptr_restart_points = restartPoints, .cnt_restart_points = len(restartPoints)};
+	s_tracker.level1 = &level;
+	data.MetaDataTerrain[TERRAIN_ASPHALT].speedMultiplier = 256;
+	data.MetaDataTerrain[TERRAIN_ICE].speedMultiplier = 256;
+	data.MetaDataTerrain[TERRAIN_GRASS].speedMultiplier = 140;
+	struct QuadBlock road = {.terrain_type = TERRAIN_ASPHALT, .checkpointIndex = 0};
+	struct QuadBlock offRoad = {.terrain_type = TERRAIN_GRASS, .checkpointIndex = 1};
+	struct Driver human = {
+		.driverID = 0, .kartState = KS_NORMAL, .currBlockTouching = &offRoad, .lastValid = &road,
+		.collisionFlags = DRIVER_COLL_FLAG_GROUNDED, .currentTerrain = TERRAIN_ICE,
+		.reserves = 1000, .numWumpas = 10, .actionsFlagSet = ACTION_MASK_WEAPON,
+	};
+	Chaos_ApplyRescueRules(&human);
+	CTR_TEST_CHECK_EQ(human.collisionFlags, DRIVER_COLL_FLAG_GROUNDED, "inactive Anxious Mask leaves off-road contact alone");
+	Chaos_Activate(CHAOS_EFFECT_ANXIOUS_MASK, 10000);
+	Chaos_ApplyRescueRules(&human);
+	CTR_TEST_CHECK((human.collisionFlags & DRIVER_COLL_FLAG_MASK_GRAB_REQUEST) != 0, "grounded grass contact requests rescue even when a cloud overrides current terrain");
+	CTR_TEST_CHECK(human.lastValid == &road, "the request preserves the last valid road checkpoint");
+	CTR_TEST_CHECK_EQ(human.reserves, 1000, "the request leaves reserve loss to retail rescue initialization");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 10, "the request leaves fruit loss to retail rescue initialization");
+	Chaos_ApplyRescueRules(&human);
+	CTR_TEST_CHECK_EQ(human.collisionFlags, DRIVER_COLL_FLAG_GROUNDED | DRIVER_COLL_FLAG_MASK_GRAB_REQUEST, "an existing rescue request remains unchanged");
+	human.collisionFlags = DRIVER_COLL_FLAG_GROUNDED;
+	Chaos_ApplyRescueRules(&human);
+	CTR_TEST_CHECK((human.collisionFlags & DRIVER_COLL_FLAG_MASK_GRAB_REQUEST) != 0, "a new eligible off-road contact can request rescue immediately");
+	struct Driver partner = human;
+	partner.driverID = 1;
+	partner.collisionFlags = DRIVER_COLL_FLAG_GROUNDED;
+	Chaos_ApplyRescueRules(&partner);
+	CTR_TEST_CHECK((partner.collisionFlags & DRIVER_COLL_FLAG_MASK_GRAB_REQUEST) != 0, "the co-op partner can independently request rescue");
+	Chaos_Activate(CHAOS_EFFECT_ANXIOUS_MASK, 1000);
+	Chaos_ApplyRescueRules(&human);
+	CTR_TEST_CHECK_EQ(human.collisionFlags, DRIVER_COLL_FLAG_GROUNDED | DRIVER_COLL_FLAG_MASK_GRAB_REQUEST, "duplicate activations leave an existing rescue request unchanged");
+	const struct ChaosRuntime saved = sdata->chaosRuntime;
+	s_tracker.gameMode1 |= PAUSE_1;
+	Tick(5000);
+	CTR_TEST_CHECK(memcmp(&saved, &sdata->chaosRuntime, sizeof(saved)) == 0, "pause freezes Anxious Mask activation timers");
+	s_tracker.gameMode1 &= ~PAUSE_1;
+	human.collisionFlags = DRIVER_COLL_FLAG_GROUNDED;
+
+	CTR_TEST_SECTION("Anxious Mask requires grounded slowing terrain and leaves rescue eligibility to retail");
+	const u8 roadTypes[] = {TERRAIN_ASPHALT, TERRAIN_ICE};
+	for (size_t i = 0; i < len(roadTypes); i++)
+	{
+		road.terrain_type = roadTypes[i];
+		human.currBlockTouching = &road;
+		Chaos_ApplyRescueRules(&human);
+		CTR_TEST_CHECK_EQ(human.collisionFlags, DRIVER_COLL_FLAG_GROUNDED, "ordinary road and ice do not trigger rescue");
+	}
+	road.terrain_type = TERRAIN_ASPHALT;
+	human.currBlockTouching = &offRoad;
+	human.collisionFlags = 0;
+	Chaos_ApplyRescueRules(&human);
+	CTR_TEST_CHECK_EQ(human.collisionFlags, 0, "passing above off-road terrain without grounded contact does not trigger rescue");
+	human.collisionFlags = DRIVER_COLL_FLAG_GROUNDED;
+	human.currBlockTouching = NULL;
+	Chaos_ApplyRescueRules(&human);
+	CTR_TEST_CHECK_EQ(human.collisionFlags, DRIVER_COLL_FLAG_GROUNDED, "missing terrain contact does not request rescue");
+	human.currBlockTouching = &offRoad;
+	const u8 states[] = {KS_MASK_GRABBED, KS_BLASTED, KS_SPINNING, KS_ENGINE_REVVING, KS_WARP_PAD};
+	for (size_t i = 0; i < len(states); i++)
+	{
+		human.kartState = states[i];
+		human.collisionFlags = DRIVER_COLL_FLAG_GROUNDED;
+		Chaos_ApplyRescueRules(&human);
+		CTR_TEST_CHECK((human.collisionFlags & DRIVER_COLL_FLAG_MASK_GRAB_REQUEST) != 0, "kart state does not prevent an off-road rescue request");
+	}
+	human.kartState = KS_DRIFTING;
+	human.collisionFlags = DRIVER_COLL_FLAG_GROUNDED;
+	human.actionsFlagSet |= ACTION_RACE_FINISHED;
+	Chaos_ApplyRescueRules(&human);
+	CTR_TEST_CHECK_EQ(human.collisionFlags, DRIVER_COLL_FLAG_GROUNDED, "finished humans do not receive anxious rescues");
+	human.actionsFlagSet &= ~ACTION_RACE_FINISHED;
+	human.driverID = 2;
+	human.actionsFlagSet |= ACTION_BOT;
+	Chaos_ApplyRescueRules(&human);
+	CTR_TEST_CHECK_EQ(human.collisionFlags, DRIVER_COLL_FLAG_GROUNDED, "bots do not receive anxious rescues");
+	human.driverID = 0;
+	human.actionsFlagSet &= ~ACTION_BOT;
+	s_tracker.gameMode1 |= ADVENTURE_ARENA;
+	Chaos_ApplyRescueRules(&human);
+	CTR_TEST_CHECK_EQ(human.collisionFlags, DRIVER_COLL_FLAG_GROUNDED, "Adventure hubs retain ordinary off-road driving");
+	s_tracker.gameMode1 &= ~ADVENTURE_ARENA;
+	sdata->chaosRuntime = saved;
+	Chaos_ApplyRescueRules(&human);
+	CTR_TEST_CHECK((human.collisionFlags & DRIVER_COLL_FLAG_MASK_GRAB_REQUEST) != 0, "restored Anxious Mask immediately permits drifting off-road rescue");
+	human.collisionFlags = DRIVER_COLL_FLAG_GROUNDED;
+	Tick(10000);
+	Chaos_ApplyRescueRules(&human);
+	CTR_TEST_CHECK_EQ(human.collisionFlags, DRIVER_COLL_FLAG_GROUNDED, "final activation expiry restores ordinary off-road driving");
+	Chaos_Reset();
+	human.collisionFlags = DRIVER_COLL_FLAG_GROUNDED;
+	Chaos_ApplyRescueRules(&human);
+	CTR_TEST_CHECK_EQ(human.collisionFlags, DRIVER_COLL_FLAG_GROUNDED, "reset disables anxious rescue requests");
+}
+
 static void TestExplosiveCrates(void)
 {
 	CTR_TEST_SECTION("Explosive Crates applies one blast per contact and bypasses protections");
@@ -2071,6 +2178,7 @@ int main(void)
 	TestWumpaDrain();
 	TestClockCurse();
 	TestExplosiveCrates();
+	TestAnxiousMask();
 	TestHopInputAndCloudOwnership();
 	TestDriverApplication();
 	TestActivationNotice();

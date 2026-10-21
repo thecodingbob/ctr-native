@@ -6,7 +6,7 @@ Implemented: catalogue/selection helpers, race gate, creation flow, per-slot
 persistence, save marker, pause inspection and runtime timers/Interval/Random scheduling.
 Inverted Steering, No Hopping, Wobble Steering, Low Gravity, Heavy Karts,
 Speed Capped, Super Speed, No Reserves, No Items, Wumpa Drain, Clock Curse,
-Explosive Crates and Defective Boosts are
+Explosive Crates, Defective Boosts and Anxious Mask are
 connected, with an activation-name overlay.
 Pending: remaining effects, Pickup/External triggers, provider and player guide.
 Save layouts and checkpoint ownership are documented in [CHAOS_STATE.md](CHAOS_STATE.md).
@@ -82,7 +82,7 @@ for a central dispatcher; generic level collisions also include hazards.
 
 ## Effect hooks
 
-All 16 effects have catalogue IDs/toggles. Thirteen are implemented; the
+All 16 effects have catalogue IDs/toggles. Fourteen are implemented; the
 remaining rows are source leads to verify during implementation.
 
 | Effects | Candidate mechanism |
@@ -98,7 +98,7 @@ remaining rows are source leads to verify during implementation.
 | Wumpa Drain — done | Detect crossed seconds from each activation's elapsed time in the existing driver hook; independent duplicate pulses, stop at zero and preserve pending pickup awards |
 | Clock Curse — done | One-off spin hit, clock audio and full 32-bit received-clock timer, bypassing protection; new activations overwrite earlier clocks |
 | Defective Boosts — done | Invert the live fire-speed bonus while reserves remain; preserve normal fuel grants, accumulation and consumption for every boost source |
-| Anxious Mask | Request rescue during current-frame collision processing, before mask-request consumption |
+| Anxious Mask — done | Grounded contact with slowing terrain requests retail rescue before checkpoint updates; existing rescue states prevent repeated requests |
 | Hard Crates | Shared damage helper across three crate handlers, validating victim and collision type |
 | Bot Takes Wheel | Guarded `BOTS_Driver_Convert` plus explicit human-control hand-back |
 
@@ -107,9 +107,9 @@ Key implementation constraints:
 - `const_TerminalVelocity` caps vertical velocity, not forward speed. Speed effects
   derive local targets/acceleration without overwriting constants. The existing
   `0x6400` target clamp limits Super Speed; slopes/collisions remain retail.
-- Rescue needs captured per-driver cooldowns, grounded/off-road/state checks and
-  valid restart data. Stock rescue returns to a checkpoint, changes camera/input,
-  wipes turbo and can cost wumpa. Destination and speed ceiling remain open.
+- Anxious Mask uses the physical contact terrain and grounded contact, leaving
+  rescue eligibility to the retail consumer. Stock rescue returns to
+  the last valid checkpoint, changes camera/input, wipes turbo and can cost wumpa.
 - Explosive Crates reuses the retail damage implementation with protection bypass;
   weapon hits retain ordinary crate behavior. Hard Crates remains separate.
 - Takeover must handle missing nav paths without partial conversion. Audit clock
