@@ -1033,6 +1033,155 @@ static void TestNoItems(void)
 	CTR_TEST_CHECK_EQ(human.heldItemID, HELD_ITEM_POTION, "race reset immediately restores ordinary inventory behavior");
 }
 
+static void TickAndApplyDrivers(int elapsedMS)
+{
+	Tick(elapsedMS);
+	const struct GamepadBuffer pad = {.stickLX = 128};
+	for (size_t i = 0; i < len(s_tracker.drivers); i++)
+	{
+		struct Driver *driver = s_tracker.drivers[i];
+		if (driver != NULL)
+		{
+			int steering = pad.stickLX;
+			driver->actionsFlagSet = Chaos_ApplyDriver(driver, &pad, &steering, driver->actionsFlagSet);
+		}
+	}
+}
+
+static void TestWumpaDrain(void)
+{
+	CTR_TEST_SECTION("Wumpa Drain loses one credited fruit per game second for unfinished humans only");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_WUMPA_DRAIN] = true;
+	sdata->chaosSettings.enabledCount++;
+	struct Driver human = {.driverID = 0, .numWumpas = 10, .numTimesWumpa = 20, .reserves = 1000};
+	struct Driver partner = {.driverID = 1, .numWumpas = 7};
+	struct Driver bot = {.driverID = 2, .numWumpas = 10, .actionsFlagSet = ACTION_BOT};
+	s_tracker.drivers[0] = &human;
+	s_tracker.drivers[1] = &partner;
+	s_tracker.drivers[2] = &bot;
+	human.PickupWumpaHUD.numCollected = 3;
+	const u32 rng = sdata->chaosRng;
+	TickAndApplyDrivers(2000);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 10, "inactive Wumpa Drain leaves fruit intact");
+	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 5000);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 10, "activation waits for the first full second");
+	TickAndApplyDrivers(999);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 10, "partial seconds do not drain fruit early");
+	TickAndApplyDrivers(1);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 9, "the first complete second drains one fruit");
+	CTR_TEST_CHECK_EQ(partner.numWumpas, 6, "the co-op partner uses the same pulse cadence");
+	CTR_TEST_CHECK_EQ(bot.numWumpas, 10, "Wumpa Drain preserves bot fruit");
+	TickAndApplyDrivers(32);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 9, "frames after a pulse do not repeat already counted seconds");
+	TickAndApplyDrivers(2468);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 7, "a longer frame accounts for every full elapsed second");
+	CTR_TEST_CHECK_EQ(partner.numWumpas, 4, "elapsed-time catch-up also applies to the partner");
+	CTR_TEST_CHECK_EQ(human.PickupWumpaHUD.numCollected, 3, "fruit still in the pickup animation remains pending");
+	CTR_TEST_CHECK_EQ(human.numTimesWumpa, 20, "draining fruit does not rewrite collection statistics");
+	CTR_TEST_CHECK_EQ(human.reserves, 1000, "draining fruit leaves boost reserves alone");
+	human.numWumpas++;
+	TickAndApplyDrivers(500);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 7, "the next pulse uses the current count including newly credited fruit");
+	TickAndApplyDrivers(1000);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 7, "the expiry frame applies no additional drain");
+	CTR_TEST_CHECK_EQ(partner.numWumpas, 3, "an activation removed at exact expiry cannot apply another pulse");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 0, "the drain activation expires normally");
+	TickAndApplyDrivers(2000);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 7, "expired Wumpa Drain cannot remove more fruit");
+	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 500);
+	TickAndApplyDrivers(2000);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 7, "a sub-second activation cannot drain a whole second from a longer frame");
+	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 1500);
+	TickAndApplyDrivers(3000);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 7, "a frame extending past expiry cannot apply a removed activation");
+	human.numWumpas = 1;
+	partner.numWumpas = 0;
+	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 4000);
+	TickAndApplyDrivers(3000);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 0, "draining more fruit than available stops at zero");
+	CTR_TEST_CHECK_EQ(partner.numWumpas, 0, "an empty inventory cannot underflow");
+	CTR_TEST_CHECK_EQ(sdata->chaosRng, rng, "drain timing consumes no Chaos RNG samples");
+
+	CTR_TEST_SECTION("duplicate drain activations keep independent pulse clocks and expiry");
+	Chaos_Reset();
+	Chaos_BeginRace(&s_tracker);
+	human.numWumpas = 10;
+	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 2500);
+	TickAndApplyDrivers(750);
+	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 2500);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 2, "duplicate drains still occupy separate activation slots");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[1].elapsedMS, 0, "a duplicate drain starts its own clock");
+	TickAndApplyDrivers(250);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 9, "a later duplicate does not reset the first activation's cadence");
+	TickAndApplyDrivers(500);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 9, "neither activation repeats an old pulse between boundaries");
+	TickAndApplyDrivers(250);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 8, "the later duplicate produces its own first pulse");
+	TickAndApplyDrivers(250);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 7, "the first activation produces its own second pulse");
+	TickAndApplyDrivers(500);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 1, "the oldest drain expires independently");
+	TickAndApplyDrivers(250);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 6, "the surviving duplicate retains its own cadence");
+	TickAndApplyDrivers(500);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 6, "final expiry applies no extra pulse");
+	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 2000);
+	TickAndApplyDrivers(750);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 6, "a new activation after final expiry starts with a fresh second");
+	TickAndApplyDrivers(250);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 5, "the fresh activation drains only after its own full second");
+	Chaos_Reset();
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 0, "reset removes the activation-owned drain clock");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 5, "reset does not restore already drained fruit");
+
+	CTR_TEST_SECTION("drain cadence freezes with race gates and survives resident restoration");
+	Chaos_BeginRace(&s_tracker);
+	human.numWumpas = 10;
+	partner.numWumpas = 10;
+	partner.actionsFlagSet = ACTION_RACE_FINISHED;
+	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 5000);
+	TickAndApplyDrivers(500);
+	const struct ChaosRuntime saved = sdata->chaosRuntime;
+	s_tracker.gameMode1 |= PAUSE_1;
+	TickAndApplyDrivers(5000);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 10, "pause prevents drain pulses");
+	CTR_TEST_CHECK(memcmp(&saved, &sdata->chaosRuntime, sizeof(saved)) == 0, "pause freezes the partial cadence and independent timers");
+	s_tracker.gameMode1 &= ~PAUSE_1;
+	sdata->ptrActiveMenu = &sdata->chaosMenu.menu;
+	TickAndApplyDrivers(5000);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 10, "menus prevent drain pulses");
+	sdata->ptrActiveMenu = NULL;
+	s_tracker.gameMode1 |= ADVENTURE_ARENA;
+	TickAndApplyDrivers(5000);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 10, "Adventure hubs prevent drain pulses");
+	s_tracker.gameMode1 &= ~ADVENTURE_ARENA;
+	TickAndApplyDrivers(500);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 9, "unpausing resumes the remaining half-second");
+	CTR_TEST_CHECK_EQ(partner.numWumpas, 10, "finished humans are excluded from drain pulses");
+	sdata->chaosRuntime = saved;
+	human.numWumpas = 10;
+	TickAndApplyDrivers(499);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 10, "resident restoration resumes the saved partial cadence");
+	TickAndApplyDrivers(1);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 9, "the restored cadence fires at the original boundary");
+
+	CTR_TEST_SECTION("timed scheduling gives a new drain its full first second");
+	SetupRace(CHAOS_TRIGGER_INTERVAL);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_LOW_GRAVITY] = false;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_WUMPA_DRAIN] = true;
+	sdata->chaosSettings.triggerIntervalSeconds = 1;
+	sdata->chaosSettings.durationSeconds = 2;
+	Chaos_BeginRace(&s_tracker);
+	human.numWumpas = 10;
+	s_tracker.drivers[0] = &human;
+	TickAndApplyDrivers(1000);
+	CTR_TEST_CHECK(Chaos_IsActive(CHAOS_EFFECT_WUMPA_DRAIN), "Interval can schedule Wumpa Drain");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 10, "the scheduling frame does not retroactively consume the new drain's first second");
+	TickAndApplyDrivers(1000);
+	CTR_TEST_CHECK_EQ(human.numWumpas, 9, "only the older activation can pulse while the new duplicate is still at zero");
+}
+
 static void TestHopInputAndCloudOwnership(void)
 {
 	CTR_TEST_SECTION("No Hopping clears pending manual jumps without overwriting retail cloud effects");
@@ -1528,6 +1677,7 @@ int main(void)
 	TestSpeedEffects();
 	TestNoReserves();
 	TestNoItems();
+	TestWumpaDrain();
 	TestHopInputAndCloudOwnership();
 	TestDriverApplication();
 	TestActivationNotice();

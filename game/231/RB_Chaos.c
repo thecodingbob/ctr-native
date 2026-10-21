@@ -118,6 +118,7 @@ bool Chaos_Activate(ChaosEffectId effect, s32 durationMS)
 		.effect = effect,
 		.remainingMS = durationMS,
 		.noticeRemainingMS = CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS,
+	        .elapsedMS = 0;
 	};
 	OtherFX_Play_LowLevel(HOWL_SFX_SWISH, 1, HOWL_SFX_DEFAULT_FLAGS | HOWL_SFX_GAIN_DOUBLE_FLAG);
 	return true;
@@ -238,6 +239,18 @@ static int Chaos_WobbleSteering(const struct ChaosActivation *entry, const struc
 	return steering;
 }
 
+static void Chaos_TickWumpaDrain(s32 elapsedMS, struct Driver *driver)
+{
+	const s32 frameMS = sdata->gGT->elapsedTimeMS;
+	const s32 previousMS = elapsedMS > frameMS ? elapsedMS - frameMS : 0;
+	const bool didPulse = elapsedMS / CHAOS_WUMPA_DRAIN_PERIOD_MS > previousMS / CHAOS_WUMPA_DRAIN_PERIOD_MS;
+	if (didPulse && driver->numWumpas > 0)
+	{
+	      driver->numWumpas -= 1;
+	}
+
+}
+
 u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, int *steering, u32 actions)
 {
 	const struct ChaosRuntime *runtime = &sdata->chaosRuntime;
@@ -272,6 +285,10 @@ u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, in
 		else if (effect == CHAOS_EFFECT_NO_RESERVES)
 		{
 			Chaos_ApplyReserveRules(driver);
+		}
+		else if (effect == CHAOS_EFFECT_WUMPA_DRAIN)
+		{
+			Chaos_TickWumpaDrain(runtime->active[i].elapsedMS, driver);
 		}
 	}
 	return actions;

@@ -211,6 +211,23 @@ The effect applies only to unfinished humans in eligible races. Duplicate entrie
 retain independent lifetimes; final expiry/reset allows new inventory without
 restoring discarded items. No inventory snapshot is stored.
 
+Wumpa Drain removes one credited fruit per game second from unfinished humans,
+stopping at zero. `Chaos_TickWumpaDrain` runs through the existing
+`Chaos_ApplyDriver` hook after runtime timers and scheduling have updated.
+It uses `ChaosActivation.elapsedMS`, also used by Wobble, and derives the previous
+time as `max(0, elapsedMS - frameMS)`. The difference between the two whole-second
+counts gives this frame's pulses, including multiple boundaries in a long frame.
+Each activation starts at zero and has independent pulse/expiry/notice timing;
+overlapping copies can therefore drain additional fruit. Newly scheduled entries
+do not pulse at zero. Expired entries have already been removed, so the expiry
+frame applies no drain, including when it lands exactly on a second boundary.
+The clocks are captured in SDATA and freeze with the runtime gates; no
+effect-specific runtime timer is needed.
+Drain changes only `numWumpas`, not pending pickup animations, collection statistics
+or boost fuel. It is a direct modifier rather than damage; mask protection does
+not block it. Already drained fruit is not restored on expiry/reset, and pulses
+consume no RNG. Newly scheduled entries receive their full first second.
+
 Each activation has an independent three-second announcement, followed by 320 ms
 of docking. Successful activations play the transition swish (`0x65`) once;
 rejected requests and HUD redraws do not play it.

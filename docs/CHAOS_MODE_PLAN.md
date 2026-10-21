@@ -5,7 +5,7 @@
 Implemented: catalogue/selection helpers, race gate, creation flow, per-slot
 persistence, save marker, pause inspection and runtime timers/Interval/Random scheduling.
 Inverted Steering, No Hopping, Wobble Steering, Low Gravity, Heavy Karts,
-Speed Capped, Super Speed, No Reserves and No Items are connected, with an
+Speed Capped, Super Speed, No Reserves, No Items and Wumpa Drain are connected, with an
 activation-name overlay.
 Pending: remaining effects, Pickup/External triggers, provider and player guide.
 Save layouts and checkpoint ownership are documented in [CHAOS_STATE.md](CHAOS_STATE.md).
@@ -81,7 +81,7 @@ for a central dispatcher; generic level collisions also include hazards.
 
 ## Effect hooks
 
-All 16 effects have catalogue IDs/toggles. Nine are implemented; the
+All 16 effects have catalogue IDs/toggles. Ten are implemented; the
 remaining rows are source leads to verify during implementation.
 
 | Effects | Candidate mechanism |
@@ -94,7 +94,8 @@ remaining rows are source leads to verify during implementation.
 | No Reserves — done | Clear both fuel timers only in the existing driver hook; retail boost grants persist until the next application; allow new fuel after expiry |
 | No Items — done | Empty inventory and cancel pending launches/roulette through one pre-item hook; keep already deployed effects and discard fresh rewards at the next check |
 | Punishing Items | Audit crate and final reel resolution; replacing the roulette sentinel alone is not verified |
-| Wumpa Drain / Clock Curse | Explicit pulse/activation timing using existing wumpa/clock paths |
+| Wumpa Drain — done | Detect crossed seconds from each activation's elapsed time in the existing driver hook; independent duplicate pulses, stop at zero and preserve pending pickup awards |
+| Clock Curse | Explicit activation timing using the existing clock path |
 | Clear Boosts | Clear both reserve fields at the intended pickup/boost event; qualifying contacts remain to define |
 | Anxious Mask | Request rescue during current-frame collision processing, before mask-request consumption |
 | Hard Crates | Shared damage helper across three crate handlers, validating victim and collision type |
@@ -138,8 +139,9 @@ currently recorded, so provider-driven replay verification is not guaranteed.
 
 1. Verify the playable effects in game: Interval/Random with only Inverted Steering,
    No Hopping, Wobble Steering, Low Gravity, Heavy Karts, Speed Capped, Super Speed
-   No Reserves and No Items selected; check steering, jumps, speed/acceleration,
-   reserve/item suppression and the activation banner in 1P/2P.
+   No Reserves, No Items and Wumpa Drain selected; check steering, jumps,
+   speed/acceleration, reserve/item suppression, fruit drain cadence and the
+   activation banner in 1P/2P.
 2. Baseline/ordered modifier application, remaining effects and contact
    triggers, then External.
 3. `docs/features/CHAOS.md` + README links: creation, scope, stacking, effects,
