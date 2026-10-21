@@ -5,7 +5,7 @@
 Implemented: catalogue/selection helpers, race gate, creation flow, per-slot
 persistence, save marker, pause inspection and runtime timers/Interval/Random scheduling.
 Inverted Steering, No Hopping, Wobble Steering, Low Gravity, Heavy Karts,
-Speed Capped, Super Speed, No Reserves, No Items, Wumpa Drain and Clock Curse are
+Speed Capped, Super Speed, No Reserves, No Items, Wumpa Drain, Clock Curse and Explosive Crates are
 connected, with an activation-name overlay.
 Pending: remaining effects, Pickup/External triggers, provider and player guide.
 Save layouts and checkpoint ownership are documented in [CHAOS_STATE.md](CHAOS_STATE.md).
@@ -81,7 +81,7 @@ for a central dispatcher; generic level collisions also include hazards.
 
 ## Effect hooks
 
-All 16 effects have catalogue IDs/toggles. Eleven are implemented; the
+All 16 effects have catalogue IDs/toggles. Twelve are implemented; the
 remaining rows are source leads to verify during implementation.
 
 | Effects | Candidate mechanism |
@@ -93,7 +93,7 @@ remaining rows are source leads to verify during implementation.
 | Speed Capped / Super Speed — done | Cap the forward target at half the live class speed / double resolved forward target and acceleration; retain retail hard limit and deactivate each other |
 | No Reserves — done | Clear both fuel timers only in the existing driver hook; retail boost grants persist until the next application; allow new fuel after expiry |
 | No Items — done | Empty inventory and cancel pending launches/roulette through one pre-item hook; keep already deployed effects and discard fresh rewards at the next check |
-| Punishing Items | Audit crate and final reel resolution; replacing the roulette sentinel alone is not verified |
+| Explosive Crates — done | Direct kart contact with item, Wumpa or time crates triggers an explosion and blast damage, bypassing protection; retain normal rewards |
 | Wumpa Drain — done | Detect crossed seconds from each activation's elapsed time in the existing driver hook; independent duplicate pulses, stop at zero and preserve pending pickup awards |
 | Clock Curse — done | One-off spin hit, clock audio and full 32-bit received-clock timer, bypassing protection; new activations overwrite earlier clocks |
 | Clear Boosts | Clear both reserve fields at the intended pickup/boost event; qualifying contacts remain to define |
@@ -109,8 +109,8 @@ Key implementation constraints:
 - Rescue needs captured per-driver cooldowns, grounded/off-road/state checks and
   valid restart data. Stock rescue returns to a checkpoint, changes camera/input,
   wipes turbo and can cost wumpa. Destination and speed ceiling remain open.
-- Crate damage should reuse `RB_Hazard_HurtDriver` and existing damage feedback;
-  validate direct kart hits separately from weapon hits.
+- Explosive Crates reuses the retail damage implementation with protection bypass;
+  weapon hits retain ordinary crate behavior. Hard Crates remains separate.
 - Takeover must handle missing nav paths without partial conversion. Audit clock
   freezing/`distanceDriven`, action latches, thread ownership, nav-list links,
   `botData`, rotation, velocity and damage states. Restore only owned state;
@@ -139,7 +139,7 @@ currently recorded, so provider-driven replay verification is not guaranteed.
 
 1. Verify the playable effects in game: Interval/Random with only Inverted Steering,
    No Hopping, Wobble Steering, Low Gravity, Heavy Karts, Speed Capped, Super Speed
-   No Reserves, No Items, Wumpa Drain and Clock Curse selected; check steering,
+   No Reserves, No Items, Wumpa Drain, Clock Curse and Explosive Crates selected; check steering,
    jumps, speed/acceleration, reserve/item suppression, fruit drain cadence,
    sustained clock slowdown and the activation banner in 1P/2P.
 2. Baseline/ordered modifier application, remaining effects and contact

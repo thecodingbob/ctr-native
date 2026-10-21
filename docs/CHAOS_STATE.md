@@ -229,6 +229,19 @@ or boost fuel. It is a direct modifier rather than damage; mask protection does
 not block it. Already drained fruit is not restored on expiry/reset, and pulses
 consume no RNG. Newly scheduled entries receive their full first second.
 
+Explosive Crates (stable ID 9, formerly Punishing Items) triggers on direct kart
+contact with item, Wumpa and time crates. The three crate handlers call
+`Chaos_ApplyCrateRules` only when a visible crate actually breaks and the hitter
+is a driver. The helper creates the full bomb/missile burst (two crossed
+`STATIC_WARPEDBURST` billboards and a shockwave) at the crate through
+`RB_Burst_InitVisual`, plays its
+positional explosion sound and applies retail blast damage with protection
+bypass. Masks, shields and invincibility remain intact; existing damage-state
+exclusions still apply. Only unfinished humans in eligible races trigger it.
+Duplicate activations cause one explosion per contact. Normal crate rewards,
+cooldowns and weapon-hit handling remain retail, including contacts made with
+an already-full inventory. No new per-effect state is required.
+
 `Chaos_ApplyOneOff` runs once after a successful activation is registered.
 Clock Curse uses it to apply the initial spin hit to unfinished humans. The retail
 clock sound plays once in `Chaos_ApplyClockCurse`, which shares the retail damage

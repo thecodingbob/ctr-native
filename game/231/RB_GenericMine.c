@@ -397,7 +397,7 @@ checkPoolState:
 		else if (overflowModel == STATIC_CRATE_TNT)
 		{
 			// tnt explosion sound
-			PlaySound3D(0x3d, inst);
+			PlaySound3D(HOWL_SFX_TNT_EXPLOSION, inst);
 
 			RB_Blowup_Init(inst);
 		}
@@ -435,7 +435,7 @@ void RB_GenericMine_ThDestroy(struct Thread *t, struct Instance *inst, struct Mi
 	else if (model == STATIC_CRATE_TNT)
 	{
 		// tnt explosion sound
-		param = 0x3d;
+		param = HOWL_SFX_TNT_EXPLOSION;
 
 		PlaySound3D(param, inst);
 

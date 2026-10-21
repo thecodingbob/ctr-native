@@ -30,7 +30,7 @@ typedef enum {
 
 	// Tier B: items, wumpa, the economy.
 	CHAOS_EFFECT_NO_ITEMS = 8,
-	CHAOS_EFFECT_PUNISHING_ITEMS = 9,
+	CHAOS_EFFECT_EXPLOSIVE_CRATES = 9,
 	CHAOS_EFFECT_WUMPA_DRAIN = 10,
 	CHAOS_EFFECT_CLOCK_CURSE = 11,
 	CHAOS_EFFECT_CLEAR_BOOSTS = 12,
@@ -71,7 +71,7 @@ static const ChaosEffectDef g_chaosEffectDefs[CHAOS_EFFECT_COUNT] =
 	[CHAOS_EFFECT_SUPER_SPEED] = { "super-speed", "Super Speed", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_NO_RESERVES] = { "no-reserves", "No Reserves", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_NO_ITEMS] = { "no-items", "No Items", CHAOS_SCOPE_HUMANS },
-	[CHAOS_EFFECT_PUNISHING_ITEMS] = { "punishing-items", "Punishing Items", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_EXPLOSIVE_CRATES] = { "explosive-crates", "Explosive Crates", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_WUMPA_DRAIN] = { "wumpa-drain", "Wumpa Drain", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_CLOCK_CURSE] = { "clock-curse", "Clock Curse", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_CLEAR_BOOSTS] = { "clear-boosts", "Clear Boosts", CHAOS_SCOPE_HUMANS },

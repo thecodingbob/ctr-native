@@ -161,6 +161,7 @@ int RB_CrateWeapon_ThCollide(struct Thread *crateThread, struct Thread *collidin
 			else
 			{
 				driver = collidingTh->object;
+				Chaos_ApplyCrateRules(driver, crateInst);
 			}
 
 			if ((driver->heldItemID != HELD_ITEM_NONE) && (driver->noItemTimer == 0))
@@ -316,6 +317,7 @@ int RB_CrateFruit_ThCollide(struct Thread *crateThread, struct Thread *colliding
 			if (hitModelID == DYNAMIC_PLAYER)
 			{
 				driver = collidingTh->object;
+				Chaos_ApplyCrateRules(driver, crateInst);
 
 				driver->PickupWumpaHUD.cooldown = 5;
 				driver->PickupWumpaHUD.numCollected = newWumpa;
@@ -459,6 +461,7 @@ int RB_CrateTime_ThCollide(struct Thread *crateThread, struct Thread *driverTh, 
 			else
 			{
 				driver = driverTh->object;
+				Chaos_ApplyCrateRules(driver, crateInst);
 			}
 
 			driver->numTimeCrates++;

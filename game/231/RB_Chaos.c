@@ -227,6 +227,16 @@ void Chaos_ApplyReserveRules(struct Driver *driver)
 	}
 }
 
+void Chaos_ApplyCrateRules(struct Driver *driver, struct Instance *crateInst)
+{
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_EXPLOSIVE_CRATES, driver))
+	{
+		RB_Burst_InitVisual(crateInst);
+		PlaySound3D(HOWL_SFX_TNT_EXPLOSION, crateInst);
+		VehPickState_ApplyDamage(driver, VEH_PICK_DAMAGE_BLAST, NULL, 0, true);
+	}
+}
+
 void Chaos_ApplyItemRules(struct Driver *driver)
 {
 	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_NO_ITEMS, driver))

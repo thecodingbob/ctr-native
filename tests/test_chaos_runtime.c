@@ -9,6 +9,9 @@ static bool s_teleported;
 static bool s_allHumansFinished;
 static int s_activationSounds;
 static int s_clockSounds;
+static int s_crateExplosions;
+static int s_crateSounds;
+static struct Instance *s_lastExplodingCrate;
 static u32 s_lastSound;
 static u32 s_lastSoundFlags;
 static int s_noticeDraws;
@@ -90,6 +93,17 @@ void VehBirth_TeleportAll(struct GameTracker *gGT, u32 spawnFlags)
 }
 
 void Music_Stop(void) {}
+void RB_Burst_InitVisual(struct Instance *inst)
+{
+	s_crateExplosions++;
+	s_lastExplodingCrate = inst;
+}
+void PlaySound3D(u32 soundID, struct Instance *inst)
+{
+	CTR_TEST_CHECK_EQ(soundID, HOWL_SFX_TNT_EXPLOSION, "explosive crates use explosion audio");
+	CTR_TEST_CHECK(inst == s_lastExplodingCrate, "explosion audio originates at the touched crate");
+	s_crateSounds++;
+}
 void VehPhysProc_SpinFirst_Init(struct Thread *thread, struct Driver *driver)
 {
 	(void)thread;
@@ -230,6 +244,9 @@ static void SetupRace(int trigger)
 	s_allHumansFinished = false;
 	s_activationSounds = 0;
 	s_clockSounds = 0;
+	s_crateExplosions = 0;
+	s_crateSounds = 0;
+	s_lastExplodingCrate = NULL;
 	memset(&sdata_static, 0, sizeof(sdata_static));
 	memset(&s_tracker, 0, sizeof(s_tracker));
 	memset(&g_config, 0, sizeof(g_config));
@@ -1260,6 +1277,79 @@ static void TestWumpaDrain(void)
 	CTR_TEST_CHECK_EQ(human.numWumpas, 9, "only the older activation can pulse while the new duplicate is still at zero");
 }
 
+static void TestExplosiveCrates(void)
+{
+	CTR_TEST_SECTION("Explosive Crates applies one blast per contact and bypasses protections");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_EXPLOSIVE_CRATES] = true;
+	sdata->chaosSettings.enabledCount++;
+	struct Model model = {.id = PU_RANDOM_CRATE};
+	struct Instance crate = {.model = &model};
+	struct Thread thread = {0};
+	struct Instance inst = {.thread = &thread};
+	struct Driver human = {.driverID = 0, .instSelf = &inst, .reserves = 1000, .heldItemID = HELD_ITEM_POTION};
+	Chaos_ApplyCrateRules(&human, &crate);
+	CTR_TEST_CHECK_EQ(s_crateExplosions, 0, "inactive explosive crates do not create explosions");
+	Chaos_Activate(CHAOS_EFFECT_EXPLOSIVE_CRATES, 5000);
+	Chaos_Activate(CHAOS_EFFECT_EXPLOSIVE_CRATES, 1000);
+	CTR_TEST_CHECK_EQ(s_crateExplosions, 0, "activation waits for a crate contact");
+	Chaos_ApplyCrateRules(&human, &crate);
+	CTR_TEST_CHECK_EQ(s_crateExplosions, 1, "overlapping activations cause only one explosion per contact");
+	CTR_TEST_CHECK_EQ(s_crateSounds, 1, "a contact plays one explosion sound");
+	CTR_TEST_CHECK(s_lastExplodingCrate == &crate, "the visual explosion uses the contacted crate");
+	CTR_TEST_CHECK(human.funcPtrs[DRIVER_FUNC_INIT] == VehStuckProc_Tumble_Init, "crate contact selects retail blast damage rather than a spin");
+	CTR_TEST_CHECK_EQ(human.reserves, 0, "the blast clears boost reserves through ordinary damage handling");
+	CTR_TEST_CHECK_EQ(human.heldItemID, HELD_ITEM_POTION, "explosive crates do not discard the held item");
+
+	human.funcPtrs[DRIVER_FUNC_INIT] = NULL;
+	human.actionsFlagSet |= ACTION_MASK_WEAPON;
+	g_config.maskProtectsFromDamage = true;
+	Chaos_ApplyCrateRules(&human, &crate);
+	CTR_TEST_CHECK(human.funcPtrs[DRIVER_FUNC_INIT] == VehStuckProc_Tumble_Init, "crate blast damage bypasses a protective mask");
+	CTR_TEST_CHECK((human.actionsFlagSet & ACTION_MASK_WEAPON) != 0, "the blast does not remove the mask");
+	CTR_TEST_CHECK_EQ(s_crateExplosions, 2, "mask protection does not suppress the crate explosion");
+	human.actionsFlagSet &= ~ACTION_MASK_WEAPON;
+	human.funcPtrs[DRIVER_FUNC_INIT] = NULL;
+	human.invincibleTimer = 100;
+	Chaos_ApplyCrateRules(&human, &crate);
+	CTR_TEST_CHECK(human.funcPtrs[DRIVER_FUNC_INIT] == VehStuckProc_Tumble_Init, "crate blast damage bypasses invincibility");
+	CTR_TEST_CHECK_EQ(human.invincibleTimer, 100, "the blast preserves the invincibility timer");
+	human.invincibleTimer = 0;
+	human.funcPtrs[DRIVER_FUNC_INIT] = NULL;
+	struct Shield shield = {0};
+	struct Thread shieldThread = {.object = &shield};
+	struct Instance bubble = {.thread = &shieldThread};
+	human.instBubbleHold = &bubble;
+	Chaos_ApplyCrateRules(&human, &crate);
+	CTR_TEST_CHECK(human.funcPtrs[DRIVER_FUNC_INIT] == VehStuckProc_Tumble_Init, "crate blast damage bypasses a shield");
+	CTR_TEST_CHECK_EQ(shield.flags, 0, "the blast does not request a shield pop");
+	CTR_TEST_CHECK(human.instBubbleHold == &bubble, "the blast leaves the shield attached");
+
+	CTR_TEST_SECTION("Explosive Crates respects scope, race gates and independent activation expiry");
+	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT};
+	struct Driver finished = {.driverID = 0, .actionsFlagSet = ACTION_RACE_FINISHED};
+	const int explosions = s_crateExplosions;
+	Chaos_ApplyCrateRules(&bot, &crate);
+	Chaos_ApplyCrateRules(&finished, &crate);
+	Chaos_ApplyCrateRules(NULL, &crate);
+	CTR_TEST_CHECK_EQ(s_crateExplosions, explosions, "bots, finished humans and missing drivers cannot trigger explosions");
+	s_tracker.gameMode1 |= PAUSE_1;
+	Chaos_ApplyCrateRules(&human, &crate);
+	CTR_TEST_CHECK_EQ(s_crateExplosions, explosions, "pause disables crate explosions");
+	s_tracker.gameMode1 &= ~PAUSE_1;
+	s_tracker.gameMode1 |= ADVENTURE_ARENA;
+	Chaos_ApplyCrateRules(&human, &crate);
+	CTR_TEST_CHECK_EQ(s_crateExplosions, explosions, "Adventure hubs retain ordinary crates");
+	s_tracker.gameMode1 &= ~ADVENTURE_ARENA;
+	Tick(1000);
+	human.invincibleTimer = 0;
+	Chaos_ApplyCrateRules(&human, &crate);
+	CTR_TEST_CHECK_EQ(s_crateExplosions, explosions + 1, "the surviving activation keeps crates explosive");
+	Tick(4000);
+	Chaos_ApplyCrateRules(&human, &crate);
+	CTR_TEST_CHECK_EQ(s_crateExplosions, explosions + 1, "final expiry restores ordinary crates");
+}
+
 static void TestClockCurse(void)
 {
 	CTR_TEST_SECTION("Clock Curse sets the received clock once and bypasses protection");
@@ -1903,6 +1993,7 @@ int main(void)
 	TestNoItems();
 	TestWumpaDrain();
 	TestClockCurse();
+	TestExplosiveCrates();
 	TestHopInputAndCloudOwnership();
 	TestDriverApplication();
 	TestActivationNotice();
