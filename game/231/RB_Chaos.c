@@ -202,6 +202,20 @@ void Chaos_ApplyReserveRules(struct Driver *driver)
 	}
 }
 
+void Chaos_ApplyItemRules(struct Driver *driver)
+{
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_NO_ITEMS, driver))
+	{
+	  struct GameTracker *gGT = sdata->gGT;
+	  driver->heldItemID = HELD_ITEM_NONE;
+	  driver->numHeldItems = 0;
+	  driver->itemRollTimer = 0;
+	  driver->noItemTimer = 0;
+	  driver->actionsFlagSet &= ~ACTION_WEAPON_FIRE_REQUEST;
+	  gGT->gameMode1 &= ~WARPBALL_HELD;
+	}
+}
+
 static int Chaos_WobbleSteering(const struct ChaosActivation *entry, const struct GamepadBuffer *pad)
 {
 	const int center = pad->rwd != NULL ? pad->rwd->gamepadCenter : CHAOS_STICK_CENTER;

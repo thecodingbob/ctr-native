@@ -195,7 +195,7 @@ int RB_CrateWeapon_ThCollide(struct Thread *crateThread, struct Thread *collidin
 
 				if ((GAME_TRACKER->gameMode1 & ROLLING_ITEM) == 0)
 				{
-					OtherFX_Play(0x5d, 0);
+					OtherFX_Play(HOWL_SFX_ITEM_ROULETTE, 0);
 					GAME_TRACKER->gameMode1 |= ROLLING_ITEM;
 				}
 

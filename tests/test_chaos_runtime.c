@@ -918,6 +918,121 @@ static void TestNoReserves(void)
 	CTR_TEST_CHECK_EQ(human.reserves, 1000, "Adventure hubs do not receive reserve restrictions");
 }
 
+static void TestNoItems(void)
+{
+	CTR_TEST_SECTION("No Items discards inventory and pending requests before roulette and weapon processing");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_NO_ITEMS] = true;
+	sdata->chaosSettings.enabledCount++;
+	struct Instance shield = {0};
+	struct Instance bomb = {0};
+	struct Thread cloud = {0};
+	struct Driver human = {
+		.driverID = 0, .heldItemID = HELD_ITEM_BOMB_3X, .numHeldItems = 3,
+		.noItemTimer = 20, .itemRollTimer = 10,
+		.actionsFlagSet = ACTION_WEAPON_FIRE_REQUEST | ACTION_MASK_WEAPON | ACTION_JUMP_BUTTON_HELD,
+		.instBubbleHold = &shield, .instBombThrow = &bomb, .thCloud = &cloud,
+		.superEngineTimer = 1000, .invisibleTimer = 2000, .invincibleTimer = 3000,
+		.numWumpas = 10, .reserves = 1000, .turbo_outsideTimer = 500,
+	};
+	struct Driver partner = {.driverID = 1, .heldItemID = HELD_ITEM_NONE};
+	s_tracker.drivers[0] = &human;
+	s_tracker.drivers[1] = &partner;
+	const struct Driver original = human;
+	Chaos_ApplyItemRules(&human);
+	CTR_TEST_CHECK(memcmp(&human, &original, sizeof(human)) == 0, "inactive No Items leaves inventory and pending requests intact");
+	Chaos_Activate(CHAOS_EFFECT_NO_ITEMS, 2000);
+	const u8 items[] = {
+		HELD_ITEM_TURBO, HELD_ITEM_BOMB_1X, HELD_ITEM_MISSILE_1X, HELD_ITEM_TNT,
+		HELD_ITEM_POTION, HELD_ITEM_SPRING, HELD_ITEM_SHIELD, HELD_ITEM_MASK,
+		HELD_ITEM_CLOCK, HELD_ITEM_BOMB_3X, HELD_ITEM_MISSILE_3X,
+		HELD_ITEM_INVISIBILITY, HELD_ITEM_SUPER_ENGINE, HELD_ITEM_NONE, HELD_ITEM_ROULETTE,
+	};
+	for (size_t i = 0; i < len(items); i++)
+	{
+		human.heldItemID = items[i];
+		human.numHeldItems = 3;
+		human.itemRollTimer = 10;
+		human.noItemTimer = 20;
+		human.actionsFlagSet |= ACTION_WEAPON_FIRE_REQUEST;
+		Chaos_ApplyItemRules(&human);
+		CTR_TEST_CHECK_EQ(human.heldItemID, HELD_ITEM_NONE, "every held item or roulette sentinel is discarded");
+		CTR_TEST_CHECK_EQ(human.numHeldItems, 0, "discarding inventory clears the stack count");
+		CTR_TEST_CHECK_EQ(human.itemRollTimer, 0, "discarding inventory cancels pending roulette time");
+		CTR_TEST_CHECK_EQ(human.noItemTimer, 0, "discarding inventory cancels the old weapon cooldown");
+		CTR_TEST_CHECK_EQ(human.actionsFlagSet, ACTION_MASK_WEAPON | ACTION_JUMP_BUTTON_HELD,
+		                  "pending weapon requests are removed without changing mask or jump flags");
+	}
+	CTR_TEST_CHECK(human.instBubbleHold == &shield && human.instBombThrow == &bomb,
+	               "already deployed shields and remote bombs remain owned by the driver");
+	CTR_TEST_CHECK(human.thCloud == &cloud, "No Items leaves retail rain-cloud ownership intact");
+	CTR_TEST_CHECK_EQ(human.superEngineTimer, 1000, "already activated Super Engine remains active");
+	CTR_TEST_CHECK_EQ(human.invisibleTimer, 2000, "already activated invisibility remains active");
+	CTR_TEST_CHECK_EQ(human.invincibleTimer, 3000, "No Items preserves existing invincibility");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 10, "No Items does not remove collected wumpa");
+	CTR_TEST_CHECK_EQ(human.reserves, 1000, "No Items does not remove existing boost reserves");
+	CTR_TEST_CHECK_EQ(human.turbo_outsideTimer, 500, "No Items does not alter outside turbo time");
+	human.heldItemID = HELD_ITEM_ROULETTE;
+	human.itemRollTimer = 0;
+	Chaos_ApplyItemRules(&human);
+	CTR_TEST_CHECK_EQ(human.heldItemID, HELD_ITEM_NONE, "a roulette already at its final frame is cancelled before award selection");
+
+	CTR_TEST_SECTION("No Items clears the warpball flag and also empties the co-op partner's inventory");
+	human.heldItemID = HELD_ITEM_WARPBALL;
+	human.actionsFlagSet |= ACTION_WEAPON_FIRE_REQUEST;
+	s_tracker.gameMode1 |= WARPBALL_HELD;
+	Chaos_ApplyItemRules(&human);
+	CTR_TEST_CHECK((s_tracker.gameMode1 & WARPBALL_HELD) == 0, "discarding an unlaunched warpball releases its reservation");
+	CTR_TEST_CHECK((human.actionsFlagSet & ACTION_WEAPON_FIRE_REQUEST) == 0, "discarding a requested warpball prevents its pending launch");
+	partner.heldItemID = HELD_ITEM_ROULETTE;
+	partner.itemRollTimer = 30;
+	Chaos_ApplyItemRules(&partner);
+	CTR_TEST_CHECK_EQ(partner.heldItemID, HELD_ITEM_NONE, "No Items also empties the co-op partner's slot");
+	CTR_TEST_CHECK_EQ(partner.itemRollTimer, 0, "No Items also cancels the co-op partner's roulette");
+
+	CTR_TEST_SECTION("No Items respects scope, gates, independent lifetimes and reset without restoring discarded inventory");
+	struct Driver bot = {.driverID = 2, .heldItemID = HELD_ITEM_MASK, .actionsFlagSet = ACTION_BOT | ACTION_WEAPON_FIRE_REQUEST};
+	const struct Driver originalBot = bot;
+	Chaos_ApplyItemRules(&bot);
+	Chaos_ApplyItemRules(NULL);
+	CTR_TEST_CHECK(memcmp(&bot, &originalBot, sizeof(bot)) == 0, "No Items leaves bot inventory and requests unchanged");
+	human.heldItemID = HELD_ITEM_TURBO;
+	human.actionsFlagSet |= ACTION_RACE_FINISHED;
+	Chaos_ApplyItemRules(&human);
+	CTR_TEST_CHECK_EQ(human.heldItemID, HELD_ITEM_TURBO, "finished humans keep their inventory");
+	human.actionsFlagSet &= ~ACTION_RACE_FINISHED;
+	s_tracker.gameMode1 |= ADVENTURE_ARENA;
+	Chaos_ApplyItemRules(&human);
+	CTR_TEST_CHECK_EQ(human.heldItemID, HELD_ITEM_TURBO, "Adventure hubs keep ordinary item behavior");
+	s_tracker.gameMode1 &= ~ADVENTURE_ARENA;
+	s_tracker.gameMode1 |= PAUSE_1;
+	const struct ChaosRuntime saved = sdata->chaosRuntime;
+	Tick(5000);
+	Chaos_ApplyItemRules(&human);
+	CTR_TEST_CHECK_EQ(human.heldItemID, HELD_ITEM_TURBO, "paused item processing cannot discard inventory");
+	CTR_TEST_CHECK(memcmp(&saved, &sdata->chaosRuntime, sizeof(saved)) == 0, "pause freezes No Items lifetimes");
+	s_tracker.gameMode1 &= ~PAUSE_1;
+	Tick(1000);
+	Chaos_Activate(CHAOS_EFFECT_NO_ITEMS, 500);
+	Tick(500);
+	Chaos_ApplyItemRules(&human);
+	CTR_TEST_CHECK_EQ(human.heldItemID, HELD_ITEM_NONE, "one duplicate expiring leaves the surviving restriction active");
+	Tick(500);
+	CTR_TEST_CHECK_EQ(human.heldItemID, HELD_ITEM_NONE, "final expiry does not restore discarded items");
+	human.heldItemID = HELD_ITEM_ROULETTE;
+	human.itemRollTimer = 90;
+	Chaos_ApplyItemRules(&human);
+	CTR_TEST_CHECK_EQ(human.heldItemID, HELD_ITEM_ROULETTE, "new rewards survive after final expiry");
+	CTR_TEST_CHECK_EQ(human.itemRollTimer, 90, "roulette can run normally after final expiry");
+	sdata->chaosRuntime = saved;
+	Chaos_ApplyItemRules(&human);
+	CTR_TEST_CHECK_EQ(human.heldItemID, HELD_ITEM_NONE, "resident restoration restores the restriction without an inventory snapshot");
+	Chaos_Reset();
+	human.heldItemID = HELD_ITEM_POTION;
+	Chaos_ApplyItemRules(&human);
+	CTR_TEST_CHECK_EQ(human.heldItemID, HELD_ITEM_POTION, "race reset immediately restores ordinary inventory behavior");
+}
+
 static void TestHopInputAndCloudOwnership(void)
 {
 	CTR_TEST_SECTION("No Hopping clears pending manual jumps without overwriting retail cloud effects");
@@ -1412,6 +1527,7 @@ int main(void)
 	TestGravityEffects();
 	TestSpeedEffects();
 	TestNoReserves();
+	TestNoItems();
 	TestHopInputAndCloudOwnership();
 	TestDriverApplication();
 	TestActivationNotice();

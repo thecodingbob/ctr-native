@@ -1152,7 +1152,7 @@ LAB_800545e8:
 	// if not paused, item stopped rolling, and
 	// weapon roulette sound is playing, then
 	// stop the sound and remove flag
-	OtherFX_Stop2(0x5d);
+	OtherFX_Stop2(HOWL_SFX_ITEM_ROULETTE);
 	gGT->gameMode1 &= ~(ROLLING_ITEM);
 
 	return;

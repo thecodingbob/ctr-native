@@ -42,6 +42,7 @@ struct VoicelineItem
 
 enum HowlSfxId
 {
+	HOWL_SFX_ITEM_ROULETTE = 0x5d,
 	HOWL_SFX_SWISH = 0x65,
 };
 

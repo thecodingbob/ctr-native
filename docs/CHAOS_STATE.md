@@ -197,6 +197,20 @@ and base speed are preserved. Only unfinished humans in eligible races are
 affected. Duplicate lifetimes remain independent; expiry/reset allows new
 reserves without restoring erased fuel. No driver snapshot is needed.
 
+No Items empties held inventory, stack count, roulette/cooldown timers and pending
+weapon requests through `Chaos_ApplyItemRules`. Its single call in
+`VehPickupItem_ShootOnCirclePress` runs before pending launches and the later
+driver roulette update, so even a completed roulette is discarded before award
+selection. Crates keep their retail collision/reward path; new rewards are
+discarded at the next item check. Already activated masks, shields, remote bombs,
+invisibility, Super Engine and projectiles remain active. Wumpa, boost fuel and
+rain-cloud ownership are untouched.
+Each application clears `WARPBALL_HELD` directly. Roulette sound cleanup and
+multiplayer item counters remain in their existing retail paths.
+The effect applies only to unfinished humans in eligible races. Duplicate entries
+retain independent lifetimes; final expiry/reset allows new inventory without
+restoring discarded items. No inventory snapshot is stored.
+
 Each activation has an independent three-second announcement, followed by 320 ms
 of docking. Successful activations play the transition swish (`0x65`) once;
 rejected requests and HUD redraws do not play it.
