@@ -115,6 +115,10 @@ int RB_CrateWeapon_ThCollide(struct Thread *crateThread, struct Thread *collidin
 
 	crateObj = crateThread->object;
 	crateInst = crateThread->inst;
+	if (Chaos_IsHardCrateForDriver(crateInst, collidingTh, sps))
+	{
+		return COLL_HITBOX_FORCE_SOLID;
+	}
 
 	if ((crateObj->cooldown == 0) && ((crateInst->scale.x == 0) || (crateInst->scale.x == 0x1000)))
 	{
@@ -287,6 +291,10 @@ int RB_CrateFruit_ThCollide(struct Thread *crateThread, struct Thread *colliding
 
 	crateObj = crateThread->object;
 	crateInst = crateThread->inst;
+	if (Chaos_IsHardCrateForDriver(crateInst, collidingTh, sps))
+	{
+		return COLL_HITBOX_FORCE_SOLID;
+	}
 
 	if ((crateObj->cooldown == 0) && ((crateInst->scale.x == 0) || (crateInst->scale.x == 0x1000)))
 	{
@@ -414,6 +422,10 @@ int RB_CrateTime_ThCollide(struct Thread *crateThread, struct Thread *driverTh, 
 
 	crateObj = crateThread->object;
 	crateInst = crateThread->inst;
+	if (Chaos_IsHardCrateForDriver(crateInst, driverTh, sps))
+	{
+		return COLL_HITBOX_FORCE_SOLID;
+	}
 
 	if ((crateObj->cooldown == 0) && ((crateInst->scale.x == 0) || (crateInst->scale.x == 0x1000)))
 	{

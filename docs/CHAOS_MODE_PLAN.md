@@ -82,7 +82,7 @@ for a central dispatcher; generic level collisions also include hazards.
 
 ## Effect hooks
 
-All 16 effects have catalogue IDs/toggles. Fourteen are implemented; the
+All 16 effects have catalogue IDs/toggles. Fifteen are implemented; the
 remaining rows are source leads to verify during implementation.
 
 | Effects | Candidate mechanism |
@@ -98,8 +98,8 @@ remaining rows are source leads to verify during implementation.
 | Wumpa Drain — done | Detect crossed seconds from each activation's elapsed time in the existing driver hook; independent duplicate pulses, stop at zero and preserve pending pickup awards |
 | Clock Curse — done | One-off spin hit, clock audio and full 32-bit received-clock timer, bypassing protection; new activations overwrite earlier clocks |
 | Defective Boosts — done | Invert the live fire-speed bonus while reserves remain; preserve normal fuel grants, accumulation and consumption for every boost source |
-| Anxious Mask — done | Grounded contact with slowing terrain requests retail rescue before checkpoint updates; existing rescue states prevent repeated requests |
-| Hard Crates | Shared damage helper across three crate handlers, validating victim and collision type |
+| Anxious Mask — done | Contact with slowing terrain requests retail rescue before checkpoint updates; existing rescue states prevent repeated requests |
+| Hard Crates — done | Full-size item, Wumpa and time crates stay solid on direct human contact; override touch-only hitbox response with the retail solid impact without breaking the crate |
 | Bot Takes Wheel | Guarded `BOTS_Driver_Convert` plus explicit human-control hand-back |
 
 Key implementation constraints:
@@ -107,11 +107,12 @@ Key implementation constraints:
 - `const_TerminalVelocity` caps vertical velocity, not forward speed. Speed effects
   derive local targets/acceleration without overwriting constants. The existing
   `0x6400` target clamp limits Super Speed; slopes/collisions remain retail.
-- Anxious Mask uses the physical contact terrain and grounded contact, leaving
+- Anxious Mask uses the physical contact terrain, leaving
   rescue eligibility to the retail consumer. Stock rescue returns to
   the last valid checkpoint, changes camera/input, wipes turbo and can cost wumpa.
 - Explosive Crates reuses the retail damage implementation with protection bypass;
-  weapon hits retain ordinary crate behavior. Hard Crates remains separate.
+  weapon hits retain ordinary crate behavior. Hard Crates leaves crates intact
+  and returns through the regular solid-hitbox impact path.
 - Takeover must handle missing nav paths without partial conversion. Audit clock
   freezing/`distanceDriven`, action latches, thread ownership, nav-list links,
   `botData`, rotation, velocity and damage states. Restore only owned state;

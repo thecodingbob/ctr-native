@@ -1309,6 +1309,8 @@ int Chaos_AccelerationForDriver(const struct Driver *driver, int acceleration);
 void Chaos_ApplyReserveRules(struct Driver *driver);
 void Chaos_ApplyItemRules(struct Driver *driver);
 void Chaos_ApplyCrateRules(struct Driver *driver, struct Instance *crateInst);
+bool Chaos_IsHardCrateForDriver(const struct Instance *crateInst, const struct Thread *collidingTh,
+                               const struct ScratchpadStruct *sps);
 void Chaos_ApplyRescueRules(struct Driver *driver);
 u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, int *steering, u32 actions);
 void UI_Chaos_DrawActivation(struct GameTracker *gGT);

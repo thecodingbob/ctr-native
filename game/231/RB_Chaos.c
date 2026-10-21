@@ -259,6 +259,13 @@ void Chaos_ApplyCrateRules(struct Driver *driver, struct Instance *crateInst)
 	}
 }
 
+bool Chaos_IsHardCrateForDriver(const struct Instance *crateInst, const struct Thread *collidingTh,
+                               const struct ScratchpadStruct *sps)
+{
+	return crateInst->scale.x == 0x1000 && sps->Input1.modelID == DYNAMIC_PLAYER &&
+	       Chaos_IsActiveForDriver(CHAOS_EFFECT_HARD_CRATES, collidingTh->object);
+}
+
 void Chaos_ApplyItemRules(struct Driver *driver)
 {
 	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_NO_ITEMS, driver))

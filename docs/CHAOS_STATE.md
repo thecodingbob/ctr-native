@@ -230,9 +230,9 @@ not block it. Already drained fruit is not restored on expiry/reset, and pulses
 consume no RNG. Newly scheduled entries receive their full first second.
 
 Anxious Mask requests retail rescue when an unfinished human
-touches slowing terrain (`speedMultiplier < 0x100`) while grounded. It reads the
-physical quad's terrain rather than a cloud-overridden terrain value; airborne
-passage over off-road surfaces does not trigger it. `Chaos_ApplyRescueRules`
+touches slowing terrain (`speedMultiplier < 0x100`). It reads the
+physical contact quad's terrain rather than a cloud-overridden terrain value.
+`Chaos_ApplyRescueRules`
 runs in `COLL_FIXED_PlayerSearch` before checkpoint progress, preserving
 `lastValid` when it adds `DRIVER_COLL_FLAG_MASK_GRAB_REQUEST`. The normal collision
 consumer handles rescue eligibility and initialization later in the same callback,
@@ -266,6 +266,15 @@ exclusions still apply. Only unfinished humans in eligible races trigger it.
 Duplicate activations cause one explosion per contact. Normal crate rewards,
 cooldowns and weapon-hit handling remain retail, including contacts made with
 an already-full inventory. No new per-effect state is required.
+
+Hard Crates (stable ID 14) keeps full-size item, Wumpa and time crates intact
+when an unfinished human drives into them. Each crate handler returns
+`COLL_HITBOX_FORCE_SOLID` before changing cooldown, scale or rewards on direct
+kart contact. This overrides the crate's touch-only hitbox class in
+`COLL_MOVED_PlayerSearch` and runs the retail solid scrub/impact response, so
+the kart hits the crate rather than passing through, spinning or collecting it. Weapon hits, bots,
+and crates still growing after an earlier break retain retail behavior. No new
+per-effect state is required.
 
 `Chaos_ApplyOneOff` runs once after a successful activation is registered.
 Clock Curse uses it to apply the initial spin hit to unfinished humans. The retail

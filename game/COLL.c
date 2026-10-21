@@ -2340,7 +2340,7 @@ void COLL_MOVED_PlayerSearch(struct Thread *t, struct Driver *d)
 			s32 hitboxResult = CollMoved_PlayerSearch_RunHitboxLInC(sps, t);
 			u8 hitboxId = Coll_BspHitboxClass(bspHitbox);
 
-			if ((hitboxResult == 2) || (hitboxId == 4))
+			if ((hitboxResult == 2) || (hitboxId == BSP_HITBOX_CLASS_TOUCH && hitboxResult != COLL_HITBOX_FORCE_SOLID))
 			{
 				CollMoved_PlayerSearch_StoreHitbox(sps);
 			}
@@ -2349,7 +2349,7 @@ void COLL_MOVED_PlayerSearch(struct Thread *t, struct Driver *d)
 				COLL_MOVED_FindScrub((struct QuadBlock *)bspHitbox, 0, sps);
 				sps->Input1.scrubDepth = (s16)CTR_MipsAddLo((u16)sps->Input1.scrubDepth, COLL_HITBOX_SCRUB_DEPTH_BONUS);
 
-				struct Scrub *scrub = VehAfterColl_GetSurface(hitboxId);
+				struct Scrub *scrub = VehAfterColl_GetSurface(hitboxResult == COLL_HITBOX_FORCE_SOLID ? COLL_SCRUB_SOLID : hitboxId);
 				hitboxResult = COLL_MOVED_ScrubImpact(d, t, sps, scrub, &d->velocity);
 
 				if (hitboxResult == 0)

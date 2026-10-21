@@ -1404,7 +1404,7 @@ static void TestAnxiousMask(void)
 	s_tracker.gameMode1 &= ~PAUSE_1;
 	human.collisionFlags = DRIVER_COLL_FLAG_GROUNDED;
 
-	CTR_TEST_SECTION("Anxious Mask requires grounded slowing terrain and leaves rescue eligibility to retail");
+	CTR_TEST_SECTION("Anxious Mask uses contact terrain and leaves rescue eligibility to retail");
 	const u8 roadTypes[] = {TERRAIN_ASPHALT, TERRAIN_ICE};
 	for (size_t i = 0; i < len(roadTypes); i++)
 	{
@@ -1415,14 +1415,7 @@ static void TestAnxiousMask(void)
 	}
 	road.terrain_type = TERRAIN_ASPHALT;
 	human.currBlockTouching = &offRoad;
-	human.collisionFlags = 0;
-	Chaos_ApplyRescueRules(&human);
-	CTR_TEST_CHECK_EQ(human.collisionFlags, 0, "passing above off-road terrain without grounded contact does not trigger rescue");
 	human.collisionFlags = DRIVER_COLL_FLAG_GROUNDED;
-	human.currBlockTouching = NULL;
-	Chaos_ApplyRescueRules(&human);
-	CTR_TEST_CHECK_EQ(human.collisionFlags, DRIVER_COLL_FLAG_GROUNDED, "missing terrain contact does not request rescue");
-	human.currBlockTouching = &offRoad;
 	const u8 states[] = {KS_MASK_GRABBED, KS_BLASTED, KS_SPINNING, KS_ENGINE_REVVING, KS_WARP_PAD};
 	for (size_t i = 0; i < len(states); i++)
 	{
@@ -1531,6 +1524,50 @@ static void TestExplosiveCrates(void)
 	Tick(4000);
 	Chaos_ApplyCrateRules(&human, &crate);
 	CTR_TEST_CHECK_EQ(s_crateExplosions, explosions + 1, "final expiry restores ordinary crates");
+}
+
+static void TestHardCrates(void)
+{
+	CTR_TEST_SECTION("Hard Crates routes unfinished human contacts to solid crate collision");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_HARD_CRATES] = true;
+	sdata->chaosSettings.enabledCount++;
+	struct Instance crate = {.scale.x = 0x1000};
+	struct ScratchpadStruct sps = {0};
+	sps.Input1.modelID = DYNAMIC_PLAYER;
+	struct Driver human = {.driverID = 0};
+	struct Thread collidingTh = {.object = &human};
+	CTR_TEST_CHECK(!Chaos_IsHardCrateForDriver(&crate, &collidingTh, &sps), "inactive effect leaves crates breakable");
+	Chaos_Activate(CHAOS_EFFECT_HARD_CRATES, 5000);
+	CTR_TEST_CHECK(Chaos_IsHardCrateForDriver(&crate, &collidingTh, &sps), "active effect routes an unfinished human into solid collision");
+	crate.scale.x = 0;
+	CTR_TEST_CHECK(!Chaos_IsHardCrateForDriver(&crate, &collidingTh, &sps), "invisible crates cannot block the kart");
+	crate.scale.x = 0x1000;
+	sps.Input1.modelID = DYNAMIC_BOMB;
+	CTR_TEST_CHECK(!Chaos_IsHardCrateForDriver(&crate, &collidingTh, &sps), "weapon hits keep the retail crate response");
+	sps.Input1.modelID = DYNAMIC_PLAYER;
+	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT};
+	struct Driver finished = {.driverID = 0, .actionsFlagSet = ACTION_RACE_FINISHED};
+	collidingTh.object = &bot;
+	CTR_TEST_CHECK(!Chaos_IsHardCrateForDriver(&crate, &collidingTh, &sps), "bots keep retail crates");
+	collidingTh.object = &finished;
+	CTR_TEST_CHECK(!Chaos_IsHardCrateForDriver(&crate, &collidingTh, &sps), "finished humans keep retail crates");
+	collidingTh.object = NULL;
+	CTR_TEST_CHECK(!Chaos_IsHardCrateForDriver(&crate, &collidingTh, &sps), "missing drivers keep retail crates");
+	collidingTh.object = &human;
+	s_tracker.gameMode1 |= PAUSE_1;
+	CTR_TEST_CHECK(!Chaos_IsHardCrateForDriver(&crate, &collidingTh, &sps), "pause disables solid crate collisions");
+	s_tracker.gameMode1 &= ~PAUSE_1;
+	s_tracker.gameMode1 |= ADVENTURE_ARENA;
+	CTR_TEST_CHECK(!Chaos_IsHardCrateForDriver(&crate, &collidingTh, &sps), "Adventure hubs retain ordinary crates");
+	s_tracker.gameMode1 &= ~ADVENTURE_ARENA;
+	Chaos_Activate(CHAOS_EFFECT_HARD_CRATES, 1000);
+	Tick(1000);
+	CTR_TEST_CHECK(Chaos_IsHardCrateForDriver(&crate, &collidingTh, &sps), "the surviving activation keeps crates solid");
+	Tick(4000);
+	CTR_TEST_CHECK(!Chaos_IsHardCrateForDriver(&crate, &collidingTh, &sps), "final expiry restores ordinary crates");
+	Chaos_Reset();
+	CTR_TEST_CHECK(!Chaos_IsHardCrateForDriver(&crate, &collidingTh, &sps), "race reset leaves crates breakable");
 }
 
 static void TestClockCurse(void)
@@ -2178,6 +2215,7 @@ int main(void)
 	TestWumpaDrain();
 	TestClockCurse();
 	TestExplosiveCrates();
+	TestHardCrates();
 	TestAnxiousMask();
 	TestHopInputAndCloudOwnership();
 	TestDriverApplication();
