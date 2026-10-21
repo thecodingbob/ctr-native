@@ -8,6 +8,7 @@ static struct GameTracker s_tracker;
 static bool s_teleported;
 static bool s_allHumansFinished;
 static int s_activationSounds;
+static int s_clockSounds;
 static u32 s_lastSound;
 static u32 s_lastSoundFlags;
 static int s_noticeDraws;
@@ -24,6 +25,10 @@ static s16 s_drawFont[CHAOS_EFFECT_COUNT];
 static s32 s_drawScale[CHAOS_EFFECT_COUNT];
 static u32 *s_drawOT[CHAOS_EFFECT_COUNT];
 
+// VehPickupItem.c precedes Chaos in the game unity build.
+enum { SOUND_CLOCK = 0x44 };
+
+#include <game/Vehicle/VehPickState.c>
 #include <game/231/RB_Chaos.c>
 #include <game/MAIN/MainGameStart.c>
 #include <game/Vehicle/VehPhysProc_Input.c>
@@ -85,6 +90,73 @@ void VehBirth_TeleportAll(struct GameTracker *gGT, u32 spawnFlags)
 }
 
 void Music_Stop(void) {}
+void VehPhysProc_SpinFirst_Init(struct Thread *thread, struct Driver *driver)
+{
+	(void)thread;
+	(void)driver;
+}
+void VehStuckProc_PlantEaten_Init(struct Thread *thread, struct Driver *driver)
+{
+	(void)thread;
+	(void)driver;
+	CtrTest_Bail("Clock Curse must select spin damage");
+}
+void VehStuckProc_Tumble_Init(struct Thread *thread, struct Driver *driver)
+{
+	(void)thread;
+	(void)driver;
+	CtrTest_Bail("Clock Curse must select spin damage");
+}
+void GAMEPAD_ShockFreq(struct Driver *driver, int frame, int value)
+{
+	(void)driver;
+	(void)frame;
+	(void)value;
+}
+void OtherFX_Play_Echo(u32 soundID, int flags, int echoFlag)
+{
+	(void)soundID;
+	(void)flags;
+	(void)echoFlag;
+	CtrTest_Bail("Clock Curse must not play squish audio");
+}
+void RB_Player_KillPlayer(struct Driver *attacker, struct Driver *victim)
+{
+	(void)attacker;
+	(void)victim;
+	CtrTest_Bail("Clock Curse must not attribute damage to an attacker");
+}
+void CTC2(u32 value, s32 reg)
+{
+	(void)value;
+	(void)reg;
+	CtrTest_Bail("clock damage without an attacker needs no projection");
+}
+void MTC2(u32 value, s32 reg)
+{
+	(void)value;
+	(void)reg;
+	CtrTest_Bail("clock damage without an attacker needs no projection");
+}
+s32 MFC2_S(s32 reg)
+{
+	(void)reg;
+	CtrTest_Bail("clock damage without an attacker needs no projection");
+	return 0;
+}
+s32 doCOP2(s32 op)
+{
+	(void)op;
+	CtrTest_Bail("clock damage without an attacker needs no projection");
+	return 0;
+}
+int OtherFX_Play(u32 soundID, int flags)
+{
+	(void)flags;
+	CTR_TEST_CHECK_EQ(soundID, SOUND_CLOCK, "Clock Curse plays the retail clock sound");
+	s_clockSounds++;
+	return 0;
+}
 int OtherFX_Play_LowLevel(u32 soundID, u8 antiSpam, u32 flags)
 {
 	(void)antiSpam;
@@ -157,6 +229,7 @@ static void SetupRace(int trigger)
 {
 	s_allHumansFinished = false;
 	s_activationSounds = 0;
+	s_clockSounds = 0;
 	memset(&sdata_static, 0, sizeof(sdata_static));
 	memset(&s_tracker, 0, sizeof(s_tracker));
 	memset(&g_config, 0, sizeof(g_config));
@@ -1042,6 +1115,11 @@ static void TickAndApplyDrivers(int elapsedMS)
 		struct Driver *driver = s_tracker.drivers[i];
 		if (driver != NULL)
 		{
+			// Retail driving physics consumes received-clock time before the Chaos hook.
+			if ((s_tracker.gameMode1 & PAUSE_ALL) == 0 && driver->clockReceive > 0)
+			{
+				driver->clockReceive = driver->clockReceive > elapsedMS ? driver->clockReceive - elapsedMS : 0;
+			}
 			int steering = pad.stickLX;
 			driver->actionsFlagSet = Chaos_ApplyDriver(driver, &pad, &steering, driver->actionsFlagSet);
 		}
@@ -1075,31 +1153,31 @@ static void TestWumpaDrain(void)
 	TickAndApplyDrivers(32);
 	CTR_TEST_CHECK_EQ(human.numWumpas, 9, "frames after a pulse do not repeat already counted seconds");
 	TickAndApplyDrivers(2468);
-	CTR_TEST_CHECK_EQ(human.numWumpas, 7, "a longer frame accounts for every full elapsed second");
-	CTR_TEST_CHECK_EQ(partner.numWumpas, 4, "elapsed-time catch-up also applies to the partner");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 8, "a longer frame drains only one fruit even when it crosses several seconds");
+	CTR_TEST_CHECK_EQ(partner.numWumpas, 5, "the partner also loses at most one fruit per activation per frame");
 	CTR_TEST_CHECK_EQ(human.PickupWumpaHUD.numCollected, 3, "fruit still in the pickup animation remains pending");
 	CTR_TEST_CHECK_EQ(human.numTimesWumpa, 20, "draining fruit does not rewrite collection statistics");
 	CTR_TEST_CHECK_EQ(human.reserves, 1000, "draining fruit leaves boost reserves alone");
 	human.numWumpas++;
 	TickAndApplyDrivers(500);
-	CTR_TEST_CHECK_EQ(human.numWumpas, 7, "the next pulse uses the current count including newly credited fruit");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 8, "the next pulse uses the current count including newly credited fruit");
 	TickAndApplyDrivers(1000);
-	CTR_TEST_CHECK_EQ(human.numWumpas, 7, "the expiry frame applies no additional drain");
-	CTR_TEST_CHECK_EQ(partner.numWumpas, 3, "an activation removed at exact expiry cannot apply another pulse");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 8, "the expiry frame applies no additional drain");
+	CTR_TEST_CHECK_EQ(partner.numWumpas, 4, "an activation removed at exact expiry cannot apply another pulse");
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 0, "the drain activation expires normally");
 	TickAndApplyDrivers(2000);
-	CTR_TEST_CHECK_EQ(human.numWumpas, 7, "expired Wumpa Drain cannot remove more fruit");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 8, "expired Wumpa Drain cannot remove more fruit");
 	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 500);
 	TickAndApplyDrivers(2000);
-	CTR_TEST_CHECK_EQ(human.numWumpas, 7, "a sub-second activation cannot drain a whole second from a longer frame");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 8, "a sub-second activation cannot drain a whole second from a longer frame");
 	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 1500);
 	TickAndApplyDrivers(3000);
-	CTR_TEST_CHECK_EQ(human.numWumpas, 7, "a frame extending past expiry cannot apply a removed activation");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 8, "a frame extending past expiry cannot apply a removed activation");
 	human.numWumpas = 1;
 	partner.numWumpas = 0;
 	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 4000);
 	TickAndApplyDrivers(3000);
-	CTR_TEST_CHECK_EQ(human.numWumpas, 0, "draining more fruit than available stops at zero");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 0, "draining the last fruit stops at zero");
 	CTR_TEST_CHECK_EQ(partner.numWumpas, 0, "an empty inventory cannot underflow");
 	CTR_TEST_CHECK_EQ(sdata->chaosRng, rng, "drain timing consumes no Chaos RNG samples");
 
@@ -1180,6 +1258,152 @@ static void TestWumpaDrain(void)
 	CTR_TEST_CHECK_EQ(human.numWumpas, 10, "the scheduling frame does not retroactively consume the new drain's first second");
 	TickAndApplyDrivers(1000);
 	CTR_TEST_CHECK_EQ(human.numWumpas, 9, "only the older activation can pulse while the new duplicate is still at zero");
+}
+
+static void TestClockCurse(void)
+{
+	CTR_TEST_SECTION("Clock Curse sets the received clock once and bypasses protection");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_CLOCK_CURSE] = true;
+	sdata->chaosSettings.enabledCount++;
+	g_config.maskProtectsFromDamage = true;
+	struct Shield shieldObject = {0};
+	struct Thread shieldThread = {.object = &shieldObject};
+	struct Instance shield = {.thread = &shieldThread};
+	struct Thread humanThread = {0};
+	struct Thread partnerThread = {0};
+	struct Instance humanInst = {.thread = &humanThread};
+	struct Instance partnerInst = {.thread = &partnerThread};
+	struct Driver human = {
+		.driverID = 0, .actionsFlagSet = ACTION_MASK_WEAPON | ACTION_JUMP_BUTTON_HELD,
+		.invincibleTimer = 1000, .numWumpas = 10, .reserves = 2000, .baseSpeed = 12000,
+		.instSelf = &humanInst,
+	};
+	struct Driver partner = {.driverID = 1, .instBubbleHold = &shield, .instSelf = &partnerInst};
+	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT, .clockReceive = 3000};
+	s_tracker.drivers[0] = &human;
+	s_tracker.drivers[1] = &partner;
+	const struct GamepadBuffer pad = {.stickLX = 128};
+	int steering = pad.stickLX;
+	TickAndApplyDrivers(32);
+	CTR_TEST_CHECK_EQ(human.clockReceive, 0, "inactive Clock Curse does not introduce a received clock");
+	CTR_TEST_CHECK_EQ(VehPickState_NewState(&human, 1, NULL, 0), 0, "ordinary damage still respects mask and invincibility protection");
+	Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 1000);
+	CTR_TEST_CHECK_EQ(human.clockReceive, 1000, "activation immediately assigns the full clock duration");
+	CTR_TEST_CHECK(human.funcPtrs[DRIVER_FUNC_INIT] == VehPhysProc_SpinFirst_Init, "the initial clock spin bypasses mask and invincibility");
+	CTR_TEST_CHECK(partner.funcPtrs[DRIVER_FUNC_INIT] == VehPhysProc_SpinFirst_Init, "the initial clock spin bypasses shields");
+	CTR_TEST_CHECK_EQ(s_clockSounds, 1, "activation plays the clock sound once for all humans");
+	human.funcPtrs[DRIVER_FUNC_INIT] = NULL;
+	TickAndApplyDrivers(32);
+	CTR_TEST_CHECK(human.funcPtrs[DRIVER_FUNC_INIT] == NULL, "continuous slowdown does not repeat the initial hit");
+	CTR_TEST_CHECK_EQ(s_clockSounds, 1, "continuous slowdown does not repeat the clock sound");
+	CTR_TEST_CHECK_EQ(human.clockReceive, 968, "the curse sets the received clock to the remaining Chaos duration");
+	CTR_TEST_CHECK(partner.clockReceive > 32, "the curse also reaches a co-op partner protected by a shield");
+	CTR_TEST_CHECK_EQ(human.actionsFlagSet, ACTION_MASK_WEAPON | ACTION_JUMP_BUTTON_HELD, "bypassing mask protection does not remove the mask or alter jump input");
+	CTR_TEST_CHECK(partner.instBubbleHold == &shield, "bypassing a shield does not consume or detach it");
+	CTR_TEST_CHECK_EQ(shieldObject.flags, 0, "the initial clock hit does not request a shield pop");
+	CTR_TEST_CHECK_EQ(human.invincibleTimer, 1000, "the curse bypasses invincibility without changing its timer");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 10, "the retail spin setup leaves fruit loss to the spin state");
+	CTR_TEST_CHECK_EQ(human.reserves, 0, "the initial clock hit clears reserves through retail damage handling");
+	CTR_TEST_CHECK_EQ(human.baseSpeed, 12000, "Clock Curse leaves speed calculations to the retail clock consumers");
+	CTR_TEST_CHECK_EQ(human.clockFlash, 0, "continuous application does not repeat the weapon's initial flash");
+	TickAndApplyDrivers(32);
+	CTR_TEST_CHECK_EQ(human.clockReceive, 936, "the received clock follows the remaining effect time on subsequent frames");
+	partner.clockReceive = 4000;
+	TickAndApplyDrivers(32);
+	CTR_TEST_CHECK_EQ(partner.clockReceive, 3968, "a later retail clock counts down without being overwritten by Chaos");
+	human.clockReceive = 9000;
+	TickAndApplyDrivers(1000);
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_CLOCK_CURSE), "the curse expires on its independent Chaos timer");
+	CTR_TEST_CHECK_EQ(human.clockReceive, 8000, "curse expiry preserves a longer clock received during the effect");
+	CTR_TEST_CHECK_EQ(partner.clockReceive, 2968, "Chaos expiry leaves a later retail clock intact");
+
+	CTR_TEST_SECTION("duplicate curses overwrite the clock without resuming earlier timers");
+	Chaos_BeginRace(&s_tracker);
+	human.clockReceive = 0;
+	partner.clockReceive = 0;
+	Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 256);
+	TickAndApplyDrivers(32);
+	Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 64);
+	TickAndApplyDrivers(32);
+	CTR_TEST_CHECK_EQ(human.clockReceive, 32, "the newest duplicate assigns its own remaining duration");
+	TickAndApplyDrivers(32);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 1, "the shorter curse expires independently");
+	for (int i = 0; i < 4; i++)
+	{
+		TickAndApplyDrivers(32);
+		CTR_TEST_CHECK_EQ(human.clockReceive, 0, "an older surviving activation cannot resume the overwritten clock");
+	}
+	TickAndApplyDrivers(32);
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_CLOCK_CURSE), "the last curse expires without a separate restoration step");
+	CTR_TEST_CHECK_EQ(human.clockReceive, 0, "the received clock reaches zero with the final curse timer");
+	Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 60000);
+	CTR_TEST_CHECK_EQ(human.clockReceive, 60000, "a one-off activation stores the full sixty-second duration");
+	TickAndApplyDrivers(32);
+	CTR_TEST_CHECK_EQ(human.clockReceive, 59968, "the received clock retains durations above the signed 16-bit range");
+	TickAndApplyDrivers(32000);
+	CTR_TEST_CHECK_EQ(human.clockReceive, 27968, "the full clock counts down across the old signed 16-bit boundary");
+	TickAndApplyDrivers(27968);
+	CTR_TEST_CHECK_EQ(human.clockReceive, 0, "long curses also reach zero at final expiry");
+
+	CTR_TEST_SECTION("Clock Curse respects race gates and driver scope without a separate baseline snapshot");
+	Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 5000);
+	s_tracker.elapsedTimeMS = 32;
+	Chaos_ApplyDriver(&bot, &pad, &steering, bot.actionsFlagSet);
+	CTR_TEST_CHECK_EQ(bot.clockReceive, 3000, "Clock Curse does not change bot clocks");
+	human.clockReceive = 0;
+	human.actionsFlagSet |= ACTION_RACE_FINISHED;
+	Chaos_ApplyDriver(&human, &pad, &steering, human.actionsFlagSet);
+	CTR_TEST_CHECK_EQ(human.clockReceive, 0, "finished humans do not receive the curse");
+	human.actionsFlagSet &= ~ACTION_RACE_FINISHED;
+	s_tracker.gameMode1 |= PAUSE_1;
+	const struct ChaosRuntime saved = sdata->chaosRuntime;
+	TickAndApplyDrivers(5000);
+	CTR_TEST_CHECK_EQ(human.clockReceive, 0, "pause cannot reapply one-off clock damage");
+	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 5000), "pause blocks a new one-off activation");
+	CTR_TEST_CHECK(memcmp(&saved, &sdata->chaosRuntime, sizeof(saved)) == 0, "pause freezes curse lifetimes");
+	s_tracker.gameMode1 &= ~PAUSE_1;
+	s_tracker.gameMode1 |= ADVENTURE_ARENA;
+	TickAndApplyDrivers(5000);
+	CTR_TEST_CHECK_EQ(human.clockReceive, 0, "Adventure hubs do not receive Clock Curse");
+	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 5000), "Adventure hubs block a new one-off activation");
+	s_tracker.gameMode1 &= ~ADVENTURE_ARENA;
+	TickAndApplyDrivers(32);
+	CTR_TEST_CHECK_EQ(human.clockReceive, 0, "reopening the race gate does not repeat a one-off activation");
+	sdata->chaosRuntime = saved;
+	human.clockReceive = 0;
+	TickAndApplyDrivers(32);
+	CTR_TEST_CHECK_EQ(human.clockReceive, 0, "restoring only Chaos runtime does not replay a one-off activation");
+	human.clockReceive = 4000;
+	const int clockBeforeReset = human.clockReceive;
+	Chaos_Reset();
+	TickAndApplyDrivers(32);
+	CTR_TEST_CHECK_EQ(human.clockReceive, clockBeforeReset - 32, "runtime reset leaves the existing received clock to its ordinary countdown");
+
+	CTR_TEST_SECTION("initial Clock Curse damage and audio occur only on successful activations");
+	Chaos_BeginRace(&s_tracker);
+	human.actionsFlagSet |= ACTION_RACE_FINISHED;
+	partner.actionsFlagSet |= ACTION_RACE_FINISHED;
+	human.funcPtrs[DRIVER_FUNC_INIT] = NULL;
+	partner.funcPtrs[DRIVER_FUNC_INIT] = NULL;
+	s_tracker.drivers[2] = &bot;
+	Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 1000);
+	CTR_TEST_CHECK(human.funcPtrs[DRIVER_FUNC_INIT] == NULL && partner.funcPtrs[DRIVER_FUNC_INIT] == NULL, "the initial hit skips finished humans");
+	CTR_TEST_CHECK(bot.funcPtrs[DRIVER_FUNC_INIT] == NULL, "the initial hit skips bots");
+	human.actionsFlagSet &= ~ACTION_RACE_FINISHED;
+	for (int i = 1; i < CHAOS_MAX_ACTIVATIONS; i++)
+	{
+		human.funcPtrs[DRIVER_FUNC_INIT] = NULL;
+		Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 1000);
+		CTR_TEST_CHECK(human.funcPtrs[DRIVER_FUNC_INIT] == VehPhysProc_SpinFirst_Init, "each successful duplicate delivers a new initial hit");
+	}
+	human.funcPtrs[DRIVER_FUNC_INIT] = NULL;
+	const int clockSounds = s_clockSounds;
+	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 1000), "full capacity rejects another curse");
+	CTR_TEST_CHECK(human.funcPtrs[DRIVER_FUNC_INIT] == NULL, "rejected activations cannot inflict clock damage");
+	CTR_TEST_CHECK_EQ(s_clockSounds, clockSounds, "rejected activations cannot play clock audio");
+	CTR_TEST_CHECK_EQ(VehPickState_NewState(&partner, 1, NULL, 0), 0, "ordinary damage still respects shield protection");
+	CTR_TEST_CHECK((shieldObject.flags & SHIELD_FLAG_POP_ON_DAMAGE) != 0, "ordinary damage retains retail shield consumption");
 }
 
 static void TestHopInputAndCloudOwnership(void)
@@ -1678,6 +1902,7 @@ int main(void)
 	TestNoReserves();
 	TestNoItems();
 	TestWumpaDrain();
+	TestClockCurse();
 	TestHopInputAndCloudOwnership();
 	TestDriverApplication();
 	TestActivationNotice();

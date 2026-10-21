@@ -136,7 +136,7 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 	int timerHazard;
 	int airborneTimer;
 	register int trigForce CTR_PSX_REGISTER("$2");
-	u16 clockReceiveRaw;
+	s32 clockReceiveRaw;
 	register int clockWaddleTimer CTR_PSX_REGISTER("$6");
 	register u32 actionsFlagSetCopy CTR_PSX_REGISTER("$18");
 	register int targetBaseSpeed CTR_PSX_REGISTER("$23");
@@ -342,7 +342,7 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 		{
 			clockTimer = 0;
 		}
-		driver->clockReceive = (s16)clockTimer;
+		driver->clockReceive = clockTimer;
 	}
 	if (accelTapTimer > 0)
 	{
@@ -430,14 +430,14 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 		{
 			goto speedIsLow;
 		}
-		clockReceiveRaw = (u16)driver->clockReceive;
+		clockReceiveRaw = driver->clockReceive;
 		scratchValue = normalVecIndex;
 		if (normalVecIndex < 0)
 		{
 			scratchValue = CTR_MipsNegLo(scratchValue);
 		}
 
-		normalVecIndex = (s16)clockReceiveRaw;
+		normalVecIndex = clockReceiveRaw;
 		clockWaddleTimer = CTR_MipsSra(normalVecIndex, VEH_PHYS_PROC_CLOCK_WADDLE_TIMER_SHIFT);
 		if (clockWaddleTimer > VEH_PHYS_PROC_CLOCK_WADDLE_TIMER_MAX)
 		{

@@ -101,6 +101,28 @@ static void Chaos_RemoveConflictingEffects(ChaosEffectId effect)
 	runtime->numActive = kept;
 }
 
+static void Chaos_ApplyClockCurse(const struct ChaosActivation *chaosActivation)
+{
+	OtherFX_Play(SOUND_CLOCK, 1);
+	for (int i = 0; i < sdata->gGT->numPlyrCurrGame; i++)
+	{
+		struct Driver *driver = sdata->gGT->drivers[i];
+		if (Chaos_IsActiveForDriver(chaosActivation->effect, driver))
+		{
+			VehPickState_ApplyDamage(driver, VEH_PICK_DAMAGE_SPIN, NULL, 0, true);
+			driver->clockReceive = chaosActivation->remainingMS;
+		}
+	}
+}
+
+static void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation)
+{
+	if (chaosActivation->effect == CHAOS_EFFECT_CLOCK_CURSE)
+	{
+		Chaos_ApplyClockCurse(chaosActivation);
+	}
+}
+
 bool Chaos_Activate(ChaosEffectId effect, s32 durationMS)
 {
 	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
@@ -114,12 +136,14 @@ bool Chaos_Activate(ChaosEffectId effect, s32 durationMS)
 	{
 		return false;
 	}
-	runtime->active[runtime->numActive++] = (struct ChaosActivation){
+	struct ChaosActivation activation = {
 		.effect = effect,
 		.remainingMS = durationMS,
 		.noticeRemainingMS = CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS,
-	        .elapsedMS = 0;
+		.elapsedMS = 0,
 	};
+	runtime->active[runtime->numActive++] = activation;
+	Chaos_ApplyOneOff(&activation);
 	OtherFX_Play_LowLevel(HOWL_SFX_SWISH, 1, HOWL_SFX_DEFAULT_FLAGS | HOWL_SFX_GAIN_DOUBLE_FLAG);
 	return true;
 }

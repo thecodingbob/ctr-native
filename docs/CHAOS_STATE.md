@@ -215,8 +215,9 @@ Wumpa Drain removes one credited fruit per game second from unfinished humans,
 stopping at zero. `Chaos_TickWumpaDrain` runs through the existing
 `Chaos_ApplyDriver` hook after runtime timers and scheduling have updated.
 It uses `ChaosActivation.elapsedMS`, also used by Wobble, and derives the previous
-time as `max(0, elapsedMS - frameMS)`. The difference between the two whole-second
-counts gives this frame's pulses, including multiple boundaries in a long frame.
+time as `max(0, elapsedMS - frameMS)`. A larger current whole-second count signals
+a pulse; each activation removes at most one fruit per frame, even if a long
+frame crosses several boundaries.
 Each activation starts at zero and has independent pulse/expiry/notice timing;
 overlapping copies can therefore drain additional fruit. Newly scheduled entries
 do not pulse at zero. Expired entries have already been removed, so the expiry
@@ -227,6 +228,27 @@ Drain changes only `numWumpas`, not pending pickup animations, collection statis
 or boost fuel. It is a direct modifier rather than damage; mask protection does
 not block it. Already drained fruit is not restored on expiry/reset, and pulses
 consume no RNG. Newly scheduled entries receive their full first second.
+
+`Chaos_ApplyOneOff` runs once after a successful activation is registered.
+Clock Curse uses it to apply the initial spin hit to unfinished humans. The retail
+clock sound plays once in `Chaos_ApplyClockCurse`, which shares the retail damage
+implementation but bypasses mask, shield and invincibility checks without
+consuming those protections. Retail spin setup clears boost reserves and selects
+the spin initializer; the mask-grab state exclusion remains in place. Rejected
+activations cannot hit or play audio, and each successful duplicate gets its own
+initial hit.
+
+Clock Curse assigns `clockReceive` once from the activation's `remainingMS`.
+The timer is signed 32-bit in the native tail of `Driver`; its original 16-bit
+slot is reserved to preserve existing field offsets. Human and bot countdowns
+and clock-waddle feedback retain the full value. Retail clock consumers provide
+slowdown, blur and configured weapon-use restrictions. Each new activation
+overwrites existing received-clock time, even when shorter; older activations
+never resume it. Later retail clocks can overwrite it normally.
+Resetting only Chaos runtime leaves the received clock to its ordinary countdown;
+race initialization resets driver clocks through the existing vehicle path.
+Only unfinished humans in eligible races are affected; no per-effect clock field
+or baseline snapshot is needed.
 
 Each activation has an independent three-second announcement, followed by 320 ms
 of docking. Successful activations play the transition swish (`0x65`) once;
