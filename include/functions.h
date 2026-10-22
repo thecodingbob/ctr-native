@@ -1301,6 +1301,8 @@ bool Chaos_IsRunning(const struct GameTracker *gGT);
 void Chaos_BeginRace(struct GameTracker *gGT);
 void Chaos_Update(struct GameTracker *gGT);
 bool Chaos_Activate(ChaosEffectId effect, s32 durationMS);
+bool Chaos_OnPickup(struct Driver *driver);
+void Chaos_OnTurboPadContact(struct Driver *driver, bool touching);
 bool Chaos_IsActive(ChaosEffectId effect);
 bool Chaos_IsActiveForDriver(ChaosEffectId effect, const struct Driver *driver);
 int Chaos_GravityForDriver(const struct Driver *driver);

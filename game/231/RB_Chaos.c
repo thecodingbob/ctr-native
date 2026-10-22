@@ -208,6 +208,37 @@ bool Chaos_IsActiveForDriver(ChaosEffectId effect, const struct Driver *driver)
 	       Chaos_IsActive(effect);
 }
 
+bool Chaos_OnPickup(struct Driver *driver)
+{
+	const struct ChaosSettings *settings = &sdata->chaosSettings;
+	if (settings->trigger != CHAOS_TRIGGER_PICKUP || !Chaos_IsRunning(sdata->gGT) ||
+	    driver == NULL || (driver->actionsFlagSet & (ACTION_RACE_FINISHED | ACTION_BOT)) != 0 ||
+	    !ChaosEffect_AppliesToDriver(CHAOS_SCOPE_HUMANS, driver->driverID, sdata->gGT->numPlyrCurrGame) ||
+	    settings->durationSeconds == 0)
+	{
+		return false;
+	}
+	const ChaosEffectId effect = ChaosEffect_Pick(settings->effects, settings->enabledCount, &sdata->chaosRng);
+	return Chaos_Activate(effect, settings->durationSeconds * CHAOS_MILLISECONDS_PER_SECOND);
+}
+
+void Chaos_OnTurboPadContact(struct Driver *driver, bool touching)
+{
+	if (sdata->chaosSettings.trigger != CHAOS_TRIGGER_PICKUP || !Chaos_IsRunning(sdata->gGT) || driver == NULL ||
+	    !ChaosEffect_AppliesToDriver(CHAOS_SCOPE_HUMANS, driver->driverID, sdata->gGT->numPlyrCurrGame) ||
+	    driver->driverID >= ADV_MULTIPLAYER_NUM_PLAYERS_MAX)
+	{
+		return;
+	}
+	bool *wasTouching = &sdata->chaosRuntime.touchingTurboPad[driver->driverID];
+	const bool entered = touching && !*wasTouching;
+	*wasTouching = touching;
+	if (entered)
+	{
+		Chaos_OnPickup(driver);
+	}
+}
+
 int Chaos_GravityForDriver(const struct Driver *driver)
 {
 	const int gravity = driver->const_Gravity;

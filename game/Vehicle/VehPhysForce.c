@@ -1007,6 +1007,7 @@ void VehPhysForce_CollideDrivers(struct Thread *thread, struct Driver *driver)
 
 	TurboPadDone:;
 	}
+	Chaos_OnTurboPadContact(driver, (stepFlagSet & (COLL_STEP_TRIGGER_TURBO_PAD | COLL_STEP_TRIGGER_SUPER_TURBO_PAD)) != 0);
 
 	if ((stepFlagSet & COLL_STEP_FLAG_WATER_BSP) != 0)
 	{

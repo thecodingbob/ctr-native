@@ -27,6 +27,10 @@ int RB_Fruit_ThCollide(struct Thread *fruitTh, struct Thread *driverTh, void *fu
 	fruitObj = fruitTh->object;
 	modelID = sps->Input1.modelID;
 	fruitInst = fruitTh->inst;
+	if (fruitInst->scale.x == 0)
+	{
+		return 0;
+	}
 
 	// wumpa fruit can be grabbed by players and robotcars
 	if ((modelID == DYNAMIC_PLAYER) || (modelID == DYNAMIC_ROBOT_CAR))
@@ -58,6 +62,10 @@ int RB_Fruit_ThCollide(struct Thread *fruitTh, struct Thread *driverTh, void *fu
 		PlaySound3D(0x43, fruitInst);
 		fruitTh->flags |= THREAD_FLAG_DEAD;
 
+		if (modelID == DYNAMIC_PLAYER)
+		{
+			Chaos_OnPickup(driver);
+		}
 		return 1;
 	}
 	return 0;

@@ -28,6 +28,7 @@ struct ChaosRuntime
 	int numActive;
 	s32 intervalRemainingMS;
 	bool raceInitialized;
+	bool touchingTurboPad[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
 };
 
 #endif

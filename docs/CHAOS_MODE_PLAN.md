@@ -3,12 +3,12 @@
 ## Status
 
 Implemented: catalogue/selection helpers, race gate, creation flow, per-slot
-persistence, save marker, pause inspection and runtime timers/Interval/Random scheduling.
+persistence, save marker, pause inspection and runtime timers/Interval/Random/Pickup triggers.
 Inverted Steering, No Hopping, Wobble Steering, Low Gravity, Heavy Karts,
 Speed Capped, Super Speed, No Reserves, No Items, Wumpa Drain, Clock Curse,
 Explosive Crates, Defective Boosts, Anxious Mask, Hard Crates and Giant Karts are
 connected, with an activation-name overlay.
-Pending: Pickup/External triggers, provider and player guide.
+Pending: External trigger/provider and player guide.
 Save layouts and checkpoint ownership are documented in [CHAOS_STATE.md](CHAOS_STATE.md).
 
 ### Established rules
@@ -25,7 +25,9 @@ Save layouts and checkpoint ownership are documented in [CHAOS_STATE.md](CHAOS_S
 - Chaos Rules in Adventure pause reuses the setup UI read-only. Active Effects
   lists selected effects, not running activations, without ON/OFF or empty text.
 - Effects target humans in all Adventure race types, never hubs or other modes.
-- Pickup means contact. Each active effect has a unique entry; reactivation
+- Pickup means direct collection of crates, fruit, crystals and CTR letters, or
+entry onto a normal/super turbo pad. Hard Crates must be consumed to count.
+Each active effect has a unique entry; reactivation
 replaces it and resets all timers. Conflicting activations deactivate the previous effect.
 
 ## Runtime core
@@ -67,20 +69,22 @@ Use `sdata->chaosRng` for scheduling/selection, never retail RNG.
 | --- | --- |
 | Interval | One selected effect each configured interval |
 | Random | One selected effect per randomized gap in `[0.3, 1.0] × interval`, including the first gap |
-| Pickup | One activation per eligible human contact |
+| Pickup | One activation per eligible human collection or continuous turbo-pad traversal |
 | External | Provider commands only |
 
 None waits for earlier effects to expire. An empty selection yields no activation
 and does not change `armed`.
 
-Pickup hook candidates: crate collision handlers in `RB_Crate.c`,
-`RB_Fruit_ThCollide`, `RB_Crystal_ThCollide`, `RB_CtrLetter.c`, and turbo terrain
-handling in `VehPhysForce.c`. Validate contact and human identity before dispatch.
-Weapon ownership is not a pickup contact. Wumpa/crystal increments in
-`UI_RenderFrame.c` are delayed HUD awards, not trigger sites.
-Debounce collectible lifecycles and turbo-pad traversal; sustained pad contact
-must not activate every frame. `RB_Pickup_SetCamera` lacks the necessary context
-for a central dispatcher; generic level collisions also include hazards.
+Pickup hooks: `RB_CrateAny_Collide` dispatches after a full-size crate becomes
+hidden on direct kart contact; `RB_Fruit_ThCollide`, `RB_Crystal_ThCollide` and
+`RB_CtrLetter_ThCollide` dispatch after collection. Hidden collectibles and
+intact Hard Crates cannot retrigger; regrown crates can. Weapon-owned rewards
+do not count. `Chaos_OnPickup` gates human scope, race state, trigger mode and
+configured duration before selecting an enabled effect.
+`VehPhysForce_CollideDrivers` reports normal/super turbo-pad contact after the
+retail boost. A per-human latch in captured Chaos runtime prevents repeated
+activations until leaving all turbo-pad terrain; pause freezes the latch and
+race reset clears it. Pending Wumpa/crystal HUD awards are not trigger sites.
 
 ## Effect hooks
 

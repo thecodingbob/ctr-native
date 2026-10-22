@@ -82,6 +82,10 @@ ctr_add_test_suite(test_vehicle_spawn
     SOURCES test_vehicle_spawn.c
 )
 
+ctr_add_test_suite(test_chaos_pickup
+    SOURCES test_chaos_pickup.c
+)
+
 ctr_add_test_suite(test_howl_sample
     SOURCES test_howl_sample.c
 )

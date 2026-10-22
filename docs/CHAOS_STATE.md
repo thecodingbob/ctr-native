@@ -143,8 +143,22 @@ settings and the dedicated RNG stream.
 
 Race end, retry teardown and level-load stage 0 clear runtime state before driver
 storage is reused. The runtime contains no pointers and needs no new relocator.
-Future driver baselines, cooldowns, contact latches and takeover state must join
+Future driver baselines, cooldowns and takeover state must join
 captured storage as effects are implemented.
+
+Pickup dispatches through `Chaos_OnPickup` after direct collection of item,
+Wumpa and time crates, loose Wumpa, crystals or CTR letters. It selects an enabled
+effect with the saved duration and uses the ordinary activation/replacement path.
+Bots, finished humans, other trigger modes and ineligible race states are ignored.
+Crates dispatch only when the collision consumes a full-size visible crate;
+weapon-owned rewards, hidden/regrowing crates and intact Hard Crates do not count.
+Loose collectibles dispatch once when hidden, before their delayed HUD awards.
+
+Normal and super turbo-pad terrain dispatch after the retail boost through
+`Chaos_OnTurboPadContact`. `ChaosRuntime.touchingTurboPad` stores one contact latch
+per human: continuous contact, including adjacent normal/super pads, counts once;
+leaving all pad terrain rearms it. Latches freeze on pause, survive resident
+restore and clear on race reset. They contain no pointers and need no relocator.
 
 `Chaos_ApplyDriver` runs in driving physics after retail hop-input resolution,
 before jump and steering consumers. It applies active entries in order to the
@@ -343,11 +357,11 @@ Docked labels use 50% of the small font, six-pixel row spacing and a shared righ
 show at most the four most recently activated distinct docked effects, newest
 first; the 2P list starts at Y=32, above the lap counter. Docked labels and docking
 animations use UI OT slot 1, behind lap statistics in the normal HUD layer. This display
-limit matches the runtime activation cap. Duplicates use the newest surviving
-activation's announcement and remain eligible until final expiry. Drawing uses
+limit matches the runtime activation cap. Reactivation replaces the old
+announcement and restarts its timer. Drawing uses
 the full-screen UI OT. Final Lap is submitted
 after the HUD so its timer still reserves space on its last visible frame.
 The overlay also disappears as soon as all humans finish, before results setup.
 Pause freezes announcements and hides the overlay; menus hide it too. Rejected
-activations leave announcements unchanged; reset clears them. Other effects and
-the Pickup/External triggers are still pending.
+activations leave announcements unchanged; reset clears them.
+The External trigger/provider remains pending.

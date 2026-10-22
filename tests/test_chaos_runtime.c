@@ -577,6 +577,109 @@ static void TestResetAndInvalidSettings(void)
 	}
 }
 
+static void TestPickupTrigger(void)
+{
+	CTR_TEST_SECTION("Pickup activates selected effects for eligible human contacts only");
+	SetupRace(CHAOS_TRIGGER_PICKUP);
+	struct Driver human = {.driverID = 0};
+	struct Driver partner = {.driverID = 1};
+	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT};
+	CTR_TEST_CHECK(Chaos_OnPickup(&human), "a human pickup activates a selected effect");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[0].effect, CHAOS_EFFECT_LOW_GRAVITY, "Pickup draws only from enabled effects");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[0].remainingMS, 30000, "Pickup uses the configured duration");
+	Tick(250);
+	CTR_TEST_CHECK(Chaos_OnPickup(&partner), "the co-op partner can trigger Pickup");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 1, "another pickup refreshes the same effect without duplicates");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[0].elapsedMS, 0, "a new pickup restarts the effect phase");
+	const u32 rng = sdata->chaosRng;
+	CTR_TEST_CHECK(!Chaos_OnPickup(&bot), "bot pickups cannot activate effects");
+	CTR_TEST_CHECK(!Chaos_OnPickup(NULL), "missing drivers cannot activate effects");
+	human.actionsFlagSet = ACTION_RACE_FINISHED;
+	CTR_TEST_CHECK(!Chaos_OnPickup(&human), "finished humans cannot activate effects");
+	human.actionsFlagSet = 0;
+	const int blocked[] = {PAUSE_1, ADVENTURE_ARENA, LOADING, END_OF_RACE, MAIN_MENU};
+	for (unsigned int i = 0; i < len(blocked); i++)
+	{
+		s_tracker.gameMode1 = ADVENTURE_MODE | blocked[i];
+		CTR_TEST_CHECK(!Chaos_OnPickup(&human), "race gates block pickup activation");
+	}
+	s_tracker.gameMode1 = ARCADE_MODE;
+	CTR_TEST_CHECK(!Chaos_OnPickup(&human), "Arcade retains ordinary pickup behavior");
+	s_tracker.gameMode1 = ADVENTURE_MODE;
+	for (int trigger = 0; trigger < CHAOS_TRIGGER_COUNT; trigger++)
+	{
+		if (trigger != CHAOS_TRIGGER_PICKUP)
+		{
+			sdata->chaosSettings.trigger = trigger;
+			CTR_TEST_CHECK(!Chaos_OnPickup(&human), "other trigger modes ignore pickup events");
+		}
+	}
+	sdata->chaosSettings.trigger = CHAOS_TRIGGER_PICKUP;
+	sdata->chaosSettings.durationSeconds = 0;
+	CTR_TEST_CHECK(!Chaos_OnPickup(&human), "zero duration cannot consume a pickup activation");
+	sdata->chaosSettings.durationSeconds = 30;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_LOW_GRAVITY] = false;
+	sdata->chaosSettings.enabledCount = 0;
+	CTR_TEST_CHECK(!Chaos_OnPickup(&human), "empty selections cannot activate from pickups");
+	CTR_TEST_CHECK_EQ(sdata->chaosRng, rng, "ineligible contacts and invalid settings consume no RNG");
+	sdata->chaosSettings.effects[CHAOS_EFFECT_LOW_GRAVITY] = true;
+	sdata->chaosSettings.enabledCount = 1;
+	const ChaosEffectId fillers[] = {CHAOS_EFFECT_NO_HOPPING, CHAOS_EFFECT_NO_ITEMS, CHAOS_EFFECT_NO_RESERVES};
+	for (unsigned int i = 0; i < len(fillers); i++)
+	{
+		sdata->chaosSettings.effects[fillers[i]] = true;
+		Chaos_Activate(fillers[i], 10000);
+		sdata->chaosSettings.effects[fillers[i]] = false;
+	}
+	CTR_TEST_CHECK(Chaos_OnPickup(&human), "Pickup can refresh a selected effect at capacity");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 4, "Pickup replacement does not exceed capacity");
+	sdata->chaosSettings.effects[CHAOS_EFFECT_LOW_GRAVITY] = false;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_WUMPA_DRAIN] = true;
+	const struct ChaosRuntime full = sdata->chaosRuntime;
+	CTR_TEST_CHECK(!Chaos_OnPickup(&human), "Pickup rejects a fifth unrelated effect");
+	CTR_TEST_CHECK(memcmp(&full, &sdata->chaosRuntime, sizeof(full)) == 0, "a rejected pickup preserves all running effects");
+
+	CTR_TEST_SECTION("Turbo pads activate once per continuous traversal and preserve their latch on pause/restore");
+	SetupRace(CHAOS_TRIGGER_PICKUP);
+	struct Instance inst = {0};
+	struct Thread thread = {.inst = &inst, .flags = THREAD_FLAG_DISABLE_COLLISION};
+	human = (struct Driver){.driverID = 0, .instSelf = &inst};
+	thread.object = &human;
+	inst.thread = &thread;
+	human.stepFlagSet = COLL_STEP_TRIGGER_TURBO_PAD;
+	VehPhysForce_CollideDrivers(&thread, &human);
+	CTR_TEST_CHECK_EQ(s_activationSounds, 1, "normal turbo pad physics dispatches a pickup on entry");
+	Tick(100);
+	VehPhysForce_CollideDrivers(&thread, &human);
+	CTR_TEST_CHECK_EQ(s_activationSounds, 1, "remaining on a turbo pad cannot retrigger");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[0].elapsedMS, 100, "sustained pad contact cannot reset effect timers");
+	human.stepFlagSet = COLL_STEP_TRIGGER_SUPER_TURBO_PAD;
+	VehPhysForce_CollideDrivers(&thread, &human);
+	CTR_TEST_CHECK_EQ(s_activationSounds, 1, "moving between connected normal and super pads is one traversal");
+	const struct ChaosRuntime saved = sdata->chaosRuntime;
+	s_tracker.gameMode1 |= PAUSE_1;
+	Chaos_OnTurboPadContact(&human, false);
+	s_tracker.gameMode1 &= ~PAUSE_1;
+	Chaos_OnTurboPadContact(&human, true);
+	CTR_TEST_CHECK_EQ(s_activationSounds, 1, "pause cannot clear the contact latch");
+	human.stepFlagSet = 0;
+	VehPhysForce_CollideDrivers(&thread, &human);
+	human.stepFlagSet = COLL_STEP_TRIGGER_SUPER_TURBO_PAD;
+	VehPhysForce_CollideDrivers(&thread, &human);
+	CTR_TEST_CHECK_EQ(s_activationSounds, 2, "leaving then entering a super pad permits a fresh activation");
+	sdata->chaosRuntime = saved;
+	Chaos_OnTurboPadContact(&human, true);
+	CTR_TEST_CHECK_EQ(s_activationSounds, 2, "resident restoration preserves continuous contact");
+	Chaos_OnTurboPadContact(&partner, true);
+	CTR_TEST_CHECK_EQ(s_activationSounds, 3, "the co-op partner has an independent pad latch");
+	Chaos_OnTurboPadContact(&bot, true);
+	CTR_TEST_CHECK_EQ(s_activationSounds, 3, "bot pad contact cannot activate effects");
+	Chaos_Reset();
+	Chaos_BeginRace(&s_tracker);
+	Chaos_OnTurboPadContact(&human, true);
+	CTR_TEST_CHECK_EQ(s_activationSounds, 4, "race reset clears pad contact latches");
+}
+
 static void TestResidentRestore(void)
 {
 	CTR_TEST_SECTION("restoring resident state resumes timers, activation order and RNG choices");
@@ -2425,6 +2528,7 @@ int main(void)
 	TestGatesAndPause();
 	TestCapacityAndValidation();
 	TestResetAndInvalidSettings();
+	TestPickupTrigger();
 	TestResidentRestore();
 	TestRandomTrigger();
 	TestSteeringAndDriverScope();

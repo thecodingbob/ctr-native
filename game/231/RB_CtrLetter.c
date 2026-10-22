@@ -11,6 +11,10 @@ int RB_CtrLetter_ThCollide(struct Thread *letterTh, struct Thread *driverTh, voi
 
 
 	letterInst = letterTh->inst;
+	if (letterInst->scale.x == 0)
+	{
+		return 0;
+	}
 	if (sps->Input1.modelID == DYNAMIC_PLAYER)
 	{
 		driver = driverTh->object;
@@ -38,6 +42,7 @@ int RB_CtrLetter_ThCollide(struct Thread *letterTh, struct Thread *driverTh, voi
 		OtherFX_Play(100, 1);
 		letterTh->flags |= THREAD_FLAG_DEAD;
 
+		Chaos_OnPickup(driver);
 		return 1;
 	}
 	return 0;
