@@ -276,6 +276,28 @@ the kart hits the crate rather than passing through, spinning or collecting it. 
 and crates still growing after an earlier break retain retail behavior. No new
 per-effect state is required.
 
+Giant Karts replaces Bot Takes Wheel at stable ID 15. Unfinished human karts
+double their visual scale, solid/reflected tire size and collision radii (wall
+geometry and kart-to-kart collisions). Ground quads keep the retail collision
+radius to avoid bouncing on gentle slopes. Forward speed targets and initial
+jump impulses (manual, forced and spring) gain 30%; speed retains the retail
+top-speed ceiling. Successful activation sets each unfinished human driver's
+`kartScale` target to 2, with duplicates retaining the same value; each
+deactivation or race reset restores target 1. Squash/stretch and rescue paths derive
+their targets from this value, so the body grows and shrinks through retail
+interpolation rather than compounding a per-frame multiplier. Tires follow the
+driver's target. A giant kart squashes a smaller
+kart on contact through retail squish damage, respecting mask, shield and
+invincibility. A successful squash skips the normal bounce and queues the
+Turbo item's high forced hop so the giant can pass over its victim; continued
+contact with that squished kart does not restart the hop or block the giant.
+Giant-vs-giant contacts retain ordinary collision.
+
+`VehPhysForce_ScaleValue` derives body targets, tire sizes and contact radii
+from `Driver.kartScale`. `VehPhysCrash_TrySquashSmallerKart` compares those
+effective scales and applies retail squish damage to the smaller kart, without
+querying Chaos activations. Equal effective scales keep ordinary collision.
+
 `Chaos_ApplyOneOff` runs once after a successful activation is registered.
 Clock Curse uses it to apply the initial spin hit to unfinished humans. The retail
 clock sound plays once in `Chaos_ApplyClockCurse`, which shares the retail damage

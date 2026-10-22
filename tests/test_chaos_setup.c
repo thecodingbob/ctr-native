@@ -419,7 +419,7 @@ static void TestFilteredActiveEffects(void)
 	memset(sdata->chaosSettings.effects, 0, sizeof(sdata->chaosSettings.effects));
 	sdata->chaosSettings.effects[CHAOS_EFFECT_NO_HOPPING] = true;
 	sdata->chaosSettings.effects[CHAOS_EFFECT_NO_ITEMS] = true;
-	sdata->chaosSettings.effects[CHAOS_EFFECT_BOT_TAKES_THE_WHEEL] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_GIANT_KARTS] = true;
 	sdata->chaosSettings.enabledCount = 3;
 	struct RectMenu pause = {0};
 	MM_ChaosConfig_OpenReadOnly(&pause);
@@ -430,7 +430,7 @@ static void TestFilteredActiveEffects(void)
 	CTR_TEST_CHECK_EQ(s_drawnRows, 3, "disabled effects do not leave rows or gaps");
 	CTR_TEST_CHECK(s_drawnLabels[0] != NULL && strcmp(s_drawnLabels[0], "No Hopping") == 0, "the first visible row maps past the disabled first effect");
 	CTR_TEST_CHECK(s_drawnLabels[1] != NULL && strcmp(s_drawnLabels[1], "No Items") == 0, "the next row skips disabled effects in the middle");
-	CTR_TEST_CHECK(s_drawnLabels[2] != NULL && strcmp(s_drawnLabels[2], "Bot Takes Wheel") == 0, "the final enabled effect is included");
+	CTR_TEST_CHECK(s_drawnLabels[2] != NULL && strcmp(s_drawnLabels[2], "Giant Karts") == 0, "the final enabled effect is included");
 	CTR_TEST_CHECK(!s_drewOnOff, "the read-only list has no ON/OFF column");
 	Frame(BTN_UP, 0);
 	CTR_TEST_CHECK_EQ(MM_menuChaosConfig.rowSelected, 2, "navigation wraps within the filtered list");

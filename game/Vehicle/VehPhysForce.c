@@ -102,6 +102,7 @@ enum
 	VEH_PHYS_FORCE_TERRAIN_RUMBLE_FORCE = 0x7f,
 	VEH_PHYS_FORCE_ROLLBACK_WINDOW_TIMER = 0x280,
 	VEH_PHYS_FORCE_MATRIX_BLEND_FULL = 0x100,
+	VEH_PHYS_FORCE_KART_SCALE_NORMAL = 1,
 	VEH_PHYS_FORCE_KART_SCALE_BASE = 0xccc,
 	VEH_PHYS_FORCE_MASK_GRAB_SCALE_XZ_FACTOR = 0x28,
 	VEH_PHYS_FORCE_MIN_SQUASH_XZ_SCALE = 0x400,
@@ -1038,7 +1039,9 @@ void VehPhysForce_CollideDrivers(struct Thread *thread, struct Driver *driver)
 
 		if (search.bucket.th != NULL)
 		{
-			int radiusSum = CTR_MipsAddLo(thread->driverHitRadius, search.bucket.th->driverHitRadius);
+			struct Driver *other = search.bucket.th->object;
+			int radiusSum = VehPhysForce_ScaleValue(driver, thread->driverHitRadius) +
+			                VehPhysForce_ScaleValue(other, search.bucket.th->driverHitRadius);
 
 			CTR_PSX_CLOBBER("$9");
 			if (search.bucket.bestDistSq < CTR_MipsMulLo(radiusSum, radiusSum))
@@ -1516,6 +1519,15 @@ HIDE_WAKE:
 	}
 }
 
+int VehPhysForce_ScaleValue(const struct Driver *driver, int value)
+{
+	if ((driver->actionsFlagSet & ACTION_RACE_FINISHED) != 0)
+	{
+		return value;
+	}
+	return value * (driver->kartScale != 0 ? driver->kartScale : VEH_PHYS_FORCE_KART_SCALE_NORMAL);
+}
+
 void VehPhysForce_TranslateMatrix(struct Thread *thread, struct Driver *driver)
 {
 	struct Instance *inst = thread->inst;
@@ -1531,7 +1543,8 @@ void VehPhysForce_TranslateMatrix(struct Thread *thread, struct Driver *driver)
 
 		if ((driver->kartState == KS_MASK_GRABBED) && ((driver->actionsFlagSet & ACTION_TOUCH_GROUND) == 0))
 		{
-			inst->scale.y = (s16)CTR_MipsAddLo((u16)driver->jumpSquishStretch, VEH_PHYS_FORCE_KART_SCALE_BASE);
+			inst->scale.y = (s16)VehPhysForce_ScaleValue(
+			    driver, CTR_MipsAddLo(driver->jumpSquishStretch, VEH_PHYS_FORCE_KART_SCALE_BASE));
 
 			targetSquish = CTR_MipsSubLo(VEH_PHYS_FORCE_KART_SCALE_BASE,
 			                             VehPhysForce_TranslateMatrix_Div256TowardZero(driver->jumpSquishStretch * VEH_PHYS_FORCE_MASK_GRAB_SCALE_XZ_FACTOR));
@@ -1540,8 +1553,8 @@ void VehPhysForce_TranslateMatrix(struct Thread *thread, struct Driver *driver)
 				targetSquish = VEH_PHYS_FORCE_MIN_SQUASH_XZ_SCALE;
 			}
 
-			inst->scale.x = targetSquish;
-			inst->scale.z = targetSquish;
+			inst->scale.x = (s16)VehPhysForce_ScaleValue(driver, targetSquish);
+			inst->scale.z = inst->scale.x;
 			goto SQUASH_STRETCH_DONE;
 		}
 
@@ -1650,29 +1663,31 @@ void VehPhysForce_TranslateMatrix(struct Thread *thread, struct Driver *driver)
 				OtherFX_Play_Echo(VEH_PHYS_FORCE_SQUISH_RESTORE_SFX, 1, (driver->actionsFlagSet & ACTION_ENGINE_ECHO) != 0);
 			}
 
-			inst->scale.y = (s16)CTR_MipsAddLo((u16)driver->jumpSquishStretch, VEH_PHYS_FORCE_KART_SCALE_BASE);
+			inst->scale.y = (s16)VehPhysForce_ScaleValue(
+			    driver, CTR_MipsAddLo(driver->jumpSquishStretch, VEH_PHYS_FORCE_KART_SCALE_BASE));
 			driver->matrixArray = BAKED_GTE_MATRIX_SQUISH_RECOVER;
 			driver->matrixIndex = 0;
 		}
 		else
 		{
+			int targetScaleY = CTR_MipsAddLo(driver->jumpSquishStretch, VEH_PHYS_FORCE_KART_SCALE_BASE);
 			inst->scale.y = VehCalc_InterpBySpeed(inst->scale.y, VEH_PHYS_FORCE_SQUISH_SCALE_INTERP_SPEED,
-			                                      CTR_MipsAddLo(driver->jumpSquishStretch, VEH_PHYS_FORCE_KART_SCALE_BASE));
+			                                      VehPhysForce_ScaleValue(driver, targetScaleY));
 		}
 
 		{
 			int currentScaleX = inst->scale.x;
-			inst->scale.x = VehCalc_InterpBySpeed(
-			    currentScaleX, VEH_PHYS_FORCE_SQUISH_SCALE_INTERP_SPEED,
-			    CTR_MipsSubLo(VEH_PHYS_FORCE_KART_SCALE_BASE,
-			                  VehPhysForce_TranslateMatrix_Div256TowardZero(driver->jumpSquishStretch * VEH_PHYS_FORCE_SQUISH_SCALE_XZ_FACTOR)));
+			int targetScaleXZ = CTR_MipsSubLo(VEH_PHYS_FORCE_KART_SCALE_BASE,
+			    VehPhysForce_TranslateMatrix_Div256TowardZero(driver->jumpSquishStretch * VEH_PHYS_FORCE_SQUISH_SCALE_XZ_FACTOR));
+			inst->scale.x = VehCalc_InterpBySpeed(currentScaleX, VEH_PHYS_FORCE_SQUISH_SCALE_INTERP_SPEED,
+			                                      VehPhysForce_ScaleValue(driver, targetScaleXZ));
 		}
 		{
 			int currentScaleZ = inst->scale.z;
-			inst->scale.z = VehCalc_InterpBySpeed(
-			    currentScaleZ, VEH_PHYS_FORCE_SQUISH_SCALE_INTERP_SPEED,
-			    CTR_MipsSubLo(VEH_PHYS_FORCE_KART_SCALE_BASE,
-			                  VehPhysForce_TranslateMatrix_Div256TowardZero(driver->jumpSquishStretch * VEH_PHYS_FORCE_SQUISH_SCALE_XZ_FACTOR)));
+			int targetScaleXZ = CTR_MipsSubLo(VEH_PHYS_FORCE_KART_SCALE_BASE,
+			    VehPhysForce_TranslateMatrix_Div256TowardZero(driver->jumpSquishStretch * VEH_PHYS_FORCE_SQUISH_SCALE_XZ_FACTOR));
+			inst->scale.z = VehCalc_InterpBySpeed(currentScaleZ, VEH_PHYS_FORCE_SQUISH_SCALE_INTERP_SPEED,
+			                                      VehPhysForce_ScaleValue(driver, targetScaleXZ));
 		}
 	}
 

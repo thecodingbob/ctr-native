@@ -13,6 +13,9 @@ enum
 	CHAOS_HEAVY_GRAVITY_MULTIPLIER = 3,
 	CHAOS_SPEED_CAP_DIVISOR = 2,
 	CHAOS_SUPER_SPEED_MULTIPLIER = 2,
+	CHAOS_KART_SCALE_NORMAL = 1,
+	CHAOS_GIANT_SCALE = 2,
+	CHAOS_GIANT_SPEED_PERCENT = 130,
 };
 
 static s32 Chaos_NextTriggerGap(void)
@@ -38,8 +41,21 @@ bool Chaos_IsRunning(const struct GameTracker *gGT)
 	                                gGT->trafficLightsTimer < 1, CHAOS_GATE_ADVENTURE_ONLY);
 }
 
+static void Chaos_SetKartScale(u8 scale)
+{
+	struct GameTracker *gGT = sdata->gGT;
+	for (int i = 0; i < gGT->numPlyrCurrGame && i < ADV_MULTIPLAYER_NUM_PLAYERS_MAX; i++)
+	{
+		gGT->drivers[i]->kartScale = scale;
+	}
+}
+
 void Chaos_Reset(void)
 {
+	if (sdata->chaosRuntime.raceInitialized)
+	{
+		Chaos_SetKartScale(CHAOS_KART_SCALE_NORMAL);
+	}
 	memset(&sdata->chaosRuntime, 0, sizeof(sdata->chaosRuntime));
 }
 
@@ -55,6 +71,24 @@ void Chaos_BeginRace(struct GameTracker *gGT)
 	}
 	sdata->chaosRuntime.raceInitialized = true;
 	sdata->chaosRuntime.intervalRemainingMS = Chaos_NextTriggerGap();
+}
+
+static void Chaos_OnEffectDeactivated(ChaosEffectId effect)
+{
+	if (effect == CHAOS_EFFECT_GIANT_KARTS)
+	{
+		Chaos_SetKartScale(CHAOS_KART_SCALE_NORMAL);
+	}
+}
+
+static void Chaos_RemoveActivation(int index)
+{
+	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	ChaosEffectId effect = runtime->active[index].effect;
+	int remaining = runtime->numActive - index - 1;
+	memmove(&runtime->active[index], &runtime->active[index + 1], remaining * sizeof(runtime->active[0]));
+	runtime->active[--runtime->numActive] = (struct ChaosActivation){0};
+	Chaos_OnEffectDeactivated(effect);
 }
 
 static void Chaos_RemoveConflictingEffects(ChaosEffectId effect)
@@ -89,16 +123,17 @@ static void Chaos_RemoveConflictingEffects(ChaosEffectId effect)
 		return;
 	}
 	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
-	int kept = 0;
-	for (int i = 0; i < runtime->numActive; i++)
+	for (int i = 0; i < runtime->numActive;)
 	{
-		if (runtime->active[i].effect != replaced)
+		if (runtime->active[i].effect == replaced)
 		{
-			runtime->active[kept++] = runtime->active[i];
+			Chaos_RemoveActivation(i);
+		}
+		else
+		{
+			i++;
 		}
 	}
-	memset(&runtime->active[kept], 0, (runtime->numActive - kept) * sizeof(runtime->active[0]));
-	runtime->numActive = kept;
 }
 
 static void Chaos_ApplyClockCurse(const struct ChaosActivation *chaosActivation)
@@ -121,6 +156,10 @@ static void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation)
 	{
 		Chaos_ApplyClockCurse(chaosActivation);
 	}
+        if (chaosActivation->effect == CHAOS_EFFECT_GIANT_KARTS)
+        {
+                Chaos_SetKartScale(CHAOS_GIANT_SCALE);
+        }
 }
 
 bool Chaos_Activate(ChaosEffectId effect, s32 durationMS)
@@ -202,6 +241,10 @@ int Chaos_SpeedForDriver(const struct Driver *driver, int speed)
 			return 0;
 		}
 	}
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_GIANT_KARTS, driver))
+	{
+		speed = speed * CHAOS_GIANT_SPEED_PERCENT / CHAOS_PERCENT_SCALE;
+	}
 	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SPEED_CAPPED, driver))
 	{
 		const int cap = driver->const_Speed_ClassStat / CHAOS_SPEED_CAP_DIVISOR;
@@ -212,9 +255,15 @@ int Chaos_SpeedForDriver(const struct Driver *driver, int speed)
 	}
 	else if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SUPER_SPEED, driver))
 	{
-		return speed * CHAOS_SUPER_SPEED_MULTIPLIER;
+		speed *= CHAOS_SUPER_SPEED_MULTIPLIER;
 	}
 	return speed;
+}
+
+int Chaos_JumpForceForDriver(const struct Driver *driver, int force)
+{
+	return Chaos_IsActiveForDriver(CHAOS_EFFECT_GIANT_KARTS, driver) ?
+	       force * CHAOS_GIANT_SPEED_PERCENT / CHAOS_PERCENT_SCALE : force;
 }
 
 int Chaos_AccelerationForDriver(const struct Driver *driver, int acceleration)
@@ -360,24 +409,23 @@ u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, in
 static void Chaos_TickActivations(s32 elapsedMS)
 {
 	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
-	int kept = 0;
-	for (int i = 0; i < runtime->numActive; i++)
+	for (int i = 0; i < runtime->numActive;)
 	{
-		struct ChaosActivation entry = runtime->active[i];
-		if (entry.remainingMS > elapsedMS)
+		struct ChaosActivation *entry = &runtime->active[i];
+		if (entry->remainingMS <= elapsedMS)
 		{
-			entry.remainingMS -= elapsedMS;
-			entry.elapsedMS += elapsedMS;
-			entry.noticeRemainingMS -= elapsedMS;
-			if (entry.noticeRemainingMS < 0)
-			{
-				entry.noticeRemainingMS = 0;
-			}
-			runtime->active[kept++] = entry;
+			Chaos_RemoveActivation(i);
+			continue;
 		}
+		entry->remainingMS -= elapsedMS;
+		entry->elapsedMS += elapsedMS;
+		entry->noticeRemainingMS -= elapsedMS;
+		if (entry->noticeRemainingMS < 0)
+		{
+			entry->noticeRemainingMS = 0;
+		}
+		i++;
 	}
-	memset(&runtime->active[kept], 0, (runtime->numActive - kept) * sizeof(runtime->active[0]));
-	runtime->numActive = kept;
 }
 
 void Chaos_Update(struct GameTracker *gGT)

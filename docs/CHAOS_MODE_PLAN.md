@@ -6,9 +6,9 @@ Implemented: catalogue/selection helpers, race gate, creation flow, per-slot
 persistence, save marker, pause inspection and runtime timers/Interval/Random scheduling.
 Inverted Steering, No Hopping, Wobble Steering, Low Gravity, Heavy Karts,
 Speed Capped, Super Speed, No Reserves, No Items, Wumpa Drain, Clock Curse,
-Explosive Crates, Defective Boosts and Anxious Mask are
+Explosive Crates, Defective Boosts, Anxious Mask, Hard Crates and Giant Karts are
 connected, with an activation-name overlay.
-Pending: remaining effects, Pickup/External triggers, provider and player guide.
+Pending: Pickup/External triggers, provider and player guide.
 Save layouts and checkpoint ownership are documented in [CHAOS_STATE.md](CHAOS_STATE.md).
 
 ### Established rules
@@ -82,8 +82,7 @@ for a central dispatcher; generic level collisions also include hazards.
 
 ## Effect hooks
 
-All 16 effects have catalogue IDs/toggles. Fifteen are implemented; the
-remaining rows are source leads to verify during implementation.
+All 16 effects have catalogue IDs/toggles and implementations.
 
 | Effects | Candidate mechanism |
 | --- | --- |
@@ -100,7 +99,7 @@ remaining rows are source leads to verify during implementation.
 | Defective Boosts — done | Invert the live fire-speed bonus while reserves remain; preserve normal fuel grants, accumulation and consumption for every boost source |
 | Anxious Mask — done | Contact with slowing terrain requests retail rescue before checkpoint updates; existing rescue states prevent repeated requests |
 | Hard Crates — done | Full-size item, Wumpa and time crates stay solid on direct human contact; override touch-only hitbox response with the retail solid impact without breaking the crate |
-| Bot Takes Wheel | Guarded `BOTS_Driver_Convert` plus explicit human-control hand-back |
+| Giant Karts — done | Double human kart models, tires and lateral collision radii; keep retail floor clearance, raise speed and jump force by 30%, squash smaller karts and hop past them |
 
 Key implementation constraints:
 
@@ -113,15 +112,10 @@ Key implementation constraints:
 - Explosive Crates reuses the retail damage implementation with protection bypass;
   weapon hits retain ordinary crate behavior. Hard Crates leaves crates intact
   and returns through the regular solid-hitbox impact path.
-- Takeover must handle missing nav paths without partial conversion. Audit clock
-  freezing/`distanceDriven`, action latches, thread ownership, nav-list links,
-  `botData`, rotation, velocity and damage states. Restore only owned state;
-  stale whole-action/motion snapshots must not undo race progress. Checkpoint
-  restoration must support takeover and subsequent hand-back.
-- Hard Crates and Bot Takes Wheel can consume retail RNG. Their replay
-  incompatibility is accepted; do not hide it by restoring retail RNG.
+- Hard Crates can consume retail RNG when weapon hits break crates; its replay
+  incompatibility is accepted. Do not hide it by restoring retail RNG.
 
-Deferred: Hyper Bots, Blind Kart, Giant Karts, Tiny Karts, Item Rain.
+Deferred: Hyper Bots, Blind Kart, Tiny Karts, Item Rain.
 Append stable IDs/slugs; the current disk bitset supports 128 effects.
 
 ## External provider

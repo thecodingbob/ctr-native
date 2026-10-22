@@ -1179,7 +1179,7 @@ CHECK_FOR_ANY_JUMP:
 			d->jump_ForcedMS = VEH_PHYS_JUMP_FORCED_MS;
 
 			jumpForce = CTR_MipsAddLo(CTR_MipsSll(d->const_JumpForce, 3), d->const_JumpForce);
-			d->jump_InitialVelY = (s16)VehPhysGeneral_Jump_Div4TowardZero(jumpForce);
+			d->jump_InitialVelY = (s16)Chaos_JumpForceForDriver(d, VehPhysGeneral_Jump_Div4TowardZero(jumpForce));
 
 			OtherFX_Play_Echo(VEH_PHYS_JUMP_SPRING_SFX, 1, (d->actionsFlagSet & ACTION_ENGINE_ECHO) != 0);
 
@@ -1208,13 +1208,13 @@ CHECK_FOR_ANY_JUMP:
 
 			d->jump_HighJumpTimerMS = VEH_PHYS_JUMP_HIGH_TIMER_MS;
 			jumpForce = CTR_MipsAddLo(CTR_MipsSll(d->const_JumpForce, 1), d->const_JumpForce);
-			d->jump_InitialVelY = (s16)jumpForce;
+			d->jump_InitialVelY = (s16)Chaos_JumpForceForDriver(d, jumpForce);
 		}
 		else
 		{
 			int jumpForce = CTR_MipsAddLo(CTR_MipsSll(d->const_JumpForce, 1), d->const_JumpForce);
 
-			d->jump_InitialVelY = (s16)VehPhysGeneral_Jump_Div2TowardZero(jumpForce);
+			d->jump_InitialVelY = (s16)Chaos_JumpForceForDriver(d, VehPhysGeneral_Jump_Div2TowardZero(jumpForce));
 		}
 
 		d->forcedJumpType = FORCED_JUMP_NONE;
@@ -1229,7 +1229,7 @@ NORMAL_JUMP:
 
 	d->jump_ForcedMS = VEH_PHYS_JUMP_FORCED_MS;
 	d->numberOfJumps = (s16)CTR_MipsAddLo((u16)d->numberOfJumps, 1);
-	d->jump_InitialVelY = d->const_JumpForce;
+	d->jump_InitialVelY = (s16)Chaos_JumpForceForDriver(d, d->const_JumpForce);
 
 	OtherFX_Play_Echo(VEH_PHYS_JUMP_NORMAL_SFX, 1, (d->actionsFlagSet & ACTION_ENGINE_ECHO) != 0);
 

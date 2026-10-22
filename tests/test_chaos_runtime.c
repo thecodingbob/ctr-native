@@ -5,10 +5,12 @@ struct sData sdata_static;
 struct Data data;
 NativeConfig g_config;
 static struct GameTracker s_tracker;
+static struct Driver s_defaultDrivers[2];
 static bool s_teleported;
 static bool s_allHumansFinished;
 static int s_activationSounds;
 static int s_clockSounds;
+static int s_squishSounds;
 static int s_crateExplosions;
 static int s_crateSounds;
 static struct Instance *s_lastExplodingCrate;
@@ -31,9 +33,8 @@ static u32 *s_drawOT[CHAOS_EFFECT_COUNT];
 // VehPickupItem.c precedes Chaos in the game unity build.
 enum { SOUND_CLOCK = 0x44 };
 
-// VehPhysForce.c precedes Chaos in the game unity build.
-enum { VEH_PHYS_FORCE_TERRAIN_SCALE_NEUTRAL = 0x100 };
-
+#include <game/Vehicle/VehPhysCrash.c>
+#include <game/Vehicle/VehPhysForce.c>
 #include <game/Vehicle/VehPickState.c>
 #include <game/231/RB_Chaos.c>
 #include <game/MAIN/MainGameStart.c>
@@ -133,10 +134,10 @@ void GAMEPAD_ShockFreq(struct Driver *driver, int frame, int value)
 }
 void OtherFX_Play_Echo(u32 soundID, int flags, int echoFlag)
 {
-	(void)soundID;
 	(void)flags;
 	(void)echoFlag;
-	CtrTest_Bail("Clock Curse must not play squish audio");
+	CTR_TEST_CHECK_EQ(soundID, VEH_PICK_SOUND_SQUISH, "squish damage uses the retail audio");
+	s_squishSounds++;
 }
 void RB_Player_KillPlayer(struct Driver *attacker, struct Driver *victim)
 {
@@ -243,22 +244,103 @@ void VehTurbo_ThDestroy(struct Thread *thread)
 	(void)thread;
 }
 
+// These full-physics paths are outside the asset-free scale/contact checks.
+u32 VehCalc_FastSqrt(u32 value, u32 shift)
+{
+	(void)value; (void)shift;
+	CtrTest_Bail("scale/contact checks must not calculate velocity");
+	return 0;
+}
+s32 MATH_FastSqrt(u32 value, s32 shift)
+{
+	(void)value; (void)shift;
+	CtrTest_Bail("scale/contact checks must not search collision buckets");
+	return 0;
+}
+int ratan2(int y, int x)
+{
+	(void)y; (void)x;
+	CtrTest_Bail("scale/contact checks must not calculate angles");
+	return 0;
+}
+void ConvertRotToMatrix(MATRIX *matrix, const SVec3 *rotation)
+{
+	(void)matrix; (void)rotation;
+	CtrTest_Bail("scale/contact checks must not animate matrices");
+}
+void MatrixRotate(void *dst, MATRIX *src, MATRIX *rotation)
+{
+	(void)dst; (void)src; (void)rotation;
+	CtrTest_Bail("scale/contact checks must not animate matrices");
+}
+void OtherFX_DriverCrashing(u32 echo, u32 volume)
+{
+	(void)echo; (void)volume;
+	CtrTest_Bail("squash checks must not use the ordinary crash sound");
+}
+void BOTS_CollideWithOtherAI(struct Driver *first, struct Driver *second)
+{
+	(void)first; (void)second;
+	CtrTest_Bail("squash checks must not run bot navigation");
+}
+void GAMEPAD_JogCon1(struct Driver *driver, u8 value, u16 timeMS)
+{
+	(void)driver; (void)value; (void)timeMS;
+	CtrTest_Bail("scale/contact checks must not run ordinary crash rumble");
+}
+int VehCalc_MapToRange(int value, int oldMin, int oldMax, int newMin, int newMax)
+{
+	(void)value; (void)oldMin; (void)oldMax; (void)newMin; (void)newMax;
+	CtrTest_Bail("scale/contact checks must not run full vehicle physics");
+	return 0;
+}
+int VehCalc_InterpBySpeed(int value, int speed, int desired)
+{
+	(void)value; (void)speed; (void)desired;
+	CtrTest_Bail("scale/contact checks must not run full vehicle physics");
+	return 0;
+}
+void PROC_CollidePointWithBucket(struct Thread *thread, struct BucketSearchParams *search)
+{
+	(void)thread; (void)search;
+	CtrTest_Bail("scale/contact checks must not search collision buckets");
+}
+u32 MFC2(int reg)
+{
+	(void)reg;
+	CtrTest_Bail("scale/contact checks must not project geometry");
+	return 0;
+}
+struct Particle *Particle_Init(u32 flags, struct IconGroup *icons, struct ParticleEmitter *emitter)
+{
+	(void)flags; (void)icons; (void)emitter;
+	CtrTest_Bail("scale/contact checks must not spawn particles");
+	return NULL;
+}
+
 static void SetupRace(int trigger)
 {
 	s_allHumansFinished = false;
 	s_activationSounds = 0;
 	s_clockSounds = 0;
+	s_squishSounds = 0;
 	s_crateExplosions = 0;
 	s_crateSounds = 0;
 	s_lastExplodingCrate = NULL;
 	memset(&sdata_static, 0, sizeof(sdata_static));
 	memset(&s_tracker, 0, sizeof(s_tracker));
+	memset(s_defaultDrivers, 0, sizeof(s_defaultDrivers));
 	memset(&g_config, 0, sizeof(g_config));
 	sdata->gGT = &s_tracker;
 	sdata->Loading.stage = LOAD_IDLE;
 	s_tracker.gameMode1 = ADVENTURE_MODE;
 	s_tracker.overlayIndex_Threads = OVERLAY_INDEX_RACING_OR_BATTLE;
 	s_tracker.numPlyrCurrGame = 2;
+	for (int i = 0; i < s_tracker.numPlyrCurrGame; i++)
+	{
+		s_defaultDrivers[i].driverID = i;
+		s_tracker.drivers[i] = &s_defaultDrivers[i];
+	}
 	sdata->chaosSettings = (struct ChaosSettings){
 		.armed = true, .trigger = (u8)trigger, .durationSeconds = 30,
 		.triggerIntervalSeconds = 5, .enabledCount = 1,
@@ -1570,6 +1652,91 @@ static void TestHardCrates(void)
 	CTR_TEST_CHECK(!Chaos_IsHardCrateForDriver(&crate, &collidingTh, &sps), "race reset leaves crates breakable");
 }
 
+static void TestGiantKarts(void)
+{
+	CTR_TEST_SECTION("Giant Karts doubles visual/contact size and raises forward speed by 30 percent");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_GIANT_KARTS] = true;
+	sdata->chaosSettings.enabledCount++;
+	struct Instance humanInst = {.scale = {0xccc, 0xccc, 0xccc}};
+	struct Driver human = {.driverID = 0, .instSelf = &humanInst, .wheelSize = 0xccc};
+	struct Driver partner = {.driverID = 1};
+	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT, .wheelSize = 0xccc};
+	s_tracker.drivers[0] = &human;
+	s_tracker.drivers[1] = &partner;
+	CTR_TEST_CHECK_EQ(human.kartScale, 0, "before activation the driver uses retail scale");
+	CTR_TEST_CHECK_EQ(Chaos_JumpForceForDriver(&human, 1000), 1000, "inactive effect preserves ordinary jumps");
+	Chaos_Activate(CHAOS_EFFECT_GIANT_KARTS, 3000);
+	CTR_TEST_CHECK_EQ(human.kartScale, 2, "activation changes the driver's scale target once");
+	CTR_TEST_CHECK_EQ(partner.kartScale, 2, "co-op partner receives the same scale target");
+	CTR_TEST_CHECK_EQ(humanInst.scale.x, 0xccc, "activation leaves the current scale for retail interpolation");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 10000), 13000, "forward target increases by 30 percent");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, -2000), -2000, "reverse speed stays retail");
+	human.const_Speed_ClassStat = 20000;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_SPEED_CAPPED] = true;
+	sdata->chaosSettings.enabledCount++;
+	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 1000);
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 10000), 10000, "Speed Capped still limits a giant's boosted forward speed");
+	CTR_TEST_CHECK_EQ(bot.kartScale, 0, "bot keeps the retail scale");
+	CTR_TEST_CHECK_EQ(Chaos_JumpForceForDriver(&human, 1000), 1300, "normal, forced and spring jumps gain 30 percent impulse");
+	CTR_TEST_CHECK_EQ(Chaos_JumpForceForDriver(&bot, 1000), 1000, "bots retain normal jump force");
+	struct Thread botThread = {0};
+	struct Instance botInst = {.thread = &botThread};
+	bot.instSelf = &botInst;
+	CTR_TEST_CHECK(VehPhysCrash_TrySquashSmallerKart(&human, &bot), "a successful squash skips the blocking kart collision");
+	CTR_TEST_CHECK(bot.squishTimer > 0 && bot.funcPtrs[DRIVER_FUNC_INIT] == VehPhysProc_SpinFirst_Init,
+	               "a giant squashes the smaller kart through retail damage");
+	CTR_TEST_CHECK_EQ(human.forcedJumpType, FORCED_JUMP_HIGH, "the giant gets the Turbo-item hop over its victim");
+	CTR_TEST_CHECK_EQ(s_squishSounds, 1, "squash plays its retail sound once");
+	const int squishTimer = bot.squishTimer;
+	human.forcedJumpType = FORCED_JUMP_NONE;
+	CTR_TEST_CHECK(VehPhysCrash_TrySquashSmallerKart(&bot, &human), "a squished kart cannot block the giant on repeated contact");
+	CTR_TEST_CHECK_EQ(bot.squishTimer, squishTimer, "continued contact does not restart an existing squash");
+	CTR_TEST_CHECK_EQ(human.forcedJumpType, FORCED_JUMP_NONE, "continued contact does not queue repeated forced hops");
+	bot.squishTimer = 0;
+	bot.invincibleTimer = 100;
+	bot.funcPtrs[DRIVER_FUNC_INIT] = NULL;
+	CTR_TEST_CHECK(!VehPhysCrash_TrySquashSmallerKart(&human, &bot), "a protected smaller kart keeps ordinary collision response");
+	CTR_TEST_CHECK_EQ(bot.squishTimer, 0, "retail invincibility protects the smaller kart");
+	bot.invincibleTimer = 0;
+	CTR_TEST_CHECK(!VehPhysCrash_TrySquashSmallerKart(&human, &partner), "equally giant humans keep ordinary kart collision");
+	s_tracker.gameMode1 |= PAUSE_1;
+	Tick(1000);
+	CTR_TEST_CHECK_EQ(human.kartScale, 2, "pause freezes the enlarged target");
+	s_tracker.gameMode1 &= ~PAUSE_1;
+	Chaos_Activate(CHAOS_EFFECT_GIANT_KARTS, 1000);
+	CTR_TEST_CHECK_EQ(human.kartScale, 2, "duplicate activation does not compound the scale target");
+	Tick(1000);
+	CTR_TEST_CHECK(Chaos_IsActive(CHAOS_EFFECT_GIANT_KARTS), "duplicate expiry keeps the surviving effect active");
+	CTR_TEST_CHECK_EQ(human.kartScale, 1, "deactivating Giant Karts restores the scale target");
+	Tick(2000);
+	CTR_TEST_CHECK_EQ(human.kartScale, 1, "final expiry restores the normal target");
+	CTR_TEST_CHECK_EQ(partner.kartScale, 1, "final expiry restores the co-op partner's target");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 10000), 10000, "expiry restores speed");
+	CTR_TEST_CHECK_EQ(Chaos_JumpForceForDriver(&human, 1000), 1000, "expiry restores jump force");
+	Chaos_Activate(CHAOS_EFFECT_GIANT_KARTS, 1000);
+	CTR_TEST_CHECK_EQ(human.kartScale, 2, "a new activation changes the target again");
+	Chaos_Reset();
+	CTR_TEST_CHECK_EQ(human.kartScale, 1, "race reset restores the normal target");
+	CTR_TEST_CHECK_EQ(partner.kartScale, 1, "race reset also restores the partner's target");
+
+	CTR_TEST_SECTION("Scale and squash use driver dimensions independently of Chaos");
+	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&bot, 25), 25, "zero-initialized scale keeps retail collision size");
+	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, 0xccc), 0xccc, "explicit normal scale keeps the retail target");
+	human.kartScale = 3;
+	bot.kartScale = 2;
+	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, 25), 75, "collision size follows arbitrary driver scale");
+	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, human.wheelSize), 0x2664, "wheel size uses the same scale as the body");
+	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, 0), 0, "squish preserves zero vertical scale");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_GIANT_KARTS), "no Chaos activation is needed for dimension-based collision");
+	CTR_TEST_CHECK(VehPhysCrash_TrySquashSmallerKart(&bot, &human), "a larger kart squashes a smaller enlarged kart without Chaos");
+	human.actionsFlagSet |= ACTION_RACE_FINISHED;
+	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, 25), 25, "finished drivers use retail dimensions");
+	bot.squishTimer = 0;
+	bot.kartScale = 1;
+	CTR_TEST_CHECK(!VehPhysCrash_TrySquashSmallerKart(&human, &bot), "a finished enlarged driver cannot squash an equally sized kart");
+}
+
 static void TestClockCurse(void)
 {
 	CTR_TEST_SECTION("Clock Curse sets the received clock once and bypasses protection");
@@ -1603,6 +1770,7 @@ static void TestClockCurse(void)
 	CTR_TEST_CHECK(human.funcPtrs[DRIVER_FUNC_INIT] == VehPhysProc_SpinFirst_Init, "the initial clock spin bypasses mask and invincibility");
 	CTR_TEST_CHECK(partner.funcPtrs[DRIVER_FUNC_INIT] == VehPhysProc_SpinFirst_Init, "the initial clock spin bypasses shields");
 	CTR_TEST_CHECK_EQ(s_clockSounds, 1, "activation plays the clock sound once for all humans");
+	CTR_TEST_CHECK_EQ(s_squishSounds, 0, "Clock Curse does not use the Giant Karts squish sound");
 	human.funcPtrs[DRIVER_FUNC_INIT] = NULL;
 	TickAndApplyDrivers(32);
 	CTR_TEST_CHECK(human.funcPtrs[DRIVER_FUNC_INIT] == NULL, "continuous slowdown does not repeat the initial hit");
@@ -2216,6 +2384,7 @@ int main(void)
 	TestClockCurse();
 	TestExplosiveCrates();
 	TestHardCrates();
+	TestGiantKarts();
 	TestAnxiousMask();
 	TestHopInputAndCloudOwnership();
 	TestDriverApplication();

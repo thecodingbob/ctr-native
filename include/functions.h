@@ -1305,6 +1305,7 @@ bool Chaos_IsActive(ChaosEffectId effect);
 bool Chaos_IsActiveForDriver(ChaosEffectId effect, const struct Driver *driver);
 int Chaos_GravityForDriver(const struct Driver *driver);
 int Chaos_SpeedForDriver(const struct Driver *driver, int speed);
+int Chaos_JumpForceForDriver(const struct Driver *driver, int force);
 int Chaos_AccelerationForDriver(const struct Driver *driver, int acceleration);
 void Chaos_ApplyReserveRules(struct Driver *driver);
 void Chaos_ApplyItemRules(struct Driver *driver);
@@ -1411,6 +1412,9 @@ int VehPhysCrash_Attack(struct Driver *driver1, struct Driver *driver2, b32 canP
 void VehPhysCrash_AnyTwoCars(struct Thread *thread, struct DriverCollisionSearch *search, Vec3 *selfVel);
 void VehPhysForce_CollideDrivers(struct Thread *thread, struct Driver *driver);
 void VehPhysForce_TranslateMatrix(struct Thread *thread, struct Driver *driver);
+int VehPhysForce_ScaleValue(const struct Driver *driver, int value);
+bool VehPhysCrash_TrySquashSmallerKart(struct Driver *first, struct Driver *second);
+int VehPickState_TrySquish(struct Driver *driver);
 int VehPhysGeneral_JumpGetVelY(s16 *normalVec, Vec3 *speedXYZ);
 void VehPhysGeneral_JumpAndFriction(struct Thread *thread, struct Driver *driver);
 void CS_LoadBoss(const struct BossCutsceneData *bcd);

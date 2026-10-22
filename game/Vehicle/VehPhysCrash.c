@@ -1,5 +1,27 @@
 #include "VehCommon.h"
 
+bool VehPhysCrash_TrySquashSmallerKart(struct Driver *first, struct Driver *second)
+{
+	int firstScale = VehPhysForce_ScaleValue(first, 1);
+	int secondScale = VehPhysForce_ScaleValue(second, 1);
+	if (firstScale == secondScale)
+	{
+		return false;
+	}
+	struct Driver *large = firstScale > secondScale ? first : second;
+	struct Driver *small = firstScale > secondScale ? second : first;
+	if (small->squishTimer == 0)
+	{
+		if (!VehPickState_TrySquish(small))
+		{
+			return false;
+		}
+		// The Turbo item's squash gives the attacker a high forced hop.
+		large->forcedJumpType = FORCED_JUMP_HIGH;
+	}
+	return true;
+}
+
 enum
 {
 	VEH_PHYS_CRASH_FAST_SQRT_ITERATIONS = 0x10,
@@ -320,8 +342,13 @@ void VehPhysCrash_AnyTwoCars(struct Thread *thread, struct DriverCollisionSearch
 	otherDriver = search->bucket.th->object;
 	selfDriver = thread->object;
 
-	hitStrength = CTR_MipsSubLo(CTR_MipsAddLo(thread->driverHitRadius, otherDriver->instSelf->thread->driverHitRadius), distance);
+	hitStrength = VehPhysForce_ScaleValue(selfDriver, thread->driverHitRadius) +
+	              VehPhysForce_ScaleValue(otherDriver, otherDriver->instSelf->thread->driverHitRadius) - distance;
 	if (hitStrength <= 0)
+	{
+		return;
+	}
+	if (VehPhysCrash_TrySquashSmallerKart(selfDriver, otherDriver))
 	{
 		return;
 	}

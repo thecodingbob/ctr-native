@@ -2021,6 +2021,13 @@ KeepNormal:;
 	sps->boolDidTouchQuadblock = (s16)CTR_MipsAddLo(sps->boolDidTouchQuadblock, 1);
 }
 
+enum
+{
+      COLL_SCRUB_DEPTH_REPEAT_STEP = 0x100,
+      COLL_SCRUB_DEPTH_REPEAT_LIMIT = 0x401,
+      COLL_HITBOX_SCRUB_DEPTH_BONUS = 0x200,
+      COLL_MOVED_PLAYER_HIT_RADIUS = 0x19,
+};
 
 void COLL_MOVED_QUADBLK_TestTriangles(struct QuadBlock *quad, struct ScratchpadStruct *sps)
 {
@@ -2034,6 +2041,14 @@ void COLL_MOVED_QUADBLK_TestTriangles(struct QuadBlock *quad, struct ScratchpadS
 	    (sps->bbox.min.x > quad->bbox.max.x) || (sps->bbox.min.y > quad->bbox.max.y) || (sps->bbox.min.z > quad->bbox.max.z))
 	{
 		return;
+	}
+	// Keep the retail floor clearance: doubling the sphere radius makes shallow
+	// slopes repeatedly push the giant kart upward. Walls retain the wider radius.
+	s16 radius = sps->Input1.hitRadius;
+	if ((quad->quadFlags & QUADBLOCK_FLAG_GROUND) != 0)
+	{
+		sps->Input1.hitRadius = COLL_MOVED_PLAYER_HIT_RADIUS;
+		sps->Input1.hitRadiusSquared = COLL_MOVED_PLAYER_HIT_RADIUS * COLL_MOVED_PLAYER_HIT_RADIUS;
 	}
 
 	// if 3P or 4P mode,
@@ -2081,6 +2096,8 @@ void COLL_MOVED_QUADBLK_TestTriangles(struct QuadBlock *quad, struct ScratchpadS
 			COLL_MOVED_TRIANGL_TestPoint(sps, &bsv[2], &bsv[6], &bsv[8]); // 2, 6, 8
 		}
 	}
+	sps->Input1.hitRadius = radius;
+	sps->Input1.hitRadiusSquared = radius * radius;
 }
 
 
@@ -2107,14 +2124,6 @@ void COLL_MOVED_BSPLEAF_TestQuadblocks(struct BSP *node, struct ScratchpadStruct
 		COLL_FIXED_BSPLEAF_TestInstance(node, sps);
 	}
 }
-
-enum
-{
-	COLL_SCRUB_DEPTH_REPEAT_STEP = 0x100,
-	COLL_SCRUB_DEPTH_REPEAT_LIMIT = 0x401,
-	COLL_HITBOX_SCRUB_DEPTH_BONUS = 0x200,
-	COLL_MOVED_PLAYER_HIT_RADIUS = 0x19,
-};
 
 void COLL_MOVED_FindScrub(struct QuadBlock *qb, s32 triangleID, struct ScratchpadStruct *sps)
 {
@@ -2247,7 +2256,7 @@ void COLL_MOVED_PlayerSearch(struct Thread *t, struct Driver *d)
 	struct GameTracker *gGT = sdata->gGT;
 	struct ScratchpadStruct *sps = CTR_SCRATCHPAD_PTR(struct ScratchpadStruct, 0x108);
 	s32 multiplier = COLL_FRACTION_ONE;
-	s16 hitRadius = COLL_MOVED_PLAYER_HIT_RADIUS;
+	s16 hitRadius = (s16)VehPhysForce_ScaleValue(d, COLL_MOVED_PLAYER_HIT_RADIUS);
 
 	sps->Input1.hitRadius = hitRadius;
 	sps->Input1.hitRadiusSquared = hitRadius * hitRadius;

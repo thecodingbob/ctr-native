@@ -35,10 +35,10 @@ typedef enum {
 	CHAOS_EFFECT_CLOCK_CURSE = 11,
 	CHAOS_EFFECT_DEFECTIVE_BOOSTS = 12,
 
-	// Tier C: driver interventions; AI takeover also needs explicit hand-back.
+	// Tier C: driver and collision interventions.
 	CHAOS_EFFECT_ANXIOUS_MASK = 13,
 	CHAOS_EFFECT_HARD_CRATES = 14,
-	CHAOS_EFFECT_BOT_TAKES_THE_WHEEL = 15,
+	CHAOS_EFFECT_GIANT_KARTS = 15,
 
 	// IDs are saved bit positions: append new IDs, never renumber or reuse one.
 	// Growth within the saved bitset capacity does not change its layout.
@@ -77,7 +77,7 @@ static const ChaosEffectDef g_chaosEffectDefs[CHAOS_EFFECT_COUNT] =
 	[CHAOS_EFFECT_DEFECTIVE_BOOSTS] = { "defective-boosts", "Defective Boosts", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_ANXIOUS_MASK] = { "anxious-mask", "Anxious Mask", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_HARD_CRATES] = { "hard-crates", "Hard Crates", CHAOS_SCOPE_HUMANS },
-	[CHAOS_EFFECT_BOT_TAKES_THE_WHEEL] = { "bot-takes-wheel", "Bot Takes Wheel", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_GIANT_KARTS] = { "giant-karts", "Giant Karts", CHAOS_SCOPE_HUMANS },
 };
 
 static inline const ChaosEffectDef *ChaosEffect_Def(ChaosEffectId id)

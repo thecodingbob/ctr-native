@@ -153,7 +153,7 @@ static void DrawTiresSolid_BuildWheelLocalPairs(struct DrawTiresScratch *scratch
 
 	scratch->otRangeNormal = idpp->otRangeNormal;
 	scratch->otRangeSecondary = idpp->otRangeSecondary;
-	scratch->wheelSize.word = (s16)driver->wheelSize;
+	scratch->wheelSize.word = (s16)VehPhysForce_ScaleValue(driver, driver->wheelSize);
 
 	struct TrigPair steering = DrawTiresSolid_TrigAngleSinCos(driver->wheelRotation << 2);
 	scratch->wheelLocal[0].rim.x = scratch->wheelLocal[0].center.x - steering.cos;
@@ -836,7 +836,7 @@ static void DrawTiresReflection_BuildWheelLocalPairs(struct DrawTiresScratch *sc
 
 	scratch->otRangeNormal = idpp->otRangeNormal;
 	scratch->otRangeSecondary = idpp->otRangeSecondary;
-	scratch->wheelSize.word = (s16)driver->wheelSize;
+	scratch->wheelSize.word = (s16)VehPhysForce_ScaleValue(driver, driver->wheelSize);
 
 	struct TrigPair steering = DrawTiresSolid_TrigAngleSinCos(driver->wheelRotation << 2);
 	scratch->wheelLocal[0].rim.x = scratch->wheelLocal[0].center.x - steering.cos;

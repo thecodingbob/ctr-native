@@ -26,7 +26,7 @@ static void TestBitsetWireFormat(void)
 	{
 		const bool expected = id == CHAOS_EFFECT_INVERTED_STEERING || id == CHAOS_EFFECT_LOW_GRAVITY ||
 		                      id == CHAOS_EFFECT_NO_RESERVES || id == CHAOS_EFFECT_NO_ITEMS ||
-		                      id == CHAOS_EFFECT_BOT_TAKES_THE_WHEEL;
+		                              id == CHAOS_EFFECT_GIANT_KARTS;
 		CTR_TEST_CHECK(live.effects[id] == expected, "each saved bit maps to its stable named effect, including across byte boundaries");
 	}
 	live.enabledCount = 99;

@@ -380,6 +380,11 @@ DamageApplied:
 	return 1;
 }
 
+int VehPickState_TrySquish(struct Driver *driver)
+{
+	return VehPickState_ApplyDamage(driver, VEH_PICK_DAMAGE_SQUISH, NULL, 0, false);
+}
+
 int VehPickState_NewState(struct Driver *victimDriver, int damageType, struct Driver *attackDriver, int reason)
 {
 	return VehPickState_ApplyDamage(victimDriver, damageType, attackDriver, reason, false);
