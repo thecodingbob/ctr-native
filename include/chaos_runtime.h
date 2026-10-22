@@ -21,7 +21,7 @@ struct ChaosActivation
 	s32 elapsedMS;
 };
 
-// Race-only state, captured in SDATA; array order is activation order.
+// Race-only state, captured in SDATA; unique effects in activation order.
 struct ChaosRuntime
 {
 	struct ChaosActivation active[CHAOS_MAX_ACTIVATIONS];

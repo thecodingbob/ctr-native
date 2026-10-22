@@ -376,30 +376,35 @@ static void TestIntervalCadence(void)
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[0].remainingMS, 30000, "a new activation starts with its full duration");
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.intervalRemainingMS, 4976, "frame overshoot is retained rather than drifting the cadence");
 	Tick(4976);
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 2, "Interval does not wait for the earlier effect to expire");
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[0].remainingMS, 25024, "the original timer keeps its own age");
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[1].remainingMS, 30000, "repeated selection appends a distinct timer");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 1, "Interval replaces an already active effect");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[0].remainingMS, 30000, "repeated selection resets the duration");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[0].elapsedMS, 0, "repeated selection resets the elapsed time");
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.intervalRemainingMS, 5000, "the second boundary returns to the original cadence");
 }
 
 static void TestIndependentExpiryAndOrder(void)
 {
-	CTR_TEST_SECTION("expiry preserves activation order and duplicate lifetimes");
+	CTR_TEST_SECTION("reactivation replaces the old entry and preserves unrelated timers");
 	SetupRace(CHAOS_TRIGGER_EXTERNAL);
 	sdata->chaosSettings.effects[CHAOS_EFFECT_SUPER_SPEED] = true;
 	sdata->chaosSettings.enabledCount++;
 	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 200), "the first selected effect can activate");
 	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_SUPER_SPEED, 100), "an unrelated later effect can overlap");
 	Tick(50);
-	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 300), "a repeated activation gets another entry");
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 300), "a repeated activation replaces the old entry");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 2, "reactivation does not add a duplicate slot");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[0].effect, CHAOS_EFFECT_SUPER_SPEED, "unrelated effects keep their relative order");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[0].remainingMS, 50, "reactivation leaves unrelated timers unchanged");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[1].effect, CHAOS_EFFECT_LOW_GRAVITY, "reactivation becomes the newest entry");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[1].elapsedMS, 0, "reactivation resets its phase");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[1].noticeRemainingMS, CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS, "reactivation restarts its notification");
 	Tick(50);
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 2, "only the entry reaching its exact expiry is removed");
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[0].remainingMS, 100, "compaction keeps the oldest surviving timer");
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[1].remainingMS, 250, "compaction preserves the later duplicate and its timer");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 1, "only the entry reaching its exact expiry is removed");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[0].remainingMS, 250, "compaction preserves the replacement timer");
 	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_SUPER_SPEED), "an expired effect no longer reports active");
 	Tick(100);
-	CTR_TEST_CHECK(Chaos_IsActive(CHAOS_EFFECT_LOW_GRAVITY), "expiry of one duplicate does not stop the remaining activation");
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[0].remainingMS, 150, "the surviving duplicate is not refreshed or shortened");
+	CTR_TEST_CHECK(Chaos_IsActive(CHAOS_EFFECT_LOW_GRAVITY), "the superseded expiry cannot stop the replacement");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[0].remainingMS, 150, "replacement continues from its new activation time");
 	Tick(150);
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 0, "the last timer expires exactly at zero");
 	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_LOW_GRAVITY), "no active status remains after final expiry");
@@ -464,29 +469,60 @@ static void TestGatesAndPause(void)
 
 static void TestCapacityAndValidation(void)
 {
-	CTR_TEST_SECTION("capacity rejects new entries without eviction, refresh or RNG consumption");
+	CTR_TEST_SECTION("capacity rejects new effects but permits reactivation and scheduled refresh");
 	SetupRace(CHAOS_TRIGGER_INTERVAL);
 	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_NONE, 100), "the none sentinel cannot activate");
 	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_COUNT, 100), "out-of-range effects cannot activate");
 	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_NO_ITEMS, 100), "disabled catalogue effects cannot activate");
 	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 0), "zero duration cannot create an entry");
 	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, -1), "negative duration cannot create an entry");
+	const ChaosEffectId effects[] = {CHAOS_EFFECT_LOW_GRAVITY, CHAOS_EFFECT_NO_HOPPING,
+	    CHAOS_EFFECT_NO_ITEMS, CHAOS_EFFECT_WUMPA_DRAIN};
 	for (int i = 0; i < CHAOS_MAX_ACTIVATIONS; i++)
 	{
-		CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 5000 + i), "each available slot accepts an independent activation");
+		sdata->chaosSettings.effects[effects[i]] = true;
+		CTR_TEST_CHECK(Chaos_Activate(effects[i], 5000 + i), "each available slot accepts a distinct effect");
 	}
+	sdata->chaosSettings.effects[CHAOS_EFFECT_INVERTED_STEERING] = true;
 	const struct ChaosRuntime full = sdata->chaosRuntime;
-	CTR_TEST_CHECK_EQ(full.numActive, 4, "at most four activations can run, including repeated effects");
-	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 9999), "a full queue rejects a new request");
-	CTR_TEST_CHECK(memcmp(&full, &sdata->chaosRuntime, sizeof(full)) == 0, "overflow does not evict or refresh existing activations");
+	CTR_TEST_CHECK_EQ(full.numActive, 4, "four distinct effects fill the array");
+	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 9999), "a full queue rejects a fifth distinct effect");
+	CTR_TEST_CHECK(memcmp(&full, &sdata->chaosRuntime, sizeof(full)) == 0, "overflow preserves existing activations");
+	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 0), "invalid reactivation cannot remove the running effect");
+	CTR_TEST_CHECK(memcmp(&full, &sdata->chaosRuntime, sizeof(full)) == 0, "invalid reactivation preserves all timers");
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 9999), "reactivation succeeds at full capacity");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 4, "reactivation keeps the array at capacity without duplicates");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[3].remainingMS, 9999, "reactivation replaces the old duration");
+	for (int i = 0; i < 3; i++)
+	{
+		CTR_TEST_CHECK(memcmp(&full.active[i + 1], &sdata->chaosRuntime.active[i], sizeof(full.active[0])) == 0,
+		    "reactivation preserves every unrelated entry");
+	}
+	memset(sdata->chaosSettings.effects, 0, sizeof(sdata->chaosSettings.effects));
+	sdata->chaosSettings.effects[CHAOS_EFFECT_LOW_GRAVITY] = true;
+	sdata->chaosSettings.enabledCount = 1;
 	sdata->chaosRuntime.intervalRemainingMS = 1;
 	const u32 rng = sdata->chaosRng;
 	Tick(1);
-	CTR_TEST_CHECK_EQ(sdata->chaosRng, rng, "an Interval event rejected at capacity does not consume a random choice");
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.intervalRemainingMS, 5000, "a rejected Interval event still consumes its scheduled gap");
-	Tick(4999);
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, CHAOS_MAX_ACTIVATIONS - 1, "expiring an entry makes room without disturbing the others");
-	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 1000), "a freed slot can accept a later activation");
+	CTR_TEST_CHECK(sdata->chaosRng != rng, "a scheduled event chooses an effect even at capacity");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[3].remainingMS, 30000, "Interval can refresh an effect at capacity");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.intervalRemainingMS, 5000, "a scheduled refresh retains the configured gap");
+	sdata->chaosSettings.effects[CHAOS_EFFECT_LOW_GRAVITY] = false;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_INVERTED_STEERING] = true;
+	sdata->chaosRuntime.intervalRemainingMS = 1;
+	const int sounds = s_activationSounds;
+	const u32 beforeRejectedChoice = sdata->chaosRng;
+	Tick(1);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 4, "a scheduled fifth distinct effect cannot evict running effects");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_INVERTED_STEERING), "capacity also rejects a distinct scheduled effect");
+	CTR_TEST_CHECK_EQ(s_activationSounds, sounds, "a rejected scheduled activation cannot announce");
+	CTR_TEST_CHECK(sdata->chaosRng != beforeRejectedChoice, "a rejected scheduled event still consumes its effect choice");
+	sdata->chaosSettings.effects[CHAOS_EFFECT_INVERTED_STEERING] = false;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_LOW_GRAVITY] = true;
+	Tick(5003);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 1, "expired unrelated effects leave only the refreshed effect");
+	sdata->chaosSettings.effects[CHAOS_EFFECT_INVERTED_STEERING] = true;
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 1000), "a freed slot can accept a new effect");
 }
 
 static void TestResetAndInvalidSettings(void)
@@ -618,16 +654,24 @@ static void TestRandomTrigger(void)
 			}
 		}
 		const int soundsBefore = s_activationSounds;
+		const struct ChaosRuntime before = sdata->chaosRuntime;
 		Tick(gap);
-		if (surviving < CHAOS_MAX_ACTIVATIONS)
+		const ChaosEffectId selected = sdata->chaosRuntime.active[sdata->chaosRuntime.numActive - 1].effect;
+		bool refreshed = false;
+		for (int entry = 0; entry < before.numActive; entry++)
 		{
-			CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, surviving + 1, "Random activates after expiry frees capacity");
-			CTR_TEST_CHECK_EQ(LatestNoticeRemaining(), CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS, "an accepted Random event starts a fresh announcement");
+			refreshed |= before.active[entry].effect == selected && before.active[entry].remainingMS > gap;
 		}
-		else
+		CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, surviving + (refreshed ? 0 : 1), "Random replaces a matching survivor or adds a distinct effect");
+		CTR_TEST_CHECK_EQ(s_activationSounds, soundsBefore + 1, "every accepted Random activation announces once");
+		CTR_TEST_CHECK_EQ(LatestNoticeRemaining(), CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS, "a Random refresh starts a fresh announcement");
+		for (int entry = 0; entry < sdata->chaosRuntime.numActive; entry++)
 		{
-			CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 4, "Random cannot exceed four simultaneous activations");
-			CTR_TEST_CHECK_EQ(s_activationSounds, soundsBefore, "a Random event rejected at capacity cannot announce an activation");
+			for (int other = entry + 1; other < sdata->chaosRuntime.numActive; other++)
+			{
+				CTR_TEST_CHECK(sdata->chaosRuntime.active[entry].effect != sdata->chaosRuntime.active[other].effect,
+				    "Random scheduling never creates duplicate effect IDs");
+			}
 		}
 	}
 	CTR_TEST_CHECK(varied, "Random does not silently use a fixed Interval cadence");
@@ -774,7 +818,7 @@ static void TestWobbleSteering(void)
 	Chaos_Reset();
 	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 128, "reset leaves no synthetic steering behind");
 
-	CTR_TEST_SECTION("ordered steering modifiers retain independent lifetimes without accumulating duplicates");
+	CTR_TEST_SECTION("steering reactivation resets phase and replaces the previous lifetime");
 	EnableWobble();
 	Chaos_Activate(CHAOS_EFFECT_WOBBLE_STEERING, 6000);
 	Tick(500);
@@ -783,7 +827,7 @@ static void TestWobbleSteering(void)
 	Tick(500);
 	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 224, "the latest Wobble supplies one oscillation amplitude");
 	Tick(500);
-	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 32, "expiry of the newest Wobble reveals the older activation at its continuing phase");
+	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 128, "expiry of reactivated Wobble cannot reveal the replaced oscillator");
 	pad.stickLX = 64;
 	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 500);
 	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 192, "later Inverted Steering overrides the older Wobble");
@@ -806,19 +850,24 @@ static void TestWobbleSteering(void)
 	EnableWobble();
 	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 6000);
 	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 6000);
-	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 5000);
-	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 5000);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_LOW_GRAVITY] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_NO_ITEMS] = true;
+	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 5000);
+	Chaos_Activate(CHAOS_EFFECT_NO_ITEMS, 5000);
 	Tick(500);
 	const struct ChaosActivation firstHop = sdata->chaosRuntime.active[0];
-	const struct ChaosActivation secondHop = sdata->chaosRuntime.active[3];
+	const struct ChaosActivation gravity = sdata->chaosRuntime.active[2];
+	const struct ChaosActivation items = sdata->chaosRuntime.active[3];
 	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_WOBBLE_STEERING, 0), "invalid activation cannot cancel conflicting running effects");
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 4, "a rejected conflict replacement preserves all running activations");
 	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_WOBBLE_STEERING, 1000), "a conflicting replacement can activate even when all four slots were occupied");
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 3, "replacement removes all conflicting copies before adding the new activation");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 4, "replacement removes the conflicting effect before adding the new activation");
 	CTR_TEST_CHECK(memcmp(&firstHop, &sdata->chaosRuntime.active[0], sizeof(firstHop)) == 0,
 	    "replacement preserves the first unrelated activation and its timers");
-	CTR_TEST_CHECK(memcmp(&secondHop, &sdata->chaosRuntime.active[1], sizeof(secondHop)) == 0,
-	    "replacement preserves the other unrelated activation and its ordering");
+	CTR_TEST_CHECK(memcmp(&gravity, &sdata->chaosRuntime.active[1], sizeof(gravity)) == 0,
+	    "replacement preserves unrelated gravity and its ordering");
+	CTR_TEST_CHECK(memcmp(&items, &sdata->chaosRuntime.active[2], sizeof(items)) == 0,
+	    "replacement preserves unrelated item restrictions");
 }
 
 static void TestGravityEffects(void)
@@ -842,15 +891,15 @@ static void TestGravityEffects(void)
 	human.const_Gravity = 1200;
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 300, "legitimate constant changes immediately become the new baseline");
 	Tick(500);
-	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 500);
-	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 300, "duplicate Low Gravity entries do not compound");
+	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 1500);
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 300, "reactivating Low Gravity does not compound");
 	Tick(500);
-	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 300, "one copy expiring does not cancel a surviving copy");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 300, "reactivated gravity retains its replacement lifetime");
 	Tick(1000);
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 1200, "final expiry immediately uses the current baseline rather than a stale snapshot");
 	Chaos_Activate(CHAOS_EFFECT_HEAVY_KARTS, 3000);
 	Chaos_Activate(CHAOS_EFFECT_HEAVY_KARTS, 3000);
-	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 3600, "Heavy Karts triples gravity once even with duplicate entries");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 3600, "reactivating Heavy Karts does not compound gravity");
 	CTR_TEST_CHECK_EQ(human.const_JumpForce, 800, "Heavy Karts changes gravity without disabling the jump impulse");
 	human.const_Gravity = 32767;
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 98301, "effective gravity remains a full integer rather than overflowing the stored halfword");
@@ -876,7 +925,7 @@ static void TestGravityEffects(void)
 	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 3000);
 	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 2000);
 	Chaos_Activate(CHAOS_EFFECT_HEAVY_KARTS, 1000);
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 2, "Heavy Karts replaces every Low Gravity copy but preserves unrelated effects");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 2, "Heavy Karts replaces Low Gravity but preserves unrelated effects");
 	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_LOW_GRAVITY), "replaced Low Gravity entries are permanently deactivated");
 	CTR_TEST_CHECK(Chaos_IsActive(CHAOS_EFFECT_NO_HOPPING), "gravity replacement leaves No Hopping active");
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 3600, "the latest gravity effect takes effect immediately");
@@ -928,10 +977,10 @@ static void TestSpeedEffects(void)
 	human.const_Speed_ClassStat = 14000;
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 7000, "legitimate class changes immediately update the ceiling");
 	Tick(500);
-	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 500);
-	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 7000, "duplicate caps do not repeatedly halve the ceiling");
+	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 1500);
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 7000, "reactivating the cap does not halve the ceiling again");
 	Tick(500);
-	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 7000, "one cap expiring leaves the surviving restriction active");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 7000, "the replacement cap remains active until its own expiry");
 	Tick(1000);
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 20000, "final cap expiry returns the current retail target");
 
@@ -953,11 +1002,11 @@ static void TestSpeedEffects(void)
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&bot, 12000), 12000, "Super Speed preserves bot targets");
 	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&bot, 100), 100, "Super Speed preserves bot acceleration");
 	Tick(500);
-	Chaos_Activate(CHAOS_EFFECT_SUPER_SPEED, 500);
-	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 24000, "duplicate Super Speed entries do not compound speed");
-	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 100), 200, "duplicate Super Speed entries do not compound acceleration");
+	Chaos_Activate(CHAOS_EFFECT_SUPER_SPEED, 1500);
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 24000, "reactivating Super Speed does not compound speed");
+	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 100), 200, "reactivating Super Speed does not compound acceleration");
 	Tick(500);
-	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 24000, "one Super Speed copy expiring preserves the survivor");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 24000, "the refreshed speed effect uses its replacement lifetime");
 	const struct ChaosRuntime saved = sdata->chaosRuntime;
 	s_tracker.gameMode1 |= PAUSE_1;
 	Tick(5000);
@@ -983,8 +1032,8 @@ static void TestSpeedEffects(void)
 	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 3000);
 	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 3000);
 	const struct ChaosActivation gravity = sdata->chaosRuntime.active[0];
-	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_SUPER_SPEED, 1000), "Super Speed can replace all caps at full capacity");
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 2, "replacement removes every cap but keeps the unrelated gravity effect");
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_SUPER_SPEED, 1000), "Super Speed can replace a refreshed cap");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 2, "replacement removes the cap but keeps the unrelated gravity effect");
 	CTR_TEST_CHECK(memcmp(&gravity, &sdata->chaosRuntime.active[0], sizeof(gravity)) == 0, "replacement preserves unrelated timers and order");
 	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_SPEED_CAPPED), "replaced caps are deactivated immediately");
 	Tick(1000);
@@ -1070,10 +1119,10 @@ static void TestDefectiveBoosts(void)
 	s_tracker.gameMode1 |= ADVENTURE_ARENA;
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 14000), 14000, "Adventure hubs retain ordinary boost bonuses");
 	s_tracker.gameMode1 &= ~ADVENTURE_ARENA;
-	Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_BOOSTS, 1000);
+	Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_BOOSTS, 5000);
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 14000), 10000, "duplicate activations invert the bonus only once");
 	Tick(1000);
-	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 14000), 10000, "the surviving activation retains the penalty");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 14000), 10000, "the replacement activation retains the penalty");
 	Tick(4000);
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 14000), 14000, "final expiry restores the bonus from current reserves");
 	CTR_TEST_CHECK_EQ(human.reserves, 1000, "effect expiry never restores or discards fuel");
@@ -1145,11 +1194,11 @@ static void TestNoReserves(void)
 	CTR_TEST_CHECK(memcmp(&saved, &sdata->chaosRuntime, sizeof(saved)) == 0, "pause freezes No Reserves lifetimes");
 	s_tracker.gameMode1 &= ~PAUSE_1;
 	Tick(1000);
-	Chaos_Activate(CHAOS_EFFECT_NO_RESERVES, 500);
+	Chaos_Activate(CHAOS_EFFECT_NO_RESERVES, 1000);
 	Tick(500);
 	VehFire_Increment(&human, 1000, POWER_SLIDE_HANG_TIME, 100);
 	Chaos_ApplyDriver(&human, &pad, &steering, human.actionsFlagSet);
-	CTR_TEST_CHECK_EQ(human.reserves, 0, "expiry of one duplicate does not lift the surviving restriction");
+	CTR_TEST_CHECK_EQ(human.reserves, 0, "the refreshed restriction still clears reserves before its own expiry");
 	Tick(500);
 	CTR_TEST_CHECK_EQ(human.reserves, 0, "final expiry does not restore reserves erased earlier");
 	VehFire_Increment(&human, 1000, POWER_SLIDE_HANG_TIME, 100);
@@ -1265,10 +1314,10 @@ static void TestNoItems(void)
 	CTR_TEST_CHECK(memcmp(&saved, &sdata->chaosRuntime, sizeof(saved)) == 0, "pause freezes No Items lifetimes");
 	s_tracker.gameMode1 &= ~PAUSE_1;
 	Tick(1000);
-	Chaos_Activate(CHAOS_EFFECT_NO_ITEMS, 500);
+	Chaos_Activate(CHAOS_EFFECT_NO_ITEMS, 1000);
 	Tick(500);
 	Chaos_ApplyItemRules(&human);
-	CTR_TEST_CHECK_EQ(human.heldItemID, HELD_ITEM_NONE, "one duplicate expiring leaves the surviving restriction active");
+	CTR_TEST_CHECK_EQ(human.heldItemID, HELD_ITEM_NONE, "the refreshed restriction discards items until its own expiry");
 	Tick(500);
 	CTR_TEST_CHECK_EQ(human.heldItemID, HELD_ITEM_NONE, "final expiry does not restore discarded items");
 	human.heldItemID = HELD_ITEM_ROULETTE;
@@ -1360,37 +1409,37 @@ static void TestWumpaDrain(void)
 	CTR_TEST_CHECK_EQ(partner.numWumpas, 0, "an empty inventory cannot underflow");
 	CTR_TEST_CHECK_EQ(sdata->chaosRng, rng, "drain timing consumes no Chaos RNG samples");
 
-	CTR_TEST_SECTION("duplicate drain activations keep independent pulse clocks and expiry");
+	CTR_TEST_SECTION("reactivating drain resets its pulse clock and replaces its expiry");
 	Chaos_Reset();
 	Chaos_BeginRace(&s_tracker);
 	human.numWumpas = 10;
 	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 2500);
 	TickAndApplyDrivers(750);
 	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 2500);
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 2, "duplicate drains still occupy separate activation slots");
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[1].elapsedMS, 0, "a duplicate drain starts its own clock");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 1, "reactivated drain occupies a single slot");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[0].elapsedMS, 0, "reactivated drain resets its pulse clock");
 	TickAndApplyDrivers(250);
-	CTR_TEST_CHECK_EQ(human.numWumpas, 9, "a later duplicate does not reset the first activation's cadence");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 10, "reactivation cancels the old pending pulse");
 	TickAndApplyDrivers(500);
-	CTR_TEST_CHECK_EQ(human.numWumpas, 9, "neither activation repeats an old pulse between boundaries");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 10, "the replacement waits a full second before draining");
 	TickAndApplyDrivers(250);
-	CTR_TEST_CHECK_EQ(human.numWumpas, 8, "the later duplicate produces its own first pulse");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 9, "the replacement produces its first pulse at one second");
 	TickAndApplyDrivers(250);
-	CTR_TEST_CHECK_EQ(human.numWumpas, 7, "the first activation produces its own second pulse");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 9, "the superseded clock cannot produce a second pulse");
 	TickAndApplyDrivers(500);
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 1, "the oldest drain expires independently");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 1, "the old deadline cannot expire the replacement");
 	TickAndApplyDrivers(250);
-	CTR_TEST_CHECK_EQ(human.numWumpas, 6, "the surviving duplicate retains its own cadence");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 8, "the replacement produces one second pulse");
 	TickAndApplyDrivers(500);
-	CTR_TEST_CHECK_EQ(human.numWumpas, 6, "final expiry applies no extra pulse");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 8, "replacement expiry applies no extra pulse");
 	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 2000);
 	TickAndApplyDrivers(750);
-	CTR_TEST_CHECK_EQ(human.numWumpas, 6, "a new activation after final expiry starts with a fresh second");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 8, "a new activation after expiry starts with a fresh second");
 	TickAndApplyDrivers(250);
-	CTR_TEST_CHECK_EQ(human.numWumpas, 5, "the fresh activation drains only after its own full second");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 7, "the fresh activation drains only after its own full second");
 	Chaos_Reset();
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 0, "reset removes the activation-owned drain clock");
-	CTR_TEST_CHECK_EQ(human.numWumpas, 5, "reset does not restore already drained fruit");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 7, "reset does not restore already drained fruit");
 
 	CTR_TEST_SECTION("drain cadence freezes with race gates and survives resident restoration");
 	Chaos_BeginRace(&s_tracker);
@@ -1436,7 +1485,7 @@ static void TestWumpaDrain(void)
 	CTR_TEST_CHECK(Chaos_IsActive(CHAOS_EFFECT_WUMPA_DRAIN), "Interval can schedule Wumpa Drain");
 	CTR_TEST_CHECK_EQ(human.numWumpas, 10, "the scheduling frame does not retroactively consume the new drain's first second");
 	TickAndApplyDrivers(1000);
-	CTR_TEST_CHECK_EQ(human.numWumpas, 9, "only the older activation can pulse while the new duplicate is still at zero");
+	CTR_TEST_CHECK_EQ(human.numWumpas, 10, "scheduled reactivation resets the drain clock before driver application");
 }
 
 static void TestAnxiousMask(void)
@@ -1602,10 +1651,10 @@ static void TestExplosiveCrates(void)
 	Tick(1000);
 	human.invincibleTimer = 0;
 	Chaos_ApplyCrateRules(&human, &crate);
-	CTR_TEST_CHECK_EQ(s_crateExplosions, explosions + 1, "the surviving activation keeps crates explosive");
+	CTR_TEST_CHECK_EQ(s_crateExplosions, explosions, "the shorter replacement expires without reviving the old effect");
 	Tick(4000);
 	Chaos_ApplyCrateRules(&human, &crate);
-	CTR_TEST_CHECK_EQ(s_crateExplosions, explosions + 1, "final expiry restores ordinary crates");
+	CTR_TEST_CHECK_EQ(s_crateExplosions, explosions, "the superseded expiry cannot trigger more explosions");
 }
 
 static void TestHardCrates(void)
@@ -1645,7 +1694,7 @@ static void TestHardCrates(void)
 	s_tracker.gameMode1 &= ~ADVENTURE_ARENA;
 	Chaos_Activate(CHAOS_EFFECT_HARD_CRATES, 1000);
 	Tick(1000);
-	CTR_TEST_CHECK(Chaos_IsHardCrateForDriver(&crate, &collidingTh, &sps), "the surviving activation keeps crates solid");
+	CTR_TEST_CHECK(!Chaos_IsHardCrateForDriver(&crate, &collidingTh, &sps), "the shorter replacement restores breakable crates at its expiry");
 	Tick(4000);
 	CTR_TEST_CHECK(!Chaos_IsHardCrateForDriver(&crate, &collidingTh, &sps), "final expiry restores ordinary crates");
 	Chaos_Reset();
@@ -1707,7 +1756,7 @@ static void TestGiantKarts(void)
 	Chaos_Activate(CHAOS_EFFECT_GIANT_KARTS, 1000);
 	CTR_TEST_CHECK_EQ(human.kartScale, 2, "duplicate activation does not compound the scale target");
 	Tick(1000);
-	CTR_TEST_CHECK(Chaos_IsActive(CHAOS_EFFECT_GIANT_KARTS), "duplicate expiry keeps the surviving effect active");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_GIANT_KARTS), "the replacement expiry deactivates Giant Karts without a surviving copy");
 	CTR_TEST_CHECK_EQ(human.kartScale, 1, "deactivating Giant Karts restores the scale target");
 	Tick(2000);
 	CTR_TEST_CHECK_EQ(human.kartScale, 1, "final expiry restores the normal target");
@@ -1796,7 +1845,7 @@ static void TestClockCurse(void)
 	CTR_TEST_CHECK_EQ(human.clockReceive, 8000, "curse expiry preserves a longer clock received during the effect");
 	CTR_TEST_CHECK_EQ(partner.clockReceive, 2968, "Chaos expiry leaves a later retail clock intact");
 
-	CTR_TEST_SECTION("duplicate curses overwrite the clock without resuming earlier timers");
+	CTR_TEST_SECTION("reactivated curses replace the clock and remove earlier timers");
 	Chaos_BeginRace(&s_tracker);
 	human.clockReceive = 0;
 	partner.clockReceive = 0;
@@ -1804,13 +1853,13 @@ static void TestClockCurse(void)
 	TickAndApplyDrivers(32);
 	Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 64);
 	TickAndApplyDrivers(32);
-	CTR_TEST_CHECK_EQ(human.clockReceive, 32, "the newest duplicate assigns its own remaining duration");
+	CTR_TEST_CHECK_EQ(human.clockReceive, 32, "the replacement assigns its own remaining duration");
 	TickAndApplyDrivers(32);
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 1, "the shorter curse expires independently");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 0, "the shorter replacement curse leaves no old entry behind");
 	for (int i = 0; i < 4; i++)
 	{
 		TickAndApplyDrivers(32);
-		CTR_TEST_CHECK_EQ(human.clockReceive, 0, "an older surviving activation cannot resume the overwritten clock");
+		CTR_TEST_CHECK_EQ(human.clockReceive, 0, "the superseded activation cannot resume the overwritten clock");
 	}
 	TickAndApplyDrivers(32);
 	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_CLOCK_CURSE), "the last curse expires without a separate restoration step");
@@ -1873,13 +1922,18 @@ static void TestClockCurse(void)
 	{
 		human.funcPtrs[DRIVER_FUNC_INIT] = NULL;
 		Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 1000);
-		CTR_TEST_CHECK(human.funcPtrs[DRIVER_FUNC_INIT] == VehPhysProc_SpinFirst_Init, "each successful duplicate delivers a new initial hit");
+		CTR_TEST_CHECK(human.funcPtrs[DRIVER_FUNC_INIT] == VehPhysProc_SpinFirst_Init, "each successful reactivation delivers a new initial hit");
 	}
 	human.funcPtrs[DRIVER_FUNC_INIT] = NULL;
 	const int clockSounds = s_clockSounds;
-	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 1000), "full capacity rejects another curse");
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 1000), "reactivation accepts another curse");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 1, "repeated curses still occupy only one slot");
+	CTR_TEST_CHECK(human.funcPtrs[DRIVER_FUNC_INIT] == VehPhysProc_SpinFirst_Init, "reactivation repeats the one-off clock hit");
+	CTR_TEST_CHECK_EQ(s_clockSounds, clockSounds + 1, "reactivation replays the clock sound once");
+	human.funcPtrs[DRIVER_FUNC_INIT] = NULL;
+	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 0), "invalid reactivation rejects another curse");
 	CTR_TEST_CHECK(human.funcPtrs[DRIVER_FUNC_INIT] == NULL, "rejected activations cannot inflict clock damage");
-	CTR_TEST_CHECK_EQ(s_clockSounds, clockSounds, "rejected activations cannot play clock audio");
+	CTR_TEST_CHECK_EQ(s_clockSounds, clockSounds + 1, "rejected activations cannot play clock audio");
 	CTR_TEST_CHECK_EQ(VehPickState_NewState(&partner, 1, NULL, 0), 0, "ordinary damage still respects shield protection");
 	CTR_TEST_CHECK((shieldObject.flags & SHIELD_FLAG_POP_ON_DAMAGE) != 0, "ordinary damage retains retail shield consumption");
 }
@@ -2179,12 +2233,12 @@ static void TestHudVisibilityAndDockLimit(void)
 	{
 		Chaos_Activate(effects[effect], effect == 0 ? 5000 : 30000);
 	}
-	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 30000), "a fifth activation cannot refresh an already active effect");
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 5000), "an active effect can refresh even when all slots are occupied");
 	Tick(CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS);
 	DrawNotice();
 	CTR_TEST_CHECK_EQ(s_noticeDraws, 4, "2P limits the docked list to four distinct effects");
-	CTR_TEST_CHECK(strcmp(s_drawText[0], "No Items") == 0, "the latest accepted activation occupies the newest row");
-	CTR_TEST_CHECK(strcmp(s_drawText[1], "Low Gravity") == 0 && strcmp(s_drawText[3], "Inverted Steering") == 0,
+	CTR_TEST_CHECK(strcmp(s_drawText[0], "Inverted Steering") == 0, "reactivation moves the effect to the newest row");
+	CTR_TEST_CHECK(strcmp(s_drawText[1], "No Items") == 0 && strcmp(s_drawText[3], "No Hopping") == 0,
 	               "the docked list orders all four accepted effects by activation recency");
 	CTR_TEST_CHECK_EQ(s_drawY[0], UI_CHAOS_LIST_MULTIPLAYER_TOP, "the 2P docked list starts near the top edge");
 	const int firstPlayerLapCounterY = 71;

@@ -129,14 +129,17 @@ migration is not an Adventure-save migration.
 Adventure gameplay after GO, with no active menu or pending load. Pause freezes
 timers and cadence. `armed` gates execution independently of `chaos_mode`.
 
-Activations are ordered entries, including duplicates. Expiry runs before
+Activations are ordered entries with unique effect IDs. Reactivation removes
+the previous entry and appends a fresh one, resetting duration, elapsed time,
+notification timing and one-off behavior. Expiry runs before
 timed scheduling; new entries receive their full duration. Interval uses the
 configured gap; Random draws each gap between 30% and 100% of that interval,
 including the first one. Both retain frame overshoot. The queue holds four entries,
-including repeated activations of the same effect;
-overflow rejects the new request,
-preserving existing entries. A rejected scheduled event consumes its gap but no
-RNG choice. Race resets preserve settings and the dedicated RNG stream.
+with distinct effects. At capacity, a matching or conflicting effect can still
+be replaced; a fifth unrelated effect is rejected, preserving existing entries.
+Scheduled events draw an effect even at capacity so they can refresh it; a
+rejected event still consumes its gap and that RNG choice. Race resets preserve
+settings and the dedicated RNG stream.
 
 Race end, retry teardown and level-load stage 0 clear runtime state before driver
 storage is reused. The runtime contains no pointers and needs no new relocator.
@@ -147,7 +150,7 @@ captured storage as effects are implemented.
 before jump and steering consumers. It applies active entries in order to the
 driver and local physics values, checking catalogue scope and excluding finished
 racers. There is no stored copy of per-driver input. Steering mirrors the baseline
-axis around the controller center, so duplicates do not invert twice. No Hopping
+axis around the controller center. No Hopping
 clears the resolved hop latch and buffer; drift input and states remain retail.
 Forced jumps remain available. Neither effect writes the shared gamepad or
 replaces retail cloud effects. Normal input resumes on final expiry without a
@@ -184,9 +187,9 @@ not a clamp on the full velocity vector.
 Speed after retail selection (ordinary, reserve or turbo-pad), before frame-time
 scaling. Reverse targets/acceleration are unchanged. Neither hook changes stored
 constants or boost fuel; expiry/reset uses current retail values without a
-baseline snapshot. Both effects apply to unfinished humans only, with independent
-duplicate lifetimes that do not compound. Activating either removes all copies
-of the opposite speed effect permanently.
+baseline snapshot. Both effects apply to unfinished humans only. Reactivation
+replaces the lifetime without compounding the modifier. Activating either removes
+the opposite speed effect permanently.
 
 No Reserves clears `reserves` and `turbo_outsideTimer` together through
 `Chaos_ApplyReserveRules`, called only by the existing driver-input hook.
@@ -194,7 +197,7 @@ Retail boost grants remain unchanged: fuel granted after the hook can persist
 until the next driver application. This applies to drift/hang-time, turbo pads,
 turbo items and Super Engine. Retail boost presentation, input, mask behavior
 and base speed are preserved. Only unfinished humans in eligible races are
-affected. Duplicate lifetimes remain independent; expiry/reset allows new
+affected. Reactivation replaces the lifetime; expiry/reset allows new
 reserves without restoring erased fuel. No driver snapshot is needed.
 
 No Items empties held inventory, stack count, roulette/cooldown timers and pending
@@ -207,8 +210,8 @@ invisibility, Super Engine and projectiles remain active. Wumpa, boost fuel and
 rain-cloud ownership are untouched.
 Each application clears `WARPBALL_HELD` directly. Roulette sound cleanup and
 multiplayer item counters remain in their existing retail paths.
-The effect applies only to unfinished humans in eligible races. Duplicate entries
-retain independent lifetimes; final expiry/reset allows new inventory without
+The effect applies only to unfinished humans in eligible races. Reactivation
+replaces its lifetime; expiry/reset allows new inventory without
 restoring discarded items. No inventory snapshot is stored.
 
 Wumpa Drain removes one credited fruit per game second from unfinished humans,
@@ -218,8 +221,8 @@ It uses `ChaosActivation.elapsedMS`, also used by Wobble, and derives the previo
 time as `max(0, elapsedMS - frameMS)`. A larger current whole-second count signals
 a pulse; each activation removes at most one fruit per frame, even if a long
 frame crosses several boundaries.
-Each activation starts at zero and has independent pulse/expiry/notice timing;
-overlapping copies can therefore drain additional fruit. Newly scheduled entries
+Each activation starts at zero; reactivation resets its pulse/expiry/notice timing
+and replaces the previous clock. Newly scheduled entries
 do not pulse at zero. Expired entries have already been removed, so the expiry
 frame applies no drain, including when it lands exactly on a second boundary.
 The clocks are captured in SDATA and freeze with the runtime gates; no
@@ -282,7 +285,7 @@ geometry and kart-to-kart collisions). Ground quads keep the retail collision
 radius to avoid bouncing on gentle slopes. Forward speed targets and initial
 jump impulses (manual, forced and spring) gain 30%; speed retains the retail
 top-speed ceiling. Successful activation sets each unfinished human driver's
-`kartScale` target to 2, with duplicates retaining the same value; each
+`kartScale` target to 2, with reactivation replacing the lifetime; each
 deactivation or race reset restores target 1. Squash/stretch and rescue paths derive
 their targets from this value, so the body grows and shrinks through retail
 interpolation rather than compounding a per-frame multiplier. Tires follow the
@@ -304,7 +307,7 @@ clock sound plays once in `Chaos_ApplyClockCurse`, which shares the retail damag
 implementation but bypasses mask, shield and invincibility checks without
 consuming those protections. Retail spin setup clears boost reserves and selects
 the spin initializer; the mask-grab state exclusion remains in place. Rejected
-activations cannot hit or play audio, and each successful duplicate gets its own
+activations cannot hit or play audio, and each successful reactivation gets a new
 initial hit.
 
 Clock Curse assigns `clockReceive` once from the activation's `remainingMS`.

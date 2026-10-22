@@ -91,7 +91,7 @@ static void Chaos_RemoveActivation(int index)
 	Chaos_OnEffectDeactivated(effect);
 }
 
-static void Chaos_RemoveConflictingEffects(ChaosEffectId effect)
+static void Chaos_RemoveReplacedEffects(ChaosEffectId effect)
 {
 	ChaosEffectId replaced = CHAOS_EFFECT_NONE;
 	if (effect == CHAOS_EFFECT_INVERTED_STEERING)
@@ -118,14 +118,10 @@ static void Chaos_RemoveConflictingEffects(ChaosEffectId effect)
 	{
 		replaced = CHAOS_EFFECT_SPEED_CAPPED;
 	}
-	if (replaced == CHAOS_EFFECT_NONE)
-	{
-		return;
-	}
 	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
 	for (int i = 0; i < runtime->numActive;)
 	{
-		if (runtime->active[i].effect == replaced)
+		if (runtime->active[i].effect == effect || runtime->active[i].effect == replaced)
 		{
 			Chaos_RemoveActivation(i);
 		}
@@ -170,7 +166,7 @@ bool Chaos_Activate(ChaosEffectId effect, s32 durationMS)
 	{
 		return false;
 	}
-	Chaos_RemoveConflictingEffects(effect);
+	Chaos_RemoveReplacedEffects(effect);
 	if (runtime->numActive == CHAOS_MAX_ACTIVATIONS)
 	{
 		return false;
@@ -381,12 +377,11 @@ u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, in
 		if (effect == CHAOS_EFFECT_INVERTED_STEERING)
 		{
 			const int center = pad->rwd != NULL ? pad->rwd->gamepadCenter : CHAOS_STICK_CENTER;
-			// Resolve from the baseline so duplicates do not invert twice; keep 256 signed.
+			// Keep 256 signed when mirroring the local input.
 			*steering = 2 * center - pad->stickLX;
 		}
 		else if (effect == CHAOS_EFFECT_WOBBLE_STEERING)
 		{
-			// Resolve from live input so repeated Wobble activations do not add waves.
 			*steering = Chaos_WobbleSteering(&runtime->active[i], pad);
 		}
 		else if (effect == CHAOS_EFFECT_NO_HOPPING)
@@ -447,7 +442,7 @@ void Chaos_Update(struct GameTracker *gGT)
 	runtime->intervalRemainingMS -= gGT->elapsedTimeMS;
 	while (runtime->intervalRemainingMS <= 0)
 	{
-		if (durationMS > 0 && runtime->numActive < CHAOS_MAX_ACTIVATIONS)
+		if (durationMS > 0)
 		{
 			const ChaosEffectId effect = ChaosEffect_Pick(settings->effects, settings->enabledCount, &sdata->chaosRng);
 			Chaos_Activate(effect, durationMS);

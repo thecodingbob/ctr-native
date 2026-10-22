@@ -25,8 +25,8 @@ Save layouts and checkpoint ownership are documented in [CHAOS_STATE.md](CHAOS_S
 - Chaos Rules in Adventure pause reuses the setup UI read-only. Active Effects
   lists selected effects, not running activations, without ON/OFF or empty text.
 - Effects target humans in all Adventure race types, never hubs or other modes.
-- Pickup means contact. Activations accumulate with independent timers, including
-repeats; later conflicting activations deactivate the previous conflicting effects.
+- Pickup means contact. Each active effect has a unique entry; reactivation
+replaces it and resets all timers. Conflicting activations deactivate the previous effect.
 
 ## Runtime core
 
@@ -37,8 +37,10 @@ The implemented core stores ordered activations and cadence in
 `sdata->chaosRuntime`. Race initialization follows vehicle teleport; updates run
 before driver stages and check eligibility, `armed`, menus and pending loads.
 Pause freezes game-time timers. Expiry precedes scheduling; new entries receive
-full duration and cadence retains overshoot. The four-entry queue rejects overflow
-without eviction/refresh; rejected scheduled events consume their gap but no RNG.
+full duration and cadence retains overshoot. The four-entry queue holds unique
+effects; reactivation replaces the old entry even at capacity. A fifth unrelated
+effect is rejected. Scheduled events consume their gap and effect-choice RNG,
+including rejected requests.
 Race end, retry teardown and level-load stage 0 clear the state.
 
 For gameplay effects:
@@ -86,7 +88,7 @@ All 16 effects have catalogue IDs/toggles and implementations.
 
 | Effects | Candidate mechanism |
 | --- | --- |
-| Inverted Steering — done | Mirror a local axis about the active controller center; D-pad already feeds stick resolution; duplicates do not cancel |
+| Inverted Steering — done | Mirror a local axis about the active controller center; D-pad already feeds stick resolution; reactivation resets the lifetime |
 | No Hopping — done | Clear resolved manual hop latch/buffer; preserve drift input/states, forced jumps and rain-cloud ownership |
 | Wobble Steering — done | Two-second sine wave at 75% of the controller range, clamped around its center; deactivates Inverted Steering and vice versa |
 | Low Gravity / Heavy Karts — done | Derive effective gravity from the live constant at 1/4 or 3×, before terrain rules; deactivate each other |
@@ -94,7 +96,7 @@ All 16 effects have catalogue IDs/toggles and implementations.
 | No Reserves — done | Clear both fuel timers only in the existing driver hook; retail boost grants persist until the next application; allow new fuel after expiry |
 | No Items — done | Empty inventory and cancel pending launches/roulette through one pre-item hook; keep already deployed effects and discard fresh rewards at the next check |
 | Explosive Crates — done | Direct kart contact with item, Wumpa or time crates triggers an explosion and blast damage, bypassing protection; retain normal rewards |
-| Wumpa Drain — done | Detect crossed seconds from each activation's elapsed time in the existing driver hook; independent duplicate pulses, stop at zero and preserve pending pickup awards |
+| Wumpa Drain — done | Detect crossed seconds from elapsed time in the existing driver hook; reactivation resets the pulse clock, stop at zero and preserve pending pickup awards |
 | Clock Curse — done | One-off spin hit, clock audio and full 32-bit received-clock timer, bypassing protection; new activations overwrite earlier clocks |
 | Defective Boosts — done | Invert the live fire-speed bonus while reserves remain; preserve normal fuel grants, accumulation and consumption for every boost source |
 | Anxious Mask — done | Contact with slowing terrain requests retail rescue before checkpoint updates; existing rescue states prevent repeated requests |
