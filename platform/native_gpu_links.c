@@ -4,12 +4,14 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #define NATIVE_GPU_LINK_MAX_RANGES          64
 #define NATIVE_GPU_LINK_FIRST_DYNAMIC_TOKEN 0x00f00000u
 
 struct NativeGpuLinkRange
 {
+	char label[48];
 	uintptr_t hostStart;
 	uintptr_t hostEnd;
 	uint32_t tokenStart;
@@ -25,6 +27,32 @@ global_variable uint32_t s_nativeGpuLinkNextToken = NATIVE_GPU_LINK_FIRST_DYNAMI
 // in the common case. Pure hint - falls back to the full scan, so behaviour is
 // unchanged. Index (not pointer) so it stays valid if the range array is reset.
 global_variable int s_lastHostRangeHit = 0;
+
+static void NativeGpuLinks_WriteDiagnostics(FILE *stream, const void *hostPtr, const char *file, int line, const char *function)
+{
+	fprintf(stream, "\nGPU link failure time=%lld pointer=%p caller=%s:%d (%s) ranges=%d\n",
+	        (long long)time(NULL), hostPtr, file, line, function, s_nativeGpuLinkRangeCount);
+	for (int i = 0; i < s_nativeGpuLinkRangeCount; i++)
+	{
+		const struct NativeGpuLinkRange *range = &s_nativeGpuLinkRanges[i];
+		const uintptr_t host = (uintptr_t)hostPtr;
+		fprintf(stream, "  range[%d] %s host=[%p,%p) tokens=[%06x,%06x) ", i, range->label,
+		        (void *)range->hostStart, (void *)range->hostEnd, range->tokenStart, range->tokenEnd);
+		if (host < range->hostStart)
+		{
+			fprintf(stream, "before-start=%llu bytes\n", (unsigned long long)(range->hostStart - host));
+		}
+		else if (host >= range->hostEnd)
+		{
+			fprintf(stream, "past-end=%llu bytes\n", (unsigned long long)(host - range->hostEnd));
+		}
+		else
+		{
+			fprintf(stream, "inside offset=%llu bytes\n", (unsigned long long)(host - range->hostStart));
+		}
+	}
+	fflush(stream);
+}
 
 static int NativeGpuLinks_AlignTokenSize(size_t size, uint32_t *tokenSizeOut)
 {
@@ -84,6 +112,7 @@ int NativeGpuLinks_RegisterRange(const void *hostStart, size_t size, uint32_t *t
 	s_nativeGpuLinkNextToken -= tokenSize;
 
 	struct NativeGpuLinkRange *range = &s_nativeGpuLinkRanges[s_nativeGpuLinkRangeCount++];
+	snprintf(range->label, sizeof(range->label), "%s", "unlabelled");
 	range->hostStart = start;
 	range->hostEnd = end;
 	range->tokenStart = s_nativeGpuLinkNextToken;
@@ -101,6 +130,8 @@ void NativeGpuLinks_RegisterRangeChecked(const char *label, const void *hostStar
 {
 	if (NativeGpuLinks_RegisterRange(hostStart, size, NULL))
 	{
+		snprintf(s_nativeGpuLinkRanges[s_nativeGpuLinkRangeCount - 1].label,
+		         sizeof(s_nativeGpuLinkRanges[0].label), "%s", label);
 		return;
 	}
 
@@ -150,6 +181,11 @@ static const struct NativeGpuLinkRange *NativeGpuLinks_FindTokenRange(uint32_t t
 
 uint32_t NativeGpuLinks_FromHostPointer(const void *hostPtr)
 {
+	return NativeGpuLinks_FromHostPointerAt(hostPtr, "unknown", 0, "NativeGpuLinks_FromHostPointer");
+}
+
+uint32_t NativeGpuLinks_FromHostPointerAt(const void *hostPtr, const char *file, int line, const char *function)
+{
 	uintptr_t host = (uintptr_t)hostPtr;
 	const struct NativeGpuLinkRange *range = NativeGpuLinks_FindHostRange(host);
 
@@ -159,6 +195,14 @@ uint32_t NativeGpuLinks_FromHostPointer(const void *hostPtr)
 	}
 
 	fprintf(stderr, "[CTR Native Expanded] GPU link bridge has no token for host pointer %p\n", hostPtr);
+	FILE *report = fopen("gpu-link-crash.log", "a");
+	if (report != NULL)
+	{
+		NativeGpuLinks_WriteDiagnostics(report, hostPtr, file, line, function);
+		fclose(report);
+		fprintf(stderr, "[CTR Native Expanded] GPU diagnostics appended to gpu-link-crash.log\n");
+	}
+	NativeGpuLinks_WriteDiagnostics(stderr, hostPtr, file, line, function);
 	abort();
 }
 

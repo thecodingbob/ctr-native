@@ -154,7 +154,7 @@ static inline void CTR_GPU_WriteTagAddrToken(void *p, u32 token)
 #define isendprim(p)      NativeGpuLinks_IsTerminator(CTR_GPU_ReadTagWord(p) & 0x00ffffffu)
 #define nextPrim(p)       NativeGpuLinks_ToHostPointer(CTR_GPU_ReadTagWord(p) & 0x00ffffffu)
 
-#define setaddr(p, _addr) CTR_GPU_WriteTagAddrToken((p), NativeGpuLinks_FromHostPointer((const void *)(u32)(_addr)))
+#define setaddr(p, _addr) CTR_GPU_WriteTagAddrToken((p), NativeGpuLinks_FromHostPointerAt((const void *)(u32)(_addr), __FILE__, __LINE__, __func__))
 #define getaddr(p)        (u32)(CTR_GPU_ReadTagWord(p) & 0x00ffffffu)
 
 #define setlen(p, _len)   CTR_GPU_WriteTagWord((p), (CTR_GPU_ReadTagWord(p) & 0x00ffffffu) | ((u32)(u8)(_len) << 24))
