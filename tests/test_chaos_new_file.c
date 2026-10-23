@@ -19,6 +19,8 @@ NativeConfig g_config;
 static int s_setupEntries;
 static int s_titleReturns;
 
+void Chaos_PublishEffects(void) {}
+
 void MM_ChaosConfig_OnEnter(void)
 {
 	s_setupEntries++;

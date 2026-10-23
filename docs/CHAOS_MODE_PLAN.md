@@ -3,12 +3,13 @@
 ## Status
 
 Implemented: catalogue/selection helpers, race gate, creation flow, per-slot
-persistence, save marker, pause inspection and runtime timers/Interval/Random/Pickup triggers.
+persistence, save marker, pause inspection and runtime timers/Interval/Random/Pickup/External triggers.
 Inverted Steering, No Hopping, Wobble Steering, Low Gravity, Heavy Karts,
 Speed Capped, Super Speed, No Reserves, No Items, Wumpa Drain, Clock Curse,
 Explosive Crates, Defective Boosts, Anxious Mask, Hard Crates and Giant Karts are
 connected, with an activation-name overlay.
-Pending: External trigger/provider and player guide.
+The External file provider publishes the enabled-effect catalogue for voting apps.
+Pending: player guide, external voting application and in-game final validation.
 Save layouts and checkpoint ownership are documented in [CHAOS_STATE.md](CHAOS_STATE.md).
 
 ### Established rules
@@ -126,16 +127,83 @@ Append stable IDs/slugs; the current disk bitset supports 128 effects.
 
 ## External provider
 
-Proposed `platform/native_chaos_ipc.c`: bounded main-thread polling of
-`<base>/chaos/inbox/`, replies in `chaos/outbox/`, atomic `.tmp` → `.cmd` publication.
-Proposed commands: `effect <slug> [seconds]`, `status`, `reset`.
+### Agreed file-provider contract (2026-10-23)
 
-Before implementation, define polling/frame order, command ordering, duration
-bounds, disabled-effect rejection, ineligible-race handling, consumption and reset
-semantics. Commands share the engine activation path and respect the saved
-trigger/selection; they never edit creation settings.
-Disable the watcher during replay playback. External command timing is not
-currently recorded, so provider-driven replay verification is not guaranteed.
+- One fixed, extensionless text file: `<base>/chaos/command`. Its content is one
+  stable effect slug, e.g. `low-gravity`, with optional surrounding whitespace.
+  One file contains one command; there is no inbox queue, outbox, `status`,
+  `reset`, filename-encoded command, or per-command duration override.
+- At game initialization and in `Chaos_BeginRace()`, publish the effects available in the active
+  save under `<base>/chaos/`, so an external application can discover the voting
+  pool without duplicating the catalogue or guessing the saved selection.
+  Available means implemented and enabled in that save, not currently running
+  or immediately activatable. The next race initialization publishes its loaded
+  selection. Do not rebuild the catalogue in frame updates or add profile/menu
+  invalidation hooks. Publication failures are logged, without frame retries.
+  Publish atomically via a temporary file and rename, including an empty list
+  when no effects are enabled. The extensionless filename is `effects`, with
+  one stable slug per line. Initializing with Chaos unarmed publishes an empty list; this is a
+  catalogue, not a live readiness signal or proof that the process is running.
+- The External trigger uses the saved `triggerIntervalSeconds` as a minimum gap
+  between successful activations, not as a polling period. Wait one full interval
+  from GO before attempting the first command. Each successful activation restarts
+  this timer. Once it expires, periodically check for the command until one arrives.
+- Count only eligible, active race time. Pause, menus, countdown, loading, hubs,
+  and post-race states neither advance the timer nor consume the command.
+  Each new race starts a fresh wait from GO. A pending file survives transitions
+  and is valid for the next eligible race; do not delete it during race reset.
+- The external producer waits until the command file is absent, writes and closes
+  `command.tmp`, then atomically renames it to `command`. The game ignores the
+  temporary file. Only one producer owns the slot; do not overwrite a pending file.
+- When eligible and the interval has expired, read and delete the command file,
+  then activate through the existing engine path. Deletion signals that the slot
+  is available for another command, which can wait there during the next interval.
+  If the file cannot be read or deleted, do not activate it; retain it for retry.
+- Consume malformed, unknown, or disabled-effect requests too, logging the reason
+  in the normal application log. Rejected commands do not restart the activation
+  interval. Deletion acknowledges consumption, not successful execution.
+- Respect the saved armed state, External trigger, effect selection, race gates,
+  and saved effect duration. Never change creation settings. Duration and interval
+  are independent; effects can overlap, and reactivation follows existing unique-ID
+  refresh/replacement rules.
+- Keep filesystem work in `platform/native_chaos_ipc.c` and game eligibility,
+  timing, validation and activation in the game layer. Poll on the main thread
+  after the Chaos timer update and before gameplay threads, so a new activation
+  receives its full duration. Use a bounded command read and a modest polling
+  cadence (100 ms once the interval expires).
+- Disable the watcher during replay playback, preserving any pending file.
+  External command timing is not recorded; provider-driven replay verification
+  is not guaranteed.
+
+Implemented in the single-file provider. The superseded multi-file batch/reply
+prototype has been replaced. Build and all 23 CTest suites pass. Runtime tests
+cover interval/gate/selection semantics and a filesystem suite exercises command
+consumption, failed deletion, playback isolation and catalogue replacement.
+See [CHAOS_EXTERNAL.md](CHAOS_EXTERNAL.md) for the producer contract and example.
+
+Checks: initial wait from GO; gameplay-only timer; no-file polling after expiry;
+one activation per interval; pending commands across pause/next race; atomic
+publication; invalid/disabled requests consumed and logged without a cooldown;
+read/delete failure without activation; saved duration/selection preserved;
+overlap/reactivation; replay playback leaving the file untouched.
+Also check initial catalogue publication, saved-selection filtering, empty lists,
+atomic reads and replacement when switching Chaos saves.
+
+### Intended external voting application
+
+The intended producer presents three randomly selected available effects to
+viewers, collects votes until its voting timer expires, then publishes the
+winning effect through the single command slot. Voting, UI/stream overlay and
+viewer integration belong to the external application, not the game.
+
+The game still owns the gameplay-time activation interval; expiration of the
+external voting timer does not bypass it. Exact alignment with pauses/countdown
+would need a separate readiness/timing signal, which the minimal protocol does
+not currently provide. The catalogue alone cannot synchronize those timers.
+Voting policy still to decide: fewer than three enabled effects, ties/no votes,
+repeat candidates between rounds, vote changes/one-vote-per-viewer, and when to
+start the next round relative to command consumption. These are external-app
+decisions, not additional game-side protocol requirements yet.
 
 ## Delivery and checks
 

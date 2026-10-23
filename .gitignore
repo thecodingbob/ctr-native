@@ -15,6 +15,7 @@
 
 # Runtime state.
 /memcards/
+/chaos/
 *.log
 
 Temporary/

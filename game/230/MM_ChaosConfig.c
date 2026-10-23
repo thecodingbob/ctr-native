@@ -24,7 +24,7 @@ static const char *const s_chaosTriggerNames[CHAOS_TRIGGER_COUNT] = {
 
 static bool Chaos_TriggerIsTimed(int trigger)
 {
-	return trigger == CHAOS_TRIGGER_RANDOM || trigger == CHAOS_TRIGGER_INTERVAL;
+	return trigger == CHAOS_TRIGGER_RANDOM || trigger == CHAOS_TRIGGER_INTERVAL || trigger == CHAOS_TRIGGER_EXTERNAL;
 }
 
 static const struct FullScreenMenu_Row s_chaosSettings[CHAOS_SETTING_COUNT] = {

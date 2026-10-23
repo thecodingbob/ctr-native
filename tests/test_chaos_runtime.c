@@ -37,6 +37,36 @@ enum { SOUND_CLOCK = 0x44 };
 #include <game/Vehicle/VehPhysForce.c>
 #include <game/Vehicle/VehPickState.c>
 #include <game/231/RB_Chaos.c>
+
+static const char *s_externalCommand;
+static int s_externalReads;
+static int s_externalErrors;
+static char s_externalCatalogue[NATIVE_CHAOS_CATALOGUE_SIZE];
+static int s_cataloguePublications;
+
+int NativeChaosIPC_ReadCommand(char *command, size_t capacity)
+{
+	s_externalReads++;
+	if (s_externalCommand == NULL)
+	{
+		return NATIVE_CHAOS_NO_COMMAND;
+	}
+	snprintf(command, capacity, "%s", s_externalCommand);
+	s_externalCommand = NULL;
+	return NATIVE_CHAOS_COMMAND;
+}
+
+void NativeChaosIPC_WriteEffectsCatalogue(const char *catalogue)
+{
+	s_cataloguePublications++;
+	snprintf(s_externalCatalogue, sizeof(s_externalCatalogue), "%s", catalogue);
+}
+
+void Platform_LogError(const char *format, ...)
+{
+	(void)format;
+	s_externalErrors++;
+}
 #include <game/MAIN/MainGameStart.c>
 #include <game/Vehicle/VehPhysProc_Input.c>
 #include <game/Vehicle/VehFire.c>
@@ -2521,8 +2551,96 @@ static void TestNotificationRows(void)
 	               "table layout and drawing do not advance independent notice timers");
 }
 
+static void TestExternalCommands(void)
+{
+	CTR_TEST_SECTION("External waits from GO, consumes one command, and preserves pending requests across gates");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	const struct ChaosSettings saved = sdata->chaosSettings;
+	s_externalCommand = "low-gravity";
+	s_externalReads = 0;
+	Tick(0);
+	CTR_TEST_CHECK_EQ(s_externalReads, 0, "commands are not read before the initial interval");
+	CTR_TEST_CHECK(strcmp(s_externalCatalogue, "low-gravity\n") == 0, "the catalogue contains only enabled stable slugs");
+	s_tracker.trafficLightsTimer = 100;
+	Tick(5000);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.intervalRemainingMS, 5000, "countdown does not spend the initial interval");
+	s_tracker.trafficLightsTimer = 0;
+	Tick(4999);
+	CTR_TEST_CHECK_EQ(s_externalReads, 0, "the whole initial interval must elapse");
+	Tick(1);
+	CTR_TEST_CHECK(s_externalCommand == NULL, "activation consumes the pending command");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[0].remainingMS, 30000, "external activation receives the full duration");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.intervalRemainingMS, 5000, "successful activation restarts a full interval");
+	s_externalCommand = "low-gravity";
+	s_tracker.gameMode1 |= PAUSE_ALL;
+	Tick(5000);
+	CTR_TEST_CHECK(s_externalCommand != NULL, "pause preserves the next request");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.intervalRemainingMS, 5000, "pause freezes the activation interval");
+	s_tracker.gameMode1 &= ~PAUSE_ALL;
+	Tick(5001);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 1, "external reactivation preserves unique IDs");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[0].remainingMS, 30000, "reactivation refreshes the saved duration");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.intervalRemainingMS, 5000, "frame overshoot cannot shorten the next interval");
+
+	Tick(5000);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.intervalRemainingMS, 0, "an empty slot leaves the provider ready");
+	const char *invalid[] = {"", "missing", "giant-karts", "low-gravity 2", "effect low-gravity", "reset", "status"};
+	s_externalErrors = 0;
+	for (size_t i = 0; i < len(invalid); i++)
+	{
+		s_externalCommand = invalid[i];
+		Tick(1);
+		CTR_TEST_CHECK(s_externalCommand == NULL, "invalid and disabled requests are consumed");
+		CTR_TEST_CHECK_EQ(sdata->chaosRuntime.intervalRemainingMS, 0, "rejections do not restart the interval");
+	}
+	CTR_TEST_CHECK_EQ(s_externalErrors, len(invalid), "each rejected command is logged");
+	s_externalCommand = "low-gravity";
+	s_tracker.overlayIndex_Threads = OVERLAY_INDEX_ADV_HUB;
+	Tick(1);
+	CTR_TEST_CHECK(s_externalCommand != NULL, "hub transitions preserve pending commands");
+	s_tracker.overlayIndex_Threads = OVERLAY_INDEX_RACING_OR_BATTLE;
+	Chaos_BeginRace(&s_tracker);
+	Tick(0);
+	CTR_TEST_CHECK(s_externalCommand != NULL, "a new race starts a fresh interval with the same pending command");
+	Tick(5000);
+	CTR_TEST_CHECK(s_externalCommand == NULL, "the pending command can run in the next race");
+	CTR_TEST_CHECK(memcmp(&saved, &sdata->chaosSettings, sizeof(saved)) == 0, "provider commands never change creation settings");
+	sdata->chaosSettings.trigger = CHAOS_TRIGGER_INTERVAL;
+	s_externalCommand = "low-gravity";
+	Tick(1);
+	CTR_TEST_CHECK(s_externalCommand != NULL, "other triggers leave the external slot untouched");
+	sdata->chaosSettings.effects[CHAOS_EFFECT_LOW_GRAVITY] = false;
+	Chaos_BeginRace(&s_tracker);
+	Tick(1);
+	CTR_TEST_CHECK(s_externalCatalogue[0] == '\0', "empty selections replace the previous catalogue with an empty list");
+	sdata->chaosSettings.armed = false;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_LOW_GRAVITY] = true;
+	Chaos_BeginRace(&s_tracker);
+	Tick(1);
+	CTR_TEST_CHECK(s_externalCatalogue[0] == '\0', "leaving Chaos clears stale available effects");
+	s_externalCommand = NULL;
+}
+
+static void TestCataloguePublicationLifecycle(void)
+{
+	CTR_TEST_SECTION("catalogue publication occurs only during initialization");
+	s_cataloguePublications = 0;
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	CTR_TEST_CHECK_EQ(s_cataloguePublications, 1, "initialization publishes the active selection once");
+	Tick(0);
+	Tick(1);
+	CTR_TEST_CHECK_EQ(s_cataloguePublications, 1, "frame updates never publish the catalogue");
+	sdata->chaosSettings.effects[CHAOS_EFFECT_GIANT_KARTS] = true;
+	Chaos_BeginRace(&s_tracker);
+	Tick(0);
+	CTR_TEST_CHECK_EQ(s_cataloguePublications, 2, "the next initialization publishes its selection exactly once");
+	CTR_TEST_CHECK(strstr(s_externalCatalogue, "giant-karts\n") != NULL, "the new publication reflects the new profile");
+}
+
 int main(void)
 {
+	TestCataloguePublicationLifecycle();
+	TestExternalCommands();
 	TestIntervalCadence();
 	TestIndependentExpiryAndOrder();
 	TestGatesAndPause();

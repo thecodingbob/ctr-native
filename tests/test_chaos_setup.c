@@ -157,12 +157,21 @@ static void TestTriggerLayoutAndIntervalRetention(void)
 	{
 		Frame(BTN_CROSS, 0);
 		const int expectedTrigger = trigger % CHAOS_TRIGGER_COUNT;
-		const bool timed = expectedTrigger == CHAOS_TRIGGER_RANDOM || expectedTrigger == CHAOS_TRIGGER_INTERVAL;
+		const bool timed = expectedTrigger == CHAOS_TRIGGER_RANDOM || expectedTrigger == CHAOS_TRIGGER_INTERVAL ||
+		                   expectedTrigger == CHAOS_TRIGGER_EXTERNAL;
 		CTR_TEST_CHECK_EQ(sdata->chaosSettings.trigger, expectedTrigger, "Cross cycles the stored trigger");
 		CTR_TEST_CHECK_EQ(s_drawnRows, timed ? 5 : 4, "the destination layout is drawn in the same frame");
 		CTR_TEST_CHECK(s_drewInterval == timed, "Interval is present only for timed triggers");
 		CTR_TEST_CHECK(s_drewEffects && s_drewConfirm, "Effects and Confirm remain visible after every trigger change");
 		CTR_TEST_CHECK_EQ(sdata->chaosSettings.triggerIntervalSeconds, 25, "hiding Interval never loses its value");
+		if (expectedTrigger == CHAOS_TRIGGER_EXTERNAL)
+		{
+			MM_menuChaosConfig.rowSelected = 2;
+			Frame(0, BTN_RIGHT);
+			CTR_TEST_CHECK_EQ(sdata->chaosSettings.triggerIntervalSeconds, 30, "External exposes an editable interval");
+			Frame(0, BTN_LEFT);
+			MM_menuChaosConfig.rowSelected = 1;
+		}
 	}
 }
 
@@ -395,6 +404,15 @@ static void TestReadOnlyPauseView(void)
 	MM_ChaosConfig_OpenReadOnly(&pause);
 	Frame(BTN_SQUARE_one, 0);
 	CTR_TEST_CHECK(sdata->ptrDesiredMenu == &pause, "Square also returns to pause");
+
+	sdata->chaosSettings.trigger = CHAOS_TRIGGER_EXTERNAL;
+	MM_ChaosConfig_OpenReadOnly(&pause);
+	Frame(0, 0);
+	CTR_TEST_CHECK(s_drewInterval && s_drawnRows == 4, "External shows Interval in the pause rules");
+	const u16 externalInterval = sdata->chaosSettings.triggerIntervalSeconds;
+	MM_menuChaosConfig.rowSelected = 2;
+	Frame(0, BTN_RIGHT);
+	CTR_TEST_CHECK_EQ(sdata->chaosSettings.triggerIntervalSeconds, externalInterval, "the External pause interval remains read-only");
 
 	sdata->chaosSettings.trigger = CHAOS_TRIGGER_PICKUP;
 	MM_ChaosConfig_OpenReadOnly(&pause);

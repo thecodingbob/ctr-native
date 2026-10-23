@@ -328,6 +328,7 @@ void GAMEPROG_NewGame_OnBoot(void)
 	GAMEPROG_NewProfile_InsideAdv(&GAME_ADV_PROGRESS);
 	GAMEPROG_ResetAdvMultiplayer(&sdata->advMultiplayer);
 	GAMEPROG_ResetChaosSettings(&sdata->chaosSettings);
+	Chaos_PublishEffects();
 	GAMEPROG_GetPtrHighScoreTrack();
 }
 

@@ -1300,6 +1300,7 @@ void Chaos_Reset(void);
 bool Chaos_IsRunning(const struct GameTracker *gGT);
 void Chaos_BeginRace(struct GameTracker *gGT);
 void Chaos_Update(struct GameTracker *gGT);
+void Chaos_PublishEffects(void);
 bool Chaos_Activate(ChaosEffectId effect, s32 durationMS);
 bool Chaos_OnPickup(struct Driver *driver);
 void Chaos_OnTurboPadContact(struct Driver *driver, bool touching);

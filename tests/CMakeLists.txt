@@ -86,6 +86,11 @@ ctr_add_test_suite(test_chaos_pickup
     SOURCES test_chaos_pickup.c
 )
 
+ctr_add_test_suite(test_chaos_ipc
+    SOURCES test_chaos_ipc.c
+    LIBRARIES SDL3::SDL3
+)
+
 ctr_add_test_suite(test_howl_sample
     SOURCES test_howl_sample.c
 )

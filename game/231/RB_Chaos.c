@@ -1,5 +1,7 @@
 #include <common.h>
 #include <chaos_gate.h>
+#include <platform/native_chaos_ipc.h>
+#include <platform/native_log.h>
 
 enum
 {
@@ -62,6 +64,7 @@ void Chaos_Reset(void)
 void Chaos_BeginRace(struct GameTracker *gGT)
 {
 	Chaos_Reset();
+	Chaos_PublishEffects();
 	// Initialization may precede unpausing; GO gates updates, not race setup.
 	if (!sdata->chaosSettings.armed ||
 	    !ChaosGate_IsRaceEligible(gGT->gameMode1 & ~(PAUSE_ALL | LOADING),
@@ -197,6 +200,65 @@ bool Chaos_IsActive(ChaosEffectId effect)
 		}
 	}
 	return false;
+}
+
+void Chaos_PublishEffects(void)
+{
+	const struct ChaosSettings *settings = &sdata->chaosSettings;
+	char catalogue[NATIVE_CHAOS_CATALOGUE_SIZE] = {0};
+	size_t used = 0;
+	for (int i = 0; settings->armed && i < CHAOS_EFFECT_COUNT; i++)
+	{
+		if (settings->effects[i])
+		{
+			const char *slug = ChaosEffect_Def((ChaosEffectId)i)->slug;
+			const size_t length = strlen(slug);
+			if (length + 1 >= sizeof(catalogue) - used)
+			{
+				Platform_LogError("[Chaos] Effects catalogue exceeds publication capacity.\n");
+				return;
+			}
+			memcpy(catalogue + used, slug, length);
+			used += length;
+			catalogue[used++] = '\n';
+		}
+	}
+	NativeChaosIPC_WriteEffectsCatalogue(catalogue);
+}
+
+static bool Chaos_ActivateExternalEffect(const char *slug)
+{
+	const ChaosEffectId effect = ChaosEffect_FromSlug(slug);
+	if (effect == CHAOS_EFFECT_NONE)
+	{
+		Platform_LogError("[Chaos] Consumed invalid or unknown effect command.\n");
+		return false;
+	}
+	if (!ChaosEffect_IsEnabled(sdata->chaosSettings.effects, effect))
+	{
+		Platform_LogError("[Chaos] Consumed disabled effect: %s\n", slug);
+		return false;
+	}
+	if (!Chaos_Activate(effect, sdata->chaosSettings.durationSeconds * CHAOS_MILLISECONDS_PER_SECOND))
+	{
+		Platform_LogError("[Chaos] Consumed effect rejected by runtime: %s\n", slug);
+		return false;
+	}
+	return true;
+}
+
+static void Chaos_PollExternal(void)
+{
+	if (sdata->chaosRuntime.intervalRemainingMS > 0)
+	{
+		return;
+	}
+	char command[NATIVE_CHAOS_COMMAND_SIZE];
+	if (NativeChaosIPC_ReadCommand(command, sizeof(command)) == NATIVE_CHAOS_COMMAND &&
+	    Chaos_ActivateExternalEffect(command))
+	{
+		sdata->chaosRuntime.intervalRemainingMS = Chaos_NextTriggerGap();
+	}
 }
 
 bool Chaos_IsActiveForDriver(ChaosEffectId effect, const struct Driver *driver)
@@ -463,6 +525,19 @@ void Chaos_Update(struct GameTracker *gGT)
 	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
 	const struct ChaosSettings *settings = &sdata->chaosSettings;
 	Chaos_TickActivations(gGT->elapsedTimeMS);
+	if (settings->trigger == CHAOS_TRIGGER_EXTERNAL)
+	{
+		if (runtime->intervalRemainingMS > 0)
+		{
+			runtime->intervalRemainingMS -= gGT->elapsedTimeMS;
+			if (runtime->intervalRemainingMS < 0)
+			{
+				runtime->intervalRemainingMS = 0;
+			}
+		}
+		Chaos_PollExternal();
+		return;
+	}
 
 	if ((settings->trigger != CHAOS_TRIGGER_INTERVAL && settings->trigger != CHAOS_TRIGGER_RANDOM) ||
 	    settings->triggerIntervalSeconds == 0)

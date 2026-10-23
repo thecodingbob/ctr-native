@@ -364,4 +364,15 @@ after the HUD so its timer still reserves space on its last visible frame.
 The overlay also disappears as soon as all humans finish, before results setup.
 Pause freezes announcements and hides the overlay; menus hide it too. Rejected
 activations leave announcements unchanged; reset clears them.
-The External trigger/provider remains pending.
+The External trigger uses `chaos/command`, consuming one effect slug after the
+saved interval has elapsed in active race time. Successful activation restarts
+the interval; rejected commands are consumed and logged without restarting it.
+Pending commands survive race reset. `intervalRemainingMS` belongs to the
+resident Chaos runtime, so ordinary race reset and quick-state capture share the
+existing timer ownership. Host files are outside checkpoints and replays.
+The platform provider publishes the enabled slugs atomically in `chaos/effects`,
+at game initialization and in `Chaos_BeginRace()`, publishing an empty list when
+Chaos is unarmed. There is no per-frame catalogue rebuild, cache or retry flag.
+Playback neither consumes nor publishes files.
+Protocol: [CHAOS_EXTERNAL.md](CHAOS_EXTERNAL.md). Voting-app
+integration considerations remain in [CHAOS_MODE_PLAN.md](CHAOS_MODE_PLAN.md).
