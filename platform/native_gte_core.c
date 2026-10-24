@@ -352,11 +352,11 @@ internal void GTE_PgxpRotTransPers(double viewX, double viewY, double viewZ, u32
 	NativePgxp_GteProject((float)screenX, (float)screenY, w, (u32)C2_SXY2);
 }
 
-internal int GTE_RotTransPers(int idx, int lm)
+internal int GTE_RotTransPersInput(s32 vx, s32 vy, s32 vz, int idx, int lm)
 {
-	const s64 viewX = (s64)((s64)C2_TRX << 12) + (C2_R11 * VX(idx)) + (C2_R12 * VY(idx)) + (C2_R13 * VZ(idx));
-	const s64 viewY = (s64)((s64)C2_TRY << 12) + (C2_R21 * VX(idx)) + (C2_R22 * VY(idx)) + (C2_R23 * VZ(idx));
-	const s64 viewZ = (s64)((s64)C2_TRZ << 12) + (C2_R31 * VX(idx)) + (C2_R32 * VY(idx)) + (C2_R33 * VZ(idx));
+	const s64 viewX = (s64)C2_TRX * 4096 + (s64)C2_R11 * vx + (s64)C2_R12 * vy + (s64)C2_R13 * vz;
+	const s64 viewY = (s64)C2_TRY * 4096 + (s64)C2_R21 * vx + (s64)C2_R22 * vy + (s64)C2_R23 * vz;
+	const s64 viewZ = (s64)C2_TRZ * 4096 + (s64)C2_R31 * vx + (s64)C2_R32 * vy + (s64)C2_R33 * vz;
 	C2_MAC1 = A1(viewX);
 	C2_MAC2 = A2(viewY);
 	C2_MAC3 = A3(viewZ);
@@ -383,16 +383,35 @@ internal int GTE_RotTransPers(int idx, int lm)
 		const double rotation[9] = {C2_R11, C2_R12, C2_R13, C2_R21, C2_R22, C2_R23, C2_R31, C2_R32, C2_R33};
 		const double translation[3] = {C2_TRX, C2_TRY, C2_TRZ};
 
-		input[0] = (double)VX(idx);
-		input[1] = (double)VY(idx);
-		input[2] = (double)VZ(idx);
-		NativePgxp_GteGetInput(idx, (s16)VX(idx), (s16)VY(idx), (s16)VZ(idx), input);
+		input[0] = (double)vx;
+		input[1] = (double)vy;
+		input[2] = (double)vz;
+		if (idx >= 0)
+		{
+			NativePgxp_GteGetInput(idx, (s16)vx, (s16)vy, (s16)vz, input);
+		}
 		NativePgxp_Transform(0, 0, rotation, translation, input, result);
 
 		GTE_PgxpRotTransPers(result[0], result[1], result[2], (u32)h_over_sz3, lm);
 	}
 
 	return h_over_sz3;
+}
+
+internal int GTE_RotTransPers(int idx, int lm)
+{
+	return GTE_RotTransPersInput(VX(idx), VY(idx), VZ(idx), idx, lm);
+}
+
+void NativeGte_ProjectWide(s32 x, s32 y, s32 z)
+{
+	// Native geometry can exceed V0's signed-16-bit range. Keep the full input
+	// through rotation, then use the same projection, depth FIFO and PGXP path.
+	m_sf = 1;
+	C2_FLAG = 0;
+	int h_over_sz3 = GTE_RotTransPersInput(x, y, z, -1, 0);
+	C2_MAC0 = (int)F((s64)C2_DQB + (s64)C2_DQA * h_over_sz3);
+	C2_IR0 = Lm_H(m_mac0, 1);
 }
 
 int GTE_operator(int op)

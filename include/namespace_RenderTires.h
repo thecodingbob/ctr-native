@@ -58,6 +58,8 @@ struct DrawTiresScratch
 	s16 depthOffsetEndBytes;
 	s32 otRangeStart;
 	s32 otRangeEnd;
+	// Native-only stack extension: retain centers before the GTE's IR saturation.
+	Vec3 wheelCenters[4];
 };
 
 CTR_STATIC_ASSERT(sizeof(union DrawTiresScratchWord) == 0x4);
@@ -96,6 +98,7 @@ CTR_STATIC_ASSERT(offsetof(struct DrawTiresScratch, depthOffsetStartBytes) == 0x
 CTR_STATIC_ASSERT(offsetof(struct DrawTiresScratch, depthOffsetEndBytes) == 0x16e);
 CTR_STATIC_ASSERT(offsetof(struct DrawTiresScratch, otRangeStart) == 0x170);
 CTR_STATIC_ASSERT(offsetof(struct DrawTiresScratch, otRangeEnd) == 0x174);
-CTR_STATIC_ASSERT(sizeof(struct DrawTiresScratch) == 0x178);
+CTR_STATIC_ASSERT(offsetof(struct DrawTiresScratch, wheelCenters) == 0x178);
+CTR_STATIC_ASSERT(sizeof(struct DrawTiresScratch) == 0x1a8);
 
 #endif

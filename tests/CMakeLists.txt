@@ -161,5 +161,12 @@ ctr_add_test_suite(test_clip_records
     SOURCES test_clip_records.c
 )
 
+ctr_add_test_suite(test_draw_tires
+    SOURCES test_draw_tires.c
+)
+if(UNIX)
+    target_link_libraries(test_draw_tires PRIVATE m)
+endif()
+
 # Builds the suites without the game, for when only they are in need.
 add_custom_target(tests DEPENDS ${CTR_TEST_SUITES})

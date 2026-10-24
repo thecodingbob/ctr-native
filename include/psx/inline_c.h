@@ -41,6 +41,9 @@ extern int CFC2_S(int reg);
 /* performs cop2 opcode */
 extern int doCOP2(int op);
 
+// Native RTPS with a full-width input position; preserves the usual GTE FIFOs.
+extern void NativeGte_ProjectWide(s32 x, s32 y, s32 z);
+
 /*
  * Type 1 functions
  */
