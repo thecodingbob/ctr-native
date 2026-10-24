@@ -7,13 +7,13 @@ all 16 catalogue effects, activation HUD/audio, and Interval, Random, Pickup and
 External triggers.
 
 Implementation contracts: [CHAOS_STATE.md](CHAOS_STATE.md).
-External producer protocol: [CHAOS_EXTERNAL.md](CHAOS_EXTERNAL.md).
+External producer protocol: [CHAOS_EXTERNAL.md](features/CHAOS_EXTERNAL_PROVIDER.md).
 
 ## Remaining work
 
 - Diagnose the rare GPU-link crash using `gpu-link-crash.log`; its cause is not
   established.
-- Write the player guide at `docs/features/CHAOS.md` and link it from README.
+- Replace screenshot markers in [the player guide](features/CHAOS.md) with in-game captures.
 - Build the external voting application described below.
 
 Deferred effect ideas: Hyper Bots, Blind Kart, Tiny Karts, Item Rain. New effects

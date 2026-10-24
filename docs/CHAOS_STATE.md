@@ -12,7 +12,7 @@
 | External filesystem interface                 | `platform/native_chaos_ipc.c`                                                    |
 
 Remaining work: [CHAOS_MODE_PLAN.md](CHAOS_MODE_PLAN.md).
-External protocol: [CHAOS_EXTERNAL.md](CHAOS_EXTERNAL.md).
+External protocol: [CHAOS_EXTERNAL.md](features/CHAOS_EXTERNAL_PROVIDER.md).
 
 ## Adventure saves
 

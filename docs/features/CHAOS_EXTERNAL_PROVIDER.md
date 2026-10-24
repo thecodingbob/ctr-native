@@ -65,6 +65,3 @@ would require an additional readiness/timing channel.
 Playback neither consumes commands nor publishes catalogues. Requests are not
 recorded, so provider-driven replay verification is not guaranteed. Files are
 outside quick states: restoring a state does not restore a consumed command.
-
-Internal contracts: [CHAOS_STATE.md](CHAOS_STATE.md).
-Remaining work and voting decisions: [CHAOS_MODE_PLAN.md](CHAOS_MODE_PLAN.md).

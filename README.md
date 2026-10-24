@@ -219,15 +219,15 @@ weapon icons and battle points/lives icons will be missing on those tracks.
 
 ### Adventure
 
-| Key                         | Values             | Default | Description                                                                                      |
-|-----------------------------|--------------------|---------|--------------------------------------------------------------------------------------------------|
-| `skip_hints`                | `true` / `false`   | `false` | Skip mask hints in adventure mode                                                                |
-| `extended_character_select` | `true` / `false`   | `false` | Use the classic screen to select any unlocked character when starting a new Adventure            |
-| `multiplayer_adventure`     | `true` / `false`   | `false` | Enable multiplayer Adventure setup. See [2P co-op Adventure](docs/features/2P_ADVENTURE.md)      |
-| `save_anywhere`             | `true` / `false`   | `false` | Allows to save/load anywhere in the adventure mode hubs by pressing select or the equivalent key |
-| `unlock_all_gates`          | `true` / `false`   | `false` | Opens all adventure wood gates bypassing the key requirements                                    |
-| `unlock_all_portals`        | `true` / `false`   | `false` | Unlock all warp pads and boss garages                                                            |
-| `chaos_mode`                | `true` / `false`   | `false` | Ask whether to arm Chaos mode when creating a new Adventure file                                 |
+| Key                         | Values             | Default | Description                                                                                           |
+|-----------------------------|--------------------|---------|-------------------------------------------------------------------------------------------------------|
+| `skip_hints`                | `true` / `false`   | `false` | Skip mask hints in adventure mode                                                                     |
+| `extended_character_select` | `true` / `false`   | `false` | Use the classic screen to select any unlocked character when starting a new Adventure                 |
+| `multiplayer_adventure`     | `true` / `false`   | `false` | Enable multiplayer Adventure setup. See [2P co-op Adventure](docs/features/2P_ADVENTURE.md)           |
+| `save_anywhere`             | `true` / `false`   | `false` | Allows to save/load anywhere in the adventure mode hubs by pressing select or the equivalent key      |
+| `unlock_all_gates`          | `true` / `false`   | `false` | Opens all adventure wood gates bypassing the key requirements                                         |
+| `unlock_all_portals`        | `true` / `false`   | `false` | Unlock all warp pads and boss garages                                                                 |
+| `chaos_mode`                | `true` / `false`   | `false` | Offer Chaos mode for new Adventure files. See the [Chaos mode guide](docs/features/CHAOS.md)          |
 
 ### Unlocks
 
