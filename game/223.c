@@ -337,6 +337,7 @@ void RR_EndEvent_DrawMenu(void)
 {
 	RECT box;
 	SVec2 pos;
+	SVec2 promptPos;
 	s32 rewardBit;
 
 	register s16 textColor CTR_PSX_REGISTER("$19");
@@ -346,6 +347,7 @@ void RR_EndEvent_DrawMenu(void)
 	// The screen reports the clock the relic was graded on and the crates the pair
 	// picked up between them, so a co-op result reads as one shared attempt.
 	struct Driver *driver = MainGameEnd_GradeDriver(GAME_TRACKER);
+	UI_RaceEnd_SetMenuLayout(&data.menuRetryExit, &promptPos);
 
 	// change color
 	textColor = (GAME_TRACKER->timer & 1) ? (JUSTIFY_CENTER | ORANGE) : (JUSTIFY_CENTER | WHITE);
@@ -682,7 +684,7 @@ skip_new_high_score:
 	{
 		RR_EndEvent_DrawHighScore(0x100, 10, RR_SCORE_MODE_RELIC_RACE);
 
-		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, JUSTIFY_CENTER | ORANGE);
+		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], promptPos.x, promptPos.y, FONT_BIG, JUSTIFY_CENTER | ORANGE);
 
 		if ((GAME_ANY_PLAYER_TAP & RR_CONFIRM_BUTTON_MASK) != 0)
 		{
