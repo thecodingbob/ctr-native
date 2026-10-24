@@ -5,6 +5,8 @@ extern struct MenuRow s_rowsMainMenuBasicConfig[];
 extern struct MenuRow s_rowsMainMenuWithSBConfig[];
 extern struct RectMenu g_configMenu;
 
+#include "MM_NewLoad.c"
+
 s32 MM_TransitionInOut(struct TransitionMeta *meta, s32 framesPassed, s32 numFrames)
 {
 	s16 negativeTransitionState;
@@ -28,7 +30,7 @@ s32 MM_TransitionInOut(struct TransitionMeta *meta, s32 framesPassed, s32 numFra
 		if ((framesLeft == MM_TRANSITION_SWISH_FRAME) && (transitionIndex == 0))
 		{
 			// Play "swoosh" sound for menu transition
-			OtherFX_Play(MM_TRANSITION_SWISH_SFX, 0);
+			OtherFX_Play(HOWL_SFX_SWISH, 0);
 		}
 
 		if (framesLeft < 1)
@@ -304,7 +306,7 @@ void MM_MenuProc_QuitConfirm(struct RectMenu *menu)
 {
 	if (menu->rowSelected < 0)
 	{
-		menu->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
+		MM_Menu_Detach(menu);
 		return;
 	}
 	// Called every frame from RECTMENU_ProcessState with funcState=1;
@@ -315,7 +317,7 @@ void MM_MenuProc_QuitConfirm(struct RectMenu *menu)
 	if (menu->rowSelected == 0) // YES
 		exit(0);
 	// NO - go back
-	menu->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
+	MM_Menu_Detach(menu);
 }
 
 void MM_ToggleRows_PlayerCount(void)
@@ -367,7 +369,6 @@ void MM_MenuProc_1p2p(struct RectMenu *menu)
 {
 	s16 selectableRowCount = 0;
 
-	struct RectMenu *previousMenuOwner = menu;
 	const s16 row = menu->rowSelected;
 
 	// if uninitialized
@@ -393,11 +394,13 @@ void MM_MenuProc_1p2p(struct RectMenu *menu)
 
 	// row N is (N+1)P
 	GAME_TRACKER->numPlyrNextGame = row + 1;
-	if (menu->ptrPrevBox_InHierarchy == &MM_MENU_ADVENTURE)
+
+	// The same screen is reached from the main menu, where it leads to the
+	// difficulty box, and from the new-file chain, where answering it just moves
+	// to the next step.
+	if (MM_NewLoad_InChain())
 	{
-		MM_TITLE_MENU_STATE = TITLE_MENU_STATE_EXITING;
-		MM_DESIRED_MENU_INDEX = MM_EXIT_ROUTE_ADV_NEW;
-		menu->state |= ONLY_DRAW_TITLE;
+		MM_NewLoad_Advance(menu);
 		return;
 	}
 
@@ -408,7 +411,16 @@ void MM_MenuProc_1p2p(struct RectMenu *menu)
 	return;
 
 UNINITIALIZED:
-	previousMenuOwner->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
+	if (MM_NewLoad_InChain())
+	{
+		// "Previous" from a step of the new-file chain, which is the screen before
+		// it,  not the new/load menu it came off.
+		MM_NewLoad_Retreat(menu);
+	}
+	else
+	{
+		MM_Menu_Detach(menu);
+	}
 
 	GAME_TRACKER->numPlyrNextGame = 1;
 
@@ -597,10 +609,8 @@ UNINITIALIZED:
 
 void MM_MenuProc_SingleCup(struct RectMenu *menu)
 {
-	struct RectMenu *previousMenuOwner;
 	s16 row;
 
-	previousMenuOwner = menu;
 	row = menu->rowSelected;
 
 	if (row == -1)
@@ -647,7 +657,7 @@ void MM_MenuProc_SingleCup(struct RectMenu *menu)
 	return;
 
 UNINITIALIZED:
-	previousMenuOwner->ptrPrevBox_InHierarchy->state &= ~(ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY);
+	MM_Menu_Detach(menu);
 }
 
 void MM_MenuProc_NewLoad(struct RectMenu *menu)
@@ -660,21 +670,9 @@ void MM_MenuProc_NewLoad(struct RectMenu *menu)
 	switch (row)
 	{
 	case 0:
-		if (g_config.multiplayerAdventure)
-		{
-			menu->ptrNextBox_InHierarchy = &MM_MENU_PLAYERS_1P2P;
-			menu->ptrNextBox_InHierarchy->rowSelected = 0;
-			menu->state |= ONLY_DRAW_TITLE | DRAW_NEXT_MENU_IN_HIERARCHY;
-			return;
-		}
-
-		// MM_Title transitioning out
-		MM_TITLE_MENU_STATE = TITLE_MENU_STATE_EXITING;
-
-		// New was chosen
-		MM_DESIRED_MENU_INDEX = MM_EXIT_ROUTE_ADV_NEW;
-
-		menu->state |= ONLY_DRAW_TITLE;
+		// "New" enters the chain; the chain decides which screens are actually
+		// in it, from the options.
+		MM_NewLoad_Begin(menu);
 		return;
 
 	case 1:
@@ -683,6 +681,10 @@ void MM_MenuProc_NewLoad(struct RectMenu *menu)
 
 		// Load was chosen
 		MM_DESIRED_MENU_INDEX = MM_EXIT_ROUTE_ADV_LOAD;
+
+		// Loading a save is not the new-file chain, so nothing must send character
+		// select back to a step of it.
+		sdata->newLoad.previousMenu = NULL;
 
 		menu->state |= ONLY_DRAW_TITLE;
 		return;

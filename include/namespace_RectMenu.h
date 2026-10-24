@@ -71,6 +71,11 @@ enum RectMenuState
 	RECTMENU_STATE_INVISIBLE_CALLBACK = RECTMENU_STATE_CALLBACK | INVISIBLE,
 };
 
+enum MenuSfx
+{
+	MENU_SFX_LOCKED = 5,
+};
+
 enum MenuRowFlags
 {
 	RECTMENU_STRING_NONE = -1,
@@ -118,6 +123,11 @@ struct MenuRow
 
 	// 0x5
 	char rowOnPressRight;
+};
+
+struct FullScreenMenu_Scroll
+{
+	int offset; // first visible row
 };
 
 struct RectMenu
@@ -193,6 +203,58 @@ struct RectMenu
 	struct RectMenu *ptrPrevBox_InHierarchy;
 
 	// End of 0x2c-byte struct
+};
+
+enum NewLoadStep
+{
+	NEWLOAD_STEP_NONE,
+	NEWLOAD_STEP_CHAOS,
+	NEWLOAD_STEP_PLAYERS,
+	NEWLOAD_STEP_COUNT,
+};
+
+enum ChaosSetting
+{
+	CHAOS_SETTING_DURATION,
+	CHAOS_SETTING_TRIGGER,
+	CHAOS_SETTING_INTERVAL,
+	CHAOS_SETTING_EFFECTS,
+	CHAOS_SETTING_CONFIRM,
+	CHAOS_SETTING_COUNT,
+};
+
+enum ChaosPage
+{
+	CHAOS_PAGE_SETTINGS,
+	CHAOS_PAGE_EFFECTS,
+	CHAOS_PAGE_COUNT,
+};
+
+// Resident creation and inspection state survives overlays and checkpoints.
+// Titles and row specifications are immutable and stay in the menu implementation.
+struct NewLoadState
+{
+	enum NewLoadStep step; // zero is inactive, including at startup
+	bool chaosSetupOffered;
+	struct RectMenu *previousMenu;
+	struct RectMenu *parentOf[NEWLOAD_STEP_COUNT];
+};
+
+struct ChaosMenuState
+{
+	struct RectMenu menu;
+	// Non-NULL selects the read-only pause view and its return destination.
+	struct RectMenu *returnMenu;
+	enum ChaosPage page;
+	struct FullScreenMenu_Scroll scroll[CHAOS_PAGE_COUNT];
+	enum ChaosSetting visibleSettings[CHAOS_SETTING_COUNT];
+	int numSettings;
+	int effectsRow;
+};
+
+enum
+{
+	CHAOS_PAUSE_ROW_CAPACITY = 6, // five actions and a terminator
 };
 
 CTR_STATIC_ASSERT(sizeof(struct MenuRow) == 6);

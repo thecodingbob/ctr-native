@@ -327,6 +327,8 @@ void GAMEPROG_NewGame_OnBoot(void)
 	GAMEPROG_NewProfile_OutsideAdv(&GAME_SAVE);
 	GAMEPROG_NewProfile_InsideAdv(&GAME_ADV_PROGRESS);
 	GAMEPROG_ResetAdvMultiplayer(&sdata->advMultiplayer);
+	GAMEPROG_ResetChaosSettings(&sdata->chaosSettings);
+	Chaos_PublishEffects();
 	GAMEPROG_GetPtrHighScoreTrack();
 }
 
@@ -335,6 +337,22 @@ void GAMEPROG_ResetAdvMultiplayer(struct AdvMultiplayerSettings *settings)
 {
 	settings->numPlayers = ADV_MULTIPLAYER_DEFAULT_PLAYERS;
 	settings->characterID2 = ADV_MULTIPLAYER_NO_CHARACTER;
+}
+
+
+// All effects are selected by default; the creation menu arms Chaos separately.
+void GAMEPROG_ResetChaosSettings(struct ChaosSettings *settings)
+{
+	settings->durationSeconds = CHAOS_DURATION_DEFAULT_SECONDS;
+	settings->triggerIntervalSeconds = CHAOS_TRIGGER_INTERVAL_DEFAULT_SECONDS;
+	settings->trigger = CHAOS_TRIGGER_RANDOM;
+	settings->armed = false;
+	settings->enabledCount = CHAOS_EFFECT_COUNT;
+
+	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
+	{
+		settings->effects[i] = true;
+	}
 }
 
 

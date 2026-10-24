@@ -11,6 +11,7 @@
 // host pointer.
 void NativeGpuLinks_Reset(void);
 uint32_t NativeGpuLinks_FromHostPointer(const void *hostPtr);
+uint32_t NativeGpuLinks_FromHostPointerAt(const void *hostPtr, const char *file, int line, const char *function);
 void *NativeGpuLinks_ToHostPointer(uint32_t token);
 int NativeGpuLinks_IsTerminator(uint32_t token);
 int NativeGpuLinks_IsRegisteredHostPointer(const void *hostPtr);

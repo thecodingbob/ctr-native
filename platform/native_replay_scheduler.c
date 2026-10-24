@@ -1385,6 +1385,11 @@ void NativeReplayScheduler_Shutdown(void)
 	s_mode = NATIVE_REPLAY_MODE_NONE;
 }
 
+int NativeReplayScheduler_IsPlayback(void)
+{
+	return s_mode == NATIVE_REPLAY_MODE_PLAYBACK;
+}
+
 int NativeReplayScheduler_RequestStart(void)
 {
 	if (s_mode == NATIVE_REPLAY_MODE_RECORD)

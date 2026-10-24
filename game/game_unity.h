@@ -75,6 +75,7 @@
 #include "HOWL/HOWL_Reverb.c"
 #include "HOWL/HOWL_CseqMusic.c"
 #include "HOWL/HOWL_Bank.c"
+#include "HOWL/HOWL_Sample.c"
 #include "HOWL/HOWL_Load.c"
 #include "HOWL/HOWL_CseqOpcode.c"
 #include "HOWL/HOWL_SongPool.c"
@@ -203,6 +204,7 @@
 #include "UI/UI_Meter.c"
 #include "UI/UI_Rank.c"
 #include "UI/UI_RenderFrame.c"
+#include "UI/UI_Chaos.c"
 #include "UI/UI_VsQuip.c"
 #include "UI/UI_RaceFlow.c"
 #include "UI/UI_CupStandings.c"
@@ -248,6 +250,7 @@
 
 #include "231/R231.c"
 #include "231/D231.c"
+#include "231/RB_Chaos.c"
 #include "231/RB_Instance.c"
 #include "231/RB_Player.c"
 #include "231/RB_MinePool.c"

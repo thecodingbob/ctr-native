@@ -1,4 +1,5 @@
 #include "VehCommon.h"
+#include "VehPhysProc_Input.c"
 
 // budget: 4624
 // curr: 4380
@@ -13,9 +14,6 @@ enum
 	VEH_PHYS_PROC_ITEM_ROLL_FAST_STOP_FRAMES = 70,
 	VEH_PHYS_PROC_WEAPON_COOLDOWN_EMPTY_FRAMES = 0x1e,
 	VEH_PHYS_PROC_WEAPON_COOLDOWN_STACK_FRAMES = 5,
-	VEH_PHYS_PROC_JUMP_BUTTON_MASK = BTN_R1 | BTN_L1,
-	VEH_PHYS_PROC_DEFAULT_DRIFT_BUTTON = BTN_R1,
-	VEH_PHYS_PROC_JUMP_BUFFER_FRAMES = 10,
 	VEH_PHYS_PROC_ASSUMED_CROSS_BUTTON = BTN_CROSS_one,
 	VEH_PHYS_PROC_INVISIBLE_REAPPEAR_FX = 0x62,
 	VEH_PHYS_PROC_ITEM_ROLL_NORMAL_FX = 0x5e,
@@ -33,7 +31,6 @@ enum
 	VEH_PHYS_PROC_CLOCK_WADDLE_TRIG_FORCE_SHIFT = 5,
 	VEH_PHYS_PROC_CLOCK_WADDLE_RUMBLE_CHANNEL = 4,
 	VEH_PHYS_PROC_CLOCK_WADDLE_FORCE_BASE = 0x18,
-	VEH_PHYS_PROC_STICK_CENTER = 0x80,
 	VEH_PHYS_PROC_REVERSE_STICK_THRESHOLD = 100,
 	VEH_PHYS_PROC_BRAKE_HIGH_SPEED_THRESHOLD = 0x300,
 	VEH_PHYS_PROC_REVERSE_SPEED_COMPARE = 0x301,
@@ -134,11 +131,12 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 	register int tireSpeedRaw CTR_PSX_REGISTER("$3");
 	register int tireApproximateSpeed CTR_PSX_REGISTER("$24");
 	int steerStrength;
+	int steeringInput;
 	register u32 buttonsTapped CTR_PSX_REGISTER("$4");
 	int timerHazard;
 	int airborneTimer;
 	register int trigForce CTR_PSX_REGISTER("$2");
-	u16 clockReceiveRaw;
+	s32 clockReceiveRaw;
 	register int clockWaddleTimer CTR_PSX_REGISTER("$6");
 	register u32 actionsFlagSetCopy CTR_PSX_REGISTER("$18");
 	register int targetBaseSpeed CTR_PSX_REGISTER("$23");
@@ -344,7 +342,7 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 		{
 			clockTimer = 0;
 		}
-		driver->clockReceive = (s16)clockTimer;
+		driver->clockReceive = clockTimer;
 	}
 	if (accelTapTimer > 0)
 	{
@@ -432,14 +430,14 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 		{
 			goto speedIsLow;
 		}
-		clockReceiveRaw = (u16)driver->clockReceive;
+		clockReceiveRaw = driver->clockReceive;
 		scratchValue = normalVecIndex;
 		if (normalVecIndex < 0)
 		{
 			scratchValue = CTR_MipsNegLo(scratchValue);
 		}
 
-		normalVecIndex = (s16)clockReceiveRaw;
+		normalVecIndex = clockReceiveRaw;
 		clockWaddleTimer = CTR_MipsSra(normalVecIndex, VEH_PHYS_PROC_CLOCK_WADDLE_TIMER_SHIFT);
 		if (clockWaddleTimer > VEH_PHYS_PROC_CLOCK_WADDLE_TIMER_MAX)
 		{
@@ -862,49 +860,10 @@ CheckJumpButtons:
 	normalVecIndex = buttonsTapped & VEH_PHYS_PROC_JUMP_BUTTON_MASK;
 
 CheckJumpButtonsReady:
-	if ((normalVecIndex != 0) && (driver->kartState != KS_DRIFTING))
-	{
-		// if L1 and R1 were tapped at once, prefer R1
-		if (normalVecIndex == VEH_PHYS_PROC_JUMP_BUTTON_MASK)
-		{
-			driver->buttonUsedToStartDrift = VEH_PHYS_PROC_DEFAULT_DRIFT_BUTTON;
-		}
-		else
-		{
-			driver->buttonUsedToStartDrift = normalVecIndex;
-		}
-
-		if (rainCloudEffect != RAIN_CLOUD_EFFECT_JUMP_LOCKOUT)
-		{
-			driver->jump_TenBuffer = VEH_PHYS_PROC_JUMP_BUFFER_FRAMES;
-			goto SetJumpButtonHeld;
-		}
-		goto CheckJumpDone;
-	}
-
-	if (((buttonsHeld & VEH_PHYS_PROC_JUMP_BUTTON_MASK) != 0) && (rainCloudEffect != RAIN_CLOUD_EFFECT_JUMP_LOCKOUT))
-	{
-		if ((actionsFlagSetCopy & ACTION_JUMP_BUTTON_HELD) == 0)
-		{
-			// 10 frame jump buffer
-			driver->jump_TenBuffer = VEH_PHYS_PROC_JUMP_BUFFER_FRAMES;
-		}
-		goto SetJumpButtonHeld;
-	}
-	goto ClearJumpButtonHeld;
-
-SetJumpButtonHeld:
-	actionsFlagSetCopy |= ACTION_JUMP_BUTTON_HELD;
-	goto CheckJumpDone;
-
-ClearJumpButtonHeld:
-	actionsFlagSetCopy &= ~ACTION_JUMP_BUTTON_HELD;
-	if (driver->jump_TenBuffer > 0)
-	{
-		driver->jump_TenBuffer = 0;
-	}
-
-CheckJumpDone:
+	actionsFlagSetCopy = VehPhysProc_JumpInput(driver, (u32)normalVecIndex, buttonsHeld, rainCloudEffect, actionsFlagSetCopy);
+	steeringInput = ptrgamepad->stickLX;
+	// Apply after input resolution, before jump and steering consumers use the result.
+	actionsFlagSetCopy = Chaos_ApplyDriver(driver, ptrgamepad, &steeringInput, actionsFlagSetCopy);
 	CTR_PSX_OBSERVE_VALUE(buttonsHeld);
 	CTR_PSX_LOAD_WORD(approximateSpeedRaw, square);
 	if (
@@ -1335,7 +1294,7 @@ CheckJumpDone:
 		if ((GAME_TRACKER->gameMode1 & END_OF_RACE) == 0)
 		{
 			// gamepadBuffer -> stickLX
-			gasScratchValue = (int)ptrgamepad->stickLX;
+			gasScratchValue = steeringInput;
 		}
 
 		// default steer strength from class stats
@@ -1575,7 +1534,7 @@ void VehPhysProc_Driving_Update(struct Thread *t, struct Driver *d)
 		if (((((turnRate + turnConstTerm) >> VEH_PHYS_PROC_HALF_SPEED_SHIFT) < simpTurnState) &&
 
 		     // player has jump buttons held
-		     ((GAMEPADS->gamepad[d->driverID].buttonsHeldCurrFrame) & d->buttonUsedToStartDrift) != 0) &&
+		     (GAMEPADS->gamepad[d->driverID].buttonsHeldCurrFrame & d->buttonUsedToStartDrift) != 0) &&
 
 		    // player is not in accel prevention or braking and
 		    ((d->actionsFlagSet & ACTION_ACCEL_PREVENTION) == 0) && ((d->const_Speed_ClassStat >> 1) <= d->speedApprox))

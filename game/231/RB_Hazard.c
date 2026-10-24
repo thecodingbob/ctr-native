@@ -218,7 +218,7 @@ int RB_Hazard_ThCollide_Generic(struct Thread *thread, struct Thread *other, voi
 
 			// if no driver hit TNT,
 			// then handle explosion here
-			soundID = 0x3d;
+			soundID = HOWL_SFX_TNT_EXPLOSION;
 		}
 
 		PlaySound3D(soundID, inst);

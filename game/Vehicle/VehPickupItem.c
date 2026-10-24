@@ -1390,6 +1390,8 @@ void VehPickupItem_ShootOnCirclePress(struct Driver *d)
 		VehPickState_NewState(d, d->pendingDamageType, d->pendingDamageAttacker, d->pendingDamageReasonByte);
 	}
 
+	Chaos_ApplyItemRules(d);
+
 	// If you want to fire a weapon
 	if ((d->actionsFlagSet & ACTION_WEAPON_FIRE_REQUEST) == 0)
 	{

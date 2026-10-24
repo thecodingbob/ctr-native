@@ -2,7 +2,7 @@
 #include <common.h>
 
 #if defined(__GNUC__)
-char memcardBytes[0x1680];
+char memcardBytes[MEMCARD_FILE_DATA_SIZE];
 #endif
 
 struct sData sdata_static = {.langBufferSize = 0x3F04,

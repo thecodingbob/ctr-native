@@ -1064,10 +1064,12 @@ PROCESS_ACCEL:
 	register int rotatedZ CTR_PSX_REGISTER("$6");
 	u32 movementLengthSq;
 	b32 clampToForwardImpulse;
-	int accelerationProduct = CTR_MipsMulLo(acceleration, GAME_TRACKER->elapsedTimeMS);
+	int accelerationProduct;
 	int speedMagnitude;
 	register int lossBaseSpeed CTR_PSX_REGISTER("$3");
 
+	acceleration = Chaos_AccelerationForDriver(d, acceleration);
+	accelerationProduct = CTR_MipsMulLo(acceleration, GAME_TRACKER->elapsedTimeMS);
 	CTR_PSX_SHIFT_RIGHT_ARITHMETIC(acceleration, accelerationProduct, 5);
 	MTC2(0, 0);
 	MTC2((u32)(u16)acceleration, 1);
@@ -1177,7 +1179,7 @@ CHECK_FOR_ANY_JUMP:
 			d->jump_ForcedMS = VEH_PHYS_JUMP_FORCED_MS;
 
 			jumpForce = CTR_MipsAddLo(CTR_MipsSll(d->const_JumpForce, 3), d->const_JumpForce);
-			d->jump_InitialVelY = (s16)VehPhysGeneral_Jump_Div4TowardZero(jumpForce);
+			d->jump_InitialVelY = (s16)Chaos_JumpForceForDriver(d, VehPhysGeneral_Jump_Div4TowardZero(jumpForce));
 
 			OtherFX_Play_Echo(VEH_PHYS_JUMP_SPRING_SFX, 1, (d->actionsFlagSet & ACTION_ENGINE_ECHO) != 0);
 
@@ -1206,13 +1208,13 @@ CHECK_FOR_ANY_JUMP:
 
 			d->jump_HighJumpTimerMS = VEH_PHYS_JUMP_HIGH_TIMER_MS;
 			jumpForce = CTR_MipsAddLo(CTR_MipsSll(d->const_JumpForce, 1), d->const_JumpForce);
-			d->jump_InitialVelY = (s16)jumpForce;
+			d->jump_InitialVelY = (s16)Chaos_JumpForceForDriver(d, jumpForce);
 		}
 		else
 		{
 			int jumpForce = CTR_MipsAddLo(CTR_MipsSll(d->const_JumpForce, 1), d->const_JumpForce);
 
-			d->jump_InitialVelY = (s16)VehPhysGeneral_Jump_Div2TowardZero(jumpForce);
+			d->jump_InitialVelY = (s16)Chaos_JumpForceForDriver(d, VehPhysGeneral_Jump_Div2TowardZero(jumpForce));
 		}
 
 		d->forcedJumpType = FORCED_JUMP_NONE;
@@ -1227,7 +1229,7 @@ NORMAL_JUMP:
 
 	d->jump_ForcedMS = VEH_PHYS_JUMP_FORCED_MS;
 	d->numberOfJumps = (s16)CTR_MipsAddLo((u16)d->numberOfJumps, 1);
-	d->jump_InitialVelY = d->const_JumpForce;
+	d->jump_InitialVelY = (s16)Chaos_JumpForceForDriver(d, d->const_JumpForce);
 
 	OtherFX_Play_Echo(VEH_PHYS_JUMP_NORMAL_SFX, 1, (d->actionsFlagSet & ACTION_ENGINE_ECHO) != 0);
 
@@ -1860,6 +1862,7 @@ int VehPhysGeneral_GetBaseSpeed(struct Driver *driver)
 	}
 
 	statAdditional = CTR_MipsSubLo(statAdditional, subtract);
+	statAdditional = Chaos_SpeedForDriver(d, statAdditional);
 
 	if (VEH_BASE_SPEED_NET_CAP < statAdditional)
 	{

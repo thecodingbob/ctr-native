@@ -20,6 +20,10 @@ int RB_Crystal_ThCollide(struct Thread *crystalTh, struct Thread *driverTh, void
 
 	modelID = sps->Input1.modelID;
 	crystalInst = crystalTh->inst;
+	if (crystalInst->scale.x == 0)
+	{
+		return 0;
+	}
 
 	// wumpa fruit or crystal can be grabbed
 	// by player, or robotcar, and there's no
@@ -60,6 +64,10 @@ int RB_Crystal_ThCollide(struct Thread *crystalTh, struct Thread *driverTh, void
 		PlaySound3D(0x43, crystalInst);
 		crystalTh->flags |= THREAD_FLAG_DEAD;
 
+		if (modelID == DYNAMIC_PLAYER)
+		{
+			Chaos_OnPickup(driver);
+		}
 		return 1;
 	}
 	return 0;

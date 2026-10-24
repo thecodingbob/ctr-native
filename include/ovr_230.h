@@ -112,7 +112,6 @@ enum CharacterSelectUnlockRequirement
 
 enum MainMenuFlowConstants
 {
-	MM_TRANSITION_SWISH_SFX = 0x65,
 	MM_TRANSITION_SWISH_FRAME = 4,
 	MM_DEFAULT_LAP_COUNT = 3,
 	MM_ONE_LAP_CHEAT_COUNT = 1,
@@ -1053,6 +1052,11 @@ struct OverlayDATA_230
 	char s_RingBuf[8];
 
 	// 800b5a64 MM_Video_DecDCToutCallbackFunc
+
+	// ================= Chaos ===========================
+
+	struct MenuRow rowsChaosPrompt[3]; // Chaos, Regular, NULL
+	struct RectMenu menuChaosPrompt;
 };
 
 // starts at 800b67ac

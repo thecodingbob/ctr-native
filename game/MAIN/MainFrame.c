@@ -285,6 +285,7 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 		}
 
 		MainFrame_Tow_Update(gGT, gGamepads);
+		Chaos_Update(gGT);
 
 		for (iVar4 = 0; iVar4 < PAUSE; iVar4++)
 		{
@@ -377,6 +378,7 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 			if (gGT->cooldownfromPauseUntilUnpause == 0)
 			{
 				if (((sdata->ptrActiveMenu != &data.menuRacingWheelConfig) && (sdata->ptrActiveMenu != &D232.menuHintMenu) // in 232
+				     && (sdata->ptrActiveMenu != &sdata->chaosMenu.menu)
 				     ) &&
 				    ((sdata->AnyPlayerTap & BTN_START) != 0))
 				{

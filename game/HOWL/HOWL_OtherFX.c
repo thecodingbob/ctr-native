@@ -65,13 +65,13 @@ int OtherFX_Play_LowLevel(u32 soundID, u8 boolAntiSpam, u32 flags)
 	// get pointer to cseq audio, given soundID
 	ptrOtherFX = &sdata->howl_metaOtherFX[id];
 
-	// quit if effect is not loaded
-	if (sdata->howl_spuAddrs[ptrOtherFX->spuIndex].spuAddr == 0)
+	if (!Bank_EnsureOtherFX(id))
 	{
 		return 0;
 	}
 
-	howl_InitChannelAttr_OtherFX(ptrOtherFX, &channelAttr, volume, LR, distortion);
+	const bool doubleGain = (flags & HOWL_SFX_GAIN_DOUBLE_FLAG) != 0;
+	howl_InitChannelAttr_OtherFX(ptrOtherFX, &channelAttr, HowlSfx_EffectiveVolume(volume, doubleGain), LR, distortion);
 
 	channelAttr.reverb = echo;
 
@@ -106,6 +106,10 @@ int OtherFX_Play_LowLevel(u32 soundID, u8 boolAntiSpam, u32 flags)
 	}
 
 	channel->type = HOWL_CHANNEL_TYPE_OTHER_FX;
+	if (doubleGain)
+	{
+		channel->flags |= HOWL_CHANNEL_GAIN_DOUBLE;
+	}
 	channel->unk2 = 0;
 	channel->echo = echo;
 	channel->vol = volume;
@@ -129,7 +133,6 @@ u32 OtherFX_Modify(u32 soundId, u32 flags)
 {
 	struct ChannelStats *channel;
 	struct ChannelAttr channelAttr;
-	int modify;
 	struct OtherFX *ptrOtherFX;
 	u32 distort;
 	u32 volume;
@@ -154,27 +157,8 @@ u32 OtherFX_Modify(u32 soundId, u32 flags)
 	echo = (u16)HowlSfx_Echo(flags);
 	LR = (u16)HowlSfx_LR(flags);
 
-	// volume of FX
-	modify = sdata->vol_FX;
-	if ((ptrOtherFX->flags & 4) != 0)
-	{
-		// volume of Voice
-		modify = sdata->vol_Voice;
-	}
-
-	// no distortion
-	if (distort == HOWL_SFX_DISTORTION_NONE)
-	{
-		channelAttr.pitch = ptrOtherFX->pitch;
-	}
-
-	// distortion
-	else
-	{
-		channelAttr.pitch = ptrOtherFX->pitch * data.distortConst_OtherFX[distort] >> 0x10;
-	}
-
-	Channel_SetVolume(&channelAttr, modify * ptrOtherFX->volume * volume >> 10, LR);
+	const bool doubleGain = (flags & HOWL_SFX_GAIN_DOUBLE_FLAG) != 0;
+	howl_InitChannelAttr_OtherFX(ptrOtherFX, &channelAttr, HowlSfx_EffectiveVolume(volume, doubleGain), LR, distort);
 	channelAttr.reverb = echo;
 
 	Smart_EnterCriticalSection();
@@ -184,6 +168,11 @@ u32 OtherFX_Modify(u32 soundId, u32 flags)
 
 	if (channel != 0)
 	{
+		channel->flags &= ~HOWL_CHANNEL_GAIN_DOUBLE;
+		if (doubleGain)
+		{
+			channel->flags |= HOWL_CHANNEL_GAIN_DOUBLE;
+		}
 		channel->echo = echo;
 		channel->vol = volume;
 		channel->distort = distort;

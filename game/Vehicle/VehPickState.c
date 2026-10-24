@@ -45,7 +45,7 @@ enum
 };
 
 
-int VehPickState_NewState(struct Driver *victimDriver, int damageType, struct Driver *attackDriver, int reason)
+static int VehPickState_ApplyDamage(struct Driver *victimDriver, int damageType, struct Driver *attackDriver, int reason, bool bypassProtection)
 {
 	int victimState = victimDriver->kartState;
 	register int victimID CTR_PSX_REGISTER("$2");
@@ -67,11 +67,11 @@ int VehPickState_NewState(struct Driver *victimDriver, int damageType, struct Dr
 		goto ReturnZero;
 	}
 
-	if (
+	if (!bypassProtection && (
 	    // If player is using mask weapon and it protects from damage
 	    ((victimDriver->actionsFlagSet & ACTION_MASK_WEAPON) != 0 && g_config.maskProtectsFromDamage) ||
 
-	    (victimDriver->invincibleTimer != 0))
+	    (victimDriver->invincibleTimer != 0)))
 	{
 		voiceType = VEH_PICK_VOICELINE_VICTIM_LAUGH;
 		characterIDs = GAME_CHARACTER_IDS;
@@ -79,7 +79,7 @@ int VehPickState_NewState(struct Driver *victimDriver, int damageType, struct Dr
 		goto VictimLaugh;
 	}
 
-	if (victimDriver->instBubbleHold != NULL)
+	if (!bypassProtection && victimDriver->instBubbleHold != NULL)
 	{
 		{
 			register struct Shield *shield CTR_PSX_REGISTER("$3");
@@ -378,4 +378,14 @@ DamageApplied:
 	victimDriver->instSelf->flags &= ~HIDE_MODEL;
 
 	return 1;
+}
+
+int VehPickState_TrySquish(struct Driver *driver)
+{
+	return VehPickState_ApplyDamage(driver, VEH_PICK_DAMAGE_SQUISH, NULL, 0, false);
+}
+
+int VehPickState_NewState(struct Driver *victimDriver, int damageType, struct Driver *attackDriver, int reason)
+{
+	return VehPickState_ApplyDamage(victimDriver, damageType, attackDriver, reason, false);
 }

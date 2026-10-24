@@ -922,6 +922,7 @@ void MM_Characters_MenuProc(struct RectMenu *unused)
 			// Make a backup of the characters
 			// you selected in character selection screen
 			MM_Characters_BackupIDs();
+			MM_NewLoad_OnCharacterSelectExit(MM_CHARACTER_SELECT_EXITS_FORWARD != 0);
 
 			// if advancing to cup or track selection
 			if (MM_CHARACTER_SELECT_EXITS_FORWARD != 0)
@@ -960,8 +961,6 @@ void MM_Characters_MenuProc(struct RectMenu *unused)
 				return;
 			}
 
-			// if returning to main menu
-			MM_JumpTo_Title_Returning();
 			MM_Characters_HideDrivers();
 			return;
 		}

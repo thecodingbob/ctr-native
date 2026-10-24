@@ -18,6 +18,7 @@ enum
 	VEH_BIRTH_CHEAT_DURATION = 0x2d00,
 	VEH_BIRTH_META_PHYS_COUNT = len(data.metaPhys),
 	VEH_BIRTH_WHEEL_SIZE = 0xccc,
+	VEH_BIRTH_KART_SCALE_NORMAL = 1,
 	VEH_BIRTH_RESERVED_0x412_INITIAL = 0x600,
 	VEH_BIRTH_STEERING_FRAMES_RESET = 10000,
 	VEH_BIRTH_QUIP_NONE = -1,
@@ -738,7 +739,8 @@ void VehBirth_TireSprites(struct Thread *t)
 
 	struct Icon **tire = ICONGROUP_GETICONS(tireAnim);
 	d->wheelSprites = tire;
-    d->wheelSize = VEH_BIRTH_WHEEL_SIZE;
+	d->kartScale = VEH_BIRTH_KART_SCALE_NORMAL;
+	d->wheelSize = VEH_BIRTH_WHEEL_SIZE;
 
     if ((GAME_CHARACTER_IDS[driverID] == NITROS_OXIDE) &&
         (GAME_TRACKER->levelID != MAIN_MENU_LEVEL))

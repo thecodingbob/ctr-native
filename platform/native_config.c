@@ -57,6 +57,7 @@ NativeConfig g_config = {
   .skipHints = false,
   .extendedAdventureCharacterSelect = false,
   .multiplayerAdventure = false,
+  .chaosMode = false,
 
   .speedMultiplier = 100,
   .gravityMultiplier = 100,
@@ -218,6 +219,13 @@ const ConfigEntry g_configEntries[] = {
         .label = "Open All Portals",
         .type = CFG_BOOL,
         .valuePtr = &g_config.unlockAllPortals
+    },
+    {
+        .section = "Adventure",
+        .key = "chaos_mode",
+        .label = "Chaos Mode",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.chaosMode
     },
     {
         .section = "Vehicle",

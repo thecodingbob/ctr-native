@@ -1,6 +1,8 @@
 #ifndef CTR_NATIVE_NAMESPACE_MEMCARD_H
 #define CTR_NATIVE_NAMESPACE_MEMCARD_H
 
+#include <chaos_effect.h>
+
 // Modified from original game
 enum MC_STAGE
 {
@@ -624,12 +626,59 @@ struct AdvMultiplayerSettings
 	s16 characterID2;
 };
 
-// The co-op settings per profile, in the padding retail never wrote. A card
-// without them has zeroes here, so a racer count outside the range this port
-// writes means the same thing: the profile plays alone.
+// What makes an effect activate.
+enum ChaosTrigger
+{
+	CHAOS_TRIGGER_RANDOM = 0,
+	CHAOS_TRIGGER_PICKUP = 1,
+	CHAOS_TRIGGER_INTERVAL = 2,
+	CHAOS_TRIGGER_EXTERNAL = 3,
+	CHAOS_TRIGGER_COUNT,
+};
+
+enum
+{
+	CHAOS_DURATION_DEFAULT_SECONDS = 30,
+	CHAOS_TRIGGER_INTERVAL_DEFAULT_SECONDS = 35,
+};
+
+// Live settings only. Disk encoding is independent of this growable array.
+// All-zero settings are unarmed; new files select every implemented effect.
+struct ChaosSettings
+{
+	u16 durationSeconds;              // how long one activation lasts
+	u16 triggerIntervalSeconds;       // cadence for Random and Interval
+	u8 trigger;                       // enum ChaosTrigger
+	u8 enabledCount;                  // how many entries below are on
+	bool effects[CHAOS_EFFECT_COUNT]; // one entry per effect, in enum order
+	bool armed;
+};
+
+enum ChaosSaveConstants
+{
+	CHAOS_SAVE_EFFECT_BYTES = 16,
+	CHAOS_SAVE_EFFECT_CAPACITY = CHAOS_SAVE_EFFECT_BYTES * 8,
+	// Low byte identifies Chaos ('C'); high byte is the format version.
+	CHAOS_SAVE_FORMAT_V1 = 0x0143,
+};
+
+// Fixed 24-byte disk entry. Unassigned effect bits are always written as zero.
+struct ChaosSettingsSaved
+{
+	u16 durationSeconds;
+	u16 triggerIntervalSeconds;
+	u8 trigger;
+	u8 armed;
+	u8 effectBits[CHAOS_SAVE_EFFECT_BYTES];
+	u16 format;
+};
+
+// Four co-op entries followed by four independently tagged Chaos entries.
+// Zeroed entries have no Chaos settings and load as Regular.
 struct MemcardExtension
 {
 	struct AdvMultiplayerSettings adventure[MEMCARD_ADV_PROFILE_COUNT];
+	struct ChaosSettingsSaved chaos[MEMCARD_ADV_PROFILE_COUNT];
 };
 
 // The whole SLOTS file payload: the retail profile followed by this port's
@@ -655,7 +704,20 @@ CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct AdvProgress, rewards, 5) == 0x14);
 CTR_STATIC_ASSERT(OFFSETOF(struct AdvProgress, name) == 0x18);
 CTR_STATIC_ASSERT(sizeof(struct AdvProgress) == 0x50);
 CTR_STATIC_ASSERT(sizeof(struct MemcardProfile) == 0x1600);
+// Only the disk shape is pinned; catalogue growth leaves the slot stride alone.
+CTR_STATIC_ASSERT((int)CHAOS_EFFECT_COUNT <= (int)CHAOS_SAVE_EFFECT_CAPACITY);
+CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettingsSaved, durationSeconds) == 0x0);
+CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettingsSaved, triggerIntervalSeconds) == 0x2);
+CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettingsSaved, trigger) == 0x4);
+CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettingsSaved, armed) == 0x5);
+CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettingsSaved, effectBits) == 0x6);
+CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettingsSaved, format) == 0x16);
+CTR_STATIC_ASSERT(sizeof(struct ChaosSettingsSaved) == 0x18);
+CTR_STATIC_ASSERT(OFFSETOF(struct MemcardExtension, chaos) == 0x10);
+CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct MemcardExtension, chaos, 1) == 0x28);
+CTR_STATIC_ASSERT(sizeof(struct MemcardExtension) == 0x70);
 CTR_STATIC_ASSERT(OFFSETOF(struct MemcardData, extension) == sizeof(struct MemcardProfile));
+CTR_STATIC_ASSERT(sizeof(struct MemcardData) == 0x1670);
 CTR_STATIC_ASSERT(sizeof(struct MemcardData) <= (MEMCARD_FILE_DATA_SIZE - MEMCARD_FILE_CHECKSUM_SIZE));
 CTR_STATIC_ASSERT(sizeof(struct GhostProfile) == 0x34);
 CTR_STATIC_ASSERT(OFFSETOF(struct GameOptions, rwd) == 0x6);

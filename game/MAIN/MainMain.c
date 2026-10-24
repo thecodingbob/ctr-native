@@ -140,6 +140,7 @@ u32 CTR_Main(void)
 
 		// Reset stage, reset music
 		case 2:
+			Chaos_Reset();
 			Audio_SetState_Safe(1);
 			MEMPACK_PopState();
 

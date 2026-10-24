@@ -125,6 +125,7 @@ void GAMEPROG_NewGame_OnBoot(void);
 void GAMEPROG_GetPtrHighScoreTrack(void);
 void GAMEPROG_InitFullMemcard(struct MemcardData *mcd);
 void GAMEPROG_ResetAdvMultiplayer(struct AdvMultiplayerSettings *settings);
+void GAMEPROG_ResetChaosSettings(struct ChaosSettings *settings);
 int GAMEPROG_RelicTargetTime(int levelID, int tier);
 void GAMEPROG_SaveCupProgress(void);
 void GAMEPROG_SyncGameAndCard(struct GameProgress *memcardProg, struct GameProgress *currentProg);
@@ -168,6 +169,7 @@ int Bank_AssignSpuAddrs(void);
 void Bank_Destroy(struct Bank *ptrLastBank);
 void Bank_ClearInRange(u16 min, u16 max);
 int Bank_Load(int bankID, struct Bank *ptrBank);
+bool Bank_EnsureOtherFX(u16 soundID);
 int Bank_DestroyLast(void);
 void Bank_DestroyUntilIndex(int index);
 void Bank_DestroyAll(void);
@@ -530,7 +532,7 @@ void SelectProfile_ThTick(struct Thread *t);
 void SelectProfile_PrintInteger(int value, int posX, int posY, b32 usePaddedFormat, int color);
 int SelectProfile_UI_ConvertX(int screenX, int scale);
 int SelectProfile_UI_ConvertY(int screenY, int scale);
-void SelectProfile_DrawAdvProfile(struct AdvProgress *adv, int posX, int posY, s16 isHighlighted, s16 slotIndex, u16 menuFlag);
+void SelectProfile_DrawAdvProfile(struct AdvProgress *adv, int posX, int posY, s16 isHighlighted, s16 slotIndex, b32 isChaos, u16 menuFlag);
 void SelectProfile_GetTrackID(void);
 void SelectProfile_Init(u16 flags);
 void SelectProfile_Destroy(void);
@@ -576,6 +578,7 @@ void RECTMENU_DrawRwdBlueRect(RECT *rect, char *metas, u32 *ot, struct PrimMem *
 void RECTMENU_DrawRwdTriangle(s16 *position, char *color, u32 *otMem, struct PrimMem *primMem);
 void RECTMENU_GetHeight(struct RectMenu *m, s16 *height, b32 boolCheckSubmenu);
 void RECTMENU_GetWidth(struct RectMenu *m, s16 *width, b32 boolCheckSubmenu);
+const char *RECTMENU_GetString(s32 stringIndex);
 void RECTMENU_Hide(struct RectMenu *m);
 void RECTMENU_Show(struct RectMenu *m);
 
@@ -848,6 +851,22 @@ void MM_ToggleRows_Difficulty(void);
 void MM_MenuProc_Difficulty(struct RectMenu *menu);
 void MM_MenuProc_SingleCup(struct RectMenu *menu);
 void MM_MenuProc_NewLoad(struct RectMenu *menu);
+void MM_MenuProc_Chaos(struct RectMenu *menu);
+
+// Cascading menu navigation, the only place a menu box is linked to another or
+// The new-file chain: the screens between the Adventure new/load menu and a new
+// race. Each step is optional and gated on its own option, so "New" walks this
+// rather than any screen naming what follows it. A step stacks below the step
+// before it, so the boxes already answered stay on screen. MM_MenuProc_Chaos
+// calls the last two.
+void MM_NewLoad_Advance(struct RectMenu *screen);
+void MM_NewLoad_Retreat(struct RectMenu *screen);
+void MM_ChaosConfig_OpenReadOnly(struct RectMenu *returnMenu);
+
+// Index of one of the strings this port appends past the retail .lng table, or
+// RECTMENU_STRING_NONE when the table could not be extended. The indices depend
+// on the asset's string count, so they must never be hardcoded.
+
 void MM_MenuProc_QuitConfirm(struct RectMenu *menu);
 struct RectMenu *MM_AdvNewLoad_GetMenuPtr(void);
 void MM_Characters_AnimateColors(u8 *colorData, s16 playerID, s16 flag);
@@ -1198,6 +1217,7 @@ void GAMEPROG_NewProfile_InsideAdv(struct AdvProgress *adv);
 s32 RaceFlag_MoveModels(s32 frameIndex, s32 numFrames);
 void MainKillGame_LaunchSpyro2(void);
 void DecalFont_DrawLineOT(char *str, s16 posX, s16 posY, s16 fontType, s16 flags, u32 *ot);
+void DecalFont_DrawLineScaledOT(char *str, s16 posX, s16 posY, s16 fontType, s16 flags, s32 scale, u32 *ot);
 void DecalHUD_Arrow2D(struct Icon *icon, s32 posX, s32 posY, struct PrimMem *primMem, u32 *ot, Color color0, Color color1, Color color2, Color color3,
                       u8 transparency, s16 scale, u16 rot);
 void RaceFlag_SetDrawOrder(b32 drawAfterFlag);
@@ -1230,6 +1250,7 @@ void GAMEPAD_ShockForce1(struct Driver *d, int frame, int val);
 u32 *RaceFlag_GetOT(void);
 void RaceFlag_DrawLoadingString(void);
 s32 DecalFont_GetLineWidthStrlen(char *str, s16 len, s16 fontType);
+void RB_Burst_InitVisual(struct Instance *weaponInst);
 void RB_Burst_Init(struct Instance *weaponInst);
 void GAMEPAD_ShockFreq(struct Driver *d, int frame, int val);
 b32 RaceFlag_IsTransitioning(void);
@@ -1274,6 +1295,29 @@ void LOAD_OvrThreads(u32 overlayIndex);
 void LibraryOfModels_Clear(struct GameTracker *gGT);
 void DebugFont_Init(struct GameTracker *gGT);
 void RB_Bubbles_RoosTubes(void);
+
+void Chaos_Reset(void);
+bool Chaos_IsRunning(const struct GameTracker *gGT);
+void Chaos_BeginRace(struct GameTracker *gGT);
+void Chaos_Update(struct GameTracker *gGT);
+void Chaos_PublishEffects(void);
+bool Chaos_Activate(ChaosEffectId effect, s32 durationMS);
+bool Chaos_OnPickup(struct Driver *driver);
+void Chaos_OnTurboPadContact(struct Driver *driver, bool touching);
+bool Chaos_IsActive(ChaosEffectId effect);
+bool Chaos_IsActiveForDriver(ChaosEffectId effect, const struct Driver *driver);
+int Chaos_GravityForDriver(const struct Driver *driver);
+int Chaos_SpeedForDriver(const struct Driver *driver, int speed);
+int Chaos_JumpForceForDriver(const struct Driver *driver, int force);
+int Chaos_AccelerationForDriver(const struct Driver *driver, int acceleration);
+void Chaos_ApplyReserveRules(struct Driver *driver);
+void Chaos_ApplyItemRules(struct Driver *driver);
+void Chaos_ApplyCrateRules(struct Driver *driver, struct Instance *crateInst);
+bool Chaos_IsHardCrateForDriver(const struct Instance *crateInst, const struct Thread *collidingTh,
+                               const struct ScratchpadStruct *sps);
+void Chaos_ApplyRescueRules(struct Driver *driver);
+u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, int *steering, u32 actions);
+void UI_Chaos_DrawActivation(struct GameTracker *gGT);
 b32 LOAD_IsOpen_Podiums(void);
 void RB_Spider_DrawWebs(struct Thread *t, struct PushBuffer *pb);
 b32 LOAD_IsOpen_MainMenu(void);
@@ -1371,6 +1415,9 @@ int VehPhysCrash_Attack(struct Driver *driver1, struct Driver *driver2, b32 canP
 void VehPhysCrash_AnyTwoCars(struct Thread *thread, struct DriverCollisionSearch *search, Vec3 *selfVel);
 void VehPhysForce_CollideDrivers(struct Thread *thread, struct Driver *driver);
 void VehPhysForce_TranslateMatrix(struct Thread *thread, struct Driver *driver);
+int VehPhysForce_ScaleValue(const struct Driver *driver, int value);
+bool VehPhysCrash_TrySquashSmallerKart(struct Driver *first, struct Driver *second);
+int VehPickState_TrySquish(struct Driver *driver);
 int VehPhysGeneral_JumpGetVelY(s16 *normalVec, Vec3 *speedXYZ);
 void VehPhysGeneral_JumpAndFriction(struct Thread *thread, struct Driver *driver);
 void CS_LoadBoss(const struct BossCutsceneData *bcd);

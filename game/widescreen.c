@@ -39,6 +39,24 @@ void Widescreen_CompressGT4(POLY_GT4 *p)
 	p->x3 -= len;
 }
 
+void Widescreen_CompressGT4Scaled(POLY_GT4 *p, int unscaledWidth, int scale)
+{
+	const int factor = Widescreen_GetFactor();
+	if (scale <= 0 || scale >= FP(1.0) || factor == 1000)
+	{
+		Widescreen_CompressGT4(p);
+		return;
+	}
+
+	// Round the combined transform once; symmetric edge truncation loses
+	// widescreen correction entirely on small glyphs.
+	const s64 divisor = (s64)FP(1.0) * 1000;
+	const int width = ((s64)unscaledWidth * scale * factor + divisor / 2) / divisor;
+	const int left = p->x0 + (p->x1 - p->x0 - width) / 2;
+	p->x0 = p->x2 = left;
+	p->x1 = p->x3 = left + width;
+}
+
 void Widescreen_CompressNative(PolyFT4 *p)
 {
 	int w = p->v[1].pos.x - p->v[0].pos.x;

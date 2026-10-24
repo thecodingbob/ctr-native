@@ -1458,6 +1458,7 @@ void COLL_FIXED_PlayerSearch(struct Thread *t, struct Driver *d)
 		goto DriverAirborne;
 	}
 
+	Chaos_ApplyRescueRules(d);
 	if (COLL_FIXED_PlayerSearch_CheckMaskGrabProgress(d, quad) != 0)
 	{
 		d->collisionFlags |= DRIVER_COLL_FLAG_MASK_GRAB_REQUEST;
@@ -1665,7 +1666,7 @@ UpdateGroundOffset:
 	}
 
 	if ((d->kartState != KS_MASK_GRABBED) && ((d->collisionFlags & DRIVER_COLL_FLAG_MASK_GRAB_REQUEST) != 0) && (d->lastValid != NULL) &&
-	    ((sdata->HudAndDebugFlags & 0x1000) == 0) && ((d->stepFlagSet & COLL_STEP_TRIGGER_SUPPRESS_MASK_GRAB) == 0))
+	    ((sdata->HudAndDebugFlags & HUD_FLAG_DISABLE_MASK_RESCUE) == 0) && ((d->stepFlagSet & COLL_STEP_TRIGGER_SUPPRESS_MASK_GRAB) == 0))
 	{
 		VehStuckProc_MaskGrab_Init(t, d);
 	}
@@ -2020,6 +2021,13 @@ KeepNormal:;
 	sps->boolDidTouchQuadblock = (s16)CTR_MipsAddLo(sps->boolDidTouchQuadblock, 1);
 }
 
+enum
+{
+      COLL_SCRUB_DEPTH_REPEAT_STEP = 0x100,
+      COLL_SCRUB_DEPTH_REPEAT_LIMIT = 0x401,
+      COLL_HITBOX_SCRUB_DEPTH_BONUS = 0x200,
+      COLL_MOVED_PLAYER_HIT_RADIUS = 0x19,
+};
 
 void COLL_MOVED_QUADBLK_TestTriangles(struct QuadBlock *quad, struct ScratchpadStruct *sps)
 {
@@ -2033,6 +2041,14 @@ void COLL_MOVED_QUADBLK_TestTriangles(struct QuadBlock *quad, struct ScratchpadS
 	    (sps->bbox.min.x > quad->bbox.max.x) || (sps->bbox.min.y > quad->bbox.max.y) || (sps->bbox.min.z > quad->bbox.max.z))
 	{
 		return;
+	}
+	// Keep the retail floor clearance: doubling the sphere radius makes shallow
+	// slopes repeatedly push the giant kart upward. Walls retain the wider radius.
+	s16 radius = sps->Input1.hitRadius;
+	if ((quad->quadFlags & QUADBLOCK_FLAG_GROUND) != 0)
+	{
+		sps->Input1.hitRadius = COLL_MOVED_PLAYER_HIT_RADIUS;
+		sps->Input1.hitRadiusSquared = COLL_MOVED_PLAYER_HIT_RADIUS * COLL_MOVED_PLAYER_HIT_RADIUS;
 	}
 
 	// if 3P or 4P mode,
@@ -2080,6 +2096,8 @@ void COLL_MOVED_QUADBLK_TestTriangles(struct QuadBlock *quad, struct ScratchpadS
 			COLL_MOVED_TRIANGL_TestPoint(sps, &bsv[2], &bsv[6], &bsv[8]); // 2, 6, 8
 		}
 	}
+	sps->Input1.hitRadius = radius;
+	sps->Input1.hitRadiusSquared = radius * radius;
 }
 
 
@@ -2106,14 +2124,6 @@ void COLL_MOVED_BSPLEAF_TestQuadblocks(struct BSP *node, struct ScratchpadStruct
 		COLL_FIXED_BSPLEAF_TestInstance(node, sps);
 	}
 }
-
-enum
-{
-	COLL_SCRUB_DEPTH_REPEAT_STEP = 0x100,
-	COLL_SCRUB_DEPTH_REPEAT_LIMIT = 0x401,
-	COLL_HITBOX_SCRUB_DEPTH_BONUS = 0x200,
-	COLL_MOVED_PLAYER_HIT_RADIUS = 0x19,
-};
 
 void COLL_MOVED_FindScrub(struct QuadBlock *qb, s32 triangleID, struct ScratchpadStruct *sps)
 {
@@ -2246,7 +2256,7 @@ void COLL_MOVED_PlayerSearch(struct Thread *t, struct Driver *d)
 	struct GameTracker *gGT = sdata->gGT;
 	struct ScratchpadStruct *sps = CTR_SCRATCHPAD_PTR(struct ScratchpadStruct, 0x108);
 	s32 multiplier = COLL_FRACTION_ONE;
-	s16 hitRadius = COLL_MOVED_PLAYER_HIT_RADIUS;
+	s16 hitRadius = (s16)VehPhysForce_ScaleValue(d, COLL_MOVED_PLAYER_HIT_RADIUS);
 
 	sps->Input1.hitRadius = hitRadius;
 	sps->Input1.hitRadiusSquared = hitRadius * hitRadius;
@@ -2339,7 +2349,7 @@ void COLL_MOVED_PlayerSearch(struct Thread *t, struct Driver *d)
 			s32 hitboxResult = CollMoved_PlayerSearch_RunHitboxLInC(sps, t);
 			u8 hitboxId = Coll_BspHitboxClass(bspHitbox);
 
-			if ((hitboxResult == 2) || (hitboxId == 4))
+			if ((hitboxResult == 2) || (hitboxId == BSP_HITBOX_CLASS_TOUCH && hitboxResult != COLL_HITBOX_FORCE_SOLID))
 			{
 				CollMoved_PlayerSearch_StoreHitbox(sps);
 			}
@@ -2348,7 +2358,7 @@ void COLL_MOVED_PlayerSearch(struct Thread *t, struct Driver *d)
 				COLL_MOVED_FindScrub((struct QuadBlock *)bspHitbox, 0, sps);
 				sps->Input1.scrubDepth = (s16)CTR_MipsAddLo((u16)sps->Input1.scrubDepth, COLL_HITBOX_SCRUB_DEPTH_BONUS);
 
-				struct Scrub *scrub = VehAfterColl_GetSurface(hitboxId);
+				struct Scrub *scrub = VehAfterColl_GetSurface(hitboxResult == COLL_HITBOX_FORCE_SOLID ? COLL_SCRUB_SOLID : hitboxId);
 				hitboxResult = COLL_MOVED_ScrubImpact(d, t, sps, scrub, &d->velocity);
 
 				if (hitboxResult == 0)

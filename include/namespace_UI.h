@@ -36,11 +36,12 @@ enum UIHudSlot
 // slot down to the first, so a higher slot index is emitted first and therefore
 // sits at a lower layer. Primitives sharing one slot are emitted in reverse call
 // order. The UI table holds five slots: 0 is the default layer for HUD, prompt and
-// menu primitives, 3 carries the boxes and bars drawn under their own contents,
+// menu primitives, 1 carries secondary text behind the HUD, 3 carries boxes and bars,
 // and 4 is the lowest layer, where the UI draw environment and full-screen
 // backgrounds go.
 enum UIHudOrderingSlot
 {
+	UI_HUD_ORDERING_SLOT_BEHIND_HUD = 0x1,
 	UI_HUD_ORDERING_SLOT_LOWEST = 0x4,
 };
 

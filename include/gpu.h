@@ -6,10 +6,7 @@
 
 // PS1 primitive tags store the next OT link as 24 bits. Native routes this
 // through a GPU link-token bridge so the packet layout stays retail-shaped.
-static inline u32 CtrGpu_PrimToOTLink24(const void *prim)
-{
-	return NativeGpuLinks_FromHostPointer(prim);
-}
+#define CtrGpu_PrimToOTLink24(prim) NativeGpuLinks_FromHostPointerAt((prim), __FILE__, __LINE__, __func__)
 
 static inline u32 CtrGpu_PackOTTag(u32 ot, u32 tag)
 {

@@ -46,6 +46,7 @@ void MainGameStart_Initialize(struct GameTracker *gGT, b32 boolStopAudio)
 	}
 
 	VehBirth_TeleportAll(gGT, VEH_BIRTH_SPAWN_INIT_RACE_STATE);
+	Chaos_BeginRace(gGT);
 }
 
 // Development aid hack, enabled by the "Skip Start Countdown" option. Rewinds the

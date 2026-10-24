@@ -1507,6 +1507,13 @@ internal void NativeCheckpoint_RelocateSDataPointers(const struct NativeCheckpoi
 	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.ptrLoadSaveObj);
 	NativeCheckpoint_RelocatePointerOrImageSlot(oldHeader, liveHeader, &sdata_static.ptrActiveMenu);
 	NativeCheckpoint_RelocatePointerOrImageSlot(oldHeader, liveHeader, &sdata_static.ptrDesiredMenu);
+	NativeCheckpoint_RelocateRectMenu(oldHeader, liveHeader, &sdata_static.chaosMenu.menu);
+	NativeCheckpoint_RelocatePointerOrImageSlot(oldHeader, liveHeader, &sdata_static.chaosMenu.returnMenu);
+	NativeCheckpoint_RelocatePointerOrImageSlot(oldHeader, liveHeader, &sdata_static.newLoad.previousMenu);
+	for (u32 i = 0; i < len(sdata_static.newLoad.parentOf); i++)
+	{
+		NativeCheckpoint_RelocatePointerOrImageSlot(oldHeader, liveHeader, &sdata_static.newLoad.parentOf[i]);
+	}
 	NativeCheckpoint_RelocatePointerOrImageSlot(oldHeader, liveHeader, &sdata_static.activeSubMenu);
 	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.ptrPushBufferUI);
 	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.ptrFruitDisp);
@@ -1559,6 +1566,8 @@ internal void NativeCheckpoint_RelocateD230Pointers(const struct NativeCheckpoin
 	NativeCheckpoint_RelocateRectMenu(oldHeader, liveHeader, &D230.menuMainMenu);
 	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &D230.rowsPlayers1P2P);
 	NativeCheckpoint_RelocateRectMenu(oldHeader, liveHeader, &D230.menuPlayers1P2P);
+	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &D230.rowsChaosPrompt);
+	NativeCheckpoint_RelocateRectMenu(oldHeader, liveHeader, &D230.menuChaosPrompt);
 	NativeCheckpoint_RelocateRectMenu(oldHeader, liveHeader, &D230.menuPlayers2P3P4P);
 	NativeCheckpoint_RelocateRectMenu(oldHeader, liveHeader, &D230.menuDifficulty);
 	NativeCheckpoint_RelocateRectMenu(oldHeader, liveHeader, &D230.menuRaceType);

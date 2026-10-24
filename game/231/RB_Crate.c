@@ -100,6 +100,19 @@ static inline void RB_CrateAny_LInC_Init(struct Instance *crateInst, struct Thre
 	crateObj->boolPauseCooldown = 0;
 }
 
+static int RB_CrateAny_Collide(struct Instance *crateInst, struct Thread *collidingTh, struct ScratchpadStruct *sps)
+{
+	struct Thread *crateThread = crateInst->thread;
+	const bool directPickup = sps->Input1.modelID == DYNAMIC_PLAYER && crateInst->scale.x == 0x1000;
+	const int result = ((ThreadScratchCollideFunc)crateThread->funcThCollide)(
+	    crateThread, collidingTh, crateThread->funcThCollide, sps);
+	if (directPickup && result == 1 && crateInst->scale.x == 0)
+	{
+		Chaos_OnPickup(collidingTh->object);
+	}
+	return result;
+}
+
 int RB_CrateWeapon_ThCollide(struct Thread *crateThread, struct Thread *collidingTh, void *funcThCollide, struct ScratchpadStruct *sps)
 {
 	struct InstanceBirthParams birth;
@@ -115,6 +128,10 @@ int RB_CrateWeapon_ThCollide(struct Thread *crateThread, struct Thread *collidin
 
 	crateObj = crateThread->object;
 	crateInst = crateThread->inst;
+	if (Chaos_IsHardCrateForDriver(crateInst, collidingTh, sps))
+	{
+		return COLL_HITBOX_FORCE_SOLID;
+	}
 
 	if ((crateObj->cooldown == 0) && ((crateInst->scale.x == 0) || (crateInst->scale.x == 0x1000)))
 	{
@@ -161,6 +178,7 @@ int RB_CrateWeapon_ThCollide(struct Thread *crateThread, struct Thread *collidin
 			else
 			{
 				driver = collidingTh->object;
+				Chaos_ApplyCrateRules(driver, crateInst);
 			}
 
 			if ((driver->heldItemID != HELD_ITEM_NONE) && (driver->noItemTimer == 0))
@@ -195,7 +213,7 @@ int RB_CrateWeapon_ThCollide(struct Thread *crateThread, struct Thread *collidin
 
 				if ((GAME_TRACKER->gameMode1 & ROLLING_ITEM) == 0)
 				{
-					OtherFX_Play(0x5d, 0);
+					OtherFX_Play(HOWL_SFX_ITEM_ROULETTE, 0);
 					GAME_TRACKER->gameMode1 |= ROLLING_ITEM;
 				}
 
@@ -261,7 +279,7 @@ int RB_CrateWeapon_LInC(struct Instance *crateInst, struct Thread *collidingTh, 
 
 	else
 	{
-		result = ((ThreadScratchCollideFunc)crateThread->funcThCollide)(crateThread, collidingTh, crateThread->funcThCollide, sps);
+		result = RB_CrateAny_Collide(crateInst, collidingTh, sps);
 	}
 	return result;
 }
@@ -286,6 +304,10 @@ int RB_CrateFruit_ThCollide(struct Thread *crateThread, struct Thread *colliding
 
 	crateObj = crateThread->object;
 	crateInst = crateThread->inst;
+	if (Chaos_IsHardCrateForDriver(crateInst, collidingTh, sps))
+	{
+		return COLL_HITBOX_FORCE_SOLID;
+	}
 
 	if ((crateObj->cooldown == 0) && ((crateInst->scale.x == 0) || (crateInst->scale.x == 0x1000)))
 	{
@@ -316,6 +338,7 @@ int RB_CrateFruit_ThCollide(struct Thread *crateThread, struct Thread *colliding
 			if (hitModelID == DYNAMIC_PLAYER)
 			{
 				driver = collidingTh->object;
+				Chaos_ApplyCrateRules(driver, crateInst);
 
 				driver->PickupWumpaHUD.cooldown = 5;
 				driver->PickupWumpaHUD.numCollected = newWumpa;
@@ -391,7 +414,7 @@ int RB_CrateFruit_LInC(struct Instance *crateInst, struct Thread *collidingTh, s
 
 	else
 	{
-		result = ((ThreadScratchCollideFunc)crateThread->funcThCollide)(crateThread, collidingTh, crateThread->funcThCollide, sps);
+		result = RB_CrateAny_Collide(crateInst, collidingTh, sps);
 	}
 	return result;
 }
@@ -412,6 +435,10 @@ int RB_CrateTime_ThCollide(struct Thread *crateThread, struct Thread *driverTh, 
 
 	crateObj = crateThread->object;
 	crateInst = crateThread->inst;
+	if (Chaos_IsHardCrateForDriver(crateInst, driverTh, sps))
+	{
+		return COLL_HITBOX_FORCE_SOLID;
+	}
 
 	if ((crateObj->cooldown == 0) && ((crateInst->scale.x == 0) || (crateInst->scale.x == 0x1000)))
 	{
@@ -459,6 +486,7 @@ int RB_CrateTime_ThCollide(struct Thread *crateThread, struct Thread *driverTh, 
 			else
 			{
 				driver = driverTh->object;
+				Chaos_ApplyCrateRules(driver, crateInst);
 			}
 
 			driver->numTimeCrates++;
@@ -540,7 +568,7 @@ int RB_CrateTime_LInC(struct Instance *crateInst, struct Thread *driverTh, struc
 
 	else
 	{
-		result = ((ThreadScratchCollideFunc)crateThread->funcThCollide)(crateThread, driverTh, crateThread->funcThCollide, sps);
+		result = RB_CrateAny_Collide(crateInst, driverTh, sps);
 	}
 	return result;
 }

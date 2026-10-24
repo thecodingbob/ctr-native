@@ -875,7 +875,7 @@ struct Driver
 	// 0x8
 	u32 tireColor;
 	// 0xC
-	s16 clockReceive;
+	s16 reserved_0xc; // Former 16-bit clockReceive; it now lives in the native tail.
 	// 0xE
 	s16 hazardTimer;
 	// 0x10
@@ -1974,6 +1974,8 @@ struct Driver
 
 	s8 maskIsAku; // -1=unset, 0=Uka, 1=Aku — pre-decided at item assignment
 	bool boolHadMaskBeforeOOB; // set by OOB rescue: 1 if player had mask before going OOB
+	s32 clockReceive;
+	u8 kartScale; // 1 = retail target
 };
 
 enum

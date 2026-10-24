@@ -113,16 +113,7 @@ void howl_InitChannelAttr_EngineFX(struct EngineFX *engineFX, struct ChannelAttr
 
 void howl_InitChannelAttr_OtherFX(struct OtherFX *otherFX, struct ChannelAttr *attr, int vol, int LR, int distort)
 {
-	int otherVol;
-
-	otherVol = sdata->vol_FX;
-
-	if ((otherFX->flags & 4) != 0)
-	{
-		otherVol = sdata->vol_Voice;
-	}
-
-	Channel_SetVolume(attr, (otherVol * otherFX->volume * vol) >> 10, LR);
+	UpdateChannelVol_OtherFX(otherFX, attr, vol, LR);
 
 	s16 pitch = otherFX->pitch;
 
@@ -204,7 +195,8 @@ void howl_UnPauseChannel(struct ChannelStats *stats)
 
 	else if (type == HOWL_CHANNEL_TYPE_OTHER_FX)
 	{
-		howl_InitChannelAttr_OtherFX(&sdata->howl_metaOtherFX[soundID], &attr, stats->vol, stats->LR, stats->distort);
+		howl_InitChannelAttr_OtherFX(&sdata->howl_metaOtherFX[soundID], &attr,
+		    HowlChannel_EffectiveVolume(stats), stats->LR, stats->distort);
 	}
 
 	else if (type == HOWL_CHANNEL_TYPE_MUSIC)

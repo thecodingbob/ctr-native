@@ -46,10 +46,12 @@ The existing MinGW i686 build remains supported:
 2. In an MSYS2 terminal:
    ```
    pacman -Syu
-   pacman -S --needed git mingw-w64-i686-gcc mingw-w64-i686-cmake mingw-w64-i686-make
+   pacman -S --needed git mingw-w64-i686-gcc mingw-w64-i686-cmake mingw-w64-ucrt-x86_64-make
    ```
    If the update asks you to close the terminal, reopen MSYS2 and run the install command.
-3. Add `C:\msys64\mingw32\bin` to your system PATH
+3. Add `C:\msys64\mingw32\bin` and `C:\msys64\ucrt64\bin` to your system PATH,
+   keeping `mingw32\bin` first. Make is a 64-bit host tool; GCC still builds the
+   game for 32-bit Windows.
 4. Open a new Command Prompt or PowerShell and run `build.bat`.
 
 That's it. SDL3 is compiled from vendored source -- no separate install needed.
@@ -219,14 +221,15 @@ weapon icons and battle points/lives icons will be missing on those tracks.
 
 ### Adventure
 
-| Key                         | Values             | Default | Description                                                                                      |
-|-----------------------------|--------------------|---------|--------------------------------------------------------------------------------------------------|
-| `skip_hints`                | `true` / `false`   | `false` | Skip mask hints in adventure mode                                                                |
-| `extended_character_select` | `true` / `false`   | `false` | Use the classic screen to select any unlocked character when starting a new Adventure            |
-| `multiplayer_adventure`     | `true` / `false`   | `false` | Enable multiplayer Adventure setup. See [2P co-op Adventure](docs/features/2P_ADVENTURE.md)      |
-| `save_anywhere`             | `true` / `false`   | `false` | Allows to save/load anywhere in the adventure mode hubs by pressing select or the equivalent key |
-| `unlock_all_gates`          | `true` / `false`   | `false` | Opens all adventure wood gates bypassing the key requirements                                    |
-| `unlock_all_portals`        | `true` / `false`   | `false` | Unlock all warp pads and boss garages                                                            |
+| Key                         | Values             | Default | Description                                                                                           |
+|-----------------------------|--------------------|---------|-------------------------------------------------------------------------------------------------------|
+| `skip_hints`                | `true` / `false`   | `false` | Skip mask hints in adventure mode                                                                     |
+| `extended_character_select` | `true` / `false`   | `false` | Use the classic screen to select any unlocked character when starting a new Adventure                 |
+| `multiplayer_adventure`     | `true` / `false`   | `false` | Enable multiplayer Adventure setup. See [2P co-op Adventure](docs/features/2P_ADVENTURE.md)           |
+| `save_anywhere`             | `true` / `false`   | `false` | Allows to save/load anywhere in the adventure mode hubs by pressing select or the equivalent key      |
+| `unlock_all_gates`          | `true` / `false`   | `false` | Opens all adventure wood gates bypassing the key requirements                                         |
+| `unlock_all_portals`        | `true` / `false`   | `false` | Unlock all warp pads and boss garages                                                                 |
+| `chaos_mode`                | `true` / `false`   | `false` | Offer Chaos mode for new Adventure files. See the [Chaos mode guide](docs/features/CHAOS.md)          |
 
 ### Unlocks
 

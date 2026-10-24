@@ -48,6 +48,12 @@ enum CollModelIDFlags
 	COLL_MODELID_BLOCKAGE_FLAG = 0x8000,
 };
 
+enum CollHitboxResponse
+{
+	COLL_HITBOX_FORCE_SOLID = 3,
+	COLL_SCRUB_SOLID = 0,
+};
+
 enum
 {
 	COLL_NORMAL_AXIS_Z = 1,

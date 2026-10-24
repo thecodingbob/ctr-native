@@ -51,6 +51,7 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 	{
 	case 0:
 	{
+		Chaos_Reset();
 		if (!boolPlayMusicDuringLoading)
 		{
 			Cutscene_VolumeBackup();

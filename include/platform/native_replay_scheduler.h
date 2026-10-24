@@ -29,6 +29,7 @@ int NativeReplayScheduler_ConfigureFromArgs(int argc, char **argv);
 void NativeReplayScheduler_Shutdown(void);
 int NativeReplayScheduler_RequestStart(void);
 int NativeReplayScheduler_RequestStop(void);
+int NativeReplayScheduler_IsPlayback(void);
 int NativeReplayScheduler_BeginFrame(const struct NativeReplaySchedulerFrameInfo *info);
 int NativeReplayScheduler_ConsumeVSyncPacket(int requestedVBlanks, int *emittedVBlanks);
 int NativeReplayScheduler_ConsumeFrameElapsedTimeMS(int *elapsedTimeMS);

@@ -247,6 +247,42 @@ internal void NativeCD_SetLastCom(int com)
 	s_cdLastCom = com;
 }
 
+int NativeCD_ReadFileSectorsAt(const CdlFILE *file, unsigned int sector, unsigned int count, void *destination)
+{
+	if (file == NULL || destination == NULL || count == 0 ||
+	    (u64)sector * NATIVE_CD_SECTOR_SIZE + (u64)count * NATIVE_CD_SECTOR_SIZE > (u32)file->size)
+	{
+		return 0;
+	}
+	const s32 index = (NativeCD_PosToInt(&file->pos) >> 24) & 0xff;
+	if (index >= s_nativeCdFileCount)
+	{
+		return 0;
+	}
+	struct NativeCDOpenFile *source = &s_nativeCdFiles[index];
+	if (source->source == NATIVE_CD_FILE_DISC)
+	{
+		return NativeDiscImage_ReadDataSectors(&source->discFile, sector, count, destination);
+	}
+	if (source->source != NATIVE_CD_FILE_HOST)
+	{
+		return 0;
+	}
+	const long previous = ftell(source->hostFile);
+	if (previous < 0)
+	{
+		return 0;
+	}
+	const size_t size = (size_t)count * NATIVE_CD_SECTOR_SIZE;
+	int result = fseek(source->hostFile, (long)sector * NATIVE_CD_SECTOR_SIZE, SEEK_SET) == 0 &&
+	             fread(destination, 1, size, source->hostFile) == size;
+	if (fseek(source->hostFile, previous, SEEK_SET) != 0)
+	{
+		result = 0;
+	}
+	return result;
+}
+
 int NativeCD_Init(void)
 {
 	for (s32 i = 0; i < s_nativeCdFileCount; i++)

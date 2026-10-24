@@ -126,7 +126,7 @@ u32 Music_AsyncParseBanks(void)
 
 		else if (level == MAIN_MENU_LEVEL)
 		{
-			index = 0x20;
+			index = HOWL_BANK_MENU;
 		}
 
 		// If you're drawing Any% ending cutscene
@@ -402,6 +402,11 @@ u32 Music_AsyncParseBanks(void)
 		if (howl_LoadSong() == 0)
 		{
 			goto PARSE_FINISH;
+		}
+		if (sdata->chaosSettings.armed && (gGT->gameMode1 & ADVENTURE_MODE) != 0 &&
+		    level < GEM_STONE_VALLEY)
+		{
+			Bank_EnsureOtherFX(HOWL_SFX_SWISH);
 		}
 
 		// go to next stage

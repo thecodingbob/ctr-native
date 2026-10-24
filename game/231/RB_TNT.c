@@ -25,7 +25,7 @@ void RB_TNT_ThTick_ThrowOffHead(struct Thread *t)
 	if (inst->matrix.t[1] <= mw->stopFallAtY)
 	{
 		// plays tnt explosion sound 3D
-		PlaySound3D(0x3d, inst);
+		PlaySound3D(HOWL_SFX_TNT_EXPLOSION, inst);
 
 		RB_Blowup_Init(inst);
 
@@ -117,7 +117,7 @@ void RB_TNT_ThTick_SitOnHead(struct Thread *t)
 	if ((state == KS_CRASHING) || (state == KS_MASK_GRABBED) || (state == KS_SPINNING))
 	{
 		// Play explosion sound
-		PlaySound3D(0x3d, inst);
+		PlaySound3D(HOWL_SFX_TNT_EXPLOSION, inst);
 
 		RB_Blowup_Init(inst);
 
@@ -125,7 +125,7 @@ void RB_TNT_ThTick_SitOnHead(struct Thread *t)
 	}
 	if (state == KS_BLASTED)
 	{
-		PlaySound3D(0x3d, inst);
+		PlaySound3D(HOWL_SFX_TNT_EXPLOSION, inst);
 		RB_Explosion_InitGeneric(inst);
 
 	removeTnt:
@@ -209,7 +209,7 @@ advanceTimer:
 		mw->driverTarget->damageColorTimer = 0x1e;
 
 		// play 3D sound for TNT explosion
-		PlaySound3D(0x3d, inst);
+		PlaySound3D(HOWL_SFX_TNT_EXPLOSION, inst);
 
 		RB_Blowup_Init(inst);
 

@@ -40,6 +40,19 @@ struct VoicelineItem
 	s32 startFrame;
 };
 
+enum HowlSfxId
+{
+	HOWL_SFX_TNT_EXPLOSION = 0x3d,
+	HOWL_SFX_ITEM_ROULETTE = 0x5d,
+	HOWL_SFX_SWISH = 0x65,
+};
+
+enum HowlBankId
+{
+	HOWL_BANK_LEVEL_CACHE = -1,
+	HOWL_BANK_MENU = 0x20,
+};
+
 enum HowlSfxParam
 {
 	HOWL_SFX_LR_SHIFT = 0,
@@ -54,6 +67,12 @@ enum HowlSfxParam
 	HOWL_SFX_CENTER_NO_DISTORTION = (HOWL_SFX_DISTORTION_NONE << HOWL_SFX_DISTORTION_SHIFT) | HOWL_SFX_LR_CENTER,
 	HOWL_SFX_DEFAULT_FLAGS = (HOWL_SFX_VOLUME_MAX << HOWL_SFX_VOLUME_SHIFT) | HOWL_SFX_CENTER_NO_DISTORTION,
 	HOWL_SFX_ECHO_FLAG = 1 << HOWL_SFX_ECHO_SHIFT,
+	HOWL_SFX_GAIN_DOUBLE_FLAG = 1 << 25,
+};
+
+enum HowlChannelFlag
+{
+	HOWL_CHANNEL_GAIN_DOUBLE = 0x10,
 };
 
 
@@ -113,7 +132,12 @@ static inline u32 HowlSfx_Volume(u32 flags)
 
 static inline u32 HowlSfx_Echo(u32 flags)
 {
-	return (flags >> HOWL_SFX_ECHO_SHIFT) & 0xff;
+	return ((flags & ~HOWL_SFX_GAIN_DOUBLE_FLAG) >> HOWL_SFX_ECHO_SHIFT) & 0xff;
+}
+
+static inline u32 HowlSfx_EffectiveVolume(u32 volume, bool doubleGain)
+{
+	return volume * (doubleGain ? 2 : 1);
 }
 
 // Global song indices into howl_songOffsets[].
@@ -230,6 +254,11 @@ struct ChannelStats
 	// 0x1c
 	int startFrame;
 };
+
+static inline u32 HowlChannel_EffectiveVolume(const struct ChannelStats *channel)
+{
+	return HowlSfx_EffectiveVolume(channel->vol, (channel->flags & HOWL_CHANNEL_GAIN_DOUBLE) != 0);
+}
 
 enum GarageSoundPos
 {

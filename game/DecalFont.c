@@ -48,20 +48,22 @@ s32 DecalFont_GetLineWidth(char *str, s16 fontType)
 }
 
 
-void DecalFont_DrawLineStrlen(char *str, s16 len, s16 posX, s16 posY, s16 fontType, s16 flags)
+static void DecalFont_DrawLineStrlenScaled(char *str, s16 len, s16 posX, s16 posY, s16 fontType, s16 flags, s32 scale)
 {
 	s16 x = posX;
 	u8 *character;
 
 	if (flags & JUSTIFY_CENTER)
 	{
-		x = posX - ((s16)DecalFont_GetLineWidthStrlen(str, len, fontType) >> 1);
+		x = posX - ((s16)(DecalFont_GetLineWidthStrlen(str, len, fontType) * scale / FP(1.0)) >> 1);
 	}
 	else if (flags & JUSTIFY_RIGHT)
 	{
-		x = posX - DecalFont_GetLineWidthStrlen(str, len, fontType);
+		x = posX - DecalFont_GetLineWidthStrlen(str, len, fontType) * scale / FP(1.0);
 	}
 
+	const s16 startX = x;
+	int advance = 0;
 	flags &= 0xfff;
 	for (character = (u8 *)str; *character != 0 && len != 0; character++, len--)
 	{
@@ -129,13 +131,28 @@ void DecalFont_DrawLineStrlen(char *str, s16 len, s16 posX, s16 posY, s16 fontTy
 				if (iconID < group->numIcons)
 				{
 					struct Icon **icons = ICONGROUP_GETICONS(group);
-					FONT_DRAW_POLY_GT4(icons[iconID], x + extraX, posY + extraY, &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT, colors[0], colors[1],
-					                   colors[2], colors[3], 0, iconScale);
+					FONT_DRAW_POLY_GT4(icons[iconID], x + extraX * scale / FP(1.0), posY + extraY * scale / FP(1.0),
+					                   &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT, colors[0], colors[1],
+					                   colors[2], colors[3], 0, iconScale * scale / FP(1.0));
 				}
 			}
 		}
-		x += charWidth;
+		advance += charWidth;
+		x = startX + advance * scale / FP(1.0);
 	}
+}
+
+void DecalFont_DrawLineStrlen(char *str, s16 len, s16 posX, s16 posY, s16 fontType, s16 flags)
+{
+	DecalFont_DrawLineStrlenScaled(str, len, posX, posY, fontType, flags, FP(1.0));
+}
+
+void DecalFont_DrawLineScaledOT(char *str, s16 posX, s16 posY, s16 fontType, s16 flags, s32 scale, u32 *ot)
+{
+	u32 *backupOT = GAME_TRACKER->pushBuffer_UI.ptrOT;
+	GAME_TRACKER->pushBuffer_UI.ptrOT = ot;
+	DecalFont_DrawLineStrlenScaled(str, -1, posX, posY, fontType, flags, scale);
+	GAME_TRACKER->pushBuffer_UI.ptrOT = backupOT;
 }
 
 

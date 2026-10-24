@@ -1,4 +1,5 @@
 #include <common.h>
+#include "MainFreeze_Chaos.c"
 
 
 void MainFreeze_ConfigDrawNPC105(s16 startX, s16 startY, s16 radius, int angleStep, s16 angle, char *color, u32 *otMem, struct PrimMem *primMem)
@@ -906,6 +907,13 @@ void MainFreeze_MenuPtrDefault(struct RectMenu *menu)
 	// get stringID from selected row
 	stringID = menu->rows[menu->rowSelected].stringIndex;
 
+	if (stringID == LNG_PORT_CHAOS_RULES)
+	{
+		MainFreeze_SafeAdvDestroy();
+		MM_ChaosConfig_OpenReadOnly(menu);
+		return;
+	}
+
 	// stringID 14: "OPTIONS"
 	if (stringID == 14)
 	{
@@ -1122,17 +1130,17 @@ struct RectMenu *MainFreeze_GetMenuPtr(void)
 		}
 
 		data.rowsAdvHub[1].stringIndex = hintString;
-		return &data.menuAdvHub;
+		return MainFreeze_ChaosPauseMenu(&data.menuAdvHub, data.rowsAdvHub, len(data.rowsAdvHub) - 1);
 	}
 
 	if ((gameMode & ADVENTURE_MODE) != 0)
 	{
 		if ((gameMode & ADVENTURE_CUP) != 0)
 		{
-			return &data.menuAdvCup;
+			return MainFreeze_ChaosPauseMenu(&data.menuAdvCup, data.rowsAdvCup, len(data.rowsAdvCup) - 1);
 		}
 
-		return &data.menuAdvRace;
+		return MainFreeze_ChaosPauseMenu(&data.menuAdvRace, data.rowsAdvRace, len(data.rowsAdvRace) - 1);
 	}
 
 	if ((gameMode & BATTLE_MODE) != 0)

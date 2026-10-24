@@ -661,6 +661,7 @@ void LOAD_LangFile(int bigfilePtr, int lang)
 	{
 		strArray[i] = (char *)((u32)strArray[i] + (u32)lngFile);
 	}
+
 }
 
 int LOAD_GetBigfileIndex(u32 levelID, int lod, int fileIndexInGroup)

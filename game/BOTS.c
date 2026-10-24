@@ -879,7 +879,7 @@ void BOTS_ThTick_Drive(struct Thread *botThread)
 		botDriver->burnTimer = 0;
 	}
 
-	botDriver->clockReceive = (s16)CTR_MipsSubLo((u16)botDriver->clockReceive, elapsedMilliseconds);
+	botDriver->clockReceive = CTR_MipsSubLo(botDriver->clockReceive, elapsedMilliseconds);
 	if (botDriver->clockReceive < 0)
 	{
 		botDriver->clockReceive = 0;

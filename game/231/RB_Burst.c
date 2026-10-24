@@ -217,16 +217,13 @@ static inline void RB_Burst_SetPosition(struct Instance *inst, struct Instance *
 	}
 }
 
-void RB_Burst_Init(struct Instance *weaponInst)
+void RB_Burst_InitVisual(struct Instance *weaponInst)
 {
-	struct TrackerWeapon *tw;
 	struct InstanceBirthParams birth;
 	struct Instance *currInst;
 	struct Thread *t;
 	struct Burst *burst;
-	struct ScratchpadStruct *sps;
 
-	tw = weaponInst->thread->object;
 	birth.modelID = STATIC_WARPEDBURST;
 	birth.name = rb_nameExplosion;
 	birth.poolType = SMALL;
@@ -281,6 +278,13 @@ void RB_Burst_Init(struct Instance *weaponInst)
 		struct ModelHeader *headers = currInst->model->headers;
 		headers[1].flags |= 2;
 	}
+}
+
+void RB_Burst_Init(struct Instance *weaponInst)
+{
+	struct TrackerWeapon *tw = weaponInst->thread->object;
+	struct ScratchpadStruct *sps;
+	RB_Burst_InitVisual(weaponInst);
 
 	// Damage originates at the weapon, not the lowered visual effects.
 	sps = CTR_SCRATCHPAD_PTR(struct ScratchpadStruct, 0x108);
