@@ -75,21 +75,20 @@ jobs:
             git
             mingw-w64-i686-gcc
             mingw-w64-i686-cmake
-            mingw-w64-i686-make
+            mingw-w64-ucrt-x86_64-make
 
-      - name: Put the MinGW32 toolchain on PATH
+      - name: Put the MinGW32 toolchain and UCRT64 Make on PATH
         shell: pwsh
         run: |
           # The action puts only its own msys2.cmd shim on PATH, not the
-          # toolchain, so build.bat would stop at its first `where` check. This
-          # is the directory README step 3 asks a developer to put on their
-          # system PATH, which is the environment build.bat is written for.
+          # tools. Make runs as a 64-bit host tool; GCC still targets i686.
           $msys2 = '${{ steps.msys2.outputs.msys2-location }}'
           if ([string]::IsNullOrWhiteSpace($msys2)) {
             # The action's default install location, in case a v2 release old
             # enough to lack the output ever resolves.
             $msys2 = 'C:\msys64'
           }
+          Add-Content -LiteralPath $env:GITHUB_PATH -Value "$msys2\ucrt64\bin"
           Add-Content -LiteralPath $env:GITHUB_PATH -Value "$msys2\mingw32\bin"
 
       # SDL is compiled from vendored source and dominates a cold build, so

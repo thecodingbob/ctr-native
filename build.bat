@@ -2,9 +2,9 @@
 setlocal
 
 :: CTR Native Expanded Build Script (Windows)
-:: Requires MSYS2 MinGW32 tools in PATH
+:: Requires MSYS2 MinGW32 tools and UCRT64 Make in PATH
 
-set "CTR_NATIVE_EXPANDED_MSYS2_PACKAGES=git mingw-w64-i686-gcc mingw-w64-i686-cmake mingw-w64-i686-make"
+set "CTR_NATIVE_EXPANDED_MSYS2_PACKAGES=git mingw-w64-i686-gcc mingw-w64-i686-cmake mingw-w64-ucrt-x86_64-make"
 
 where i686-w64-mingw32-gcc >nul 2>&1
 if %ERRORLEVEL% neq 0 (
@@ -12,7 +12,7 @@ if %ERRORLEVEL% neq 0 (
     echo.
     echo Install MSYS2, then run:
     echo   pacman -S --needed %CTR_NATIVE_EXPANDED_MSYS2_PACKAGES%
-    echo Then add C:\msys64\mingw32\bin to your PATH
+    echo Then add C:\msys64\mingw32\bin and C:\msys64\ucrt64\bin to your PATH
     exit /b 1
 )
 
@@ -22,7 +22,7 @@ if %ERRORLEVEL% neq 0 (
     echo.
     echo Install MSYS2, then run:
     echo   pacman -S --needed %CTR_NATIVE_EXPANDED_MSYS2_PACKAGES%
-    echo Then add C:\msys64\mingw32\bin to your PATH
+    echo Then add C:\msys64\mingw32\bin and C:\msys64\ucrt64\bin to your PATH
     exit /b 1
 )
 
@@ -32,7 +32,7 @@ if %ERRORLEVEL% neq 0 (
     echo.
     echo Install MSYS2, then run:
     echo   pacman -S --needed %CTR_NATIVE_EXPANDED_MSYS2_PACKAGES%
-    echo Then add C:\msys64\mingw32\bin to your PATH
+    echo Then add C:\msys64\mingw32\bin and C:\msys64\ucrt64\bin to your PATH
     exit /b 1
 )
 
