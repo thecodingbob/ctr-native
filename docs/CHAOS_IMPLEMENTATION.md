@@ -11,8 +11,8 @@
 | Pause entry and HUD                           | `game/MAIN/MainFreeze_Chaos.c`, `game/UI/UI_Chaos.c`                             |
 | External filesystem interface                 | `platform/native_chaos_ipc.c`                                                    |
 
-Remaining work: [CHAOS_MODE_PLAN.md](CHAOS_MODE_PLAN.md).
-External protocol: [CHAOS_EXTERNAL.md](features/CHAOS_EXTERNAL_PROVIDER.md).
+Player guide: [Chaos mode](features/CHAOS.md).
+External protocol: [Chaos external file provider](features/CHAOS_EXTERNAL_PROVIDER.md).
 
 ## Adventure saves
 
@@ -49,20 +49,17 @@ preserves the selected slot's settings; deleting a slot zeroes them. Only V1 is
 supported. Field/trigger encoding changes or growth beyond 128 effects require a
 new format and migration; `namespace_Memcard.h` assertions pin the layout.
 
-## Creation and inspection
+## Profile and menu integration
 
-- Every New starts Regular with all implemented effects selected. `chaos_mode`
-  controls only the creation prompt; loaded files use `chaosSettings.armed`.
-- Flow: Mode → optional Players → Chaos setup if armed → character selection.
-  Back retains choices. Settings are immutable once the file is created.
-- Confirm requires a selected effect; otherwise it is gray and plays the locked
-  sound. This does not reinterpret an existing armed, empty file as Regular.
-- Interval is shown for Random, Interval and External, hidden for Pickup.
+- Every New resets the live settings to Regular with all implemented effects
+  selected. `chaos_mode` controls only the creation prompt; loaded files use
+  `chaosSettings.armed`. Settings are immutable once the file is created.
+- Creation retains choices when navigating Back, including across the character
+  selection overlay. Confirm requires a selected effect; this does not reinterpret
+  an existing armed, empty file as Regular.
 - Armed Adventure files add **Chaos Rules** to hub/race/gem-cup pause menus.
   The shared setup screen is read-only, without Confirm. **Active Effects** lists
   enabled effects, not currently running activations, without ON/OFF controls.
-- Cross/Circle activates actions; Left/Right edits creation values. Triangle
-  returns one page; Start/Square exits the read-only view to pause.
 - Custom menu strings live in `RECTMENU_Text.c`; `RECTMENU_GetString` handles
   retail LNG indices and custom IDs starting at `0x4000` for drawing and width.
 
@@ -83,13 +80,7 @@ Low Gravity/Heavy Karts, Speed Capped/Super Speed. A fifth unrelated effect is
 rejected; replacement remains possible at capacity. Expiry precedes scheduling,
 so new entries receive their full duration.
 
-| Trigger  | Scheduling                                                            |
-|----------|-----------------------------------------------------------------------|
-| Interval | One enabled effect per configured gap                                 |
-| Random   | Each gap, including the first, is 30–100% of the configured interval  |
-| Pickup   | One enabled effect per eligible direct collection or turbo-pad entry  |
-| External | One file request after the minimum active-race interval; see protocol |
-
+Trigger behavior is described in the [player guide](features/CHAOS.md#triggers).
 Interval/Random retain frame overshoot; rejected scheduled events still consume
 their gap and selection RNG. External restarts a full gap only after success.
 No trigger waits for earlier effects to expire.
