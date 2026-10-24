@@ -1677,18 +1677,11 @@ void VehPhysForce_TranslateMatrix(struct Thread *thread, struct Driver *driver)
 		}
 
 		{
-			int currentScaleX = inst->scale.x;
 			int targetScaleXZ = CTR_MipsSubLo(VEH_PHYS_FORCE_KART_SCALE_BASE,
 			    VehPhysForce_TranslateMatrix_Div256TowardZero(driver->jumpSquishStretch * VEH_PHYS_FORCE_SQUISH_SCALE_XZ_FACTOR));
-			inst->scale.x = VehCalc_InterpBySpeed(currentScaleX, VEH_PHYS_FORCE_SQUISH_SCALE_INTERP_SPEED,
-			                                      VehPhysForce_ScaleValue(driver, targetScaleXZ));
-		}
-		{
-			int currentScaleZ = inst->scale.z;
-			int targetScaleXZ = CTR_MipsSubLo(VEH_PHYS_FORCE_KART_SCALE_BASE,
-			    VehPhysForce_TranslateMatrix_Div256TowardZero(driver->jumpSquishStretch * VEH_PHYS_FORCE_SQUISH_SCALE_XZ_FACTOR));
-			inst->scale.z = VehCalc_InterpBySpeed(currentScaleZ, VEH_PHYS_FORCE_SQUISH_SCALE_INTERP_SPEED,
-			                                      VehPhysForce_ScaleValue(driver, targetScaleXZ));
+			targetScaleXZ = VehPhysForce_ScaleValue(driver, targetScaleXZ);
+			inst->scale.x = VehCalc_InterpBySpeed(inst->scale.x, VEH_PHYS_FORCE_SQUISH_SCALE_INTERP_SPEED, targetScaleXZ);
+			inst->scale.z = VehCalc_InterpBySpeed(inst->scale.z, VEH_PHYS_FORCE_SQUISH_SCALE_INTERP_SPEED, targetScaleXZ);
 		}
 	}
 

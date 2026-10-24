@@ -1418,6 +1418,12 @@ static void TestNoItems(void)
 	Chaos_ApplyItemRules(&human);
 	CTR_TEST_CHECK((s_tracker.gameMode1 & WARPBALL_HELD) == 0, "discarding an unlaunched warpball releases its reservation");
 	CTR_TEST_CHECK((human.actionsFlagSet & ACTION_WEAPON_FIRE_REQUEST) == 0, "discarding a requested warpball prevents its pending launch");
+	s_tracker.gameMode1 |= WARPBALL_HELD;
+	Chaos_ApplyItemRules(&human);
+	CTR_TEST_CHECK((s_tracker.gameMode1 & WARPBALL_HELD) != 0, "empty inventory preserves an already launched warpball's reservation");
+	human.heldItemID = HELD_ITEM_TURBO;
+	Chaos_ApplyItemRules(&human);
+	CTR_TEST_CHECK((s_tracker.gameMode1 & WARPBALL_HELD) != 0, "discarding a different item preserves another driver's warpball reservation");
 	partner.heldItemID = HELD_ITEM_ROULETTE;
 	partner.itemRollTimer = 30;
 	Chaos_ApplyItemRules(&partner);

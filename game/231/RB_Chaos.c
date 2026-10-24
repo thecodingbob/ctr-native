@@ -155,10 +155,10 @@ static void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation)
 	{
 		Chaos_ApplyClockCurse(chaosActivation);
 	}
-        if (chaosActivation->effect == CHAOS_EFFECT_GIANT_KARTS)
-        {
-                Chaos_SetKartScale(CHAOS_GIANT_SCALE);
-        }
+	if (chaosActivation->effect == CHAOS_EFFECT_GIANT_KARTS)
+	{
+		Chaos_SetKartScale(CHAOS_GIANT_SCALE);
+	}
 }
 
 bool Chaos_Activate(ChaosEffectId effect, s32 durationMS)
@@ -408,13 +408,15 @@ void Chaos_ApplyItemRules(struct Driver *driver)
 {
 	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_NO_ITEMS, driver))
 	{
-	  struct GameTracker *gGT = sdata->gGT;
-	  driver->heldItemID = HELD_ITEM_NONE;
-	  driver->numHeldItems = 0;
-	  driver->itemRollTimer = 0;
-	  driver->noItemTimer = 0;
-	  driver->actionsFlagSet &= ~ACTION_WEAPON_FIRE_REQUEST;
-	  gGT->gameMode1 &= ~WARPBALL_HELD;
+		if (driver->heldItemID == HELD_ITEM_WARPBALL)
+		{
+			sdata->gGT->gameMode1 &= ~WARPBALL_HELD;
+		}
+		driver->heldItemID = HELD_ITEM_NONE;
+		driver->numHeldItems = 0;
+		driver->itemRollTimer = 0;
+		driver->noItemTimer = 0;
+		driver->actionsFlagSet &= ~ACTION_WEAPON_FIRE_REQUEST;
 	}
 }
 
@@ -447,9 +449,8 @@ static void Chaos_TickWumpaDrain(s32 elapsedMS, struct Driver *driver)
 	const bool didPulse = elapsedMS / CHAOS_WUMPA_DRAIN_PERIOD_MS > previousMS / CHAOS_WUMPA_DRAIN_PERIOD_MS;
 	if (didPulse && driver->numWumpas > 0)
 	{
-	      driver->numWumpas -= 1;
+		driver->numWumpas -= 1;
 	}
-
 }
 
 u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, int *steering, u32 actions)
