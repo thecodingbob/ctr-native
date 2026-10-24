@@ -34,9 +34,10 @@ static int DrawTiresSolid_CountLeadingSignBits(int value)
 	return count;
 }
 
-static int DrawTiresSolid_ReadMatrixWord(MATRIX *matrix, int offset)
+static int DrawTiresSolid_ReadMatrixWord(const MATRIX *matrix, int offset)
 {
-	return *(int *)((char *)matrix + offset);
+	// MATRIX contains s16 elements; an int pointer violates strict aliasing.
+	return (int)CTR_ReadU32LE((const char *)matrix + offset);
 }
 
 static struct TrigPair DrawTiresSolid_TrigAngleSinCos(int angle)
@@ -155,17 +156,17 @@ static void DrawTiresSolid_BuildWheelLocalPairs(struct DrawTiresScratch *scratch
 	scratch->otRangeSecondary = idpp->otRangeSecondary;
 	scratch->wheelSize.word = (s16)VehPhysForce_ScaleValue(driver, driver->wheelSize);
 
-	struct TrigPair steering = DrawTiresSolid_TrigAngleSinCos(driver->wheelRotation << 2);
+	struct TrigPair steering = DrawTiresSolid_TrigAngleSinCos(driver->wheelRotation * 4);
 	scratch->wheelLocal[0].rim.x = scratch->wheelLocal[0].center.x - steering.cos;
 	scratch->wheelLocal[0].rim.z.word = scratch->wheelLocal[0].center.z.word + steering.sin;
 	scratch->wheelLocal[1].rim.x = scratch->wheelLocal[1].center.x + steering.cos;
 	scratch->wheelLocal[1].rim.z.word = scratch->wheelLocal[1].center.z.word - steering.sin;
 
-	int hazardAngle = driver->hazardTimer << 5;
+	int hazardAngle = driver->hazardTimer * 32;
 	if ((driver->hazardTimer & 1) != 0)
 	{
 		hazardShift = 6;
-		hazardAngle <<= 1;
+		hazardAngle *= 2;
 	}
 
 	DrawTiresSolid_AddHazardOffset(&scratch->wheelLocal[0].rim, hazardAngle, hazardShift);
@@ -176,10 +177,10 @@ static void DrawTiresSolid_BuildWheelLocalPairs(struct DrawTiresScratch *scratch
 
 static void DrawTiresSolid_SetupGteState(struct DrawTiresScratch *scratch, struct Instance *inst, struct InstDrawPerPlayer *idpp, struct PushBuffer *pb)
 {
-	int relX = (inst->matrix.t[0] - pb->pos.x) << 2;
-	int relY = (inst->matrix.t[1] - pb->pos.y) << 2;
-	int relZ = (inst->matrix.t[2] - pb->pos.z) << 2;
-	int splitCameraY = (scratch->vertSplit - pb->pos.y) << 2;
+	int relX = (inst->matrix.t[0] - pb->pos.x) * 4;
+	int relY = (inst->matrix.t[1] - pb->pos.y) * 4;
+	int relZ = (inst->matrix.t[2] - pb->pos.z) * 4;
+	int splitCameraY = (scratch->vertSplit - pb->pos.y) * 4;
 
 	// NOTE(aalhendi): PSX-backfeed blocker: retail DrawTires_Solid writes
 	// instance matrix words to GTE control regs 16-20, IDPP m3x3 words to regs
@@ -225,6 +226,9 @@ static void DrawTiresSolid_BuildWheelAxes(struct DrawTiresScratch *scratch)
 		MTC2(wheelLocal->rim.z.word, 3);
 
 		gte_lcv0tr_b();
+		scratch->wheelCenters[wheelIndex].x = MFC2_S(25);
+		scratch->wheelCenters[wheelIndex].y = MFC2_S(26);
+		scratch->wheelCenters[wheelIndex].z = MFC2_S(27);
 		int centerX = MFC2_S(9);
 		int centerY = MFC2_S(10);
 		int centerZ = MFC2_S(11);
@@ -316,17 +320,19 @@ static void DrawTiresSolid_SetupProjectionState(struct PushBuffer *pb)
 	CTC2(pb->distanceToScreen_PREV, 26);
 }
 
-static void DrawTiresSolid_LoadCorner(struct DrawTiresScratch *scratch, int vectorIndex, int wheelIndex, int axisSign, int rimSign)
+static int DrawTires_ProjectCorner(struct DrawTiresScratch *scratch, int wheelIndex, int axisSign, int rimSign)
 {
-	struct DrawTiresWheelLocal *wheelLocal = &scratch->wheelLocal[wheelIndex];
+	const Vec3 *center = &scratch->wheelCenters[wheelIndex];
 	SVec3Slot *axisA = &scratch->tireAxisA[wheelIndex];
 	SVec3Slot *axisB = &scratch->tireAxisB[wheelIndex];
-	int x = wheelLocal->center.x + (axisSign * axisA->x) + (rimSign * axisB->x);
-	int y = wheelLocal->center.y + (axisSign * axisA->y) + (rimSign * axisB->y);
-	int z = wheelLocal->center.z.halves.lo + (axisSign * axisA->z) + (rimSign * axisB->z);
+	int x = center->x + axisSign * axisA->x + rimSign * axisB->x;
+	int y = center->y + axisSign * axisA->y + rimSign * axisB->y;
+	int z = center->z + axisSign * axisA->z + rimSign * axisB->z;
 
-	MTC2(CTR_PackS16Pair(x, y), vectorIndex * 2);
-	MTC2(z, (vectorIndex * 2) + 1);
+	// Packing center +/- radius into V0 wraps corners at +/-32768, putting
+	// opposite sides of a distant wheel on opposite sides of the camera.
+	NativeGte_ProjectWide(x, y, z);
+	return MFC2(14);
 }
 
 static int DrawTiresSolid_SelectSpriteIndex(int angleValue)
@@ -348,11 +354,10 @@ static int DrawTiresSolid_SelectSpriteIndex(int angleValue)
 
 static struct DrawTiresSolidProjectedWheel DrawTiresSolid_SelectProjectedWheel(struct DrawTiresScratch *scratch, int wheelIndex)
 {
-	struct DrawTiresWheelLocal *wheelLocal = &scratch->wheelLocal[wheelIndex];
 	struct DrawTiresPackedVec3 *viewNormal = &scratch->viewNormalVectors[wheelIndex];
 	struct DrawTiresPackedVec3 *transformedRim = &scratch->transformedRimVectors[wheelIndex];
 	int selectedOT = scratch->otRangeNormal;
-	int splitDelta = scratch->splitCameraY - wheelLocal->center.y;
+	int splitDelta = scratch->splitCameraY - scratch->wheelCenters[wheelIndex].y;
 	struct DrawTiresSolidProjectedWheel selected = {
 	    .selectedOT = selectedOT,
 	    .jumpIndex = wheelIndex,
@@ -496,73 +501,6 @@ static void DrawTiresSolid_LinkPrimitive(struct DrawTiresScratch *scratch, POLY_
 	*otSlot = (u32)CtrGpu_PrimToOTLink24(p);
 }
 
-enum
-{
-	// Any real wheel quad stays well inside this, even for the closest kart.
-	DRAW_TIRES_MAX_LEGIT_EXTENT = 256,
-	// Filling under a sixteenth of the bounding box means sliver, not wheel.
-	DRAW_TIRES_MIN_FILL_SHIFT = 4,
-};
-
-// A wheel quad whose rim axis has collapsed has near-coincident corner pairs, so
-// the GPU's two triangles degenerate into a single sliver spanning the frame
-// from corner to corner. That is the visible artifact: black elongated geometry
-// trailing distant racers.
-//
-// A sliver alone is not enough to reject. A wheel seen edge-on, axle pointing at
-// the camera, legitimately projects to a thin sliver that real hardware draws as
-// a narrow ellipse. What separates that from the artifact is size: a collapsed
-// wheel spans most of the frame, while a real wheel never does at any angle or
-// distance. So reject only slivers that are also implausibly large.
-static int DrawTires_IsDegenerateQuad(const POLY_FT4 *p)
-{
-	const int xs[4] = {p->x0, p->x1, p->x2, p->x3};
-	const int ys[4] = {p->y0, p->y1, p->y2, p->y3};
-
-	int minX = xs[0];
-	int maxX = xs[0];
-	int minY = ys[0];
-	int maxY = ys[0];
-
-	for (int i = 1; i < 4; i++)
-	{
-		if (xs[i] < minX) { minX = xs[i]; }
-		if (xs[i] > maxX) { maxX = xs[i]; }
-		if (ys[i] < minY) { minY = ys[i]; }
-		if (ys[i] > maxY) { maxY = ys[i]; }
-	}
-
-	const long long extentX = (long long)maxX - (long long)minX;
-	const long long extentY = (long long)maxY - (long long)minY;
-
-	// Collapsed to a line or a point: no area at all.
-	if ((extentX <= 1) || (extentY <= 1))
-	{
-		return 1;
-	}
-
-	// A large quad is legitimate however thin it looks, so only screen-spanning
-	// geometry can be the artifact.
-	if ((extentX <= DRAW_TIRES_MAX_LEGIT_EXTENT) && (extentY <= DRAW_TIRES_MAX_LEGIT_EXTENT))
-	{
-		return 0;
-	}
-
-	// Twice the signed area. Coordinates reach +/-32767, so the products and
-	// their sum overflow 32 bits; the comparison is done in 64.
-	long long area2 = ((long long)xs[0] * ys[1]) - ((long long)xs[1] * ys[0]);
-	area2 += ((long long)xs[1] * ys[2]) - ((long long)xs[2] * ys[1]);
-	area2 += ((long long)xs[2] * ys[3]) - ((long long)xs[3] * ys[2]);
-	area2 += ((long long)xs[3] * ys[0]) - ((long long)xs[0] * ys[3]);
-
-	if (area2 < 0)
-	{
-		area2 = -area2;
-	}
-
-	return (area2 << DRAW_TIRES_MIN_FILL_SHIFT) < (extentX * extentY);
-}
-
 static int DrawTiresSolid_EmitProjectedWheel(struct DrawTiresScratch *scratch, struct DrawTiresSolidProjectedWheel *selected, struct PrimMem *primMem,
                                              int *primCount)
 {
@@ -590,14 +528,6 @@ static int DrawTiresSolid_EmitProjectedWheel(struct DrawTiresScratch *scratch, s
 	}
 
 	DrawTiresSolid_WritePrimitiveCorners(p, sxy);
-
-	if (DrawTires_IsDegenerateQuad(p) != 0)
-	{
-		// primMem->cursor is deliberately left alone: the corners written above
-		// are scratch until the cursor advances, so the next wheel overwrites
-		// them.
-		return 1;
-	}
 
 	DrawTiresSolid_LinkPrimitive(scratch, p, selectedOTSlot);
 	primMem->cursor = (char *)primMem->cursor + sizeof(POLY_FT4);
@@ -628,18 +558,10 @@ static int DrawTiresSolid_ProjectWheelQuads(struct DrawTiresScratch *scratch, st
 			break;
 		}
 
-		DrawTiresSolid_LoadCorner(scratch, 0, wheelIndex, -1, -1);
-		DrawTiresSolid_LoadCorner(scratch, 1, wheelIndex, 1, -1);
-		DrawTiresSolid_LoadCorner(scratch, 2, wheelIndex, -1, 1);
-
-		gte_rtpt_b();
-		scratch->projectedSxy[0] = MFC2(12);
-		scratch->projectedSxy[1] = MFC2(13);
-		scratch->projectedSxy[2] = MFC2(14);
-
-		DrawTiresSolid_LoadCorner(scratch, 0, wheelIndex, 1, 1);
-		gte_rtps_b();
-		scratch->projectedSxy[3] = MFC2(14);
+		scratch->projectedSxy[0] = DrawTires_ProjectCorner(scratch, wheelIndex, -1, -1);
+		scratch->projectedSxy[1] = DrawTires_ProjectCorner(scratch, wheelIndex, 1, -1);
+		scratch->projectedSxy[2] = DrawTires_ProjectCorner(scratch, wheelIndex, -1, 1);
+		scratch->projectedSxy[3] = DrawTires_ProjectCorner(scratch, wheelIndex, 1, 1);
 
 		struct DrawTiresSolidProjectedWheel projectedWheel = DrawTiresSolid_SelectProjectedWheel(scratch, wheelIndex);
 
@@ -767,9 +689,9 @@ static struct InstDrawPerPlayer *DrawTiresReflection_GetIdpp(struct Instance *in
 	return (struct InstDrawPerPlayer *)((char *)INST_GETIDPP(inst) + (playerIndex * sizeof(struct InstDrawPerPlayer)));
 }
 
-static int DrawTiresReflection_ReadMatrixWord(MATRIX *matrix, int offset)
+static int DrawTiresReflection_ReadMatrixWord(const MATRIX *matrix, int offset)
 {
-	return *(int *)((char *)matrix + offset);
+	return (int)CTR_ReadU32LE((const char *)matrix + offset);
 }
 
 static void DrawTiresReflection_InitScratch(struct DrawTiresScratch *scratch, u8 numPlyr)
@@ -838,17 +760,17 @@ static void DrawTiresReflection_BuildWheelLocalPairs(struct DrawTiresScratch *sc
 	scratch->otRangeSecondary = idpp->otRangeSecondary;
 	scratch->wheelSize.word = (s16)VehPhysForce_ScaleValue(driver, driver->wheelSize);
 
-	struct TrigPair steering = DrawTiresSolid_TrigAngleSinCos(driver->wheelRotation << 2);
+	struct TrigPair steering = DrawTiresSolid_TrigAngleSinCos(driver->wheelRotation * 4);
 	scratch->wheelLocal[0].rim.x = scratch->wheelLocal[0].center.x - steering.cos;
 	scratch->wheelLocal[0].rim.z.word = scratch->wheelLocal[0].center.z.word + steering.sin;
 	scratch->wheelLocal[1].rim.x = scratch->wheelLocal[1].center.x + steering.cos;
 	scratch->wheelLocal[1].rim.z.word = scratch->wheelLocal[1].center.z.word - steering.sin;
 
-	int hazardAngle = driver->hazardTimer << 5;
+	int hazardAngle = driver->hazardTimer * 32;
 	if ((driver->hazardTimer & 1) != 0)
 	{
 		hazardShift = 6;
-		hazardAngle <<= 1;
+		hazardAngle *= 2;
 	}
 
 	DrawTiresReflection_AddHazardOffset(&scratch->wheelLocal[0].rim, hazardAngle, hazardShift);
@@ -859,10 +781,10 @@ static void DrawTiresReflection_BuildWheelLocalPairs(struct DrawTiresScratch *sc
 
 static void DrawTiresReflection_SetupGteState(struct DrawTiresScratch *scratch, struct Instance *inst, struct InstDrawPerPlayer *idpp, struct PushBuffer *pb)
 {
-	int relX = (inst->matrix.t[0] - pb->pos.x) << 2;
-	int relY = (inst->matrix.t[1] - pb->pos.y) << 2;
-	int relZ = (inst->matrix.t[2] - pb->pos.z) << 2;
-	int splitCameraY = (scratch->vertSplit - pb->pos.y) << 2;
+	int relX = (inst->matrix.t[0] - pb->pos.x) * 4;
+	int relY = (inst->matrix.t[1] - pb->pos.y) * 4;
+	int relZ = (inst->matrix.t[2] - pb->pos.z) * 4;
+	int splitCameraY = (scratch->vertSplit - pb->pos.y) * 4;
 
 	// NOTE(aalhendi): PSX-backfeed blocker: retail DrawTires_Reflection writes
 	// instance matrix words to GTE control regs 16-20, IDPP m3x3 words to regs
@@ -909,6 +831,9 @@ static void DrawTiresReflection_BuildWheelAxes(struct DrawTiresScratch *scratch)
 		MTC2(wheelLocal->rim.z.word, 3);
 
 		gte_lcv0tr_b();
+		scratch->wheelCenters[wheelIndex].x = MFC2_S(25);
+		scratch->wheelCenters[wheelIndex].y = 2 * splitCameraY - MFC2_S(26);
+		scratch->wheelCenters[wheelIndex].z = MFC2_S(27);
 		int centerX = MFC2_S(9);
 		int originalCenterY = MFC2_S(10);
 		int centerZ = MFC2_S(11);
@@ -999,19 +924,6 @@ static void DrawTiresReflection_SetupProjectionState(struct PushBuffer *pb)
 	CTC2(pb->rect.w << 0xf, 24);
 	CTC2(pb->rect.h << 0xf, 25);
 	CTC2(pb->distanceToScreen_PREV, 26);
-}
-
-static void DrawTiresReflection_LoadCorner(struct DrawTiresScratch *scratch, int vectorIndex, int wheelIndex, int axisSign, int rimSign)
-{
-	struct DrawTiresWheelLocal *wheelLocal = &scratch->wheelLocal[wheelIndex];
-	SVec3Slot *axisA = &scratch->tireAxisA[wheelIndex];
-	SVec3Slot *axisB = &scratch->tireAxisB[wheelIndex];
-	int x = wheelLocal->center.x + (axisSign * axisA->x) + (rimSign * axisB->x);
-	int y = wheelLocal->center.y + (axisSign * axisA->y) + (rimSign * axisB->y);
-	int z = wheelLocal->center.z.halves.lo + (axisSign * axisA->z) + (rimSign * axisB->z);
-
-	MTC2(CTR_PackS16Pair(x, y), vectorIndex * 2);
-	MTC2(z, (vectorIndex * 2) + 1);
 }
 
 static struct DrawTiresReflectionProjectedWheel DrawTiresReflection_SelectProjectedWheel(struct DrawTiresScratch *scratch, int wheelIndex)
@@ -1160,7 +1072,6 @@ static void DrawTiresReflection_EmitProjectedWheel(struct DrawTiresScratch *scra
                                                    struct PrimMem *primMem, int *primCount, int wheelIndex)
 {
 	POLY_FT4 *p = (POLY_FT4 *)primMem->cursor;
-	struct DrawTiresWheelLocal *wheelLocal = &scratch->wheelLocal[wheelIndex];
 	int selectedOTSlot = selected->selectedOTSlot;
 	int sxy[4];
 
@@ -1178,7 +1089,7 @@ static void DrawTiresReflection_EmitProjectedWheel(struct DrawTiresScratch *scra
 		return;
 	}
 
-	int splitDelta = scratch->splitCameraY - wheelLocal->center.y;
+	int splitDelta = scratch->splitCameraY - scratch->wheelCenters[wheelIndex].y;
 	if (splitDelta < 0)
 	{
 		return;
@@ -1203,18 +1114,10 @@ static int DrawTiresReflection_ProjectWheelQuads(struct DrawTiresScratch *scratc
 			break;
 		}
 
-		DrawTiresReflection_LoadCorner(scratch, 0, wheelIndex, -1, -1);
-		DrawTiresReflection_LoadCorner(scratch, 1, wheelIndex, 1, -1);
-		DrawTiresReflection_LoadCorner(scratch, 2, wheelIndex, -1, 1);
-
-		gte_rtpt_b();
-		scratch->projectedSxy[1] = MFC2(12);
-		scratch->projectedSxy[0] = MFC2(13);
-		scratch->projectedSxy[3] = MFC2(14);
-
-		DrawTiresReflection_LoadCorner(scratch, 0, wheelIndex, 1, 1);
-		gte_rtps_b();
-		scratch->projectedSxy[2] = MFC2(14);
+		scratch->projectedSxy[1] = DrawTires_ProjectCorner(scratch, wheelIndex, -1, -1);
+		scratch->projectedSxy[0] = DrawTires_ProjectCorner(scratch, wheelIndex, 1, -1);
+		scratch->projectedSxy[3] = DrawTires_ProjectCorner(scratch, wheelIndex, -1, 1);
+		scratch->projectedSxy[2] = DrawTires_ProjectCorner(scratch, wheelIndex, 1, 1);
 
 		struct DrawTiresReflectionProjectedWheel projectedWheel = DrawTiresReflection_SelectProjectedWheel(scratch, wheelIndex);
 		DrawTiresReflection_EmitProjectedWheel(scratch, &projectedWheel, primMem, primCount, wheelIndex);
