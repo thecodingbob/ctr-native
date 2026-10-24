@@ -35,6 +35,10 @@ enum UIRaceFlowConstants
 	UI_RACE_END_MIN_SPLITSCREEN_MENU_PLAYERS = 3,
 	UI_RACE_END_INITIAL_ICON_COUNT = 1,
 	UI_RACE_END_SAVE_GHOST_FRAME = 0x3f9,
+	UI_RACE_END_CENTER_X = 0x100,
+	UI_RACE_END_CENTER_Y = 0x6c,
+	UI_RACE_END_PROMPT_Y = 0xbe,
+	UI_RACE_END_MENU_Y = 0xb4,
 };
 
 
@@ -327,6 +331,20 @@ LAB_80055930:
 		CTR_Box_DrawSolidBox(&rect, &color, ot, &gGT->backBuffer->primMem);
 	}
 	return;
+}
+
+void UI_RaceEnd_SetMenuLayout(struct RectMenu *menu, SVec2 *promptPos)
+{
+	b32 coopRace = MainGameEnd_IsCoopRace(sdata->gGT);
+
+	// Co-op prompts and retry menus share the middle of the 512x216 screen,
+	// clear of P2's results. Text is anchored at its top, menus at their centre.
+	promptPos->x = UI_RACE_END_CENTER_X;
+	promptPos->y = coopRace ? UI_RACE_END_CENTER_Y - data.font_charPixHeight[FONT_BIG] / 2 : UI_RACE_END_PROMPT_Y;
+
+	// Reset both coordinates every frame, including when returning to solo play.
+	menu->posX_curr = UI_RACE_END_CENTER_X;
+	menu->posY_curr = coopRace ? UI_RACE_END_CENTER_Y : UI_RACE_END_MENU_Y;
 }
 
 void UI_RaceEnd_MenuProc(struct RectMenu *menu)

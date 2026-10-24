@@ -57,18 +57,6 @@ enum ArcadeAdventureEndMenuConstants
 	AA_BIG_NUM_Z_BASE = 0x100,
 	AA_ADD_CONFIG_0_PAGE_OFFSET = -0x2f00,
 
-	// The PSX display raster is 0x200 x 0xd8 (see SetDefDispEnv in MainMain.c),
-	// so the middle of the screen is (0x100, 0x6c) - the anchor every centred
-	// retail menu uses. Adventure co-op splits the screen between both racers'
-	// results, so the "press * to continue" prompt and the retry/exit menu move
-	// there from their retail spot along the bottom edge, which is where P2's
-	// finish time lands. A lone racer keeps the retail spot.
-	AA_SCREEN_CENTER_X = 0x100,
-	AA_SCREEN_CENTER_Y = 0x6c,
-	AA_END_EVENT_TEXT_X = 0x100,
-	AA_END_EVENT_TEXT_Y = 0xbe,
-	AA_END_EVENT_MENU_X = 0x100,
-	AA_END_EVENT_MENU_Y = 0xb4,
 	AA_CTR_LETTER_COUNT = 3,
 };
 
@@ -142,10 +130,7 @@ void AA_EndEvent_DrawMenu(void)
 	b32 tokenGrowthDelayed;
 	s32 tokenAwardFrame;
 	s32 i;
-	b32 coopRace;
-	s16 promptX;
-	s16 promptY;
-	s16 promptCenterLift;
+	SVec2 promptPos;
 
 	// NOTE(aalhendi): This compiler barrier preserves retail's address-page
 	// allocation across initialization; it does not change game state.
@@ -160,19 +145,7 @@ void AA_EndEvent_DrawMenu(void)
 	pushBuffer = &GAME_TRACKER->pushBuffer[0];
 	driverRankString = (char *)&s_driverRankString222;
 
-	// The retail prompt and retry menu sit along the bottom edge, which is where
-	// P2's finish time lands once Adventure co-op splits the screen. Both are
-	// repositioned every frame so neither mode can leave a stale placement behind
-	// for the other. The retry menu is a RECTMENU_STATE_CENTERED menu, so
-	// AA_SCREEN_CENTER_Y is already its vertical middle; DecalFont_DrawLine takes
-	// the top of the glyph box instead, so the prompt is lifted by half a line to
-	// land on that same middle rather than hanging into the lower half.
-	promptCenterLift = data.font_charPixHeight[FONT_BIG] / 2;
-	coopRace = MainGameEnd_IsCoopRace(GAME_TRACKER);
-	promptX = coopRace ? AA_SCREEN_CENTER_X : AA_END_EVENT_TEXT_X;
-	promptY = coopRace ? AA_SCREEN_CENTER_Y - promptCenterLift : AA_END_EVENT_TEXT_Y;
-	gameMenuRetryExit.posX_curr = coopRace ? AA_SCREEN_CENTER_X : AA_END_EVENT_MENU_X;
-	gameMenuRetryExit.posY_curr = coopRace ? AA_SCREEN_CENTER_Y : AA_END_EVENT_MENU_Y;
+	UI_RaceEnd_SetMenuLayout(&gameMenuRetryExit, &promptPos);
 
 	if (GAME_FRAMES_SINCE_RACE_ENDED < AA_RESULT_MAX_FRAMES)
 	{
@@ -645,7 +618,7 @@ void AA_EndEvent_DrawMenu(void)
 	goto race_lost;
 
 race_won:
-	DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], promptX, promptY, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+	DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], promptPos.x, promptPos.y, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 	if ((GAME_ANY_PLAYER_TAP & AA_CONFIRM_BUTTON_MASK) == 0)
 	{
 		return;
@@ -747,7 +720,7 @@ race_won:
 race_lost:
 	if ((GAME_MENU_READY & AA_MENU_READY_FLAG) == 0)
 	{
-		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], promptX, promptY, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], promptPos.x, promptPos.y, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 
 		if ((GAME_ANY_PLAYER_TAP & AA_CONFIRM_BUTTON_MASK) != 0)
 		{

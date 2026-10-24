@@ -9,6 +9,7 @@ enum CrystalChallengeEndMenuConstants
 	CC_TOKEN_GROW_LIMIT = 0x2001,
 	CC_TOKEN_GROW_STEP = 0x200,
 	CC_CONFIRM_BUTTON_MASK = BTN_CROSS_one | BTN_CIRCLE,
+	CC_COOP_RESULTS_Y_OFFSET = -15,
 	// NOTE(aalhendi): Native sentinel for retail stack residue that has not
 	// been modeled yet.
 	CC_UNMODELED_REWARD_OFFSET = -0x400000,
@@ -158,8 +159,12 @@ void CC_EndEvent_DrawMenu()
 	register b32 canAward;
 	register s32 currentFrames;
 	s32 tokenRewardBit;
+	SVec2 promptPos;
+	s16 resultsYOffset;
 
 	comparisonGT = GAME_TRACKER_RELOAD();
+	UI_RaceEnd_SetMenuLayout(&menu221, &promptPos);
+	resultsYOffset = MainGameEnd_IsCoopRace(comparisonGT) ? CC_COOP_RESULTS_Y_OFFSET : 0;
 
 		if (UI_Crystal_CountCollected(comparisonGT) >= comparisonGT->numCrystalsInLEV)
 		{
@@ -189,11 +194,13 @@ void CC_EndEvent_DrawMenu()
 
 		// fly in from left
 		UI_Lerp2D_Linear(&pos[0], -0x64, 0x18, 0x100, 0x18, currentFrames, CC_FLY_IN_FRAMES);
+		pos[1] += resultsYOffset;
 		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_TIME_REMAINING], pos[0], pos[1], FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 		UI_DrawLimitClock(pos[0] - 0x33, pos[1] + 0x11, FONT_BIG);
 
 		// fly in from right
 		UI_Lerp2D_Linear(&pos[0], 0x264, 0x56, 0xcd, 0x56, GAME_FRAMES_SINCE_RACE_ENDED, CC_FLY_IN_FRAMES);
+		pos[1] += resultsYOffset;
 
 		// Crystal count
 		if (CC_MENU_CRYSTAL != NULL)
@@ -251,7 +258,7 @@ void CC_EndEvent_DrawMenu()
 				}
 			}
 
-			DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+			DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], promptPos.x, promptPos.y, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 
 			// if still waiting to press X/O, quit function
 			if ((GAME_ANY_PLAYER_TAP & CC_CONFIRM_BUTTON_MASK) == 0)
@@ -287,7 +294,7 @@ void CC_EndEvent_DrawMenu()
 			return;
 		}
 
-		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], 0x100, 0xbe, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
+		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], promptPos.x, promptPos.y, FONT_BIG, (JUSTIFY_CENTER | ORANGE));
 
 		if ((GAME_ANY_PLAYER_TAP & CC_CONFIRM_BUTTON_MASK) == 0)
 		{

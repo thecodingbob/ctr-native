@@ -707,6 +707,7 @@ void UI_Lerp2D_Linear(s16 *ptrPos, s16 startX, s16 startY, s16 endX, s16 endY, s
 void UI_Lerp2D_HUD(s16 *ptrPos, s16 startX, s16 startY, s16 endX, s16 endY, s32 curFrame, s16 endFrame);
 
 void UI_RaceEnd_MenuProc(struct RectMenu *);
+void UI_RaceEnd_SetMenuLayout(struct RectMenu *menu, SVec2 *promptPos);
 
 // VEH
 void VehBirth_TeleportSelf(struct Driver *d, u32 spawnFlag, int spawnPosY);
