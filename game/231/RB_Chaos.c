@@ -447,7 +447,8 @@ void Chaos_OnTurboPadContact(struct Driver *driver, bool touching)
 	}
 }
 
-u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, int *steering, u32 actions)
+u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, int *steering,
+                     u32 *brake, int *rightY, int *leftY, u32 actions)
 {
 	const struct ChaosRuntime *runtime = &sdata->chaosRuntime;
 	if (!Chaos_IsRunning(sdata->gGT))
@@ -472,6 +473,10 @@ u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, in
 		else if (effect == CHAOS_EFFECT_NO_HOPPING)
 		{
 			actions = Chaos_PreventHopping(driver, actions);
+		}
+		else if (effect == CHAOS_EFFECT_SABOTAGE)
+		{
+			Chaos_DisableBraking(brake, rightY, leftY);
 		}
 		else if (effect == CHAOS_EFFECT_NO_RESERVES)
 		{

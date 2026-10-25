@@ -204,6 +204,12 @@ U-turn and rescue resets. `COLL_MOVED_ScrubImpact` skips clearing reserves and
 `VehFire_Increment` applies the original reserve grants directly, without
 checking Chaos protection.
 
+Sabotage (ID 22, `sabotage`) filters driver-local resolved brake input through
+`Chaos_ApplyDriver` before braking can clear reserves or affect target speed.
+It disables Square and the positive/reverse halves of both vertical sticks,
+preserving forward throttle and shared gamepad input. Recipient/activation checks
+remain in `RB_Chaos.c`; `RB_ChaosEffects.c` owns the input operation.
+
 ## HUD and audio
 
 Each successful activation plays the preloaded double-gain transition swish and

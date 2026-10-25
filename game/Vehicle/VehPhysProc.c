@@ -162,7 +162,8 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 	register int rainCloudEffect CTR_PSX_REGISTER("$20");
 	register u32 actionsFlagSetNext CTR_PSX_REGISTER("$18");
 	register u32 buttonsHeld CTR_PSX_REGISTER("$5");
-	register int stickRY CTR_PSX_REGISTER("$21");
+	int stickRY;
+	int gasStickLY;
 	int scratchValue;
 	struct Shield *shield;
 	struct TrackerWeapon *bomb;
@@ -837,8 +838,11 @@ CheckJumpButtons:
 CheckJumpButtonsReady:
 	actionsFlagSetCopy = VehPhysProc_JumpInput(driver, (u32)normalVecIndex, buttonsHeld, rainCloudEffect, actionsFlagSetCopy);
 	steeringInput = ptrgamepad->stickLX;
+	stickRY = (int)ptrgamepad->stickRY;
+	gasStickLY = ptrgamepad->stickLY;
 	// Apply after input resolution, before jump and steering consumers use the result.
-	actionsFlagSetCopy = Chaos_ApplyDriver(driver, ptrgamepad, &steeringInput, actionsFlagSetCopy);
+	actionsFlagSetCopy = Chaos_ApplyDriver(driver, ptrgamepad, &steeringInput,
+	                                       &square, &stickRY, &gasStickLY, actionsFlagSetCopy);
 	CTR_PSX_OBSERVE_VALUE(buttonsHeld);
 	CTR_PSX_LOAD_WORD(approximateSpeedRaw, square);
 	if (
@@ -850,16 +854,6 @@ CheckJumpButtonsReady:
 	{
 		// Set Reserves to zero
 		VehFire_SetReserves(driver, 0);
-	}
-
-	// assume normal gas pedal
-	stickRY = VEH_PHYS_PROC_STICK_CENTER;
-
-	// If you're not in End-Of-Race menu
-	if ((GAME_TRACKER->gameMode1 & END_OF_RACE) == 0)
-	{
-		// gamepadBuffer -> stickRY (for gas or reverse)
-		stickRY = (int)ptrgamepad->stickRY;
 	}
 
 	if (
@@ -922,16 +916,7 @@ CheckJumpButtonsReady:
 
 	{
 		register int gasTargetSpeed CTR_PSX_REGISTER("$19");
-		register int gasStickLY CTR_PSX_REGISTER("$20");
 		register int gasScratchValue CTR_PSX_REGISTER("$16");
-
-		gasStickLY = VEH_PHYS_PROC_STICK_CENTER;
-
-		// If you're not in End-Of-Race menu
-		if ((GAME_TRACKER->gameMode1 & END_OF_RACE) == 0)
-		{
-			gasStickLY = ptrgamepad->stickLY;
-		}
 
 		if (((s8)driver->simpTurnState < 0) || (actionsFlagSetCopy &= ~ACTION_REVERSE_STEER_LEFT, (s8)driver->simpTurnState < 1))
 		{

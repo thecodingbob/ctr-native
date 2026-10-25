@@ -183,6 +183,19 @@ static int Chaos_InvertSteering(const struct GamepadBuffer *pad)
 	return 2 * center - pad->stickLX;
 }
 
+static void Chaos_DisableBraking(u32 *brake, int *rightY, int *leftY)
+{
+	*brake = 0;
+	if (*rightY > CHAOS_STICK_CENTER)
+	{
+		*rightY = CHAOS_STICK_CENTER;
+	}
+	if (*leftY > CHAOS_STICK_CENTER)
+	{
+		*leftY = CHAOS_STICK_CENTER;
+	}
+}
+
 static u32 Chaos_PreventHopping(struct Driver *driver, u32 actions)
 {
 	driver->jump_TenBuffer = 0;

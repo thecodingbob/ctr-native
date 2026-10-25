@@ -3,6 +3,7 @@
 Source: [issue #90](https://github.com/thecodingbob/ctr-native/issues/90).
 Status: block A implemented with focused test coverage. Later technical checks
 remain marked with placeholders; in-game visual validation is pending.
+Current effect: Sabotage (block B), implemented for review; in-game validation pending.
 
 Existing contracts: [implementation guide](CHAOS_IMPLEMENTATION.md).
 Existing gameplay: [player guide](features/CHAOS.md).
@@ -147,6 +148,7 @@ before applying its own behavior.
 
 - [x] Shared instant lifecycle/eligibility + A: items and reserves.
 - [ ] B: driving, turbo, and jumping.
+  - [x] Sabotage: implementation and focused tests; user review/in-game checks pending.
 - [ ] C: size, camera, and bots.
 - [ ] D: characters and movement.
 - [ ] E: time-manipulation prototypes and implementation.
@@ -160,6 +162,16 @@ implement together. Add shared infrastructure only as required by the current ef
 
 For each effect, verify its lifecycle/conflict rules and the relevant edge cases
 listed above. Add reproducible tracks/quick states and results here:
+
+Sabotage: appended as effect ID 22. The driver-local brake hook suppresses Square
+and the reverse/braking halves of both vertical sticks before reserve loss and
+gas/brake resolution. Forward input remains intact; the shared gamepad state is
+unchanged. Focused checks cover grounded/airborne/reversing states, human/bot and
+finished-driver scope, forward analog input and expiry. Validate in game with
+`chaos_quick_race`: Square alone, Square + throttle, airborne braking, left-stick
+reverse and right-stick braking/reverse. Review this effect before starting This Is Fire.
+Validation: game build and the five focused catalogue, runtime, effects, save and
+developer-setup suites passed.
 
 Block A: focused runtime tests cover full timed capacity, instant notices without
 docking, repeat rewards, notice overflow, pause/reset/resident restore, inventory

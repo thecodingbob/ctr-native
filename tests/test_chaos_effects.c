@@ -1,20 +1,28 @@
 #include <shared/chaos_fixture.h>
 #include <game/Vehicle/VehPhysProc_Input.c>
 
+static u32 PreparedDriver(struct Driver *driver, const struct GamepadBuffer *pad, int *steering, u32 actions)
+{
+	u32 brake = pad->buttonsHeldCurrFrame & BTN_SQUARE_one;
+	int rightY = pad->stickRY;
+	int leftY = pad->stickLY;
+	return Chaos_ApplyDriver(driver, pad, steering, &brake, &rightY, &leftY, actions);
+}
+
 static int PreparedSteering(struct Driver *driver, const struct GamepadBuffer *pad)
 {
 	int steering = pad->stickLX;
-	Chaos_ApplyDriver(driver, pad, &steering, driver->actionsFlagSet);
+	PreparedDriver(driver, pad, &steering, driver->actionsFlagSet);
 	return steering;
 }
 
 static u32 PreparedJump(struct Driver *driver, u32 tapped, u32 held, int rainCloudEffect, u32 actions)
 {
-	const struct GamepadBuffer pad = {.buttonsTapped = tapped, .buttonsHeldCurrFrame = held};
+	struct GamepadBuffer pad = {.buttonsTapped = tapped, .buttonsHeldCurrFrame = held};
 	driver->actionsFlagSet = actions;
 	actions = VehPhysProc_JumpInput(driver, tapped, held, rainCloudEffect, actions);
 	int steering = pad.stickLX;
-	return Chaos_ApplyDriver(driver, &pad, &steering, actions);
+	return PreparedDriver(driver, &pad, &steering, actions);
 }
 
 static void TestSteeringAndDriverScope(void)
@@ -66,6 +74,43 @@ static void EnableWobble(void)
 	sdata->chaosSettings.enabledCount++;
 	// Cardinal samples exercise the game's real sine lookup and quadrant handling.
 	data.trigApprox[0] = (struct TrigTable){ .sin = 0, .cos = FP(1.0) };
+}
+
+static void TestSabotage(void)
+{
+	CTR_TEST_SECTION("Sabotage filters local brake inputs and preserves controller state");
+	EnableInputEffects();
+	sdata->chaosSettings.trigger = CHAOS_TRIGGER_EXTERNAL;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_SABOTAGE] = true;
+	sdata->chaosSettings.enabledCount++;
+	struct Driver driver = {.driverID = 0};
+	const struct GamepadBuffer pad = {
+		.buttonsHeldCurrFrame = BTN_SQUARE_one | BTN_CROSS_one,
+		.buttonsTapped = BTN_SQUARE_one,
+		.buttonsHeldPrevFrame = BTN_SQUARE_one,
+		.stickLX = CHAOS_STICK_CENTER,
+		.stickRY = 255,
+		.stickLY = 255,
+	};
+	const struct GamepadBuffer original = pad;
+	u32 brake = BTN_SQUARE_one;
+	int rightY = pad.stickRY;
+	int leftY = pad.stickLY;
+	int steering = pad.stickLX;
+	Chaos_ApplyDriver(&driver, &pad, &steering, &brake, &rightY, &leftY, 0);
+	CTR_TEST_CHECK(brake == BTN_SQUARE_one && rightY == 255 && leftY == 255, "inactive Sabotage preserves braking and reverse");
+	Chaos_Activate(CHAOS_EFFECT_SABOTAGE, 1000);
+	Chaos_ApplyDriver(&driver, &pad, &steering, &brake, &rightY, &leftY, 0);
+	CTR_TEST_CHECK(brake == 0 && rightY == CHAOS_STICK_CENTER && leftY == CHAOS_STICK_CENTER, "active Sabotage neutralizes digital and analog brake inputs");
+	CTR_TEST_CHECK(memcmp(&pad, &original, sizeof(pad)) == 0, "filtering leaves shared controller input and button history intact");
+	rightY = leftY = 0;
+	Chaos_ApplyDriver(&driver, &pad, &steering, &brake, &rightY, &leftY, 0);
+	CTR_TEST_CHECK(rightY == 0 && leftY == 0, "forward analog input remains available");
+	Tick(1000);
+	brake = BTN_SQUARE_one;
+	rightY = leftY = 255;
+	Chaos_ApplyDriver(&driver, &pad, &steering, &brake, &rightY, &leftY, 0);
+	CTR_TEST_CHECK(brake == BTN_SQUARE_one && rightY == 255 && leftY == 255, "expiry restores ordinary braking and reverse");
 }
 
 static void TestWobbleSteering(void)
@@ -444,12 +489,12 @@ static void TestNoReserves(void)
 	};
 	struct GamepadBuffer pad = {.stickLX = 128};
 	int steering = pad.stickLX;
-	Chaos_ApplyDriver(&human, &pad, &steering, human.actionsFlagSet);
+	PreparedDriver(&human, &pad, &steering, human.actionsFlagSet);
 	CTR_TEST_CHECK_EQ(human.reserves, 2000, "inactive Chaos leaves accumulated reserves alone");
 	CTR_TEST_CHECK_EQ(human.turbo_outsideTimer, 1000, "inactive Chaos leaves the outside turbo timer alone");
 	Chaos_Activate(CHAOS_EFFECT_NO_RESERVES, 2000);
 	const u32 actions = ACTION_JUMP_BUTTON_HELD | ACTION_MASK_WEAPON;
-	CTR_TEST_CHECK_EQ(Chaos_ApplyDriver(&human, &pad, &steering, actions), actions,
+	CTR_TEST_CHECK_EQ(PreparedDriver(&human, &pad, &steering, actions), actions,
 	                  "No Reserves preserves manual hops and mask input flags");
 	CTR_TEST_CHECK_EQ(human.reserves, 0, "the existing driver hook clears accumulated reserves before physics consumers");
 	CTR_TEST_CHECK_EQ(human.turbo_outsideTimer, 0, "the existing driver hook also clears outside turbo bookkeeping");
@@ -467,23 +512,23 @@ static void TestNoReserves(void)
 		human.turbo_outsideTimer = 100;
 		VehFire_Increment(&human, 1000, types[i], 100);
 		CTR_TEST_CHECK(human.reserves > 0, "retail boost grants can supply fuel until the next driver application");
-		Chaos_ApplyDriver(&human, &pad, &steering, human.actionsFlagSet);
+		PreparedDriver(&human, &pad, &steering, human.actionsFlagSet);
 		CTR_TEST_CHECK_EQ(human.reserves, 0, "the next driver application clears newly granted reserves");
 		CTR_TEST_CHECK_EQ(human.turbo_outsideTimer, 0, "the next driver application clears outside turbo time too");
 		CTR_TEST_CHECK((human.actionsFlagSet & ACTION_NEW_BOOST) != 0, "retail boost event flags remain available for presentation");
 	}
 	struct Driver partner = {.driverID = 1, .reserves = 500, .turbo_outsideTimer = 200};
 	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT, .reserves = 700, .turbo_outsideTimer = 300};
-	Chaos_ApplyDriver(&partner, &pad, &steering, partner.actionsFlagSet);
-	Chaos_ApplyDriver(&bot, &pad, &steering, bot.actionsFlagSet);
-	Chaos_ApplyDriver(NULL, &pad, &steering, 0);
+	PreparedDriver(&partner, &pad, &steering, partner.actionsFlagSet);
+	PreparedDriver(&bot, &pad, &steering, bot.actionsFlagSet);
+	PreparedDriver(NULL, &pad, &steering, 0);
 	CTR_TEST_CHECK_EQ(partner.reserves, 0, "No Reserves also applies to the co-op partner");
 	CTR_TEST_CHECK_EQ(partner.turbo_outsideTimer, 0, "the partner's two fuel fields are cleared together");
 	CTR_TEST_CHECK_EQ(bot.reserves, 700, "No Reserves preserves bot reserves");
 	CTR_TEST_CHECK_EQ(bot.turbo_outsideTimer, 300, "No Reserves preserves bot outside turbo time");
 	human.actionsFlagSet |= ACTION_RACE_FINISHED;
 	VehFire_Increment(&human, 1000, TURBO_PAD | FREEZE_RESERVES_ON_TURBO_PAD, 100);
-	Chaos_ApplyDriver(&human, &pad, &steering, human.actionsFlagSet);
+	PreparedDriver(&human, &pad, &steering, human.actionsFlagSet);
 	CTR_TEST_CHECK_EQ(human.reserves, 1000, "finished humans can receive ordinary retail boosts");
 	CTR_TEST_CHECK_EQ(human.turbo_outsideTimer, 1000, "finished humans retain outside turbo time");
 	human.actionsFlagSet &= ~ACTION_RACE_FINISHED;
@@ -498,25 +543,25 @@ static void TestNoReserves(void)
 	Chaos_Activate(CHAOS_EFFECT_NO_RESERVES, 1000);
 	Tick(500);
 	VehFire_Increment(&human, 1000, POWER_SLIDE_HANG_TIME, 100);
-	Chaos_ApplyDriver(&human, &pad, &steering, human.actionsFlagSet);
+	PreparedDriver(&human, &pad, &steering, human.actionsFlagSet);
 	CTR_TEST_CHECK_EQ(human.reserves, 0, "the refreshed restriction still clears reserves before its own expiry");
 	Tick(500);
 	CTR_TEST_CHECK_EQ(human.reserves, 0, "final expiry does not restore reserves erased earlier");
 	VehFire_Increment(&human, 1000, POWER_SLIDE_HANG_TIME, 100);
-	Chaos_ApplyDriver(&human, &pad, &steering, human.actionsFlagSet);
+	PreparedDriver(&human, &pad, &steering, human.actionsFlagSet);
 	CTR_TEST_CHECK_EQ(human.reserves, 1000, "new reserves can accumulate normally after final expiry");
 	sdata->chaosRuntime = saved;
-	Chaos_ApplyDriver(&human, &pad, &steering, human.actionsFlagSet);
+	PreparedDriver(&human, &pad, &steering, human.actionsFlagSet);
 	CTR_TEST_CHECK_EQ(human.reserves, 0, "resident restoration restores the restriction without a separate driver snapshot");
 	Chaos_Reset();
 	VehFire_Increment(&human, 1000, TURBO_PAD | FREEZE_RESERVES_ON_TURBO_PAD, 100);
-	Chaos_ApplyDriver(&human, &pad, &steering, human.actionsFlagSet);
+	PreparedDriver(&human, &pad, &steering, human.actionsFlagSet);
 	CTR_TEST_CHECK_EQ(human.reserves, 1000, "reset immediately restores normal boost grants");
 	CTR_TEST_CHECK_EQ(human.turbo_outsideTimer, 1000, "reset also restores ordinary outside turbo bookkeeping");
 	Chaos_BeginRace(&s_tracker);
 	Chaos_Activate(CHAOS_EFFECT_NO_RESERVES, 1000);
 	s_tracker.gameMode1 |= ADVENTURE_ARENA;
-	Chaos_ApplyDriver(&human, &pad, &steering, human.actionsFlagSet);
+	PreparedDriver(&human, &pad, &steering, human.actionsFlagSet);
 	CTR_TEST_CHECK_EQ(human.reserves, 1000, "Adventure hubs do not receive reserve restrictions");
 }
 
@@ -644,7 +689,7 @@ static void TestNoItems(void)
 static void TickAndApplyDrivers(int elapsedMS)
 {
 	Tick(elapsedMS);
-	const struct GamepadBuffer pad = {.stickLX = 128};
+	struct GamepadBuffer pad = {.stickLX = 128};
 	for (size_t i = 0; i < len(s_tracker.drivers); i++)
 	{
 		struct Driver *driver = s_tracker.drivers[i];
@@ -656,7 +701,7 @@ static void TickAndApplyDrivers(int elapsedMS)
 				driver->clockReceive = driver->clockReceive > elapsedMS ? driver->clockReceive - elapsedMS : 0;
 			}
 			int steering = pad.stickLX;
-			driver->actionsFlagSet = Chaos_ApplyDriver(driver, &pad, &steering, driver->actionsFlagSet);
+			driver->actionsFlagSet = PreparedDriver(driver, &pad, &steering, driver->actionsFlagSet);
 		}
 	}
 }
@@ -1118,7 +1163,7 @@ static void TestClockCurse(void)
 	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT, .clockReceive = 3000};
 	s_tracker.drivers[0] = &human;
 	s_tracker.drivers[1] = &partner;
-	const struct GamepadBuffer pad = {.stickLX = 128};
+	struct GamepadBuffer pad = {.stickLX = 128};
 	int steering = pad.stickLX;
 	TickAndApplyDrivers(32);
 	CTR_TEST_CHECK_EQ(human.clockReceive, 0, "inactive Clock Curse does not introduce a received clock");
@@ -1185,11 +1230,11 @@ static void TestClockCurse(void)
 	CTR_TEST_SECTION("Clock Curse respects race gates and driver scope without a separate baseline snapshot");
 	Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 5000);
 	s_tracker.elapsedTimeMS = 32;
-	Chaos_ApplyDriver(&bot, &pad, &steering, bot.actionsFlagSet);
+	PreparedDriver(&bot, &pad, &steering, bot.actionsFlagSet);
 	CTR_TEST_CHECK_EQ(bot.clockReceive, 3000, "Clock Curse does not change bot clocks");
 	human.clockReceive = 0;
 	human.actionsFlagSet |= ACTION_RACE_FINISHED;
-	Chaos_ApplyDriver(&human, &pad, &steering, human.actionsFlagSet);
+	PreparedDriver(&human, &pad, &steering, human.actionsFlagSet);
 	CTR_TEST_CHECK_EQ(human.clockReceive, 0, "finished humans do not receive the curse");
 	human.actionsFlagSet &= ~ACTION_RACE_FINISHED;
 	s_tracker.gameMode1 |= PAUSE_1;
@@ -1310,7 +1355,7 @@ static void TestDriverApplication(void)
 		.forcedJumpType = FORCED_JUMP_HIGH,
 	};
 	struct Driver partner = {.driverID = 1};
-	const struct GamepadBuffer pad = {
+	struct GamepadBuffer pad = {
 		.stickLX = 32,
 		.buttonsHeldCurrFrame = BTN_R1 | BTN_CROSS_one,
 		.buttonsTapped = BTN_L1 | BTN_CIRCLE,
@@ -1323,7 +1368,7 @@ static void TestDriverApplication(void)
 	u32 actions = VehPhysProc_JumpInput(&driver, pad.buttonsTapped, pad.buttonsHeldCurrFrame,
 	                                   RAIN_CLOUD_EFFECT_NONE, driver.actionsFlagSet);
 	CTR_TEST_CHECK((actions & ACTION_JUMP_BUTTON_HELD) != 0, "retail input resolves its hop latch before Chaos application");
-	actions = Chaos_ApplyDriver(&driver, &pad, &steering, actions);
+	actions = PreparedDriver(&driver, &pad, &steering, actions);
 	CTR_TEST_CHECK_EQ(steering, 224, "steering and No Hopping are applied in the same pass");
 	CTR_TEST_CHECK_EQ(driver.kartState, KS_DRIFTING, "an existing drift continues without a forced state transition");
 	CTR_TEST_CHECK_EQ(actions, ACTION_TOUCH_GROUND, "application removes the resolved jump latch without clearing other actions");
@@ -1335,15 +1380,15 @@ static void TestDriverApplication(void)
 	for (int frame = 0; frame < 3; frame++)
 	{
 		actions = VehPhysProc_JumpInput(&driver, 0, BTN_R1, RAIN_CLOUD_EFFECT_NONE, actions);
-		actions = Chaos_ApplyDriver(&driver, &pad, &steering, actions);
+		actions = PreparedDriver(&driver, &pad, &steering, actions);
 		CTR_TEST_CHECK_EQ(actions, ACTION_TOUCH_GROUND, "held shoulders cannot retain a resolved hop on later frames");
 		CTR_TEST_CHECK_EQ(driver.jump_TenBuffer, 0, "held shoulders cannot retain a jump buffer on later frames");
 	}
-	const struct GamepadBuffer partnerPad = {.stickLX = 200, .buttonsHeldCurrFrame = BTN_SQUARE_one};
+	struct GamepadBuffer partnerPad = {.stickLX = 200, .buttonsHeldCurrFrame = BTN_SQUARE_one};
 	CTR_TEST_CHECK_EQ(PreparedSteering(&partner, &partnerPad), 56, "each player resolves their own steering baseline");
 	CTR_TEST_CHECK_EQ(steering, 224, "applying player two preserves player one's local steering");
 	driver.kartState = KS_CRASHING;
-	Chaos_ApplyDriver(&driver, &pad, &steering, actions);
+	PreparedDriver(&driver, &pad, &steering, actions);
 	CTR_TEST_CHECK_EQ(driver.kartState, KS_CRASHING, "No Hopping does not replace damage states with normal driving");
 	Tick(1000);
 	CTR_TEST_CHECK_EQ(PreparedSteering(&driver, &pad), pad.stickLX, "expiry uses live steering without restoring a snapshot");
@@ -1587,6 +1632,7 @@ static void TestReserveGifts(void)
 int main(void)
 {
 	TestSteeringAndDriverScope();
+	TestSabotage();
 	TestWobbleSteering();
 	TestGravityEffects();
 	TestSpeedEffects();
