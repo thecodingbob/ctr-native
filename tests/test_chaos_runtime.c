@@ -193,7 +193,11 @@ static void TestResetAndInvalidSettings(void)
 {
 	CTR_TEST_SECTION("race reset preserves file settings and handles empty or invalid timed settings");
 	SetupRace(CHAOS_TRIGGER_INTERVAL);
-	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 10000);
+	const u32 startupSeed = 0x13579bdf;
+	Chaos_Init(startupSeed);
+	Tick(5000);
+	CTR_TEST_CHECK(sdata->chaosRng != startupSeed, "scheduled choices advance the generator initialized at startup");
+	CTR_TEST_CHECK_EQ(sdata->randomNumber, 0, "Chaos initialization and choices leave retail RNG untouched");
 	const struct ChaosSettings settings = sdata->chaosSettings;
 	const u32 rng = sdata->chaosRng;
 	Chaos_BeginRace(&s_tracker);

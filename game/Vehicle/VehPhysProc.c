@@ -1,5 +1,6 @@
 #include "VehCommon.h"
 #include "VehPhysProc_Input.c"
+#include "VehPhysProc_Items.c"
 
 // budget: 4624
 // curr: 4380
@@ -540,7 +541,8 @@ hazardDone:
 
 		// Select a random weapon for driver.
 		VehPhysGeneral_SetHeldItem(driver);
-		VehPhysGeneral_PlayItemAcquireSound(driver);
+
+		VehPhysProc_PlayItemAcquireSound(driver);
 	}
 itemRollDone:
 	CTR_PSX_KEEP_VALUE(normalVecIndex);
@@ -556,17 +558,7 @@ itemRollDone:
 		// if Item is about to be gone and Number of Items = 0
 		if ((normalVecIndex == 1) && (driver->numHeldItems == 0))
 		{
-			if (
-			    // multiplayer game, not battle, weapon was 3 missiles
-			    (2 < GAME_TRACKER->numPlyrCurrGame) && ((GAME_TRACKER->gameMode1 & BATTLE_MODE) == 0) && (driver->heldItemID == HELD_ITEM_MISSILE_3X) &&
-			    (GAME_TRACKER->numPlayersWith3Missiles > 0))
-			{
-				// keep count
-				GAME_TRACKER->numPlayersWith3Missiles--;
-			}
-
-			// take away weapon
-			driver->heldItemID = HELD_ITEM_NONE;
+			VehPhysProc_RemoveHeldItem(driver);
 		}
 
 		driver->noItemTimer = (s16)CTR_MipsSubLo(normalVecIndex, 1);

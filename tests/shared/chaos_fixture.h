@@ -95,6 +95,7 @@ enum { SOUND_CLOCK = 0x44 };
 #include <game/Vehicle/VehPhysForce.c>
 #include <game/Vehicle/VehPickState.c>
 #include <game/Vehicle/VehPhysGeneral.c>
+#include <game/Vehicle/VehPhysProc_Items.c>
 // Keep the damage-path guard double while exercising real Wumpa crediting.
 #define RB_Player_KillPlayer RB_Player_KillPlayer_Unused
 #include <game/231/RB_Player.c>

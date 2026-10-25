@@ -1454,13 +1454,9 @@ enum ItemSet
 	ITEMSET_BOSS_LOSSES_REPLACE_MASK_CLOCK_WARPBALL = 3,
 	ITEMSET_BOSS_LOSSES_REPLACE_MASK_CLOCK = 4,
 	ITEMSET_BOSS_LOSSES_REPLACE_CLOCK = 5,
-	ITEMSET_THREE_MISSILES_MIN_PLAYERS = 3,
-	ITEMSET_THREE_MISSILES_HELD_LIMIT = 2,
 	ITEMSET_ACQUIRED_NORMAL_FX = 0x5e,
 	ITEMSET_ACQUIRED_JUICED_FX = 0x41,
 };
-
-static void VehPhysGeneral_FinalizeHeldItem(struct Driver *driver, s8 maskChoice);
 
 // Itemset infographic (outdated):
 // https://discord.com/channels/330945093416779787/550106151887568906/734368526294450267
@@ -1472,7 +1468,6 @@ void VehPhysGeneral_SetHeldItem(struct Driver *driver)
 	register int rank CTR_PSX_REGISTER("$3");
 	u32 rng;
 	register int selectedItem CTR_PSX_REGISTER("$2");
-	register struct GameTracker *gGT CTR_PSX_REGISTER("$4");
 
 	// NOTE(aalhendi): Retail classifies the field before choosing the mode-specific item set.
 	mode = GAME_TRACKER->numPlyrCurrGame + GAME_TRACKER->numBotsNextGame;
@@ -1696,140 +1691,15 @@ void VehPhysGeneral_SetHeldItem(struct Driver *driver)
 		driver->heldItemID = HELD_ITEM_TURBO;
 	}
 
-	VehPhysGeneral_FinalizeHeldItem(driver, -1);
-}
-
-void VehPhysGeneral_ClearHeldItem(struct Driver *driver)
-{
-	struct GameTracker *gGT = GAME_TRACKER;
-	const bool hadOrb = driver->heldItemID == HELD_ITEM_WARPBALL;
-	if (driver->heldItemID == HELD_ITEM_MISSILE_3X && (gGT->gameMode1 & BATTLE_MODE) == 0 &&
-	    gGT->numPlyrCurrGame >= ITEMSET_THREE_MISSILES_MIN_PLAYERS &&
-	    gGT->numPlayersWith3Missiles > 0)
-	{
-		gGT->numPlayersWith3Missiles--;
-	}
-	driver->heldItemID = HELD_ITEM_NONE;
-	driver->numHeldItems = 0;
-	driver->itemRollTimer = 0;
-	driver->noItemTimer = 0;
-	driver->maskIsAku = -1;
-	driver->actionsFlagSet &= ~ACTION_WEAPON_FIRE_REQUEST;
-	if (!hadOrb)
-	{
-		return;
-	}
-	// A released inventory orb must not release another holder or a deployed orb.
-	for (int i = 0; i < (int)len(gGT->drivers); i++)
-	{
-		if (gGT->drivers[i] != NULL && gGT->drivers[i]->heldItemID == HELD_ITEM_WARPBALL)
-		{
-			return;
-		}
-	}
-	for (const struct Thread *thread = gGT->threadBuckets[TRACKING].thread; thread != NULL; thread = thread->siblingThread)
-	{
-		if (thread->modelIndex == DYNAMIC_WARPBALL && (thread->flags & THREAD_FLAG_DEAD) == 0)
-		{
-			return;
-		}
-	}
-	gGT->gameMode1 &= ~WARPBALL_HELD;
-}
-
-// Use the retail race pool without its position-dependent duplicate weights.
-void VehPhysGeneral_GiveRandomItem(struct Driver *driver, u32 random)
-{
-	VehPhysGeneral_ClearHeldItem(driver);
-	u8 pool[HELD_ITEM_MISSILE_3X + 1];
-	bool seen[HELD_ITEM_MISSILE_3X + 1] = {0};
-	int count = 0;
-	for (int i = 0; i < (int)len(VEH_ITEM_SET_RACE2); i++)
-	{
-		const u8 item = VEH_ITEM_SET_RACE2[i];
-		if (item > HELD_ITEM_MISSILE_3X || seen[item] || item == HELD_ITEM_SPRING ||
-		    (item == HELD_ITEM_WARPBALL && (GAME_TRACKER->gameMode1 & WARPBALL_HELD) != 0))
-		{
-			continue;
-		}
-		seen[item] = true;
-		pool[count++] = item;
-	}
-	driver->heldItemID = count > 0 ? pool[random % count] : HELD_ITEM_TURBO;
-	const s8 maskChoice = g_config.maskMode == MASK_MODE_RANDOM ? (s8)((random >> 16) & 1) : -1;
-	VehPhysGeneral_FinalizeHeldItem(driver, maskChoice);
-	VehPhysGeneral_PlayItemAcquireSound(driver);
-}
-
-// Complete either the normal roulette result or an explicitly assigned item.
-// A supplied mask choice lets callers use their own RNG without changing retail rolls.
-static void VehPhysGeneral_FinalizeHeldItem(struct Driver *driver, s8 maskChoice)
-{
-	struct GameTracker *gGT;
-	// Make sure only 1 Warpball is instanced at once.
-	if (driver->heldItemID == HELD_ITEM_WARPBALL)
-	{
-		VEH_LOAD_GAME_TRACKER(gGT);
-
-		// if somebody has warpball already, then give 3 missiles
-		if ((gGT->gameMode1 & WARPBALL_HELD) != 0)
-		{
-			driver->heldItemID = HELD_ITEM_MISSILE_3X;
-		}
-
-		// if nobody has warpball, then set flag that somebody has it
-		else
-		{
-			gGT->gameMode1 |= WARPBALL_HELD;
-		}
-	}
-
-	VEH_LOAD_GAME_TRACKER(gGT);
-	if (
-	    // if three or more players
-	    gGT->numPlyrCurrGame >= ITEMSET_THREE_MISSILES_MIN_PLAYERS &&
-
-	    // if not in battle mode
-	    ((gGT->gameMode1 & BATTLE_MODE) == 0) &&
-
-	    // if you got 3 missiles
-	    driver->heldItemID == HELD_ITEM_MISSILE_3X)
-	{
-		// if less than 2 drivers have 3 missiles, then increase number of drivers that have it
-		if (gGT->numPlayersWith3Missiles < ITEMSET_THREE_MISSILES_HELD_LIMIT)
-		{
-			gGT->numPlayersWith3Missiles++;
-		}
-
-		// if 2 drivers already have 3 missiles, now you have 1 missile
-		else
-		{
-			driver->heldItemID = HELD_ITEM_MISSILE_1X;
-		}
-	}
-
-	// Set number of held items
-	if ((u32)driver->heldItemID - HELD_ITEM_BOMB_3X < (HELD_ITEM_MISSILE_3X - HELD_ITEM_BOMB_3X + 1))
-	{
-		driver->numHeldItems = HELD_ITEM_STACK_COUNT;
-	}
-
+	VehPhysProc_AssignHeldItem(driver, driver->heldItemID);
 	if (driver->heldItemID == HELD_ITEM_MASK)
 	{
-		driver->maskIsAku = maskChoice >= 0 ? maskChoice : (s8)VehPickupItem_ApplyMaskMode(driver);
+		driver->maskIsAku = (s8)VehPickupItem_ApplyMaskMode(driver);
 	}
 	else
 	{
 		driver->maskIsAku = -1;
 	}
-
-	return;
-}
-
-void VehPhysGeneral_PlayItemAcquireSound(const struct Driver *driver)
-{
-	const bool juiced = driver->numWumpas >= DRIVER_WUMPA_JUICED_COUNT;
-	OtherFX_Play(juiced ? ITEMSET_ACQUIRED_JUICED_FX : ITEMSET_ACQUIRED_NORMAL_FX, juiced);
 }
 
 enum

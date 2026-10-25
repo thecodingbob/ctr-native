@@ -17,13 +17,14 @@ technical investigation; `[NOTES: ...]` is space for findings.
 - Instant one-shot effects show only the activation notification and do not
   dock in the active-effects HUD, even when their result persists independently
   (for example, the orb launched by You've Got Mail).
-- Add bots-only and individually selected targets; filter random selection by
-  effect eligibility.
+- Add bots-only and individually selected targets; introduce effect-eligibility
+  filtering when those targets or event-specific restrictions require it.
 - Extend conflict rules for size, reserves, jumping, steering, and time effects.
 
-Zero duration is invalid. Reject inapplicable external requests. At race start,
-publish only enabled commands applicable to the current event; still validate
-requests at execution time.
+Zero duration is invalid. Current effects draw directly from enabled settings;
+recipient checks belong to application, and race end stops Chaos. At race start,
+publish enabled commands only in eligible races; validate requests at execution
+time. Add per-effect event/target filtering when such restrictions are introduced.
 
 ## A. Items and Reserves
 
@@ -152,12 +153,17 @@ before applying its own behavior.
 
 Scope: all 24 effects, in the A → B → C → D → E order above.
 
-For each block, verify its new lifecycle/conflict rules and the edge cases listed
-above. Add reproducible tracks/quick states and results here:
+Implement effects one at a time, following their listed order within each block.
+Complete implementation, focused validation and user review of the current effect
+before starting the next. Blocks group related effects; they are not batches to
+implement together. Add shared infrastructure only as required by the current effect.
+
+For each effect, verify its lifecycle/conflict rules and the relevant edge cases
+listed above. Add reproducible tracks/quick states and results here:
 
 Block A: focused runtime tests cover full timed capacity, instant notices without
 docking, repeat rewards, notice overflow, pause/reset/resident restore, inventory
-replacement, deployed/held orb ownership, event eligibility, reserve saturation,
+replacement, deployed/held orb ownership, event eligibility,
 conflicts and real damage/boost paths. Visual checks of renewed mask/shield and
 1P/2P announcements remain to be performed in game using `chaos_quick_race`.
 
@@ -165,12 +171,15 @@ Validation: the block-A game build and original 24 CTest suites passed.
 After splitting the suites, `cmake --build build --target tests --parallel 4`
 and `ctest --test-dir build --output-on-failure -R "^test_"` passed all 25
 asset-free suites. The checks are now split between `test_chaos_runtime`,
-`test_chaos_effects` and `test_warpball` (3,193 total), including
+`test_chaos_effects` and `test_warpball` (3,194 total), including
 normal/juiced item sounds, gradual Wumpa reward crediting,
-the ten-second reserve reward and saturation of subsequent earned reserves.
-Review regressions also cover distinct entries from the retail item pool,
-item grants/publication in relic and crystal events, and driver-local
-`SCRUB_FLAG_KEEP_RESERVES` without changing shared surface metadata.
-Orb regressions cover solo/co-op crystal launches without checkpoint paths,
-target exclusions, particle-free teardown, ownership release and ordinary
-checkpoint-based race launch.
+the ten-second reserve reward and subsequent earned reserves.
+Review regressions also cover the explicit list of distinct retail race items,
+item grants/publication in relic and crystal events. Wall-contact protection
+now checks the recipient directly in `COLL_MOVED_ScrubImpact`, preserving both
+reserves and `turbo_outsideTimer`; surface lookup uses the original shared metadata.
+Reserve Injection writes its one-off reward directly. Ordinary reserve grants
+retain their original behavior; only reserve losses use the Chaos freeze hook.
+Orb regressions cover immediate teardown on solo/co-op crystal launches and
+battle arenas, missing/allocated particle cleanup, ownership release and
+ordinary checkpoint-based race launch.

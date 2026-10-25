@@ -11,35 +11,9 @@ enum
 static bool Chaos_TargetsDriver(ChaosEffectId effect, const struct Driver *driver)
 {
 	const ChaosEffectDef *def = ChaosEffect_Def(effect);
-	return driver != NULL && def != NULL &&
+	return driver != NULL &&
 	       (driver->actionsFlagSet & ACTION_RACE_FINISHED) == 0 &&
 	       ChaosEffect_AppliesToDriver(def->scope, driver->driverID, sdata->gGT->numPlyrCurrGame);
-}
-
-static bool Chaos_EffectIsEligible(ChaosEffectId effect)
-{
-	if (ChaosEffect_Def(effect) == NULL)
-	{
-		return false;
-	}
-	for (int i = 0; i < (int)len(sdata->gGT->drivers); i++)
-	{
-		if (Chaos_TargetsDriver(effect, sdata->gGT->drivers[i]))
-		{
-			return true;
-		}
-	}
-	return false;
-}
-
-static ChaosEffectId Chaos_PickEligibleEffect(void)
-{
-	bool eligible[CHAOS_EFFECT_COUNT];
-	for (int id = 0; id < CHAOS_EFFECT_COUNT; id++)
-	{
-		eligible[id] = sdata->chaosSettings.effects[id] && Chaos_EffectIsEligible((ChaosEffectId)id);
-	}
-	return ChaosEffect_Pick(eligible, ChaosEffect_CountEnabled(eligible), &sdata->chaosRng);
 }
 
 static s32 Chaos_NextTriggerGap(void)
@@ -65,11 +39,24 @@ bool Chaos_IsRunning(const struct GameTracker *gGT)
 	                                gGT->trafficLightsTimer < 1, CHAOS_GATE_ADVENTURE_ONLY);
 }
 
+void Chaos_Init(u32 seed)
+{
+	// Seed once per launch; checkpoints restore the exact captured RNG state.
+	sdata->chaosRng = seed;
+}
+
 void Chaos_Reset(void)
 {
 	if (sdata->chaosRuntime.raceInitialized)
 	{
-		Chaos_SetKartScale(CHAOS_KART_SCALE_NORMAL);
+		for (int i = 0; i < (int)len(sdata->gGT->drivers); i++)
+		{
+			struct Driver *driver = sdata->gGT->drivers[i];
+			if (driver != NULL)
+			{
+				Chaos_SetKartScale(CHAOS_KART_SCALE_NORMAL, driver);
+			}
+		}
 	}
 	memset(&sdata->chaosRuntime, 0, sizeof(sdata->chaosRuntime));
 }
@@ -91,9 +78,16 @@ void Chaos_BeginRace(struct GameTracker *gGT)
 
 static void Chaos_OnEffectDeactivated(ChaosEffectId effect)
 {
-	if (effect == CHAOS_EFFECT_GIANT_KARTS)
+	for (int i = 0; i < sdata->gGT->numPlyrCurrGame && i < (int) len(sdata->gGT->drivers); i++)
 	{
-		Chaos_SetKartScale(CHAOS_KART_SCALE_NORMAL);
+		struct Driver *driver = sdata->gGT->drivers[i];
+		if (driver != NULL)
+		{
+			if (effect == CHAOS_EFFECT_GIANT_KARTS)
+			{
+				Chaos_SetKartScale(CHAOS_KART_SCALE_NORMAL, driver);
+			}
+		}
 	}
 }
 
@@ -110,37 +104,24 @@ static void Chaos_RemoveActivation(int index)
 static void Chaos_RemoveReplacedEffects(ChaosEffectId effect)
 {
 	ChaosEffectId replaced = CHAOS_EFFECT_NONE;
-	if (effect == CHAOS_EFFECT_INVERTED_STEERING)
+	static const ChaosEffectId opposites[][2] = {
+		{CHAOS_EFFECT_INVERTED_STEERING, CHAOS_EFFECT_WOBBLE_STEERING},
+		{CHAOS_EFFECT_LOW_GRAVITY, CHAOS_EFFECT_HEAVY_KARTS},
+		{CHAOS_EFFECT_SPEED_CAPPED, CHAOS_EFFECT_SUPER_SPEED},
+		{CHAOS_EFFECT_NO_RESERVES, CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL},
+	};
+	for (int i = 0; i < (int)len(opposites); i++)
 	{
-		replaced = CHAOS_EFFECT_WOBBLE_STEERING;
+		if (effect == opposites[i][0] || effect == opposites[i][1])
+		{
+			replaced = effect == opposites[i][0] ? opposites[i][1] : opposites[i][0];
+			break;
+		}
 	}
-	else if (effect == CHAOS_EFFECT_WOBBLE_STEERING)
-	{
-		replaced = CHAOS_EFFECT_INVERTED_STEERING;
-	}
-	else if (effect == CHAOS_EFFECT_LOW_GRAVITY)
-	{
-		replaced = CHAOS_EFFECT_HEAVY_KARTS;
-	}
-	else if (effect == CHAOS_EFFECT_HEAVY_KARTS)
-	{
-		replaced = CHAOS_EFFECT_LOW_GRAVITY;
-	}
-	else if (effect == CHAOS_EFFECT_SPEED_CAPPED)
-	{
-		replaced = CHAOS_EFFECT_SUPER_SPEED;
-	}
-	else if (effect == CHAOS_EFFECT_SUPER_SPEED)
-	{
-		replaced = CHAOS_EFFECT_SPEED_CAPPED;
-	}
-	else if (effect == CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL || effect == CHAOS_EFFECT_RESERVE_INJECTION)
+	// Instant gifts remove a restriction; the reverse is not a conflict.
+	if (effect == CHAOS_EFFECT_RESERVE_INJECTION)
 	{
 		replaced = CHAOS_EFFECT_NO_RESERVES;
-	}
-	else if (effect == CHAOS_EFFECT_NO_RESERVES)
-	{
-		replaced = CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL;
 	}
 	else if (effect == CHAOS_EFFECT_USE_THIS)
 	{
@@ -163,45 +144,42 @@ static void Chaos_RemoveReplacedEffects(ChaosEffectId effect)
 static void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation)
 {
 	const ChaosEffectId effect = chaosActivation->effect;
-	if (effect == CHAOS_EFFECT_GIANT_KARTS)
-	{
-		Chaos_SetKartScale(CHAOS_GIANT_SCALE);
-		return;
-	}
 	if (effect == CHAOS_EFFECT_CLOCK_CURSE)
 	{
+		// Clock sound needs to be only applied once, otherwise it plays once per player
 		OtherFX_Play(SOUND_CLOCK, 1);
 	}
 	for (int i = 0; i < (int)len(sdata->gGT->drivers); i++)
 	{
 		struct Driver *driver = sdata->gGT->drivers[i];
-		if (!Chaos_TargetsDriver(effect, driver))
+		if (Chaos_TargetsDriver(effect, driver))
 		{
-			continue;
-		}
-		switch ((int)effect)
-		{
-		case CHAOS_EFFECT_USE_THIS:
-			Chaos_GiveRandomItem(driver);
-			break;
-		case CHAOS_EFFECT_JUICED_UP:
-			Chaos_GiveWumpas(driver);
-			break;
-		case CHAOS_EFFECT_IT_IS_I:
-			Chaos_GiveMask(driver);
-			break;
-		case CHAOS_EFFECT_PROVIDENCE:
-			Chaos_GiveShield(driver);
-			break;
-		case CHAOS_EFFECT_RESERVE_INJECTION:
-			Chaos_GiveReserves(driver);
-			break;
-		case CHAOS_EFFECT_CLOCK_CURSE:
-			VehPickState_ApplyDamage(driver, VEH_PICK_DAMAGE_SPIN, NULL, 0, true);
-			driver->clockReceive = chaosActivation->remainingMS;
-			break;
-		default:
-			break;
+			switch ((int)effect)
+			{
+				case CHAOS_EFFECT_GIANT_KARTS:
+					Chaos_SetKartScale(CHAOS_GIANT_SCALE, driver);
+					break;
+				case CHAOS_EFFECT_USE_THIS:
+					Chaos_GiveRandomItem(driver);
+					break;
+				case CHAOS_EFFECT_JUICED_UP:
+					Chaos_GiveWumpas(driver);
+					break;
+				case CHAOS_EFFECT_IT_IS_I:
+					Chaos_GiveMask(driver);
+					break;
+				case CHAOS_EFFECT_PROVIDENCE:
+					Chaos_GiveShield(driver);
+					break;
+				case CHAOS_EFFECT_RESERVE_INJECTION:
+					Chaos_GiveReserves(driver);
+					break;
+				case CHAOS_EFFECT_CLOCK_CURSE:
+					Chaos_ApplyClockCurse(driver, chaosActivation->remainingMS);
+					break;
+				default:
+					break;
+			}
 		}
 	}
 }
@@ -231,7 +209,7 @@ bool Chaos_Activate(ChaosEffectId effect, s32 durationMS)
 {
 	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
 	if (!Chaos_IsRunning(sdata->gGT) || durationMS <= 0 ||
-	    !ChaosEffect_IsEnabled(sdata->chaosSettings.effects, effect) || !Chaos_EffectIsEligible(effect))
+	    !ChaosEffect_IsEnabled(sdata->chaosSettings.effects, effect))
 	{
 		return false;
 	}
@@ -287,7 +265,7 @@ void Chaos_PublishEffects(void)
 	                             gGT->overlayIndex_Threads, true, CHAOS_GATE_ADVENTURE_ONLY);
 	for (int i = 0; settings->armed && eligibleRace && i < CHAOS_EFFECT_COUNT; i++)
 	{
-		if (settings->effects[i] && Chaos_EffectIsEligible((ChaosEffectId)i))
+		if (settings->effects[i])
 		{
 			const char *slug = ChaosEffect_Def((ChaosEffectId)i)->slug;
 			const size_t length = strlen(slug);
@@ -344,6 +322,100 @@ bool Chaos_IsActiveForDriver(ChaosEffectId effect, const struct Driver *driver)
 	return Chaos_TargetsDriver(effect, driver) && Chaos_IsActive(effect);
 }
 
+int Chaos_GravityForDriver(const struct Driver *driver)
+{
+	const int gravity = driver->const_Gravity;
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_LOW_GRAVITY, driver))
+	{
+		return Chaos_LowGravity(gravity);
+	}
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_HEAVY_KARTS, driver))
+	{
+		return Chaos_HeavyGravity(gravity);
+	}
+	return gravity;
+}
+
+int Chaos_SpeedForDriver(const struct Driver *driver, int speed)
+{
+	if (speed <= 0)
+	{
+		return speed;
+	}
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_DEFECTIVE_BOOSTS, driver))
+	{
+		speed = Chaos_DefectiveBoostSpeed(driver, speed);
+	}
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_GIANT_KARTS, driver))
+	{
+		speed = Chaos_GiantForce(speed);
+	}
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SPEED_CAPPED, driver))
+	{
+		return Chaos_CappedSpeed(driver, speed);
+	}
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SUPER_SPEED, driver))
+	{
+		speed = Chaos_SuperSpeed(speed);
+	}
+	return speed;
+}
+
+int Chaos_JumpForceForDriver(const struct Driver *driver, int force)
+{
+	return Chaos_IsActiveForDriver(CHAOS_EFFECT_GIANT_KARTS, driver) ? Chaos_GiantForce(force) : force;
+}
+
+int Chaos_AccelerationForDriver(const struct Driver *driver, int acceleration)
+{
+	if (driver->baseSpeed > 0 && acceleration > 0 &&
+	    Chaos_IsActiveForDriver(CHAOS_EFFECT_SUPER_SPEED, driver))
+	{
+		return Chaos_SuperSpeed(acceleration);
+	}
+	return acceleration;
+}
+
+int Chaos_ReservesForDriver(const struct Driver *driver, int reserves)
+{
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL, driver))
+	{
+		reserves = Chaos_KeepReserves(driver, reserves);
+	}
+	return reserves;
+}
+
+void Chaos_ApplyRescueRules(struct Driver *driver)
+{
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_ANXIOUS_MASK, driver))
+	{
+		Chaos_RequestOffroadRescue(driver);
+	}
+}
+
+void Chaos_ApplyCrateRules(struct Driver *driver, struct Instance *crateInst)
+{
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_EXPLOSIVE_CRATES, driver))
+	{
+		Chaos_ExplodeCrate(driver, crateInst);
+	}
+}
+
+bool Chaos_IsHardCrateForDriver(const struct Instance *crateInst, const struct Thread *collidingTh,
+                               const struct ScratchpadStruct *sps)
+{
+	return crateInst->scale.x == 0x1000 && sps->Input1.modelID == DYNAMIC_PLAYER &&
+	       Chaos_IsActiveForDriver(CHAOS_EFFECT_HARD_CRATES, collidingTh->object);
+}
+
+void Chaos_ApplyItemRules(struct Driver *driver)
+{
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_NO_ITEMS, driver))
+	{
+		Chaos_ClearItems(driver);
+	}
+}
+
 bool Chaos_OnPickup(struct Driver *driver)
 {
 	const struct ChaosSettings *settings = &sdata->chaosSettings;
@@ -354,7 +426,7 @@ bool Chaos_OnPickup(struct Driver *driver)
 	{
 		return false;
 	}
-	const ChaosEffectId effect = Chaos_PickEligibleEffect();
+	const ChaosEffectId effect = ChaosEffect_Pick(settings->effects, settings->enabledCount, &sdata->chaosRng);
 	return Chaos_Activate(effect, settings->durationSeconds * CHAOS_MILLISECONDS_PER_SECOND);
 }
 
@@ -378,23 +450,20 @@ void Chaos_OnTurboPadContact(struct Driver *driver, bool touching)
 u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, int *steering, u32 actions)
 {
 	const struct ChaosRuntime *runtime = &sdata->chaosRuntime;
-	if (!Chaos_IsRunning(sdata->gGT) || (driver->actionsFlagSet & ACTION_RACE_FINISHED) != 0)
+	if (!Chaos_IsRunning(sdata->gGT))
 	{
 		return actions;
 	}
 	for (int i = 0; i < runtime->numActive; i++)
 	{
 		const ChaosEffectId effect = runtime->active[i].effect;
-		const ChaosEffectDef *def = ChaosEffect_Def(effect);
-		if (def == NULL || !ChaosEffect_AppliesToDriver(def->scope, driver->driverID, sdata->gGT->numPlyrCurrGame))
+		if (!Chaos_TargetsDriver(effect, driver))
 		{
 			continue;
 		}
 		if (effect == CHAOS_EFFECT_INVERTED_STEERING)
 		{
-			const int center = pad->rwd != NULL ? pad->rwd->gamepadCenter : CHAOS_STICK_CENTER;
-			// Keep 256 signed when mirroring the local input.
-			*steering = 2 * center - pad->stickLX;
+			*steering = Chaos_InvertSteering(pad);
 		}
 		else if (effect == CHAOS_EFFECT_WOBBLE_STEERING)
 		{
@@ -402,12 +471,11 @@ u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, in
 		}
 		else if (effect == CHAOS_EFFECT_NO_HOPPING)
 		{
-			driver->jump_TenBuffer = 0;
-			actions &= ~ACTION_JUMP_BUTTON_HELD;
+			actions = Chaos_PreventHopping(driver, actions);
 		}
 		else if (effect == CHAOS_EFFECT_NO_RESERVES)
 		{
-			Chaos_ApplyReserveRules(driver);
+			Chaos_ClearReserves(driver);
 		}
 		else if (effect == CHAOS_EFFECT_WUMPA_DRAIN)
 		{
@@ -488,7 +556,7 @@ void Chaos_Update(struct GameTracker *gGT)
 	{
 		if (durationMS > 0)
 		{
-			const ChaosEffectId effect = Chaos_PickEligibleEffect();
+			const ChaosEffectId effect = ChaosEffect_Pick(settings->effects, settings->enabledCount, &sdata->chaosRng);
 			Chaos_Activate(effect, durationMS);
 		}
 		runtime->intervalRemainingMS += Chaos_NextTriggerGap();

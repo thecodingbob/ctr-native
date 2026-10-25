@@ -444,7 +444,7 @@ static void TestNoReserves(void)
 	};
 	struct GamepadBuffer pad = {.stickLX = 128};
 	int steering = pad.stickLX;
-	Chaos_ApplyReserveRules(&human);
+	Chaos_ApplyDriver(&human, &pad, &steering, human.actionsFlagSet);
 	CTR_TEST_CHECK_EQ(human.reserves, 2000, "inactive Chaos leaves accumulated reserves alone");
 	CTR_TEST_CHECK_EQ(human.turbo_outsideTimer, 1000, "inactive Chaos leaves the outside turbo timer alone");
 	Chaos_Activate(CHAOS_EFFECT_NO_RESERVES, 2000);
@@ -474,9 +474,9 @@ static void TestNoReserves(void)
 	}
 	struct Driver partner = {.driverID = 1, .reserves = 500, .turbo_outsideTimer = 200};
 	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT, .reserves = 700, .turbo_outsideTimer = 300};
-	Chaos_ApplyReserveRules(&partner);
-	Chaos_ApplyReserveRules(&bot);
-	Chaos_ApplyReserveRules(NULL);
+	Chaos_ApplyDriver(&partner, &pad, &steering, partner.actionsFlagSet);
+	Chaos_ApplyDriver(&bot, &pad, &steering, bot.actionsFlagSet);
+	Chaos_ApplyDriver(NULL, &pad, &steering, 0);
 	CTR_TEST_CHECK_EQ(partner.reserves, 0, "No Reserves also applies to the co-op partner");
 	CTR_TEST_CHECK_EQ(partner.turbo_outsideTimer, 0, "the partner's two fuel fields are cleared together");
 	CTR_TEST_CHECK_EQ(bot.reserves, 700, "No Reserves preserves bot reserves");
@@ -506,7 +506,7 @@ static void TestNoReserves(void)
 	Chaos_ApplyDriver(&human, &pad, &steering, human.actionsFlagSet);
 	CTR_TEST_CHECK_EQ(human.reserves, 1000, "new reserves can accumulate normally after final expiry");
 	sdata->chaosRuntime = saved;
-	Chaos_ApplyReserveRules(&human);
+	Chaos_ApplyDriver(&human, &pad, &steering, human.actionsFlagSet);
 	CTR_TEST_CHECK_EQ(human.reserves, 0, "resident restoration restores the restriction without a separate driver snapshot");
 	Chaos_Reset();
 	VehFire_Increment(&human, 1000, TURBO_PAD | FREEZE_RESERVES_ON_TURBO_PAD, 100);
@@ -516,7 +516,7 @@ static void TestNoReserves(void)
 	Chaos_BeginRace(&s_tracker);
 	Chaos_Activate(CHAOS_EFFECT_NO_RESERVES, 1000);
 	s_tracker.gameMode1 |= ADVENTURE_ARENA;
-	Chaos_ApplyReserveRules(&human);
+	Chaos_ApplyDriver(&human, &pad, &steering, human.actionsFlagSet);
 	CTR_TEST_CHECK_EQ(human.reserves, 1000, "Adventure hubs do not receive reserve restrictions");
 }
 
@@ -1062,9 +1062,11 @@ static void TestGiantKarts(void)
 	s_tracker.gameMode1 &= ~PAUSE_1;
 	Chaos_Activate(CHAOS_EFFECT_GIANT_KARTS, 1000);
 	CTR_TEST_CHECK_EQ(human.kartScale, 2, "duplicate activation does not compound the scale target");
+	human.actionsFlagSet |= ACTION_RACE_FINISHED;
 	Tick(1000);
 	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_GIANT_KARTS), "the replacement expiry deactivates Giant Karts without a surviving copy");
-	CTR_TEST_CHECK_EQ(human.kartScale, 1, "deactivating Giant Karts restores the scale target");
+	CTR_TEST_CHECK_EQ(human.kartScale, 1, "deactivating Giant Karts restores the scale even for a finished human");
+	human.actionsFlagSet &= ~ACTION_RACE_FINISHED;
 	Tick(2000);
 	CTR_TEST_CHECK_EQ(human.kartScale, 1, "final expiry restores the normal target");
 	CTR_TEST_CHECK_EQ(partner.kartScale, 1, "final expiry restores the co-op partner's target");
@@ -1447,18 +1449,32 @@ static void TestInstantGifts(void)
 	CTR_TEST_CHECK_EQ(s_defaultDrivers[0].PickupWumpaHUD.numCollected, 2, "the Wumpa reward cannot add or consume queued crystals");
 }
 
+static void TestHeldItemRemoval(void)
+{
+	CTR_TEST_SECTION("shared item removal preserves caller-owned timers and multiplayer bookkeeping");
+	EnableGiftEffects();
+	struct Driver *driver = &s_defaultDrivers[0];
+	s_tracker.numPlyrCurrGame = 3;
+	s_tracker.numPlayersWith3Missiles = 1;
+	driver->heldItemID = HELD_ITEM_MISSILE_3X;
+	driver->noItemTimer = 1;
+	VehPhysProc_RemoveHeldItem(driver);
+	CTR_TEST_CHECK_EQ(driver->heldItemID, HELD_ITEM_NONE, "ordinary removal empties the item slot");
+	CTR_TEST_CHECK_EQ(s_tracker.numPlayersWith3Missiles, 0, "removing a triple missile releases its multiplayer holder count");
+	CTR_TEST_CHECK_EQ(driver->noItemTimer, 1, "the ordinary caller retains control of cooldown decrementing");
+	VehPhysProc_RemoveHeldItem(driver);
+	CTR_TEST_CHECK_EQ(s_tracker.numPlayersWith3Missiles, 0, "removing an already empty slot does not decrement again");
+	s_tracker.gameMode1 |= BATTLE_MODE;
+	s_tracker.numPlayersWith3Missiles = 1;
+	driver->heldItemID = HELD_ITEM_MISSILE_3X;
+	VehPhysProc_RemoveHeldItem(driver);
+	CTR_TEST_CHECK_EQ(s_tracker.numPlayersWith3Missiles, 1, "battle removal leaves the race-only missile counter untouched");
+}
+
 static void TestRandomItemGift(void)
 {
-	CTR_TEST_SECTION("Use This! shares item bookkeeping, uses Chaos RNG, and respects orb ownership");
+	CTR_TEST_SECTION("Use This! uses Chaos RNG and respects inventory and orb ownership");
 	EnableGiftEffects();
-	bool uniformSeen[HELD_ITEM_MISSILE_3X + 1] = {0};
-	for (u32 sample = 0; sample < HELD_ITEM_MISSILE_3X; sample++)
-	{
-		VehPhysGeneral_GiveRandomItem(&s_defaultDrivers[0], sample);
-		const u8 item = s_defaultDrivers[0].heldItemID;
-		CTR_TEST_CHECK(!uniformSeen[item], "duplicate retail weights contribute only one outcome each to the uniform pool");
-		uniformSeen[item] = true;
-	}
 	Chaos_Activate(CHAOS_EFFECT_NO_ITEMS, 10000);
 	struct Driver *human = &s_defaultDrivers[0];
 	s_itemSounds = 0;
@@ -1503,14 +1519,14 @@ static void TestRandomItemGift(void)
 		               "an already deployed orb is excluded from both independent rolls");
 	}
 	human->heldItemID = HELD_ITEM_WARPBALL;
-	VehPhysGeneral_ClearHeldItem(human);
+	Chaos_ClearItems(human);
 	CTR_TEST_CHECK((s_tracker.gameMode1 & WARPBALL_HELD) != 0, "discarding a held orb retains a deployed orb's flag");
 	s_tracker.threadBuckets[TRACKING].thread = NULL;
 	human->heldItemID = HELD_ITEM_WARPBALL;
 	s_defaultDrivers[1].heldItemID = HELD_ITEM_WARPBALL;
-	VehPhysGeneral_ClearHeldItem(human);
+	Chaos_ClearItems(human);
 	CTR_TEST_CHECK((s_tracker.gameMode1 & WARPBALL_HELD) != 0, "another holder retains the orb flag");
-	VehPhysGeneral_ClearHeldItem(&s_defaultDrivers[1]);
+	Chaos_ClearItems(&s_defaultDrivers[1]);
 	CTR_TEST_CHECK((s_tracker.gameMode1 & WARPBALL_HELD) == 0, "discarding the last undeployed orb releases the flag");
 	s_tracker.gameMode1 |= RELIC_RACE;
 	Chaos_PublishEffects();
@@ -1521,23 +1537,11 @@ static void TestRandomItemGift(void)
 	Chaos_PublishEffects();
 	CTR_TEST_CHECK(strstr(s_externalCatalogue, "use-this\n") != NULL, "crystal challenges publish the item gift too");
 	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_USE_THIS, 1000), "crystal challenges accept the full race item pool");
-	memset(sdata->chaosSettings.effects, 0, sizeof(sdata->chaosSettings.effects));
-	sdata->chaosSettings.effects[CHAOS_EFFECT_USE_THIS] = true;
-	sdata->chaosSettings.effects[CHAOS_EFFECT_JUICED_UP] = true;
-	sdata->chaosSettings.enabledCount = 2;
-	for (int sample = 0; sample < 20; sample++)
-	{
-		const ChaosEffectId picked = Chaos_PickEligibleEffect();
-		CTR_TEST_CHECK(picked == CHAOS_EFFECT_USE_THIS || picked == CHAOS_EFFECT_JUICED_UP, "crystal challenges can select either enabled reward");
-	}
-	s_defaultDrivers[0].actionsFlagSet |= ACTION_RACE_FINISHED;
-	s_defaultDrivers[1].actionsFlagSet |= ACTION_RACE_FINISHED;
-	CTR_TEST_CHECK_EQ(Chaos_PickEligibleEffect(), CHAOS_EFFECT_NONE, "selection still filters effects without unfinished targets");
 }
 
 static void TestReserveGifts(void)
 {
-	CTR_TEST_SECTION("reserve gifts use normal fire grants, saturate fuel, and replace incompatible rules");
+	CTR_TEST_SECTION("reserve gifts use normal fire grants and replace incompatible rules");
 	EnableGiftEffects();
 	struct Thread thread = {.modelIndex = DYNAMIC_PLAYER};
 	struct Instance instance = {.thread = &thread};
@@ -1555,36 +1559,26 @@ static void TestReserveGifts(void)
 	CTR_TEST_CHECK_EQ(s_defaultDrivers[1].fireSpeedCap, 3000, "an existing stronger fire level is preserved");
 	VehFire_Increment(human, 1000, POWER_SLIDE_HANG_TIME, CHAOS_THIRD_DRIFT_FIRE_LEVEL);
 	CTR_TEST_CHECK_EQ(human->reserves, CHAOS_INJECTION_RESERVES + 1000, "normal boost grants can still add to the ten-second reward");
-	human->reserves = CHAOS_RESERVES_MAX;
-	VehFire_Increment(human, 1000, POWER_SLIDE_HANG_TIME, CHAOS_THIRD_DRIFT_FIRE_LEVEL);
-	CTR_TEST_CHECK_EQ(human->reserves, CHAOS_RESERVES_MAX, "earned reserves at the signed limit saturate instead of overflowing");
+	human->reserves = INT16_MAX;
 	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_RESERVE_INJECTION, 1000), "the gift remains eligible when reserves are already full");
-	CTR_TEST_CHECK_EQ(human->reserves, CHAOS_RESERVES_MAX, "the gift cannot reduce a larger earned reserve balance");
+	CTR_TEST_CHECK_EQ(human->reserves, INT16_MAX, "the gift cannot reduce a larger earned reserve balance");
 	human->reserves = 2000;
 	Chaos_Activate(CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL, 1000);
-	const ScrubFlags originalFlags = data.MetaDataScrub[COLL_SCRUB_SOLID].flags;
-	const struct Scrub protectedSurface = VehAfterColl_GetSurface(COLL_SCRUB_SOLID, human);
-	CTR_TEST_CHECK((protectedSurface.flags & SCRUB_FLAG_KEEP_RESERVES) != 0, "protected wall contacts use the existing keep-reserves flag");
-	CTR_TEST_CHECK_EQ(data.MetaDataScrub[COLL_SCRUB_SOLID].flags, originalFlags, "surface rules leave shared metadata untouched");
 	CTR_TEST_CHECK_EQ(Chaos_ReservesForDriver(human, 1968), 2000, "natural consumption cannot lower frozen reserves");
 	VehFire_Increment(human, 500, POWER_SLIDE_HANG_TIME, CHAOS_THIRD_DRIFT_FIRE_LEVEL);
 	CTR_TEST_CHECK_EQ(human->reserves, 2500, "boosts can still increase frozen reserves");
 	VehPickState_ApplyDamage(human, VEH_PICK_DAMAGE_SPIN, NULL, 0, true);
 	CTR_TEST_CHECK_EQ(human->reserves, 2500, "the actual damage path cannot clear frozen reserves");
 	struct Driver bot = {.driverID = 2, .reserves = 2000, .actionsFlagSet = ACTION_BOT};
-	const struct Scrub botSurface = VehAfterColl_GetSurface(COLL_SCRUB_SOLID, &bot);
-	CTR_TEST_CHECK_EQ(botSurface.flags, originalFlags, "bot wall contacts retain their normal surface flags");
 	CTR_TEST_CHECK_EQ(Chaos_ReservesForDriver(&bot, 0), 0, "bot fuel remains ordinary");
 	const struct ChaosRuntime snapshot = sdata->chaosRuntime;
 	Tick(1000);
 	CTR_TEST_CHECK_EQ(Chaos_ReservesForDriver(human, 0), 0, "expiry restores reserve losses");
-	const struct Scrub expiredSurface = VehAfterColl_GetSurface(COLL_SCRUB_SOLID, human);
-	CTR_TEST_CHECK_EQ(expiredSurface.flags, originalFlags, "expiry restores ordinary wall-contact flags");
 	sdata->chaosRuntime = snapshot;
 	CTR_TEST_CHECK_EQ(Chaos_ReservesForDriver(human, 0), 2500, "resident restore restores reserve protection");
 	Chaos_Activate(CHAOS_EFFECT_NO_RESERVES, 1000);
 	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL), "No Reserves replaces reserve protection");
-	Chaos_ApplyReserveRules(human);
+	PreparedSteering(human, &(struct GamepadBuffer){0});
 	CTR_TEST_CHECK_EQ(human->reserves, 0, "the replacement rule clears fuel immediately when applied");
 	Chaos_Activate(CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL, 1000);
 	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_NO_RESERVES), "reserve protection replaces No Reserves in the opposite order");
@@ -1608,6 +1602,7 @@ int main(void)
 	TestHopInputAndCloudOwnership();
 	TestDriverApplication();
 	TestInstantGifts();
+	TestHeldItemRemoval();
 	TestRandomItemGift();
 	TestReserveGifts();
 	return CtrTest_Summary();

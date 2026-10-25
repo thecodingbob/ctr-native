@@ -1,7 +1,6 @@
 #include <common.h>
 
-// Effect implementations; RB_Chaos.c owns activation, dispatch and timing.
-static bool Chaos_TargetsDriver(ChaosEffectId effect, const struct Driver *driver);
+// Effect operations only; RB_Chaos.c checks activation and driver eligibility.
 
 enum
 {
@@ -21,18 +20,40 @@ enum
 	CHAOS_WUMPA_PICKUP_FRAMES = 5,
 };
 
-static void Chaos_SetKartScale(u8 scale)
+static void Chaos_SetKartScale(u8 scale, struct Driver *driver)
 {
-	struct GameTracker *gGT = sdata->gGT;
-	for (int i = 0; i < gGT->numPlyrCurrGame && i < ADV_MULTIPLAYER_NUM_PLAYERS_MAX; i++)
-	{
-		gGT->drivers[i]->kartScale = scale;
-	}
+	driver->kartScale = scale;
+}
+
+static void Chaos_ClearItems(struct Driver *driver)
+{
+	VehPhysProc_RemoveHeldItem(driver);
+	driver->numHeldItems = 0;
+	driver->itemRollTimer = 0;
+	driver->noItemTimer = 0;
+	driver->maskIsAku = -1;
+	driver->actionsFlagSet &= ~ACTION_WEAPON_FIRE_REQUEST;
 }
 
 static void Chaos_GiveRandomItem(struct Driver *driver)
 {
-	VehPhysGeneral_GiveRandomItem(driver, ChaosEffect_NextRandom(&sdata->chaosRng));
+	// Distinct retail Race2 items, with the orb last so it can be excluded.
+	static const u8 items[] = {
+		HELD_ITEM_TURBO, HELD_ITEM_BOMB_1X, HELD_ITEM_MISSILE_1X,
+		HELD_ITEM_TNT, HELD_ITEM_POTION, HELD_ITEM_SHIELD, HELD_ITEM_MASK,
+		HELD_ITEM_CLOCK, HELD_ITEM_BOMB_3X, HELD_ITEM_MISSILE_3X, HELD_ITEM_WARPBALL,
+	};
+	Chaos_ClearItems(driver);
+	struct GameTracker *gGT = GAME_TRACKER;
+	const u32 random = ChaosEffect_NextRandom(&sdata->chaosRng);
+	const int count = len(items) - ((gGT->gameMode1 & WARPBALL_HELD) != 0);
+	VehPhysProc_AssignHeldItem(driver, items[random % count]);
+	if (driver->heldItemID == HELD_ITEM_MASK)
+	{
+		driver->maskIsAku = g_config.maskMode == MASK_MODE_RANDOM ? (s8)((random >> 16) & 1) :
+		                    (s8)VehPickupItem_ApplyMaskMode(driver);
+	}
+	VehPhysProc_PlayItemAcquireSound(driver);
 }
 
 static void Chaos_GiveWumpas(struct Driver *driver)
@@ -82,114 +103,65 @@ static void Chaos_GiveReserves(struct Driver *driver)
 	}
 	if (driver->reserves < CHAOS_INJECTION_RESERVES)
 	{
-		VehFire_SetReserves(driver, CHAOS_INJECTION_RESERVES);
+		driver->reserves = CHAOS_INJECTION_RESERVES;
 	}
 }
 
-int Chaos_GravityForDriver(const struct Driver *driver)
+static void Chaos_ApplyClockCurse(struct Driver *driver, s32 durationMS)
 {
-	const int gravity = driver->const_Gravity;
-	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_LOW_GRAVITY, driver))
-	{
-		return gravity / CHAOS_LOW_GRAVITY_DIVISOR;
-	}
-	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_HEAVY_KARTS, driver))
-	{
-		return gravity * CHAOS_HEAVY_GRAVITY_MULTIPLIER;
-	}
-	return gravity;
+	VehPickState_ApplyDamage(driver, VEH_PICK_DAMAGE_SPIN, NULL, 0, true);
+	driver->clockReceive = durationMS;
 }
 
-int Chaos_SpeedForDriver(const struct Driver *driver, int speed)
+static int Chaos_LowGravity(int gravity)
 {
-	if (speed <= 0)
-	{
-		return speed;
-	}
-	if (driver->reserves != 0 && Chaos_IsActiveForDriver(CHAOS_EFFECT_DEFECTIVE_BOOSTS, driver))
+	return gravity / CHAOS_LOW_GRAVITY_DIVISOR;
+}
+
+static int Chaos_HeavyGravity(int gravity)
+{
+	return gravity * CHAOS_HEAVY_GRAVITY_MULTIPLIER;
+}
+
+static int Chaos_DefectiveBoostSpeed(const struct Driver *driver, int speed)
+{
+	if (driver->reserves != 0)
 	{
 		// Retail already added the fire bonus; subtract it twice to invert it.
 		speed -= 2 * driver->fireSpeedCap;
-		if (speed <= 0)
-		{
-			return 0;
-		}
 	}
-	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_GIANT_KARTS, driver))
-	{
-		speed = speed * CHAOS_GIANT_SPEED_PERCENT / CHAOS_PERCENT_SCALE;
-	}
-	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SPEED_CAPPED, driver))
-	{
-		const int cap = driver->const_Speed_ClassStat / CHAOS_SPEED_CAP_DIVISOR;
-		if (speed > cap)
-		{
-			return cap;
-		}
-	}
-	else if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SUPER_SPEED, driver))
-	{
-		speed *= CHAOS_SUPER_SPEED_MULTIPLIER;
-	}
-	return speed;
+	return speed > 0 ? speed : 0;
 }
 
-int Chaos_JumpForceForDriver(const struct Driver *driver, int force)
+static int Chaos_GiantForce(int force)
 {
-	return Chaos_IsActiveForDriver(CHAOS_EFFECT_GIANT_KARTS, driver) ?
-	       force * CHAOS_GIANT_SPEED_PERCENT / CHAOS_PERCENT_SCALE : force;
+	return force * CHAOS_GIANT_SPEED_PERCENT / CHAOS_PERCENT_SCALE;
 }
 
-int Chaos_AccelerationForDriver(const struct Driver *driver, int acceleration)
+static int Chaos_CappedSpeed(const struct Driver *driver, int speed)
 {
-	if (driver->baseSpeed > 0 && acceleration > 0 &&
-	    Chaos_IsActiveForDriver(CHAOS_EFFECT_SUPER_SPEED, driver))
-	{
-		return acceleration * CHAOS_SUPER_SPEED_MULTIPLIER;
-	}
-	return acceleration;
+	const int cap = driver->const_Speed_ClassStat / CHAOS_SPEED_CAP_DIVISOR;
+	return speed > cap ? cap : speed;
 }
 
-void Chaos_ApplyReserveRules(struct Driver *driver)
+static int Chaos_SuperSpeed(int speed)
 {
-	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_NO_RESERVES, driver))
-	{
-		driver->reserves = 0;
-		driver->turbo_outsideTimer = 0;
-	}
+	return speed * CHAOS_SUPER_SPEED_MULTIPLIER;
 }
 
-void Chaos_ApplySurfaceRules(const struct Driver *driver, struct Scrub *scrub)
+static void Chaos_ClearReserves(struct Driver *driver)
 {
-	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL, driver))
-	{
-		scrub->flags |= SCRUB_FLAG_KEEP_RESERVES;
-	}
+	driver->reserves = 0;
+	driver->turbo_outsideTimer = 0;
 }
 
-int Chaos_ReservesForDriver(const struct Driver *driver, int reserves)
+static int Chaos_KeepReserves(const struct Driver *driver, int reserves)
 {
-	if (Chaos_IsRunning(sdata->gGT) && Chaos_TargetsDriver(CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL, driver))
-	{
-		// Reserve Injection fills the signed timer; subsequent grants must not wrap it.
-		if (reserves > CHAOS_RESERVES_MAX)
-		{
-			reserves = CHAOS_RESERVES_MAX;
-		}
-		if (reserves < driver->reserves && Chaos_IsActive(CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL))
-		{
-			return driver->reserves;
-		}
-	}
-	return reserves;
+	return reserves < driver->reserves ? driver->reserves : reserves;
 }
 
-void Chaos_ApplyRescueRules(struct Driver *driver)
+static void Chaos_RequestOffroadRescue(struct Driver *driver)
 {
-	if (!Chaos_IsActiveForDriver(CHAOS_EFFECT_ANXIOUS_MASK, driver))
-	{
-		return;
-	}
 	const struct Terrain *terrain = VehAfterColl_GetTerrain(driver->currBlockTouching->terrain_type);
 	if (terrain->speedMultiplier < VEH_PHYS_FORCE_TERRAIN_SCALE_NEUTRAL)
 	{
@@ -197,29 +169,24 @@ void Chaos_ApplyRescueRules(struct Driver *driver)
 	}
 }
 
-void Chaos_ApplyCrateRules(struct Driver *driver, struct Instance *crateInst)
+static void Chaos_ExplodeCrate(struct Driver *driver, struct Instance *crateInst)
 {
-	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_EXPLOSIVE_CRATES, driver))
-	{
-		RB_Burst_InitVisual(crateInst);
-		PlaySound3D(HOWL_SFX_TNT_EXPLOSION, crateInst);
-		VehPickState_ApplyDamage(driver, VEH_PICK_DAMAGE_BLAST, NULL, 0, true);
-	}
+	RB_Burst_InitVisual(crateInst);
+	PlaySound3D(HOWL_SFX_TNT_EXPLOSION, crateInst);
+	VehPickState_ApplyDamage(driver, VEH_PICK_DAMAGE_BLAST, NULL, 0, true);
 }
 
-bool Chaos_IsHardCrateForDriver(const struct Instance *crateInst, const struct Thread *collidingTh,
-                               const struct ScratchpadStruct *sps)
+static int Chaos_InvertSteering(const struct GamepadBuffer *pad)
 {
-	return crateInst->scale.x == 0x1000 && sps->Input1.modelID == DYNAMIC_PLAYER &&
-	       Chaos_IsActiveForDriver(CHAOS_EFFECT_HARD_CRATES, collidingTh->object);
+	const int center = pad->rwd != NULL ? pad->rwd->gamepadCenter : CHAOS_STICK_CENTER;
+	// Keep 256 signed when mirroring the local input.
+	return 2 * center - pad->stickLX;
 }
 
-void Chaos_ApplyItemRules(struct Driver *driver)
+static u32 Chaos_PreventHopping(struct Driver *driver, u32 actions)
 {
-	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_NO_ITEMS, driver))
-	{
-		VehPhysGeneral_ClearHeldItem(driver);
-	}
+	driver->jump_TenBuffer = 0;
+	return actions & ~ACTION_JUMP_BUTTON_HELD;
 }
 
 static int Chaos_WobbleSteering(const struct ChaosActivation *entry, const struct GamepadBuffer *pad)

@@ -254,6 +254,11 @@ static void Chaos_TestRace(ChaosEffectId effect)
 	GAMEPROG_NewProfile_InsideAdv(&GAME_ADV_PROGRESS);
 	GAME_ADV_PROGRESS.characterID = CRASH_BANDICOOT;
 	GAMEPROG_ResetAdvMultiplayer(&sdata->advMultiplayer);
+	// This shortcut skips the warp pad that normally seeds the Adventure grid.
+	for (int i = 0; i < (int)len(sdata->kartSpawnOrderArray); i++)
+	{
+		sdata->kartSpawnOrderArray[i] = (char)(len(sdata->kartSpawnOrderArray) - 1 - i);
+	}
 	sdata->advProfileIndex = 0xffff;
 	gGT->currLEV = N_SANITY_BEACH;
 	RECTMENU_ClearInput();

@@ -497,6 +497,24 @@ static void TestFilteredActiveEffects(void)
 	CTR_TEST_CHECK_EQ(MM_menuChaosConfig.rowSelected, 3, "Back works from the empty list");
 }
 
+static void CheckTestRaceGrid(void)
+{
+	u32 occupied = 0;
+	const int count = (int)len(sdata->kartSpawnOrderArray);
+	for (int i = 0; i < count; i++)
+	{
+		const u8 slot = (u8)sdata->kartSpawnOrderArray[i];
+		CTR_TEST_CHECK(slot < count && (occupied & (1u << slot)) == 0,
+		               "each test-race kart has a distinct valid starting slot");
+		if (slot < count)
+		{
+			occupied |= 1u << slot;
+		}
+	}
+	CTR_TEST_CHECK_EQ(sdata->kartSpawnOrderArray[0], count - 1,
+	                  "the test-race human starts at the back of the Adventure grid");
+}
+
 static void TestChaosRaceShortcut(void)
 {
 	CTR_TEST_SECTION("Start tests the highlighted effect only during editable creation");
@@ -515,6 +533,7 @@ static void TestChaosRaceShortcut(void)
 	Frame(BTN_START, 0);
 	CTR_TEST_CHECK_EQ(s_testLevel, CRASH_COVE, "Start launches Crash Cove even when the highlighted toggle is off");
 	CTR_TEST_CHECK_EQ(s_tracker.gameMode1, ADVENTURE_MODE, "the test is an Adventure race");
+	CheckTestRaceGrid();
 	CTR_TEST_CHECK_EQ(s_tracker.podiumRewardID, NOFUNC, "a previous Adventure reward cannot select the podium overlay for the test race");
 	CTR_TEST_CHECK_EQ(sdata->advProfileIndex, 0xffff, "the test is not attached to a save slot");
 	CTR_TEST_CHECK_EQ(sdata->chaosSettings.durationSeconds, 5, "test duration is five seconds");
@@ -532,9 +551,11 @@ static void TestChaosRaceShortcut(void)
 	sdata->chaosMenu.page = CHAOS_PAGE_EFFECTS;
 	MM_menuChaosConfig.rowSelected = CHAOS_EFFECT_GIANT_KARTS;
 	s_tracker.podiumRewardID = STATIC_RELIC;
+	memset(sdata->kartSpawnOrderArray, 0, sizeof(sdata->kartSpawnOrderArray));
 	s_testLevel = -1;
 	Frame(BTN_START, 0);
 	CTR_TEST_CHECK_EQ(s_testLevel, CRASH_COVE, "a subsequent shortcut launch requests the test track again");
+	CheckTestRaceGrid();
 	CTR_TEST_CHECK_EQ(s_tracker.podiumRewardID, NOFUNC, "every shortcut launch clears pending podium rewards");
 	CTR_TEST_CHECK_EQ(sdata->chaosSettings.enabledCount, 1, "a subsequent launch still enables exactly one effect");
 	CTR_TEST_CHECK(sdata->chaosSettings.effects[CHAOS_EFFECT_GIANT_KARTS] &&

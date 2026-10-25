@@ -343,7 +343,7 @@ void VehFire_Increment(struct Driver *driverArg, int reservesArg, u32 typeArg, i
 		driver->actionsFlagSet |= ACTION_TURBO_ITEM;
 	}
 
-	// turbo pad, boost powerup
+ 	// turbo pad, boost powerup
 	if ((type & FREEZE_RESERVES_ON_TURBO_PAD) != 0)
 	{
 		// this adds reserves on the first frame you touch the turbo pad,
@@ -356,7 +356,7 @@ void VehFire_Increment(struct Driver *driverArg, int reservesArg, u32 typeArg, i
 
 		if (oldOTT < reserves)
 		{
-			VehFire_SetReserves(driver, CTR_MipsAddLo((u16)driver->reserves, reserveDelta));
+			driver->reserves = (s16)CTR_MipsAddLo((u16)driver->reserves, reserveDelta);
 			driver->turbo_outsideTimer = (s16)reserves;
 		}
 	}
@@ -365,7 +365,7 @@ void VehFire_Increment(struct Driver *driverArg, int reservesArg, u32 typeArg, i
 	else if ((type & SUPER_ENGINE) == 0)
 	{
 		// increase reserves BY param2
-		VehFire_SetReserves(driver, CTR_MipsAddLo((u16)driver->reserves, reserves));
+		driver->reserves = (s16)CTR_MipsAddLo((u16)driver->reserves, reserves);
 	}
 
 	// super engine
@@ -374,7 +374,7 @@ void VehFire_Increment(struct Driver *driverArg, int reservesArg, u32 typeArg, i
 		// set reserves to reserves parameter instead of incrementing
 		if (driver->reserves < reserves)
 		{
-			VehFire_SetReserves(driver, reserves);
+			driver->reserves = (s16)reserves;
 		}
 	}
 

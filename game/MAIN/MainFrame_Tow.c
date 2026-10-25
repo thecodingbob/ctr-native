@@ -92,7 +92,7 @@ void MainFrame_Tow_Update(struct GameTracker *gGT, struct GamepadSystem *gGamepa
 	struct Driver *lead = gGT->drivers[MAINFRAME_TOW_LEAD_SLOT];
 	struct Driver *towed = gGT->drivers[MAINFRAME_TOW_TOWED_SLOT];
 
-	if (lead == NULL || towed == NULL)
+	if (lead == NULL || towed == NULL || (towed->actionsFlagSet & ACTION_BOT) != 0)
 	{
 		return;
 	}

@@ -20,7 +20,15 @@ Asset-free regression suites mirror these responsibilities:
 `tests/test_chaos_effects.c` covers gameplay modifiers and instant rewards.
 Both use `tests/shared/chaos_fixture.h` for the shared world, real module include
 chain and integration doubles. `tests/test_warpball.c` independently covers orb
-launch, targeting and teardown without loading the Chaos runtime.
+launch and teardown without loading the Chaos runtime.
+
+`RB_Chaos.c` owns activation, public gameplay hooks and per-driver dispatch,
+sharing `Chaos_TargetsDriver` for recipient checks. `RB_ChaosEffects.c` contains
+only private effect operations: callers check activation and applicability.
+Effect operations retain their gameplay conditions (terrain, fuel, pickup
+queues) but never query the Chaos runtime. The gameplay hooks preserve modifier
+ordering and check eligibility before calling them; No Reserves is tested
+through `Chaos_ApplyDriver`.
 
 ## Adventure saves
 
@@ -77,7 +85,11 @@ new format and migration; `namespace_Memcard.h` assertions pin the layout.
 `Chaos_Update` runs before gameplay threads, only after GO in eligible Adventure
 races, with no active menu, debug menu or pending load. Pause freezes timers.
 Race end, retry teardown and level-load stage 0 clear runtime before driver reuse;
-settings and the dedicated `chaosRng` survive. Use that RNG for scheduling and
+settings and the dedicated `chaosRng` survive. `Chaos_Init(seed)` initializes the
+generator once at process startup; the host supplies a seed from SDL's
+automatically seeded RNG, before replay restoration;
+Adventure saves do not restore it. Checkpoints restore its exact captured state.
+Use that RNG for scheduling and
 selection rather than retail RNG. Hard Crates' retail weapon interactions can
 still consume retail RNG; do not conceal this by restoring it.
 
@@ -86,6 +98,8 @@ old entry and appends a fresh one, resetting duration, phase, notice and one-off
 behavior. Conflicting pairs replace each other: Inverted/Wobble Steering,
 Low Gravity/Heavy Karts, Speed Capped/Super Speed, No Reserves/Too Boosted TO Fail.
 Use This! removes No Items; Reserve Injection removes No Reserves before its grant.
+Symmetric conflicts are listed once as pairs; the instant gifts' one-way
+replacements remain explicit.
 A fifth unrelated timed effect is
 rejected; replacement remains possible at capacity. Expiry precedes scheduling,
 so new entries receive their full duration.
@@ -93,7 +107,9 @@ so new entries receive their full duration.
 Instant rewards execute once and use a separate four-entry announcement queue,
 without entering `active` or consuming timed capacity. Repeats execute again and
 refresh their notice; overflow drops the oldest notice. Zero duration is invalid
-for both kinds. Selection filters eligibility before drawing with `chaosRng`.
+for both kinds. Selection draws directly from enabled effects with `chaosRng`.
+Current scopes need no recipient-availability filter: the race ends when all
+humans finish. Application still excludes finished drivers and respects scope.
 
 Trigger behavior is described in the [player guide](features/CHAOS.md#triggers).
 Interval/Random retain frame overshoot; rejected scheduled events still consume
@@ -149,18 +165,23 @@ interpolation owns body growth/squash/stretch. Giant-vs-smaller collisions use
 retail squish damage with protection, skip normal bounce after a successful
 squash and queue the forced hop; equal scales keep ordinary collision.
 
-`VehPhysGeneral_GiveRandomItem` owns inventory replacement, uniform selection
-from distinct Race2 entries, retail finalization and acquisition audio. Chaos
-supplies one RNG sample; roulette keeps its existing selection and shares the
-private finalization for orb ownership, missile limits, stacks and mask choice.
+`Chaos_GiveRandomItem` owns inventory replacement, uniform selection from an
+explicit list of distinct Race2 items and mask choice. It passes the resolved
+item ID to `VehPhysProc_AssignHeldItem`, extracted from ordinary roulette
+finalization to share orb ownership, missile limits and stack quantities.
+`Chaos_ClearItems` cancels roulette, cooldown and pending fire input after calling
+`VehPhysProc_RemoveHeldItem`. That shared item operation handles removal and
+missile/orb ownership, and is also used when ordinary item use completes.
+The reusable operations live in `VehPhysProc_Items.c`, included by `VehPhysProc.c`.
+Ordinary roulette selection and finalization remain intact.
 Use This! is available in relic/crystal events too.
 Relic HUDs display granted inventory alongside their time-crate feedback.
 Direct mask/shield grants use normal activation without
 consuming inventory; renewal reuses the existing mask model or shield layers.
 The held item's mask choice is preserved.
-`VehPhysGeneral_PlayItemAcquireSound` is shared by roulette and random grants;
-inventory finalization itself has no audio side effects. Direct mask
-grants use `VehPickupItem_MaskUseWeapon` with no inventory mask choice, allowing
+The gift and ordinary roulette share `VehPhysProc_PlayItemAcquireSound`, using
+the original `ITEMSET_ACQUIRED_*` sound IDs in `VehPhysGeneral.c`. Direct mask grants use
+`VehPickupItem_MaskUseWeapon` with no inventory mask choice, allowing
 normal renewal and configured mask selection. That power-up helper retains its
 normal RNG; uniform inventory selection uses `chaosRng`.
 Juiced Up tops up the ordinary pending Wumpa pickup queue;
@@ -168,20 +189,20 @@ HUD crediting animates the count and `RB_Player_ModifyWumpa` plays the full-coun
 chime. Existing pending fruit is counted toward the reward. Crystal challenges
 credit Wumpas directly through that helper, keeping their crystal queue intact.
 
-`RB_Warpball_InitPath` owns orb routing. Race tracks use their checkpoint path;
-crystal/battle arenas use the existing direct homing movement toward the nearest
-unhit opponent, without checkpoint or race-rank assumptions. A solo arena orb
-flies forward and fades on collision. Teardown tolerates missing particles and
-ends the current update before further movement or hit processing.
+The warpball branch in `VehPickupItem_ShootNow` prepares its routing inline.
+Race tracks use their checkpoint path;
+crystal/battle arenas and levels without that path immediately start the normal
+orb teardown after spawning, without seeking targets or running movement.
+Teardown tolerates missing particles.
 
 Reserve Injection brings reserves to at least 9,600 units (ten game seconds),
-preserving larger balances and using `VehFire_Increment`
-at third-drift-boost fire level if no boost remains. Reserve writes share
+writing the reward directly, preserving larger balances and using `VehFire_Increment`
+at third-drift-boost fire level if no boost remains. Reserve losses share
 `VehFire_SetReserves`, whose single Chaos hook protects depletion, damage,
-U-turn and rescue resets. Wall contacts use `SCRUB_FLAG_KEEP_RESERVES` on the
-driver-local surface returned by `VehAfterColl_GetSurface`; shared surface
-metadata stays unchanged. Grants still increase reserves; Chaos
-grants saturate at `0x7fff` to avoid overflow after injection.
+U-turn and rescue resets. `COLL_MOVED_ScrubImpact` skips clearing reserves and
+`turbo_outsideTimer` for drivers protected by Too Boosted To Fail.
+`VehFire_Increment` applies the original reserve grants directly, without
+checking Chaos protection.
 
 ## HUD and audio
 

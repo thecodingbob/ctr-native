@@ -833,10 +833,6 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 		{
 			weaponInst = INSTANCE_BirthWithThread(SHIELD_DARK_MODEL, VEH_PICKUP_SHIELD_DARK_NAME, MEDIUM, OTHER, RB_ShieldDark_ThTick_Grow, sizeof(struct Shield),
 			                                      d->instSelf->thread);
-			if (weaponInst == NULL)
-			{
-				return;
-			}
 			shieldObj = weaponInst->thread->object;
 			const int colorModel = d->numWumpas >= DRIVER_WUMPA_JUICED_COUNT ? DYNAMIC_SHIELD : DYNAMIC_SHIELD_GREEN;
 			shieldObj->instColor = INSTANCE_Birth3D(GAME_TRACKER->modelPtr[colorModel], VEH_PICKUP_SHIELD_NAME, weaponInst->thread);
@@ -897,16 +893,12 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 		register struct Instance *weaponInst CTR_PSX_REGISTER("$18");
 		register struct TrackerWeapon *tw CTR_PSX_REGISTER("$16");
 		struct Particle *p;
+		const struct Level *level = GAME_TRACKER->level1;
 
 		GAMEPAD_ShockFreq(d, WEAPON_GAMEPAD_RUMBLE_FRAMES, 0);
 		GAMEPAD_ShockForce1(d, WEAPON_GAMEPAD_RUMBLE_FRAMES, WEAPON_GAMEPAD_RUMBLE_FORCE);
 
 		weaponInst = INSTANCE_BirthWithThread(WARPBALL_MODEL, rdata.s_warpball, MEDIUM, TRACKING, RB_Warpball_ThTick, sizeof(struct TrackerWeapon), 0);
-		if (weaponInst == NULL)
-		{
-			GAME_TRACKER->gameMode1 &= ~WARPBALL_HELD;
-			return;
-		}
 
 		weaponInst->matrix.t[0] = CTR_MipsSra(d->posCurr.x, WARPBALL_POS_SHIFT);
 		weaponInst->matrix.t[1] = CTR_MipsSra(d->posCurr.y, WARPBALL_POS_SHIFT);
@@ -929,7 +921,6 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 		}
 
 		tw = weaponInst->thread->object;
-		RB_Warpball_InitPath(tw, weaponInst, d);
 
 		tw->soundIDCount = 0;
 
@@ -951,6 +942,38 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 			p->otIndexOffset = (s8)WARPBALL_PARTICLE_OT_OFFSET;
 		}
 
+		tw->driverParent = d;
+		tw->driversHit = 1u << d->driverID;
+		tw->flags = d->numWumpas >= DRIVER_WUMPA_JUICED_COUNT ? TRACKER_FLAG_POWERED_UP : 0;
+		tw->ptrNodeCurr = NULL;
+		tw->ptrNodeNext = NULL;
+		tw->driverTarget = NULL;
+		tw->turnAroundFrames = 0;
+		tw->pathProgress = 0;
+
+		if ((GAME_TRACKER->gameMode1 & (CRYSTAL_CHALLENGE | BATTLE_MODE)) != 0 || level->ptr_restart_points == NULL)
+		{
+			// Without a race path the orb has no route: fade as soon as it spawns.
+			RB_Warpball_Death(weaponInst->thread);
+			break;
+		}
+
+		if (d->driverRank > 0)
+		{
+			tw->driverTarget = GAME_TRACKER->driversInRaceOrder[d->driverRank - 1];
+		}
+		tw->nodeCurrIndex = 0;
+		RB_Warpball_SeekDriver(tw, d->checkpoint.currentIndex, d);
+		tw->nodeNextIndex = tw->nodeCurrIndex;
+		tw->ptrNodeCurr = &level->ptr_restart_points[tw->nodeCurrIndex];
+		tw->flags |= TRACKER_FLAG_WARPBALL_FALLBACK_PATH;
+		tw->driverTarget = d->driverRank == 0 ? NULL : RB_Warpball_GetDriverTarget(tw, weaponInst);
+		RB_Warpball_SetTargetDriver(tw);
+		if ((tw->flags & TRACKER_FLAG_WARPBALL_TARGET_PATH) == 0)
+		{
+			RB_Warpball_Start(tw);
+		}
+		tw->ptrNodeNext = RB_Warpball_NewPathNode(tw->ptrNodeCurr, tw->driverTarget);
 		break;
 	}
 
