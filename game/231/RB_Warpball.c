@@ -55,7 +55,10 @@ void RB_Warpball_Death(struct Thread *t)
 	inst = t->inst;
 	tw = t->object;
 	tw->distFromGround = inst->matrix.t[1];
-	tw->ptrParticle->framesLeftInLife = 0;
+	if (tw->ptrParticle != NULL)
+	{
+		tw->ptrParticle->framesLeftInLife = 0;
+	}
 	tw->fadeFrame = 0;
 
 	// play sound of warpball death
@@ -133,6 +136,29 @@ struct Driver *RB_Warpball_GetDriverTarget(struct TrackerWeapon *tw, struct Inst
 	s16 i;
 
 	bestDriver = NULL;
+	if (tw->ptrNodeCurr == NULL)
+	{
+		// Arenas have no race path or useful race order: seek the nearest opponent.
+		s64 bestDistance = INT64_MAX;
+		for (int i = 0; i < (int)len(GAME_TRACKER->drivers); i++)
+		{
+			struct Driver *driver = GAME_TRACKER->drivers[i];
+			if (driver == NULL || (tw->driversHit & (1u << i)) != 0 ||
+			    (driver->actionsFlagSet & ACTION_RACE_FINISHED) != 0 || driver->kartState == KS_MASK_GRABBED)
+			{
+				continue;
+			}
+			const s64 dx = (driver->posCurr.x >> 8) - inst->matrix.t[0];
+			const s64 dz = (driver->posCurr.z >> 8) - inst->matrix.t[2];
+			const s64 distance = dx * dx + dz * dz;
+			if (distance < bestDistance)
+			{
+				bestDistance = distance;
+				bestDriver = driver;
+			}
+		}
+		return bestDriver;
+	}
 	if (tw->flags & TRACKER_FLAG_POWERED_UP)
 	{
 		nodes = GAME_TRACKER->level1->ptr_restart_points;
@@ -208,6 +234,11 @@ void RB_Warpball_SetTargetDriver(struct TrackerWeapon *tw)
 	target = tw->driverTarget;
 	if (target == NULL)
 	{
+		return;
+	}
+	if (tw->ptrNodeCurr == NULL)
+	{
+		tw->flags |= TRACKER_FLAG_WARPBALL_TARGET_PATH;
 		return;
 	}
 	targetDistance = target->distanceToFinish_curr;
@@ -289,6 +320,43 @@ void RB_Warpball_SeekDriver(struct TrackerWeapon *tw, u32 checkpointIndex, struc
 	}
 }
 
+void RB_Warpball_InitPath(struct TrackerWeapon *tw, struct Instance *inst, struct Driver *driver)
+{
+	const struct Level *level = GAME_TRACKER->level1;
+	tw->driverParent = driver;
+	tw->driversHit = 1u << driver->driverID;
+	tw->flags = driver->numWumpas >= DRIVER_WUMPA_JUICED_COUNT ? TRACKER_FLAG_POWERED_UP : 0;
+	tw->ptrNodeCurr = NULL;
+	tw->ptrNodeNext = NULL;
+	tw->driverTarget = NULL;
+	tw->turnAroundFrames = 0;
+	tw->pathProgress = 0;
+
+	if ((GAME_TRACKER->gameMode1 & (CRYSTAL_CHALLENGE | BATTLE_MODE)) != 0 || level->ptr_restart_points == NULL)
+	{
+		tw->driverTarget = RB_Warpball_GetDriverTarget(tw, inst);
+		RB_Warpball_SetTargetDriver(tw);
+		return;
+	}
+
+	if (driver->driverRank > 0)
+	{
+		tw->driverTarget = GAME_TRACKER->driversInRaceOrder[driver->driverRank - 1];
+	}
+	tw->nodeCurrIndex = 0;
+	RB_Warpball_SeekDriver(tw, driver->checkpoint.currentIndex, driver);
+	tw->nodeNextIndex = tw->nodeCurrIndex;
+	tw->ptrNodeCurr = &level->ptr_restart_points[tw->nodeCurrIndex];
+	tw->flags |= TRACKER_FLAG_WARPBALL_FALLBACK_PATH;
+	tw->driverTarget = driver->driverRank == 0 ? NULL : RB_Warpball_GetDriverTarget(tw, inst);
+	RB_Warpball_SetTargetDriver(tw);
+	if ((tw->flags & TRACKER_FLAG_WARPBALL_TARGET_PATH) == 0)
+	{
+		RB_Warpball_Start(tw);
+	}
+	tw->ptrNodeNext = RB_Warpball_NewPathNode(tw->ptrNodeCurr, tw->driverTarget);
+}
+
 void RB_Warpball_TurnAround(struct Thread *t)
 {
 	struct TrackerWeapon *tw;
@@ -300,6 +368,11 @@ void RB_Warpball_TurnAround(struct Thread *t)
 	tw = t->object;
 	inst = t->inst;
 	flags = tw->flags;
+	if (tw->ptrNodeCurr == NULL)
+	{
+		RB_Warpball_Death(t);
+		return;
+	}
 
 	if (
 	    // if turnaround was requested
@@ -340,6 +413,7 @@ void RB_Warpball_TurnAround(struct Thread *t)
 			PlaySound3D(0x4f, inst);
 
 			RB_Warpball_Death(t);
+			return;
 		}
 
 		// Step along the backward path every fourth turnaround tick.
@@ -423,7 +497,8 @@ void RB_Warpball_ThTick(struct Thread *t)
 
 	if (tw->driverTarget != NULL)
 	{
-		if ((tw->driverTarget->kartState == KS_MASK_GRABBED) && ((tw->flags & TRACKER_FLAG_WARPBALL_TARGET_PATH) != 0))
+		if (tw->ptrNodeCurr != NULL && (tw->driverTarget->kartState == KS_MASK_GRABBED) &&
+		    ((tw->flags & TRACKER_FLAG_WARPBALL_TARGET_PATH) != 0))
 		{
 			tw->flags = (tw->flags & ~TRACKER_FLAG_WARPBALL_TARGET_PATH) | TRACKER_FLAG_WARPBALL_FALLBACK_PATH | TRACKER_FLAG_WARPBALL_MASK_REPATH;
 			tw->ptrNodeCurr = &GAME_TRACKER->level1->ptr_restart_points[tw->nodeNextIndex];
@@ -432,7 +507,7 @@ void RB_Warpball_ThTick(struct Thread *t)
 			RB_Warpball_SetTargetDriver(tw);
 		}
 
-		if ((tw->flags & TRACKER_FLAG_WARPBALL_TARGET_REFRESH_BLOCKED) == 0)
+		if (tw->ptrNodeCurr == NULL || (tw->flags & TRACKER_FLAG_WARPBALL_TARGET_REFRESH_BLOCKED) == 0)
 		{
 			tw->driverTarget = RB_Warpball_GetDriverTarget(tw, inst);
 
@@ -630,6 +705,10 @@ void RB_Warpball_ThTick(struct Thread *t)
 	if ((sps->collision.stepFlags & COLL_STEP_TRIGGER_WEAPON_REACT) != 0)
 	{
 		RB_Warpball_TurnAround(t);
+		if (t->funcThTick == RB_Warpball_FadeAway)
+		{
+			return;
+		}
 	}
 
 	if (sps->boolDidTouchHitbox != 0)
@@ -639,6 +718,10 @@ void RB_Warpball_ThTick(struct Thread *t)
 		if (RB_Hazard_CollLevInst(sps, t) == 1)
 		{
 			RB_Warpball_TurnAround(t);
+			if (t->funcThTick == RB_Warpball_FadeAway)
+			{
+				return;
+			}
 		}
 	}
 
@@ -670,6 +753,10 @@ void RB_Warpball_ThTick(struct Thread *t)
 		if ((sps->boolDidTouchQuadblock == 0) && (((tw->flags & TRACKER_FLAG_WARPBALL_PATH_MODE) != 0) || (tw->driverTarget == NULL)))
 		{
 			RB_Warpball_TurnAround(t);
+			if (t->funcThTick == RB_Warpball_FadeAway)
+			{
+				return;
+			}
 		}
 	}
 
@@ -718,7 +805,8 @@ void RB_Warpball_ThTick(struct Thread *t)
 			flagsBeforeHit = tw->flags | TRACKER_FLAG_WARPBALL_HIT_DRIVER;
 			tw->flags = flagsBeforeHit;
 
-			if ((((flagsBeforeHit & TRACKER_FLAG_POWERED_UP) == 0) && (tw->driverTarget == hitDriver)) || (hitDriver->driverRank == 0))
+			if ((((flagsBeforeHit & TRACKER_FLAG_POWERED_UP) == 0) && (tw->driverTarget == hitDriver)) ||
+			    (tw->ptrNodeCurr != NULL && hitDriver->driverRank == 0))
 			{
 				tw->driverParent->instBombThrow = NULL;
 				RB_Warpball_Death(t);
@@ -727,6 +815,7 @@ void RB_Warpball_ThTick(struct Thread *t)
 
 			tw->driversHit |= CTR_MipsSll(1, hitDriver->driverID);
 
+			if (tw->ptrNodeCurr != NULL)
 			{
 				s16 rank;
 				for (rank = hitDriver->driverRank; rank < 8; rank++)
@@ -753,14 +842,15 @@ void RB_Warpball_ThTick(struct Thread *t)
 				{
 					tw->driverParent->instBombThrow = NULL;
 					RB_Warpball_Death(t);
+					return;
 				}
 
-				if (hadTargetPathFlag != 0)
+				if (hadTargetPathFlag != 0 && tw->ptrNodeCurr != NULL)
 				{
 					RB_Warpball_SeekDriver(tw, hitDriver->checkpoint.currentIndex, hitDriver);
 				}
 
-				if (((tw->flags & TRACKER_FLAG_WARPBALL_TARGET_PATH) == 0) && (hadTargetPathFlag != 0))
+				if (tw->ptrNodeCurr != NULL && ((tw->flags & TRACKER_FLAG_WARPBALL_TARGET_PATH) == 0) && (hadTargetPathFlag != 0))
 				{
 					if (tw->nodeCurrIndex != 0xff)
 					{

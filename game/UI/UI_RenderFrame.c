@@ -333,8 +333,8 @@ void UI_RenderFrame_Racing()
 				}
 			}
 
-			// If you're not in a Relic Race
-			if ((gameMode1 & RELIC_RACE) == 0)
+			// Relic races can receive inventory through instant rewards too.
+			if ((gameMode1 & RELIC_RACE) == 0 || playerStruct->heldItemID != HELD_ITEM_NONE)
 			{
 				if ((playerStruct->actionsFlagSet & ACTION_RACE_FINISHED) == 0)
 				{
@@ -345,7 +345,7 @@ void UI_RenderFrame_Racing()
 			}
 
 			// if you are in relic mode
-			else
+			if ((gameMode1 & RELIC_RACE) != 0)
 			{
 				// If you smashed a time crate, this variable is set to 10
 				if (playerStruct->PickupTimeboxHUD.cooldown != 0)

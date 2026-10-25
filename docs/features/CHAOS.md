@@ -27,7 +27,7 @@ Existing Regular files stay Regular.
 
 | Setting | Meaning |
 | --- | --- |
-| **Duration** | How long each effect lasts: 5–60 seconds, in 5-second steps. Default: 30 seconds. |
+| **Duration** | How long timed effects last: 5–60 seconds, in 5-second steps. Default: 30 seconds. Instant rewards apply once. |
 | **Trigger** | What causes the next activation; see below. Default: Random. |
 | **Interval** | Gap used by Random, Interval and External: 5–120 seconds, in 5-second steps. Default: 35 seconds. Hidden for Pickup. |
 | **Effects** | Open the list and turn individual effects ON or OFF. All are selected initially. |
@@ -80,39 +80,51 @@ enabled in the file. Setup and a manual submission example are in the
 
 ## Effects
 
-| Effect | What happens |
-| --- | --- |
-| **Inverted Steering** | Left and right steering are reversed. |
-| **No Hopping** | Manual hopping is disabled. Existing drifts and forced jumps can still happen. |
-| **Wobble Steering** | Steering sways from side to side, making a straight line harder to hold. |
-| **Low Gravity** | Gravity falls to one quarter of normal, keeping you airborne longer. |
-| **Heavy Karts** | Gravity triples, bringing you down sooner after jumps. |
-| **Speed Capped** | Forward target speed is capped at half your kart's normal class speed, including while boosting. |
-| **Super Speed** | Doubles forward target speed and acceleration. The game's usual speed ceiling still applies. |
-| **No Reserves** | Continually clears stored boost fuel, preventing you from building up reserves. |
-| **No Items** | Empties held items and cancels item rolls. Already deployed items, shields and masks remain active. |
-| **Explosive Crates** | Item, Wumpa and time crates explode when you drive into and break them. The blast can hurt you through mask or shield protection. |
-| **Wumpa Drain** | Removes one collected Wumpa per second until you reach zero. |
-| **Clock Curse** | Applies an initial spin hit and clock slowdown. The initial hit bypasses mask and shield protection. |
-| **Defective Boosts** | While you have reserves, the fire-speed bonus becomes a penalty instead. |
-| **Anxious Mask** | Contact with slowing terrain, such as off-road surfaces, requests a normal mask rescue back to a checkpoint. Normal rescue penalties apply. |
-| **Hard Crates** | Item, Wumpa and time crates become solid obstacles when you drive into them, instead of breaking and giving rewards. |
-| **Giant Karts** | Doubles kart size and lateral collision size, adds 30% to forward target speed and jump force, and lets larger karts squash smaller ones. Protected karts can resist squashing. |
+| Effect                  | What happens                                                                                                                                                                   |
+|-------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Inverted Steering**   | Left and right steering are reversed.                                                                                                                                          |
+| **No Hopping**          | Manual hopping is disabled. Existing drifts and forced jumps can still happen.                                                                                                 |
+| **Wobble Steering**     | Steering sways from side to side, making a straight line harder to hold.                                                                                                       |
+| **Low Gravity**         | Gravity falls to one quarter of normal, keeping you airborne longer.                                                                                                           |
+| **Heavy Karts**         | Gravity triples, bringing you down sooner after jumps.                                                                                                                         |
+| **Speed Capped**        | Forward target speed is capped at half your kart's normal class speed, including while boosting.                                                                               |
+| **Super Speed**         | Doubles forward target speed and acceleration. The game's usual speed ceiling still applies.                                                                                   |
+| **No Reserves**         | Continually clears stored boost fuel, preventing you from building up reserves.                                                                                                |
+| **No Items**            | Empties held items and cancels item rolls. Already deployed items, shields and masks remain active.                                                                            |
+| **Explosive Crates**    | Item, Wumpa and time crates explode when you drive into and break them. The blast can hurt you through mask or shield protection.                                              |
+| **Wumpa Drain**         | Removes one collected Wumpa per second until you reach zero.                                                                                                                   |
+| **Clock Curse**         | Applies an initial spin hit and clock slowdown. The initial hit bypasses mask and shield protection.                                                                           |
+| **Defective Boosts**    | While you have reserves, the fire-speed bonus becomes a penalty instead.                                                                                                       |
+| **Anxious Mask**        | Contact with slowing terrain, such as off-road surfaces, requests a normal mask rescue back to a checkpoint. Normal rescue penalties apply.                                    |
+| **Hard Crates**         | Item, Wumpa and time crates become solid obstacles when you drive into them, instead of breaking and giving rewards.                                                           |
+| **Giant Karts**         | Doubles kart size and lateral collision size, adds 30% to forward target speed and jump force, and lets larger karts squash smaller ones. Protected karts can resist squashing. |
+| **Use This!**           | Replace each human's item with a random one.                                                                                                                                   |
+| **Juiced Up**           | Fill Wumpas to ten.                                                                                                                                                            |
+| **It is I**             | Activate or renew a normal mask without consuming inventory, using normal Wumpa and duration rules.                                                                            |
+| **Providence**          | Activate or renew a normal shield without consuming inventory, using normal Wumpa, color and duration rules.                                                                   |
+| **Reserve Injection**   | Bring reserves to at least ten seconds; give third-drift-boost fire if not already boosting. Preserve an existing boost and any larger reserve balance.                        |
+| **Too Boosted TO Fail** | Boosts can add reserves, but consumption, damage, U-turns and rescues cannot reduce them while the effect lasts.                                                               |
 
 Effects can overlap: Duration does not delay the next trigger. For example,
 Duration 30 seconds with Interval 10 seconds allows several effects at once.
 
-- Up to **four distinct effects** can be active. A fifth unrelated effect is
+- Up to **four distinct timed effects** can be active. A fifth unrelated timed effect is
   ignored; refreshing or replacing an existing effect is still possible.
 - Triggering an active effect starts its duration over and announces it again;
   it does not multiply that effect's strength.
 - These pairs replace one another: **Inverted Steering / Wobble Steering**,
-  **Low Gravity / Heavy Karts**, and **Speed Capped / Super Speed**.
+  **Low Gravity / Heavy Karts**, **Speed Capped / Super Speed**, and
+  **No Reserves / Too Boosted TO Fail**.
+- **Use This!** ends **No Items**; **Reserve Injection** ends **No Reserves**.
+- The five instant rewards (**Use This!**, **Juiced Up**, **It is I**,
+  **Providence**, **Reserve Injection**) take no timed slot. Repeating one applies
+  its reward again.
 
 ## During a race
 
 A sound and on-screen banner announce each activation. After a few seconds, its
-name moves into the smaller list on the right.
+name moves into the smaller list on the right. Instant rewards show only the
+initial banner and never dock, even when their gameplay result persists.
 
 ![Chaos activation banner and effect list during a race](images/chaos-race-hud.jpg)
 

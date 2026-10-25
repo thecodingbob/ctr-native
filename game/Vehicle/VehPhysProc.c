@@ -16,8 +16,6 @@ enum
 	VEH_PHYS_PROC_WEAPON_COOLDOWN_STACK_FRAMES = 5,
 	VEH_PHYS_PROC_ASSUMED_CROSS_BUTTON = BTN_CROSS_one,
 	VEH_PHYS_PROC_INVISIBLE_REAPPEAR_FX = 0x62,
-	VEH_PHYS_PROC_ITEM_ROLL_NORMAL_FX = 0x5e,
-	VEH_PHYS_PROC_ITEM_ROLL_JUICED_FX = 0x41,
 	VEH_PHYS_PROC_DISTANCE_SPEED_SHIFT = 8,
 	VEH_PHYS_PROC_TEN_WUMPA_COUNT = 10,
 	VEH_PHYS_PROC_HAZARD_MOVING_SPEED_MIN = 0x100,
@@ -120,7 +118,6 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 	struct Thread *driverThread;
 	int kartState;
 	register u8 heldItemID CTR_PSX_REGISTER("$3");
-	u8 hasJuicedWumpa;
 	u16 driverTimerNegativeFinal;
 	int approxTrig;
 	int approximateSpeed;
@@ -162,7 +159,6 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 	register int superEngineTimer CTR_PSX_REGISTER("$14");
 	register int jumpTenBuffer CTR_PSX_REGISTER("$18");
 	register int rainCloudEffect CTR_PSX_REGISTER("$20");
-	u32 itemSound;
 	register u32 actionsFlagSetNext CTR_PSX_REGISTER("$18");
 	register u32 buttonsHeld CTR_PSX_REGISTER("$5");
 	register int stickRY CTR_PSX_REGISTER("$21");
@@ -224,7 +220,7 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 		{
 			reservesTimer = 0;
 		}
-		driver->reserves = (s16)reservesTimer;
+		VehFire_SetReserves(driver, reservesTimer);
 		driver->timeSpentUsingReserves = CTR_MipsSubLo(driver->timeSpentUsingReserves, msPerFrameNeg);
 	}
 	if (turboTimer > 0)
@@ -544,20 +540,7 @@ hazardDone:
 
 		// Select a random weapon for driver.
 		VehPhysGeneral_SetHeldItem(driver);
-
-		itemSound = VEH_PHYS_PROC_ITEM_ROLL_NORMAL_FX;
-		if (driver->numWumpas >= DRIVER_WUMPA_JUICED_COUNT)
-		{
-			// Juiced wumpa count uses the alternate "ka-ching" sound.
-			itemSound = VEH_PHYS_PROC_ITEM_ROLL_JUICED_FX;
-			hasJuicedWumpa = true;
-		}
-		else
-		{
-			hasJuicedWumpa = false;
-		}
-
-		OtherFX_Play(itemSound, hasJuicedWumpa);
+		VehPhysGeneral_PlayItemAcquireSound(driver);
 	}
 itemRollDone:
 	CTR_PSX_KEEP_VALUE(normalVecIndex);
@@ -874,7 +857,7 @@ CheckJumpButtonsReady:
 	    ((driver->stepFlagSet & COLL_STEP_TRIGGER_TURBO_PAD_MASK) == 0))
 	{
 		// Set Reserves to zero
-		driver->reserves = 0;
+		VehFire_SetReserves(driver, 0);
 	}
 
 	// assume normal gas pedal
@@ -2573,7 +2556,7 @@ void VehPhysProc_SlamWall_Init(struct Thread *t, struct Driver *d)
 	d->velocity.y = 0;
 	d->velocity.z = 0;
 	d->speedometerNeedleValue = 0;
-	d->reserves = 0;
+	VehFire_SetReserves(d, 0);
 	d->turbo_outsideTimer = 0;
 	d->VehFire_AudioCooldown = 0;
 	d->Screen_OffsetY = 0;

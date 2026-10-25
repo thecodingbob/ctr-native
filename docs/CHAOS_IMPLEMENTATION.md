@@ -73,12 +73,19 @@ settings and the dedicated `chaosRng` survive. Use that RNG for scheduling and
 selection rather than retail RNG. Hard Crates' retail weapon interactions can
 still consume retail RNG; do not conceal this by restoring it.
 
-Activations are ordered, with at most four unique IDs. Reactivation removes the
+Timed activations are ordered, with at most four unique IDs. Reactivation removes the
 old entry and appends a fresh one, resetting duration, phase, notice and one-off
 behavior. Conflicting pairs replace each other: Inverted/Wobble Steering,
-Low Gravity/Heavy Karts, Speed Capped/Super Speed. A fifth unrelated effect is
+Low Gravity/Heavy Karts, Speed Capped/Super Speed, No Reserves/Too Boosted TO Fail.
+Use This! removes No Items; Reserve Injection removes No Reserves before its grant.
+A fifth unrelated timed effect is
 rejected; replacement remains possible at capacity. Expiry precedes scheduling,
 so new entries receive their full duration.
+
+Instant rewards execute once and use a separate four-entry announcement queue,
+without entering `active` or consuming timed capacity. Repeats execute again and
+refresh their notice; overflow drops the oldest notice. Zero duration is invalid
+for both kinds. Selection filters eligibility before drawing with `chaosRng`.
 
 Trigger behavior is described in the [player guide](features/CHAOS.md#triggers).
 Interval/Random retain frame overshoot; rejected scheduled events still consume
@@ -101,6 +108,8 @@ checkpoints; this is separate from Adventure-save compatibility.
 Host command/catalogue files are outside checkpoints. Catalogue publication runs
 at game initialization and `Chaos_BeginRace`, not per frame. Playback performs no
 provider file I/O; external request timing is not recorded.
+Published commands are enabled effects applicable to the current eligible race;
+hubs publish an empty list. Requests are checked again at execution time.
 
 ## Effect integration
 
@@ -132,10 +141,45 @@ interpolation owns body growth/squash/stretch. Giant-vs-smaller collisions use
 retail squish damage with protection, skip normal bounce after a successful
 squash and queue the forced hop; equal scales keep ordinary collision.
 
+`VehPhysGeneral_GiveRandomItem` owns inventory replacement, uniform selection
+from distinct Race2 entries, retail finalization and acquisition audio. Chaos
+supplies one RNG sample; roulette keeps its existing selection and shares the
+private finalization for orb ownership, missile limits, stacks and mask choice.
+Use This! is available in relic/crystal events too.
+Relic HUDs display granted inventory alongside their time-crate feedback.
+Direct mask/shield grants use normal activation without
+consuming inventory; renewal reuses the existing mask model or shield layers.
+The held item's mask choice is preserved.
+`VehPhysGeneral_PlayItemAcquireSound` is shared by roulette and random grants;
+inventory finalization itself has no audio side effects. Direct mask
+grants use `VehPickupItem_MaskUseWeapon` with no inventory mask choice, allowing
+normal renewal and configured mask selection. That power-up helper retains its
+normal RNG; uniform inventory selection uses `chaosRng`.
+Juiced Up tops up the ordinary pending Wumpa pickup queue;
+HUD crediting animates the count and `RB_Player_ModifyWumpa` plays the full-count
+chime. Existing pending fruit is counted toward the reward. Crystal challenges
+credit Wumpas directly through that helper, keeping their crystal queue intact.
+
+`RB_Warpball_InitPath` owns orb routing. Race tracks use their checkpoint path;
+crystal/battle arenas use the existing direct homing movement toward the nearest
+unhit opponent, without checkpoint or race-rank assumptions. A solo arena orb
+flies forward and fades on collision. Teardown tolerates missing particles and
+ends the current update before further movement or hit processing.
+
+Reserve Injection brings reserves to at least 9,600 units (ten game seconds),
+preserving larger balances and using `VehFire_Increment`
+at third-drift-boost fire level if no boost remains. Reserve writes share
+`VehFire_SetReserves`, whose single Chaos hook protects depletion, damage,
+U-turn and rescue resets. Wall contacts use `SCRUB_FLAG_KEEP_RESERVES` on the
+driver-local surface returned by `VehAfterColl_GetSurface`; shared surface
+metadata stays unchanged. Grants still increase reserves; Chaos
+grants saturate at `0x7fff` to avoid overflow after injection.
+
 ## HUD and audio
 
 Each successful activation plays the preloaded double-gain transition swish and
-starts a three-second announcement followed by 320 ms docking. Rejected requests
+starts a three-second announcement; timed effects then get 320 ms docking.
+Instant notices expire without docking. Rejected requests
 and redraws do neither. Race audio teardown releases level-local cached samples;
 preloading avoids synchronous reads at activation.
 

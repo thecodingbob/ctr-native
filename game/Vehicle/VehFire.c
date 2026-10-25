@@ -93,6 +93,11 @@ PlayAudio:
 }
 
 
+void VehFire_SetReserves(struct Driver *driver, int reserves)
+{
+	driver->reserves = (s16)Chaos_ReservesForDriver(driver, reserves);
+}
+
 // param1 - driver
 // param2 - reserves to add
 // param3 - add type
@@ -351,7 +356,7 @@ void VehFire_Increment(struct Driver *driverArg, int reservesArg, u32 typeArg, i
 
 		if (oldOTT < reserves)
 		{
-			driver->reserves = (s16)CTR_MipsAddLo((u16)driver->reserves, reserveDelta);
+			VehFire_SetReserves(driver, CTR_MipsAddLo((u16)driver->reserves, reserveDelta));
 			driver->turbo_outsideTimer = (s16)reserves;
 		}
 	}
@@ -360,7 +365,7 @@ void VehFire_Increment(struct Driver *driverArg, int reservesArg, u32 typeArg, i
 	else if ((type & SUPER_ENGINE) == 0)
 	{
 		// increase reserves BY param2
-		driver->reserves = (s16)CTR_MipsAddLo((u16)driver->reserves, reserves);
+		VehFire_SetReserves(driver, CTR_MipsAddLo((u16)driver->reserves, reserves));
 	}
 
 	// super engine
@@ -369,7 +374,7 @@ void VehFire_Increment(struct Driver *driverArg, int reservesArg, u32 typeArg, i
 		// set reserves to reserves parameter instead of incrementing
 		if (driver->reserves < reserves)
 		{
-			driver->reserves = (s16)reserves;
+			VehFire_SetReserves(driver, reserves);
 		}
 	}
 

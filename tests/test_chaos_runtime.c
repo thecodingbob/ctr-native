@@ -29,6 +29,110 @@ static s16 s_drawY[CHAOS_EFFECT_COUNT];
 static s16 s_drawFont[CHAOS_EFFECT_COUNT];
 static s32 s_drawScale[CHAOS_EFFECT_COUNT];
 static u32 *s_drawOT[CHAOS_EFFECT_COUNT];
+static int s_maskGrants;
+static int s_shieldGrants;
+static int s_itemSounds;
+static u32 s_itemSound;
+static int s_juicedSounds;
+struct OverlayRDATA_231 R231;
+u8 *gCTRNativeScratchpadBase;
+
+// Orb regression checks exercise launch, targeting and teardown without world assets.
+s32 MATH_VectorNormalize(SVec3 *vector)
+{
+	(void)vector;
+	CtrTest_Bail("arena orb targeting must not inspect a race path");
+	return 0;
+}
+void OtherFX_RecycleMute(u32 *sound) { *sound = 0; }
+void ThTick_SetAndExec(struct Thread *thread, void (*tick)(struct Thread *))
+{
+	thread->funcThTick = tick;
+	tick(thread);
+}
+s32 INSTANCE_GetNumAnimFrames(struct Instance *inst, s32 anim)
+{
+	(void)inst; (void)anim;
+	return 1;
+}
+struct Thread *RB_GetThread_ClosestTracker(struct Driver *driver) { (void)driver; return NULL; }
+int SquareRoot0_stub(int value) { (void)value; CtrTest_Bail("orb launch must not advance race segments"); return 0; }
+void PlaySound3D_Flags(u32 *flags, u32 sound, struct Instance *inst) { (void)flags; (void)sound; (void)inst; }
+void COLL_SearchBSP_CallbackQUADBLK(const SVec3 *top, const SVec3 *bottom, struct ScratchpadStruct *sps, s32 radius)
+{
+	(void)top; (void)bottom; (void)sps; (void)radius;
+	CtrTest_Bail("orb launch must not run world collision");
+}
+void RB_MakeInstanceReflective(struct ScratchpadStruct *sps, struct Instance *inst) { (void)sps; (void)inst; }
+struct Instance *RB_Hazard_CollideWithDrivers(struct Instance *inst, s16 safety, int radius, struct Instance *parent)
+{
+	(void)inst; (void)safety; (void)radius; (void)parent;
+	CtrTest_Bail("orb launch must not test driver hits");
+	return NULL;
+}
+int RB_Hazard_HurtDriver(struct Driver *victim, int damage, struct Driver *attacker, int reason)
+{
+	(void)victim; (void)damage; (void)attacker; (void)reason;
+	CtrTest_Bail("orb launch must not hurt a driver");
+	return 0;
+}
+s32 RB_Hazard_CollLevInst(struct ScratchpadStruct *sps, struct Thread *thread) { (void)sps; (void)thread; return 0; }
+struct Instance *RB_Hazard_CollideWithBucket(struct Instance *inst, struct Thread *thread, struct Thread *bucket,
+                                          s16 safety, int radius, struct Instance *parent)
+{
+	(void)inst; (void)thread; (void)bucket; (void)safety; (void)radius; (void)parent;
+	return NULL;
+}
+
+void VehStuckProc_RIP_Init(struct Thread *thread, struct Driver *driver)
+{
+	(void)thread;
+	(void)driver;
+	CtrTest_Bail("Wumpa crediting must not eliminate a driver");
+}
+
+void MainGameEnd_Initialize(void)
+{
+	CtrTest_Bail("Wumpa crediting must not end the race");
+}
+
+s32 MixRNG_Scramble(void)
+{
+	CtrTest_Bail("Chaos item selection must use its dedicated RNG");
+	return 0;
+}
+
+b32 VehPickupItem_ApplyMaskMode(struct Driver *driver)
+{
+	(void)driver;
+	return true;
+}
+
+struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, b32 playSound)
+{
+	CTR_TEST_CHECK_EQ(driver->maskIsAku, -1, "direct mask activation ignores the held item's mask choice");
+	CTR_TEST_CHECK(playSound, "direct mask activation requests the normal power-up sound");
+	s_maskGrants++;
+	return NULL;
+}
+
+void VehPickupItem_ShootNow(struct Driver *driver, s32 weapon, s32 flags)
+{
+	(void)driver;
+	CTR_TEST_CHECK_EQ(flags, 0, "Chaos power-ups use the normal activation flags");
+	if (weapon == HELD_ITEM_MASK)
+	{
+		s_maskGrants++;
+	}
+	else if (weapon == HELD_ITEM_SHIELD)
+	{
+		s_shieldGrants++;
+	}
+	else
+	{
+		CtrTest_Bail("Chaos direct grants must dispatch a mask or shield");
+	}
+}
 
 // VehPickupItem.c precedes Chaos in the game unity build.
 enum { SOUND_CLOCK = 0x44 };
@@ -36,6 +140,12 @@ enum { SOUND_CLOCK = 0x44 };
 #include <game/Vehicle/VehPhysCrash.c>
 #include <game/Vehicle/VehPhysForce.c>
 #include <game/Vehicle/VehPickState.c>
+#include <game/Vehicle/VehPhysGeneral.c>
+// Keep the damage-path guard double while exercising real Wumpa crediting.
+#define RB_Player_KillPlayer RB_Player_KillPlayer_Unused
+#include <game/231/RB_Player.c>
+#undef RB_Player_KillPlayer
+#include <game/231/RB_Warpball.c>
 #include <game/231/RB_Chaos.c>
 
 static const char *s_externalCommand;
@@ -135,6 +245,10 @@ void RB_Burst_InitVisual(struct Instance *inst)
 }
 void PlaySound3D(u32 soundID, struct Instance *inst)
 {
+	if (soundID == 0x4f)
+	{
+		return;
+	}
 	CTR_TEST_CHECK_EQ(soundID, HOWL_SFX_TNT_EXPLOSION, "explosive crates use explosion audio");
 	CTR_TEST_CHECK(inst == s_lastExplodingCrate, "explosion audio originates at the touched crate");
 	s_crateSounds++;
@@ -201,7 +315,17 @@ s32 doCOP2(s32 op)
 }
 int OtherFX_Play(u32 soundID, int flags)
 {
-	(void)flags;
+	if (soundID == 0x5e || soundID == 0x41)
+	{
+		CTR_TEST_CHECK_EQ(flags, soundID == 0x41, "item acquisition retains the normal Wumpa-dependent sound flags");
+		s_itemSounds++;
+		s_itemSound = soundID;
+		if (soundID == 0x41)
+		{
+			s_juicedSounds++;
+		}
+		return 0;
+	}
 	CTR_TEST_CHECK_EQ(soundID, SOUND_CLOCK, "Clock Curse plays the retail clock sound");
 	s_clockSounds++;
 	return 0;
@@ -350,6 +474,16 @@ struct Particle *Particle_Init(u32 flags, struct IconGroup *icons, struct Partic
 
 static void SetupRace(int trigger)
 {
+	// Stand-in retail storage: repeated entries must not weight uniform gifts.
+	memset(data.RNG_itemSetRace2, HELD_ITEM_TURBO, sizeof(data.RNG_itemSetRace2));
+	int poolIndex = 0;
+	for (int item = HELD_ITEM_TURBO; item <= HELD_ITEM_MISSILE_3X; item++)
+	{
+		if (item != HELD_ITEM_SPRING)
+		{
+			data.RNG_itemSetRace2[poolIndex++] = (u8)item;
+		}
+	}
 	s_allHumansFinished = false;
 	s_activationSounds = 0;
 	s_clockSounds = 0;
@@ -2320,7 +2454,10 @@ static void TestActiveEffectList(void)
 	sdata->chaosSettings.enabledCount = CHAOS_EFFECT_COUNT;
 	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
 	{
-		Chaos_Activate((ChaosEffectId)i, 30000);
+		if (!ChaosEffect_IsInstant((ChaosEffectId)i))
+		{
+			Chaos_Activate((ChaosEffectId)i, 30000);
+		}
 	}
 	s_tracker.numPlyrCurrGame = 2;
 	s_tracker.pushBuffer[0].rect = (RECT){0, 0, SCREEN_WIDTH, SCREEN_HEIGHT / 2};
@@ -2641,6 +2778,292 @@ static void TestCataloguePublicationLifecycle(void)
 	Tick(0);
 	CTR_TEST_CHECK_EQ(s_cataloguePublications, 2, "the next initialization publishes its selection exactly once");
 	CTR_TEST_CHECK(strstr(s_externalCatalogue, "giant-karts\n") != NULL, "the new publication reflects the new profile");
+	s_tracker.gameMode1 |= ADVENTURE_ARENA;
+	Chaos_BeginRace(&s_tracker);
+	CTR_TEST_CHECK(s_externalCatalogue[0] == '\0', "hubs publish no applicable race commands");
+}
+
+static void EnableGiftEffects(void)
+{
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	s_externalCommand = NULL;
+	s_maskGrants = 0;
+	s_shieldGrants = 0;
+	for (int id = 0; id < CHAOS_EFFECT_COUNT; id++)
+	{
+		sdata->chaosSettings.effects[id] = true;
+	}
+	sdata->chaosSettings.enabledCount = CHAOS_EFFECT_COUNT;
+}
+
+static void TestInstantGifts(void)
+{
+	CTR_TEST_SECTION("instant rewards bypass timed capacity and never dock");
+	EnableGiftEffects();
+	const ChaosEffectId timed[] = {
+		CHAOS_EFFECT_LOW_GRAVITY, CHAOS_EFFECT_NO_HOPPING,
+		CHAOS_EFFECT_NO_ITEMS, CHAOS_EFFECT_INVERTED_STEERING,
+	};
+	for (size_t i = 0; i < len(timed); i++)
+	{
+		CTR_TEST_CHECK(Chaos_Activate(timed[i], 10000), "the timed effect pool can fill independently");
+	}
+	s_defaultDrivers[1].actionsFlagSet = ACTION_RACE_FINISHED;
+	s_defaultDrivers[1].numWumpas = 2;
+	struct Driver bot = {.driverID = 2, .numWumpas = 3, .actionsFlagSet = ACTION_BOT};
+	s_tracker.drivers[2] = &bot;
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_JUICED_UP, 1), "a one-shot reward works with all timed slots occupied");
+	CTR_TEST_CHECK_EQ(s_defaultDrivers[0].numWumpas, 0, "Juiced Up leaves crediting to the ordinary gradual HUD pickup");
+	CTR_TEST_CHECK_EQ(s_defaultDrivers[0].PickupWumpaHUD.numCollected, DRIVER_WUMPA_JUICED_COUNT, "Juiced Up queues the missing Wumpas");
+	const int chimesBefore = s_juicedSounds;
+	while (s_defaultDrivers[0].PickupWumpaHUD.numCollected > 0)
+	{
+		s_defaultDrivers[0].PickupWumpaHUD.numCollected--;
+		RB_Player_ModifyWumpa(&s_defaultDrivers[0], 1);
+	}
+	CTR_TEST_CHECK_EQ(s_defaultDrivers[0].numWumpas, DRIVER_WUMPA_JUICED_COUNT, "normal pickup crediting fills the human's Wumpas");
+	CTR_TEST_CHECK_EQ(s_juicedSounds, chimesBefore + 1, "reaching ten through normal crediting plays the juiced-up chime once");
+	CTR_TEST_CHECK_EQ(s_defaultDrivers[1].numWumpas, 2, "finished humans receive no gift");
+	CTR_TEST_CHECK_EQ(bot.numWumpas, 3, "bots receive no human gift");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, CHAOS_MAX_ACTIVATIONS, "instant rewards consume no timed slot");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_JUICED_UP), "an instant reward is never an ongoing modifier");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numInstantNotices, 1, "the reward has its own notice");
+	static struct DB buffer;
+	u32 uiOT[5];
+	buffer.otMem.uiOT = uiOT;
+	s_tracker.backBuffer = &buffer;
+	s_tracker.hudFlags = HUD_FLAG_RACE_HUD;
+	const struct ChaosRuntime snapshot = sdata->chaosRuntime;
+	s_tracker.gameMode1 |= PAUSE_1;
+	Tick(500);
+	CTR_TEST_CHECK(memcmp(&snapshot, &sdata->chaosRuntime, sizeof(snapshot)) == 0, "pause also freezes instant notices");
+	s_tracker.gameMode1 &= ~PAUSE_1;
+	Tick(CHAOS_ACTIVATION_NOTICE_MS - 100);
+	DrawNotice();
+	CTR_TEST_CHECK(strcmp(s_noticeText, "Juiced Up") == 0, "the instant notice survives the requested effect duration");
+	CTR_TEST_CHECK_EQ(s_noticeFont, FONT_BIG, "the instant notice does not enter the compact docking animation");
+	Tick(100);
+	DrawNotice();
+	CTR_TEST_CHECK_EQ(s_noticeDraws, CHAOS_MAX_ACTIVATIONS, "only timed effects remain after the instant banner expires");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numInstantNotices, 0, "expired notices leave no docked entry");
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_JUICED_UP, 1000), "Juiced Up remains eligible at ten Wumpas");
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_JUICED_UP, 1000), "one-shot rewards can repeat immediately");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numInstantNotices, 1, "repeated gifts refresh rather than duplicate their banner");
+	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_JUICED_UP, 0), "zero-duration requests remain invalid for instant effects");
+	const struct Driver before = s_defaultDrivers[0];
+	Chaos_Activate(CHAOS_EFFECT_IT_IS_I, 1000);
+	Chaos_Activate(CHAOS_EFFECT_PROVIDENCE, 1000);
+	CTR_TEST_CHECK_EQ(s_maskGrants, 1, "It is I invokes the normal mask activation only for the unfinished human");
+	CTR_TEST_CHECK_EQ(s_shieldGrants, 1, "Providence invokes the normal shield activation only for the unfinished human");
+	CTR_TEST_CHECK(memcmp(&before, &s_defaultDrivers[0], sizeof(before)) == 0, "dispatch preserves held inventory and its mask choice");
+	s_defaultDrivers[0].numWumpas = 0;
+	Chaos_Activate(CHAOS_EFFECT_JUICED_UP, 1000);
+	CTR_TEST_CHECK_EQ(s_defaultDrivers[0].PickupWumpaHUD.numCollected, DRIVER_WUMPA_JUICED_COUNT, "repeating an instant effect queues its reward again");
+	Chaos_Activate(CHAOS_EFFECT_JUICED_UP, 1000);
+	CTR_TEST_CHECK_EQ(s_defaultDrivers[0].PickupWumpaHUD.numCollected, DRIVER_WUMPA_JUICED_COUNT, "repeats during collection do not duplicate pending Wumpas");
+	Chaos_Activate(CHAOS_EFFECT_USE_THIS, 1000);
+	s_defaultDrivers[0].reserves = 1;
+	s_defaultDrivers[0].fireSpeedCap = 1;
+	Chaos_Activate(CHAOS_EFFECT_RESERVE_INJECTION, 1000);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numInstantNotices, CHAOS_MAX_INSTANT_NOTICES, "a fifth distinct reward keeps notice storage bounded");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.instantNotices[0].effect, CHAOS_EFFECT_PROVIDENCE, "notice overflow drops the oldest banner");
+	const struct ChaosRuntime notices = sdata->chaosRuntime;
+	Chaos_Reset();
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numInstantNotices, 0, "reset clears instant notices too");
+	sdata->chaosRuntime = notices;
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numInstantNotices, CHAOS_MAX_INSTANT_NOTICES, "resident restore retains instant announcements");
+	s_tracker.gameMode1 |= CRYSTAL_CHALLENGE;
+	s_defaultDrivers[0].numWumpas = 3;
+	s_defaultDrivers[0].PickupWumpaHUD.numCollected = 2;
+	Chaos_Activate(CHAOS_EFFECT_JUICED_UP, 1000);
+	CTR_TEST_CHECK_EQ(s_defaultDrivers[0].numWumpas, DRIVER_WUMPA_JUICED_COUNT, "crystal events receive the Wumpa reward through normal crediting");
+	CTR_TEST_CHECK_EQ(s_defaultDrivers[0].PickupWumpaHUD.numCollected, 2, "the Wumpa reward cannot add or consume queued crystals");
+}
+
+static void TestRandomItemGift(void)
+{
+	CTR_TEST_SECTION("Use This! shares item bookkeeping, uses Chaos RNG, and respects orb ownership");
+	EnableGiftEffects();
+	bool uniformSeen[HELD_ITEM_MISSILE_3X + 1] = {0};
+	for (u32 sample = 0; sample < HELD_ITEM_MISSILE_3X; sample++)
+	{
+		VehPhysGeneral_GiveRandomItem(&s_defaultDrivers[0], sample);
+		const u8 item = s_defaultDrivers[0].heldItemID;
+		CTR_TEST_CHECK(!uniformSeen[item], "duplicate retail weights contribute only one outcome each to the uniform pool");
+		uniformSeen[item] = true;
+	}
+	Chaos_Activate(CHAOS_EFFECT_NO_ITEMS, 10000);
+	struct Driver *human = &s_defaultDrivers[0];
+	s_itemSounds = 0;
+	human->heldItemID = HELD_ITEM_ROULETTE;
+	human->itemRollTimer = 100;
+	human->noItemTimer = 20;
+	human->actionsFlagSet |= ACTION_WEAPON_FIRE_REQUEST;
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_USE_THIS, 1000), "the item gift replaces No Items before assignment");
+	CTR_TEST_CHECK_EQ(s_itemSounds, s_tracker.numPlyrCurrGame, "each human item grant plays the usual acquisition sound");
+	CTR_TEST_CHECK_EQ(s_itemSound, 0x5e, "unjuiced item grants use the ordinary crate-item sound");
+	human->numWumpas = DRIVER_WUMPA_JUICED_COUNT;
+	Chaos_GiveRandomItem(human);
+	CTR_TEST_CHECK_EQ(s_itemSound, 0x41, "juiced item grants use the ordinary upgraded-item sound");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_NO_ITEMS), "No Items cannot immediately erase the gift");
+	CTR_TEST_CHECK_EQ(human->itemRollTimer, 0, "the previous roulette stops");
+	CTR_TEST_CHECK_EQ(human->noItemTimer, 0, "the new item is immediately available");
+	CTR_TEST_CHECK((human->actionsFlagSet & ACTION_WEAPON_FIRE_REQUEST) == 0, "a stale launch request cannot fire the new item");
+	bool seen[HELD_ITEM_ROULETTE + 1] = {0};
+	for (int sample = 0; sample < 300; sample++)
+	{
+		Chaos_Activate(CHAOS_EFFECT_USE_THIS, 1000);
+		for (int player = 0; player < s_tracker.numPlyrCurrGame; player++)
+		{
+			const struct Driver *driver = s_tracker.drivers[player];
+			CTR_TEST_CHECK(driver->heldItemID <= HELD_ITEM_MISSILE_3X && driver->heldItemID != HELD_ITEM_SPRING,
+			               "race gifts exclude unused and battle-only items");
+			seen[driver->heldItemID] = true;
+			CTR_TEST_CHECK_EQ(driver->numHeldItems,
+			                  driver->heldItemID == HELD_ITEM_BOMB_3X || driver->heldItemID == HELD_ITEM_MISSILE_3X ? HELD_ITEM_STACK_COUNT : 0,
+			                  "multi-item rewards receive the standard stack count");
+		}
+	}
+	CTR_TEST_CHECK(seen[HELD_ITEM_MASK] && seen[HELD_ITEM_CLOCK] && seen[HELD_ITEM_WARPBALL] &&
+	               seen[HELD_ITEM_BOMB_3X] && seen[HELD_ITEM_MISSILE_3X], "the pool includes powerful and multi-item results");
+	struct Thread orb = {.modelIndex = DYNAMIC_WARPBALL};
+	s_tracker.threadBuckets[TRACKING].thread = &orb;
+	s_tracker.gameMode1 |= WARPBALL_HELD;
+	for (int sample = 0; sample < 50; sample++)
+	{
+		Chaos_Activate(CHAOS_EFFECT_USE_THIS, 1000);
+		CTR_TEST_CHECK(human->heldItemID != HELD_ITEM_WARPBALL && s_defaultDrivers[1].heldItemID != HELD_ITEM_WARPBALL,
+		               "an already deployed orb is excluded from both independent rolls");
+	}
+	human->heldItemID = HELD_ITEM_WARPBALL;
+	VehPhysGeneral_ClearHeldItem(human);
+	CTR_TEST_CHECK((s_tracker.gameMode1 & WARPBALL_HELD) != 0, "discarding a held orb retains a deployed orb's flag");
+	s_tracker.threadBuckets[TRACKING].thread = NULL;
+	human->heldItemID = HELD_ITEM_WARPBALL;
+	s_defaultDrivers[1].heldItemID = HELD_ITEM_WARPBALL;
+	VehPhysGeneral_ClearHeldItem(human);
+	CTR_TEST_CHECK((s_tracker.gameMode1 & WARPBALL_HELD) != 0, "another holder retains the orb flag");
+	VehPhysGeneral_ClearHeldItem(&s_defaultDrivers[1]);
+	CTR_TEST_CHECK((s_tracker.gameMode1 & WARPBALL_HELD) == 0, "discarding the last undeployed orb releases the flag");
+	s_tracker.gameMode1 |= RELIC_RACE;
+	Chaos_PublishEffects();
+	CTR_TEST_CHECK(strstr(s_externalCatalogue, "use-this\n") != NULL, "relic races publish the item gift too");
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_USE_THIS, 1000), "relic races accept the item gift");
+	s_tracker.gameMode1 &= ~RELIC_RACE;
+	s_tracker.gameMode1 |= CRYSTAL_CHALLENGE;
+	Chaos_PublishEffects();
+	CTR_TEST_CHECK(strstr(s_externalCatalogue, "use-this\n") != NULL, "crystal challenges publish the item gift too");
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_USE_THIS, 1000), "crystal challenges accept the full race item pool");
+	memset(sdata->chaosSettings.effects, 0, sizeof(sdata->chaosSettings.effects));
+	sdata->chaosSettings.effects[CHAOS_EFFECT_USE_THIS] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_JUICED_UP] = true;
+	sdata->chaosSettings.enabledCount = 2;
+	for (int sample = 0; sample < 20; sample++)
+	{
+		const ChaosEffectId picked = Chaos_PickEligibleEffect();
+		CTR_TEST_CHECK(picked == CHAOS_EFFECT_USE_THIS || picked == CHAOS_EFFECT_JUICED_UP, "crystal challenges can select either enabled reward");
+	}
+	s_defaultDrivers[0].actionsFlagSet |= ACTION_RACE_FINISHED;
+	s_defaultDrivers[1].actionsFlagSet |= ACTION_RACE_FINISHED;
+	CTR_TEST_CHECK_EQ(Chaos_PickEligibleEffect(), CHAOS_EFFECT_NONE, "selection still filters effects without unfinished targets");
+}
+
+static void TestReserveGifts(void)
+{
+	CTR_TEST_SECTION("reserve gifts use normal fire grants, saturate fuel, and replace incompatible rules");
+	EnableGiftEffects();
+	struct Thread thread = {.modelIndex = DYNAMIC_PLAYER};
+	struct Instance instance = {.thread = &thread};
+	struct Driver *human = &s_defaultDrivers[0];
+	human->instSelf = &instance;
+	human->const_SingleTurboSpeed = 1000;
+	human->const_SacredFireSpeed = 2000;
+	s_defaultDrivers[1].reserves = 100;
+	s_defaultDrivers[1].fireSpeedCap = 3000;
+	Chaos_Activate(CHAOS_EFFECT_NO_RESERVES, 10000);
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_RESERVE_INJECTION, 1000), "Reserve Injection ends No Reserves and grants fuel");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_NO_RESERVES), "No Reserves is removed before the grant");
+	CTR_TEST_CHECK_EQ(human->reserves, CHAOS_INJECTION_RESERVES, "the empty kart receives ten seconds of reserves");
+	CTR_TEST_CHECK_EQ(human->fireSpeedCap, 1500, "an empty kart gets the third drift boost's normal fire level");
+	CTR_TEST_CHECK_EQ(s_defaultDrivers[1].fireSpeedCap, 3000, "an existing stronger fire level is preserved");
+	VehFire_Increment(human, 1000, POWER_SLIDE_HANG_TIME, CHAOS_THIRD_DRIFT_FIRE_LEVEL);
+	CTR_TEST_CHECK_EQ(human->reserves, CHAOS_INJECTION_RESERVES + 1000, "normal boost grants can still add to the ten-second reward");
+	human->reserves = CHAOS_RESERVES_MAX;
+	VehFire_Increment(human, 1000, POWER_SLIDE_HANG_TIME, CHAOS_THIRD_DRIFT_FIRE_LEVEL);
+	CTR_TEST_CHECK_EQ(human->reserves, CHAOS_RESERVES_MAX, "earned reserves at the signed limit saturate instead of overflowing");
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_RESERVE_INJECTION, 1000), "the gift remains eligible when reserves are already full");
+	CTR_TEST_CHECK_EQ(human->reserves, CHAOS_RESERVES_MAX, "the gift cannot reduce a larger earned reserve balance");
+	human->reserves = 2000;
+	Chaos_Activate(CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL, 1000);
+	const ScrubFlags originalFlags = data.MetaDataScrub[COLL_SCRUB_SOLID].flags;
+	const struct Scrub protectedSurface = VehAfterColl_GetSurface(COLL_SCRUB_SOLID, human);
+	CTR_TEST_CHECK((protectedSurface.flags & SCRUB_FLAG_KEEP_RESERVES) != 0, "protected wall contacts use the existing keep-reserves flag");
+	CTR_TEST_CHECK_EQ(data.MetaDataScrub[COLL_SCRUB_SOLID].flags, originalFlags, "surface rules leave shared metadata untouched");
+	CTR_TEST_CHECK_EQ(Chaos_ReservesForDriver(human, 1968), 2000, "natural consumption cannot lower frozen reserves");
+	VehFire_Increment(human, 500, POWER_SLIDE_HANG_TIME, CHAOS_THIRD_DRIFT_FIRE_LEVEL);
+	CTR_TEST_CHECK_EQ(human->reserves, 2500, "boosts can still increase frozen reserves");
+	VehPickState_ApplyDamage(human, VEH_PICK_DAMAGE_SPIN, NULL, 0, true);
+	CTR_TEST_CHECK_EQ(human->reserves, 2500, "the actual damage path cannot clear frozen reserves");
+	struct Driver bot = {.driverID = 2, .reserves = 2000, .actionsFlagSet = ACTION_BOT};
+	const struct Scrub botSurface = VehAfterColl_GetSurface(COLL_SCRUB_SOLID, &bot);
+	CTR_TEST_CHECK_EQ(botSurface.flags, originalFlags, "bot wall contacts retain their normal surface flags");
+	CTR_TEST_CHECK_EQ(Chaos_ReservesForDriver(&bot, 0), 0, "bot fuel remains ordinary");
+	const struct ChaosRuntime snapshot = sdata->chaosRuntime;
+	Tick(1000);
+	CTR_TEST_CHECK_EQ(Chaos_ReservesForDriver(human, 0), 0, "expiry restores reserve losses");
+	const struct Scrub expiredSurface = VehAfterColl_GetSurface(COLL_SCRUB_SOLID, human);
+	CTR_TEST_CHECK_EQ(expiredSurface.flags, originalFlags, "expiry restores ordinary wall-contact flags");
+	sdata->chaosRuntime = snapshot;
+	CTR_TEST_CHECK_EQ(Chaos_ReservesForDriver(human, 0), 2500, "resident restore restores reserve protection");
+	Chaos_Activate(CHAOS_EFFECT_NO_RESERVES, 1000);
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL), "No Reserves replaces reserve protection");
+	Chaos_ApplyReserveRules(human);
+	CTR_TEST_CHECK_EQ(human->reserves, 0, "the replacement rule clears fuel immediately when applied");
+	Chaos_Activate(CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL, 1000);
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_NO_RESERVES), "reserve protection replaces No Reserves in the opposite order");
+}
+
+static void TestArenaWarpball(void)
+{
+	CTR_TEST_SECTION("orb launch and teardown do not require race checkpoints in crystal arenas");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	struct Level level = {0};
+	struct Instance instance = {0};
+	struct TrackerWeapon orb = {0};
+	struct Thread thread = {.inst = &instance, .object = &orb};
+	s_tracker.level1 = &level;
+	s_tracker.gameMode1 |= CRYSTAL_CHALLENGE | WARPBALL_HELD;
+	s_defaultDrivers[1].posCurr.x = 100 << 8;
+	RB_Warpball_InitPath(&orb, &instance, &s_defaultDrivers[0]);
+	CTR_TEST_CHECK(orb.ptrNodeCurr == NULL && orb.ptrNodeNext == NULL, "arena launch leaves race-node pointers empty");
+	CTR_TEST_CHECK(orb.driverTarget == &s_defaultDrivers[1], "an arena orb can target a co-op partner even when both have rank zero");
+	CTR_TEST_CHECK((orb.flags & TRACKER_FLAG_WARPBALL_TARGET_PATH) != 0, "arena targeting reuses the orb's direct homing movement");
+	s_defaultDrivers[1].kartState = KS_MASK_GRABBED;
+	CTR_TEST_CHECK(RB_Warpball_GetDriverTarget(&orb, &instance) == NULL, "arena targeting excludes rescued drivers");
+	s_defaultDrivers[1].kartState = KS_NORMAL;
+	orb.driversHit |= 1u << 1;
+	CTR_TEST_CHECK(RB_Warpball_GetDriverTarget(&orb, &instance) == NULL, "a powered arena orb cannot retarget someone already hit");
+	s_tracker.drivers[1] = NULL;
+	RB_Warpball_InitPath(&orb, &instance, &s_defaultDrivers[0]);
+	CTR_TEST_CHECK(orb.driverTarget == NULL, "solo crystal launch needs no target or checkpoint path");
+	RB_Warpball_TurnAround(&thread);
+	CTR_TEST_CHECK(thread.funcThTick == RB_Warpball_FadeAway, "an arena orb fades on impact without trying to reverse a race path");
+	for (int i = 0; i < 6; i++)
+	{
+		RB_Warpball_FadeAway(&thread);
+	}
+	CTR_TEST_CHECK((thread.flags & THREAD_FLAG_DEAD) != 0, "an arena orb completes teardown even without an allocated particle");
+	CTR_TEST_CHECK((s_tracker.gameMode1 & WARPBALL_HELD) == 0, "orb teardown releases inventory ownership");
+
+	struct CheckpointNode nodes[2] = {
+		{.distToFinish = 1000, .nextIndex_forward = 1, .nextIndex_left = 0xff},
+		{.distToFinish = 500, .nextIndex_forward = 0, .nextIndex_left = 0xff},
+	};
+	level.ptr_restart_points = nodes;
+	level.cnt_restart_points = 2;
+	s_tracker.gameMode1 &= ~CRYSTAL_CHALLENGE;
+	RB_Warpball_InitPath(&orb, &instance, &s_defaultDrivers[0]);
+	CTR_TEST_CHECK(orb.ptrNodeCurr == &nodes[1] && orb.ptrNodeNext == &nodes[0], "normal tracks retain checkpoint-based launch and lookahead");
 }
 
 int main(void)
@@ -2676,5 +3099,9 @@ int main(void)
 	TestHudLayeringAndSoloStack();
 	TestBannerBaselineWithDockedEffects();
 	TestNotificationRows();
+	TestInstantGifts();
+	TestRandomItemGift();
+	TestReserveGifts();
+	TestArenaWarpball();
 	return CtrTest_Summary();
 }

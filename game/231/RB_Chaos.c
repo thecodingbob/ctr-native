@@ -18,7 +18,43 @@ enum
 	CHAOS_KART_SCALE_NORMAL = 1,
 	CHAOS_GIANT_SCALE = 2,
 	CHAOS_GIANT_SPEED_PERCENT = 130,
+	CHAOS_THIRD_DRIFT_FIRE_LEVEL = 0x80,
+	CHAOS_WUMPA_PICKUP_FRAMES = 5,
 };
+
+static bool Chaos_TargetsDriver(ChaosEffectId effect, const struct Driver *driver)
+{
+	const ChaosEffectDef *def = ChaosEffect_Def(effect);
+	return driver != NULL && def != NULL &&
+	       (driver->actionsFlagSet & ACTION_RACE_FINISHED) == 0 &&
+	       ChaosEffect_AppliesToDriver(def->scope, driver->driverID, sdata->gGT->numPlyrCurrGame);
+}
+
+static bool Chaos_EffectIsEligible(ChaosEffectId effect)
+{
+	if (ChaosEffect_Def(effect) == NULL)
+	{
+		return false;
+	}
+	for (int i = 0; i < (int)len(sdata->gGT->drivers); i++)
+	{
+		if (Chaos_TargetsDriver(effect, sdata->gGT->drivers[i]))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+static ChaosEffectId Chaos_PickEligibleEffect(void)
+{
+	bool eligible[CHAOS_EFFECT_COUNT];
+	for (int id = 0; id < CHAOS_EFFECT_COUNT; id++)
+	{
+		eligible[id] = sdata->chaosSettings.effects[id] && Chaos_EffectIsEligible((ChaosEffectId)id);
+	}
+	return ChaosEffect_Pick(eligible, ChaosEffect_CountEnabled(eligible), &sdata->chaosRng);
+}
 
 static s32 Chaos_NextTriggerGap(void)
 {
@@ -121,6 +157,18 @@ static void Chaos_RemoveReplacedEffects(ChaosEffectId effect)
 	{
 		replaced = CHAOS_EFFECT_SPEED_CAPPED;
 	}
+	else if (effect == CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL || effect == CHAOS_EFFECT_RESERVE_INJECTION)
+	{
+		replaced = CHAOS_EFFECT_NO_RESERVES;
+	}
+	else if (effect == CHAOS_EFFECT_NO_RESERVES)
+	{
+		replaced = CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL;
+	}
+	else if (effect == CHAOS_EFFECT_USE_THIS)
+	{
+		replaced = CHAOS_EFFECT_NO_ITEMS;
+	}
 	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
 	for (int i = 0; i < runtime->numActive;)
 	{
@@ -135,52 +183,157 @@ static void Chaos_RemoveReplacedEffects(ChaosEffectId effect)
 	}
 }
 
-static void Chaos_ApplyClockCurse(const struct ChaosActivation *chaosActivation)
+static void Chaos_GiveRandomItem(struct Driver *driver)
 {
-	OtherFX_Play(SOUND_CLOCK, 1);
-	for (int i = 0; i < sdata->gGT->numPlyrCurrGame; i++)
+	VehPhysGeneral_GiveRandomItem(driver, ChaosEffect_NextRandom(&sdata->chaosRng));
+}
+
+static void Chaos_GiveWumpas(struct Driver *driver)
+{
+	const int missing = DRIVER_WUMPA_JUICED_COUNT - driver->numWumpas;
+	if (missing <= 0)
 	{
-		struct Driver *driver = sdata->gGT->drivers[i];
-		if (Chaos_IsActiveForDriver(chaosActivation->effect, driver))
+		return;
+	}
+	if ((sdata->gGT->gameMode1 & CRYSTAL_CHALLENGE) != 0)
+	{
+		// Crystal events use this pickup queue for crystals, not Wumpas.
+		RB_Player_ModifyWumpa(driver, missing);
+		return;
+	}
+	if (driver->PickupWumpaHUD.numCollected < missing)
+	{
+		if (driver->PickupWumpaHUD.numCollected == 0)
 		{
-			VehPickState_ApplyDamage(driver, VEH_PICK_DAMAGE_SPIN, NULL, 0, true);
-			driver->clockReceive = chaosActivation->remainingMS;
+			const RECT *viewport = &sdata->gGT->pushBuffer[driver->driverID].rect;
+			driver->PickupWumpaHUD.startX = viewport->x + viewport->w / 2;
+			driver->PickupWumpaHUD.startY = viewport->y + viewport->h / 2;
+			driver->PickupWumpaHUD.cooldown = CHAOS_WUMPA_PICKUP_FRAMES;
 		}
+		driver->PickupWumpaHUD.numCollected = missing;
+	}
+}
+
+static void Chaos_GiveMask(struct Driver *driver)
+{
+	const s8 heldMask = driver->maskIsAku;
+	driver->maskIsAku = -1;
+	VehPickupItem_MaskUseWeapon(driver, true);
+	driver->maskIsAku = heldMask;
+}
+
+static void Chaos_GiveShield(struct Driver *driver)
+{
+	VehPickupItem_ShootNow(driver, HELD_ITEM_SHIELD, 0);
+}
+
+static void Chaos_GiveReserves(struct Driver *driver)
+{
+	if (driver->reserves <= 0 || driver->fireSpeedCap <= 0)
+	{
+		VehFire_Increment(driver, 0, POWER_SLIDE_HANG_TIME, CHAOS_THIRD_DRIFT_FIRE_LEVEL);
+	}
+	if (driver->reserves < CHAOS_INJECTION_RESERVES)
+	{
+		VehFire_SetReserves(driver, CHAOS_INJECTION_RESERVES);
 	}
 }
 
 static void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation)
 {
-	if (chaosActivation->effect == CHAOS_EFFECT_CLOCK_CURSE)
-	{
-		Chaos_ApplyClockCurse(chaosActivation);
-	}
-	if (chaosActivation->effect == CHAOS_EFFECT_GIANT_KARTS)
+	const ChaosEffectId effect = chaosActivation->effect;
+	if (effect == CHAOS_EFFECT_GIANT_KARTS)
 	{
 		Chaos_SetKartScale(CHAOS_GIANT_SCALE);
+		return;
 	}
+	if (effect == CHAOS_EFFECT_CLOCK_CURSE)
+	{
+		OtherFX_Play(SOUND_CLOCK, 1);
+	}
+	for (int i = 0; i < (int)len(sdata->gGT->drivers); i++)
+	{
+		struct Driver *driver = sdata->gGT->drivers[i];
+		if (!Chaos_TargetsDriver(effect, driver))
+		{
+			continue;
+		}
+		switch ((int)effect)
+		{
+		case CHAOS_EFFECT_USE_THIS:
+			Chaos_GiveRandomItem(driver);
+			break;
+		case CHAOS_EFFECT_JUICED_UP:
+			Chaos_GiveWumpas(driver);
+			break;
+		case CHAOS_EFFECT_IT_IS_I:
+			Chaos_GiveMask(driver);
+			break;
+		case CHAOS_EFFECT_PROVIDENCE:
+			Chaos_GiveShield(driver);
+			break;
+		case CHAOS_EFFECT_RESERVE_INJECTION:
+			Chaos_GiveReserves(driver);
+			break;
+		case CHAOS_EFFECT_CLOCK_CURSE:
+			VehPickState_ApplyDamage(driver, VEH_PICK_DAMAGE_SPIN, NULL, 0, true);
+			driver->clockReceive = chaosActivation->remainingMS;
+			break;
+		default:
+			break;
+		}
+	}
+}
+
+static void Chaos_EnqueueInstantNotice(const struct ChaosActivation *activation)
+{
+	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	// Refresh duplicates; overflow drops the oldest banner.
+	for (int i = 0; i < runtime->numInstantNotices; i++)
+	{
+		if (runtime->instantNotices[i].effect == activation->effect)
+		{
+			memmove(&runtime->instantNotices[i], &runtime->instantNotices[i + 1],
+			        (--runtime->numInstantNotices - i) * sizeof(*activation));
+			break;
+		}
+	}
+	if (runtime->numInstantNotices == CHAOS_MAX_INSTANT_NOTICES)
+	{
+		memmove(runtime->instantNotices, runtime->instantNotices + 1,
+		        (--runtime->numInstantNotices) * sizeof(*activation));
+	}
+	runtime->instantNotices[runtime->numInstantNotices++] = *activation;
 }
 
 bool Chaos_Activate(ChaosEffectId effect, s32 durationMS)
 {
 	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
 	if (!Chaos_IsRunning(sdata->gGT) || durationMS <= 0 ||
-	    !ChaosEffect_IsEnabled(sdata->chaosSettings.effects, effect))
+	    !ChaosEffect_IsEnabled(sdata->chaosSettings.effects, effect) || !Chaos_EffectIsEligible(effect))
 	{
 		return false;
 	}
 	Chaos_RemoveReplacedEffects(effect);
-	if (runtime->numActive == CHAOS_MAX_ACTIVATIONS)
+	const bool instant = ChaosEffect_IsInstant(effect);
+	if (!instant && runtime->numActive == CHAOS_MAX_ACTIVATIONS)
 	{
 		return false;
 	}
 	struct ChaosActivation activation = {
 		.effect = effect,
 		.remainingMS = durationMS,
-		.noticeRemainingMS = CHAOS_ACTIVATION_NOTICE_MS + CHAOS_ACTIVATION_DOCK_MS,
+		.noticeRemainingMS = CHAOS_ACTIVATION_NOTICE_MS + (instant ? 0 : CHAOS_ACTIVATION_DOCK_MS),
 		.elapsedMS = 0,
 	};
-	runtime->active[runtime->numActive++] = activation;
+	if (instant)
+	{
+		Chaos_EnqueueInstantNotice(&activation);
+	}
+	else
+	{
+		runtime->active[runtime->numActive++] = activation;
+	}
 	Chaos_ApplyOneOff(&activation);
 	OtherFX_Play_LowLevel(HOWL_SFX_SWISH, 1, HOWL_SFX_DEFAULT_FLAGS | HOWL_SFX_GAIN_DOUBLE_FLAG);
 	return true;
@@ -207,9 +360,13 @@ void Chaos_PublishEffects(void)
 	const struct ChaosSettings *settings = &sdata->chaosSettings;
 	char catalogue[NATIVE_CHAOS_CATALOGUE_SIZE] = {0};
 	size_t used = 0;
-	for (int i = 0; settings->armed && i < CHAOS_EFFECT_COUNT; i++)
+	const struct GameTracker *gGT = sdata->gGT;
+	const bool eligibleRace = gGT != NULL &&
+	    ChaosGate_IsRaceEligible(gGT->gameMode1 & ~(PAUSE_ALL | LOADING),
+	                             gGT->overlayIndex_Threads, true, CHAOS_GATE_ADVENTURE_ONLY);
+	for (int i = 0; settings->armed && eligibleRace && i < CHAOS_EFFECT_COUNT; i++)
 	{
-		if (settings->effects[i])
+		if (settings->effects[i] && Chaos_EffectIsEligible((ChaosEffectId)i))
 		{
 			const char *slug = ChaosEffect_Def((ChaosEffectId)i)->slug;
 			const size_t length = strlen(slug);
@@ -263,11 +420,7 @@ static void Chaos_PollExternal(void)
 
 bool Chaos_IsActiveForDriver(ChaosEffectId effect, const struct Driver *driver)
 {
-	const ChaosEffectDef *def = ChaosEffect_Def(effect);
-	return driver != NULL && def != NULL &&
-	       (driver->actionsFlagSet & ACTION_RACE_FINISHED) == 0 &&
-	       ChaosEffect_AppliesToDriver(def->scope, driver->driverID, sdata->gGT->numPlyrCurrGame) &&
-	       Chaos_IsActive(effect);
+	return Chaos_TargetsDriver(effect, driver) && Chaos_IsActive(effect);
 }
 
 bool Chaos_OnPickup(struct Driver *driver)
@@ -280,7 +433,7 @@ bool Chaos_OnPickup(struct Driver *driver)
 	{
 		return false;
 	}
-	const ChaosEffectId effect = ChaosEffect_Pick(settings->effects, settings->enabledCount, &sdata->chaosRng);
+	const ChaosEffectId effect = Chaos_PickEligibleEffect();
 	return Chaos_Activate(effect, settings->durationSeconds * CHAOS_MILLISECONDS_PER_SECOND);
 }
 
@@ -374,6 +527,31 @@ void Chaos_ApplyReserveRules(struct Driver *driver)
 	}
 }
 
+void Chaos_ApplySurfaceRules(const struct Driver *driver, struct Scrub *scrub)
+{
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL, driver))
+	{
+		scrub->flags |= SCRUB_FLAG_KEEP_RESERVES;
+	}
+}
+
+int Chaos_ReservesForDriver(const struct Driver *driver, int reserves)
+{
+	if (Chaos_IsRunning(sdata->gGT) && Chaos_TargetsDriver(CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL, driver))
+	{
+		// Reserve Injection fills the signed timer; subsequent grants must not wrap it.
+		if (reserves > CHAOS_RESERVES_MAX)
+		{
+			reserves = CHAOS_RESERVES_MAX;
+		}
+		if (reserves < driver->reserves && Chaos_IsActive(CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL))
+		{
+			return driver->reserves;
+		}
+	}
+	return reserves;
+}
+
 void Chaos_ApplyRescueRules(struct Driver *driver)
 {
 	if (!Chaos_IsActiveForDriver(CHAOS_EFFECT_ANXIOUS_MASK, driver))
@@ -408,15 +586,7 @@ void Chaos_ApplyItemRules(struct Driver *driver)
 {
 	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_NO_ITEMS, driver))
 	{
-		if (driver->heldItemID == HELD_ITEM_WARPBALL)
-		{
-			sdata->gGT->gameMode1 &= ~WARPBALL_HELD;
-		}
-		driver->heldItemID = HELD_ITEM_NONE;
-		driver->numHeldItems = 0;
-		driver->itemRollTimer = 0;
-		driver->noItemTimer = 0;
-		driver->actionsFlagSet &= ~ACTION_WEAPON_FIRE_REQUEST;
+		VehPhysGeneral_ClearHeldItem(driver);
 	}
 }
 
@@ -498,6 +668,21 @@ u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, in
 static void Chaos_TickActivations(s32 elapsedMS)
 {
 	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	for (int i = 0; i < runtime->numInstantNotices;)
+	{
+		struct ChaosActivation *notice = &runtime->instantNotices[i];
+		notice->elapsedMS += elapsedMS;
+		notice->noticeRemainingMS -= elapsedMS;
+		if (notice->noticeRemainingMS <= 0)
+		{
+			memmove(notice, notice + 1, (--runtime->numInstantNotices - i) * sizeof(*notice));
+			memset(&runtime->instantNotices[runtime->numInstantNotices], 0, sizeof(*notice));
+		}
+		else
+		{
+			i++;
+		}
+	}
 	for (int i = 0; i < runtime->numActive;)
 	{
 		struct ChaosActivation *entry = &runtime->active[i];
@@ -551,7 +736,7 @@ void Chaos_Update(struct GameTracker *gGT)
 	{
 		if (durationMS > 0)
 		{
-			const ChaosEffectId effect = ChaosEffect_Pick(settings->effects, settings->enabledCount, &sdata->chaosRng);
+			const ChaosEffectId effect = Chaos_PickEligibleEffect();
 			Chaos_Activate(effect, durationMS);
 		}
 		runtime->intervalRemainingMS += Chaos_NextTriggerGap();

@@ -828,8 +828,20 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 		register s32 scale CTR_PSX_REGISTER("$16");
 		register struct Shield *shieldObj CTR_PSX_REGISTER("$17");
 
-		weaponInst = INSTANCE_BirthWithThread(SHIELD_DARK_MODEL, VEH_PICKUP_SHIELD_DARK_NAME, MEDIUM, OTHER, RB_ShieldDark_ThTick_Grow, sizeof(struct Shield),
-		                                      d->instSelf->thread);
+		weaponInst = d->instBubbleHold;
+		if (weaponInst == NULL)
+		{
+			weaponInst = INSTANCE_BirthWithThread(SHIELD_DARK_MODEL, VEH_PICKUP_SHIELD_DARK_NAME, MEDIUM, OTHER, RB_ShieldDark_ThTick_Grow, sizeof(struct Shield),
+			                                      d->instSelf->thread);
+			if (weaponInst == NULL)
+			{
+				return;
+			}
+			shieldObj = weaponInst->thread->object;
+			const int colorModel = d->numWumpas >= DRIVER_WUMPA_JUICED_COUNT ? DYNAMIC_SHIELD : DYNAMIC_SHIELD_GREEN;
+			shieldObj->instColor = INSTANCE_Birth3D(GAME_TRACKER->modelPtr[colorModel], VEH_PICKUP_SHIELD_NAME, weaponInst->thread);
+			shieldObj->instHighlight = INSTANCE_Birth3D(GAME_TRACKER->modelPtr[DYNAMIC_HIGHLIGHT], VEH_PICKUP_HIGHLIGHT_NAME, weaponInst->thread);
+		}
 
 		weaponInst->scale.x = SHIELD_SCALE;
 		weaponInst->scale.y = SHIELD_SCALE;
@@ -841,11 +853,11 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 		shieldObj = weaponInst->thread->object;
 		if (d->numWumpas >= DRIVER_WUMPA_JUICED_COUNT)
 		{
-			shieldObj->instColor = INSTANCE_Birth3D(GAME_TRACKER->modelPtr[DYNAMIC_SHIELD], VEH_PICKUP_SHIELD_NAME, weaponInst->thread);
+			shieldObj->instColor->model = GAME_TRACKER->modelPtr[DYNAMIC_SHIELD];
 		}
 		else
 		{
-			shieldObj->instColor = INSTANCE_Birth3D(GAME_TRACKER->modelPtr[DYNAMIC_SHIELD_GREEN], VEH_PICKUP_SHIELD_NAME, weaponInst->thread);
+			shieldObj->instColor->model = GAME_TRACKER->modelPtr[DYNAMIC_SHIELD_GREEN];
 		}
 
 		scale = SHIELD_SCALE;
@@ -853,13 +865,12 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 		shieldObj->instColor->scale.y = scale;
 		shieldObj->instColor->scale.z = scale;
 
-		shieldObj->instHighlight = INSTANCE_Birth3D(GAME_TRACKER->modelPtr[DYNAMIC_HIGHLIGHT], VEH_PICKUP_HIGHLIGHT_NAME, weaponInst->thread);
-
 		shieldObj->instHighlight->scale.x = scale;
 		shieldObj->instHighlight->scale.y = scale;
 		shieldObj->instHighlight->scale.z = scale;
 
 		shieldObj->flags = 0;
+		shieldObj->duration = 0;
 		shieldObj->highlightRot.x = 0;
 		shieldObj->highlightRot.y = SHIELD_HIGHLIGHT_ROT_Y;
 		shieldObj->highlightRot.z = 0;
@@ -885,14 +896,17 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 	{
 		register struct Instance *weaponInst CTR_PSX_REGISTER("$18");
 		register struct TrackerWeapon *tw CTR_PSX_REGISTER("$16");
-		struct Driver *victim;
-		struct CheckpointNode *checkpoints;
 		struct Particle *p;
 
 		GAMEPAD_ShockFreq(d, WEAPON_GAMEPAD_RUMBLE_FRAMES, 0);
 		GAMEPAD_ShockForce1(d, WEAPON_GAMEPAD_RUMBLE_FRAMES, WEAPON_GAMEPAD_RUMBLE_FORCE);
 
 		weaponInst = INSTANCE_BirthWithThread(WARPBALL_MODEL, rdata.s_warpball, MEDIUM, TRACKING, RB_Warpball_ThTick, sizeof(struct TrackerWeapon), 0);
+		if (weaponInst == NULL)
+		{
+			GAME_TRACKER->gameMode1 &= ~WARPBALL_HELD;
+			return;
+		}
 
 		weaponInst->matrix.t[0] = CTR_MipsSra(d->posCurr.x, WARPBALL_POS_SHIFT);
 		weaponInst->matrix.t[1] = CTR_MipsSra(d->posCurr.y, WARPBALL_POS_SHIFT);
@@ -915,62 +929,7 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 		}
 
 		tw = weaponInst->thread->object;
-		tw->driverParent = d;
-		tw->turnAroundFrames = 0;
-		tw->ptrNodeNext = 0;
-		victim = 0;
-		if (d->driverRank != 0)
-		{
-			victim = GAME_TRACKER->driversInRaceOrder[d->driverRank - 1];
-		}
-		tw->driverTarget = victim;
-
-		RB_Warpball_SeekDriver(tw, d->checkpoint.currentIndex, d);
-
-		checkpoints = GAME_TRACKER->level1->ptr_restart_points;
-		tw->nodeNextIndex = tw->nodeCurrIndex;
-		tw->ptrNodeCurr = &checkpoints[tw->nodeCurrIndex];
-		tw->flags = 0;
-		tw->pathProgress = 0;
-
-		if (d->numWumpas >= DRIVER_WUMPA_JUICED_COUNT)
-		{
-			tw->flags |= TRACKER_FLAG_POWERED_UP;
-		}
-
-		tw->flags |= TRACKER_FLAG_WARPBALL_FALLBACK_PATH;
-
-		// make this driver invincible
-		tw->driversHit = 1 << d->driverID;
-
-		if (d->driverRank == 0)
-		{
-			tw->driverTarget = 0;
-		}
-		else
-		{
-			tw->driverTarget = RB_Warpball_GetDriverTarget(tw, weaponInst);
-		}
-		if (d->driverRank == 0)
-		{
-			tw->driverTarget = 0;
-		}
-
-		if (tw->driverTarget != 0)
-		{
-			RB_Warpball_SetTargetDriver(tw);
-		}
-
-		if ((tw->flags & TRACKER_FLAG_WARPBALL_TARGET_PATH) != 0)
-		{
-			tw->flags &= ~TRACKER_FLAG_WARPBALL_FALLBACK_PATH;
-		}
-		else
-		{
-			RB_Warpball_Start(tw);
-		}
-
-		tw->ptrNodeNext = RB_Warpball_NewPathNode(tw->ptrNodeCurr, tw->driverTarget);
+		RB_Warpball_InitPath(tw, weaponInst, d);
 
 		tw->soundIDCount = 0;
 

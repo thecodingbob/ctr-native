@@ -39,6 +39,12 @@ typedef enum {
 	CHAOS_EFFECT_ANXIOUS_MASK = 13,
 	CHAOS_EFFECT_HARD_CRATES = 14,
 	CHAOS_EFFECT_GIANT_KARTS = 15,
+	CHAOS_EFFECT_USE_THIS = 16,
+	CHAOS_EFFECT_JUICED_UP = 17,
+	CHAOS_EFFECT_IT_IS_I = 18,
+	CHAOS_EFFECT_PROVIDENCE = 19,
+	CHAOS_EFFECT_RESERVE_INJECTION = 20,
+	CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL = 21,
 
 	// IDs are saved bit positions: append new IDs, never renumber or reuse one.
 	// Growth within the saved bitset capacity does not change its layout.
@@ -78,7 +84,20 @@ static const ChaosEffectDef g_chaosEffectDefs[CHAOS_EFFECT_COUNT] =
 	[CHAOS_EFFECT_ANXIOUS_MASK] = { "anxious-mask", "Anxious Mask", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_HARD_CRATES] = { "hard-crates", "Hard Crates", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_GIANT_KARTS] = { "giant-karts", "Giant Karts", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_USE_THIS] = { "use-this", "Use This!", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_JUICED_UP] = { "juiced-up", "Juiced Up", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_IT_IS_I] = { "it-is-i", "It is I", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_PROVIDENCE] = { "providence", "Providence", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_RESERVE_INJECTION] = { "reserve-injection", "Reserve Injection", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL] = { "too-boosted-to-fail", "Too Boosted TO Fail", CHAOS_SCOPE_HUMANS },
 };
+
+static inline bool ChaosEffect_IsInstant(ChaosEffectId id)
+{
+	return id == CHAOS_EFFECT_USE_THIS || id == CHAOS_EFFECT_JUICED_UP ||
+	       id == CHAOS_EFFECT_IT_IS_I || id == CHAOS_EFFECT_PROVIDENCE ||
+	       id == CHAOS_EFFECT_RESERVE_INJECTION;
+}
 
 static inline const ChaosEffectDef *ChaosEffect_Def(ChaosEffectId id)
 {

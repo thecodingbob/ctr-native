@@ -637,7 +637,7 @@ void VehStuckProc_MaskGrab_Init(struct Thread *t, struct Driver *d)
 	d->KartStates.MaskGrab.maskObj = VehPickupItem_MaskUseWeapon(d, true);
 
 	d->turbo_MeterRoomLeft = 0;
-	d->reserves = 0;
+	VehFire_SetReserves(d, 0);
 	d->turbo_outsideTimer = 0;
 	d->matrixArray = BAKED_GTE_MATRIX_NONE;
 	d->matrixIndex = 0;
@@ -882,7 +882,7 @@ void VehStuckProc_PlantEaten_Init(struct Thread *t, struct Driver *d)
 	d->KartStates.EatenByPlant.boolInited = false;
 
 	d->turbo_MeterRoomLeft = 0;
-	d->reserves = 0;
+	VehFire_SetReserves(d, 0);
 	d->turbo_outsideTimer = 0;
 
 	// drop bits for airborne and high-jump state

@@ -7,7 +7,7 @@ externally written file.
 
 | File            | Owner             | Contents                                      |
 |-----------------|-------------------|-----------------------------------------------|
-| `chaos/effects` | Game              | One enabled, implemented effect slug per line |
+| `chaos/effects` | Game              | One enabled, event-applicable effect slug per line |
 | `chaos/command` | External producer | One effect slug, e.g. `low-gravity`           |
 
 Final files have no extension. Use ASCII or UTF-8 without a BOM. A command may
@@ -16,8 +16,10 @@ be shorter than 128 bytes; oversized input and embedded NUL bytes are rejected.
 
 The game creates `chaos/` and atomically publishes `effects` via `effects.tmp`
 at game initialization and in `Chaos_BeginRace()`, never in frame updates.
-The list reflects the save's selection for any trigger; it is empty when Chaos
-is unarmed or no effects are enabled. It is not a readiness signal or heartbeat.
+The list reflects the save's selection and current event for any trigger; it is
+empty outside eligible races, when Chaos is unarmed or when no selected effect
+applies. It is not a readiness signal or heartbeat. Execution validates
+eligibility again, including whether an unfinished target remains.
 Publication failures are logged; the next initialization attempts publication
 again, without frame retries.
 

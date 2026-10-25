@@ -1,7 +1,8 @@
 # New Chaos Effects — Implementation Plan
 
 Source: [issue #90](https://github.com/thecodingbob/ctr-native/issues/90).
-Status: gameplay decisions recorded. Technical checks remain marked with placeholders.
+Status: block A implemented with focused test coverage. Later technical checks
+remain marked with placeholders; in-game visual validation is pending.
 
 Existing contracts: [implementation guide](CHAOS_IMPLEMENTATION.md).
 Existing gameplay: [player guide](features/CHAOS.md).
@@ -29,18 +30,16 @@ requests at execution time.
 | Effect              | Behavior                                                                                                                                                                                  |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Use This!           | Replace the held item and stop any roulette. Roll independently per human, uniformly across event-appropriate items, including orb/clock and multi-item packs as separate outcomes.       | 
-| Juiced Up           | Set the total wumpa coount to 10; remains eligible even when everyone is already full.                                                                                                    | 
+| Juiced Up           | Fill Wumpas to 10 through normal gradual pickup crediting and the full-count chime; remains eligible when already full. |
 | It is I             | Activate mask item directly without consuming the held item; use normal duration, Wumpa rules, and incompatibilities. Renew if already active.                                            |
 | Providence          | Activate shield directly without consuming the held item; use normal color, duration, Wumpa rules, and incompatibilities. Renew if already active.                                        | 
-| Reserve Injection   | Fill reserves to the game's valid maximum. If not already boosting, activate turbo equivalent to completing three drift boosts. Remains eligible even when everyone is full and boosting. | 
+| Reserve Injection   | Bring reserves to at least ten seconds (9,600 units), preserving larger balances. If not already boosting, activate third-drift-boost fire. Remains eligible when already full and boosting. |
 | Too Boosted TO Fail | Reserves can only increase: boosts add reserves; consumption, damage, U-turns, and rescues cannot reduce them.                                                                            |
 
 Conflicts use last-activation-wins: the previous incompatible effect disappears.
 Too Boosted TO Fail and No Reserves replace each other. Use This! ends No Items;
 Reserve Injection ends No Reserves before granting its reward.
 
-[VERIFY: orb ownership/global flags when replacing items; all reserve depletion
-and reset paths].
 
 ## B. Driving, Turbo, and Jumping
 
@@ -145,7 +144,7 @@ before applying its own behavior.
 
 ## Delivery Order
 
-- [ ] Shared work + A: items and reserves.
+- [x] Shared instant lifecycle/eligibility + A: items and reserves.
 - [ ] B: driving, turbo, and jumping.
 - [ ] C: size, camera, and bots.
 - [ ] D: characters and movement.
@@ -156,4 +155,19 @@ Scope: all 24 effects, in the A → B → C → D → E order above.
 For each block, verify its new lifecycle/conflict rules and the edge cases listed
 above. Add reproducible tracks/quick states and results here:
 
-[NOTES: validation cases and results].
+Block A: focused runtime tests cover full timed capacity, instant notices without
+docking, repeat rewards, notice overflow, pause/reset/resident restore, inventory
+replacement, deployed/held orb ownership, event eligibility, reserve saturation,
+conflicts and real damage/boost paths. Visual checks of renewed mask/shield and
+1P/2P announcements remain to be performed in game using `chaos_quick_race`.
+
+Validation: `cmake --build build --parallel 4` succeeded; all 24 CTest suites
+passed. `test_chaos_runtime` reported 3,193 checks with zero failures, including
+normal/juiced item sounds, gradual Wumpa reward crediting,
+the ten-second reserve reward and saturation of subsequent earned reserves.
+Review regressions also cover distinct entries from the retail item pool,
+item grants/publication in relic and crystal events, and driver-local
+`SCRUB_FLAG_KEEP_RESERVES` without changing shared surface metadata.
+Orb regressions cover solo/co-op crystal launches without checkpoint paths,
+target exclusions, particle-free teardown, ownership release and ordinary
+checkpoint-based race launch.

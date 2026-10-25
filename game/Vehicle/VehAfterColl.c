@@ -8,14 +8,16 @@ enum
 
 CTR_STATIC_ASSERT(VEH_AFTER_COLL_TERRAIN_COUNT == TERRAIN_SLOWDIRT + 1);
 
-struct Scrub *VehAfterColl_GetSurface(u32 scrubId)
+struct Scrub VehAfterColl_GetSurface(u32 scrubId, const struct Driver *driver)
 {
 	if (scrubId >= VEH_AFTER_COLL_SCRUB_COUNT)
 	{
 		scrubId = 0;
 	}
 
-	return &data.MetaDataScrub[scrubId];
+	struct Scrub scrub = data.MetaDataScrub[scrubId];
+	Chaos_ApplySurfaceRules(driver, &scrub);
+	return scrub;
 }
 
 struct Terrain *VehAfterColl_GetTerrain(u32 terrainType)

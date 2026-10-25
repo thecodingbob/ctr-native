@@ -2358,8 +2358,8 @@ void COLL_MOVED_PlayerSearch(struct Thread *t, struct Driver *d)
 				COLL_MOVED_FindScrub((struct QuadBlock *)bspHitbox, 0, sps);
 				sps->Input1.scrubDepth = (s16)CTR_MipsAddLo((u16)sps->Input1.scrubDepth, COLL_HITBOX_SCRUB_DEPTH_BONUS);
 
-				struct Scrub *scrub = VehAfterColl_GetSurface(hitboxResult == COLL_HITBOX_FORCE_SOLID ? COLL_SCRUB_SOLID : hitboxId);
-				hitboxResult = COLL_MOVED_ScrubImpact(d, t, sps, scrub, &d->velocity);
+				struct Scrub scrub = VehAfterColl_GetSurface(hitboxResult == COLL_HITBOX_FORCE_SOLID ? COLL_SCRUB_SOLID : hitboxId, d);
+				hitboxResult = COLL_MOVED_ScrubImpact(d, t, sps, &scrub, &d->velocity);
 
 				if (hitboxResult == 0)
 				{
@@ -2407,12 +2407,12 @@ void COLL_MOVED_PlayerSearch(struct Thread *t, struct Driver *d)
 				scrubId = 5;
 			}
 
-			struct Scrub *scrub = VehAfterColl_GetSurface(scrubId);
+			struct Scrub scrub = VehAfterColl_GetSurface(scrubId, d);
 			d->collisionFlags |= DRIVER_COLL_FLAG_SURFACE_PUSHBACK;
 			d->spsHitPos = sps->hit.hitPos;
 			d->spsNormalVec = sps->hit.plane.normal;
 
-			u32 impactResult = COLL_MOVED_ScrubImpact(d, t, sps, scrub, &d->velocity);
+			u32 impactResult = COLL_MOVED_ScrubImpact(d, t, sps, &scrub, &d->velocity);
 			if (impactResult == 2)
 			{
 				return;
