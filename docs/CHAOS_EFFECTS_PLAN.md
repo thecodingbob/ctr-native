@@ -3,7 +3,7 @@
 Source: [issue #90](https://github.com/thecodingbob/ctr-native/issues/90).
 Status: block A implemented with focused test coverage. Later technical checks
 remain marked with placeholders; in-game visual validation is pending.
-Current effect: This Is Fire (block B), implemented for review; in-game validation pending.
+Current effect: Hydraulics (block B), implemented for review; in-game validation pending.
 
 Existing contracts: [implementation guide](CHAOS_IMPLEMENTATION.md).
 Existing gameplay: [player guide](features/CHAOS.md).
@@ -150,6 +150,7 @@ before applying its own behavior.
 - [ ] B: driving, turbo, and jumping.
   - [x] Sabotage: implementation and focused tests; user review/in-game checks pending.
   - [x] This Is Fire: implementation and focused tests; user review/in-game checks pending.
+  - [x] Hydraulics: implementation and focused tests; user review/in-game checks pending.
 - [ ] C: size, camera, and bots.
 - [ ] D: characters and movement.
 - [ ] E: time-manipulation prototypes and implementation.
@@ -186,7 +187,21 @@ catalogue/runtime/effects/save/developer-setup suites passed. Game compilation
 passed; linking was blocked by the running executable (`Permission denied`).
 In-game checks: activate while boosting and without reserves, chain drift/jump/pad
 boosts, then check that USF survives expiry until normal boost-loss rules apply.
-Review this effect before starting Hydraulics.
+User approved proceeding to Hydraulics.
+
+Hydraulics: appended as timed effect ID 24 (`hydraulics`). `Chaos_ApplyDriver`
+renews a one-physics-step normal hop request, including while drifting, without
+altering the pad or synthesizing shoulder input. The normal jump/friction path
+retains coyote-time, cooldown, existing forced jumps and normal jump force;
+gravity modifiers still apply. No Hopping and Hydraulics replace each other.
+Focused checks cover request renewal in driving/drifting/V-shift recovery,
+unchanged physical timing/force, genuine jump input, cloud lockout, damage states,
+human/bot/finished-driver scope, expiry and symmetric conflicts. All five focused
+catalogue/runtime/effects/save/developer-setup suites passed. Game compilation
+passed; linking was blocked by the running executable (`Permission denied`).
+In-game checks: continuous hopping on flat ground without shoulder input,
+landing/cooldown timing, hops while drifting, slopes, jump-lockout clouds and
+Low Gravity/Heavy Karts. Review this effect before starting My Planet Needs Me.
 
 Block A: focused runtime tests cover full timed capacity, instant notices without
 docking, repeat rewards, notice overflow, pause/reset/resident restore, inventory

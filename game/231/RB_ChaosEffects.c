@@ -219,6 +219,15 @@ static u32 Chaos_PreventHopping(struct Driver *driver, u32 actions)
 	return actions & ~ACTION_JUMP_BUTTON_HELD;
 }
 
+static void Chaos_RequestHop(struct Driver *driver)
+{
+	// Renew for this physics step; normal jump eligibility and force stay intact.
+	if (driver->jump_TenBuffer == 0)
+	{
+		driver->jump_TenBuffer = 1;
+	}
+}
+
 static int Chaos_WobbleSteering(const struct ChaosActivation *entry, const struct GamepadBuffer *pad)
 {
 	const int center = pad->rwd != NULL ? pad->rwd->gamepadCenter : CHAOS_STICK_CENTER;

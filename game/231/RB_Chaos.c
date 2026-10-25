@@ -110,6 +110,7 @@ static void Chaos_RemoveReplacedEffects(ChaosEffectId effect)
 		{CHAOS_EFFECT_SPEED_CAPPED, CHAOS_EFFECT_SUPER_SPEED},
 		{CHAOS_EFFECT_NO_RESERVES, CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL},
 		{CHAOS_EFFECT_THIS_IS_FIRE, CHAOS_EFFECT_DEFECTIVE_BOOSTS},
+		{CHAOS_EFFECT_NO_HOPPING, CHAOS_EFFECT_HYDRAULICS},
 	};
 	for (int i = 0; i < (int)len(opposites); i++)
 	{
@@ -482,6 +483,14 @@ u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, in
 		else if (effect == CHAOS_EFFECT_NO_HOPPING)
 		{
 			actions = Chaos_PreventHopping(driver, actions);
+		}
+		else if (effect == CHAOS_EFFECT_HYDRAULICS)
+		{
+			if ((driver->kartState == KS_NORMAL || driver->kartState == KS_DRIFTING || driver->kartState == KS_ANTIVSHIFT) &&
+			    driver->rainCloudEffect != RAIN_CLOUD_EFFECT_JUMP_LOCKOUT)
+			{
+				Chaos_RequestHop(driver);
+			}
 		}
 		else if (effect == CHAOS_EFFECT_SABOTAGE)
 		{

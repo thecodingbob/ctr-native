@@ -106,6 +106,7 @@ enabled in the file. Setup and a manual submission example are in the
 | **Too Boosted TO Fail** | Boosts can add reserves, but consumption, damage, U-turns and rescues cannot reduce them while the effect lasts.                                                                |
 | **Sabotage**            | Disable braking and reverse, including airborne braking and analog brake/reverse input. Forward throttle remains available.                                                     |
 | **This Is Fire** | Upgrade existing turbo and new boosts to USF without free reserves. Earned USF remains after expiry until normal gameplay removes it. |
+| **Hydraulics** | Automatically hop with normal force as soon as normal jump rules allow, including while drifting. |
 
 Effects can overlap: Duration does not delay the next trigger. For example,
 Duration 30 seconds with Interval 10 seconds allows several effects at once.
@@ -116,7 +117,8 @@ Duration 30 seconds with Interval 10 seconds allows several effects at once.
   it does not multiply that effect's strength.
 - These pairs replace one another: **Inverted Steering / Wobble Steering**,
   **Low Gravity / Heavy Karts**, **Speed Capped / Super Speed**,
-  **No Reserves / Too Boosted TO Fail**, and **This Is Fire / Defective Boosts**.
+  **No Reserves / Too Boosted TO Fail**, **This Is Fire / Defective Boosts**, and
+  **No Hopping / Hydraulics**.
 - **Use This!** ends **No Items**; **Reserve Injection** ends **No Reserves**.
 - The five instant rewards (**Use This!**, **Juiced Up**, **It is I**,
   **Providence**, **Reserve Injection**) take no timed slot. Repeating one applies

@@ -218,6 +218,14 @@ and `VehFire_Increment`; activation does not add reserves or count a boost.
 The effect replaces Defective Boosts symmetrically. Expiry does not restore a
 previous fire tier; earned USF remains subject to normal boost-loss rules.
 
+Hydraulics (ID 24, `hydraulics`) renews a normal hop request in
+`Chaos_ApplyDriver` by filling an empty `jump_TenBuffer` for the current physics
+step. It preserves genuine input buffers and never changes shared pad input or
+simulates a held shoulder. Normal jump/friction checks own eligibility and force,
+so there is no extra delay, airborne impulse or cooldown bypass. Requests also
+apply while drifting; damage states and jump-lockout clouds do not receive them.
+Hydraulics and No Hopping replace each other.
+
 ## HUD and audio
 
 Each successful activation plays the preloaded double-gain transition swish and

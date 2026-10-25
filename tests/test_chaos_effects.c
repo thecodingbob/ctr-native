@@ -113,6 +113,65 @@ static void TestSabotage(void)
 	CTR_TEST_CHECK(brake == BTN_SQUARE_one && rightY == 255 && leftY == 255, "expiry restores ordinary braking and reverse");
 }
 
+static void TestHydraulics(void)
+{
+	CTR_TEST_SECTION("Hydraulics renews normal hop requests without bypassing physics or synthesizing shoulder input");
+	EnableInputEffects();
+	sdata->chaosSettings.trigger = CHAOS_TRIGGER_EXTERNAL;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_HYDRAULICS] = true;
+	sdata->chaosSettings.enabledCount++;
+	struct Driver human = {.driverID = 0, .kartState = KS_NORMAL, .const_JumpForce = 800};
+	struct Driver partner = {.driverID = 1, .kartState = KS_NORMAL};
+	struct Driver bot = {.driverID = 2, .kartState = KS_NORMAL, .actionsFlagSet = ACTION_BOT};
+	PreparedJump(&human, 0, 0, RAIN_CLOUD_EFFECT_NONE, ACTION_TOUCH_GROUND);
+	CTR_TEST_CHECK_EQ(human.jump_TenBuffer, 0, "inactive Hydraulics does not request a hop");
+	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 5000);
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_HYDRAULICS, 1000), "Hydraulics activates as a timed effect");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_NO_HOPPING), "Hydraulics replaces No Hopping");
+	const u8 states[] = {KS_NORMAL, KS_DRIFTING, KS_ANTIVSHIFT};
+	for (size_t i = 0; i < len(states); i++)
+	{
+		human.kartState = states[i];
+		const u32 actions = PreparedJump(&human, 0, 0, RAIN_CLOUD_EFFECT_NONE, ACTION_TOUCH_GROUND);
+		CTR_TEST_CHECK_EQ(human.jump_TenBuffer, 1, "normal driving, drifting and V-shift recovery receive a current-step hop request");
+		CTR_TEST_CHECK_EQ(actions, ACTION_TOUCH_GROUND, "automatic hopping does not invent shoulder-held input or start a jump directly");
+	}
+	human.kartState = KS_NORMAL;
+	human.jump_CooldownMS = 100;
+	human.jump_CoyoteTimerMS = 0;
+	human.jump_ForcedMS = 50;
+	human.forcedJumpType = FORCED_JUMP_HIGH;
+	PreparedJump(&human, 0, 0, RAIN_CLOUD_EFFECT_NONE, 0);
+	CTR_TEST_CHECK_EQ(human.jump_TenBuffer, 1, "a request stays ready for the normal landing and cooldown checks later in the physics step");
+	CTR_TEST_CHECK(human.jump_CooldownMS == 100 && human.jump_CoyoteTimerMS == 0 && human.jump_ForcedMS == 50,
+	               "Hydraulics preserves normal jump timing and airborne restrictions");
+	CTR_TEST_CHECK(human.const_JumpForce == 800 && human.forcedJumpType == FORCED_JUMP_HIGH,
+	               "normal force and externally forced jumps are left to the existing physics");
+	PreparedJump(&human, BTN_R1, BTN_R1, RAIN_CLOUD_EFFECT_NONE, 0);
+	CTR_TEST_CHECK_EQ(human.jump_TenBuffer, VEH_PHYS_PROC_JUMP_BUFFER_FRAMES, "a genuine shoulder press keeps its full normal buffer");
+	human.rainCloudEffect = RAIN_CLOUD_EFFECT_JUMP_LOCKOUT;
+	PreparedJump(&human, 0, 0, RAIN_CLOUD_EFFECT_JUMP_LOCKOUT, 0);
+	CTR_TEST_CHECK_EQ(human.jump_TenBuffer, 0, "rain-cloud jump lockout prevents automatic hop requests");
+	human.rainCloudEffect = RAIN_CLOUD_EFFECT_NONE;
+	human.kartState = KS_SPINNING;
+	PreparedJump(&human, 0, 0, RAIN_CLOUD_EFFECT_NONE, 0);
+	CTR_TEST_CHECK_EQ(human.jump_TenBuffer, 0, "damage states do not receive automatic hop requests");
+	PreparedJump(&bot, 0, 0, RAIN_CLOUD_EFFECT_NONE, ACTION_BOT);
+	CTR_TEST_CHECK_EQ(bot.jump_TenBuffer, 0, "bots retain ordinary jump input");
+	PreparedJump(&partner, 0, 0, RAIN_CLOUD_EFFECT_NONE, 0);
+	CTR_TEST_CHECK_EQ(partner.jump_TenBuffer, 1, "the second human also receives automatic hop requests");
+	partner.actionsFlagSet = ACTION_RACE_FINISHED;
+	PreparedJump(&partner, 0, 0, RAIN_CLOUD_EFFECT_NONE, ACTION_RACE_FINISHED);
+	CTR_TEST_CHECK_EQ(partner.jump_TenBuffer, 0, "finished humans stop receiving automatic hop requests");
+	Tick(1000);
+	human.kartState = KS_NORMAL;
+	PreparedJump(&human, 0, 0, RAIN_CLOUD_EFFECT_NONE, 0);
+	CTR_TEST_CHECK_EQ(human.jump_TenBuffer, 0, "expiry leaves no automatic input held or buffered");
+	Chaos_Activate(CHAOS_EFFECT_HYDRAULICS, 5000);
+	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 1000);
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_HYDRAULICS), "No Hopping also replaces Hydraulics");
+}
+
 static void TestWobbleSteering(void)
 {
 	CTR_TEST_SECTION("Wobble oscillates in game time with calibrated limits and human-only scope");
@@ -1700,6 +1759,7 @@ int main(void)
 {
 	TestSteeringAndDriverScope();
 	TestSabotage();
+	TestHydraulics();
 	TestWobbleSteering();
 	TestGravityEffects();
 	TestSpeedEffects();
