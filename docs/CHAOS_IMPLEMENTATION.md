@@ -104,7 +104,7 @@ A fifth unrelated timed effect is
 rejected; replacement remains possible at capacity. Expiry precedes scheduling,
 so new entries receive their full duration.
 
-Instant rewards execute once and use a separate four-entry announcement queue,
+Instant effects execute once and use a separate four-entry announcement queue,
 without entering `active` or consuming timed capacity. Repeats execute again and
 refresh their notice; overflow drops the oldest notice. Zero duration is invalid
 for both kinds. Selection draws directly from enabled effects with `chaosRng`.
@@ -225,6 +225,15 @@ simulates a held shoulder. Normal jump/friction checks own eligibility and force
 so there is no extra delay, airborne impulse or cooldown bypass. Requests also
 apply while drifting; damage states and jump-lockout clouds do not receive them.
 Hydraulics and No Hopping replace each other.
+
+My Planet Needs Me (ID 25, `my-planet-needs-me`) adds one world-up impulse at
+six times the effective normal jump force, including while airborne. It uses
+the existing speed/vector converters and synchronizes the working velocity,
+preserving horizontal momentum, inventory and reserves. It bypasses normal-hop
+eligibility without changing cooldowns or queuing a repeated jump. Activation
+removes No Hopping/Hydraulics, preserves gravity modifiers and uses only an instant
+announcement. Focused tests capture the launch vector at the conversion boundary;
+full trajectory validation is in game.
 
 ## HUD and audio
 

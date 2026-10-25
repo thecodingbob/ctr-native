@@ -3,7 +3,7 @@
 Source: [issue #90](https://github.com/thecodingbob/ctr-native/issues/90).
 Status: block A implemented with focused test coverage. Later technical checks
 remain marked with placeholders; in-game visual validation is pending.
-Current effect: Hydraulics (block B), implemented for review; in-game validation pending.
+Current effect: My Planet Needs Me (block B), implemented for review; in-game validation pending.
 
 Existing contracts: [implementation guide](CHAOS_IMPLEMENTATION.md).
 Existing gameplay: [player guide](features/CHAOS.md).
@@ -50,7 +50,7 @@ Reserve Injection ends No Reserves before granting its reward.
 | Sabotage           | Disable the brake command entirely, including reverse and airborne braking.                                                                                  |
 | This Is Fire       | Upgrade existing turbo and new turbo grants to USF without free reserves. Earned USF survives expiry according to normal game rules.                         |
 | Hydraulics         | Automatically jump with normal force as soon as the game allows, with no additional delay; may interrupt drifting.                                           |
-| My Planet Needs Me | Apply one immediate upward impulse at 8× normal jump force, including while airborne; active gravity modifiers still apply.                                  |
+| My Planet Needs Me | Apply one immediate upward impulse at 6× normal jump force, including while airborne; active gravity modifiers still apply.                                  |
 | Who Bound This?    | Independently permute throttle, brake, item, and both hop/drift actions per human for the Chaos duration. Keep steering, pause, and menu controls unchanged. |
 | Try Something New  | Select a different standard driving class until race end, keeping the character.                                                                             |
 
@@ -151,6 +151,7 @@ before applying its own behavior.
   - [x] Sabotage: implementation and focused tests; user review/in-game checks pending.
   - [x] This Is Fire: implementation and focused tests; user review/in-game checks pending.
   - [x] Hydraulics: implementation and focused tests; user review/in-game checks pending.
+  - [x] My Planet Needs Me: implementation and focused tests; user review/in-game checks pending.
 - [ ] C: size, camera, and bots.
 - [ ] D: characters and movement.
 - [ ] E: time-manipulation prototypes and implementation.
@@ -201,7 +202,27 @@ catalogue/runtime/effects/save/developer-setup suites passed. Game compilation
 passed; linking was blocked by the running executable (`Permission denied`).
 In-game checks: continuous hopping on flat ground without shoulder input,
 landing/cooldown timing, hops while drifting, slopes, jump-lockout clouds and
-Low Gravity/Heavy Karts. Review this effect before starting My Planet Needs Me.
+Low Gravity/Heavy Karts. User approved proceeding to My Planet Needs Me.
+
+My Planet Needs Me: appended as instant effect ID 25 (`my-planet-needs-me`).
+Adds an upward impulse of six times the current normal jump force to existing
+momentum, preserving horizontal velocity. Commits through the existing speed/vector
+conversion and updates working velocity as well; no normal-hop cooldown or
+coyote-time requirement. Removes No Hopping/Hydraulics before launching; gravity
+effects remain active. Uses the instant announcement queue, without a timed slot.
+Focused checks capture the vector passed to the speed conversion, covering ground
+and airborne launches, horizontal momentum, one-shot/repeated activation, inventory
+and reserves, full timed capacity, conflicts, gravity modifiers and driver scope.
+The full speed/angle conversion and trajectory remain in-game validation.
+All five focused catalogue/runtime/effects/save/developer-setup suites passed.
+Game compilation passed; linking was blocked by the running executable
+(`Permission denied`). In-game checks: ground launch, rising/falling activation,
+slopes, repeated launches and Low Gravity/Heavy Karts. Review this effect before
+starting Who Bound This?.
+In-game review: the original 8× impulse exceeded signed 16-bit speed storage with
+the retail jump force of 4,596 and reversed the kart. Reduced to 6× for now at
+user request, preserving the existing physics layout. The launch-vector test now
+uses that retail force; in-game retesting remains pending.
 
 Block A: focused runtime tests cover full timed capacity, instant notices without
 docking, repeat rewards, notice overflow, pause/reset/resident restore, inventory

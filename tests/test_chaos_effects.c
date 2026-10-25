@@ -172,6 +172,64 @@ static void TestHydraulics(void)
 	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_HYDRAULICS), "No Hopping also replaces Hydraulics");
 }
 
+static void TestMyPlanetNeedsMe(void)
+{
+	CTR_TEST_SECTION("My Planet Needs Me launches once, including in midair, without a timed slot");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	memset(sdata->chaosSettings.effects, true, sizeof(sdata->chaosSettings.effects));
+	sdata->chaosSettings.enabledCount = CHAOS_EFFECT_COUNT;
+	data.trigApprox[0] = (struct TrigTable){.sin = 0, .cos = FP(1.0)};
+	struct Driver human = {
+		.driverID = 0, .speed = 3000, .const_JumpForce = 4596, .const_Gravity = 1000,
+		.actionsFlagSet = ACTION_TOUCH_GROUND, .reserves = 500, .heldItemID = HELD_ITEM_POTION,
+		.jump_CooldownMS = 100, .jump_CoyoteTimerMS = 0,
+	};
+	struct Driver partner = {
+		.driverID = 1, .speed = 1000, .axisRotationY = -ANG_HALF_PI,
+		.const_JumpForce = 900, .actionsFlagSet = ACTION_AIRBORNE,
+	};
+	struct Driver bot = human;
+	bot.driverID = 2;
+	bot.actionsFlagSet = ACTION_BOT;
+	s_tracker.drivers[0] = &human;
+	s_tracker.drivers[1] = &partner;
+	s_tracker.drivers[2] = &bot;
+	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 5000);
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_MY_PLANET_NEEDS_ME, 1000), "the immediate launch activates without normal jump eligibility");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_NO_HOPPING), "the launch replaces No Hopping");
+	CTR_TEST_CHECK_EQ(s_launchConversions[0], 1, "activation commits one launch to the ground driver's canonical speed representation");
+	CTR_TEST_CHECK_EQ(s_launchVelocity[0].y, 27576, "a grounded driver receives six times the real normal jump force upward");
+	CTR_TEST_CHECK(s_launchVelocity[0].x == 0 && s_launchVelocity[0].z == 3000, "launch preserves horizontal momentum");
+	CTR_TEST_CHECK_EQ(s_launchVelocity[1].y, 4400, "the airborne driver receives the impulse on top of existing falling momentum");
+	CTR_TEST_CHECK_EQ(partner.velocity.y, 4400, "the working velocity also reflects the immediate impulse");
+	CTR_TEST_CHECK_EQ(s_launchConversions[2], 0, "bots do not receive the launch");
+	CTR_TEST_CHECK(human.reserves == 500 && human.heldItemID == HELD_ITEM_POTION, "launch preserves inventory and boost reserves");
+	CTR_TEST_CHECK(human.jump_CooldownMS == 100 && human.jump_CoyoteTimerMS == 0, "the one-off impulse does not rewrite normal hop eligibility");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 0, "the launch occupies no timed slot");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numInstantNotices, 1, "the launch creates an instant announcement");
+	Tick(100);
+	CTR_TEST_CHECK_EQ(s_launchConversions[0], 1, "later Chaos updates do not repeat the launch");
+	Chaos_Activate(CHAOS_EFFECT_HYDRAULICS, 5000);
+	Chaos_Activate(CHAOS_EFFECT_MY_PLANET_NEEDS_ME, 1000);
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_HYDRAULICS), "the launch also replaces Hydraulics");
+	CTR_TEST_CHECK_EQ(s_launchConversions[0], 2, "an explicit second activation applies one new impulse");
+	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 5000);
+	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 5000);
+	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 5000);
+	Chaos_Activate(CHAOS_EFFECT_NO_ITEMS, 5000);
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_MY_PLANET_NEEDS_ME, 1000), "launch still works at full timed capacity");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, CHAOS_MAX_ACTIVATIONS, "launch preserves unrelated timed effects");
+	CTR_TEST_CHECK_EQ(s_launchVelocity[0].y, 27576, "Low Gravity does not change the launch impulse");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 250, "Low Gravity continues to govern the flight");
+	Chaos_Activate(CHAOS_EFFECT_HEAVY_KARTS, 5000);
+	Chaos_Activate(CHAOS_EFFECT_MY_PLANET_NEEDS_ME, 1000);
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 3000, "Heavy Karts also remains effective after launch");
+	human.actionsFlagSet |= ACTION_RACE_FINISHED;
+	const int launches = s_launchConversions[0];
+	Chaos_Activate(CHAOS_EFFECT_MY_PLANET_NEEDS_ME, 1000);
+	CTR_TEST_CHECK_EQ(s_launchConversions[0], launches, "finished humans receive no new launch");
+}
+
 static void TestWobbleSteering(void)
 {
 	CTR_TEST_SECTION("Wobble oscillates in game time with calibrated limits and human-only scope");
@@ -1760,6 +1818,7 @@ int main(void)
 	TestSteeringAndDriverScope();
 	TestSabotage();
 	TestHydraulics();
+	TestMyPlanetNeedsMe();
 	TestWobbleSteering();
 	TestGravityEffects();
 	TestSpeedEffects();

@@ -132,7 +132,10 @@ static void Chaos_RemoveReplacedEffects(ChaosEffectId effect)
 	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
 	for (int i = 0; i < runtime->numActive;)
 	{
-		if (runtime->active[i].effect == effect || runtime->active[i].effect == replaced)
+		const ChaosEffectId active = runtime->active[i].effect;
+		const bool replacesJumpEffect = effect == CHAOS_EFFECT_MY_PLANET_NEEDS_ME &&
+		    (active == CHAOS_EFFECT_NO_HOPPING || active == CHAOS_EFFECT_HYDRAULICS);
+		if (active == effect || active == replaced || replacesJumpEffect)
 		{
 			Chaos_RemoveActivation(i);
 		}
@@ -178,6 +181,9 @@ static void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation)
 					break;
 				case CHAOS_EFFECT_THIS_IS_FIRE:
 					Chaos_UpgradeTurbo(driver);
+					break;
+				case CHAOS_EFFECT_MY_PLANET_NEEDS_ME:
+					Chaos_LaunchDriver(driver);
 					break;
 				case CHAOS_EFFECT_CLOCK_CURSE:
 					Chaos_ApplyClockCurse(driver, chaosActivation->remainingMS);

@@ -100,7 +100,19 @@ enum { SOUND_CLOCK = 0x44 };
 #define RB_Player_KillPlayer RB_Player_KillPlayer_Unused
 #include <game/231/RB_Player.c>
 #undef RB_Player_KillPlayer
+static int s_launchConversions[8];
+static Vec3 s_launchVelocity[8];
+
+// Capture the launch boundary; these suites do not execute the full speed/angle math.
+static void CaptureLaunchVelocity(struct Driver *driver, Vec3 *velocity)
+{
+	s_launchConversions[driver->driverID]++;
+	s_launchVelocity[driver->driverID] = *velocity;
+}
+
+#define VehPhysCrash_ConvertVecToSpeed CaptureLaunchVelocity
 #include <game/231/RB_ChaosEffects.c>
+#undef VehPhysCrash_ConvertVecToSpeed
 #include <game/231/RB_Chaos.c>
 
 static const char *s_externalCommand;
@@ -424,6 +436,8 @@ static void SetupRace(int trigger)
 	s_squishSounds = 0;
 	s_crateExplosions = 0;
 	s_crateSounds = 0;
+	memset(s_launchConversions, 0, sizeof(s_launchConversions));
+	memset(s_launchVelocity, 0, sizeof(s_launchVelocity));
 	s_lastExplodingCrate = NULL;
 	memset(&sdata_static, 0, sizeof(sdata_static));
 	memset(&s_tracker, 0, sizeof(s_tracker));

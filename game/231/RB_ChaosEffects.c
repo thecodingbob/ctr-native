@@ -18,6 +18,7 @@ enum
 	CHAOS_GIANT_SPEED_PERCENT = 130,
 	CHAOS_THIRD_DRIFT_FIRE_LEVEL = 0x80,
 	CHAOS_WUMPA_PICKUP_FRAMES = 5,
+	CHAOS_LAUNCH_JUMP_MULTIPLIER = 6,
 };
 
 static void Chaos_SetKartScale(u8 scale, struct Driver *driver)
@@ -128,6 +129,15 @@ static void Chaos_ApplyClockCurse(struct Driver *driver, s32 durationMS)
 {
 	VehPickState_ApplyDamage(driver, VEH_PICK_DAMAGE_SPIN, NULL, 0, true);
 	driver->clockReceive = durationMS;
+}
+
+static void Chaos_LaunchDriver(struct Driver *driver)
+{
+	Vec3 velocity;
+	VehPhysForce_ConvertSpeedToVec(driver, &velocity);
+	velocity.y += Chaos_JumpForceForDriver(driver, driver->const_JumpForce) * CHAOS_LAUNCH_JUMP_MULTIPLIER;
+	VehPhysCrash_ConvertVecToSpeed(driver, &velocity);
+	driver->velocity = velocity;
 }
 
 static int Chaos_LowGravity(int gravity)

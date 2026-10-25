@@ -105,8 +105,9 @@ enabled in the file. Setup and a manual submission example are in the
 | **Reserve Injection**   | Bring reserves to at least ten seconds; give third-drift-boost fire if not already boosting. Preserve an existing boost and any larger reserve balance.                         |
 | **Too Boosted TO Fail** | Boosts can add reserves, but consumption, damage, U-turns and rescues cannot reduce them while the effect lasts.                                                                |
 | **Sabotage**            | Disable braking and reverse, including airborne braking and analog brake/reverse input. Forward throttle remains available.                                                     |
-| **This Is Fire** | Upgrade existing turbo and new boosts to USF without free reserves. Earned USF remains after expiry until normal gameplay removes it. |
-| **Hydraulics** | Automatically hop with normal force as soon as normal jump rules allow, including while drifting. |
+| **This Is Fire**        | Upgrade existing turbo and new boosts to USF without free reserves. Earned USF remains after expiry until normal gameplay removes it.                                           |
+| **Hydraulics**          | Automatically hop with normal force as soon as normal jump rules allow, including while drifting.                                                                               |
+| **My Planet Needs Me**  | Instantly add an upward impulse at 6× normal jump force, even in midair. Gravity effects still apply.                                                                           |
 
 Effects can overlap: Duration does not delay the next trigger. For example,
 Duration 30 seconds with Interval 10 seconds allows several effects at once.
@@ -120,9 +121,10 @@ Duration 30 seconds with Interval 10 seconds allows several effects at once.
   **No Reserves / Too Boosted TO Fail**, **This Is Fire / Defective Boosts**, and
   **No Hopping / Hydraulics**.
 - **Use This!** ends **No Items**; **Reserve Injection** ends **No Reserves**.
-- The five instant rewards (**Use This!**, **Juiced Up**, **It is I**,
-  **Providence**, **Reserve Injection**) take no timed slot. Repeating one applies
-  its reward again.
+- **My Planet Needs Me** ends **No Hopping** and **Hydraulics** before launching.
+- The six instant effects (**Use This!**, **Juiced Up**, **It is I**,
+  **Providence**, **Reserve Injection**, **My Planet Needs Me**) take no timed slot.
+  Repeating one applies it again.
 
 ## During a race
 
