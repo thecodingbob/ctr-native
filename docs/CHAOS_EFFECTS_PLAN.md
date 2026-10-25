@@ -161,8 +161,11 @@ replacement, deployed/held orb ownership, event eligibility, reserve saturation,
 conflicts and real damage/boost paths. Visual checks of renewed mask/shield and
 1P/2P announcements remain to be performed in game using `chaos_quick_race`.
 
-Validation: `cmake --build build --parallel 4` succeeded; all 24 CTest suites
-passed. `test_chaos_runtime` reported 3,193 checks with zero failures, including
+Validation: the block-A game build and original 24 CTest suites passed.
+After splitting the suites, `cmake --build build --target tests --parallel 4`
+and `ctest --test-dir build --output-on-failure -R "^test_"` passed all 25
+asset-free suites. The checks are now split between `test_chaos_runtime`,
+`test_chaos_effects` and `test_warpball` (3,193 total), including
 normal/juiced item sounds, gradual Wumpa reward crediting,
 the ten-second reserve reward and saturation of subsequent earned reserves.
 Review regressions also cover distinct entries from the retail item pool,

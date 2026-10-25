@@ -7,12 +7,20 @@
 | Stable effect IDs, slugs, scope and selection | `include/chaos_effect.h`                                                         |
 | Save encoding and runtime layouts             | `include/chaos_save.h`, `include/namespace_Memcard.h`, `include/chaos_runtime.h` |
 | Eligibility and runtime                       | `include/chaos_gate.h`, `game/231/RB_Chaos.c`                                    |
+| Effect implementations                        | `game/231/RB_ChaosEffects.c`                                                      |
 | Creation flow and shared settings screen      | `game/230/MM_NewLoad.c`, `game/230/MM_ChaosConfig.c`                             |
 | Pause entry and HUD                           | `game/MAIN/MainFreeze_Chaos.c`, `game/UI/UI_Chaos.c`                             |
 | External filesystem interface                 | `platform/native_chaos_ipc.c`                                                    |
 
 Player guide: [Chaos mode](features/CHAOS.md).
 External protocol: [Chaos external file provider](features/CHAOS_EXTERNAL_PROVIDER.md).
+
+Asset-free regression suites mirror these responsibilities:
+`tests/test_chaos_runtime.c` covers scheduling, activation, triggers, IPC and HUD;
+`tests/test_chaos_effects.c` covers gameplay modifiers and instant rewards.
+Both use `tests/shared/chaos_fixture.h` for the shared world, real module include
+chain and integration doubles. `tests/test_warpball.c` independently covers orb
+launch, targeting and teardown without loading the Chaos runtime.
 
 ## Adventure saves
 
