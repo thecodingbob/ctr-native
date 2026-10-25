@@ -2,6 +2,10 @@
 #include <common.h>
 
 struct sData sdata_static;
+NativeConfig g_config;
+struct Data data;
+struct OverlayDATA_230 D230;
+#define MM_TITLE_MENU_STATE (D230.titleMenuState)
 #define MM_menuChaosConfig (sdata->chaosMenu.menu)
 static struct GameTracker s_tracker;
 static struct DB s_buffer;
@@ -16,6 +20,28 @@ static bool s_drewOnOff;
 static int s_finishes;
 static int s_returns;
 static bool s_drewBeforeExit;
+static int s_testLevel;
+
+void MM_Title_CameraReset(void) {}
+void MM_Title_KillThread(void) {}
+void MM_QuickRace_SetupRace(void) {}
+void GAMEPROG_NewProfile_InsideAdv(struct AdvProgress *progress)
+{
+	memset(progress, 0, sizeof(*progress));
+}
+void GAMEPROG_ResetAdvMultiplayer(struct AdvMultiplayerSettings *settings)
+{
+	settings->numPlayers = ADV_MULTIPLAYER_DEFAULT_PLAYERS;
+	settings->characterID2 = ADV_MULTIPLAYER_NO_CHARACTER;
+}
+void MainRaceTrack_RequestLoad(s16 level)
+{
+	s_testLevel = level;
+}
+void RECTMENU_Hide(struct RectMenu *menu)
+{
+	menu->state |= NEEDS_TO_CLOSE;
+}
 
 void MM_NewLoad_FinishChaosSetup(void)
 {
@@ -107,6 +133,8 @@ void CTR_Box_DrawClearBox(const RECT *rect, const Color *color, s32 transparency
 static void EnterSetup(void)
 {
 	memset(&sdata_static, 0, sizeof(sdata_static));
+	memset(&g_config, 0, sizeof(g_config));
+	s_testLevel = -1;
 	memset(&s_tracker, 0, sizeof(s_tracker));
 	memset(&s_buffer, 0, sizeof(s_buffer));
 	sdata->gGT = &s_tracker;
@@ -469,6 +497,60 @@ static void TestFilteredActiveEffects(void)
 	CTR_TEST_CHECK_EQ(MM_menuChaosConfig.rowSelected, 3, "Back works from the empty list");
 }
 
+static void TestChaosRaceShortcut(void)
+{
+	CTR_TEST_SECTION("Start tests the highlighted effect only during editable creation");
+	EnterSetup();
+	g_config.developerHacksEnabled = true;
+	Frame(BTN_START, 0);
+	CTR_TEST_CHECK_EQ(s_testLevel, -1, "Start on a settings row does not launch a race");
+	MM_menuChaosConfig.rowSelected = sdata->chaosMenu.effectsRow;
+	Frame(BTN_CROSS, 0);
+	MM_menuChaosConfig.rowSelected = CHAOS_EFFECT_LOW_GRAVITY;
+	Frame(BTN_START, 0);
+	CTR_TEST_CHECK_EQ(s_testLevel, -1, "the shortcut is disabled by default");
+	g_config.chaosQuickRace = true;
+	s_tracker.podiumRewardID = STATIC_TROPHY;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_LOW_GRAVITY] = false;
+	Frame(BTN_START, 0);
+	CTR_TEST_CHECK_EQ(s_testLevel, CRASH_COVE, "Start launches Crash Cove even when the highlighted toggle is off");
+	CTR_TEST_CHECK_EQ(s_tracker.gameMode1, ADVENTURE_MODE, "the test is an Adventure race");
+	CTR_TEST_CHECK_EQ(s_tracker.podiumRewardID, NOFUNC, "a previous Adventure reward cannot select the podium overlay for the test race");
+	CTR_TEST_CHECK_EQ(sdata->advProfileIndex, 0xffff, "the test is not attached to a save slot");
+	CTR_TEST_CHECK_EQ(sdata->chaosSettings.durationSeconds, 5, "test duration is five seconds");
+	CTR_TEST_CHECK_EQ(sdata->chaosSettings.triggerIntervalSeconds, 10, "test interval is ten seconds");
+	CTR_TEST_CHECK_EQ(sdata->chaosSettings.trigger, CHAOS_TRIGGER_INTERVAL, "the test uses the interval trigger");
+	CTR_TEST_CHECK_EQ(sdata->chaosSettings.enabledCount, 1, "only one effect is counted");
+	for (int id = 0; id < CHAOS_EFFECT_COUNT; id++)
+	{
+		CTR_TEST_CHECK(sdata->chaosSettings.effects[id] == (id == CHAOS_EFFECT_LOW_GRAVITY), "only the highlighted effect is enabled");
+	}
+	CTR_TEST_CHECK(s_drewBeforeExit, "the menu draws before requesting the transition");
+
+	// Return to creation after another completed Adventure event in this session.
+	MM_ChaosConfig_OnEnter();
+	sdata->chaosMenu.page = CHAOS_PAGE_EFFECTS;
+	MM_menuChaosConfig.rowSelected = CHAOS_EFFECT_GIANT_KARTS;
+	s_tracker.podiumRewardID = STATIC_RELIC;
+	s_testLevel = -1;
+	Frame(BTN_START, 0);
+	CTR_TEST_CHECK_EQ(s_testLevel, CRASH_COVE, "a subsequent shortcut launch requests the test track again");
+	CTR_TEST_CHECK_EQ(s_tracker.podiumRewardID, NOFUNC, "every shortcut launch clears pending podium rewards");
+	CTR_TEST_CHECK_EQ(sdata->chaosSettings.enabledCount, 1, "a subsequent launch still enables exactly one effect");
+	CTR_TEST_CHECK(sdata->chaosSettings.effects[CHAOS_EFFECT_GIANT_KARTS] &&
+	               !sdata->chaosSettings.effects[CHAOS_EFFECT_LOW_GRAVITY],
+	               "a subsequent launch replaces the previous tested effect");
+
+	struct RectMenu pause = {0};
+	s_testLevel = -1;
+	MM_ChaosConfig_OpenReadOnly(&pause);
+	sdata->chaosMenu.page = CHAOS_PAGE_EFFECTS;
+	MM_menuChaosConfig.rowSelected = 0;
+	Frame(BTN_START, 0);
+	CTR_TEST_CHECK_EQ(s_testLevel, -1, "Start in pause remains a return action");
+	CTR_TEST_CHECK(sdata->ptrDesiredMenu == &pause, "pause Start returns to the pause menu");
+}
+
 int main(void)
 {
 	TestTriggerLayoutAndIntervalRetention();
@@ -479,5 +561,6 @@ int main(void)
 	TestPauseEntryVisibility();
 	TestReadOnlyPauseView();
 	TestFilteredActiveEffects();
+	TestChaosRaceShortcut();
 	return CtrTest_Summary();
 }

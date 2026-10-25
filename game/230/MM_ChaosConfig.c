@@ -13,6 +13,8 @@ enum
 	CHAOS_INTERVAL_MIN_SECONDS = 5,
 	CHAOS_INTERVAL_MAX_SECONDS = 120,
 	CHAOS_INTERVAL_STEP_SECONDS = 5,
+	CHAOS_TEST_DURATION_SECONDS = 5,
+	CHAOS_TEST_INTERVAL_SECONDS = 10,
 };
 
 static const char *const s_chaosTriggerNames[CHAOS_TRIGGER_COUNT] = {
@@ -227,6 +229,39 @@ static int Chaos_PageRowCount(const struct ChaosMenuState *state)
 	return state->returnMenu != NULL ? sdata->chaosSettings.enabledCount : CHAOS_EFFECT_COUNT;
 }
 
+// Developer shortcut: Start on an effect launches a disposable Adventure race.
+static void Chaos_TestRace(ChaosEffectId effect)
+{
+	struct GameTracker *gGT = sdata->gGT;
+	sdata->chaosSettings = (struct ChaosSettings){
+		.durationSeconds = CHAOS_TEST_DURATION_SECONDS,
+		.triggerIntervalSeconds = CHAOS_TEST_INTERVAL_SECONDS,
+		.trigger = CHAOS_TRIGGER_INTERVAL,
+		.armed = true,
+		.enabledCount = 1,
+	};
+	sdata->chaosSettings.effects[effect] = true;
+	MM_NewLoad_FinishChaosSetup();
+	// Unwind creation normally, then load directly instead of visiting the garage.
+	MM_TITLE_MENU_STATE = TITLE_MENU_STATE_IN_MENU;
+	sdata->newLoad.previousMenu = NULL;
+	MM_Title_CameraReset();
+	MM_Title_KillThread();
+	MM_QuickRace_SetupRace();
+	gGT->gameMode1 = ADVENTURE_MODE;
+	// A previous Adventure reward would select the podium overlay during loading.
+	gGT->podiumRewardID = NOFUNC;
+	GAMEPROG_NewProfile_InsideAdv(&GAME_ADV_PROGRESS);
+	GAME_ADV_PROGRESS.characterID = CRASH_BANDICOOT;
+	GAMEPROG_ResetAdvMultiplayer(&sdata->advMultiplayer);
+	sdata->advProfileIndex = 0xffff;
+	gGT->currLEV = N_SANITY_BEACH;
+	RECTMENU_ClearInput();
+	sdata->ptrDesiredMenu = NULL;
+	RECTMENU_Hide(&sdata->chaosMenu.menu);
+	MainRaceTrack_RequestLoad(CRASH_COVE);
+}
+
 static void MM_MenuProc_ChaosConfig(struct RectMenu *menu)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -246,8 +281,14 @@ static void MM_MenuProc_ChaosConfig(struct RectMenu *menu)
 	s16 selected = menu->rowSelected;
 	bool leave = false;
 	bool finish = false;
+	ChaosEffectId testEffect = CHAOS_EFFECT_NONE;
 
 	FullScreenMenu_NavScroll(pad, &state->scroll[state->page], &selected, Chaos_PageRowCount(state));
+	if (!readOnly && state->page == CHAOS_PAGE_EFFECTS && g_config.chaosQuickRace &&
+	    (pad->buttonsTapped & BTN_START) != 0)
+	{
+		testEffect = Chaos_EffectForRow(selected);
+	}
 	if (!readOnly && state->page == CHAOS_PAGE_SETTINGS)
 	{
 		for (int direction = -1; direction <= 1; direction += 2)
@@ -323,7 +364,11 @@ static void MM_MenuProc_ChaosConfig(struct RectMenu *menu)
 	FullScreenMenu_DrawScreen(title, 0, scroll, numRows, selected,
 	                          Chaos_DrawRow, NULL, gGT, ot);
 
-	if (finish)
+	if (testEffect != CHAOS_EFFECT_NONE)
+	{
+		Chaos_TestRace(testEffect);
+	}
+	else if (finish)
 	{
 		MM_NewLoad_FinishChaosSetup();
 	}

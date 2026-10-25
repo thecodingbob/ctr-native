@@ -102,6 +102,7 @@ NativeConfig g_config = {
   .oneLapRaces = false,
   .towPlayer2 = false,
   .quickRace = false,
+  .chaosQuickRace = false,
   .skipStartCountdown = false,
   .endRaceWithL3 = false
 };
@@ -509,6 +510,13 @@ const ConfigEntry g_configEntries[] = {
         .label = "Quick Race With R3",
         .type = CFG_BOOL,
         .valuePtr = &g_config.quickRace,
+    },
+    {
+        .section = CONFIG_SECTION_DEVELOPER_HACKS,
+        .key = "chaos_quick_race",
+        .label = "Chaos Test With Start",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.chaosQuickRace,
     },
     {
         .section = CONFIG_SECTION_DEVELOPER_HACKS,
