@@ -109,6 +109,7 @@ static void Chaos_RemoveReplacedEffects(ChaosEffectId effect)
 		{CHAOS_EFFECT_LOW_GRAVITY, CHAOS_EFFECT_HEAVY_KARTS},
 		{CHAOS_EFFECT_SPEED_CAPPED, CHAOS_EFFECT_SUPER_SPEED},
 		{CHAOS_EFFECT_NO_RESERVES, CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL},
+		{CHAOS_EFFECT_THIS_IS_FIRE, CHAOS_EFFECT_DEFECTIVE_BOOSTS},
 	};
 	for (int i = 0; i < (int)len(opposites); i++)
 	{
@@ -173,6 +174,9 @@ static void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation)
 					break;
 				case CHAOS_EFFECT_RESERVE_INJECTION:
 					Chaos_GiveReserves(driver);
+					break;
+				case CHAOS_EFFECT_THIS_IS_FIRE:
+					Chaos_UpgradeTurbo(driver);
 					break;
 				case CHAOS_EFFECT_CLOCK_CURSE:
 					Chaos_ApplyClockCurse(driver, chaosActivation->remainingMS);
@@ -383,6 +387,11 @@ int Chaos_ReservesForDriver(const struct Driver *driver, int reserves)
 		reserves = Chaos_KeepReserves(driver, reserves);
 	}
 	return reserves;
+}
+
+int Chaos_FireLevelForDriver(const struct Driver *driver, int fireLevel)
+{
+	return Chaos_IsActiveForDriver(CHAOS_EFFECT_THIS_IS_FIRE, driver) ? VEH_PHYS_FORCE_SUPER_TURBO_PAD_FIRE_LEVEL : fireLevel;
 }
 
 void Chaos_ApplyRescueRules(struct Driver *driver)

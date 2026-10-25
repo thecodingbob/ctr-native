@@ -818,6 +818,7 @@ void VehPhysProc_PlayItemAcquireSound(const struct Driver *driver);
 void VehPickupItem_ShootOnCirclePress(struct Driver *d);
 void VehFire_Audio(struct Driver *driver, int speed_cap);
 void VehFire_Increment(struct Driver *driver, int reserves, u32 type, int fireLevel);
+void VehFire_SetLevel(struct Driver *driver, struct Turbo *turbo, int fireLevel);
 void VehFire_SetReserves(struct Driver *driver, int reserves);
 void VehTurbo_ProcessBucket(struct Thread *turboThread);
 void VehTurbo_ThTick(struct Thread *t);
@@ -1317,6 +1318,7 @@ int Chaos_SpeedForDriver(const struct Driver *driver, int speed);
 int Chaos_JumpForceForDriver(const struct Driver *driver, int force);
 int Chaos_AccelerationForDriver(const struct Driver *driver, int acceleration);
 int Chaos_ReservesForDriver(const struct Driver *driver, int reserves);
+int Chaos_FireLevelForDriver(const struct Driver *driver, int fireLevel);
 void Chaos_ApplyItemRules(struct Driver *driver);
 void Chaos_ApplyCrateRules(struct Driver *driver, struct Instance *crateInst);
 bool Chaos_IsHardCrateForDriver(const struct Instance *crateInst, const struct Thread *collidingTh,

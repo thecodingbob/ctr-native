@@ -210,6 +210,14 @@ It disables Square and the positive/reverse halves of both vertical sticks,
 preserving forward throttle and shared gamepad input. Recipient/activation checks
 remain in `RB_Chaos.c`; `RB_ChaosEffects.c` owns the input operation.
 
+This Is Fire (ID 23, `this-is-fire`) upgrades existing turbo at activation and
+sets new boost grants to `VEH_PHYS_FORCE_SUPER_TURBO_PAD_FIRE_LEVEL`, using the existing super turbo pad constant.
+`VehFire_SetLevel` shares normal fire speed/size assignment between activation
+and `VehFire_Increment`; activation does not add reserves or count a boost.
+`Chaos_FireLevelForDriver` filters new grants before their normal bookkeeping.
+The effect replaces Defective Boosts symmetrically. Expiry does not restore a
+previous fire tier; earned USF remains subject to normal boost-loss rules.
+
 ## HUD and audio
 
 Each successful activation plays the preloaded double-gain transition swish and

@@ -98,6 +98,27 @@ void VehFire_SetReserves(struct Driver *driver, int reserves)
 	driver->reserves = (s16)Chaos_ReservesForDriver(driver, reserves);
 }
 
+void VehFire_SetLevel(struct Driver *driver, struct Turbo *turbo, int fireLevel)
+{
+	const int speedCap = CTR_MipsAddLo(
+	    CTR_MipsSra(CTR_MipsMulLo(fireLevel, CTR_MipsSubLo(driver->const_SacredFireSpeed, driver->const_SingleTurboSpeed)), VEH_FIRE_SPEED_CAP_SHIFT),
+	    driver->const_SingleTurboSpeed);
+	if (driver->reserves == 0 || driver->fireSpeedCap < speedCap ||
+	    (driver->fireSpeedCap > driver->const_SacredFireSpeed &&
+	     (driver->stepFlagSet & COLL_STEP_TRIGGER_SUPER_TURBO_PAD) == 0))
+	{
+		driver->fireSpeedCap = (s16)speedCap;
+		if (turbo != NULL)
+		{
+			turbo->fireSize = (s16)CTR_MipsAddLo(CTR_MipsSra(fireLevel, VEH_FIRE_SIZE_SHIFT), VEH_FIRE_SIZE_BASE);
+			if (turbo->fireSize > VEH_FIRE_SIZE_MAX)
+			{
+				turbo->fireSize = VEH_FIRE_SIZE_MAX;
+			}
+		}
+	}
+}
+
 // param1 - driver
 // param2 - reserves to add
 // param3 - add type
@@ -107,11 +128,10 @@ void VehFire_Increment(struct Driver *driverArg, int reservesArg, u32 typeArg, i
 	register struct Driver *driver CTR_PSX_REGISTER("$18") = driverArg;
 	register int reserves CTR_PSX_REGISTER("$20") = reservesArg;
 	register u32 type CTR_PSX_REGISTER("$19") = typeArg;
-	register int fireLevel CTR_PSX_REGISTER("$21") = fireLevelArg;
+	register int fireLevel CTR_PSX_REGISTER("$21") = Chaos_FireLevelForDriver(driverArg, fireLevelArg);
 	u8 kartState;
 	s8 count;
 
-	int newFireSpeedCap;
 	int oldOTT;
 	int reserveDelta;
 
@@ -300,42 +320,7 @@ void VehFire_Increment(struct Driver *driverArg, int reservesArg, u32 typeArg, i
 		}
 	}
 
-	newFireSpeedCap = CTR_MipsAddLo(
-	    CTR_MipsSra(CTR_MipsMulLo(fireLevel, CTR_MipsSubLo(driver->const_SacredFireSpeed, driver->const_SingleTurboSpeed)), VEH_FIRE_SPEED_CAP_SHIFT),
-	    driver->const_SingleTurboSpeed);
-
-	if (
-	    // any gain in boost,
-	    // resize to gain boost
-	    (
-	        // Reserves are equal to zero
-	        // OR
-	        // speed cap has been raised
-	        (driver->reserves == 0) || (driver->fireSpeedCap < newFireSpeedCap)) ||
-
-	    // OR
-
-	    // you have USF, and boosted on a non-STP,
-	    // resize fire to lose size
-	    (
-	        // Current speed cap is greater than 0x1000
-	        // AND
-	        // You are not on a super turbo pad
-	        (int)driver->const_SacredFireSpeed < (int)driver->fireSpeedCap && ((driver->stepFlagSet & COLL_STEP_TRIGGER_SUPER_TURBO_PAD) == 0)))
-
-	{
-		driver->fireSpeedCap = (s16)newFireSpeedCap;
-
-		if (turboObj != 0)
-		{
-			// modify, cap, and save the size of the fire
-			turboObj->fireSize = (s16)CTR_MipsAddLo(CTR_MipsSra(fireLevel, VEH_FIRE_SIZE_SHIFT), VEH_FIRE_SIZE_BASE);
-			if (turboObj->fireSize > VEH_FIRE_SIZE_MAX)
-			{
-				turboObj->fireSize = VEH_FIRE_SIZE_MAX;
-			}
-		}
-	}
+	VehFire_SetLevel(driver, turboObj, fireLevel);
 
 	// turbo item boost
 	if ((type & TURBO_ITEM) != 0)

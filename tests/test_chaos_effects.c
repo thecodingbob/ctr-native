@@ -474,6 +474,73 @@ static void TestDefectiveBoosts(void)
 	CTR_TEST_CHECK_EQ(human.reserves, 1000, "effect expiry never restores or discards fuel");
 }
 
+static void TestThisIsFire(void)
+{
+	CTR_TEST_SECTION("This Is Fire upgrades existing turbo without granting fuel or a synthetic boost");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_THIS_IS_FIRE] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_DEFECTIVE_BOOSTS] = true;
+	sdata->chaosSettings.enabledCount += 2;
+	struct Thread driverThread = {.modelIndex = DYNAMIC_PLAYER};
+	struct Instance driverInst = {.thread = &driverThread};
+	const struct Driver initial = {
+		.driverID = 0, .instSelf = &driverInst, .kartState = KS_NORMAL,
+		.const_SingleTurboSpeed = 1000, .const_SacredFireSpeed = 2000,
+	};
+	struct Driver human = initial;
+	human.reserves = 500;
+	human.turbo_outsideTimer = 100;
+	human.fireSpeedCap = 1500;
+	human.numTurbos = 3;
+	struct Driver partner = initial;
+	partner.driverID = 1;
+	struct Driver bot = human;
+	bot.driverID = 2;
+	bot.actionsFlagSet = ACTION_BOT;
+	s_tracker.drivers[0] = &human;
+	s_tracker.drivers[1] = &partner;
+	s_tracker.drivers[2] = &bot;
+	struct Turbo turbo = {.driver = &human, .fireSize = 5};
+	struct Thread turboThread = {.object = &turbo};
+	s_tracker.threadBuckets[TURBO].thread = &turboThread;
+	Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_BOOSTS, 5000);
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_THIS_IS_FIRE, 1000), "This Is Fire activates as a timed effect");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_DEFECTIVE_BOOSTS), "This Is Fire replaces Defective Boosts");
+	CTR_TEST_CHECK_EQ(human.fireSpeedCap, 9000, "existing turbo immediately receives the super-pad speed tier");
+	CTR_TEST_CHECK_EQ(turbo.fireSize, 8, "existing exhaust receives normal USF flame sizing");
+	CTR_TEST_CHECK(human.reserves == 500 && human.turbo_outsideTimer == 100, "upgrading existing fire preserves both fuel fields");
+	CTR_TEST_CHECK(human.numTurbos == 3 && human.actionsFlagSet == 0, "activation does not count or latch an extra boost");
+	CTR_TEST_CHECK(partner.reserves == 0 && partner.fireSpeedCap == 0, "an unboosted human receives no free turbo or reserves");
+	CTR_TEST_CHECK_EQ(bot.fireSpeedCap, 1500, "existing bot turbo remains unchanged");
+	CTR_TEST_CHECK_EQ(Chaos_FireLevelForDriver(&bot, 128), 128, "new bot turbo remains ordinary");
+	CTR_TEST_CHECK_EQ(Chaos_FireLevelForDriver(&partner, VEH_PHYS_FORCE_SUPER_TURBO_PAD_FIRE_LEVEL + 128), VEH_PHYS_FORCE_SUPER_TURBO_PAD_FIRE_LEVEL, "active effect selects the super-pad fire level");
+	s_tracker.threadBuckets[TURBO].thread = NULL;
+
+	const u32 types[] = {
+		START_LINE_BOOST, POWER_SLIDE_HANG_TIME,
+		TURBO_PAD | FREEZE_RESERVES_ON_TURBO_PAD,
+		TURBO_ITEM | FREEZE_RESERVES_ON_TURBO_PAD, TURBO_PAD | SUPER_ENGINE,
+	};
+	for (size_t i = 0; i < len(types); i++)
+	{
+		partner = initial;
+		partner.driverID = 1;
+		VehFire_Increment(&partner, 300, types[i], 128);
+		CTR_TEST_CHECK_EQ(partner.fireSpeedCap, 9000, "start, drift, hang-time, pad, item and engine boosts receive USF");
+		CTR_TEST_CHECK_EQ(partner.reserves, 300, "upgraded boost sources grant only their normal reserves");
+	}
+	VehFire_Increment(&human, 100, POWER_SLIDE_HANG_TIME, 128);
+	CTR_TEST_CHECK_EQ(human.fireSpeedCap, 9000, "a weaker boost cannot cancel USF during the effect");
+	CTR_TEST_CHECK_EQ(human.reserves, 600, "a new boost adds only its earned reserves");
+	Tick(1000);
+	CTR_TEST_CHECK_EQ(human.fireSpeedCap, 9000, "expiry does not remove earned USF");
+	VehFire_Increment(&human, 100, POWER_SLIDE_HANG_TIME, 128);
+	CTR_TEST_CHECK_EQ(human.fireSpeedCap, 1500, "the next weaker boost cancels USF normally after expiry");
+	Chaos_Activate(CHAOS_EFFECT_THIS_IS_FIRE, 5000);
+	Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_BOOSTS, 1000);
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_THIS_IS_FIRE), "Defective Boosts also replaces This Is Fire");
+}
+
 static void TestNoReserves(void)
 {
 	CTR_TEST_SECTION("No Reserves clears fuel at driver application while boost grants remain retail");
@@ -1638,6 +1705,7 @@ int main(void)
 	TestSpeedEffects();
 	TestNoReserves();
 	TestDefectiveBoosts();
+	TestThisIsFire();
 	TestNoItems();
 	TestWumpaDrain();
 	TestClockCurse();

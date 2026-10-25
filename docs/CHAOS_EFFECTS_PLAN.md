@@ -3,7 +3,7 @@
 Source: [issue #90](https://github.com/thecodingbob/ctr-native/issues/90).
 Status: block A implemented with focused test coverage. Later technical checks
 remain marked with placeholders; in-game visual validation is pending.
-Current effect: Sabotage (block B), implemented for review; in-game validation pending.
+Current effect: This Is Fire (block B), implemented for review; in-game validation pending.
 
 Existing contracts: [implementation guide](CHAOS_IMPLEMENTATION.md).
 Existing gameplay: [player guide](features/CHAOS.md).
@@ -149,6 +149,7 @@ before applying its own behavior.
 - [x] Shared instant lifecycle/eligibility + A: items and reserves.
 - [ ] B: driving, turbo, and jumping.
   - [x] Sabotage: implementation and focused tests; user review/in-game checks pending.
+  - [x] This Is Fire: implementation and focused tests; user review/in-game checks pending.
 - [ ] C: size, camera, and bots.
 - [ ] D: characters and movement.
 - [ ] E: time-manipulation prototypes and implementation.
@@ -169,9 +170,23 @@ gas/brake resolution. Forward input remains intact; the shared gamepad state is
 unchanged. Focused checks cover grounded/airborne/reversing states, human/bot and
 finished-driver scope, forward analog input and expiry. Validate in game with
 `chaos_quick_race`: Square alone, Square + throttle, airborne braking, left-stick
-reverse and right-stick braking/reverse. Review this effect before starting This Is Fire.
+reverse and right-stick braking/reverse. User approved proceeding to This Is Fire.
 Validation: game build and the five focused catalogue, runtime, effects, save and
 developer-setup suites passed.
+
+This Is Fire: appended as timed effect ID 23 (`this-is-fire`). Existing turbo is
+upgraded once at activation through the shared `VehFire_SetLevel` operation,
+without reserve grants, new-boost flags or turbo-count changes. New grants pass
+through `Chaos_FireLevelForDriver` in `VehFire_Increment`, using the same USF fire
+level as super turbo pads. Defective Boosts and This Is Fire replace each other.
+Expiry preserves earned USF; subsequent boosts and reserve losses follow normal
+rules. Focused tests cover existing flame sizing, unboosted humans, bot scope,
+all grant types, unchanged reserves, expiry and symmetric conflicts. All five
+catalogue/runtime/effects/save/developer-setup suites passed. Game compilation
+passed; linking was blocked by the running executable (`Permission denied`).
+In-game checks: activate while boosting and without reserves, chain drift/jump/pad
+boosts, then check that USF survives expiry until normal boost-loss rules apply.
+Review this effect before starting Hydraulics.
 
 Block A: focused runtime tests cover full timed capacity, instant notices without
 docking, repeat rewards, notice overflow, pause/reset/resident restore, inventory

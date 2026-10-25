@@ -107,6 +107,23 @@ static void Chaos_GiveReserves(struct Driver *driver)
 	}
 }
 
+static void Chaos_UpgradeTurbo(struct Driver *driver)
+{
+	if (driver->reserves > 0 && driver->fireSpeedCap > 0)
+	{
+		struct Turbo *turbo = NULL;
+		for (struct Thread *thread = GAME_TRACKER->threadBuckets[TURBO].thread; thread != NULL; thread = thread->siblingThread)
+		{
+			if (((struct Turbo *)thread->object)->driver == driver)
+			{
+				turbo = thread->object;
+				break;
+			}
+		}
+		VehFire_SetLevel(driver, turbo, VEH_PHYS_FORCE_SUPER_TURBO_PAD_FIRE_LEVEL);
+	}
+}
+
 static void Chaos_ApplyClockCurse(struct Driver *driver, s32 durationMS)
 {
 	VehPickState_ApplyDamage(driver, VEH_PICK_DAMAGE_SPIN, NULL, 0, true);
