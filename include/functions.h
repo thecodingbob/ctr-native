@@ -1324,8 +1324,8 @@ void Chaos_ApplyCrateRules(struct Driver *driver, struct Instance *crateInst);
 bool Chaos_IsHardCrateForDriver(const struct Instance *crateInst, const struct Thread *collidingTh,
                                const struct ScratchpadStruct *sps);
 void Chaos_ApplyRescueRules(struct Driver *driver);
-u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, int *steering,
-                     u32 *brake, int *rightY, int *leftY, u32 actions);
+void Chaos_ApplyInputRules(const struct Driver *driver, struct GamepadBuffer *pad);
+u32 Chaos_ApplyDriver(struct Driver *driver, u32 actions);
 void UI_Chaos_DrawActivation(struct GameTracker *gGT);
 b32 LOAD_IsOpen_Podiums(void);
 void RB_Spider_DrawWebs(struct Thread *t, struct PushBuffer *pb);

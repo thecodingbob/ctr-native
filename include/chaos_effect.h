@@ -49,6 +49,7 @@ typedef enum {
 	CHAOS_EFFECT_THIS_IS_FIRE = 23,
 	CHAOS_EFFECT_HYDRAULICS = 24,
 	CHAOS_EFFECT_MY_PLANET_NEEDS_ME = 25,
+	CHAOS_EFFECT_WHO_BOUND_THIS = 26,
 
 	// IDs are saved bit positions: append new IDs, never renumber or reuse one.
 	// Growth within the saved bitset capacity does not change its layout.
@@ -98,6 +99,7 @@ static const ChaosEffectDef g_chaosEffectDefs[CHAOS_EFFECT_COUNT] =
 	[CHAOS_EFFECT_THIS_IS_FIRE] = { "this-is-fire", "This Is Fire", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_HYDRAULICS] = { "hydraulics", "Hydraulics", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_MY_PLANET_NEEDS_ME] = { "my-planet-needs-me", "My Planet Needs Me", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_WHO_BOUND_THIS] = { "who-bound-this", "Who Bound This?", CHAOS_SCOPE_HUMANS },
 };
 
 static inline bool ChaosEffect_IsInstant(ChaosEffectId id)

@@ -185,6 +185,12 @@ static void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation)
 				case CHAOS_EFFECT_MY_PLANET_NEEDS_ME:
 					Chaos_LaunchDriver(driver);
 					break;
+				case CHAOS_EFFECT_WHO_BOUND_THIS:
+					if (driver->driverID < (int)len(sdata->chaosRuntime.controls))
+					{
+						Chaos_ShuffleControls(&sdata->chaosRuntime.controls[driver->driverID], &GAMEPADS->gamepad[driver->driverID]);
+					}
+					break;
 				case CHAOS_EFFECT_CLOCK_CURSE:
 					Chaos_ApplyClockCurse(driver, chaosActivation->remainingMS);
 					break;
@@ -463,8 +469,55 @@ void Chaos_OnTurboPadContact(struct Driver *driver, bool touching)
 	}
 }
 
-u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, int *steering,
-                     u32 *brake, int *rightY, int *leftY, u32 actions)
+void Chaos_ApplyInputRules(const struct Driver *driver, struct GamepadBuffer *pad)
+{
+	if (!Chaos_IsRunning(sdata->gGT))
+	{
+		return;
+	}
+	// Remap physical controls before filtering the resulting gameplay actions.
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_WHO_BOUND_THIS, driver) &&
+	    driver->driverID < (int)len(sdata->chaosRuntime.controls))
+	{
+		Chaos_RemapControls(&sdata->chaosRuntime.controls[driver->driverID], pad);
+	}
+	const struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	for (int i = 0; i < runtime->numActive; i++)
+	{
+		const ChaosEffectId effect = runtime->active[i].effect;
+		if (!Chaos_TargetsDriver(effect, driver))
+		{
+			continue;
+		}
+		if (effect == CHAOS_EFFECT_INVERTED_STEERING)
+		{
+			pad->stickLX = Chaos_InvertSteering(pad);
+		}
+		else if (effect == CHAOS_EFFECT_WOBBLE_STEERING)
+		{
+			pad->stickLX = Chaos_WobbleSteering(&runtime->active[i], pad);
+		}
+		else if (effect == CHAOS_EFFECT_SABOTAGE)
+		{
+			Chaos_DisableBraking(pad);
+		}
+	}
+}
+
+static void Chaos_UpdateControlAxes(void)
+{
+	for (int i = 0; i < (int)len(sdata->chaosRuntime.controls); i++)
+	{
+		if (Chaos_IsActiveForDriver(CHAOS_EFFECT_WHO_BOUND_THIS, sdata->gGT->drivers[i]))
+		{
+			struct ChaosControlShuffle *controls = &sdata->chaosRuntime.controls[i];
+			controls->analogPrev = controls->analogHeld;
+			controls->analogHeld = Chaos_AnalogActions(&GAMEPADS->gamepad[i]);
+		}
+	}
+}
+
+u32 Chaos_ApplyDriver(struct Driver *driver, u32 actions)
 {
 	const struct ChaosRuntime *runtime = &sdata->chaosRuntime;
 	if (!Chaos_IsRunning(sdata->gGT))
@@ -478,15 +531,7 @@ u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, in
 		{
 			continue;
 		}
-		if (effect == CHAOS_EFFECT_INVERTED_STEERING)
-		{
-			*steering = Chaos_InvertSteering(pad);
-		}
-		else if (effect == CHAOS_EFFECT_WOBBLE_STEERING)
-		{
-			*steering = Chaos_WobbleSteering(&runtime->active[i], pad);
-		}
-		else if (effect == CHAOS_EFFECT_NO_HOPPING)
+		if (effect == CHAOS_EFFECT_NO_HOPPING)
 		{
 			actions = Chaos_PreventHopping(driver, actions);
 		}
@@ -497,10 +542,6 @@ u32 Chaos_ApplyDriver(struct Driver *driver, const struct GamepadBuffer *pad, in
 			{
 				Chaos_RequestHop(driver);
 			}
-		}
-		else if (effect == CHAOS_EFFECT_SABOTAGE)
-		{
-			Chaos_DisableBraking(brake, rightY, leftY);
 		}
 		else if (effect == CHAOS_EFFECT_NO_RESERVES)
 		{
@@ -560,6 +601,7 @@ void Chaos_Update(struct GameTracker *gGT)
 	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
 	const struct ChaosSettings *settings = &sdata->chaosSettings;
 	Chaos_TickActivations(gGT->elapsedTimeMS);
+	Chaos_UpdateControlAxes();
 	if (settings->trigger == CHAOS_TRIGGER_EXTERNAL)
 	{
 		if (runtime->intervalRemainingMS > 0)

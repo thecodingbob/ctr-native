@@ -698,7 +698,9 @@ itemRollDone:
 
 
 	// pointer to gamepad input of current player (driver)
-	ptrgamepad = &GAMEPADS->gamepad[(u32)driver->driverID];
+	struct GamepadBuffer drivingPad = GAMEPADS->gamepad[(u32)driver->driverID];
+	Chaos_ApplyInputRules(driver, &drivingPad);
+	ptrgamepad = &drivingPad;
 
 	// no hold
 	buttonsHeld = 0;
@@ -841,8 +843,7 @@ CheckJumpButtonsReady:
 	stickRY = (int)ptrgamepad->stickRY;
 	gasStickLY = ptrgamepad->stickLY;
 	// Apply after input resolution, before jump and steering consumers use the result.
-	actionsFlagSetCopy = Chaos_ApplyDriver(driver, ptrgamepad, &steeringInput,
-	                                       &square, &stickRY, &gasStickLY, actionsFlagSetCopy);
+	actionsFlagSetCopy = Chaos_ApplyDriver(driver, actionsFlagSetCopy);
 	CTR_PSX_OBSERVE_VALUE(buttonsHeld);
 	CTR_PSX_LOAD_WORD(approximateSpeedRaw, square);
 	if (
@@ -1471,6 +1472,8 @@ void VehPhysProc_Driving_Audio(struct Thread *t, struct Driver *d)
 void VehPhysProc_Driving_Update(struct Thread *t, struct Driver *d)
 {
 	u8 turnRate;
+	struct GamepadBuffer drivingPad = GAMEPADS->gamepad[d->driverID];
+	Chaos_ApplyInputRules(d, &drivingPad);
 
 	// if racer touched the ground in this frame
 	if ((d->actionsFlagSet & ACTION_STARTED_TOUCH_GROUND) != 0)
@@ -1494,7 +1497,7 @@ void VehPhysProc_Driving_Update(struct Thread *t, struct Driver *d)
 		if (((((turnRate + turnConstTerm) >> VEH_PHYS_PROC_HALF_SPEED_SHIFT) < simpTurnState) &&
 
 		     // player has jump buttons held
-		     (GAMEPADS->gamepad[d->driverID].buttonsHeldCurrFrame & d->buttonUsedToStartDrift) != 0) &&
+		     (drivingPad.buttonsHeldCurrFrame & d->buttonUsedToStartDrift) != 0) &&
 
 		    // player is not in accel prevention or braking and
 		    ((d->actionsFlagSet & ACTION_ACCEL_PREVENTION) == 0) && ((d->const_Speed_ClassStat >> 1) <= d->speedApprox))
@@ -2273,8 +2276,10 @@ void VehPhysProc_PowerSlide_Finalize(struct Driver *d)
 
 void VehPhysProc_PowerSlide_Update(struct Thread *t, struct Driver *d)
 {
+	struct GamepadBuffer drivingPad = GAMEPADS->gamepad[d->driverID];
+	Chaos_ApplyInputRules(d, &drivingPad);
 	// If you press L1 or R1, attempt to convert the drift meter to reserves.
-	if ((GAMEPADS->gamepad[d->driverID].buttonsTapped & VEH_PHYS_PROC_JUMP_BUTTON_MASK) != 0)
+	if ((drivingPad.buttonsTapped & VEH_PHYS_PROC_JUMP_BUTTON_MASK) != 0)
 	{
 		int meterLeft = d->turbo_MeterRoomLeft;
 
@@ -2362,7 +2367,7 @@ void VehPhysProc_PowerSlide_Update(struct Thread *t, struct Driver *d)
 		       ((d->actionsFlagSet & (ACTION_DRIVING_AGAINST_WALL | ACTION_ACCEL_PREVENTION | ACTION_BRAKE_WITH_ACCEL)) != 0)) ||
 
 		      // If the gamepad input is...
-		      ((GAMEPADS->gamepad[d->driverID].buttonsHeldCurrFrame &
+		      ((drivingPad.buttonsHeldCurrFrame &
 
 		        // does not include the jump button that you used to start drifting
 		        d->buttonUsedToStartDrift) == 0))))

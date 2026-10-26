@@ -3,10 +3,10 @@
 
 static u32 PreparedDriver(struct Driver *driver, const struct GamepadBuffer *pad, int *steering, u32 actions)
 {
-	u32 brake = pad->buttonsHeldCurrFrame & BTN_SQUARE_one;
-	int rightY = pad->stickRY;
-	int leftY = pad->stickLY;
-	return Chaos_ApplyDriver(driver, pad, steering, &brake, &rightY, &leftY, actions);
+	struct GamepadBuffer drivingPad = *pad;
+	Chaos_ApplyInputRules(driver, &drivingPad);
+	*steering = drivingPad.stickLX;
+	return Chaos_ApplyDriver(driver, actions);
 }
 
 static int PreparedSteering(struct Driver *driver, const struct GamepadBuffer *pad)
@@ -20,9 +20,9 @@ static u32 PreparedJump(struct Driver *driver, u32 tapped, u32 held, int rainClo
 {
 	struct GamepadBuffer pad = {.buttonsTapped = tapped, .buttonsHeldCurrFrame = held};
 	driver->actionsFlagSet = actions;
-	actions = VehPhysProc_JumpInput(driver, tapped, held, rainCloudEffect, actions);
-	int steering = pad.stickLX;
-	return PreparedDriver(driver, &pad, &steering, actions);
+	Chaos_ApplyInputRules(driver, &pad);
+	actions = VehPhysProc_JumpInput(driver, pad.buttonsTapped, pad.buttonsHeldCurrFrame, rainCloudEffect, actions);
+	return Chaos_ApplyDriver(driver, actions);
 }
 
 static void TestSteeringAndDriverScope(void)
@@ -93,24 +93,20 @@ static void TestSabotage(void)
 		.stickLY = 255,
 	};
 	const struct GamepadBuffer original = pad;
-	u32 brake = BTN_SQUARE_one;
-	int rightY = pad.stickRY;
-	int leftY = pad.stickLY;
-	int steering = pad.stickLX;
-	Chaos_ApplyDriver(&driver, &pad, &steering, &brake, &rightY, &leftY, 0);
-	CTR_TEST_CHECK(brake == BTN_SQUARE_one && rightY == 255 && leftY == 255, "inactive Sabotage preserves braking and reverse");
+	struct GamepadBuffer drivingPad = pad;
+	Chaos_ApplyInputRules(&driver, &drivingPad);
+	CTR_TEST_CHECK(memcmp(&drivingPad, &pad, sizeof(pad)) == 0, "inactive Sabotage preserves braking and reverse");
 	Chaos_Activate(CHAOS_EFFECT_SABOTAGE, 1000);
-	Chaos_ApplyDriver(&driver, &pad, &steering, &brake, &rightY, &leftY, 0);
-	CTR_TEST_CHECK(brake == 0 && rightY == CHAOS_STICK_CENTER && leftY == CHAOS_STICK_CENTER, "active Sabotage neutralizes digital and analog brake inputs");
+	Chaos_ApplyInputRules(&driver, &drivingPad);
+	CTR_TEST_CHECK((drivingPad.buttonsHeldCurrFrame & BTN_SQUARE_one) == 0 && drivingPad.stickRY == CHAOS_STICK_CENTER && drivingPad.stickLY == CHAOS_STICK_CENTER, "active Sabotage neutralizes digital and analog brake inputs");
 	CTR_TEST_CHECK(memcmp(&pad, &original, sizeof(pad)) == 0, "filtering leaves shared controller input and button history intact");
-	rightY = leftY = 0;
-	Chaos_ApplyDriver(&driver, &pad, &steering, &brake, &rightY, &leftY, 0);
-	CTR_TEST_CHECK(rightY == 0 && leftY == 0, "forward analog input remains available");
+	drivingPad.stickRY = drivingPad.stickLY = 0;
+	Chaos_ApplyInputRules(&driver, &drivingPad);
+	CTR_TEST_CHECK(drivingPad.stickRY == 0 && drivingPad.stickLY == 0, "forward analog input remains available");
 	Tick(1000);
-	brake = BTN_SQUARE_one;
-	rightY = leftY = 255;
-	Chaos_ApplyDriver(&driver, &pad, &steering, &brake, &rightY, &leftY, 0);
-	CTR_TEST_CHECK(brake == BTN_SQUARE_one && rightY == 255 && leftY == 255, "expiry restores ordinary braking and reverse");
+	drivingPad = pad;
+	Chaos_ApplyInputRules(&driver, &drivingPad);
+	CTR_TEST_CHECK(memcmp(&drivingPad, &pad, sizeof(pad)) == 0, "expiry restores ordinary braking and reverse");
 }
 
 static void TestHydraulics(void)
@@ -228,6 +224,131 @@ static void TestMyPlanetNeedsMe(void)
 	const int launches = s_launchConversions[0];
 	Chaos_Activate(CHAOS_EFFECT_MY_PLANET_NEEDS_ME, 1000);
 	CTR_TEST_CHECK_EQ(s_launchConversions[0], launches, "finished humans receive no new launch");
+}
+
+static struct GamepadBuffer ShuffledPad(const struct Driver *driver, const struct GamepadBuffer *raw)
+{
+	struct GamepadBuffer pad = *raw;
+	Chaos_ApplyInputRules(driver, &pad);
+	return pad;
+}
+
+static void TestWhoBoundThis(void)
+{
+	CTR_TEST_SECTION("Who Bound This rolls independent stable nonidentity permutations for human driving");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_WHO_BOUND_THIS] = true;
+	sdata->chaosSettings.enabledCount++;
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_WHO_BOUND_THIS, 1000), "the control shuffle activates as a timed effect");
+	for (int player = 0; player < 2; player++)
+	{
+		unsigned int seen = 0;
+		bool changed = false;
+		for (int action = 0; action < CHAOS_CONTROL_COUNT; action++)
+		{
+			const int destination = sdata->chaosRuntime.controls[player].destination[action];
+			seen |= 1u << destination;
+			changed |= destination != action;
+		}
+		CTR_TEST_CHECK_EQ(seen, (1u << CHAOS_CONTROL_COUNT) - 1, "each human receives every driving action exactly once");
+		CTR_TEST_CHECK(changed, "a complete identity permutation is rerolled");
+	}
+	struct Driver human = {.driverID = 0};
+	struct Driver partner = {.driverID = 1};
+	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT};
+	// Cross -> item, Square -> R1, Circle -> L1, L1 -> throttle, R1 -> brake.
+	sdata->chaosRuntime.controls[0].destination[CHAOS_CONTROL_THROTTLE] = CHAOS_CONTROL_ITEM;
+	sdata->chaosRuntime.controls[0].destination[CHAOS_CONTROL_BRAKE] = CHAOS_CONTROL_HOP_RIGHT;
+	sdata->chaosRuntime.controls[0].destination[CHAOS_CONTROL_ITEM] = CHAOS_CONTROL_HOP_LEFT;
+	sdata->chaosRuntime.controls[0].destination[CHAOS_CONTROL_HOP_LEFT] = CHAOS_CONTROL_THROTTLE;
+	sdata->chaosRuntime.controls[0].destination[CHAOS_CONTROL_HOP_RIGHT] = CHAOS_CONTROL_BRAKE;
+	sdata->chaosRuntime.controls[1].destination[CHAOS_CONTROL_THROTTLE] = CHAOS_CONTROL_BRAKE;
+	sdata->chaosRuntime.controls[1].destination[CHAOS_CONTROL_BRAKE] = CHAOS_CONTROL_ITEM;
+	sdata->chaosRuntime.controls[1].destination[CHAOS_CONTROL_ITEM] = CHAOS_CONTROL_THROTTLE;
+	sdata->chaosRuntime.controls[1].destination[CHAOS_CONTROL_HOP_LEFT] = CHAOS_CONTROL_HOP_RIGHT;
+	sdata->chaosRuntime.controls[1].destination[CHAOS_CONTROL_HOP_RIGHT] = CHAOS_CONTROL_HOP_LEFT;
+	const u32 inputs[] = {BTN_CROSS_one, BTN_SQUARE_one, BTN_CIRCLE, BTN_L1, BTN_R1};
+	const u32 outputs[] = {BTN_CIRCLE, BTN_R1, BTN_L1, BTN_CROSS_one, BTN_SQUARE_one};
+	const u32 untouched = BTN_START | BTN_SELECT | BTN_LEFT | BTN_R2;
+	for (size_t i = 0; i < len(inputs); i++)
+	{
+		const struct GamepadBuffer raw = {
+			.stickLX = 42, .stickLY = CHAOS_STICK_CENTER, .stickRY = CHAOS_STICK_CENTER,
+			.buttonsHeldCurrFrame = inputs[i] | untouched,
+			.buttonsTapped = inputs[i] | BTN_START,
+		};
+		struct GamepadBuffer pad = ShuffledPad(&human, &raw);
+		CTR_TEST_CHECK_EQ(pad.buttonsHeldCurrFrame, outputs[i] | untouched, "only the five gameplay buttons are permuted");
+		CTR_TEST_CHECK_EQ(pad.buttonsTapped, outputs[i] | BTN_START, "tap edges follow the mapped action without changing pause");
+		CTR_TEST_CHECK_EQ(pad.stickLX, 42, "left-stick steering is unchanged");
+		struct GamepadBuffer released = raw;
+		released.buttonsHeldPrevFrame = inputs[i];
+		released.buttonsHeldCurrFrame = 0;
+		released.buttonsTapped = 0;
+		released.buttonsReleased = inputs[i];
+		pad = ShuffledPad(&human, &released);
+		CTR_TEST_CHECK(pad.buttonsReleased == (int)outputs[i] && pad.buttonsHeldPrevFrame == (int)outputs[i],
+		               "release edges and previous held state use the same mapping");
+	}
+	const struct GamepadBuffer raw = {
+		.stickLX = 42, .stickLY = CHAOS_STICK_CENTER, .stickRY = CHAOS_STICK_CENTER,
+		.buttonsHeldCurrFrame = BTN_CROSS_one, .buttonsTapped = BTN_CROSS_one,
+	};
+	const struct GamepadBuffer original = raw;
+	struct GamepadBuffer pad = ShuffledPad(&partner, &raw);
+	CTR_TEST_CHECK_EQ(pad.buttonsHeldCurrFrame, BTN_SQUARE_one, "player two uses their own permutation");
+	pad = ShuffledPad(&bot, &raw);
+	CTR_TEST_CHECK(memcmp(&pad, &raw, sizeof(pad)) == 0, "bots retain ordinary controls");
+	human.actionsFlagSet = ACTION_RACE_FINISHED;
+	pad = ShuffledPad(&human, &raw);
+	CTR_TEST_CHECK(memcmp(&pad, &raw, sizeof(pad)) == 0, "finished humans retain ordinary controls");
+	human.actionsFlagSet = 0;
+	s_tracker.gameMode1 |= PAUSE_1;
+	pad = ShuffledPad(&human, &raw);
+	CTR_TEST_CHECK(memcmp(&pad, &raw, sizeof(pad)) == 0, "paused menus receive unmodified input");
+	s_tracker.gameMode1 &= ~PAUSE_1;
+	const u32 rng = sdata->chaosRng;
+	pad = ShuffledPad(&human, &raw);
+	const struct GamepadBuffer again = ShuffledPad(&human, &raw);
+	CTR_TEST_CHECK(memcmp(&pad, &again, sizeof(pad)) == 0 && sdata->chaosRng == rng,
+	               "physics and drift consumers can resolve the same frame without reshuffling or double mapping");
+	CTR_TEST_CHECK(memcmp(&raw, &original, sizeof(raw)) == 0, "the shared raw pad remains intact");
+	const struct ChaosRuntime saved = sdata->chaosRuntime;
+	Chaos_Activate(CHAOS_EFFECT_WHO_BOUND_THIS, 1000);
+	CTR_TEST_CHECK(sdata->chaosRng != rng, "reactivation rolls a fresh set of per-human mappings");
+	sdata->chaosRuntime = saved;
+	pad = ShuffledPad(&human, &raw);
+	CTR_TEST_CHECK_EQ(pad.buttonsHeldCurrFrame, BTN_CIRCLE, "resident restoration restores the exact previous mapping");
+
+	CTR_TEST_SECTION("analog throttle and reverse follow the shuffle with coherent press and release edges");
+	s_gamepads.gamepad[0].stickRY = 0;
+	Tick(32);
+	pad = ShuffledPad(&human, &s_gamepads.gamepad[0]);
+	CTR_TEST_CHECK(pad.buttonsHeldCurrFrame == BTN_CIRCLE && pad.buttonsTapped == BTN_CIRCLE,
+	               "analog throttle fires its mapped action on entry");
+	CTR_TEST_CHECK_EQ(pad.stickRY, CHAOS_STICK_CENTER, "the original analog throttle path is neutralized");
+	Tick(32);
+	pad = ShuffledPad(&human, &s_gamepads.gamepad[0]);
+	CTR_TEST_CHECK(pad.buttonsHeldCurrFrame == BTN_CIRCLE && pad.buttonsTapped == 0, "holding an axis does not repeat item or hop taps");
+	s_gamepads.gamepad[0].buttonsHeldCurrFrame = BTN_CROSS_one;
+	Tick(32);
+	pad = ShuffledPad(&human, &s_gamepads.gamepad[0]);
+	CTR_TEST_CHECK_EQ(pad.buttonsTapped, 0, "pressing a digital source already held by its analog axis does not duplicate the action");
+	s_gamepads.gamepad[0].buttonsHeldPrevFrame = BTN_CROSS_one;
+	s_gamepads.gamepad[0].stickRY = CHAOS_STICK_CENTER;
+	Tick(32);
+	pad = ShuffledPad(&human, &s_gamepads.gamepad[0]);
+	CTR_TEST_CHECK_EQ(pad.buttonsReleased, 0, "centering the axis does not release an action still held digitally");
+	s_gamepads.gamepad[0].buttonsHeldCurrFrame = 0;
+	s_gamepads.gamepad[0].buttonsHeldPrevFrame = 0;
+	s_gamepads.gamepad[0].stickLY = 255;
+	Tick(32);
+	pad = ShuffledPad(&human, &s_gamepads.gamepad[0]);
+	CTR_TEST_CHECK((pad.buttonsHeldCurrFrame & BTN_R1) != 0 && pad.stickLY == CHAOS_STICK_CENTER,
+	               "left-stick reverse triggers the remapped brake action without an unmapped reverse bypass");
+	Tick(1000);
+	pad = ShuffledPad(&human, &s_gamepads.gamepad[0]);
+	CTR_TEST_CHECK(memcmp(&pad, &s_gamepads.gamepad[0], sizeof(pad)) == 0, "expiry immediately returns the complete live pad");
 }
 
 static void TestWobbleSteering(void)
@@ -1819,6 +1940,7 @@ int main(void)
 	TestSabotage();
 	TestHydraulics();
 	TestMyPlanetNeedsMe();
+	TestWhoBoundThis();
 	TestWobbleSteering();
 	TestGravityEffects();
 	TestSpeedEffects();

@@ -23,6 +23,23 @@ struct ChaosActivation
 	s32 elapsedMS;
 };
 
+enum ChaosControlAction
+{
+	CHAOS_CONTROL_THROTTLE,
+	CHAOS_CONTROL_BRAKE,
+	CHAOS_CONTROL_ITEM,
+	CHAOS_CONTROL_HOP_LEFT,
+	CHAOS_CONTROL_HOP_RIGHT,
+	CHAOS_CONTROL_COUNT,
+};
+
+struct ChaosControlShuffle
+{
+	u8 destination[CHAOS_CONTROL_COUNT];
+	u32 analogHeld;
+	u32 analogPrev;
+};
+
 // Race-only state, captured in SDATA; unique effects in activation order.
 struct ChaosRuntime
 {
@@ -33,6 +50,7 @@ struct ChaosRuntime
 	s32 intervalRemainingMS;
 	bool raceInitialized;
 	bool touchingTurboPad[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
+	struct ChaosControlShuffle controls[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
 };
 
 #endif

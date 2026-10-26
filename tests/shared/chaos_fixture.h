@@ -10,6 +10,7 @@ struct sData sdata_static;
 struct Data data;
 NativeConfig g_config;
 static struct GameTracker s_tracker;
+static struct GamepadSystem s_gamepads;
 static struct Driver s_defaultDrivers[2];
 static bool s_allHumansFinished;
 static int s_activationSounds;
@@ -441,9 +442,11 @@ static void SetupRace(int trigger)
 	s_lastExplodingCrate = NULL;
 	memset(&sdata_static, 0, sizeof(sdata_static));
 	memset(&s_tracker, 0, sizeof(s_tracker));
+	memset(&s_gamepads, 0, sizeof(s_gamepads));
 	memset(s_defaultDrivers, 0, sizeof(s_defaultDrivers));
 	memset(&g_config, 0, sizeof(g_config));
 	sdata->gGT = &s_tracker;
+	sdata->gGamepads = &s_gamepads;
 	sdata->Loading.stage = LOAD_IDLE;
 	s_tracker.gameMode1 = ADVENTURE_MODE;
 	s_tracker.overlayIndex_Threads = OVERLAY_INDEX_RACING_OR_BATTLE;
@@ -452,6 +455,9 @@ static void SetupRace(int trigger)
 	{
 		s_defaultDrivers[i].driverID = i;
 		s_tracker.drivers[i] = &s_defaultDrivers[i];
+		s_gamepads.gamepad[i].stickLX = CHAOS_STICK_CENTER;
+		s_gamepads.gamepad[i].stickLY = CHAOS_STICK_CENTER;
+		s_gamepads.gamepad[i].stickRY = CHAOS_STICK_CENTER;
 	}
 	sdata->chaosSettings = (struct ChaosSettings){
 		.armed = true, .trigger = (u8)trigger, .durationSeconds = 30,
