@@ -110,6 +110,7 @@ enabled in the file. Setup and a manual submission example are in the
 | **My Planet Needs Me**  | Instantly add an upward impulse at 6× normal jump force, even in midair. Gravity effects still apply.                                                                           |
 | **Who Bound This?** | Randomize throttle, brake, item and both hop/drift controls independently per human for the effect's duration. Steering, pause and menus remain unchanged. |
 | **Try Something New** | Switch to a different standard driving class and its engine sound until race end, keeping the character. Repeats select a class different from the current one. |
+| **Small Kart Energy** | Halve kart dimensions and collision size; reduce forward speed and jump force to 70%. Larger karts can squash you, subject to normal mask, shield and immunity protections. |
 
 Effects can overlap: Duration does not delay the next trigger. For example,
 Duration 30 seconds with Interval 10 seconds allows several effects at once.
@@ -120,8 +121,8 @@ Duration 30 seconds with Interval 10 seconds allows several effects at once.
   it does not multiply that effect's strength.
 - These pairs replace one another: **Inverted Steering / Wobble Steering**,
   **Low Gravity / Heavy Karts**, **Speed Capped / Super Speed**,
-  **No Reserves / Too Boosted TO Fail**, **This Is Fire / Defective Boosts**, and
-  **No Hopping / Hydraulics**.
+  **No Reserves / Too Boosted TO Fail**, **This Is Fire / Defective Boosts**,
+  **No Hopping / Hydraulics**, and **Giant Karts / Small Kart Energy**.
 - **Use This!** ends **No Items**; **Reserve Injection** ends **No Reserves**.
 - **My Planet Needs Me** ends **No Hopping** and **Hydraulics** before launching.
 - The seven instant effects (**Use This!**, **Juiced Up**, **It is I**,

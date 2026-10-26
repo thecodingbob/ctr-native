@@ -258,6 +258,15 @@ loop. `Chaos_EngineClassForDriver` keeps engine updates, audio initialization an
 warp teardown on that same class, without overriding ghosts that share a player
 ID. Reset restores the character's engine loop before clearing the override.
 
+Small Kart Energy (ID 28, `small-kart-energy`) uses the same size pipeline as
+Giant Karts. `Driver.kartScale` is a float multiplier (zero defaults to 1×),
+resolved by `VehPhysForce_GetKartScale`; finished drivers use 1×. Visual scales,
+tires and contact radii convert to integer dimensions through
+`VehPhysForce_ScaleValue`. Squash compares the floating-point multipliers without
+integer truncation and reuses normal damage protections. Small size is 0.5×;
+forward speed targets and jump force are 0.7×. Size effects replace one another,
+and expiry/reset restore normal size, including for finished humans.
+
 ## HUD and audio
 
 Each successful activation plays the preloaded double-gain transition swish and

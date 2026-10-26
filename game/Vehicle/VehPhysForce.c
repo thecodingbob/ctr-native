@@ -1520,13 +1520,18 @@ HIDE_WAKE:
 	}
 }
 
-int VehPhysForce_ScaleValue(const struct Driver *driver, int value)
+float VehPhysForce_GetKartScale(const struct Driver *driver)
 {
 	if ((driver->actionsFlagSet & ACTION_RACE_FINISHED) != 0)
 	{
-		return value;
+		return VEH_PHYS_FORCE_KART_SCALE_NORMAL;
 	}
-	return value * (driver->kartScale != 0 ? driver->kartScale : VEH_PHYS_FORCE_KART_SCALE_NORMAL);
+	return driver->kartScale != 0 ? driver->kartScale : VEH_PHYS_FORCE_KART_SCALE_NORMAL;
+}
+
+int VehPhysForce_ScaleValue(const struct Driver *driver, int value)
+{
+	return (int)(value * VehPhysForce_GetKartScale(driver));
 }
 
 void VehPhysForce_TranslateMatrix(struct Thread *thread, struct Driver *driver)

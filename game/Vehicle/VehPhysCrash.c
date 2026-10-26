@@ -2,8 +2,8 @@
 
 bool VehPhysCrash_TrySquashSmallerKart(struct Driver *first, struct Driver *second)
 {
-	int firstScale = VehPhysForce_ScaleValue(first, 1);
-	int secondScale = VehPhysForce_ScaleValue(second, 1);
+	float firstScale = VehPhysForce_GetKartScale(first);
+	float secondScale = VehPhysForce_GetKartScale(second);
 	if (firstScale == secondScale)
 	{
 		return false;

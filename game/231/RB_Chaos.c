@@ -88,7 +88,7 @@ static void Chaos_OnEffectDeactivated(ChaosEffectId effect)
 		struct Driver *driver = sdata->gGT->drivers[i];
 		if (driver != NULL)
 		{
-			if (effect == CHAOS_EFFECT_GIANT_KARTS)
+			if (effect == CHAOS_EFFECT_GIANT_KARTS || effect == CHAOS_EFFECT_SMALL_KART_ENERGY)
 			{
 				Chaos_SetKartScale(CHAOS_KART_SCALE_NORMAL, driver);
 			}
@@ -116,6 +116,7 @@ static void Chaos_RemoveReplacedEffects(ChaosEffectId effect)
 		{CHAOS_EFFECT_NO_RESERVES, CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL},
 		{CHAOS_EFFECT_THIS_IS_FIRE, CHAOS_EFFECT_DEFECTIVE_BOOSTS},
 		{CHAOS_EFFECT_NO_HOPPING, CHAOS_EFFECT_HYDRAULICS},
+		{CHAOS_EFFECT_GIANT_KARTS, CHAOS_EFFECT_SMALL_KART_ENERGY},
 	};
 	for (int i = 0; i < (int)len(opposites); i++)
 	{
@@ -168,6 +169,9 @@ static void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation)
 			{
 				case CHAOS_EFFECT_GIANT_KARTS:
 					Chaos_SetKartScale(CHAOS_GIANT_SCALE, driver);
+					break;
+				case CHAOS_EFFECT_SMALL_KART_ENERGY:
+					Chaos_SetKartScale(s_chaosSmallScale, driver);
 					break;
 				case CHAOS_EFFECT_USE_THIS:
 					Chaos_GiveRandomItem(driver);
@@ -378,6 +382,10 @@ int Chaos_SpeedForDriver(const struct Driver *driver, int speed)
 	{
 		speed = Chaos_GiantForce(speed);
 	}
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SMALL_KART_ENERGY, driver))
+	{
+		speed = Chaos_SmallForce(speed);
+	}
 	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SPEED_CAPPED, driver))
 	{
 		return Chaos_CappedSpeed(driver, speed);
@@ -391,7 +399,15 @@ int Chaos_SpeedForDriver(const struct Driver *driver, int speed)
 
 int Chaos_JumpForceForDriver(const struct Driver *driver, int force)
 {
-	return Chaos_IsActiveForDriver(CHAOS_EFFECT_GIANT_KARTS, driver) ? Chaos_GiantForce(force) : force;
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_GIANT_KARTS, driver))
+	{
+		return Chaos_GiantForce(force);
+	}
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SMALL_KART_ENERGY, driver))
+	{
+		return Chaos_SmallForce(force);
+	}
+	return force;
 }
 
 int Chaos_AccelerationForDriver(const struct Driver *driver, int acceleration)

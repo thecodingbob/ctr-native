@@ -1427,6 +1427,7 @@ void VehPhysCrash_AnyTwoCars(struct Thread *thread, struct DriverCollisionSearch
 void VehPhysForce_CollideDrivers(struct Thread *thread, struct Driver *driver);
 void VehPhysForce_TranslateMatrix(struct Thread *thread, struct Driver *driver);
 int VehPhysForce_ScaleValue(const struct Driver *driver, int value);
+float VehPhysForce_GetKartScale(const struct Driver *driver);
 bool VehPhysCrash_TrySquashSmallerKart(struct Driver *first, struct Driver *second);
 int VehPickState_TrySquish(struct Driver *driver);
 int VehPhysGeneral_JumpGetVelY(s16 *normalVec, Vec3 *speedXYZ);

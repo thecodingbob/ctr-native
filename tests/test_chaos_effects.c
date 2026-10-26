@@ -1463,8 +1463,8 @@ static void TestGiantKarts(void)
 	CTR_TEST_CHECK_EQ(human.kartScale, 0, "before activation the driver uses retail scale");
 	CTR_TEST_CHECK_EQ(Chaos_JumpForceForDriver(&human, 1000), 1000, "inactive effect preserves ordinary jumps");
 	Chaos_Activate(CHAOS_EFFECT_GIANT_KARTS, 3000);
-	CTR_TEST_CHECK_EQ(human.kartScale, 2, "activation changes the driver's scale target once");
-	CTR_TEST_CHECK_EQ(partner.kartScale, 2, "co-op partner receives the same scale target");
+	CTR_TEST_CHECK_EQ(human.kartScale, CHAOS_GIANT_SCALE, "activation changes the driver's scale target once");
+	CTR_TEST_CHECK_EQ(partner.kartScale, CHAOS_GIANT_SCALE, "co-op partner receives the same scale target");
 	CTR_TEST_CHECK_EQ(humanInst.scale.x, 0xccc, "activation leaves the current scale for retail interpolation");
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 10000), 13000, "forward target increases by 30 percent");
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, -2000), -2000, "reverse speed stays retail");
@@ -1498,10 +1498,10 @@ static void TestGiantKarts(void)
 	CTR_TEST_CHECK(!VehPhysCrash_TrySquashSmallerKart(&human, &partner), "equally giant humans keep ordinary kart collision");
 	s_tracker.gameMode1 |= PAUSE_1;
 	Tick(1000);
-	CTR_TEST_CHECK_EQ(human.kartScale, 2, "pause freezes the enlarged target");
+	CTR_TEST_CHECK_EQ(human.kartScale, CHAOS_GIANT_SCALE, "pause freezes the enlarged target");
 	s_tracker.gameMode1 &= ~PAUSE_1;
 	Chaos_Activate(CHAOS_EFFECT_GIANT_KARTS, 1000);
-	CTR_TEST_CHECK_EQ(human.kartScale, 2, "duplicate activation does not compound the scale target");
+	CTR_TEST_CHECK_EQ(human.kartScale, CHAOS_GIANT_SCALE, "duplicate activation does not compound the scale target");
 	human.actionsFlagSet |= ACTION_RACE_FINISHED;
 	Tick(1000);
 	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_GIANT_KARTS), "the replacement expiry deactivates Giant Karts without a surviving copy");
@@ -1513,7 +1513,7 @@ static void TestGiantKarts(void)
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 10000), 10000, "expiry restores speed");
 	CTR_TEST_CHECK_EQ(Chaos_JumpForceForDriver(&human, 1000), 1000, "expiry restores jump force");
 	Chaos_Activate(CHAOS_EFFECT_GIANT_KARTS, 1000);
-	CTR_TEST_CHECK_EQ(human.kartScale, 2, "a new activation changes the target again");
+	CTR_TEST_CHECK_EQ(human.kartScale, CHAOS_GIANT_SCALE, "a new activation changes the target again");
 	Chaos_Reset();
 	CTR_TEST_CHECK_EQ(human.kartScale, 1, "race reset restores the normal target");
 	CTR_TEST_CHECK_EQ(partner.kartScale, 1, "race reset also restores the partner's target");
@@ -1533,6 +1533,90 @@ static void TestGiantKarts(void)
 	bot.squishTimer = 0;
 	bot.kartScale = 1;
 	CTR_TEST_CHECK(!VehPhysCrash_TrySquashSmallerKart(&human, &bot), "a finished enlarged driver cannot squash an equally sized kart");
+}
+
+static void TestSmallKartEnergy(void)
+{
+	CTR_TEST_SECTION("Small Kart Energy halves dimensions and uses normal size-based squash protection");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_SMALL_KART_ENERGY] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_GIANT_KARTS] = true;
+	sdata->chaosSettings.enabledCount += 2;
+	struct Thread humanThread = {0};
+	struct Instance humanInst = {.thread = &humanThread, .scale = {0xccc, 0xccc, 0xccc}};
+	struct Driver human = {.driverID = 0, .instSelf = &humanInst, .wheelSize = 0xccc};
+	struct Driver partner = {.driverID = 1};
+	struct Thread botThread = {0};
+	struct Instance botInst = {.thread = &botThread};
+	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT, .instSelf = &botInst};
+	s_tracker.drivers[0] = &human;
+	s_tracker.drivers[1] = &partner;
+	s_tracker.drivers[2] = &bot;
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_SMALL_KART_ENERGY, 3000), "Small Kart Energy activates as a timed effect");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 1, "the small size occupies a timed slot");
+	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, 0xccc), 0x666, "body dimensions shrink to half size");
+	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, human.wheelSize), 0x666, "tires shrink with the body");
+	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, 25), 12, "odd collision radii round toward zero at half size");
+	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, -25), -12, "signed scale offsets retain their direction");
+	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, 0), 0, "squashed zero height remains zero");
+	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&partner, 100), 50, "the second human also shrinks");
+	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&bot, 100), 100, "bots keep normal dimensions");
+	CTR_TEST_CHECK_EQ(humanInst.scale.x, 0xccc, "activation preserves the existing scale interpolation");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 10000), 7000, "forward speed targets fall to seventy percent");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, -2000), -2000, "reverse speed follows the existing size-effect convention");
+	CTR_TEST_CHECK_EQ(Chaos_JumpForceForDriver(&human, 4596), 3217, "jump force falls to seventy percent without altering constants");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&bot, 10000), 10000, "bots keep normal speed targets");
+	CTR_TEST_CHECK_EQ(Chaos_JumpForceForDriver(&bot, 4596), 4596, "bots keep normal jump force");
+	CTR_TEST_CHECK(!VehPhysCrash_TrySquashSmallerKart(&human, &partner), "equally small humans do not squash each other");
+	g_config.maskProtectsFromDamage = true;
+	human.actionsFlagSet |= ACTION_MASK_WEAPON;
+	CTR_TEST_CHECK(!VehPhysCrash_TrySquashSmallerKart(&bot, &human), "a protective mask prevents squash by a normal bot");
+	human.actionsFlagSet &= ~ACTION_MASK_WEAPON;
+	struct Shield shieldObject = {0};
+	struct Thread shieldThread = {.object = &shieldObject};
+	struct Instance shield = {.thread = &shieldThread};
+	human.instBubbleHold = &shield;
+	CTR_TEST_CHECK(!VehPhysCrash_TrySquashSmallerKart(&human, &bot), "a shield absorbs the squash regardless of contact order");
+	CTR_TEST_CHECK((shieldObject.flags & SHIELD_FLAG_POP_ON_DAMAGE) != 0 && human.instBubbleHold == NULL,
+	               "shield protection uses normal shield consumption");
+	CTR_TEST_CHECK(!VehPhysCrash_TrySquashSmallerKart(&bot, &human), "shield-granted immunity prevents an immediate repeat squash");
+	human.invincibleTimer = 0;
+	CTR_TEST_CHECK(VehPhysCrash_TrySquashSmallerKart(&human, &bot), "a normal bot can squash an unprotected half-sized human");
+	CTR_TEST_CHECK_EQ(human.squishTimer, VEH_PICK_SQUISH_TIMER, "small karts use the existing squash duration");
+	const int timer = human.squishTimer;
+	bot.forcedJumpType = FORCED_JUMP_NONE;
+	CTR_TEST_CHECK(VehPhysCrash_TrySquashSmallerKart(&bot, &human), "continued contact passes over an already squashed small kart");
+	CTR_TEST_CHECK(human.squishTimer == timer && bot.forcedJumpType == FORCED_JUMP_NONE,
+	               "continued contact does not renew damage or hop repeatedly");
+	Chaos_Activate(CHAOS_EFFECT_GIANT_KARTS, 3000);
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_SMALL_KART_ENERGY), "Giant Karts removes Small Kart Energy");
+	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, 100), 200, "replacement grows directly to the giant target");
+	Chaos_Activate(CHAOS_EFFECT_SMALL_KART_ENERGY, 3000);
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_GIANT_KARTS), "Small Kart Energy removes Giant Karts");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 10000), 7000, "replacement does not retain the giant speed multiplier");
+	s_tracker.gameMode1 |= PAUSE_1;
+	Tick(3000);
+	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, 100), 50, "pause freezes the small-size duration");
+	s_tracker.gameMode1 &= ~PAUSE_1;
+	Chaos_Activate(CHAOS_EFFECT_SMALL_KART_ENERGY, 1000);
+	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, 100), 50, "repeat activation does not compound shrinkage");
+	human.actionsFlagSet |= ACTION_RACE_FINISHED;
+	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, 100), 100, "finished humans return to retail dimensions");
+	Tick(1000);
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_SMALL_KART_ENERGY), "Small Kart Energy expires normally");
+	CTR_TEST_CHECK_EQ(human.kartScale, 1, "expiry clears the small target even after finishing");
+	human.actionsFlagSet &= ~ACTION_RACE_FINISHED;
+	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&partner, 100), 100, "expiry restores the partner's dimensions");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 10000), 10000, "expiry restores speed targets");
+	CTR_TEST_CHECK_EQ(Chaos_JumpForceForDriver(&human, 4596), 4596, "expiry restores jump force");
+	Chaos_Activate(CHAOS_EFFECT_SMALL_KART_ENERGY, 1000);
+	Chaos_Reset();
+	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, 100), 100, "race reset restores normal size");
+	human.squishTimer = 0;
+	human.kartScale = 1.5f;
+	CTR_TEST_CHECK(VehPhysCrash_TrySquashSmallerKart(&human, &bot), "one-and-a-half size remains distinguishable from normal size during squash comparison");
+	human.kartScale = 0.75f;
+	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, 100), 75, "arbitrary fractional scales are not restricted to half-units");
 }
 
 static void TestClockCurse(void)
@@ -2044,6 +2128,7 @@ int main(void)
 	TestExplosiveCrates();
 	TestHardCrates();
 	TestGiantKarts();
+	TestSmallKartEnergy();
 	TestAnxiousMask();
 	TestHopInputAndCloudOwnership();
 	TestDriverApplication();

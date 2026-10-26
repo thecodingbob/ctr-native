@@ -15,6 +15,7 @@ enum
 	CHAOS_SUPER_SPEED_MULTIPLIER = 2,
 	CHAOS_KART_SCALE_NORMAL = 1,
 	CHAOS_GIANT_SCALE = 2,
+	CHAOS_SMALL_FORCE_PERCENT = 70,
 	CHAOS_GIANT_SPEED_PERCENT = 130,
 	CHAOS_THIRD_DRIFT_FIRE_LEVEL = 0x80,
 	CHAOS_WUMPA_PICKUP_FRAMES = 5,
@@ -22,6 +23,8 @@ enum
 	CHAOS_ANALOG_ACTION_DEAD_ZONE = 0x30,
 	CHAOS_ENGINE_AUDIO_CLASS_STRIDE = 4,
 };
+
+static const float s_chaosSmallScale = 0.5f;
 
 static const u32 s_chaosControlButtons[CHAOS_CONTROL_COUNT] = {
 	BTN_CROSS_one, BTN_SQUARE_one, BTN_CIRCLE, BTN_L1, BTN_R1,
@@ -98,7 +101,7 @@ static void Chaos_RemapControls(const struct ChaosControlShuffle *controls, stru
 	}
 }
 
-static void Chaos_SetKartScale(u8 scale, struct Driver *driver)
+static void Chaos_SetKartScale(float scale, struct Driver *driver)
 {
 	driver->kartScale = scale;
 }
@@ -262,6 +265,11 @@ static int Chaos_DefectiveBoostSpeed(const struct Driver *driver, int speed)
 static int Chaos_GiantForce(int force)
 {
 	return force * CHAOS_GIANT_SPEED_PERCENT / CHAOS_PERCENT_SCALE;
+}
+
+static int Chaos_SmallForce(int force)
+{
+	return force * CHAOS_SMALL_FORCE_PERCENT / CHAOS_PERCENT_SCALE;
 }
 
 static int Chaos_CappedSpeed(const struct Driver *driver, int speed)

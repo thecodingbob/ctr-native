@@ -3,7 +3,7 @@
 Source: [issue #90](https://github.com/thecodingbob/ctr-native/issues/90).
 Status: block A implemented with focused test coverage. Later technical checks
 remain marked with placeholders; in-game visual validation is pending.
-Current effect: Try Something New (block B), implemented for review; in-game validation pending.
+Current effect: Small Kart Energy (block C), implemented for review; in-game validation pending.
 
 Existing contracts: [implementation guide](CHAOS_IMPLEMENTATION.md).
 Existing gameplay: [player guide](features/CHAOS.md).
@@ -147,14 +147,15 @@ before applying its own behavior.
 ## Delivery Order
 
 - [x] Shared instant lifecycle/eligibility + A: items and reserves.
-- [ ] B: driving, turbo, and jumping.
+- [x] B: driving, turbo, and jumping.
   - [x] Sabotage: implementation and focused tests; user review/in-game checks pending.
   - [x] This Is Fire: implementation and focused tests; user review/in-game checks pending.
   - [x] Hydraulics: implementation and focused tests; user review/in-game checks pending.
   - [x] My Planet Needs Me: implementation and focused tests; user review/in-game checks pending.
   - [x] Who Bound This?: implementation and focused tests; user approved proceeding.
-  - [x] Try Something New: implementation and focused tests; user review/in-game checks pending.
+  - [x] Try Something New: implementation and focused tests; user approved proceeding.
 - [ ] C: size, camera, and bots.
+  - [x] Small Kart Energy: implementation and focused tests; user review/in-game checks pending.
 - [ ] D: characters and movement.
 - [ ] E: time-manipulation prototypes and implementation.
 
@@ -253,6 +254,22 @@ changes, ongoing pitch/volume updates and warp stop/restart. Reset restores the
 character's engine audio. The game rebuild and six focused suites passed after
 this correction; the effects suite performs 2,862 checks with zero failures.
 In-game validation should also confirm the audible transition on activation.
+
+Small Kart Energy: appended as timed effect ID 28 (`small-kart-energy`). Human
+kart dimensions and contact radii use 0.5× scale; forward speed targets and jump
+forces use 0.7×, following Giant Karts' unchanged-reverse convention. Giant Karts
+and Small Kart Energy replace each other. `Driver.kartScale` is now a float
+multiplier, supporting arbitrary fractions. `VehPhysForce_GetKartScale` shares
+the zero/default and finished-driver rules between rendering/collision scaling
+and size comparisons; integer dimensions round toward zero only at consumption.
+Existing size-based squash handles larger bots/humans with the normal damage
+duration, mask/shield protection and immunity. Focused checks cover fractional
+dimensions, speed/jump, scope, protection, repeated contact, conflicts, pause,
+expiry, finished drivers and reset. Validate in game in 1P/2P: body/tire size,
+walls and kart contacts, bot squash, protected contact, jumps, Giant replacement
+and retry. Review this effect before starting Classic GTA.
+Validation: game build and all six focused Chaos/vehicle-spawn suites passed
+after switching `kartScale` to float (1.0 retail, 0.5 small, 2.0 giant).
 
 Block A: focused runtime tests cover full timed capacity, instant notices without
 docking, repeat rewards, notice overflow, pause/reset/resident restore, inventory

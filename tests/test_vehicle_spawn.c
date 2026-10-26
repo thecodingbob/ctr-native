@@ -118,8 +118,9 @@ static void TestSpawnScale(void)
 		tracker.gameMode1 = modes[i];
 		// Birth clears only the retail prefix; the native tail may contain pool data.
 		memset(&driver, 0xa5, sizeof(driver));
+		driver.kartScale = 0.5f;
 		memset(&driver, 0, DRIVER_NTSC_RETAIL_SIZE);
-		CTR_TEST_CHECK_EQ(driver.kartScale, 0xa5, "retail initialization leaves a nonzero native-tail scale");
+		CTR_TEST_CHECK_EQ(driver.kartScale, 0.5f, "retail initialization leaves a nonzero native-tail scale");
 		VehBirth_TireSprites(&thread);
 		CTR_TEST_CHECK_EQ(driver.kartScale, 1, "spawn replaces stale pool scale with normal scale");
 		CTR_TEST_CHECK_EQ(driver.wheelSize, 0xccc, "spawn retains the retail wheel size");
