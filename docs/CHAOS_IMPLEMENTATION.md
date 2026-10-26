@@ -234,8 +234,15 @@ six times the effective normal jump force, including while airborne. It uses
 the existing speed/vector converters and synchronizes the working velocity,
 preserving horizontal momentum, inventory and reserves. It bypasses normal-hop
 eligibility without changing cooldowns or queuing a repeated jump. Activation
-removes No Hopping/Hydraulics and preserves gravity modifiers. Tests capture the
-launch vector at the conversion boundary rather than simulating the full trajectory.
+removes No Hopping/Hydraulics and preserves gravity modifiers. Before conversion,
+the vertical component is bounded by the remaining length available in signed
+16-bit `Driver.speed`, keeping the full vector at or below `INT16_MAX`. Horizontal
+momentum is retained unless its reconstruction alone exceeds that limit through
+fixed-point rounding or the negative-speed endpoint; only then is it normalized
+to fit. Impulse/length calculations use 64-bit intermediates. Overflow regressions
+exercise the real speed converter and square root across headings, rising/falling
+motion, large jump forces and repeated launches; angle reconstruction uses a
+math-backed test double. The actual flight trajectory still needs in-game checks.
 
 Who Bound This? (ID 26, `who-bound-this`) keeps independent per-human permutations
 and analog edge history in `ChaosRuntime`. `Chaos_ApplyInputRules` remaps fresh

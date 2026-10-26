@@ -477,7 +477,26 @@ static void Chaos_LaunchDriver(struct Driver *driver)
 {
 	Vec3 velocity;
 	VehPhysForce_ConvertSpeedToVec(driver, &velocity);
-	velocity.y += Chaos_JumpForceForDriver(driver, driver->const_JumpForce) * CHAOS_LAUNCH_JUMP_MULTIPLIER;
+	// Canonical speed stores the whole vector length in a signed 16-bit field.
+	const s64 maxSpeedSquared = (s64)INT16_MAX * INT16_MAX;
+	s64 horizontalSquared = (s64)velocity.x * velocity.x + (s64)velocity.z * velocity.z;
+	if (horizontalSquared > maxSpeedSquared)
+	{
+		// Account for the negative-speed endpoint and fixed-point trig rounding.
+		int horizontalSpeed = VehCalc_FastSqrt((u32)horizontalSquared, 0);
+		if ((s64)horizontalSpeed * horizontalSpeed < horizontalSquared)
+		{
+			horizontalSpeed++;
+		}
+		velocity.x = (s64)velocity.x * INT16_MAX / horizontalSpeed;
+		velocity.z = (s64)velocity.z * INT16_MAX / horizontalSpeed;
+		horizontalSquared = (s64)velocity.x * velocity.x + (s64)velocity.z * velocity.z;
+	}
+	const int maxVerticalSpeed = VehCalc_FastSqrt((u32)(maxSpeedSquared - horizontalSquared), 0);
+	const s64 verticalSpeed = (s64)velocity.y +
+	    (s64)Chaos_JumpForceForDriver(driver, driver->const_JumpForce) * CHAOS_LAUNCH_JUMP_MULTIPLIER;
+	velocity.y = verticalSpeed > maxVerticalSpeed ? maxVerticalSpeed :
+	             verticalSpeed < -maxVerticalSpeed ? -maxVerticalSpeed : (int)verticalSpeed;
 	VehPhysCrash_ConvertVecToSpeed(driver, &velocity);
 	driver->velocity = velocity;
 }

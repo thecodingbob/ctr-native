@@ -219,6 +219,7 @@ enum { SOUND_CLOCK = 0x44 };
 #include <game/DotLights.c>
 #include <game/Vehicle/VehPhysCrash.c>
 #include <game/Vehicle/VehBirth_Consts.c>
+#include <game/Vehicle/VehCalc.c>
 #include <game/Vehicle/VehPhysForce.c>
 #include <game/Vehicle/VehPickState.c>
 #include <game/Vehicle/VehPhysGeneral.c>
@@ -229,12 +230,17 @@ enum { SOUND_CLOCK = 0x44 };
 #undef RB_Player_KillPlayer
 static int s_launchConversions[8];
 static Vec3 s_launchVelocity[8];
+static bool s_convertLaunchSpeed;
 
-// Capture the launch boundary; these suites do not execute the full speed/angle math.
+// Ordinary lifecycle checks capture the boundary; overflow checks also commit it.
 static void CaptureLaunchVelocity(struct Driver *driver, Vec3 *velocity)
 {
 	s_launchConversions[driver->driverID]++;
 	s_launchVelocity[driver->driverID] = *velocity;
+	if (s_convertLaunchSpeed)
+	{
+		VehPhysCrash_ConvertVecToSpeed(driver, velocity);
+	}
 }
 
 #define VehPhysCrash_ConvertVecToSpeed CaptureLaunchVelocity
@@ -471,12 +477,6 @@ void VehTurbo_ThDestroy(struct Thread *thread)
 }
 
 // These full-physics paths are outside the asset-free scale/contact checks.
-u32 VehCalc_FastSqrt(u32 value, u32 shift)
-{
-	(void)value; (void)shift;
-	CtrTest_Bail("scale/contact checks must not calculate velocity");
-	return 0;
-}
 s32 MATH_FastSqrt(u32 value, s32 shift)
 {
 	(void)value; (void)shift;
@@ -485,9 +485,7 @@ s32 MATH_FastSqrt(u32 value, s32 shift)
 }
 int ratan2(int y, int x)
 {
-	(void)y; (void)x;
-	CtrTest_Bail("scale/contact checks must not calculate angles");
-	return 0;
+	return (int)lround(atan2((double)y, (double)x) * ANG_HALF_PI / atan2(1.0, 0.0));
 }
 void ConvertRotToMatrix(MATRIX *matrix, const SVec3 *rotation)
 {
@@ -513,18 +511,6 @@ void GAMEPAD_JogCon1(struct Driver *driver, u8 value, u16 timeMS)
 {
 	(void)driver; (void)value; (void)timeMS;
 	CtrTest_Bail("scale/contact checks must not run ordinary crash rumble");
-}
-int VehCalc_MapToRange(int value, int oldMin, int oldMax, int newMin, int newMax)
-{
-	(void)value; (void)oldMin; (void)oldMax; (void)newMin; (void)newMax;
-	CtrTest_Bail("scale/contact checks must not run full vehicle physics");
-	return 0;
-}
-int VehCalc_InterpBySpeed(int value, int speed, int desired)
-{
-	(void)value; (void)speed; (void)desired;
-	CtrTest_Bail("scale/contact checks must not run full vehicle physics");
-	return 0;
 }
 void PROC_CollidePointWithBucket(struct Thread *thread, struct BucketSearchParams *search)
 {
@@ -575,6 +561,7 @@ static void SetupRace(int trigger)
 	memset(s_engineStarts, 0, sizeof(s_engineStarts));
 	memset(s_launchConversions, 0, sizeof(s_launchConversions));
 	memset(s_launchVelocity, 0, sizeof(s_launchVelocity));
+	s_convertLaunchSpeed = false;
 	s_lastExplodingCrate = NULL;
 	memset(&sdata_static, 0, sizeof(sdata_static));
 	memset(&s_tracker, 0, sizeof(s_tracker));

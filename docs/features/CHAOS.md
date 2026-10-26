@@ -107,7 +107,7 @@ enabled in the file. Setup and a manual submission example are in the
 | **Sabotage**            | Disable braking and reverse, including airborne braking and analog brake/reverse input. Forward throttle remains available.                                                       |
 | **This Is Fire**        | Upgrade existing turbo and new boosts to USF without free reserves. Earned USF remains after expiry until normal gameplay removes it.                                             |
 | **Hydraulics**          | Automatically hop with normal force as soon as normal jump rules allow, including while drifting.                                                                                 |
-| **My Planet Needs Me**  | Instantly add an upward impulse at 6× normal jump force, even in midair. Gravity effects still apply.                                                                             |
+| **My Planet Needs Me**  | Instantly add an upward impulse up to 6× normal jump force, even in midair. The launch is limited by the kart's total speed capacity to prevent overflow. Gravity effects still apply. |
 | **Who Bound This?** | Randomize throttle, brake, item and both hop/drift controls independently per human for the effect's duration. Steering, pause and menus remain unchanged.                        |
 | **Try Something New** | Switch to a different standard driving class and its engine sound until race end, keeping the character. Repeats select a class different from the current one.                   |
 | **Small Kart Energy** | Halve kart dimensions and collision size; reduce forward speed and jump force to 70%. Larger karts can squash you, subject to normal mask, shield and immunity protections.       |

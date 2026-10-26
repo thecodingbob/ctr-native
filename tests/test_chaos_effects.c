@@ -226,6 +226,66 @@ static void TestMyPlanetNeedsMe(void)
 	CTR_TEST_CHECK_EQ(s_launchConversions[0], launches, "finished humans receive no new launch");
 }
 
+static void TestLaunchSpeedLimit(void)
+{
+	CTR_TEST_SECTION("launches fit canonical speed without reversing at high speed or on repeated activation");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	for (int i = 0; i < ANG_HALF_PI; i++)
+	{
+		const double angle = i * atan2(1.0, 0.0) / ANG_HALF_PI;
+		data.trigApprox[i] = (struct TrigTable){
+		    .sin = (s16)lround(sin(angle) * FP(1.0)),
+		    .cos = (s16)lround(cos(angle) * FP(1.0)),
+		};
+	}
+	s_convertLaunchSpeed = true;
+	const int speeds[] = {0, 3000, 25600, INT16_MAX, INT16_MIN};
+	const int pitches[] = {0, ANG_HALF_PI / 2, -ANG_HALF_PI / 2};
+	const int forces[] = {4596, 8000};
+	for (int speed = 0; speed < (int)len(speeds); speed++)
+	{
+		for (int heading = 0; heading < ANG_TWO_PI; heading += ANG_HALF_PI / 2)
+		{
+			for (int pitch = 0; pitch < (int)len(pitches); pitch++)
+			{
+				for (int force = 0; force < (int)len(forces); force++)
+				{
+					struct Driver driver = {
+					    .speed = speeds[speed], .axisRotationX = heading, .axisRotationY = pitches[pitch],
+					    .const_JumpForce = forces[force],
+					};
+					driver.matrixMovingDir.m[0][0] = FP(1.0);
+					driver.matrixMovingDir.m[1][1] = FP(1.0);
+					driver.matrixMovingDir.m[2][2] = FP(1.0);
+					for (int repeat = 0; repeat < 3; repeat++)
+					{
+						Vec3 before;
+						VehPhysForce_ConvertSpeedToVec(&driver, &before);
+						Chaos_LaunchDriver(&driver);
+						const Vec3 launch = driver.velocity;
+						const s64 limitSquared = (s64)INT16_MAX * INT16_MAX;
+						const s64 launchSquared = (s64)launch.x * launch.x + (s64)launch.y * launch.y + (s64)launch.z * launch.z;
+						CTR_TEST_CHECK(launchSquared <= limitSquared && driver.speed >= 0,
+						    "the full launch vector remains representable as positive signed-16-bit speed");
+						if ((s64)before.x * before.x + (s64)before.z * before.z <= limitSquared)
+						{
+							CTR_TEST_CHECK(launch.x == before.x && launch.z == before.z,
+							    "the launch preserves representable horizontal momentum exactly");
+						}
+						Vec3 restored;
+						VehPhysForce_ConvertSpeedToVec(&driver, &restored);
+						CTR_TEST_CHECK((s64)restored.x * launch.x + (s64)restored.z * launch.z >= 0,
+						    "reconstructing canonical motion never reverses horizontal direction");
+						CTR_TEST_CHECK((s64)restored.y * launch.y >= 0,
+						    "reconstructing canonical motion preserves the vertical direction");
+					}
+				}
+			}
+		}
+	}
+	s_convertLaunchSpeed = false;
+}
+
 static struct GamepadBuffer ShuffledPad(const struct Driver *driver, const struct GamepadBuffer *raw)
 {
 	struct GamepadBuffer pad = *raw;
@@ -2656,6 +2716,7 @@ int main(void)
 	TestSabotage();
 	TestHydraulics();
 	TestMyPlanetNeedsMe();
+	TestLaunchSpeedLimit();
 	TestWhoBoundThis();
 	TestTrySomethingNew();
 	TestWobbleSteering();

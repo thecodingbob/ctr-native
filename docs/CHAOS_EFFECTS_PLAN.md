@@ -100,7 +100,7 @@ behavior.
 | Sabotage | Square, Square + throttle, airborne braking, left-stick reverse and right-stick braking/reverse. |
 | This Is Fire | Activation with/without reserves; drift/jump/pad grants; earned USF survives expiry until normal boost loss. |
 | Hydraulics | Flat-ground hopping, landing/cooldown, drifting, slopes, jump-lockout clouds and gravity modifiers. |
-| My Planet Needs Me | Actual 6× trajectory on ground and while rising/falling; slopes, repeated launches and gravity modifiers. |
+| My Planet Needs Me | Ground/rising/falling launches, slopes, repeated activations and gravity/size modifiers; at high speeds confirm the bounded launch stays airborne without reversing. |
 | Who Bound This? | Linear driving, drift entry and drift updates; analog mapping and held/tap/release behavior. |
 | Try Something New | Repeated 1P/2P class changes, engine audio, drifting, speed/gravity modifiers and retry restoration. |
 | Small Kart Energy / Giant Karts | Body/tires, collisions/squash/protection, shadows, skids, particles, flames, shields and masks at 0.5×/1×/2×; size changes while drifting and airborne. TNT retains its normal dimensions. |
