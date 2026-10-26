@@ -23,9 +23,9 @@ Both use `tests/shared/chaos_fixture.h` for the shared world, real module includ
 chain and integration doubles. `tests/test_warpball.c` independently covers orb
 launch and teardown without loading the Chaos runtime.
 
-`RB_Chaos.c` owns activation, public gameplay hooks and per-driver dispatch,
-sharing `Chaos_TargetsDriver` for recipient checks. `RB_ChaosEffects.c` contains
-only private effect operations: callers check activation and applicability.
+`RB_Chaos.c` owns activation, gameplay hooks and per-driver dispatch,
+sharing `Chaos_TargetsDriver` for recipient checks. `RB_ChaosEffects.c` owns
+effect operations and start-light drawing; callers check activation and applicability.
 Effect operations retain their gameplay conditions (terrain, fuel, pickup
 queues) but never query active-effect eligibility. The gameplay hooks preserve modifier
 ordering and check eligibility before calling them; No Reserves is tested
@@ -96,11 +96,9 @@ still consume retail RNG; do not conceal this by restoring it.
 
 Timed activations are ordered, with at most four unique IDs. Reactivation removes the
 old entry and appends a fresh one, resetting duration, phase, notice and one-off
-behavior. Conflicting pairs replace each other: Inverted/Wobble Steering,
-Low Gravity/Heavy Karts, Speed Capped/Super Speed, No Reserves/Too Boosted TO Fail.
-Use This! removes No Items; Reserve Injection removes No Reserves before its grant.
-Symmetric conflicts are listed once as pairs; the instant gifts' one-way
-replacements remain explicit.
+behavior. Conflicts use last-activation-wins, as listed in the
+[player guide](features/CHAOS.md#effects). Symmetric conflicts are represented once
+as pairs; instant effects' one-way replacements remain explicit.
 A fifth unrelated timed effect is
 rejected; replacement remains possible at capacity. Expiry precedes scheduling,
 so new entries receive their full duration.
@@ -236,9 +234,8 @@ six times the effective normal jump force, including while airborne. It uses
 the existing speed/vector converters and synchronizes the working velocity,
 preserving horizontal momentum, inventory and reserves. It bypasses normal-hop
 eligibility without changing cooldowns or queuing a repeated jump. Activation
-removes No Hopping/Hydraulics, preserves gravity modifiers and uses only an instant
-announcement. Focused tests capture the launch vector at the conversion boundary;
-full trajectory validation is in game.
+removes No Hopping/Hydraulics and preserves gravity modifiers. Tests capture the
+launch vector at the conversion boundary rather than simulating the full trajectory.
 
 Who Bound This? (ID 26, `who-bound-this`) keeps independent per-human permutations
 and analog edge history in `ChaosRuntime`. `Chaos_ApplyInputRules` remaps fresh
@@ -326,41 +323,28 @@ tracker flag bypasses rank-based retargeting and the incidental-leader teardown;
 source Wumpas do not power it up. A finished target fades the orb. Orb teardown
 and inventory removal share ownership refresh across held and deployed orbs.
 
-Fresh Start (ID 32, `fresh-start`) is an instant human-scoped action. Karts stop
-at their current position before entering `VehStuckProc_RevEngine_Init`.
-Airborne karts retain their height, use the rescue falling pose and receive a
-separate visual rescue mask, released at green/reset without renewing existing
-mask power-ups. Other karts immediately return to a neutral steering/animation
-pose. The physical heading is aligned with the retained visual yaw, with drift,
-camera-lag and wobble offsets cleared, preventing a heading snap when physics
-resumes. Motion, pending jump and current fire are cleared; the explicit reserve
-reset bypasses reserve protection. Inventory and race progress are preserved.
-`ChaosRuntime` owns per-human pending/active state, countdown, previous rendered
-timer and temporary mask. Existing rescues, including mask descent, finish before
-their local countdown begins; other humans need not wait. The revving
-update reads `Chaos_StartTimerForDriver`; normal driving re-entry also waits
-until green, including after damage. Other drivers read the global timer.
-Driving re-entry only checks the local waiting state, never the global start
-timer; loading an adventure hub cannot introduce a false start-line wait.
-`DotLights_Sequence` shares the original light transitions, positioning and audio
-without mutating the global countdown or its previous-frame value. Pause freezes
-the local timer, repeated activation restarts it, and reset clears local gating.
-Retail revving controls the boost award; the requested Chaos duration does not
-change the countdown length and no timed slot is occupied. `DotLights_GetBounds`
-exposes the animated viewport bounds to the notification table, which reserves
-them alongside Final Lap and keeps banners, compact fallback rows and docked
-effects clear of the lights.
-Rendering also consumes these same bounds, so scale and entrance/exit positioning
-have one implementation. Countdown limits come from DotLights directly, and the
-fall pose is shared with retail rescue through `VehStuckProc_MaskGrab_SetFallPose`.
-Restart ticking and light drawing live in `RB_ChaosEffects.c`; `RB_Chaos.c`
-selects drivers and dispatches pending starts and active updates.
-Each actual restart also requests a one-shot camera blend. The normal follow
-camera consumes it through `Chaos_ConsumeStartCameraBlend` and reuses its retail
-eight-frame damage-recovery interpolation for both eye position and look-at
-target. This absorbs the neutral-pose heading change without snapping on the
-first frame. Deferred rescues request the blend only when the countdown starts;
-freecam and end-of-race cameras do not consume it.
+Fresh Start (ID 32, `fresh-start`) stores per-human countdown, pending/active
+flags, light history, suspension, temporary mask and camera-blend request in
+`ChaosRestart`. Existing rescues finish, including descent, before local entry
+into `VehStuckProc_RevEngine_Init`. Pause freezes the countdown; repeat activation
+restarts it and reset releases the hold/mask.
+
+Entry clears motion, jump requests, fire and reserves, bypassing reserve protection
+without changing inventory or progress. Neutralization aligns physical heading
+with visual yaw and clears drift/wobble/camera-lag offsets. Suspended karts share
+`VehStuckProc_MaskGrab_SetFallPose` and use an independent mask that expires at
+green/reset without renewing inventory power-ups.
+
+Revving reads `Chaos_StartTimerForDriver`; driving re-entry uses only
+`Chaos_IsWaitingForStart`, including after damage. Other drivers retain the global
+timer. `DotLights_Sequence` shares retail timing, audio and starting boosts without
+mutating that timer; requested Chaos duration does not affect the countdown.
+Synchronized players share light audio. Rendering and HUD reservations use the
+same animated `DotLights_GetBounds`, alongside Final Lap bounds.
+
+`Chaos_ConsumeStartCameraBlend` requests the normal follow camera's eight-frame
+damage-recovery interpolation for eye and look-at positions once at countdown
+entry. Freecam and end-of-race cameras do not consume it.
 
 ## HUD and audio
 
