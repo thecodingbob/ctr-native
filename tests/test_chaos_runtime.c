@@ -929,9 +929,13 @@ static void TestBotEffectEventScope(void)
 	SetupRace(CHAOS_TRIGGER_EXTERNAL);
 	sdata->chaosSettings.effects[CHAOS_EFFECT_ARENA_CHAMPIONS] = true;
 	sdata->chaosSettings.enabledCount++;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_YOUVE_GOT_MAIL] = true;
+	sdata->chaosSettings.enabledCount++;
 	Chaos_PublishEffects();
 	CTR_TEST_CHECK(strstr(s_externalCatalogue, "arena-champions\n") != NULL, "race publication includes Arena Champions without inspecting the field");
 	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_ARENA_CHAMPIONS, 1000), "normal races accept Arena Champions even without registered bots");
+	CTR_TEST_CHECK(strstr(s_externalCatalogue, "youve-got-mail\n") != NULL, "race publication includes You've Got Mail without inspecting the field");
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_YOUVE_GOT_MAIL, 1000), "normal races accept You've Got Mail even without registered bots");
 	struct Driver finishedBot = {.driverID = 2, .actionsFlagSet = ACTION_BOT | ACTION_RACE_FINISHED};
 	s_tracker.drivers[2] = &finishedBot;
 	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_ARENA_CHAMPIONS, 1000), "finished bots do not prevent activating Arena Champions");
@@ -942,6 +946,7 @@ static void TestBotEffectEventScope(void)
 		Chaos_BeginRace(&s_tracker);
 		CTR_TEST_CHECK(strcmp(s_externalCatalogue, "low-gravity\n") == 0, "botless event types omit Arena Champions from publication");
 		CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_ARENA_CHAMPIONS, 1000), "botless event types reject Arena Champions requests");
+		CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_YOUVE_GOT_MAIL, 1000), "botless event types reject You've Got Mail requests");
 		sdata->chaosSettings.trigger = CHAOS_TRIGGER_PICKUP;
 		CTR_TEST_CHECK(Chaos_OnPickup(s_tracker.drivers[0]), "event filtering retains human pickup effects");
 		CTR_TEST_CHECK(Chaos_IsActive(CHAOS_EFFECT_LOW_GRAVITY), "pickup selection draws from the event's eligible enabled effects");

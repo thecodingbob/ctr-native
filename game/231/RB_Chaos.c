@@ -179,6 +179,10 @@ static void Chaos_RemoveReplacedEffects(ChaosEffectId effect)
 static void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation)
 {
 	const ChaosEffectId effect = chaosActivation->effect;
+	if (effect == CHAOS_EFFECT_YOUVE_GOT_MAIL)
+	{
+		Chaos_SendWarpball();
+	}
 	if (effect == CHAOS_EFFECT_CLOCK_CURSE)
 	{
 		// Clock sound needs to be only applied once, otherwise it plays once per player

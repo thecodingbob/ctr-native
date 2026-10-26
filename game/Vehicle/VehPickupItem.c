@@ -560,7 +560,7 @@ b32 VehPickupItem_PotionThrow(struct MineWeapon *mine, struct Instance *inst, u3
 	return result;
 }
 
-void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
+static void VehPickupItem_ShootTargeted(struct Driver *d, s32 weaponID, s32 flags, struct Driver *orbTarget)
 {
 	union
 	{
@@ -923,6 +923,7 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 		tw = weaponInst->thread->object;
 
 		tw->soundIDCount = 0;
+		GAME_TRACKER->gameMode1 |= WARPBALL_HELD;
 
 		// do NOT patch for 60fps,
 		// velocity uses elapsedTime
@@ -944,7 +945,8 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 
 		tw->driverParent = d;
 		tw->driversHit = 1u << d->driverID;
-		tw->flags = d->numWumpas >= DRIVER_WUMPA_JUICED_COUNT ? TRACKER_FLAG_POWERED_UP : 0;
+		tw->flags = orbTarget != NULL ? TRACKER_FLAG_WARPBALL_FIXED_TARGET :
+		    (d->numWumpas >= DRIVER_WUMPA_JUICED_COUNT ? TRACKER_FLAG_POWERED_UP : 0);
 		tw->ptrNodeCurr = NULL;
 		tw->ptrNodeNext = NULL;
 		tw->driverTarget = NULL;
@@ -958,7 +960,11 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 			break;
 		}
 
-		if (d->driverRank > 0)
+		if (orbTarget != NULL)
+		{
+			tw->driverTarget = orbTarget;
+		}
+		else if (d->driverRank > 0)
 		{
 			tw->driverTarget = GAME_TRACKER->driversInRaceOrder[d->driverRank - 1];
 		}
@@ -967,7 +973,10 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 		tw->nodeNextIndex = tw->nodeCurrIndex;
 		tw->ptrNodeCurr = &level->ptr_restart_points[tw->nodeCurrIndex];
 		tw->flags |= TRACKER_FLAG_WARPBALL_FALLBACK_PATH;
-		tw->driverTarget = d->driverRank == 0 ? NULL : RB_Warpball_GetDriverTarget(tw, weaponInst);
+		if (orbTarget == NULL)
+		{
+			tw->driverTarget = d->driverRank == 0 ? NULL : RB_Warpball_GetDriverTarget(tw, weaponInst);
+		}
 		RB_Warpball_SetTargetDriver(tw);
 		if ((tw->flags & TRACKER_FLAG_WARPBALL_TARGET_PATH) == 0)
 		{
@@ -1361,6 +1370,16 @@ void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
 	}
 
     ;
+}
+
+void VehPickupItem_ShootNow(struct Driver *d, s32 weaponID, s32 flags)
+{
+	VehPickupItem_ShootTargeted(d, weaponID, flags, NULL);
+}
+
+void VehPickupItem_ShootWarpball(struct Driver *driver, struct Driver *target)
+{
+	VehPickupItem_ShootTargeted(driver, WEAPON_ID_WARPBALL, 0, target);
 }
 
 void VehPickupItem_ShootOnCirclePress(struct Driver *d)

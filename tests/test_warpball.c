@@ -59,6 +59,9 @@ struct Instance *RB_Hazard_CollideWithBucket(struct Instance *inst, struct Threa
 	return NULL;
 }
 
+// Item acquisition constants normally precede this module in VehPhysGeneral.c.
+enum { ITEMSET_ACQUIRED_NORMAL_FX = 0x5e, ITEMSET_ACQUIRED_JUICED_FX = 0x41 };
+#include <game/Vehicle/VehPhysProc_Items.c>
 #include <game/231/RB_Warpball.c>
 #include <game/Vehicle/VehPickupItem.c>
 #include <game/MATH/MATH_0_Sin.c>
@@ -223,6 +226,38 @@ static void TestArenaWarpball(void)
 	VehPickupItem_ShootNow(&s_defaultDrivers[0], WEAPON_ID_WARPBALL, 0);
 	CTR_TEST_CHECK(orb.ptrNodeCurr == &nodes[1] && orb.ptrNodeNext == &nodes[0], "normal tracks retain checkpoint-based launch and lookahead");
 	CTR_TEST_CHECK(thread.funcThTick == RB_Warpball_ThTick, "race tracks keep the ordinary orb update instead of immediate fading");
+
+	CTR_TEST_SECTION("targeted normal orbs preserve their launch target and coexist with inventory orbs");
+	struct Driver *source = &s_defaultDrivers[0];
+	struct Driver *target = &s_defaultDrivers[1];
+	s_tracker.drivers[1] = target;
+	source->numWumpas = DRIVER_WUMPA_JUICED_COUNT;
+	source->driverRank = 0;
+	target->driverRank = 1;
+	source->heldItemID = HELD_ITEM_BOMB_3X;
+	source->numHeldItems = 3;
+	VehPickupItem_ShootWarpball(source, target);
+	CTR_TEST_CHECK(orb.driverParent == source && orb.driverTarget == target, "the source can launch at a human behind it in the standings");
+	CTR_TEST_CHECK((orb.flags & TRACKER_FLAG_WARPBALL_FIXED_TARGET) != 0 && !(orb.flags & TRACKER_FLAG_POWERED_UP), "a targeted orb stays normal even with ten source Wumpas");
+	CTR_TEST_CHECK_EQ(source->heldItemID, HELD_ITEM_BOMB_3X, "direct orb launch preserves the source inventory");
+	CTR_TEST_CHECK_EQ(source->numHeldItems, 3, "direct orb launch preserves the inventory stack");
+	s_tracker.driversInRaceOrder[0] = source;
+	CTR_TEST_CHECK(RB_Warpball_GetDriverTarget(&orb, &instance) == target, "refreshing the target ignores later rank changes");
+	struct Thread anotherOrb = {.modelIndex = DYNAMIC_WARPBALL};
+	s_tracker.threadBuckets[TRACKING].thread = &anotherOrb;
+	orb.fadeFrame = 6;
+	RB_Warpball_FadeAway(&thread);
+	CTR_TEST_CHECK((s_tracker.gameMode1 & WARPBALL_HELD) != 0, "orb teardown preserves another deployed orb's ownership");
+	anotherOrb.flags = THREAD_FLAG_DEAD;
+	target->heldItemID = HELD_ITEM_WARPBALL;
+	RB_Warpball_FadeAway(&thread);
+	CTR_TEST_CHECK((s_tracker.gameMode1 & WARPBALL_HELD) != 0, "orb teardown preserves an inventory orb's ownership");
+	target->heldItemID = HELD_ITEM_NONE;
+	RB_Warpball_FadeAway(&thread);
+	CTR_TEST_CHECK((s_tracker.gameMode1 & WARPBALL_HELD) == 0, "the final orb releases ownership after all other orbs are gone");
+	target->actionsFlagSet |= ACTION_RACE_FINISHED;
+	RB_Warpball_ThTick(&thread);
+	CTR_TEST_CHECK(thread.funcThTick == RB_Warpball_FadeAway, "a fixed-target orb fades when its target finishes rather than retargeting");
 }
 
 int main(void)

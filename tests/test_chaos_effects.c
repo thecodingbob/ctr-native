@@ -1675,6 +1675,42 @@ static void TestKartParticleScale(void)
 	CTR_TEST_CHECK(memcmp(&particle, &finished, sizeof(particle)) == 0, "finished drivers retain retail particles");
 }
 
+static void TestYouveGotMail(void)
+{
+	CTR_TEST_SECTION("You've Got Mail launches once from the last bot at the leading human");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_YOUVE_GOT_MAIL] = true;
+	sdata->chaosSettings.enabledCount++;
+	s_mailLaunches = 0;
+	struct Driver firstBot = {.driverID = 2, .actionsFlagSet = ACTION_BOT};
+	struct Driver lastBot = {.driverID = 7, .actionsFlagSet = ACTION_BOT};
+	struct Driver finishedBot = {.driverID = 6, .actionsFlagSet = ACTION_BOT | ACTION_RACE_FINISHED};
+	s_tracker.driversInRaceOrder[0] = &firstBot;
+	s_tracker.driversInRaceOrder[1] = s_tracker.drivers[1];
+	s_tracker.driversInRaceOrder[2] = s_tracker.drivers[0];
+	s_tracker.driversInRaceOrder[3] = &lastBot;
+	s_tracker.driversInRaceOrder[4] = &finishedBot;
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_YOUVE_GOT_MAIL, 1000), "You've Got Mail activates as an instant effect");
+	CTR_TEST_CHECK_EQ(s_mailLaunches, 1, "one activation launches exactly one orb");
+	CTR_TEST_CHECK(s_mailSource == &lastBot && s_mailTarget == s_tracker.drivers[1], "the last unfinished bot targets the highest-ranked human");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 0, "mail consumes no timed slot");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numInstantNotices, 1, "mail announces through the instant banner");
+	s_tracker.driversInRaceOrder[3] = NULL;
+	s_tracker.drivers[1]->actionsFlagSet |= ACTION_RACE_FINISHED;
+	s_tracker.drivers[0]->actionsFlagSet |= ACTION_BOT;
+	Chaos_Activate(CHAOS_EFFECT_YOUVE_GOT_MAIL, 1000);
+	CTR_TEST_CHECK(s_mailSource == &firstBot && s_mailTarget == s_tracker.drivers[0], "a source ahead of the target and a human on autopilot remain eligible");
+	firstBot.actionsFlagSet |= ACTION_RACE_FINISHED;
+	Chaos_Activate(CHAOS_EFFECT_YOUVE_GOT_MAIL, 1000);
+	CTR_TEST_CHECK_EQ(s_mailLaunches, 2, "mail without an unfinished bot performs no launch");
+	firstBot.actionsFlagSet &= ~ACTION_RACE_FINISHED;
+	s_tracker.drivers[0]->actionsFlagSet |= ACTION_RACE_FINISHED;
+	Chaos_Activate(CHAOS_EFFECT_YOUVE_GOT_MAIL, 1000);
+	CTR_TEST_CHECK_EQ(s_mailLaunches, 2, "mail without an unfinished human performs no launch");
+	memset(s_tracker.driversInRaceOrder, 0, sizeof(s_tracker.driversInRaceOrder));
+	Chaos_Reset();
+}
+
 static void TestArenaChampions(void)
 {
 	CTR_TEST_SECTION("Arena Champions doubles bot motion without compounding AI state");
@@ -2400,6 +2436,7 @@ int main(void)
 	TestKartParticleScale();
 	TestClassicGTA();
 	TestArenaChampions();
+	TestYouveGotMail();
 	TestAnxiousMask();
 	TestHopInputAndCloudOwnership();
 	TestDriverApplication();

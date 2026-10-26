@@ -106,6 +106,17 @@ void VehPickupItem_ShootNow(struct Driver *driver, s32 weapon, s32 flags)
 	}
 }
 
+static struct Driver *s_mailSource;
+static struct Driver *s_mailTarget;
+static int s_mailLaunches;
+
+void VehPickupItem_ShootWarpball(struct Driver *driver, struct Driver *target)
+{
+	s_mailSource = driver;
+	s_mailTarget = target;
+	s_mailLaunches++;
+}
+
 // VehPickupItem.c precedes Chaos in the game unity build.
 enum { SOUND_CLOCK = 0x44 };
 

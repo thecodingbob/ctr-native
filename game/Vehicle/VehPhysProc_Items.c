@@ -60,11 +60,18 @@ void VehPhysProc_RemoveHeldItem(struct Driver *driver)
 	{
 		return;
 	}
-	// Discarding an inventory orb must preserve other holders and deployed orbs.
+	VehPhysProc_RefreshWarpballHeld();
+}
+
+void VehPhysProc_RefreshWarpballHeld(void)
+{
+	struct GameTracker *gGT = GAME_TRACKER;
+	gGT->gameMode1 &= ~WARPBALL_HELD;
 	for (int i = 0; i < (int)len(gGT->drivers); i++)
 	{
 		if (gGT->drivers[i] != NULL && gGT->drivers[i]->heldItemID == HELD_ITEM_WARPBALL)
 		{
+			gGT->gameMode1 |= WARPBALL_HELD;
 			return;
 		}
 	}
@@ -72,8 +79,8 @@ void VehPhysProc_RemoveHeldItem(struct Driver *driver)
 	{
 		if (thread->modelIndex == DYNAMIC_WARPBALL && (thread->flags & THREAD_FLAG_DEAD) == 0)
 		{
+			gGT->gameMode1 |= WARPBALL_HELD;
 			return;
 		}
 	}
-	gGT->gameMode1 &= ~WARPBALL_HELD;
 }

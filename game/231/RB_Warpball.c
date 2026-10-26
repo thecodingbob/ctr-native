@@ -25,11 +25,9 @@ void RB_Warpball_FadeAway(struct Thread *t)
 			d->actionsFlagSet &= ~ACTION_TRACKER_TARGETED;
 		}
 
-		// remove active warpball flag
-		GAME_TRACKER->gameMode1 &= ~WARPBALL_HELD;
-
 		// This thread is now dead
 		t->flags |= THREAD_FLAG_DEAD;
+		VehPhysProc_RefreshWarpballHeld();
 		return;
 	}
 
@@ -136,6 +134,10 @@ struct Driver *RB_Warpball_GetDriverTarget(struct TrackerWeapon *tw, struct Inst
 	s16 i;
 
 	bestDriver = NULL;
+	if (tw->flags & TRACKER_FLAG_WARPBALL_FIXED_TARGET)
+	{
+		return tw->driverTarget;
+	}
 	if (tw->flags & TRACKER_FLAG_POWERED_UP)
 	{
 		nodes = GAME_TRACKER->level1->ptr_restart_points;
@@ -410,6 +412,12 @@ void RB_Warpball_ThTick(struct Thread *t)
 	inst = t->inst;
 	tw = t->object;
 	sps = CTR_SCRATCHPAD_PTR(struct ScratchpadStruct, 0x108);
+	if ((tw->flags & TRACKER_FLAG_WARPBALL_FIXED_TARGET) &&
+	    (tw->driverTarget->actionsFlagSet & ACTION_RACE_FINISHED))
+	{
+		RB_Warpball_Death(t);
+		return;
+	}
 
 	tw->savedPos.x = inst->matrix.t[0];
 	tw->savedPos.y = inst->matrix.t[1];
@@ -721,7 +729,8 @@ void RB_Warpball_ThTick(struct Thread *t)
 			flagsBeforeHit = tw->flags | TRACKER_FLAG_WARPBALL_HIT_DRIVER;
 			tw->flags = flagsBeforeHit;
 
-			if ((((flagsBeforeHit & TRACKER_FLAG_POWERED_UP) == 0) && (tw->driverTarget == hitDriver)) || (hitDriver->driverRank == 0))
+			if ((((flagsBeforeHit & TRACKER_FLAG_POWERED_UP) == 0) && (tw->driverTarget == hitDriver)) ||
+			    (!(flagsBeforeHit & TRACKER_FLAG_WARPBALL_FIXED_TARGET) && hitDriver->driverRank == 0))
 			{
 				tw->driverParent->instBombThrow = NULL;
 				RB_Warpball_Death(t);

@@ -351,7 +351,7 @@ normal races can activate the effect with no applicable bots. Review before You'
 in-game checks should cover 1P/2P, bosses/cups, corners and jumps, boost/damage,
 expiry and human Super Speed coexistence. Game compilation and linking pass.
 Validation: all six focused suites passed; runtime/effects were rerun after
-simplification (549 and 3,011 checks, zero failures). Coverage includes event-type
+retaining normal rubber-banding (549 and 3,005 checks, zero failures). Coverage includes event-type
 filtering and activation without live bot targets. The extra ACTION_BOT target
 check was removed in favor of the existing driver-slot convention.
 

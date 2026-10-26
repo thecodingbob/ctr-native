@@ -215,6 +215,33 @@ static void Chaos_GiveRandomItem(struct Driver *driver)
 	VehPhysProc_PlayItemAcquireSound(driver);
 }
 
+static void Chaos_SendWarpball(void)
+{
+	struct GameTracker *gGT = GAME_TRACKER;
+	struct Driver *source = NULL;
+	struct Driver *target = NULL;
+	for (int rank = 0; rank < (int)len(gGT->driversInRaceOrder); rank++)
+	{
+		struct Driver *driver = gGT->driversInRaceOrder[rank];
+		if (driver == NULL || (driver->actionsFlagSet & ACTION_RACE_FINISHED))
+		{
+			continue;
+		}
+		if (driver->driverID >= gGT->numPlyrCurrGame)
+		{
+			source = driver;
+		}
+		else if (target == NULL)
+		{
+			target = driver;
+		}
+	}
+	if (source != NULL && target != NULL)
+	{
+		VehPickupItem_ShootWarpball(source, target);
+	}
+}
+
 static void Chaos_GiveWumpas(struct Driver *driver)
 {
 	const int missing = DRIVER_WUMPA_JUICED_COUNT - driver->numWumpas;
