@@ -3,7 +3,7 @@
 Source: [issue #90](https://github.com/thecodingbob/ctr-native/issues/90).
 Status: block A implemented with focused test coverage. Later technical checks
 remain marked with placeholders; in-game visual validation is pending.
-Current effect: Classic GTA (block C), implemented for review; in-game validation pending.
+Current effect: Arena Champions (block C), implemented for review; in-game validation pending.
 
 Existing contracts: [implementation guide](CHAOS_IMPLEMENTATION.md).
 Existing gameplay: [player guide](features/CHAOS.md).
@@ -69,7 +69,7 @@ input; class restoration after character changes].
 |-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------|
 | Small Kart Energy | Dimensions/collisions at 0.5×; speed and jump at 0.7×. Larger karts squash it using existing damage duration, immunity, and mask/shield protections.                                                            | Decided.                                                          |
 | Classic GTA       | Temporary vertical top-down camera per human viewport, oriented with the kart. Keep this view in tunnels and hide obstructing geometry.                                                                         | Height/transition to be tuned in game; verify occlusion handling. |
-| Arena Champions   | Double bot speed and acceleration (2×); disable rubber-banding during the effect.                                                                                                                               | Decided.                                                          |
+| Arena Champions   | Double bot speed and acceleration (2×); retain normal rubber-banding.                                                                                                                                           | Decided.                                                          |
 | You've Got Mail   | Launch a normal orb from the last-place bot at the highest-placed human, fixed at launch and independent of bot Wumpas, without consuming inventory. Must work even when the source bot is ahead of the target. | Decided.                                                          |
 | Wait For It       | Immediately bring the kart to the ground, stop it, clear reserves, and replay the normal starting lights with starting boost available. Bots keep racing.                                                       | Decided.                                                          |
 | Senile Mask       | For the Chaos duration, show the flashing wrong-way prompt while humans drive in the correct direction. Play the wrong-way voice twice as often and at double its normal volume.                                | Decided.                                                          |
@@ -156,7 +156,8 @@ before applying its own behavior.
   - [x] Try Something New: implementation and focused tests; user approved proceeding.
 - [ ] C: size, camera, and bots.
   - [x] Small Kart Energy: implementation and focused tests; user approved proceeding.
-  - [x] Classic GTA: implementation and focused tests; user review/in-game checks pending.
+  - [x] Classic GTA: implementation and focused tests; user approved proceeding.
+  - [x] Arena Champions: implementation and focused tests; user review/in-game checks pending.
 - [ ] D: characters and movement.
 - [ ] E: time-manipulation prototypes and implementation.
 
@@ -329,6 +330,30 @@ unflagged pavement, folded/mixed blocks, vertical panels and triangular blocks
 with unused vertex slots. Runtime/effect tests pass; game source compilation
 passes, but executable linking is blocked while the game is running. Visual
 validation on the two reported sections remains pending.
+
+Arena Champions: appended as timed effect ID 30 (`arena-champions`), with the new
+bots-only scope. Slots above the human count are targeted; humans, human-owned slots
+on autopilot and finished drivers retain their existing scope behavior. Normal
+distance/rank/leader-stat rubber-banding, boosts, terrain and damage rules remain
+active. Motion and horizontal velocity use
+the shared 2x speed operation after AI dynamics; the same nominal acceleration
+therefore produces twice the physical acceleration. Internal speed, friction,
+caps, ramp launch tables, damage and vertical gravity stay in retail units,
+avoiding repeated multiplication and signed square overflow in airborne checks.
+The signed-16-bit speed mirrors saturate at INT16_MAX; navigation and horizontal
+velocity retain the full doubled value (up to 51,200 for the ordinary AI cap).
+Expiry/reset restores normal motion without snapshots.
+No conflicts with human Super Speed. Catalogue publication, selection and request
+validation exclude bot-only effects by event type (relic, crystal, time trial,
+battle), reusing `RACE_FIELD_NO_BOT_MODES` rather than duplicating race setup's
+mode list. No check of bot presence or finish state is made for availability;
+normal races can activate the effect with no applicable bots. Review before You've Got Mail;
+in-game checks should cover 1P/2P, bosses/cups, corners and jumps, boost/damage,
+expiry and human Super Speed coexistence. Game compilation and linking pass.
+Validation: all six focused suites passed; runtime/effects were rerun after
+simplification (549 and 3,011 checks, zero failures). Coverage includes event-type
+filtering and activation without live bot targets. The extra ACTION_BOT target
+check was removed in favor of the existing driver-slot convention.
 
 Block A: focused runtime tests cover full timed capacity, instant notices without
 docking, repeat rewards, notice overflow, pause/reset/resident restore, inventory

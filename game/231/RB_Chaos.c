@@ -1,5 +1,6 @@
 #include <common.h>
 #include <chaos_gate.h>
+#include <race_field.h>
 #include <platform/native_chaos_ipc.h>
 #include <platform/native_log.h>
 
@@ -11,9 +12,32 @@ enum
 static bool Chaos_TargetsDriver(ChaosEffectId effect, const struct Driver *driver)
 {
 	const ChaosEffectDef *def = ChaosEffect_Def(effect);
-	return driver != NULL &&
+	return def != NULL && driver != NULL &&
 	       (driver->actionsFlagSet & ACTION_RACE_FINISHED) == 0 &&
 	       ChaosEffect_AppliesToDriver(def->scope, driver->driverID, sdata->gGT->numPlyrCurrGame);
+}
+
+static bool Chaos_EffectFitsEvent(ChaosEffectId effect)
+{
+	const ChaosEffectDef *def = ChaosEffect_Def(effect);
+	return def->scope != CHAOS_SCOPE_BOTS || (sdata->gGT->gameMode1 & RACE_FIELD_NO_BOT_MODES) == 0;
+}
+
+static ChaosEffectId Chaos_PickEventEffect(void)
+{
+	const struct ChaosSettings *settings = &sdata->chaosSettings;
+	bool effects[CHAOS_EFFECT_COUNT];
+	memcpy(effects, settings->effects, sizeof(effects));
+	int enabledCount = settings->enabledCount;
+	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
+	{
+		if (effects[i] && !Chaos_EffectFitsEvent((ChaosEffectId)i))
+		{
+			effects[i] = false;
+			enabledCount--;
+		}
+	}
+	return ChaosEffect_Pick(effects, enabledCount, &sdata->chaosRng);
 }
 
 static s32 Chaos_NextTriggerGap(void)
@@ -241,7 +265,7 @@ bool Chaos_Activate(ChaosEffectId effect, s32 durationMS)
 {
 	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
 	if (!Chaos_IsRunning(sdata->gGT) || durationMS <= 0 ||
-	    !ChaosEffect_IsEnabled(sdata->chaosSettings.effects, effect))
+	    !ChaosEffect_IsEnabled(sdata->chaosSettings.effects, effect) || !Chaos_EffectFitsEvent(effect))
 	{
 		return false;
 	}
@@ -297,7 +321,7 @@ void Chaos_PublishEffects(void)
 	                             gGT->overlayIndex_Threads, true, CHAOS_GATE_ADVENTURE_ONLY);
 	for (int i = 0; settings->armed && eligibleRace && i < CHAOS_EFFECT_COUNT; i++)
 	{
-		if (settings->effects[i])
+		if (settings->effects[i] && Chaos_EffectFitsEvent((ChaosEffectId)i))
 		{
 			const char *slug = ChaosEffect_Def((ChaosEffectId)i)->slug;
 			const size_t length = strlen(slug);
@@ -390,7 +414,8 @@ int Chaos_SpeedForDriver(const struct Driver *driver, int speed)
 	{
 		return Chaos_CappedSpeed(driver, speed);
 	}
-	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SUPER_SPEED, driver))
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SUPER_SPEED, driver) ||
+	    Chaos_IsActiveForDriver(CHAOS_EFFECT_ARENA_CHAMPIONS, driver))
 	{
 		speed = Chaos_SuperSpeed(speed);
 	}
@@ -475,7 +500,7 @@ bool Chaos_OnPickup(struct Driver *driver)
 	{
 		return false;
 	}
-	const ChaosEffectId effect = ChaosEffect_Pick(settings->effects, settings->enabledCount, &sdata->chaosRng);
+	const ChaosEffectId effect = Chaos_PickEventEffect();
 	return Chaos_Activate(effect, settings->durationSeconds * CHAOS_MILLISECONDS_PER_SECOND);
 }
 
@@ -741,7 +766,7 @@ void Chaos_Update(struct GameTracker *gGT)
 	{
 		if (durationMS > 0)
 		{
-			const ChaosEffectId effect = ChaosEffect_Pick(settings->effects, settings->enabledCount, &sdata->chaosRng);
+			const ChaosEffectId effect = Chaos_PickEventEffect();
 			Chaos_Activate(effect, durationMS);
 		}
 		runtime->intervalRemainingMS += Chaos_NextTriggerGap();

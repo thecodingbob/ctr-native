@@ -147,6 +147,14 @@ static void TestScopeRespectsDriverSlots(void)
 	// The scope field is what a future bot effect uses.
 	CTR_TEST_CHECK(ChaosEffect_AppliesToDriver(CHAOS_SCOPE_ALL, 7, 1), "an all-driver effect reaches a bot slot");
 	CTR_TEST_CHECK(!ChaosEffect_AppliesToDriver(CHAOS_SCOPE_ALL, 0, 0), "an all-driver effect still needs a human race");
+	for (int players = 1; players <= 4; players++)
+	{
+		CTR_TEST_CHECK(!ChaosEffect_AppliesToDriver(CHAOS_SCOPE_BOTS, players - 1, players), "bots-only scope excludes every human slot");
+		CTR_TEST_CHECK(ChaosEffect_AppliesToDriver(CHAOS_SCOPE_BOTS, players, players), "bots-only scope includes the first bot after the humans");
+		CTR_TEST_CHECK(ChaosEffect_AppliesToDriver(CHAOS_SCOPE_BOTS, 7, players), "bots-only scope includes the last bot in each player count");
+	}
+	CTR_TEST_CHECK(!ChaosEffect_AppliesToDriver(CHAOS_SCOPE_BOTS, -1, 2), "bots-only scope excludes an invalid slot");
+	CTR_TEST_CHECK(!ChaosEffect_AppliesToDriver(CHAOS_SCOPE_BOTS, 2, 0), "bots-only effects still require a human race");
 }
 
 // === Picking ===

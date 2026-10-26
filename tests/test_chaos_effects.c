@@ -1675,6 +1675,62 @@ static void TestKartParticleScale(void)
 	CTR_TEST_CHECK(memcmp(&particle, &finished, sizeof(particle)) == 0, "finished drivers retain retail particles");
 }
 
+static void TestArenaChampions(void)
+{
+	CTR_TEST_SECTION("Arena Champions doubles bot motion without compounding AI state");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_ARENA_CHAMPIONS] = true;
+	sdata->chaosSettings.enabledCount++;
+	Chaos_PublishEffects();
+	CTR_TEST_CHECK(strstr(s_externalCatalogue, "arena-champions\n") != NULL, "Arena Champions is published even in a botless race");
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_ARENA_CHAMPIONS, 1000), "Arena Champions activates without a bot-availability requirement");
+	Chaos_BeginRace(&s_tracker);
+	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT};
+	struct Driver secondBot = {.driverID = 7, .actionsFlagSet = ACTION_BOT};
+	s_tracker.drivers[2] = &bot;
+	s_tracker.drivers[7] = &secondBot;
+	struct Driver *human = s_tracker.drivers[0];
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&bot, 9000), 9000, "inactive Arena Champions preserves retail bot motion");
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_ARENA_CHAMPIONS, 1000), "Arena Champions activates as a timed effect when bots are present");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 1, "Arena Champions occupies a timed slot");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numInstantNotices, 0, "Arena Champions is not an instant action");
+	CTR_TEST_CHECK(Chaos_IsActiveForDriver(CHAOS_EFFECT_ARENA_CHAMPIONS, &bot) &&
+	               Chaos_IsActiveForDriver(CHAOS_EFFECT_ARENA_CHAMPIONS, &secondBot), "all unfinished bot slots receive the effect");
+	CTR_TEST_CHECK(!Chaos_IsActiveForDriver(CHAOS_EFFECT_ARENA_CHAMPIONS, human), "human slots are excluded");
+	const int nominalSpeeds[] = {0, 500, 1000, 9000, 16000, 24000, 25600};
+	int previousActualSpeed = 0;
+	int previousNominalSpeed = 0;
+	for (int i = 0; i < (int)len(nominalSpeeds); i++)
+	{
+		bot.botData.aiPhysics.speedLinear = nominalSpeeds[i];
+		const int actualSpeed = Chaos_SpeedForDriver(&bot, bot.botData.aiPhysics.speedLinear);
+		CTR_TEST_CHECK_EQ(actualSpeed, nominalSpeeds[i] * 2, "bot motion doubles through the full retail speed range, including boosted speeds");
+		CTR_TEST_CHECK_EQ(actualSpeed - previousActualSpeed, (nominalSpeeds[i] - previousNominalSpeed) * 2,
+		                  "the same AI acceleration produces twice the change in physical speed");
+		CTR_TEST_CHECK_EQ(bot.botData.aiPhysics.speedLinear, nominalSpeeds[i], "motion scaling leaves persistent AI speed in retail units");
+		CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&bot, bot.botData.aiPhysics.speedLinear), actualSpeed,
+		                  "repeated motion queries never compound the speed multiplier");
+		previousActualSpeed = actualSpeed;
+		previousNominalSpeed = nominalSpeeds[i];
+	}
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(human, 9000), 9000, "human driving speed remains unchanged");
+	sdata->chaosSettings.effects[CHAOS_EFFECT_SUPER_SPEED] = true;
+	sdata->chaosSettings.enabledCount++;
+	Chaos_Activate(CHAOS_EFFECT_SUPER_SPEED, 1000);
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(human, 9000), 18000, "human Super Speed can coexist with bot Arena Champions");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&bot, 9000), 18000, "human Super Speed does not double the bots a second time");
+	human->actionsFlagSet |= ACTION_BOT;
+	CTR_TEST_CHECK(!Chaos_IsActiveForDriver(CHAOS_EFFECT_ARENA_CHAMPIONS, human), "a human-owned slot on autopilot does not become an Arena Champions target");
+	human->actionsFlagSet &= ~ACTION_BOT;
+	secondBot.actionsFlagSet |= ACTION_RACE_FINISHED;
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&secondBot, 9000), 9000, "finished bots return to retail motion immediately");
+	Tick(1000);
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&bot, 9000), 9000, "expiry restores retail motion without undoing a modified constant");
+	Chaos_Activate(CHAOS_EFFECT_ARENA_CHAMPIONS, 1000);
+	Chaos_Reset();
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&bot, 9000), 9000, "race teardown clears the bot multiplier");
+}
+
 static void TestClassicGTA(void)
 {
 	CTR_TEST_SECTION("Classic GTA provides per-human top-down views and viewport-local cutaways");
@@ -2343,6 +2399,7 @@ int main(void)
 	TestSmallKartEnergy();
 	TestKartParticleScale();
 	TestClassicGTA();
+	TestArenaChampions();
 	TestAnxiousMask();
 	TestHopInputAndCloudOwnership();
 	TestDriverApplication();

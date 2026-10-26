@@ -108,9 +108,12 @@ so new entries receive their full duration.
 Instant effects execute once and use a separate four-entry announcement queue,
 without entering `active` or consuming timed capacity. Repeats execute again and
 refresh their notice; overflow drops the oldest notice. Zero duration is invalid
-for both kinds. Selection draws directly from enabled effects with `chaosRng`.
-Current scopes need no recipient-availability filter: the race ends when all
-humans finish. Application still excludes finished drivers and respects scope.
+for both kinds. Selection draws from enabled effects allowed in the current
+event with `chaosRng`. Bots-only effects are excluded from relic, crystal,
+time-trial and battle events; this rule also applies to publication and incoming
+requests. There is no live recipient-availability filter. Application excludes
+finished drivers and respects scope; bots-only scope selects slots above the
+human count. Event filtering reuses `RACE_FIELD_NO_BOT_MODES` from race setup.
 
 Trigger behavior is described in the [player guide](features/CHAOS.md#triggers).
 Interval/Random retain frame overshoot; rejected scheduled events still consume
@@ -138,7 +141,8 @@ hubs publish an empty list. Requests are checked again at execution time.
 
 ## Effect integration
 
-Effects target unfinished humans, not bots or hubs. Apply local modifiers in
+Effects target unfinished humans or bots according to their catalogue scope;
+hubs are excluded. Apply local modifiers in
 activation order without overwriting shared input or snapshotting another
 effect's modified constants. Persistent ownership/baselines, if introduced, must
 be captured and released before driver destruction; overlay changes alone do not
@@ -303,6 +307,17 @@ models whose projected bounds cover the kart are culled before OT allocation if
 they extend above the cutaway plane. Threaded gameplay objects are preserved.
 These are per-viewport whole-object cutaways; they do not change collision data
 or shared flags, and do not require checkpoint-owned camera state.
+
+Arena Champions (ID 30, `arena-champions`) uses bots-only scope. Normal
+rank/distance/leader-stat rubber-banding, boost, terrain and damage rules still
+run. `Chaos_SpeedForDriver` reuses the same 2x operation as Super Speed for
+the final navigation speed and horizontal velocity. AI dynamics stay in retail
+units: doubling the output doubles actual acceleration too, keeps existing caps
+and airborne square calculations valid, and avoids accumulating multipliers.
+The 16-bit speed/reporting mirrors saturate rather than wrapping; navigation and
+32-bit horizontal velocity keep the full speed. Vertical jump/gravity and impact
+offsets retain normal behavior. There is no saved baseline or teardown mutation.
+Event filtering is static and never inspects whether any bot is still racing.
 
 ## HUD and audio
 

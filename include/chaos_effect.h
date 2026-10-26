@@ -53,18 +53,19 @@ typedef enum {
 	CHAOS_EFFECT_TRY_SOMETHING_NEW = 27,
 	CHAOS_EFFECT_SMALL_KART_ENERGY = 28,
 	CHAOS_EFFECT_CLASSIC_GTA = 29,
+	CHAOS_EFFECT_ARENA_CHAMPIONS = 30,
 
 	// IDs are saved bit positions: append new IDs, never renumber or reuse one.
 	// Growth within the saved bitset capacity does not change its layout.
 	CHAOS_EFFECT_COUNT,
 } ChaosEffectId;
 
-// Who an effect touches. Humans-only is every effect in the first cut;
-// CHAOS_SCOPE_ALL is where the bot effects earn this field.
+// Who an effect touches; driver slots below the player count are human-owned.
 enum ChaosEffectScope
 {
 	CHAOS_SCOPE_HUMANS = 0,
 	CHAOS_SCOPE_ALL,
+	CHAOS_SCOPE_BOTS,
 };
 
 typedef struct
@@ -106,6 +107,7 @@ static const ChaosEffectDef g_chaosEffectDefs[CHAOS_EFFECT_COUNT] =
 	[CHAOS_EFFECT_TRY_SOMETHING_NEW] = { "try-something-new", "Try Something New", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_SMALL_KART_ENERGY] = { "small-kart-energy", "Small Kart Energy", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_CLASSIC_GTA] = { "classic-gta", "Classic GTA", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_ARENA_CHAMPIONS] = { "arena-champions", "Arena Champions", CHAOS_SCOPE_BOTS },
 };
 
 static inline bool ChaosEffect_IsInstant(ChaosEffectId id)
@@ -251,6 +253,10 @@ static inline b32 ChaosEffect_AppliesToDriver(enum ChaosEffectScope scope, int d
 	if (scope == CHAOS_SCOPE_ALL)
 	{
 		return true;
+	}
+	if (scope == CHAOS_SCOPE_BOTS)
+	{
+		return driverID >= numHumanPlayers;
 	}
 	return driverID < numHumanPlayers;
 }

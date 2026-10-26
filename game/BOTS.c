@@ -1545,7 +1545,10 @@ UpdateTireColorTimer:
 			botDriver->botData.aiPhysics.speedLinear = 0x6400;
 		}
 
-		deltaPosThisFrame = CTR_MipsSra(CTR_MipsMulLo(botDriver->botData.aiPhysics.speedLinear, elapsedMilliseconds), 5); // iVar4
+		// Keep AI dynamics in retail units; scaling motion also scales acceleration
+		// without compounding the stored speed or bypassing terrain/damage limits.
+		const int navigationSpeed = Chaos_SpeedForDriver(botDriver, botDriver->botData.aiPhysics.speedLinear);
+		deltaPosThisFrame = CTR_MipsSra(CTR_MipsMulLo(navigationSpeed, elapsedMilliseconds), 5); // iVar4
 		if (deltaPosThisFrame < 0)
 		{
 			deltaPosThisFrame = 0;
@@ -2524,9 +2527,11 @@ UpdateTireColorTimer:
 
 	botDriver->angle = botDriver->rotCurr.y;
 
-	botDriver->speedApprox = botDriver->botData.aiPhysics.speedLinear;
+	const int linearSpeed = Chaos_SpeedForDriver(botDriver, botDriver->botData.aiPhysics.speedLinear);
+	const int reportedSpeed = linearSpeed > INT16_MAX ? INT16_MAX : linearSpeed;
+	botDriver->speedApprox = (s16)reportedSpeed;
 
-	botDriver->speed = botDriver->botData.aiPhysics.speedLinear;
+	botDriver->speed = (s16)reportedSpeed;
 	botDriver->jumpHeightPrev = botDriver->jumpHeightCurr;
 	botDriver->axisRotationX = botDriver->botData.aiRot.y & 0xfff;
 
@@ -2536,7 +2541,7 @@ UpdateTireColorTimer:
 
 	iVar4_lifetime_2 = MATH_Cos(botDriver->axisRotationX);
 
-	botDriver->zSpeed = CTR_MipsSra(CTR_MipsMulLo(botDriver->botData.aiPhysics.speedLinear, iVar4_lifetime_2), 0xc);
+	botDriver->zSpeed = CTR_MipsSra(CTR_MipsMulLo(linearSpeed, iVar4_lifetime_2), 0xc);
 
 	iVar4_lifetime_2 = MATH_Sin(botDriver->axisRotationX);
 
@@ -2545,7 +2550,7 @@ UpdateTireColorTimer:
 	botDriver->ySpeed = botDriver->botData.aiPhysics.speedY;
 	botDriver->rotCurr.z = uVar11;
 
-	botDriver->xSpeed = CTR_MipsSra(CTR_MipsMulLo(botDriver->botData.aiPhysics.speedLinear, iVar4_lifetime_2), 0xc);
+	botDriver->xSpeed = CTR_MipsSra(CTR_MipsMulLo(linearSpeed, iVar4_lifetime_2), 0xc);
 	if (0x7ff < uVar11)
 	{
 		botDriver->rotCurr.z = (s16)CTR_MipsSubLo(uVar11, 0x1000);
