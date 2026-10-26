@@ -3,7 +3,7 @@
 Source: [issue #90](https://github.com/thecodingbob/ctr-native/issues/90).
 Status: block A implemented with focused test coverage. Later technical checks
 remain marked with placeholders; in-game visual validation is pending.
-Current effect: Small Kart Energy (block C), implemented for review; in-game validation pending.
+Current effect: Classic GTA (block C), implemented for review; in-game validation pending.
 
 Existing contracts: [implementation guide](CHAOS_IMPLEMENTATION.md).
 Existing gameplay: [player guide](features/CHAOS.md).
@@ -155,7 +155,8 @@ before applying its own behavior.
   - [x] Who Bound This?: implementation and focused tests; user approved proceeding.
   - [x] Try Something New: implementation and focused tests; user approved proceeding.
 - [ ] C: size, camera, and bots.
-  - [x] Small Kart Energy: implementation and focused tests; user review/in-game checks pending.
+  - [x] Small Kart Energy: implementation and focused tests; user approved proceeding.
+  - [x] Classic GTA: implementation and focused tests; user review/in-game checks pending.
 - [ ] D: characters and movement.
 - [ ] E: time-manipulation prototypes and implementation.
 
@@ -284,6 +285,50 @@ Focused regression checks cover particle size/growth/motion, line endpoints,
 spatial vs. color oscillators, effect matrices and finished-driver defaults.
 All six focused suites passed. Compilation succeeded; executable linking was
 blocked by the running game. Visual validation remains pending for these paths.
+
+Classic GTA: appended as timed effect ID 29 (`classic-gta`). Each unfinished
+human gets a vertical camera 2,560 world units above their own kart, with heading
+following the kart and zero roll. The retail camera continues updating; the
+final presentation override leaves mode, zoom preference and projection intact.
+There is no pose snapshot to restore at expiry. Visibility uses the driver's
+`underDriver`/contact block, with a driver-position probe only when neither is
+available, so tunnels do not move the eye down. Overhead level geometry bypasses
+ground-level leaf/face PVS masks and uses camera frustum culling instead, keeping
+road beyond crests visible. Visibility source caches are invalidated so retail
+PVS is decoded again at expiry even without changing ground block.
+Shared level-render workers classify ceiling blocks by the winding of their
+high-detail triangles, using the same topology as collision. Downward-facing
+blocks are omitted throughout the viewport; blocks containing any upward-facing
+triangle, vertical panels and supporting/contact blocks are retained. The
+classification does not depend on moving X/Z bounds or a driver-height cutoff.
+Static non-threaded models covering the kart are omitted
+when their projected bounds extend above the cutaway plane. This is a whole
+block/model cutaway, not polygon clipping; mixed road/ceiling blocks are retained
+to preserve pavement. Collision data and global visibility flags are untouched.
+The cutaway persists under pause, ends for finished humans and clears on
+expiry/reset. Focused checks cover independent 2P poses/headings, ground-block
+visibility selection, local roof/model cutaways, protected gameplay objects,
+pause, expiry and reset. Tune height and cutaway in game on Roo's Tubes, Sewer
+Speedway and Cortex Castle, in 1P/2P, including ramps, stacked roads, jumps,
+damage/rescue, Giant/Small Karts, pause/resume and effect expiry. Review Classic
+GTA before starting Arena Champions.
+Validation: game build and all five focused Chaos suites passed. In-game camera
+height, cutaway boundaries and transitions remain pending user review.
+User-review follow-up: doubled camera height to widen the road view, removed
+ground-level PVS restrictions for overhead geometry, and confined the cutaway to
+blocks whose X/Z bounds actually cover the kart. Regression checks cover uphill
+and downhill road, unflagged supporting ramps, upper roads directly overhead,
+viewport-local visibility masks and cache invalidation. Visual recheck pending.
+Follow-up validation: game build passed; Chaos runtime (526 checks) and effect
+suite (2,948 checks) passed with zero failures.
+Second visual-review follow-up: residual floor popping in Cortex Castle and
+ceiling popping in Roo's Tubes exposed the moving bbox/height cutaway. Replaced
+it with high-detail face-orientation classification, independent of kart position
+and ground flags. Regression coverage includes crossing tile boundaries, steep
+unflagged pavement, folded/mixed blocks, vertical panels and triangular blocks
+with unused vertex slots. Runtime/effect tests pass; game source compilation
+passes, but executable linking is blocked while the game is running. Visual
+validation on the two reported sections remains pending.
 
 Block A: focused runtime tests cover full timed capacity, instant notices without
 docking, repeat rewards, notice overflow, pause/reset/resident restore, inventory

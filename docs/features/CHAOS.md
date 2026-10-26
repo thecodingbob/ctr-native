@@ -111,6 +111,7 @@ enabled in the file. Setup and a manual submission example are in the
 | **Who Bound This?** | Randomize throttle, brake, item and both hop/drift controls independently per human for the effect's duration. Steering, pause and menus remain unchanged. |
 | **Try Something New** | Switch to a different standard driving class and its engine sound until race end, keeping the character. Repeats select a class different from the current one. |
 | **Small Kart Energy** | Halve kart dimensions and collision size; reduce forward speed and jump force to 70%. Larger karts can squash you, subject to normal mask, shield and immunity protections. |
+| **Classic GTA** | Use a vertical top-down camera that turns with your kart. Nearby overhead scenery is cut away to reveal the road, including in tunnels. Each human viewport follows its own kart. |
 
 Effects can overlap: Duration does not delay the next trigger. For example,
 Duration 30 seconds with Interval 10 seconds allows several effects at once.

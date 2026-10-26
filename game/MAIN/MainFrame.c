@@ -732,6 +732,8 @@ void MainFrame_VisMemFullFrame(struct GameTracker *gGT, struct Level *level)
 			camDC->visInstSrc = driverPVS->visInstSrc;
 		}
 
+		Chaos_ApplyLevelVisibilityRules(camDC->pushBuffer, visMem, mesh, playerIndex);
+
 		if ((level->configFlags & 4) == 0)
 		{
 			if (visMem->visOVertSrc[playerIndex] != camDC->visOVertSrc)

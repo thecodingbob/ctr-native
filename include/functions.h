@@ -1321,6 +1321,11 @@ int Chaos_AccelerationForDriver(const struct Driver *driver, int acceleration);
 int Chaos_ReservesForDriver(const struct Driver *driver, int reserves);
 int Chaos_FireLevelForDriver(const struct Driver *driver, int fireLevel);
 int Chaos_EngineClassForDriver(const struct Driver *driver, int engineClass);
+bool Chaos_ApplyCameraRules(struct CameraDC *camera);
+void Chaos_ApplyLevelVisibilityRules(const struct PushBuffer *pushBuffer, struct VisMem *visibility,
+                                   const struct mesh_info *mesh, int playerIndex);
+bool Chaos_HideCameraQuadBlock(const struct PushBuffer *pushBuffer, const struct QuadBlock *block, const struct LevVertex *vertices);
+bool Chaos_HideCameraInstance(const struct PushBuffer *pushBuffer, const struct Instance *instance, int nearestDepth, bool coversKart);
 void Chaos_ApplyItemRules(struct Driver *driver);
 void Chaos_ApplyCrateRules(struct Driver *driver, struct Instance *crateInst);
 bool Chaos_IsHardCrateForDriver(const struct Instance *crateInst, const struct Thread *collidingTh,

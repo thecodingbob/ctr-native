@@ -281,6 +281,29 @@ revving animation and wall-crash scale resets also follow the kart multiplier.
 TNT remains its original size: only its attachment offset follows the kart, so
 it rests on the resized character's head without changing its animation/state.
 
+Classic GTA (ID 29, `classic-gta`) overrides the final pose in `CAM_ThTick` after
+normal camera processing, preserving the live mode and zoom state. Each human
+viewport looks vertically down from `CHAOS_TOP_DOWN_HEIGHT` (2,560 world units), following kart yaw.
+The driver's ground/contact block supplies visibility; only missing ground data
+requires a driver-position camera probe. `Chaos_TopDownDriver` gates presentation
+independently of simulation pause, so pause menus retain the camera/cutaway.
+`Chaos_ApplyLevelVisibilityRules` runs after normal PVS processing and enables all
+leaf/face mask bits for that viewport, leaving geometry selection to the overhead
+frustum instead of the ground-level PVS. It invalidates the decoded-source caches
+so expiry reloads retail masks even when the driver stays on the same block.
+The four shared level BSP-list workers filter ceiling blocks before emission,
+consuming visibility bits normally. Classification uses the high-detail triangle
+topology and normal winding from collision, with 64-bit X/Z cross products.
+Blocks with downward-facing triangles and no upward-facing triangles are omitted;
+any road-facing triangle preserves the whole block. Vertical panels and the
+driver's supporting/contact blocks remain. Triangular blocks use only their four
+valid high-detail triangles. This avoids tile-boundary and driver-height toggles
+and preserves unflagged ramps and mixed floor/ceiling geometry. Static level
+models whose projected bounds cover the kart are culled before OT allocation if
+they extend above the cutaway plane. Threaded gameplay objects are preserved.
+These are per-viewport whole-object cutaways; they do not change collision data
+or shared flags, and do not require checkpoint-owned camera state.
+
 ## HUD and audio
 
 Each successful activation plays the preloaded double-gain transition swish and

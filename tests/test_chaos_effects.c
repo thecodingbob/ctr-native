@@ -1675,6 +1675,162 @@ static void TestKartParticleScale(void)
 	CTR_TEST_CHECK(memcmp(&particle, &finished, sizeof(particle)) == 0, "finished drivers retain retail particles");
 }
 
+static void TestClassicGTA(void)
+{
+	CTR_TEST_SECTION("Classic GTA provides per-human top-down views and viewport-local cutaways");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_CLASSIC_GTA] = true;
+	sdata->chaosSettings.enabledCount++;
+	struct Driver human = {.driverID = 0, .posCurr = {100 << 8, 200 << 8, 300 << 8}, .angle = 0x100};
+	struct Driver partner = {.driverID = 1, .posCurr = {3000 << 8, 400 << 8, 5000 << 8}, .angle = 0x700};
+	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT};
+	s_tracker.drivers[0] = &human;
+	s_tracker.drivers[1] = &partner;
+	struct CameraDC *camera = &s_tracker.cameraDC[0];
+	struct CameraDC *secondCamera = &s_tracker.cameraDC[1];
+	struct PushBuffer *view = &s_tracker.pushBuffer[0];
+	struct PushBuffer *secondView = &s_tracker.pushBuffer[1];
+	*camera = (struct CameraDC){.driverToFollow = &human, .pushBuffer = view, .nearOrFar = 1, .cameraMode = 0};
+	*secondCamera = (struct CameraDC){.driverToFollow = &partner, .pushBuffer = secondView};
+	view->distanceToScreen_CURR = 256;
+	view->pos = (SVec3){10, 20, 30};
+	CTR_TEST_CHECK(!Chaos_ApplyCameraRules(camera), "inactive Classic GTA leaves the retail camera alone");
+	CTR_TEST_CHECK_EQ(view->pos.y, 20, "the inactive hook does not move the camera");
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_CLASSIC_GTA, 3000), "Classic GTA activates as a timed effect");
+	CTR_TEST_CHECK(Chaos_ApplyCameraRules(camera) && Chaos_ApplyCameraRules(secondCamera), "both human viewports receive the override");
+	CTR_TEST_CHECK(view->pos.x == 100 && view->pos.y == 200 + CHAOS_TOP_DOWN_HEIGHT && view->pos.z == 300,
+	               "the eye stays vertically above the current kart position");
+	CTR_TEST_CHECK(view->rot.x == 0x400 && view->rot.y == 0x900 && view->rot.z == 0,
+	               "the camera looks vertically down with heading derived from the kart");
+	CTR_TEST_CHECK(secondView->pos.x == 3000 && secondView->pos.z == 5000 && secondView->rot.y == 0xf00,
+	               "split-screen cameras follow independent positions and headings");
+	CTR_TEST_CHECK(camera->nearOrFar == 1 && camera->cameraMode == 0 && view->distanceToScreen_PREV == 256,
+	               "the presentation override preserves the retail camera mode, zoom toggle and projection");
+	const struct LevVertex vertices[] = {
+		{.pos = {0, 400, 200}}, {.pos = {200, 400, 200}},
+		{.pos = {0, 400, 400}}, {.pos = {200, 400, 400}},
+		{.pos = {100, 400, 200}}, {.pos = {0, 400, 300}},
+		{.pos = {100, 400, 300}}, {.pos = {200, 400, 300}},
+		{.pos = {100, 400, 400}},
+	};
+	struct QuadBlock roof = {
+		.index = {0, 2, 1, 3, 5, 4, 6, 8, 7},
+		.bbox = {.min = {0, 400, 200}, .max = {200, 500, 400}},
+	};
+	const struct QuadBlock originalRoof = roof;
+	CTR_TEST_CHECK(Chaos_HideCameraQuadBlock(view, &roof, vertices), "downward-facing tunnel geometry is cut away");
+	CTR_TEST_CHECK(Chaos_HideCameraQuadBlock(secondView, &roof, vertices), "ceiling removal is stable outside the kart's current block footprint");
+	struct QuadBlock road = {
+		.index = {0, 1, 2, 3, 4, 5, 6, 7, 8},
+		.quadFlags = QUADBLOCK_FLAG_GROUND,
+		.bbox = {.min = {0, 200, 200}, .max = {200, 450, 400}},
+	};
+	human.underDriver = &road;
+	Chaos_ApplyCameraRules(camera);
+	CTR_TEST_CHECK(camera->ptrQuadBlock == &road && camera->quadBlockSearchHit,
+	               "tunnel visibility uses the driver's ground block instead of a roof above the camera ray");
+	CTR_TEST_CHECK(!Chaos_HideCameraQuadBlock(view, &road, vertices), "sloping ground that crosses the cutaway height remains drivable and visible");
+	struct QuadBlock uphill = road;
+	uphill.bbox = (struct BoundingBox){.min = {0, 400, 500}, .max = {200, 700, 900}};
+	CTR_TEST_CHECK(!Chaos_HideCameraQuadBlock(view, &uphill, vertices), "elevated road ahead stays visible instead of being mistaken for a roof");
+	uphill.quadFlags = 0;
+	CTR_TEST_CHECK(!Chaos_HideCameraQuadBlock(view, &uphill, vertices), "a ramp ahead stays visible even without the ground flag");
+	struct QuadBlock downhill = road;
+	downhill.bbox = (struct BoundingBox){.min = {0, -300, 500}, .max = {200, 0, 900}};
+	CTR_TEST_CHECK(!Chaos_HideCameraQuadBlock(view, &downhill, vertices), "descending road ahead is retained");
+	struct QuadBlock bridge = roof;
+	bridge.quadFlags = QUADBLOCK_FLAG_GROUND;
+	CTR_TEST_CHECK(Chaos_HideCameraQuadBlock(view, &bridge, vertices), "a downward-facing underside is cut away regardless of the ground flag");
+	int leafLists[2][2] = {{0}};
+	int faceLists[2][3] = {{0}};
+	int packedSource = 0;
+	struct VisMem visibility = {
+		.visLeafList = {leafLists[0], leafLists[1]},
+		.visFaceList = {faceLists[0], faceLists[1]},
+		.visLeafSrc = {&packedSource, &packedSource},
+		.visFaceSrc = {&packedSource, &packedSource},
+	};
+	const struct mesh_info mesh = {.numBspNodes = 33, .numQuadBlock = 65};
+	Chaos_ApplyLevelVisibilityRules(view, &visibility, &mesh, 0);
+	CTR_TEST_CHECK(leafLists[0][0] == -1 && leafLists[0][1] == -1 &&
+	               faceLists[0][0] == -1 && faceLists[0][1] == -1 && faceLists[0][2] == -1,
+	               "overhead geometry selection includes leaves and faces excluded by the ground-level PVS");
+	CTR_TEST_CHECK(leafLists[1][0] == 0 && faceLists[1][0] == 0 && visibility.visFaceSrc[1] == &packedSource,
+	               "overhead visibility changes only the requested viewport");
+	CTR_TEST_CHECK(visibility.visLeafSrc[0] == NULL && visibility.visFaceSrc[0] == NULL,
+	               "visibility cache invalidation forces retail PVS decoding after expiry on the same block");
+	road.quadFlags = 0;
+	CTR_TEST_CHECK(!Chaos_HideCameraQuadBlock(view, &road, vertices), "the driver's supporting ramp stays visible even without the ground flag");
+	const struct QuadBlock unflaggedFloor = road;
+	CTR_TEST_CHECK(!Chaos_HideCameraQuadBlock(view, &unflaggedFloor, vertices), "unflagged floor remains visible even when it is not the current supporting block");
+	const int boundaryPositions[] = {-100, 0, 100, 200, 300};
+	for (int i = 0; i < (int)len(boundaryPositions); i++)
+	{
+		human.posCurr.x = boundaryPositions[i] * 256;
+		human.posCurr.z = (200 + boundaryPositions[i]) * 256;
+		CTR_TEST_CHECK(Chaos_HideCameraQuadBlock(view, &roof, vertices), "ceiling stays hidden across both X/Z bounding-box edges");
+		CTR_TEST_CHECK(!Chaos_HideCameraQuadBlock(view, &unflaggedFloor, vertices), "unflagged pavement stays visible across block edges");
+	}
+	human.posCurr.x = 100 << 8;
+	human.posCurr.z = 300 << 8;
+	struct LevVertex slopedVertices[len(vertices)];
+	memcpy(slopedVertices, vertices, sizeof(vertices));
+	for (int i = 0; i < (int)len(slopedVertices); i++)
+	{
+		slopedVertices[i].pos.y = slopedVertices[i].pos.x * 2 + slopedVertices[i].pos.z;
+	}
+	CTR_TEST_CHECK(!Chaos_HideCameraQuadBlock(view, &unflaggedFloor, slopedVertices), "steep unflagged slopes retain their upward-facing pavement");
+	struct LevVertex foldedVertices[len(vertices)];
+	memcpy(foldedVertices, vertices, sizeof(vertices));
+	foldedVertices[6].pos.x = -500;
+	CTR_TEST_CHECK(!Chaos_HideCameraQuadBlock(view, &roof, foldedVertices), "a mixed block containing upward-facing high-detail triangles is preserved");
+	struct LevVertex wallVertices[len(vertices)];
+	memcpy(wallVertices, slopedVertices, sizeof(vertices));
+	for (int i = 0; i < (int)len(wallVertices); i++)
+	{
+		wallVertices[i].pos.x = 0;
+	}
+	CTR_TEST_CHECK(!Chaos_HideCameraQuadBlock(view, &unflaggedFloor, wallVertices), "vertical panels are not mistaken for downward-facing ceilings");
+	struct QuadBlock triangleRoof = roof;
+	triangleRoof.index[3] = triangleRoof.index[2];
+	triangleRoof.index[7] = UINT16_MAX;
+	triangleRoof.index[8] = UINT16_MAX;
+	CTR_TEST_CHECK(Chaos_HideCameraQuadBlock(view, &triangleRoof, vertices), "triangular blocks classify only their four valid high-detail faces");
+	struct InstDef definition = {0};
+	struct Instance decoration = {.instDef = &definition};
+	CTR_TEST_CHECK(Chaos_HideCameraInstance(view, &decoration, 100, true), "static level models in front of the kart are cut away");
+	CTR_TEST_CHECK(!Chaos_HideCameraInstance(view, &decoration, 100, false), "models outside the kart's screen position remain visible");
+	CTR_TEST_CHECK(!Chaos_HideCameraInstance(view, &decoration, CHAOS_TOP_DOWN_HEIGHT * 4, true), "models at road height are not overhead occluders");
+	struct Thread dynamicThread = {0};
+	decoration.thread = &dynamicThread;
+	CTR_TEST_CHECK(!Chaos_HideCameraInstance(view, &decoration, 100, true), "dynamic hazards and gameplay objects remain visible");
+	CTR_TEST_CHECK(memcmp(&roof, &originalRoof, sizeof(roof)) == 0, "cutaway queries do not modify shared level geometry");
+	s_tracker.gameMode1 |= PAUSE_1;
+	Tick(3000);
+	CTR_TEST_CHECK(Chaos_ApplyCameraRules(camera) && Chaos_HideCameraQuadBlock(view, &roof, vertices), "pause retains the top-down presentation and tunnel cutaway");
+	s_tracker.gameMode1 &= ~PAUSE_1;
+	human.posCurr.y = 300 << 8;
+	human.angle = 0x300;
+	Chaos_ApplyCameraRules(camera);
+	CTR_TEST_CHECK(view->pos.y == 300 + CHAOS_TOP_DOWN_HEIGHT && view->rot.y == 0xb00, "height changes and turns update the top-down pose immediately");
+	secondCamera->driverToFollow = &bot;
+	CTR_TEST_CHECK(!Chaos_ApplyCameraRules(secondCamera), "a bot-follow camera does not receive the human-only override");
+	secondCamera->driverToFollow = &partner;
+	partner.actionsFlagSet = ACTION_RACE_FINISHED;
+	CTR_TEST_CHECK(!Chaos_ApplyCameraRules(secondCamera), "finished humans regain their end-of-race camera");
+	Tick(3000);
+	view->pos = (SVec3){1, 2, 3};
+	CTR_TEST_CHECK(!Chaos_ApplyCameraRules(camera) && view->pos.y == 2, "expiry hands presentation back to the live retail camera");
+	CTR_TEST_CHECK(!Chaos_HideCameraQuadBlock(view, &roof, vertices), "expiry restores roof visibility immediately");
+	leafLists[0][0] = 0;
+	faceLists[0][0] = 0;
+	Chaos_ApplyLevelVisibilityRules(view, &visibility, &mesh, 0);
+	CTR_TEST_CHECK(leafLists[0][0] == 0 && faceLists[0][0] == 0, "expired Classic GTA leaves retail visibility lists alone");
+	Chaos_Activate(CHAOS_EFFECT_CLASSIC_GTA, 1000);
+	Chaos_Reset();
+	CTR_TEST_CHECK(!Chaos_ApplyCameraRules(camera), "race teardown clears the camera override without a saved pose");
+}
+
 static void TestClockCurse(void)
 {
 	CTR_TEST_SECTION("Clock Curse sets the received clock once and bypasses protection");
@@ -2186,6 +2342,7 @@ int main(void)
 	TestGiantKarts();
 	TestSmallKartEnergy();
 	TestKartParticleScale();
+	TestClassicGTA();
 	TestAnxiousMask();
 	TestHopInputAndCloudOwnership();
 	TestDriverApplication();
