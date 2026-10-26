@@ -40,6 +40,17 @@ struct ChaosControlShuffle
 	u32 analogPrev;
 };
 
+struct ChaosRestart
+{
+	s32 timer;
+	s32 lightsPrevious;
+	bool pending;
+	bool active;
+	bool floating;
+	bool cameraBlendPending;
+	struct MaskHeadWeapon *mask;
+};
+
 // Race-only state, captured in SDATA; unique effects in activation order.
 struct ChaosRuntime
 {
@@ -53,6 +64,7 @@ struct ChaosRuntime
 	struct ChaosControlShuffle controls[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
 	u8 engineClass[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
 	bool engineClassChanged[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
+	struct ChaosRestart restart[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
 };
 
 #endif

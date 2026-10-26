@@ -44,28 +44,68 @@ static int UI_Chaos_CollectEntries(const struct ChaosRuntime *runtime, const str
 	return count;
 }
 
-static int UI_Chaos_FreeRowY(const struct GameTracker *gGT, int y, int height)
+struct UI_Chaos_ReservedRow
 {
-	// Final Lap retains its viewport position; the shared table reserves its rows.
+	int top;
+	int bottom;
+	bool bannersOnly;
+};
+
+static int UI_Chaos_CollectReservedRows(struct GameTracker *gGT, struct UI_Chaos_ReservedRow *rows)
+{
+	int count = 0;
 	for (int i = 0; i < gGT->numPlyrCurrGame; i++)
 	{
 		if (sdata->finalLapTextTimer[i] > 0)
 		{
 			const struct PushBuffer *pb = &gGT->pushBuffer[i];
 			const int lapY = pb->rect.y + pb->rect.h / 4;
-			if (y < lapY + UI_CHAOS_FINAL_LAP_HEIGHT && y + height > lapY)
-			{
-				y = lapY + UI_CHAOS_FINAL_LAP_HEIGHT + UI_CHAOS_ROW_GAP;
-			}
+			rows[count++] = (struct UI_Chaos_ReservedRow){lapY, lapY + UI_CHAOS_FINAL_LAP_HEIGHT, true};
+		}
+		const struct ChaosRestart *restart = &sdata->chaosRuntime.restart[i];
+		RECT lights;
+		if (restart->active && DotLights_GetBounds(gGT, i, restart->timer, &lights))
+		{
+			rows[count++] = (struct UI_Chaos_ReservedRow){lights.y, lights.y + lights.h, false};
+		}
+	}
+	for (int i = 1; i < count; i++)
+	{
+		struct UI_Chaos_ReservedRow row = rows[i];
+		int j = i;
+		while (j > 0 && rows[j - 1].top > row.top)
+		{
+			rows[j] = rows[j - 1];
+			j--;
+		}
+		rows[j] = row;
+	}
+	return count;
+}
+
+static int UI_Chaos_FreeRowY(const struct UI_Chaos_ReservedRow *rows, int count, int y, int height, bool down, bool banner)
+{
+	for (int step = 0; step < count; step++)
+	{
+		const struct UI_Chaos_ReservedRow *row = &rows[down ? step : count - 1 - step];
+		if (row->bannersOnly && !banner)
+		{
+			continue;
+		}
+		if (y < row->bottom && y + height > row->top)
+		{
+			y = down ? row->bottom + UI_CHAOS_ROW_GAP : row->top - height - UI_CHAOS_ROW_GAP;
 		}
 	}
 	return y;
 }
 
-static s16 UI_Chaos_LayoutNotices(const struct GameTracker *gGT, const struct ChaosActivation *const *entries,
+static s16 UI_Chaos_LayoutNotices(struct GameTracker *gGT, const struct ChaosActivation *const *entries,
                                 int count, const int *latest, int *rowY, int dockTop, int dockBottom)
 {
 	const bool stackDown = gGT->numPlyrCurrGame == 1;
+	struct UI_Chaos_ReservedRow reserved[ADV_MULTIPLAYER_NUM_PLAYERS_MAX * 2];
+	const int numReserved = UI_Chaos_CollectReservedRows(gGT, reserved);
 	const int soloHeight = gGT->pushBuffer[0].rect.h > 0 ? gGT->pushBuffer[0].rect.h : SCREEN_HEIGHT;
 	int y = gGT->numPlyrCurrGame > 1 ? UI_CHAOS_NOTICE_MULTIPLAYER_Y : soloHeight / 4;
 	for (int i = count - 1; i >= 0; i--)
@@ -76,17 +116,7 @@ static s16 UI_Chaos_LayoutNotices(const struct GameTracker *gGT, const struct Ch
 		{
 			continue;
 		}
-		for (int player = gGT->numPlyrCurrGame - 1; player >= 0; player--)
-		{
-			const struct PushBuffer *pb = &gGT->pushBuffer[player];
-			const int lapY = pb->rect.y + pb->rect.h / 4;
-			if (sdata->finalLapTextTimer[player] > 0 && y < lapY + UI_CHAOS_FINAL_LAP_HEIGHT &&
-			    y + UI_CHAOS_BANNER_ROW_HEIGHT > lapY)
-			{
-				y = stackDown ? lapY + UI_CHAOS_FINAL_LAP_HEIGHT + UI_CHAOS_ROW_GAP
-				              : lapY - UI_CHAOS_BANNER_ROW_HEIGHT - UI_CHAOS_ROW_GAP;
-			}
-		}
+		y = UI_Chaos_FreeRowY(reserved, numReserved, y, UI_CHAOS_BANNER_ROW_HEIGHT, stackDown, true);
 		if (y < UI_CHAOS_SCREEN_MARGIN || y + UI_CHAOS_BANNER_ROW_HEIGHT > SCREEN_HEIGHT - UI_CHAOS_SCREEN_MARGIN)
 		{
 			// A crowded announcement stack uses compact rows below the docked list.
@@ -96,7 +126,7 @@ static s16 UI_Chaos_LayoutNotices(const struct GameTracker *gGT, const struct Ch
 				if (latest[effect] >= 0 && entries[latest[effect]]->noticeRemainingMS >
 				    (ChaosEffect_IsInstant((ChaosEffectId)effect) ? 0 : CHAOS_ACTIVATION_DOCK_MS))
 				{
-					y = UI_Chaos_FreeRowY(gGT, y, UI_CHAOS_COMPACT_BANNER_ROW_HEIGHT);
+					y = UI_Chaos_FreeRowY(reserved, numReserved, y, UI_CHAOS_COMPACT_BANNER_ROW_HEIGHT, true, true);
 					rowY[effect] = y;
 					y += UI_CHAOS_COMPACT_BANNER_ROW_HEIGHT;
 				}
@@ -174,12 +204,15 @@ void UI_Chaos_DrawActivation(struct GameTracker *gGT)
 	int numDocked = 0;
 	const int dockTop = gGT->numPlyrCurrGame > 1 ? UI_CHAOS_LIST_MULTIPLAYER_TOP : UI_CHAOS_LIST_TOP;
 	int dockBottom = dockTop;
+	struct UI_Chaos_ReservedRow reserved[ADV_MULTIPLAYER_NUM_PLAYERS_MAX * 2];
+	const int numReserved = UI_Chaos_CollectReservedRows(gGT, reserved);
 	for (int i = count - 1; i >= 0 && numDocked < UI_CHAOS_MAX_DOCKED; i--)
 	{
 		const struct ChaosActivation *entry = entries[i];
 		if (ChaosEffect_Def(entry->effect) != NULL && !ChaosEffect_IsInstant(entry->effect) && latest[entry->effect] == i &&
 		    entry->noticeRemainingMS <= CHAOS_ACTIVATION_DOCK_MS)
 		{
+			dockBottom = UI_Chaos_FreeRowY(reserved, numReserved, dockBottom, UI_CHAOS_LIST_ROW_HEIGHT, true, false);
 			rowY[entry->effect] = dockBottom;
 			docked[numDocked++] = i;
 			dockBottom += UI_CHAOS_LIST_ROW_HEIGHT;

@@ -1675,6 +1675,141 @@ static void TestKartParticleScale(void)
 	CTR_TEST_CHECK(memcmp(&particle, &finished, sizeof(particle)) == 0, "finished drivers retain retail particles");
 }
 
+static void TestFreshStart(void)
+{
+	CTR_TEST_SECTION("Fresh Start replays a human-only start without resetting the race clock");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	struct Instance instances[2] = {0};
+	struct Thread threads[2] = {0};
+	struct Icon icon = {0};
+	icon.texLayout.u1 = 24;
+	icon.texLayout.v2 = 24;
+	struct DB db = {0};
+	s_tracker.backBuffer = &db;
+	s_tracker.trafficLightsTimer = DOT_LIGHT_TIMER_SHOW_MIN - 1;
+	for (int i = 0; i < 4; i++)
+	{
+		s_tracker.trafficLightIcon[i] = &icon;
+	}
+	for (int i = 0; i < 2; i++)
+	{
+		struct Driver *driver = s_tracker.drivers[i];
+		driver->instSelf = &instances[i];
+		s_tracker.cameraDC[i].driverToFollow = driver;
+		instances[i].thread = &threads[i];
+		driver->posCurr = (Vec3){100, 100000, 200};
+		driver->velocity = (Vec3){100, 200, 300};
+		driver->quadBlockHeight = -500;
+		driver->reserves = 10000;
+		driver->turbo_outsideTimer = 300;
+		driver->jump_ForcedMS = 500;
+		driver->actionsFlagSet = ACTION_AIRBORNE | ACTION_HIGH_JUMP;
+		driver->heldItemID = HELD_ITEM_BOMB_3X;
+		driver->numHeldItems = 3;
+		driver->turnAngleCurr = 300;
+		driver->simpTurnState = 40;
+		driver->angle = 0x100;
+		driver->rotCurr.y = 0x500;
+		driver->rotCurr.w = 100;
+		driver->turnWobbleAngle = 50;
+	}
+	s_tracker.drivers[1]->actionsFlagSet = ACTION_TOUCH_GROUND;
+	struct Driver bot = {.driverID = 2, .speed = 9000, .reserves = 1000};
+	s_tracker.drivers[2] = &bot;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_FRESH_START] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL] = true;
+	sdata->chaosSettings.enabledCount += 2;
+	Chaos_Activate(CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL, 30000);
+	s_restartInitializations = 0;
+	s_restartFallPoses = 0;
+	s_startLightDraws = 0;
+	s_startCountdownSounds = 0;
+	s_startGreenSounds = 0;
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_FRESH_START, 1), "restart duration is the retail countdown rather than the requested Chaos duration");
+	CTR_TEST_CHECK_EQ(s_restartInitializations, 2, "both unfinished humans enter the retail starting state once");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 1, "restart consumes no timed slot");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numInstantNotices, 1, "restart uses an instant notice");
+	for (int i = 0; i < 2; i++)
+	{
+		struct Driver *driver = s_tracker.drivers[i];
+		CTR_TEST_CHECK_EQ(driver->posCurr.y, 100000, "restart preserves the kart's height instead of teleporting");
+		CTR_TEST_CHECK(driver->posCurr.x == 100 && driver->posCurr.z == 200 && driver->posPrev.y == driver->posCurr.y, "restart preserves horizontal progress without artificial displacement");
+		CTR_TEST_CHECK(driver->velocity.x == 0 && driver->velocity.y == 0 && driver->velocity.z == 0, "restart clears motion on every axis");
+		CTR_TEST_CHECK(driver->reserves == 0 && driver->turbo_outsideTimer == 0, "the explicit restart clears fire even during reserve protection");
+		CTR_TEST_CHECK_EQ(driver->jump_ForcedMS, 0, "old jump state does not relaunch the kart");
+		CTR_TEST_CHECK(driver->turnAngleCurr == 0 && driver->simpTurnState == 0, "restart clears the previous steering pose");
+		CTR_TEST_CHECK(driver->angle == 0x500 && driver->rotCurr.y == 0x500 && driver->rotCurr.w == 0 && driver->turnWobbleAngle == 0,
+		    "neutral pose synchronizes physical, visual and camera heading before the countdown");
+		CTR_TEST_CHECK(driver->heldItemID == HELD_ITEM_BOMB_3X && driver->numHeldItems == 3, "restart preserves held inventory");
+		CTR_TEST_CHECK_EQ(Chaos_StartTimerForDriver(driver), DOT_LIGHT_TIMER_HIDE, "the revving update waits for the full local countdown");
+	}
+	CTR_TEST_CHECK(sdata->chaosRuntime.restart[0].floating && sdata->chaosRuntime.restart[0].mask != NULL, "an airborne kart is held by its own rescue mask");
+	CTR_TEST_CHECK_EQ(s_restartFallPoses, 1, "the suspended kart reuses the retail rescue falling pose");
+	CTR_TEST_CHECK(!sdata->chaosRuntime.restart[1].floating && instances[1].animIndex == 0 && instances[1].animFrame == 20, "grounded karts return directly to the neutral forward-facing frame");
+	for (int i = 0; i < 2; i++)
+	{
+		CTR_TEST_CHECK(Chaos_ConsumeStartCameraBlend(&s_tracker.cameraDC[i]), "each human's camera starts the existing recovery blend at activation");
+		CTR_TEST_CHECK(!Chaos_ConsumeStartCameraBlend(&s_tracker.cameraDC[i]), "the camera blend is not restarted on every countdown frame");
+	}
+	struct CameraDC botCamera = {.driverToFollow = &bot};
+	CTR_TEST_CHECK(!Chaos_ConsumeStartCameraBlend(&botCamera), "bot cameras do not consume a human restart transition");
+	CTR_TEST_CHECK_EQ(Chaos_StartTimerForDriver(&bot), DOT_LIGHT_TIMER_SHOW_MIN - 1, "bots continue to see the completed global countdown");
+	CTR_TEST_CHECK(bot.speed == 9000 && bot.reserves == 1000, "restart does not stop or drain bots");
+	s_tracker.gameMode1 |= PAUSE_ALL;
+	Tick(960);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.restart[0].timer, DOT_LIGHT_TIMER_HIDE, "pause freezes the local countdown");
+	s_tracker.gameMode1 &= ~PAUSE_ALL;
+	for (int i = 0; i < 4; i++)
+	{
+		Tick(960);
+		Chaos_DrawStartLights(&s_tracker);
+		Chaos_DrawStartLights(&s_tracker);
+	}
+	CTR_TEST_CHECK_EQ(s_startCountdownSounds, 3, "the three red lights sound once each across both viewports");
+	CTR_TEST_CHECK_EQ(s_startGreenSounds, 1, "green sounds once even if the HUD is drawn again");
+	CTR_TEST_CHECK_EQ(s_startLightDraws, 64, "the original four-light display renders independently in both human viewports");
+	CTR_TEST_CHECK_EQ(Chaos_StartTimerForDriver(s_tracker.drivers[0]), 0, "green lets the normal revving update release the kart and grant its earned boost");
+	CTR_TEST_CHECK_EQ(s_tracker.trafficLightsTimer, DOT_LIGHT_TIMER_SHOW_MIN - 1, "local lights never rewind the global race countdown");
+	CTR_TEST_CHECK(!sdata->chaosRuntime.restart[0].floating && s_restartMasks[0].duration == 0, "green ends the suspension and fades its temporary mask");
+	CTR_TEST_CHECK(s_tracker.drivers[0]->angle == 0x500 && s_tracker.drivers[0]->rotCurr.y == 0x500 &&
+	    s_tracker.drivers[1]->angle == 0x500 && s_tracker.drivers[1]->rotCurr.y == 0x500,
+	    "green preserves the held heading instead of returning to the old pre-drift direction");
+	Tick(960);
+	CTR_TEST_CHECK(!sdata->chaosRuntime.restart[0].active && !sdata->chaosRuntime.restart[1].active, "the green-light exit animation ends naturally");
+	Chaos_Activate(CHAOS_EFFECT_FRESH_START, 1000);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.restart[0].timer, DOT_LIGHT_TIMER_HIDE, "repeated activation starts a fresh countdown");
+	s_tracker.cameraDC[0].cameraMode = CAMERA_MODE_FREECAM;
+	CTR_TEST_CHECK(!Chaos_ConsumeStartCameraBlend(&s_tracker.cameraDC[0]), "a non-follow camera is not redirected by the restart blend");
+	s_tracker.cameraDC[0].cameraMode = 0;
+	CTR_TEST_CHECK(Chaos_ConsumeStartCameraBlend(&s_tracker.cameraDC[0]), "repeated activation requests a fresh blend when driver follow resumes");
+	s_tracker.drivers[1]->actionsFlagSet |= ACTION_RACE_FINISHED;
+	Chaos_Activate(CHAOS_EFFECT_FRESH_START, 1000);
+	Tick(1);
+	CTR_TEST_CHECK(sdata->chaosRuntime.restart[0].active && !sdata->chaosRuntime.restart[1].active, "finished humans are excluded from the restarted sequence");
+	s_startLightDraws = 0;
+	Chaos_DrawStartLights(&s_tracker);
+	CTR_TEST_CHECK_EQ(s_startLightDraws, 4, "only the unfinished human viewport receives restart lights");
+	s_tracker.drivers[0]->kartState = KS_MASK_GRABBED;
+	Chaos_Activate(CHAOS_EFFECT_FRESH_START, 1000);
+	Tick(960);
+	CTR_TEST_CHECK(sdata->chaosRuntime.restart[0].pending && !sdata->chaosRuntime.restart[0].active, "an ongoing rescue delays both the hold and its traffic lights");
+	CTR_TEST_CHECK(!Chaos_ConsumeStartCameraBlend(&s_tracker.cameraDC[0]), "pending restart does not disturb the camera during an ongoing rescue");
+	s_tracker.drivers[0]->kartState = KS_ENGINE_REVVING;
+	s_tracker.drivers[0]->KartStates.RevEngine.boolMaskGrab = true;
+	Tick(960);
+	CTR_TEST_CHECK(sdata->chaosRuntime.restart[0].pending, "the descending part of a rescue also finishes before the countdown starts");
+	s_tracker.drivers[0]->kartState = KS_NORMAL;
+	Tick(1);
+	CTR_TEST_CHECK(sdata->chaosRuntime.restart[0].active && sdata->chaosRuntime.restart[0].timer == DOT_LIGHT_TIMER_HIDE, "rescue completion starts a full independent countdown");
+	CTR_TEST_CHECK(Chaos_ConsumeStartCameraBlend(&s_tracker.cameraDC[0]), "the deferred restart blends only after rescue completion");
+	Chaos_Reset();
+	CTR_TEST_CHECK_EQ(Chaos_StartTimerForDriver(s_tracker.drivers[0]), DOT_LIGHT_TIMER_SHOW_MIN - 1, "reset releases local start gating");
+	s_tracker.trafficLightsTimer = DOT_LIGHT_TIMER_HIDE;
+	s_tracker.gameMode1 = ADVENTURE_ARENA;
+	CTR_TEST_CHECK(!Chaos_IsWaitingForStart(s_tracker.drivers[0]), "the adventure hub never waits on a positive global start timer without a local restart");
+	s_tracker.drivers[2] = NULL;
+}
+
 static void TestYouveGotMail(void)
 {
 	CTR_TEST_SECTION("You've Got Mail launches once from the last bot at the leading human");
@@ -2437,6 +2572,7 @@ int main(void)
 	TestClassicGTA();
 	TestArenaChampions();
 	TestYouveGotMail();
+	TestFreshStart();
 	TestAnxiousMask();
 	TestHopInputAndCloudOwnership();
 	TestDriverApplication();

@@ -42,6 +42,50 @@ static int s_juicedSounds;
 static u32 s_engineStarted[4];
 static u32 s_engineStopped[4];
 static int s_engineStarts[4];
+static u8 s_chaosScratchpad[1024];
+u8 *gCTRNativeScratchpadBase = s_chaosScratchpad;
+static struct MaskHeadWeapon s_restartMasks[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
+static int s_restartInitializations;
+static int s_restartFallPoses;
+static int s_startLightDraws;
+static int s_startCountdownSounds;
+static int s_startGreenSounds;
+
+void VehStuckProc_RevEngine_Init(struct Thread *thread, struct Driver *driver)
+{
+	(void)thread;
+	driver->kartState = KS_ENGINE_REVVING;
+	driver->KartStates.RevEngine.boolMaskGrab = false;
+	s_restartInitializations++;
+}
+
+struct MaskHeadWeapon *VehPickupItem_MaskCreateRescue(struct Driver *driver)
+{
+	return &s_restartMasks[driver->driverID];
+}
+
+void VehStuckProc_MaskGrab_SetFallPose(struct Driver *driver)
+{
+	(void)driver;
+	s_restartFallPoses++;
+}
+
+u32 VehFrameInst_GetNumAnimFrames(struct Instance *instance, int animation)
+{
+	(void)instance; (void)animation;
+	return 41;
+}
+
+int VehFrameInst_GetStartFrame(int animation, int frames)
+{
+	return animation == 0 ? frames / 2 : 0;
+}
+
+void DecalHUD_DrawPolyFT4(struct Icon *icon, s32 x, s32 y, struct PrimMem *memory, u32 *ot, u8 color, s16 scale)
+{
+	(void)icon; (void)x; (void)y; (void)memory; (void)ot; (void)color; (void)scale;
+	s_startLightDraws++;
+}
 
 b32 EngineAudio_InitOnce(u32 soundID, u32 flags)
 {
@@ -120,6 +164,7 @@ void VehPickupItem_ShootWarpball(struct Driver *driver, struct Driver *target)
 // VehPickupItem.c precedes Chaos in the game unity build.
 enum { SOUND_CLOCK = 0x44 };
 
+#include <game/DotLights.c>
 #include <game/Vehicle/VehPhysCrash.c>
 #include <game/Vehicle/VehBirth_Consts.c>
 #include <game/Vehicle/VehPhysForce.c>
@@ -291,6 +336,12 @@ s32 doCOP2(s32 op)
 }
 int OtherFX_Play(u32 soundID, int flags)
 {
+	if (soundID == DOT_LIGHT_FX_COUNTDOWN || soundID == DOT_LIGHT_FX_GREEN)
+	{
+		s_startCountdownSounds += soundID == DOT_LIGHT_FX_COUNTDOWN;
+		s_startGreenSounds += soundID == DOT_LIGHT_FX_GREEN;
+		return 0;
+	}
 	if (soundID == 0x5e || soundID == 0x41)
 	{
 		CTR_TEST_CHECK_EQ(flags, soundID == 0x41, "item acquisition retains the normal Wumpa-dependent sound flags");

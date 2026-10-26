@@ -91,7 +91,6 @@ u32 *DISPLAY_Blur_SubFunc(u32 *prim, struct DisplayBlurTile *tile);
 void DISPLAY_Blur_Main(struct PushBuffer *pb, int strength);
 void DISPLAY_Swap(void);
 
-void DotLights_Video(struct GameTracker *gGT, s32 red1, s32 red2, s32 red3, s32 green, s32 posY);
 
 void DropRain_MakeSound(struct GameTracker *gGT);
 void DropRain_Reset(struct GameTracker *gGT);
@@ -730,6 +729,7 @@ void VehEmitter_DriverMain(struct Thread *thread, struct Driver *driver);
 int VehFrameInst_GetStartFrame(int animIndex, int numFrames);
 u32 VehFrameInst_GetNumAnimFrames(struct Instance *inst, int animIndex);
 struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, b32 boolPlaySound);
+struct MaskHeadWeapon *VehPickupItem_MaskCreateRescue(struct Driver *driver);
 
 void VehPhysGeneral_PhysAngular(struct Thread *t, struct Driver *d);
 
@@ -751,6 +751,7 @@ void VehStuckProc_MaskGrab_FindDestPos(struct Driver *d, struct QuadBlock *quad)
 void VehStuckProc_MaskGrab_Update(struct Thread *t, struct Driver *d);
 void VehStuckProc_MaskGrab_PhysLinear(struct Thread *t, struct Driver *d);
 void VehStuckProc_MaskGrab_Animate(struct Thread *t, struct Driver *d);
+void VehStuckProc_MaskGrab_SetFallPose(struct Driver *driver);
 void VehStuckProc_MaskGrab_Init(struct Thread *t, struct Driver *d);
 
 void VehPhysProc_PowerSlide_PhysAngular(struct Thread *t, struct Driver *d);
@@ -1323,6 +1324,11 @@ int Chaos_AccelerationForDriver(const struct Driver *driver, int acceleration);
 int Chaos_ReservesForDriver(const struct Driver *driver, int reserves);
 int Chaos_FireLevelForDriver(const struct Driver *driver, int fireLevel);
 int Chaos_EngineClassForDriver(const struct Driver *driver, int engineClass);
+int Chaos_StartTimerForDriver(const struct Driver *driver);
+bool Chaos_IsWaitingForStart(const struct Driver *driver);
+bool Chaos_ConsumeStartCameraBlend(struct CameraDC *camera);
+void Chaos_ApplyStartPose(struct Driver *driver);
+void Chaos_DrawStartLights(struct GameTracker *gGT);
 bool Chaos_ApplyCameraRules(struct CameraDC *camera);
 void Chaos_ApplyLevelVisibilityRules(const struct PushBuffer *pushBuffer, struct VisMem *visibility,
                                    const struct mesh_info *mesh, int playerIndex);
@@ -1362,6 +1368,8 @@ void CAM_ThTick(struct Thread *t);
 void FLARE_ThTick(struct Thread *th);
 void FLARE_Init(s16 *pos);
 void DotLights_AudioAndVideo(struct GameTracker *gGT);
+void DotLights_Sequence(struct GameTracker *gGT, s32 timer, s32 previous, u32 players);
+bool DotLights_GetBounds(struct GameTracker *gGT, int player, s32 timer, RECT *bounds);
 void LOAD_HubCallback(struct LoadQueueSlot *lqs);
 void LOAD_Callback_MaskHints3D(struct LoadQueueSlot *lqs);
 void LOAD_CDRequestCallback(struct LoadQueueSlot *lqs);

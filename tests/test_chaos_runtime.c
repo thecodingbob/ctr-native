@@ -832,6 +832,40 @@ static void TestNotificationRows(void)
 	DrawNotice();
 	CTR_TEST_CHECK(memcmp(&beforeDraw, &sdata->chaosRuntime, sizeof(beforeDraw)) == 0,
 	               "table layout and drawing do not advance independent notice timers");
+
+	struct Icon lightIcon = {0};
+	lightIcon.texLayout.u1 = 24;
+	lightIcon.texLayout.v2 = 24;
+	s_tracker.trafficLightIcon[0] = &lightIcon;
+	const int lightTimers[] = {2880, 960, 0, -480};
+	for (int players = 1; players <= 2; players++)
+	{
+		s_tracker.numPlyrCurrGame = players;
+		for (int player = 0; player < players; player++)
+		{
+			s_tracker.pushBuffer[player].rect = (RECT){0, player * SCREEN_HEIGHT / players, SCREEN_WIDTH, SCREEN_HEIGHT / players};
+		}
+		for (int timer = 0; timer < (int)len(lightTimers); timer++)
+		{
+			for (int player = 0; player < players; player++)
+			{
+				sdata->chaosRuntime.restart[player] = (struct ChaosRestart){.active = true, .timer = lightTimers[timer]};
+			}
+			DrawNotice();
+			for (int player = 0; player < players; player++)
+			{
+				RECT lights;
+				CTR_TEST_CHECK(DotLights_GetBounds(&s_tracker, player, lightTimers[timer], &lights), "visible lights publish their actual viewport bounds");
+				for (int row = 0; row < s_noticeDraws; row++)
+				{
+					const int height = s_drawScale[row] == UI_CHAOS_LIST_SCALE ? UI_CHAOS_LIST_ROW_HEIGHT :
+					    (s_drawFont[row] == FONT_BIG ? UI_CHAOS_BANNER_ROW_HEIGHT : UI_CHAOS_COMPACT_BANNER_ROW_HEIGHT);
+					CTR_TEST_CHECK(s_drawY[row] + height <= lights.y || s_drawY[row] >= lights.y + lights.h,
+					    "banners and docked rows avoid each viewport's traffic lights through red, green and exit");
+				}
+			}
+		}
+	}
 }
 
 static void TestExternalCommands(void)

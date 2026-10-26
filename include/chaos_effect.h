@@ -55,6 +55,7 @@ typedef enum {
 	CHAOS_EFFECT_CLASSIC_GTA = 29,
 	CHAOS_EFFECT_ARENA_CHAMPIONS = 30,
 	CHAOS_EFFECT_YOUVE_GOT_MAIL = 31,
+	CHAOS_EFFECT_FRESH_START = 32,
 
 	// IDs are saved bit positions: append new IDs, never renumber or reuse one.
 	// Growth within the saved bitset capacity does not change its layout.
@@ -110,6 +111,7 @@ static const ChaosEffectDef g_chaosEffectDefs[CHAOS_EFFECT_COUNT] =
 	[CHAOS_EFFECT_CLASSIC_GTA] = { "classic-gta", "Classic GTA", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_ARENA_CHAMPIONS] = { "arena-champions", "Arena Champions", CHAOS_SCOPE_BOTS },
 	[CHAOS_EFFECT_YOUVE_GOT_MAIL] = { "youve-got-mail", "You've Got Mail", CHAOS_SCOPE_BOTS },
+	[CHAOS_EFFECT_FRESH_START] = { "fresh-start", "Fresh Start", CHAOS_SCOPE_HUMANS },
 };
 
 static inline bool ChaosEffect_IsInstant(ChaosEffectId id)
@@ -117,7 +119,8 @@ static inline bool ChaosEffect_IsInstant(ChaosEffectId id)
 	return id == CHAOS_EFFECT_USE_THIS || id == CHAOS_EFFECT_JUICED_UP ||
 	       id == CHAOS_EFFECT_IT_IS_I || id == CHAOS_EFFECT_PROVIDENCE ||
 	       id == CHAOS_EFFECT_RESERVE_INJECTION || id == CHAOS_EFFECT_MY_PLANET_NEEDS_ME ||
-	       id == CHAOS_EFFECT_TRY_SOMETHING_NEW || id == CHAOS_EFFECT_YOUVE_GOT_MAIL;
+	       id == CHAOS_EFFECT_TRY_SOMETHING_NEW || id == CHAOS_EFFECT_YOUVE_GOT_MAIL ||
+	       id == CHAOS_EFFECT_FRESH_START;
 }
 
 static inline const ChaosEffectDef *ChaosEffect_Def(ChaosEffectId id)

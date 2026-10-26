@@ -78,6 +78,10 @@ void Chaos_Reset(void)
 			struct Driver *driver = sdata->gGT->drivers[i];
 			if (driver != NULL)
 			{
+				if (i < (int)len(sdata->chaosRuntime.restart))
+				{
+					Chaos_EndRestartHold(&sdata->chaosRuntime.restart[i], driver);
+				}
 				Chaos_SetKartScale(CHAOS_KART_SCALE_NORMAL, driver);
 				if (i < (int)len(sdata->chaosRuntime.engineClassChanged) && sdata->chaosRuntime.engineClassChanged[i])
 				{
@@ -176,6 +180,12 @@ static void Chaos_RemoveReplacedEffects(ChaosEffectId effect)
 	}
 }
 
+static bool Chaos_IsBeingRescued(const struct Driver *driver)
+{
+	return driver->kartState == KS_MASK_GRABBED ||
+	    (driver->kartState == KS_ENGINE_REVVING && driver->KartStates.RevEngine.boolMaskGrab);
+}
+
 static void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation)
 {
 	const ChaosEffectId effect = chaosActivation->effect;
@@ -219,6 +229,18 @@ static void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation)
 				case CHAOS_EFFECT_THIS_IS_FIRE:
 					Chaos_UpgradeTurbo(driver);
 					break;
+				case CHAOS_EFFECT_FRESH_START:
+				{
+					struct ChaosRestart *restart = &sdata->chaosRuntime.restart[driver->driverID];
+					Chaos_EndRestartHold(restart, driver);
+					restart->active = false;
+					restart->pending = true;
+					if (!Chaos_IsBeingRescued(driver))
+					{
+						Chaos_RestartDriver(driver, restart);
+					}
+					break;
+				}
 				case CHAOS_EFFECT_MY_PLANET_NEEDS_ME:
 					Chaos_LaunchDriver(driver);
 					break;
@@ -735,6 +757,72 @@ static void Chaos_TickActivations(s32 elapsedMS)
 	}
 }
 
+int Chaos_StartTimerForDriver(const struct Driver *driver)
+{
+	const struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	if (driver->driverID < (int)len(runtime->restart) && runtime->restart[driver->driverID].active)
+	{
+		return runtime->restart[driver->driverID].timer;
+	}
+	return GAME_TRACKER->trafficLightsTimer;
+}
+
+bool Chaos_IsWaitingForStart(const struct Driver *driver)
+{
+	return driver->driverID < (int)len(sdata->chaosRuntime.restart) &&
+	    sdata->chaosRuntime.restart[driver->driverID].active &&
+	    sdata->chaosRuntime.restart[driver->driverID].timer > 0;
+}
+
+bool Chaos_ConsumeStartCameraBlend(struct CameraDC *camera)
+{
+	const struct Driver *driver = camera->driverToFollow;
+	if (driver == NULL || camera->cameraMode != 0 ||
+	    (camera->flags & CAMERA_FLAG_ARCADE_END_OF_RACE_REQUESTED) || !Chaos_IsWaitingForStart(driver))
+	{
+		return false;
+	}
+	struct ChaosRestart *restart = &sdata->chaosRuntime.restart[driver->driverID];
+	const bool pending = restart->cameraBlendPending;
+	restart->cameraBlendPending = false;
+	return pending;
+}
+
+void Chaos_ApplyStartPose(struct Driver *driver)
+{
+	if (Chaos_IsWaitingForStart(driver) && sdata->chaosRuntime.restart[driver->driverID].floating)
+	{
+		VehStuckProc_MaskGrab_SetFallPose(driver);
+	}
+}
+
+static void Chaos_UpdateRestarts(s32 elapsedMS)
+{
+	for (int i = 0; i < (int)len(sdata->chaosRuntime.restart); i++)
+	{
+		struct ChaosRestart *restart = &sdata->chaosRuntime.restart[i];
+		struct Driver *driver = sdata->gGT->drivers[i];
+		if (driver == NULL)
+		{
+			continue;
+		}
+		if ((driver->actionsFlagSet & ACTION_RACE_FINISHED) && restart->pending)
+		{
+			restart->pending = false;
+		}
+		if (restart->pending && !Chaos_IsBeingRescued(driver))
+		{
+			Chaos_RestartDriver(driver, restart);
+			continue;
+		}
+		if (!restart->active)
+		{
+			continue;
+		}
+		Chaos_TickRestart(restart, driver, elapsedMS);
+	}
+}
+
 void Chaos_Update(struct GameTracker *gGT)
 {
 	if (!Chaos_IsRunning(gGT) || gGT->elapsedTimeMS <= 0)
@@ -744,6 +832,7 @@ void Chaos_Update(struct GameTracker *gGT)
 	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
 	const struct ChaosSettings *settings = &sdata->chaosSettings;
 	Chaos_TickActivations(gGT->elapsedTimeMS);
+	Chaos_UpdateRestarts(gGT->elapsedTimeMS);
 	Chaos_UpdateControlAxes();
 	if (settings->trigger == CHAOS_TRIGGER_EXTERNAL)
 	{

@@ -1536,7 +1536,11 @@ void VehPhysProc_Driving_Update(struct Thread *t, struct Driver *d)
 
 void VehPhysProc_Driving_Init(struct Thread *t, struct Driver *d)
 {
-	(void)t;
+	if (Chaos_IsWaitingForStart(d))
+	{
+		VehStuckProc_RevEngine_Init(t, d);
+		return;
+	}
 
 	if (((u32)(GAME_TRACKER->levelID - GEM_STONE_VALLEY) >= 5) || LOAD_IsOpen_AdvHub())
 	{

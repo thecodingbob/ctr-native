@@ -319,6 +319,49 @@ The 16-bit speed/reporting mirrors saturate rather than wrapping; navigation and
 offsets retain normal behavior. There is no saved baseline or teardown mutation.
 Event filtering is static and never inspects whether any bot is still racing.
 
+You've Got Mail (ID 31, `youve-got-mail`) is an instant bot-scoped action.
+The last unfinished bot launches one normal orb at the highest-placed unfinished
+human through the shared item dispatcher, preserving inventory. The fixed-target
+tracker flag bypasses rank-based retargeting and the incidental-leader teardown;
+source Wumpas do not power it up. A finished target fades the orb. Orb teardown
+and inventory removal share ownership refresh across held and deployed orbs.
+
+Fresh Start (ID 32, `fresh-start`) is an instant human-scoped action. Karts stop
+at their current position before entering `VehStuckProc_RevEngine_Init`.
+Airborne karts retain their height, use the rescue falling pose and receive a
+separate visual rescue mask, released at green/reset without renewing existing
+mask power-ups. Other karts immediately return to a neutral steering/animation
+pose. The physical heading is aligned with the retained visual yaw, with drift,
+camera-lag and wobble offsets cleared, preventing a heading snap when physics
+resumes. Motion, pending jump and current fire are cleared; the explicit reserve
+reset bypasses reserve protection. Inventory and race progress are preserved.
+`ChaosRuntime` owns per-human pending/active state, countdown, previous rendered
+timer and temporary mask. Existing rescues, including mask descent, finish before
+their local countdown begins; other humans need not wait. The revving
+update reads `Chaos_StartTimerForDriver`; normal driving re-entry also waits
+until green, including after damage. Other drivers read the global timer.
+Driving re-entry only checks the local waiting state, never the global start
+timer; loading an adventure hub cannot introduce a false start-line wait.
+`DotLights_Sequence` shares the original light transitions, positioning and audio
+without mutating the global countdown or its previous-frame value. Pause freezes
+the local timer, repeated activation restarts it, and reset clears local gating.
+Retail revving controls the boost award; the requested Chaos duration does not
+change the countdown length and no timed slot is occupied. `DotLights_GetBounds`
+exposes the animated viewport bounds to the notification table, which reserves
+them alongside Final Lap and keeps banners, compact fallback rows and docked
+effects clear of the lights.
+Rendering also consumes these same bounds, so scale and entrance/exit positioning
+have one implementation. Countdown limits come from DotLights directly, and the
+fall pose is shared with retail rescue through `VehStuckProc_MaskGrab_SetFallPose`.
+Restart ticking and light drawing live in `RB_ChaosEffects.c`; `RB_Chaos.c`
+selects drivers and dispatches pending starts and active updates.
+Each actual restart also requests a one-shot camera blend. The normal follow
+camera consumes it through `Chaos_ConsumeStartCameraBlend` and reuses its retail
+eight-frame damage-recovery interpolation for both eye position and look-at
+target. This absorbs the neutral-pose heading change without snapping on the
+first frame. Deferred rescues request the blend only when the countdown starts;
+freecam and end-of-race cameras do not consume it.
+
 ## HUD and audio
 
 Each successful activation plays the preloaded double-gain transition swish and

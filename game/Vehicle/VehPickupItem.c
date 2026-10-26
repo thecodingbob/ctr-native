@@ -181,7 +181,7 @@ b32 VehPickupItem_ApplyMaskMode(struct Driver *driver)
 
 // NOTE(aalhendi): ASM-verified NTSC-U 926 0x80064c38-0x80064f94.
 // boolPlaySound only gates sound when refreshing an existing mask object.
-struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, b32 boolPlaySound)
+static struct MaskHeadWeapon *VehPickupItem_MaskCreateOrRenew(struct Driver *driver, b32 boolPlaySound, bool renew)
 {
 	struct Thread *currThread;
 	struct MaskHeadWeapon *maskObj;
@@ -214,7 +214,7 @@ struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, b32 bo
     s32 desiredModelID = STATIC_UKAUKA - maskIsAku;
 
 	// check for existing mask
-	for (currThread = parentThread->childThread; currThread != 0; currThread = currThread->siblingThread)
+	for (currThread = renew ? parentThread->childThread : NULL; currThread != 0; currThread = currThread->siblingThread)
 	{
 		// if thread->modelIndex is NOT Aku or Uka
 		if ((u32)((u16)currThread->modelIndex - STATIC_AKUAKU) >= MASK_MODEL_COUNT)
@@ -356,6 +356,16 @@ struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, b32 bo
 	driver->maskIsAku = -1;
 
 	return maskObj;
+}
+
+struct MaskHeadWeapon *VehPickupItem_MaskUseWeapon(struct Driver *driver, b32 playSound)
+{
+	return VehPickupItem_MaskCreateOrRenew(driver, playSound, true);
+}
+
+struct MaskHeadWeapon *VehPickupItem_MaskCreateRescue(struct Driver *driver)
+{
+	return VehPickupItem_MaskCreateOrRenew(driver, false, false);
 }
 
 struct Driver *VehPickupItem_MissileGetTargetDriver(struct Driver *driver)

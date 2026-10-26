@@ -467,6 +467,14 @@ void VehStuckProc_MaskGrab_PhysLinear(struct Thread *t, struct Driver *d)
 }
 
 
+void VehStuckProc_MaskGrab_SetFallPose(struct Driver *driver)
+{
+	driver->matrixArray = BAKED_GTE_MATRIX_CRASH_FALL;
+	driver->matrixIndex = VEH_STUCK_MASK_GRAB_CRASH_FREEZE_FRAME;
+	driver->instSelf->animIndex = VEH_STUCK_MASK_GRAB_CRASH_ANIM_INDEX;
+	driver->instSelf->animFrame = VEH_STUCK_MASK_GRAB_CRASH_FREEZE_FRAME;
+}
+
 void VehStuckProc_MaskGrab_Animate(struct Thread *t, struct Driver *d)
 {
 	struct Instance *inst = t->inst;
@@ -527,10 +535,7 @@ void VehStuckProc_MaskGrab_Animate(struct Thread *t, struct Driver *d)
 		}
 		else
 		{
-			d->matrixArray = BAKED_GTE_MATRIX_CRASH_FALL;
-			d->matrixIndex = VEH_STUCK_MASK_GRAB_CRASH_FREEZE_FRAME;
-			inst->animIndex = VEH_STUCK_MASK_GRAB_CRASH_ANIM_INDEX;
-			inst->animFrame = VEH_STUCK_MASK_GRAB_CRASH_FREEZE_FRAME;
+			VehStuckProc_MaskGrab_SetFallPose(d);
 
 			if (VEH_STUCK_MASK_GRAB_SQUISH_DECREASE_LIMIT <= d->NoInputTimer)
 			{
@@ -955,7 +960,7 @@ void VehStuckProc_RevEngine_Update(struct Thread *t, struct Driver *d)
 		}
 	}
 	// If this is the start of a race, wait for the traffic lights.
-	else if (0 < GAME_TRACKER->trafficLightsTimer)
+	else if (0 < Chaos_StartTimerForDriver(d))
 	{
 		return;
 	}
@@ -1272,6 +1277,7 @@ revEngineStateReady:
 	inst->scale.x = (s16)VehPhysForce_ScaleValue(d, d->jumpSquishStretch * VEH_STUCK_REV_MODEL_WIDTH_SQUISH_NUMERATOR / VEH_STUCK_REV_MODEL_WIDTH_SQUISH_DENOMINATOR +
 	                      VEH_STUCK_REV_MODEL_BASE_SCALE);
 	inst->scale.z = inst->scale.x;
+	Chaos_ApplyStartPose(d);
 }
 
 
@@ -1290,7 +1296,8 @@ void VehStuckProc_RevEngine_Init(struct Thread *t, struct Driver *d)
 	d->KartStates.RevEngine.maskObj = NULL;
 
 	// if this is a mask grab
-	if (CTR_MipsAddLo(d->quadBlockHeight, VEH_STUCK_REV_MASK_GRAB_HEIGHT_TRIGGER) < d->posCurr.y)
+	if (CTR_MipsAddLo(d->quadBlockHeight, VEH_STUCK_REV_MASK_GRAB_HEIGHT_TRIGGER) < d->posCurr.y &&
+	    !Chaos_IsWaitingForStart(d))
 	{
 		// assume reason for revving is: mask grab
 		d->KartStates.RevEngine.boolMaskGrab = true;

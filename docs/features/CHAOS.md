@@ -113,6 +113,8 @@ enabled in the file. Setup and a manual submission example are in the
 | **Small Kart Energy** | Halve kart dimensions and collision size; reduce forward speed and jump force to 70%. Larger karts can squash you, subject to normal mask, shield and immunity protections.       |
 | **Classic GTA** | Use a vertical top-down camera that turns with your kart. Nearby overhead scenery is cut away to reveal the road, including in tunnels. Each human viewport follows its own kart. |
 | **Arena Champions** | Double bot driving speed and acceleration, retaining normal rubber-banding. Human karts are unaffected. Excluded from relic and crystal events.                                    |
+| **You've Got Mail** | The last-place unfinished bot launches a normal orb at the leading unfinished human. Its target stays fixed, and the bot keeps its inventory. Available in events with bot racing. |
+| **Fresh Start** | Stop humans, clear reserves and replay the starting lights with starting boost available. Airborne karts are held aloft in the rescue falling pose by an orbiting mask; other karts return to neutral. An ongoing rescue finishes before the lights start. Bots keep racing. |
 
 Effects can overlap: Duration does not delay the next trigger. For example,
 Duration 30 seconds with Interval 10 seconds allows several effects at once.
@@ -127,8 +129,9 @@ Duration 30 seconds with Interval 10 seconds allows several effects at once.
   **No Hopping / Hydraulics**, and **Giant Karts / Small Kart Energy**.
 - **Use This!** ends **No Items**; **Reserve Injection** ends **No Reserves**.
 - **My Planet Needs Me** ends **No Hopping** and **Hydraulics** before launching.
-- The seven instant effects (**Use This!**, **Juiced Up**, **It is I**,
-  **Providence**, **Reserve Injection**, **My Planet Needs Me**, **Try Something New**) take no timed slot.
+- The nine instant effects (**Use This!**, **Juiced Up**, **It is I**,
+  **Providence**, **Reserve Injection**, **My Planet Needs Me**, **Try Something New**,
+  **You've Got Mail**, **Fresh Start**) take no timed slot.
   Repeating one applies it again.
 
 ## During a race

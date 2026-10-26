@@ -3,7 +3,7 @@
 Source: [issue #90](https://github.com/thecodingbob/ctr-native/issues/90).
 Status: block A implemented with focused test coverage. Later technical checks
 remain marked with placeholders; in-game visual validation is pending.
-Current effect: Arena Champions (block C), implemented for review; in-game validation pending.
+Current effect: Fresh Start (block C), implemented for review; in-game validation pending.
 
 Existing contracts: [implementation guide](CHAOS_IMPLEMENTATION.md).
 Existing gameplay: [player guide](features/CHAOS.md).
@@ -71,14 +71,14 @@ input; class restoration after character changes].
 | Classic GTA       | Temporary vertical top-down camera per human viewport, oriented with the kart. Keep this view in tunnels and hide obstructing geometry.                                                                         | Height/transition to be tuned in game; verify occlusion handling. |
 | Arena Champions   | Double bot speed and acceleration (2×); retain normal rubber-banding.                                                                                                                                           | Decided.                                                          |
 | You've Got Mail   | Launch a normal orb from the last-place bot at the highest-placed human, fixed at launch and independent of bot Wumpas, without consuming inventory. Must work even when the source bot is ahead of the target. | Decided.                                                          |
-| Wait For It       | Immediately bring the kart to the ground, stop it, clear reserves, and replay the normal starting lights with starting boost available. Bots keep racing.                                                       | Decided.                                                          |
+| Fresh Start       | Stop humans, clear reserves, and replay the starting lights with starting boost. Airborne karts stay suspended in the rescue falling pose with an orbiting mask; other karts return to neutral. Wait for an ongoing rescue to finish before starting that human's lights. Bots keep racing. | Decided. |
 | Senile Mask       | For the Chaos duration, show the flashing wrong-way prompt while humans drive in the correct direction. Play the wrong-way voice twice as often and at double its normal volume.                                | Decided.                                                          |
 
 Dependencies:
 
 - Small Kart Energy requires fractional scaling; it replaces Giant Karts and vice versa.
 - You've Got Mail needs explicit human targeting in `game/231/RB_Warpball.c`.
-- Wait For It needs a local sequence independent of the global starting timer.
+- Fresh Start needs a local sequence independent of the global starting timer.
 - Senile Mask needs a wrong-way presentation override without changing actual
   race progression, plus voice cadence and volume overrides.
 
@@ -347,13 +347,73 @@ No conflicts with human Super Speed. Catalogue publication, selection and reques
 validation exclude bot-only effects by event type (relic, crystal, time trial,
 battle), reusing `RACE_FIELD_NO_BOT_MODES` rather than duplicating race setup's
 mode list. No check of bot presence or finish state is made for availability;
-normal races can activate the effect with no applicable bots. Review before You've Got Mail;
+normal races can activate the effect with no applicable bots. Reviewed; proceeded to You've Got Mail.
 in-game checks should cover 1P/2P, bosses/cups, corners and jumps, boost/damage,
 expiry and human Super Speed coexistence. Game compilation and linking pass.
 Validation: all six focused suites passed; runtime/effects were rerun after
 retaining normal rubber-banding (549 and 3,005 checks, zero failures). Coverage includes event-type
 filtering and activation without live bot targets. The extra ACTION_BOT target
 check was removed in favor of the existing driver-slot convention.
+
+You've Got Mail: implemented as instant effect ID 31 (`youve-got-mail`), using
+the same event-type eligibility as Arena Champions. One activation selects the
+last unfinished bot and highest-ranked unfinished human, then launches through
+the ordinary item dispatcher without touching inventory. The orb is normal
+regardless of source Wumpas and keeps its launch target even if ranks change or
+the source is ahead. A finished target ends the orb. Shared orb ownership now
+preserves other held/deployed orbs during teardown. User confirmed in-game
+behavior and approved proceeding to Fresh Start. The focused warpball suite passes.
+
+Fresh Start: instant effect ID 32 (`fresh-start`). Humans stop at their current
+position and enter retail engine revving. Airborne karts retain their height and
+show the rescue falling pose with a separate orbiting mask until green; existing
+power-up masks are not renewed or consumed. Other karts reset steering, spin and
+animation to neutral. Physical, visual and camera heading are synchronized at
+entry so releasing the hold does not snap back to the old drift direction.
+An ongoing rescue, including its final descent, completes before that human's
+full countdown starts. The
+explicit one-off clear removes reserves even during Too Boosted To Fail; it
+does not remove that ongoing effect or alter inventory/lap progress. The local
+four-second retail countdown and green-light exit use the original lights,
+sounds, rev meter, over-rev rules and starting boost. Per-human countdown and
+mask state live in ChaosRuntime, so pause freezes them and checkpoints preserve them.
+The global start timer is never changed; bots continue racing. Damage uses its
+normal state, and returning to driving before green re-enters engine revving.
+Repeated activation restarts the sequence; reset releases suspended karts and
+their temporary masks. The driving re-entry gate only checks local restart state,
+so an unrelated positive global timer cannot freeze entry into an adventure hub.
+The notification table reserves traffic-light bounds alongside Final Lap rows,
+including compact banners and docked effects, in each affected viewport.
+Review before Senile Mask. In-game checks: airborne suspension and mask visuals,
+starting-boost charge and over-rev, damage during countdown, repeated activation,
+1P/2P lights/audio, pause/reset and unchanged bot motion/race timing.
+Validation: game compilation/linking and all seven focused suites pass
+(`test_chaos_effect`, runtime, effects, save, setup, vehicle spawn and warpball).
+Runtime/effects report 591 / 3,057 checks with zero failures. Asset-free checks
+cover suspension and stopped motion, neutral pose/heading, delayed rescue completion,
+adventure-hub timer isolation, notification/light separation, inventory preservation, reserve-protection
+interaction, bot/global-timer isolation, pause, red/green audio, viewport masks,
+repeat activation and reset. Retail boost timing and damage recovery still need
+the in-game checks above.
+
+Review simplification: countdown setup/expiry now use the existing DotLights
+thresholds instead of Chaos aliases. Rendering and HUD reservation share the
+same animated light bounds. The suspended pose reuses the retail rescue pose
+operation and its existing constants. Synchronized-light grouping updates its
+previous timers in one pass; the single-consumer floating predicate was inlined.
+Game compilation/linking and runtime/effects/warpball suites pass after this review.
+
+Camera review: actual countdown entry now requests a one-shot blend in the normal
+follow camera. It reuses the existing eight-frame recovery interpolation of eye
+and look-at positions to soften the abrupt target change from clearing drift and
+neutralizing the kart. Rescue deferral and repeated activation retain independent
+per-human requests; freecam/end-of-race cameras are excluded. Compilation/linking
+and runtime/effects suites pass (591 / 3,066 checks). Visual smoothness still needs
+confirmation in game, especially when activating while drifting or airborne.
+
+Code ownership review: moved `Chaos_DrawStartLights` and per-driver restart
+ticking into `RB_ChaosEffects.c`. Driver selection, rescue deferral, activation
+and hook dispatch remain in `RB_Chaos.c`; behavior is unchanged.
 
 Block A: focused runtime tests cover full timed capacity, instant notices without
 docking, repeat rewards, notice overflow, pause/reset/resident restore, inventory

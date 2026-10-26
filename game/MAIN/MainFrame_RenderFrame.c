@@ -168,6 +168,7 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 		    ((gGT->gameMode1 & (GAME_CUTSCENE | ADVENTURE_ARENA | MAIN_MENU)) == 0) && dotLightsLoadReady)
 		{
 			DotLights_AudioAndVideo(gGT);
+			Chaos_DrawStartLights(gGT);
 		}
 
 		if ((gGT->renderFlags & RENDER_FLAG_SPLIT_SCREEN_LINES) != 0)

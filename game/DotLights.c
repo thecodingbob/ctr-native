@@ -29,7 +29,16 @@ enum
 };
 
 
-void DotLights_Video(struct GameTracker *gGT, s32 red1, s32 red2, s32 red3, s32 green, s32 posY)
+static int DotLights_Scale(const struct GameTracker *gGT)
+{
+	if (gGT->numPlyrCurrGame == 1)
+	{
+		return DOT_LIGHT_SCALE_1P;
+	}
+	return gGT->numPlyrCurrGame == 2 ? DOT_LIGHT_SCALE_2P : DOT_LIGHT_SCALE_3P4P;
+}
+
+static void DotLights_Video(struct GameTracker *gGT, s32 red1, s32 red2, s32 red3, s32 green, s32 timer, u32 players)
 {
 	if (gGT->numPlyrCurrGame == 0)
 	{
@@ -42,25 +51,23 @@ void DotLights_Video(struct GameTracker *gGT, s32 red1, s32 red2, s32 red3, s32 
 	iconState[2] = red3;
 	iconState[DOT_LIGHT_GREEN_INDEX] = green;
 
+	const int scale = DotLights_Scale(gGT);
 	for (s32 playerIndex = 0; playerIndex < gGT->numPlyrCurrGame; playerIndex++)
 	{
+		if ((players & (1u << playerIndex)) == 0)
+		{
+			continue;
+		}
 		struct PushBuffer *pb = &gGT->pushBuffer[playerIndex];
 
-		s32 scale = DOT_LIGHT_SCALE_3P4P;
-		if (gGT->numPlyrCurrGame == 1)
+		RECT bounds;
+		if (!DotLights_GetBounds(gGT, playerIndex, timer, &bounds))
 		{
-			scale = DOT_LIGHT_SCALE_1P;
+			continue;
 		}
-		else if (gGT->numPlyrCurrGame == 2)
-		{
-			scale = DOT_LIGHT_SCALE_2P;
-		}
-
-		struct Icon *icon = gGT->trafficLightIcon[0];
-		s32 sizeX = FP_Mult(icon->texLayout.u1 - icon->texLayout.u0, scale);
-
-		s32 newPosX = (pb->rect.w - (sizeX * DOT_LIGHT_COUNT)) / 2;
-		s32 newPosY = FP_Mult(pb->rect.h / 3, posY) - FP_Mult(icon->texLayout.v2 - icon->texLayout.v0, scale);
+		const int sizeX = bounds.w / DOT_LIGHT_COUNT;
+		const int newPosX = bounds.x - pb->rect.x;
+		const int newPosY = bounds.y - pb->rect.y;
 
 		for (s32 lightIndex = 0; lightIndex < DOT_LIGHT_COUNT; lightIndex++)
 		{
@@ -77,20 +84,43 @@ static s32 DotLights_TweenPos(s32 value)
 	return ((quotient + value) >> DOT_LIGHT_TWEEN_SHIFT) - (value >> 0x1f);
 }
 
-void DotLights_AudioAndVideo(struct GameTracker *gGT)
+bool DotLights_GetBounds(struct GameTracker *gGT, int player, s32 timer, RECT *bounds)
 {
-	s32 timer = gGT->trafficLightsTimer;
+	if (timer < DOT_LIGHT_TIMER_SHOW_MIN)
+	{
+		return false;
+	}
+	const struct PushBuffer *pb = &gGT->pushBuffer[player];
+	const struct Icon *icon = gGT->trafficLightIcon[0];
+	const int scale = DotLights_Scale(gGT);
+	int posY = FP(1.0);
+	if (timer <= DOT_LIGHT_TIMER_GREEN)
+	{
+		posY = DotLights_TweenPos((timer + DOT_LIGHT_TIMER_RED3) * FP(1.0));
+	}
+	else if (timer > DOT_LIGHT_TIMER_RED1)
+	{
+		posY = DotLights_TweenPos((DOT_LIGHT_TIMER_HIDE - timer) * FP(1.0));
+	}
+	bounds->w = FP_Mult(icon->texLayout.u1 - icon->texLayout.u0, scale) * DOT_LIGHT_COUNT;
+	bounds->h = FP_Mult(icon->texLayout.v2 - icon->texLayout.v0, scale);
+	bounds->x = pb->rect.x + (pb->rect.w - bounds->w) / 2;
+	bounds->y = pb->rect.y + FP_Mult(pb->rect.h / 3, posY) - bounds->h;
+	return bounds->h > 0;
+}
+
+void DotLights_Sequence(struct GameTracker *gGT, s32 timer, s32 previous, u32 players)
+{
 	s32 red1;
 	s32 red2;
 	s32 red3;
 	s32 green;
-	s32 posY;
 
 	if (timer >= DOT_LIGHT_TIMER_SHOW_MIN)
 	{
 		if (timer < DOT_LIGHT_TIMER_GREEN + 1)
 		{
-			if (sdata->trafficLightsTimer_prevFrame > DOT_LIGHT_TIMER_GREEN)
+			if (previous > DOT_LIGHT_TIMER_GREEN)
 			{
 				OtherFX_Play(DOT_LIGHT_FX_GREEN, DOT_LIGHT_FX_VOL);
 			}
@@ -99,11 +129,10 @@ void DotLights_AudioAndVideo(struct GameTracker *gGT)
 			red2 = DOT_LIGHT_STATE_ON;
 			red3 = DOT_LIGHT_STATE_ON;
 			green = DOT_LIGHT_STATE_ON;
-			posY = DotLights_TweenPos((gGT->trafficLightsTimer + DOT_LIGHT_TIMER_RED3) * FP(1.0));
 		}
 		else if (timer < DOT_LIGHT_TIMER_RED3 + 1)
 		{
-			if (sdata->trafficLightsTimer_prevFrame > DOT_LIGHT_TIMER_RED3)
+			if (previous > DOT_LIGHT_TIMER_RED3)
 			{
 				OtherFX_Play(DOT_LIGHT_FX_COUNTDOWN, DOT_LIGHT_FX_VOL);
 			}
@@ -112,11 +141,10 @@ void DotLights_AudioAndVideo(struct GameTracker *gGT)
 			red2 = DOT_LIGHT_STATE_ON;
 			red3 = DOT_LIGHT_STATE_ON;
 			green = DOT_LIGHT_STATE_OFF;
-			posY = FP(1.0);
 		}
 		else if (timer < DOT_LIGHT_TIMER_RED2 + 1)
 		{
-			if (sdata->trafficLightsTimer_prevFrame > DOT_LIGHT_TIMER_RED2)
+			if (previous > DOT_LIGHT_TIMER_RED2)
 			{
 				OtherFX_Play(DOT_LIGHT_FX_COUNTDOWN, DOT_LIGHT_FX_VOL);
 			}
@@ -125,11 +153,10 @@ void DotLights_AudioAndVideo(struct GameTracker *gGT)
 			red2 = DOT_LIGHT_STATE_ON;
 			red3 = DOT_LIGHT_STATE_OFF;
 			green = DOT_LIGHT_STATE_OFF;
-			posY = FP(1.0);
 		}
 		else if (timer < DOT_LIGHT_TIMER_RED1 + 1)
 		{
-			if (sdata->trafficLightsTimer_prevFrame > DOT_LIGHT_TIMER_RED1)
+			if (previous > DOT_LIGHT_TIMER_RED1)
 			{
 				OtherFX_Play(DOT_LIGHT_FX_COUNTDOWN, DOT_LIGHT_FX_VOL);
 			}
@@ -138,7 +165,6 @@ void DotLights_AudioAndVideo(struct GameTracker *gGT)
 			red2 = DOT_LIGHT_STATE_OFF;
 			red3 = DOT_LIGHT_STATE_OFF;
 			green = DOT_LIGHT_STATE_OFF;
-			posY = FP(1.0);
 		}
 		else
 		{
@@ -146,11 +172,14 @@ void DotLights_AudioAndVideo(struct GameTracker *gGT)
 			red2 = DOT_LIGHT_STATE_OFF;
 			red3 = DOT_LIGHT_STATE_OFF;
 			green = DOT_LIGHT_STATE_OFF;
-			posY = DotLights_TweenPos((DOT_LIGHT_TIMER_HIDE - gGT->trafficLightsTimer) * FP(1.0));
 		}
 
-		DotLights_Video(gGT, red1, red2, red3, green, posY);
+		DotLights_Video(gGT, red1, red2, red3, green, timer, players);
 	}
+}
 
+void DotLights_AudioAndVideo(struct GameTracker *gGT)
+{
+	DotLights_Sequence(gGT, gGT->trafficLightsTimer, sdata->trafficLightsTimer_prevFrame, UINT32_MAX);
 	sdata->trafficLightsTimer_prevFrame = gGT->trafficLightsTimer;
 }
