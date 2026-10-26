@@ -1619,6 +1619,62 @@ static void TestSmallKartEnergy(void)
 	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, 100), 75, "arbitrary fractional scales are not restricted to half-units");
 }
 
+static void TestKartParticleScale(void)
+{
+	CTR_TEST_SECTION("Kart particle scaling preserves color, rotation, timing and oscillator ownership");
+	struct Driver driver = {.kartScale = 0.5f};
+	MATRIX matrix = {.m = {{4096, -2048, 0}, {0, 4096, 0}, {0, 0, 4096}}, .t = {100, 200, 300}};
+	VehPhysForce_ScaleMatrix(&driver, &matrix);
+	CTR_TEST_CHECK(matrix.m[0][0] == 2048 && matrix.m[0][1] == -1024 && matrix.m[2][2] == 2048,
+	               "attached effects scale their complete rotated geometry");
+	CTR_TEST_CHECK(matrix.t[0] == 100 && matrix.t[1] == 200 && matrix.t[2] == 300,
+	               "scaling an attached effect does not scale its world-space position");
+	struct ParticleOscillator color = {.scale = 400, .offset = 200, .period = 12};
+	struct ParticleOscillator size = {.next = &color, .previousValue = 100, .scale = 200, .offset = 400, .min = -100, .max = 500, .period = 16, .phase = 8};
+	struct Particle particle = {
+		.oscillator = &size, .framesLeftInLife = 30,
+		.flagsOscillatorAxis = PARTICLE_AXIS_FLAG_SCALE_X | PARTICLE_AXIS_FLAG_COLOR_R,
+		.axis = {
+			[PARTICLE_AXIS_POS_X] = {.startVal = 100, .velocity = -20, .accel = 4},
+			[PARTICLE_AXIS_ROT_X_OR_LINE_PREV_X] = {.startVal = 200, .velocity = 10},
+			[PARTICLE_AXIS_ROT_Y_OR_LINE_PREV_Z] = {.startVal = 300},
+			[PARTICLE_AXIS_SCALE_X_OR_LINE_SCALE] = {.startVal = 1536, .velocity = 400, .accel = -8},
+			[PARTICLE_AXIS_SCALE_Y_OR_LINE_PREV_Y] = {.startVal = 1024},
+			[PARTICLE_AXIS_COLOR_R] = {.startVal = 16384, .velocity = -2560},
+		},
+	};
+	const struct Particle original = particle;
+	VehPhysForce_ScaleParticle(&driver, &particle);
+	CTR_TEST_CHECK(particle.axis[0].startVal == 50 && particle.axis[0].velocity == -10 && particle.axis[0].accel == 2,
+	               "particle spread and motion shrink together");
+	CTR_TEST_CHECK(particle.axis[5].startVal == 768 && particle.axis[5].velocity == 200 && particle.axis[5].accel == -4 && particle.axis[6].startVal == 512,
+	               "particle size and its growth rate shrink together");
+	CTR_TEST_CHECK(memcmp(&particle.axis[3], &original.axis[3], 2 * sizeof(struct ParticleAxis)) == 0,
+	               "sprite angles and angular motion keep their original values");
+	CTR_TEST_CHECK(memcmp(&particle.axis[7], &original.axis[7], 4 * sizeof(struct ParticleAxis)) == 0 && particle.framesLeftInLife == 30,
+	               "particle color, fade, icon animation and lifetime stay unchanged");
+	CTR_TEST_CHECK(size.scale == 100 && size.offset == 200 && size.previousValue == 50 && size.min == -50 && size.max == 250,
+	               "size oscillator values follow the same scale as their axis");
+	CTR_TEST_CHECK(size.period == 16 && size.phase == 8 && size.next == &color && color.scale == 400 && color.offset == 200,
+	               "oscillator timing, links and color oscillation remain intact");
+	particle.flagsSetColor = PARTICLE_SET_COLOR_FLAG_SPECIAL_LINE;
+	VehPhysForce_ScaleParticle(&driver, &particle);
+	CTR_TEST_CHECK(particle.axis[3].startVal == 100 && particle.axis[4].startVal == 150,
+	               "line particles scale their previous endpoint rather than treating it as rotation");
+	driver.kartScale = 2.0f;
+	particle = original;
+	particle.oscillator = NULL;
+	VehPhysForce_ScaleParticle(&driver, &particle);
+	CTR_TEST_CHECK(particle.axis[0].startVal == 200 && particle.axis[5].startVal == 3072 && particle.axis[5].velocity == 800,
+	               "giant karts double particle dimensions and growth");
+	driver.actionsFlagSet = ACTION_RACE_FINISHED;
+	particle = original;
+	particle.oscillator = NULL;
+	const struct Particle finished = particle;
+	VehPhysForce_ScaleParticle(&driver, &particle);
+	CTR_TEST_CHECK(memcmp(&particle, &finished, sizeof(particle)) == 0, "finished drivers retain retail particles");
+}
+
 static void TestClockCurse(void)
 {
 	CTR_TEST_SECTION("Clock Curse sets the received clock once and bypasses protection");
@@ -2129,6 +2185,7 @@ int main(void)
 	TestHardCrates();
 	TestGiantKarts();
 	TestSmallKartEnergy();
+	TestKartParticleScale();
 	TestAnxiousMask();
 	TestHopInputAndCloudOwnership();
 	TestDriverApplication();

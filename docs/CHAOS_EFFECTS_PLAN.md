@@ -270,6 +270,20 @@ walls and kart contacts, bot squash, protected contact, jumps, Giant replacement
 and retry. Review this effect before starting Classic GTA.
 Validation: game build and all six focused Chaos/vehicle-spawn suites passed
 after switching `kartScale` to float (1.0 retail, 0.5 small, 2.0 giant).
+Size follow-up: ground-shadow footprint and newly emitted tire skid positions,
+widths and lateral offsets now share `VehPhysForce_ScaleValue` for both size
+effects. Stored world-space skid history is not rescaled. Game rebuild passed;
+visually check shadows and front/rear skids at 0.5×/1×/2×, including changes of
+size while drifting and airborne shadow shrinkage.
+Visual-size audit: exhaust and damage smoke, turbo flames, terrain and impact
+particles, water wake/splashes, mask orbit/beam, shield layers and body-scale
+resets now use the shared kart multiplier. Particle color, rotation and timing
+remain unchanged; emitted particles keep their emission scale. TNT keeps its
+original size at user request, with only its head attachment offset adjusted.
+Focused regression checks cover particle size/growth/motion, line endpoints,
+spatial vs. color oscillators, effect matrices and finished-driver defaults.
+All six focused suites passed. Compilation succeeded; executable linking was
+blocked by the running game. Visual validation remains pending for these paths.
 
 Block A: focused runtime tests cover full timed capacity, instant notices without
 docking, repeat rewards, notice overflow, pause/reset/resident restore, inventory

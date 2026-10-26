@@ -159,6 +159,7 @@ struct Particle *VehEmitter_Exhaust(struct Driver *d, VECTOR *exhaustPos, VECTOR
 		goto done;
 	}
 
+	VehPhysForce_ScaleParticle(d, p);
 	p->axis[0].startVal += exhaustPos->vx - exhaustVel->vx;
 	p->axis[0].velocity = (s16)exhaustVel->vx;
 	p->axis[1].startVal += exhaustPos->vy - exhaustVel->vy;
@@ -216,7 +217,7 @@ void VehEmitter_Sparks_Ground(struct Driver *d, struct ParticleEmitter *emSet)
 	CTR_PSX_OBSERVE_MEMORY(emSet);
 
 	MTC2(gteValue, 0);
-	gteValue = -0x1800;
+	gteValue = VehPhysForce_ScaleValue(d, -0x1800);
 	MTC2(gteValue, 1);
 	CTR_PSX_GTE_PIPELINE_DELAY();
 	gte_rtv0();
@@ -230,7 +231,7 @@ void VehEmitter_Sparks_Ground(struct Driver *d, struct ParticleEmitter *emSet)
 	CTR_PSX_GTE_READ_DELAY();
 	outZ[2] = gteValue;
 
-	gteValue = 0x1800;
+	gteValue = VehPhysForce_ScaleValue(d, 0x1800);
 	MTC2(gteValue, 0);
 	gteValue = 0;
 	MTC2(gteValue, 1);
@@ -241,7 +242,7 @@ void VehEmitter_Sparks_Ground(struct Driver *d, struct ParticleEmitter *emSet)
 	outX2 = MFC2_S(27);
 
 	MTC2(gteValue, 0);
-	gteValue = -0x200;
+	gteValue = VehPhysForce_ScaleValue(d, -0x200);
 	MTC2(gteValue, 1);
 	CTR_PSX_GTE_PIPELINE_DELAY();
 	gte_rtv0();
@@ -261,6 +262,7 @@ void VehEmitter_Sparks_Ground(struct Driver *d, struct ParticleEmitter *emSet)
 			register s32 productX CTR_PSX_REGISTER("$8");
 			register s32 productY CTR_PSX_REGISTER("$4");
 
+			VehPhysForce_ScaleParticle(d, p);
 			rawRng = (u32)RngDeadCoed(&GAME_TRACKER->deadcoed_struct);
 			rng = rawRng & VEH_EMITTER_GROUND_SPARK_RNG_MASK;
 
@@ -405,27 +407,27 @@ void VehEmitter_Terrain_Ground(struct Driver *d, struct ParticleEmitter *emSet)
 		switch (numTires)
 		{
 		case 4:
-			gteValue = CTR_PackS16Pair(VEH_EMITTER_TIRE_LEFT_X, VEH_EMITTER_TERRAIN_TIRE_Y);
+			gteValue = CTR_PackS16Pair(VehPhysForce_ScaleValue(driver, VEH_EMITTER_TIRE_LEFT_X), VehPhysForce_ScaleValue(driver, VEH_EMITTER_TERRAIN_TIRE_Y));
 			MTC2(gteValue, 0);
-			gteValue = VEH_EMITTER_TIRE_FRONT_Z;
+			gteValue = VehPhysForce_ScaleValue(driver, VEH_EMITTER_TIRE_FRONT_Z);
 			MTC2(gteValue, 1);
 			break;
 		case 3:
-			gteValue = CTR_PackS16Pair(VEH_EMITTER_TIRE_RIGHT_X, VEH_EMITTER_TERRAIN_TIRE_Y);
+			gteValue = CTR_PackS16Pair(VehPhysForce_ScaleValue(driver, VEH_EMITTER_TIRE_RIGHT_X), VehPhysForce_ScaleValue(driver, VEH_EMITTER_TERRAIN_TIRE_Y));
 			MTC2(gteValue, 0);
-			gteValue = VEH_EMITTER_TIRE_FRONT_Z;
+			gteValue = VehPhysForce_ScaleValue(driver, VEH_EMITTER_TIRE_FRONT_Z);
 			MTC2(gteValue, 1);
 			break;
 		case 2:
-			gteValue = CTR_PackS16Pair(VEH_EMITTER_TIRE_LEFT_X, VEH_EMITTER_TERRAIN_TIRE_Y);
+			gteValue = CTR_PackS16Pair(VehPhysForce_ScaleValue(driver, VEH_EMITTER_TIRE_LEFT_X), VehPhysForce_ScaleValue(driver, VEH_EMITTER_TERRAIN_TIRE_Y));
 			MTC2(gteValue, 0);
-			gteValue = VEH_EMITTER_TIRE_BACK_Z;
+			gteValue = VehPhysForce_ScaleValue(driver, VEH_EMITTER_TIRE_BACK_Z);
 			MTC2(gteValue, 1);
 			break;
 		default:
-			gteValue = CTR_PackS16Pair(VEH_EMITTER_TIRE_RIGHT_X, VEH_EMITTER_TERRAIN_TIRE_Y);
+			gteValue = CTR_PackS16Pair(VehPhysForce_ScaleValue(driver, VEH_EMITTER_TIRE_RIGHT_X), VehPhysForce_ScaleValue(driver, VEH_EMITTER_TERRAIN_TIRE_Y));
 			MTC2(gteValue, 0);
-			gteValue = VEH_EMITTER_TIRE_BACK_Z;
+			gteValue = VehPhysForce_ScaleValue(driver, VEH_EMITTER_TIRE_BACK_Z);
 			MTC2(gteValue, 1);
 			break;
 		}
@@ -444,6 +446,7 @@ void VehEmitter_Terrain_Ground(struct Driver *d, struct ParticleEmitter *emSet)
 				register u32 packedVelocity CTR_PSX_REGISTER("$3");
 				s32 velocityY;
 
+				VehPhysForce_ScaleParticle(driver, p);
 				p->axis[0].startVal += CTR_MipsSll(posX, 8);
 				p->axis[1].startVal += CTR_MipsSll(posY, 8);
 				p->axis[2].startVal += CTR_MipsSll(posZ, 8);
@@ -525,13 +528,13 @@ resetRumble:
 rumbleDone:
 	if (driver->speedApprox >= (VEH_EMITTER_WALL_SPARK_MIN_SPEED + 1))
 	{
-		gteValue = CTR_PackS16Pair(VEH_EMITTER_WALL_SPARK_LEFT_X, VEH_EMITTER_WALL_SPARK_Y);
+		gteValue = CTR_PackS16Pair(VehPhysForce_ScaleValue(driver, VEH_EMITTER_WALL_SPARK_LEFT_X), VehPhysForce_ScaleValue(driver, VEH_EMITTER_WALL_SPARK_Y));
 		MTC2(gteValue, 0);
-		gteValue = VEH_EMITTER_WALL_SPARK_FORWARD_Z;
+		gteValue = VehPhysForce_ScaleValue(driver, VEH_EMITTER_WALL_SPARK_FORWARD_Z);
 		MTC2(gteValue, 1);
-		gteValue = CTR_PackS16Pair(VEH_EMITTER_WALL_SPARK_RIGHT_X, VEH_EMITTER_WALL_SPARK_Y);
+		gteValue = CTR_PackS16Pair(VehPhysForce_ScaleValue(driver, VEH_EMITTER_WALL_SPARK_RIGHT_X), VehPhysForce_ScaleValue(driver, VEH_EMITTER_WALL_SPARK_Y));
 		MTC2(gteValue, 2);
-		gteValue = VEH_EMITTER_WALL_SPARK_FORWARD_Z;
+		gteValue = VehPhysForce_ScaleValue(driver, VEH_EMITTER_WALL_SPARK_FORWARD_Z);
 		MTC2(gteValue, 3);
 	}
 	else
@@ -542,13 +545,13 @@ rumbleDone:
 		}
 		CTR_PSX_CLOBBER("$8");
 
-		gteValue = CTR_PackS16Pair(VEH_EMITTER_WALL_SPARK_LEFT_X, VEH_EMITTER_WALL_SPARK_Y);
+		gteValue = CTR_PackS16Pair(VehPhysForce_ScaleValue(driver, VEH_EMITTER_WALL_SPARK_LEFT_X), VehPhysForce_ScaleValue(driver, VEH_EMITTER_WALL_SPARK_Y));
 		MTC2(gteValue, 0);
-		gteValue = VEH_EMITTER_WALL_SPARK_REVERSE_Z;
+		gteValue = VehPhysForce_ScaleValue(driver, VEH_EMITTER_WALL_SPARK_REVERSE_Z);
 		MTC2(gteValue, 1);
-		gteValue = CTR_PackS16Pair(VEH_EMITTER_WALL_SPARK_RIGHT_X, VEH_EMITTER_WALL_SPARK_Y);
+		gteValue = CTR_PackS16Pair(VehPhysForce_ScaleValue(driver, VEH_EMITTER_WALL_SPARK_RIGHT_X), VehPhysForce_ScaleValue(driver, VEH_EMITTER_WALL_SPARK_Y));
 		MTC2(gteValue, 2);
-		gteValue = VEH_EMITTER_WALL_SPARK_REVERSE_Z;
+		gteValue = VehPhysForce_ScaleValue(driver, VEH_EMITTER_WALL_SPARK_REVERSE_Z);
 		MTC2(gteValue, 3);
 	}
 
@@ -614,6 +617,7 @@ rumbleDone:
 		register s32 particlePositionZ CTR_PSX_REGISTER("$3");
 		s32 velocityY;
 
+		VehPhysForce_ScaleParticle(driver, p);
 		particlePosition = p->axis[0].startVal;
 		particlePositionZ = p->axis[2].startVal;
 		CTR_PSX_KEEP_VALUE(particlePosition);
@@ -727,17 +731,17 @@ skidColorDone:
 	sin = MATH_Sin(d->axisRotationX);
 	lateralZ = VEH_EMITTER_SKID_LATERAL_SCALE;
 	CTR_PSX_KEEP_VALUE(lateralZ);
-	sin *= lateralZ;
+	sin = VehPhysForce_ScaleValue(d, sin * lateralZ);
 	cos = MATH_Cos(d->axisRotationX);
 	lateralX = VEH_EMITTER_SKID_WIDTH_SCALE;
 	MATH_Sin(d->axisRotationX);
 	widthX = MATH_Cos(d->axisRotationX);
 	MATH_Sin(d->axisRotationX);
-	widthX *= lateralX;
-	cos *= lateralZ;
+	widthX = VehPhysForce_ScaleValue(d, widthX * lateralX);
+	cos = VehPhysForce_ScaleValue(d, cos * lateralZ);
 	MATH_Cos(d->axisRotationX);
 	widthZ = MATH_Sin(d->axisRotationX);
-	widthZ *= -lateralX;
+	widthZ = VehPhysForce_ScaleValue(d, widthZ * -lateralX);
 	lateralX = sin >> FRACTIONAL_BITS;
 	lateralZ = cos >> FRACTIONAL_BITS;
 	widthX >>= FRACTIONAL_BITS;
@@ -748,9 +752,9 @@ skidColorDone:
 	if ((d->actionsFlagSet & ACTION_BACK_SKID) != 0)
 	{
 		d->skidmarkEnableFlags |= DRIVER_SKIDMARK_BACK_LEFT;
-		flagsValue = (u16)VEH_EMITTER_TIRE_LEFT_X;
+		flagsValue = (u16)VehPhysForce_ScaleValue(d, VEH_EMITTER_TIRE_LEFT_X);
 		MTC2(flagsValue, 0);
-		flagsValue = VEH_EMITTER_TIRE_BACK_Z;
+		flagsValue = (u16)VehPhysForce_ScaleValue(d, VEH_EMITTER_TIRE_BACK_Z);
 		MTC2(flagsValue, 1);
 		CTR_PSX_GTE_PIPELINE_DELAY();
 		gte_rt();
@@ -814,9 +818,9 @@ skidColorDone:
 		}
 
 		d->skidmarkEnableFlags |= DRIVER_SKIDMARK_BACK_RIGHT;
-		flagsValue = VEH_EMITTER_TIRE_RIGHT_X;
+		flagsValue = (u16)VehPhysForce_ScaleValue(d, VEH_EMITTER_TIRE_RIGHT_X);
 		MTC2(flagsValue, 0);
-		flagsValue = VEH_EMITTER_TIRE_BACK_Z;
+		flagsValue = (u16)VehPhysForce_ScaleValue(d, VEH_EMITTER_TIRE_BACK_Z);
 		MTC2(flagsValue, 1);
 		CTR_PSX_GTE_PIPELINE_DELAY();
 		gte_rt();
@@ -884,9 +888,9 @@ skidColorDone:
 	if ((d->actionsFlagSet & ACTION_FRONT_SKID) != 0)
 	{
 		d->skidmarkEnableFlags |= DRIVER_SKIDMARK_FRONT_LEFT;
-		flagsValue = (u16)VEH_EMITTER_TIRE_LEFT_X;
+		flagsValue = (u16)VehPhysForce_ScaleValue(d, VEH_EMITTER_TIRE_LEFT_X);
 		MTC2(flagsValue, 0);
-		flagsValue = VEH_EMITTER_TIRE_FRONT_Z;
+		flagsValue = (u16)VehPhysForce_ScaleValue(d, VEH_EMITTER_TIRE_FRONT_Z);
 		MTC2(flagsValue, 1);
 		CTR_PSX_GTE_PIPELINE_DELAY();
 		gte_rt();
@@ -950,9 +954,9 @@ skidColorDone:
 		}
 
 		d->skidmarkEnableFlags |= DRIVER_SKIDMARK_FRONT_RIGHT;
-		flagsValue = VEH_EMITTER_TIRE_RIGHT_X;
+		flagsValue = (u16)VehPhysForce_ScaleValue(d, VEH_EMITTER_TIRE_RIGHT_X);
 		MTC2(flagsValue, 0);
-		flagsValue = VEH_EMITTER_TIRE_FRONT_Z;
+		flagsValue = (u16)VehPhysForce_ScaleValue(d, VEH_EMITTER_TIRE_FRONT_Z);
 		MTC2(flagsValue, 1);
 		CTR_PSX_GTE_PIPELINE_DELAY();
 		gte_rt();
@@ -1044,6 +1048,7 @@ static inline void VehEmitter_MudSplash(struct Driver *driverArg)
 				p->otIndexOffset = d->instSelf->depthBiasNormal;
 				p->owner.driverInst = d->instSelf;
 				p->driverID = d->driverID;
+				VehPhysForce_ScaleParticle(d, p);
 				p->axis[0].startVal += (int)p->axis[0].velocity * VEH_EMITTER_MUD_SPLASH_VELOCITY_SCALE;
 				p->axis[2].startVal += (int)p->axis[2].velocity * VEH_EMITTER_MUD_SPLASH_VELOCITY_SCALE;
 				p->axis[0].accel -= p->axis[0].velocity >> VEH_EMITTER_MUD_SPLASH_VELOCITY_SHIFT;
@@ -1064,6 +1069,7 @@ static inline void VehEmitter_MudSplash(struct Driver *driverArg)
 		p->owner.driverInst = d->instSelf;
 		p->driverID = d->driverID;
 
+		VehPhysForce_ScaleParticle(d, p);
 		p->axis[0].startVal += (int)p->axis[0].velocity * VEH_EMITTER_MUD_SPLASH_VELOCITY_SCALE;
 		p->axis[2].startVal += (int)p->axis[2].velocity * VEH_EMITTER_MUD_SPLASH_VELOCITY_SCALE;
 		p->axis[0].accel -= p->axis[0].velocity >> VEH_EMITTER_MUD_SPLASH_VELOCITY_SHIFT;
@@ -1597,9 +1603,9 @@ skidAudioDone:
 	}
 
 	VehEmitter_SetRotMatrix(&inst->matrix);
-	terrainFlagsValue = CTR_PackS16Pair(0, VEH_EMITTER_EXHAUST_VEL_Y);
+	terrainFlagsValue = CTR_PackS16Pair(0, VehPhysForce_ScaleValue(d, VEH_EMITTER_EXHAUST_VEL_Y));
 	MTC2(terrainFlagsValue, 0);
-	terrainFlagsValue = VEH_EMITTER_EXHAUST_VEL_Z;
+	terrainFlagsValue = VehPhysForce_ScaleValue(d, VEH_EMITTER_EXHAUST_VEL_Z);
 	MTC2(terrainFlagsValue, 1);
 	CTR_PSX_GTE_PIPELINE_DELAY();
 	gte_rtv0();

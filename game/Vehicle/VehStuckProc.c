@@ -394,6 +394,7 @@ void VehStuckProc_MaskGrab_Particles(struct Driver *d)
 		}
 
 		// position variables
+		VehPhysForce_ScaleParticle(d, p);
 		p->axis[0].startVal = CTR_MipsAddLo(p->axis[0].startVal, d->posCurr.x);
 		p->axis[1].startVal = CTR_MipsAddLo(p->axis[1].startVal, d->posCurr.y);
 		p->axis[2].startVal = CTR_MipsAddLo(p->axis[2].startVal, d->posCurr.z);
@@ -669,6 +670,7 @@ void VehStuckProc_MaskGrab_Init(struct Thread *t, struct Driver *d)
 					continue;
 				}
 
+				VehPhysForce_ScaleParticle(d, p);
 				p->otIndexOffset = d->instSelf->depthBiasNormal;
 				p->owner.driverInst = d->instSelf;
 				p->driverID = d->driverID;
@@ -1266,11 +1268,10 @@ revEngineStateReady:
 	// this is a basic "squash and stretch" concept of animation, before motion
 
 	// Reduce height a little
-	inst->scale.y = (s16)CTR_MipsSubLo(VEH_STUCK_REV_MODEL_BASE_SCALE, (u16)d->jumpSquishStretch);
-	inst->scale.x = (s16)(d->jumpSquishStretch * VEH_STUCK_REV_MODEL_WIDTH_SQUISH_NUMERATOR / VEH_STUCK_REV_MODEL_WIDTH_SQUISH_DENOMINATOR +
+	inst->scale.y = (s16)VehPhysForce_ScaleValue(d, CTR_MipsSubLo(VEH_STUCK_REV_MODEL_BASE_SCALE, (u16)d->jumpSquishStretch));
+	inst->scale.x = (s16)VehPhysForce_ScaleValue(d, d->jumpSquishStretch * VEH_STUCK_REV_MODEL_WIDTH_SQUISH_NUMERATOR / VEH_STUCK_REV_MODEL_WIDTH_SQUISH_DENOMINATOR +
 	                      VEH_STUCK_REV_MODEL_BASE_SCALE);
-	inst->scale.z = (s16)(d->jumpSquishStretch * VEH_STUCK_REV_MODEL_WIDTH_SQUISH_NUMERATOR / VEH_STUCK_REV_MODEL_WIDTH_SQUISH_DENOMINATOR +
-	                      VEH_STUCK_REV_MODEL_BASE_SCALE);
+	inst->scale.z = inst->scale.x;
 }
 
 

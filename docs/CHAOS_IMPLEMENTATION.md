@@ -266,6 +266,20 @@ tires and contact radii convert to integer dimensions through
 integer truncation and reuses normal damage protections. Small size is 0.5×;
 forward speed targets and jump force are 0.7×. Size effects replace one another,
 and expiry/reset restore normal size, including for finished humans.
+Ground shadows scale their local footprint through the same helper, preserving
+the normal height-based shrink/fade. Skid emission scales all four tire contact
+positions, strip widths and lateral offsets before storing world-space vertices;
+existing skid history keeps the size at which it was emitted. Both paths follow
+`kartScale` directly, rather than checking individual Chaos effects.
+Kart particles use `VehPhysForce_ScaleParticle` at emission, before adding world
+positions. It scales spatial axes, growth and spatial oscillators together while
+preserving angles, color and timing. Exhaust, burn smoke, terrain/wall/ground
+sparks, mud and rescue/water particles share this path. `VehPhysForce_ScaleMatrix`
+scales freshly rebuilt effect geometry for turbo flames, shields and masks;
+attachment offsets are scaled separately from world positions. Water wake size,
+revving animation and wall-crash scale resets also follow the kart multiplier.
+TNT remains its original size: only its attachment offset follows the kart, so
+it rests on the resized character's head without changing its animation/state.
 
 ## HUD and audio
 

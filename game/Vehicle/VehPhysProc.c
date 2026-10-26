@@ -2550,8 +2550,8 @@ void VehPhysProc_SlamWall_Init(struct Thread *t, struct Driver *d)
 	d->fireSpeed = 0;
 
 	// NOTE(aalhendi): Retail only writes X/Y scale here.
-	inst->scale.y = VEH_PHYS_PROC_CRASH_SCALE_XY;
-	inst->scale.x = VEH_PHYS_PROC_CRASH_SCALE_XY;
+	inst->scale.y = (s16)VehPhysForce_ScaleValue(d, VEH_PHYS_PROC_CRASH_SCALE_XY);
+	inst->scale.x = (s16)VehPhysForce_ScaleValue(d, VEH_PHYS_PROC_CRASH_SCALE_XY);
 
 	d->funcPtrs[DRIVER_FUNC_UPDATE] = VehPhysProc_SlamWall_Update;
 	d->funcPtrs[DRIVER_FUNC_INIT] = NULL;

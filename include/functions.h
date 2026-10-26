@@ -1428,6 +1428,8 @@ void VehPhysForce_CollideDrivers(struct Thread *thread, struct Driver *driver);
 void VehPhysForce_TranslateMatrix(struct Thread *thread, struct Driver *driver);
 int VehPhysForce_ScaleValue(const struct Driver *driver, int value);
 float VehPhysForce_GetKartScale(const struct Driver *driver);
+void VehPhysForce_ScaleParticle(const struct Driver *driver, struct Particle *particle);
+void VehPhysForce_ScaleMatrix(const struct Driver *driver, MATRIX *matrix);
 bool VehPhysCrash_TrySquashSmallerKart(struct Driver *first, struct Driver *second);
 int VehPickState_TrySquish(struct Driver *driver);
 int VehPhysGeneral_JumpGetVelY(s16 *normalVec, Vec3 *speedXYZ);
