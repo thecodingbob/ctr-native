@@ -346,6 +346,18 @@ same animated `DotLights_GetBounds`, alongside Final Lap bounds.
 damage-recovery interpolation for eye and look-at positions once at countdown
 entry. Freecam and end-of-race cameras do not consume it.
 
+Senile Mask (ID 33, `senile-mask`) dispatches false warnings only to unfinished
+humans without `ACTION_DRIVING_WRONG_WAY`, leaving direction/progression untouched.
+`Chaos_OverridesWrongWayWarning` replaces the retail HUD/voice paths while the
+effect is active; its own paths warn only in the correct direction.
+`UI_DrawWrongWay` shares blink timing, text and
+viewport positioning; the Chaos HUD also supplies this path in crystal events.
+`Voiceline_PlayWrongWay` shares mask choice and playback with the retail warning.
+After normal voice-enable/cooldown/XA gates, Chaos repeats it with half the
+track-length-plus-delay cooldown at normal voice volume. In 2P,
+the first eligible human supplies the mask voice; the shared XA stream never
+overlaps clips. No additional Chaos runtime state or user-volume changes are needed.
+
 ## HUD and audio
 
 Each successful activation plays the preloaded double-gain transition swish and

@@ -26,9 +26,16 @@ enum
 	CHAOS_TOP_DOWN_PITCH = 0x400,
 	CHAOS_TOP_DOWN_YAW_OFFSET = 0x800,
 	CHAOS_TOP_DOWN_CUTAWAY_HEIGHT = 0x80,
+	CHAOS_WRONG_WAY_CADENCE_MULTIPLIER = 2,
 };
 
 static const float s_chaosSmallScale = 0.5f;
+
+static void Chaos_PlaySenileVoice(struct Driver *driver)
+{
+	Voiceline_PlayWrongWay(driver);
+	sdata->voicelineCooldown /= CHAOS_WRONG_WAY_CADENCE_MULTIPLIER;
+}
 
 static void Chaos_SetTopDownCamera(struct CameraDC *camera, const struct Driver *driver)
 {

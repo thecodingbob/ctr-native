@@ -56,6 +56,7 @@ typedef enum {
 	CHAOS_EFFECT_ARENA_CHAMPIONS = 30,
 	CHAOS_EFFECT_YOUVE_GOT_MAIL = 31,
 	CHAOS_EFFECT_FRESH_START = 32,
+	CHAOS_EFFECT_SENILE_MASK = 33,
 
 	// IDs are saved bit positions: append new IDs, never renumber or reuse one.
 	// Growth within the saved bitset capacity does not change its layout.
@@ -112,6 +113,7 @@ static const ChaosEffectDef g_chaosEffectDefs[CHAOS_EFFECT_COUNT] =
 	[CHAOS_EFFECT_ARENA_CHAMPIONS] = { "arena-champions", "Arena Champions", CHAOS_SCOPE_BOTS },
 	[CHAOS_EFFECT_YOUVE_GOT_MAIL] = { "youve-got-mail", "You've Got Mail", CHAOS_SCOPE_BOTS },
 	[CHAOS_EFFECT_FRESH_START] = { "fresh-start", "Fresh Start", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_SENILE_MASK] = { "senile-mask", "Senile Mask", CHAOS_SCOPE_HUMANS },
 };
 
 static inline bool ChaosEffect_IsInstant(ChaosEffectId id)

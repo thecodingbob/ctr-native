@@ -2547,6 +2547,109 @@ static void TestReserveGifts(void)
 	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_NO_RESERVES), "reserve protection replaces No Reserves in the opposite order");
 }
 
+static void TestSenileMask(void)
+{
+	CTR_TEST_SECTION("Senile Mask adds false warnings without changing race direction or progress");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_SENILE_MASK] = true;
+	sdata->boolCanPlayVoicelines = true;
+	struct Driver *human = s_tracker.drivers[0];
+	struct Driver *partner = s_tracker.drivers[1];
+	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT};
+	s_tracker.drivers[2] = &bot;
+	human->distanceDrivenBackwards = 0;
+	const struct Driver original = *human;
+	Chaos_DrawWrongWayWarnings(&s_tracker);
+	CTR_TEST_CHECK_EQ(s_wrongWayDraws, 0, "inactive Senile Mask adds no warnings");
+	CTR_TEST_CHECK(!Chaos_PlayWrongWayVoice(), "inactive Senile Mask leaves retail voice arbitration alone");
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_SENILE_MASK, 1000), "Senile Mask activates as a timed effect");
+	Chaos_DrawWrongWayWarnings(&s_tracker);
+	CTR_TEST_CHECK_EQ(s_wrongWayDraws, 3, "both correct-direction humans receive the shared flashing prompt, never bots");
+	Voiceline_Update();
+	CTR_TEST_CHECK_EQ(s_wrongWayVoiceID, 0x1e, "the first eligible human uses the ordinary good-mask voice");
+	CTR_TEST_CHECK_EQ(sdata->voicelineCooldown, 45, "Senile Mask halves the ordinary track-length-plus-delay cooldown");
+	CTR_TEST_CHECK(memcmp(human, &original, sizeof(original)) == 0, "false warnings leave direction flags, distance, progress and inventory intact");
+	for (int i = 0; i < 44; i++)
+	{
+		Voiceline_Update();
+	}
+	CTR_TEST_CHECK_EQ(s_wrongWayVoices, 1, "the warning cannot replay before its shortened cooldown");
+	Voiceline_Update();
+	CTR_TEST_CHECK_EQ(s_wrongWayVoices, 1, "an occupied XA channel is not interrupted when the cooldown expires");
+	sdata->XA_State = 0;
+	Voiceline_Update();
+	CTR_TEST_CHECK_EQ(s_wrongWayVoices, 2, "the warning repeats without needing a real wrong-way direction transition");
+
+	human->actionsFlagSet |= ACTION_DRIVING_WRONG_WAY;
+	s_wrongWayDraws = 0;
+	Chaos_DrawWrongWayWarnings(&s_tracker);
+	CTR_TEST_CHECK_EQ(s_wrongWayDraws, 2, "a genuinely wrong-way human receives no false warning");
+	CTR_TEST_CHECK(Chaos_OverridesWrongWayWarning(human) && Chaos_OverridesWrongWayWarning(partner),
+	    "Senile Mask replaces retail warnings for both directions, supplying only its correct-direction warnings");
+	// A retail warning may already be armed when the effect starts or direction changes.
+	s_tracker.numPlyrCurrGame = 1;
+	sdata->WrongWayDirection_bool = true;
+	sdata->framesDrivingSameDirection = 31;
+	sdata->boolCanPlayWrongWaySFX = true;
+	sdata->XA_State = 0;
+	sdata->voicelineCooldown = 0;
+	const int voicesBeforeWrongWay = s_wrongWayVoices;
+	Voiceline_Update();
+	CTR_TEST_CHECK_EQ(s_wrongWayVoices, voicesBeforeWrongWay, "an armed retail voice stays silent while the human is genuinely wrong-way");
+	CTR_TEST_CHECK(sdata->boolCanPlayWrongWaySFX, "suppressing the retail voice does not consume its armed warning");
+	s_tracker.numPlyrCurrGame = 2;
+	sdata->XA_State = 0;
+	sdata->voicelineCooldown = 0;
+	Voiceline_Update();
+	CTR_TEST_CHECK(s_voiceDriver == partner && s_wrongWayVoiceID == 0x3d, "2P speech uses the eligible partner's normal evil-mask voice");
+	partner->actionsFlagSet |= ACTION_RACE_FINISHED;
+	s_wrongWayDraws = 0;
+	Chaos_DrawWrongWayWarnings(&s_tracker);
+	CTR_TEST_CHECK_EQ(s_wrongWayDraws, 0, "finished humans receive no false warning");
+	CTR_TEST_CHECK(!Chaos_PlayWrongWayVoice(), "no false voice is requested without an eligible human");
+	partner->actionsFlagSet = 0;
+	const int blockedModes[] = {PAUSE_1, DEBUG_MENU};
+	for (int i = 0; i < (int)len(blockedModes); i++)
+	{
+		s_tracker.gameMode1 |= blockedModes[i];
+		s_wrongWayDraws = 0;
+		Chaos_DrawWrongWayWarnings(&s_tracker);
+		CTR_TEST_CHECK(s_wrongWayDraws == 0 && !Chaos_PlayWrongWayVoice(), "pause and debug menus suppress false warnings and voices");
+		s_tracker.gameMode1 &= ~blockedModes[i];
+	}
+	s_tracker.gameMode1 |= CRYSTAL_CHALLENGE;
+	s_wrongWayDraws = 0;
+	Chaos_DrawWrongWayWarnings(&s_tracker);
+	CTR_TEST_CHECK_EQ(s_wrongWayDraws, 2, "false warnings also apply in crystal events without a retail wrong-way HUD path");
+	s_tracker.gameMode1 &= ~CRYSTAL_CHALLENGE;
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_SENILE_MASK, 1000) && sdata->chaosRuntime.numActive == 1,
+	    "repeated activation refreshes one timed effect");
+	sdata->XA_State = 0;
+	sdata->voicelineCooldown = 0;
+	s_voicePlayFails = true;
+	Voiceline_Update();
+	CTR_TEST_CHECK_EQ(sdata->voicelineCooldown, 15, "missing voice assets retain a bounded retry delay");
+	s_voicePlayFails = false;
+	Tick(1000);
+	s_wrongWayDraws = 0;
+	Chaos_DrawWrongWayWarnings(&s_tracker);
+	CTR_TEST_CHECK(s_wrongWayDraws == 0 && !Chaos_PlayWrongWayVoice(), "expiry removes both false warning hooks");
+	CTR_TEST_CHECK(!Chaos_OverridesWrongWayWarning(human), "expiry restores the real wrong-way warning");
+
+	// The ordinary one-shot warning must retain its original cooldown.
+	s_tracker.numPlyrCurrGame = 1;
+	sdata->WrongWayDirection_bool = true;
+	sdata->framesDrivingSameDirection = 31;
+	sdata->boolCanPlayWrongWaySFX = true;
+	sdata->voicelineCooldown = 0;
+	Voiceline_Update();
+	CTR_TEST_CHECK_EQ(sdata->voicelineCooldown, 90, "retail wrong-way playback keeps its full cooldown");
+	CTR_TEST_CHECK(!sdata->boolCanPlayWrongWaySFX, "retail wrong-way speech remains one-shot until rearmed");
+	Chaos_Activate(CHAOS_EFFECT_SENILE_MASK, 1000);
+	Chaos_Reset();
+	CTR_TEST_CHECK(!Chaos_PlayWrongWayVoice(), "reset leaves no Senile Mask playback pending");
+}
+
 int main(void)
 {
 	TestSteeringAndDriverScope();
@@ -2573,6 +2676,7 @@ int main(void)
 	TestArenaChampions();
 	TestYouveGotMail();
 	TestFreshStart();
+	TestSenileMask();
 	TestAnxiousMask();
 	TestHopInputAndCloudOwnership();
 	TestDriverApplication();

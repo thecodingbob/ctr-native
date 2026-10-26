@@ -50,6 +50,56 @@ static int s_restartFallPoses;
 static int s_startLightDraws;
 static int s_startCountdownSounds;
 static int s_startGreenSounds;
+static u32 s_wrongWayDraws;
+static int s_wrongWayVoices;
+static int s_wrongWayVoiceID;
+static bool s_voicePlayFails;
+static struct Driver *s_voiceDriver;
+
+void UI_DrawWrongWay(const struct Driver *driver)
+{
+	s_wrongWayDraws |= 1u << driver->driverID;
+}
+
+b32 VehPickupItem_MaskBoolGoodGuy(struct Driver *driver)
+{
+	s_voiceDriver = driver;
+	return driver->driverID == 0;
+}
+
+int CDSYS_XAPlay(int category, int voice)
+{
+	CTR_TEST_CHECK_EQ(category, CDSYS_XA_TYPE_EXTRA, "wrong-way voices use the normal mask speech bank");
+	s_wrongWayVoiceID = voice;
+	s_wrongWayVoices++;
+	if (s_voicePlayFails)
+	{
+		return 0;
+	}
+	sdata->XA_State = XA_PLAYING;
+	return 1;
+}
+
+int CDSYS_XAGetTrackLength(int category, int voice)
+{
+	(void)category; (void)voice;
+	return 300;
+}
+
+void Bank_ResetAllocator(void) {}
+void Audio_SetDefaults(void) {}
+void Music_SetDefaults(void) {}
+unsigned int SpuSetReverbVoice(int enabled, unsigned int voices)
+{
+	(void)enabled; (void)voices;
+	return 0;
+}
+void SpuSetVoiceADSRAttr(int voice, unsigned short ar, unsigned short dr, unsigned short sr,
+                       unsigned short rr, unsigned short sl, int arMode, int srMode, int rrMode)
+{
+	(void)voice; (void)ar; (void)dr; (void)sr; (void)rr; (void)sl;
+	(void)arMode; (void)srMode; (void)rrMode;
+}
 
 void VehStuckProc_RevEngine_Init(struct Thread *thread, struct Driver *driver)
 {
@@ -164,6 +214,8 @@ void VehPickupItem_ShootWarpball(struct Driver *driver, struct Driver *target)
 // VehPickupItem.c precedes Chaos in the game unity build.
 enum { SOUND_CLOCK = 0x44 };
 
+#include <game/LIST.c>
+#include <game/HOWL/HOWL_Voiceline.c>
 #include <game/DotLights.c>
 #include <game/Vehicle/VehPhysCrash.c>
 #include <game/Vehicle/VehBirth_Consts.c>
@@ -380,13 +432,6 @@ void GhostTape_WriteBoosts(int addReserve, u32 type, int speedCap)
 	(void)speedCap;
 }
 
-void Voiceline_RequestPlay(u32 voiceID, u32 characterID, u32 characterID2)
-{
-	(void)voiceID;
-	(void)characterID;
-	(void)characterID2;
-}
-
 void GAMEPAD_ShockForce1(struct Driver *driver, int frame, int value)
 {
 	(void)driver;
@@ -520,6 +565,11 @@ static void SetupRace(int trigger)
 	s_squishSounds = 0;
 	s_crateExplosions = 0;
 	s_crateSounds = 0;
+	s_wrongWayDraws = 0;
+	s_wrongWayVoices = 0;
+	s_wrongWayVoiceID = 0;
+	s_voicePlayFails = false;
+	s_voiceDriver = NULL;
 	memset(s_engineStarted, 0, sizeof(s_engineStarted));
 	memset(s_engineStopped, 0, sizeof(s_engineStopped));
 	memset(s_engineStarts, 0, sizeof(s_engineStarts));

@@ -9,7 +9,19 @@ enum
 	UI_RACE_CLOCK_HUD_Y = 0x8,
 };
 
-// Only adds an ST1 map-metadata null guard below, beyond the retail body.
+void UI_DrawWrongWay(const struct Driver *driver)
+{
+	const struct GameTracker *gGT = sdata->gGT;
+	if ((gGT->gameMode1 & BATTLE_MODE) == 0 && (gGT->elapsedEventTime & 0x80) != 0)
+	{
+		const struct PushBuffer *pb = &gGT->pushBuffer[driver->driverID];
+		DecalFont_DrawLine(sdata->lngStrings[LNG_WRONG_WAY],
+		                   pb->rect.x + (pb->rect.w >> 1),
+		                   pb->rect.y + (pb->rect.h >> 1) - 0x1e,
+		                   FONT_BIG, JUSTIFY_CENTER | ORANGE);
+	}
+}
+
 void UI_RenderFrame_Racing()
 {
 	s16 sVar1;
@@ -138,7 +150,8 @@ void UI_RenderFrame_Racing()
 
 			    ||
 
-			    ((playerStruct->actionsFlagSet & ACTION_DRIVING_WRONG_WAY) == 0))
+			    ((playerStruct->actionsFlagSet & ACTION_DRIVING_WRONG_WAY) == 0) ||
+			    Chaos_OverridesWrongWayWarning(playerStruct))
 			{
 			LAB_80053260:
 				if ((gameMode1 & PAUSE_ALL) == 0)
@@ -154,24 +167,7 @@ void UI_RenderFrame_Racing()
 			{
 				if ((gameMode1 & PAUSE_ALL) == 0)
 				{
-					pb = &gGT->pushBuffer[playerStruct->driverID];
-
-					// if "Time on clock" last 0xXX u8 is greater than 0x80 and less than 0xFF
-					if (((gameMode1 & BATTLE_MODE) == 0) && ((gGT->elapsedEventTime & 0x80) != 0))
-					{
-						DecalFont_DrawLine(sdata->lngStrings[LNG_WRONG_WAY],
-
-						                   // midpointX
-						                   pb->rect.x + (pb->rect.w >> 1),
-
-						                   // midpointY, 0x1e higher
-						                   pb->rect.y + (pb->rect.h >> 1) - 0x1e,
-
-						                   FONT_BIG, (JUSTIFY_CENTER | ORANGE));
-					}
-
-					// The text will not show if the last u8 is more than 0x00 and less than 0x7F.
-					// This is what makes the text flicker, rather than drawing solid
+					UI_DrawWrongWay(playerStruct);
 
 					cVar22 = '\x01';
 					goto LAB_80053260;

@@ -15,21 +15,13 @@ This plan tracks delivery, remaining specifications and outstanding validation.
 | --- | --- | --- |
 | A. Items and reserves | Use This!, Juiced Up, It is I, Providence, Reserve Injection, Too Boosted TO Fail | Implemented |
 | B. Driving, turbo and jumping | Sabotage, This Is Fire, Hydraulics, My Planet Needs Me, Who Bound This?, Try Something New | Implemented |
-| C. Size, camera and bots | Small Kart Energy, Classic GTA, Arena Champions, You've Got Mail, Fresh Start, Senile Mask | Implemented through Fresh Start |
+| C. Size, camera and bots | Small Kart Energy, Classic GTA, Arena Champions, You've Got Mail, Fresh Start, Senile Mask | Implemented |
 | D. Characters and movement | Identity Crisis, Body Swap, Teleport, Defective Teleport | Not started |
 | E. Time manipulation | Za Warudo, King Crimson | Not started |
 
-**Current effect: Fresh Start.** In-game validation is pending; Senile Mask is next.
+**Current effect: Senile Mask.** In-game validation is pending; Identity Crisis is next.
 
 ## Remaining specifications
-
-### Senile Mask
-
-For the Chaos duration, show the flashing wrong-way prompt while humans drive in
-the correct direction. Play the wrong-way voice twice as often and at double its
-normal volume. Override presentation only, without changing race progression.
-
-Investigate normal voice cadence/gain and per-player warning behavior.
 
 ### Identity Crisis
 
@@ -115,5 +107,6 @@ behavior.
 | Classic GTA | Cortex Castle floor and Roo's Tubes ceiling classification; Sewer Speedway, ramps, stacked roads, jumps, rescue, size effects, 1P/2P, pause and expiry. Mixed floor/ceiling blocks intentionally remain visible. |
 | Arena Champions | 1P/2P, bosses/cups, cornering/jumps, boost/damage, expiry and coexistence with human Super Speed. |
 | Fresh Start | Suspension/mask visuals, neutral pose and camera smoothing during drift/jumps; rescue deferral, starting boost/over-rev, damage recovery, repeated activation, 1P/2P lights/audio and HUD spacing, pause/reset, unchanged bots/global timer. |
+| Senile Mask | Flashing prompt in each correct-direction human viewport, including relic/crystal events; repeated Aku Aku/Uka Uka voice with half cooldown, no overlapping XA playback; silence/no prompt when actually wrong-way, normal warnings restored at expiry/reset. |
 
 Record remaining failures and reproducible tracks/quick states here.

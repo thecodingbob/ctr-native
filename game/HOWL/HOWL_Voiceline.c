@@ -325,6 +325,16 @@ void Voiceline_StartPlay(struct Item *voiceLine)
 	sdata->voicelineCooldown = (s16)(CDSYS_XAGetTrackLength(CDSYS_XA_TYPE_GAME, xaID) / 5) + 0x1e;
 }
 
+void Voiceline_PlayWrongWay(struct Driver *driver)
+{
+	const u32 voiceID = VehPickupItem_MaskBoolGoodGuy(driver) ? 0x1e : 0x3d;
+	sdata->voicelineCooldown = 0x1e;
+	if (CDSYS_XAPlay(CDSYS_XA_TYPE_EXTRA, voiceID) != 0)
+	{
+		sdata->voicelineCooldown += CDSYS_XAGetTrackLength(CDSYS_XA_TYPE_EXTRA, voiceID) / 5;
+	}
+}
+
 void Voiceline_Update(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -348,32 +358,20 @@ void Voiceline_Update(void)
 		return;
 	}
 
-	if (sdata->boolCanPlayWrongWaySFX != 0)
+	if (Chaos_PlayWrongWayVoice())
+	{
+		return;
+	}
+
+	if (sdata->boolCanPlayWrongWaySFX != 0 && !Chaos_OverridesWrongWayWarning(gGT->drivers[0]))
 	{
 		if ((sdata->WrongWayDirection_bool != 0) && (sdata->framesDrivingSameDirection > 0x1e))
 		{
-			u32 voiceID;
-
 			sdata->boolCanPlayWrongWaySFX = false;
 
 			if (gGT->numPlyrCurrGame == 1)
 			{
-				if (!VehPickupItem_MaskBoolGoodGuy(gGT->drivers[0]))
-				{
-					voiceID = 0x3d;
-				}
-				else
-				{
-					voiceID = 0x1e;
-				}
-
-				if (CDSYS_XAPlay(CDSYS_XA_TYPE_EXTRA, voiceID) == 0)
-				{
-					sdata->voicelineCooldown = 0x1e;
-					return;
-				}
-
-				sdata->voicelineCooldown = (s16)(CDSYS_XAGetTrackLength(CDSYS_XA_TYPE_EXTRA, voiceID) / 5) + 0x1e;
+				Voiceline_PlayWrongWay(gGT->drivers[0]);
 				return;
 			}
 		}

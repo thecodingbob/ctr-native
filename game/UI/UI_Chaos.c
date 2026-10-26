@@ -186,6 +186,7 @@ void UI_Chaos_DrawActivation(struct GameTracker *gGT)
 	}
 	const struct ChaosRuntime *runtime = &sdata->chaosRuntime;
 	const struct ChaosActivation *entries[UI_CHAOS_MAX_ENTRIES];
+	Chaos_DrawWrongWayWarnings(gGT);
 	const int count = UI_Chaos_CollectEntries(runtime, entries);
 	int latest[CHAOS_EFFECT_COUNT];
 	int rowY[CHAOS_EFFECT_COUNT];

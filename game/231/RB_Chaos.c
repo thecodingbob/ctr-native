@@ -404,6 +404,38 @@ bool Chaos_IsActiveForDriver(ChaosEffectId effect, const struct Driver *driver)
 	return Chaos_TargetsDriver(effect, driver) && Chaos_IsActive(effect);
 }
 
+bool Chaos_OverridesWrongWayWarning(const struct Driver *driver)
+{
+	return Chaos_IsActiveForDriver(CHAOS_EFFECT_SENILE_MASK, driver);
+}
+
+void Chaos_DrawWrongWayWarnings(struct GameTracker *gGT)
+{
+	for (int i = 0; i < gGT->numPlyrCurrGame; i++)
+	{
+		const struct Driver *driver = gGT->drivers[i];
+		if (Chaos_OverridesWrongWayWarning(driver) && (driver->actionsFlagSet & ACTION_DRIVING_WRONG_WAY) == 0)
+		{
+			UI_DrawWrongWay(driver);
+		}
+	}
+}
+
+bool Chaos_PlayWrongWayVoice(void)
+{
+	struct GameTracker *gGT = sdata->gGT;
+	for (int i = 0; i < gGT->numPlyrCurrGame; i++)
+	{
+		struct Driver *driver = gGT->drivers[i];
+		if (Chaos_OverridesWrongWayWarning(driver) && (driver->actionsFlagSet & ACTION_DRIVING_WRONG_WAY) == 0)
+		{
+			Chaos_PlaySenileVoice(driver);
+			return true;
+		}
+	}
+	return false;
+}
+
 int Chaos_GravityForDriver(const struct Driver *driver)
 {
 	const int gravity = driver->const_Gravity;
