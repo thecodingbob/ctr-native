@@ -55,6 +55,11 @@ void Chaos_Reset(void)
 			if (driver != NULL)
 			{
 				Chaos_SetKartScale(CHAOS_KART_SCALE_NORMAL, driver);
+				if (i < (int)len(sdata->chaosRuntime.engineClassChanged) && sdata->chaosRuntime.engineClassChanged[i])
+				{
+					const int original = GAME_CHARACTER_METADATA[GAME_CHARACTER_IDS[driver->driverID]].engineID;
+					Chaos_ChangeEngineAudio(driver, sdata->chaosRuntime.engineClass[i], original);
+				}
 			}
 		}
 	}
@@ -189,6 +194,12 @@ static void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation)
 					if (driver->driverID < (int)len(sdata->chaosRuntime.controls))
 					{
 						Chaos_ShuffleControls(&sdata->chaosRuntime.controls[driver->driverID], &GAMEPADS->gamepad[driver->driverID]);
+					}
+					break;
+				case CHAOS_EFFECT_TRY_SOMETHING_NEW:
+					if (driver->driverID < (int)len(sdata->chaosRuntime.engineClass))
+					{
+						Chaos_ChangeDrivingClass(driver);
 					}
 					break;
 				case CHAOS_EFFECT_CLOCK_CURSE:
@@ -502,6 +513,17 @@ void Chaos_ApplyInputRules(const struct Driver *driver, struct GamepadBuffer *pa
 			Chaos_DisableBraking(pad);
 		}
 	}
+}
+
+int Chaos_EngineClassForDriver(const struct Driver *driver, int engineClass)
+{
+	if (driver != NULL && driver->driverID < (int)len(sdata->chaosRuntime.engineClass) &&
+	    sdata->chaosRuntime.engineClassChanged[driver->driverID] &&
+	    sdata->gGT->drivers[driver->driverID] == driver)
+	{
+		return sdata->chaosRuntime.engineClass[driver->driverID];
+	}
+	return engineClass;
 }
 
 static void Chaos_UpdateControlAxes(void)

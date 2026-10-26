@@ -20,6 +20,7 @@ enum
 	CHAOS_WUMPA_PICKUP_FRAMES = 5,
 	CHAOS_LAUNCH_JUMP_MULTIPLIER = 6,
 	CHAOS_ANALOG_ACTION_DEAD_ZONE = 0x30,
+	CHAOS_ENGINE_AUDIO_CLASS_STRIDE = 4,
 };
 
 static const u32 s_chaosControlButtons[CHAOS_CONTROL_COUNT] = {
@@ -205,6 +206,28 @@ static void Chaos_ApplyClockCurse(struct Driver *driver, s32 durationMS)
 {
 	VehPickState_ApplyDamage(driver, VEH_PICK_DAMAGE_SPIN, NULL, 0, true);
 	driver->clockReceive = durationMS;
+}
+
+static void Chaos_ChangeEngineAudio(const struct Driver *driver, int previous, int next)
+{
+	EngineAudio_Stop(previous * CHAOS_ENGINE_AUDIO_CLASS_STRIDE + driver->driverID);
+	EngineAudio_InitOnce(next * CHAOS_ENGINE_AUDIO_CLASS_STRIDE + driver->driverID, HOWL_SFX_CENTER_NO_DISTORTION);
+}
+
+static void Chaos_ChangeDrivingClass(struct Driver *driver)
+{
+	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	const int player = driver->driverID;
+	const int current = Chaos_EngineClassForDriver(driver, GAME_CHARACTER_METADATA[GAME_CHARACTER_IDS[player]].engineID);
+	int next = ChaosEffect_NextRandom(&sdata->chaosRng) % (NUM_CLASSES - 1);
+	if (next >= current)
+	{
+		next++;
+	}
+	runtime->engineClass[player] = next;
+	runtime->engineClassChanged[player] = true;
+	VehBirth_SetConstsForClass(driver, next);
+	Chaos_ChangeEngineAudio(driver, current, next);
 }
 
 static void Chaos_LaunchDriver(struct Driver *driver)

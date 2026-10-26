@@ -1991,6 +1991,7 @@ void VehStuckProc_Warp_Init(struct Thread *th, struct Driver *d)
 	d->driverAudioPtrs[0] = 0;
 
 	engine = GAME_CHARACTER_METADATA[GAME_CHARACTER_IDS[d->driverID]].engineID;
+	engine = Chaos_EngineClassForDriver(d, engine);
 
 	EngineAudio_Stop((u16)((engine * VEH_WARP_ENGINE_AUDIO_STRIDE) + d->driverID));
 

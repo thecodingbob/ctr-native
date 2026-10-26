@@ -72,6 +72,12 @@ void BOTS_GotoStartingLine(struct Driver *driver)
 	(void)driver;
 	CtrTest_Bail("appearance initialization must not reposition bots");
 }
+int Chaos_EngineClassForDriver(const struct Driver *driver, int engineClass)
+{
+	(void)driver;
+	return engineClass;
+}
+
 b32 EngineAudio_InitOnce(u32 soundID, u32 flags)
 {
 	(void)soundID; (void)flags;

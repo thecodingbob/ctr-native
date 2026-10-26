@@ -3,7 +3,7 @@
 Source: [issue #90](https://github.com/thecodingbob/ctr-native/issues/90).
 Status: block A implemented with focused test coverage. Later technical checks
 remain marked with placeholders; in-game visual validation is pending.
-Current effect: My Planet Needs Me (block B), implemented for review; in-game validation pending.
+Current effect: Try Something New (block B), implemented for review; in-game validation pending.
 
 Existing contracts: [implementation guide](CHAOS_IMPLEMENTATION.md).
 Existing gameplay: [player guide](features/CHAOS.md).
@@ -152,6 +152,8 @@ before applying its own behavior.
   - [x] This Is Fire: implementation and focused tests; user review/in-game checks pending.
   - [x] Hydraulics: implementation and focused tests; user review/in-game checks pending.
   - [x] My Planet Needs Me: implementation and focused tests; user review/in-game checks pending.
+  - [x] Who Bound This?: implementation and focused tests; user approved proceeding.
+  - [x] Try Something New: implementation and focused tests; user review/in-game checks pending.
 - [ ] C: size, camera, and bots.
 - [ ] D: characters and movement.
 - [ ] E: time-manipulation prototypes and implementation.
@@ -223,6 +225,34 @@ In-game review: the original 8× impulse exceeded signed 16-bit speed storage wi
 the retail jump force of 4,596 and reversed the kart. Reduced to 6× for now at
 user request, preserving the existing physics layout. The launch-vector test now
 uses that retail force; in-game retesting remains pending.
+
+Who Bound This?: appended as timed effect ID 26 (`who-bound-this`). Each human
+receives a stable nonidentity permutation of throttle, brake, item and both hop
+buttons. Local pad copies cover linear driving and both drift-update paths;
+analog throttle/reverse follow the permutation with coherent held/tap/release
+edges. Shared input, steering, pause and menu controls remain unchanged.
+`Chaos_ApplyInputRules` now also owns Inverted/Wobble Steering and Sabotage;
+No Hopping/Hydraulics remain after normal jump-input resolution. The game build
+and five focused Chaos suites passed. User approved proceeding to Try Something New.
+
+Try Something New: appended as instant effect ID 27 (`try-something-new`), with
+the resulting class lasting until race end. Picks independently from the other
+three standard classes, excluding each driver's current class on every repeat.
+`VehBirth_Consts.c` shares the existing table loader between ordinary vehicle
+birth and class changes, including configured multipliers. Runtime stores the
+selected class for subsequent picks and resident snapshots; driver constants
+retain the actual class after the notice expires. Characters, shared metadata,
+position, current momentum, inventory and reserves remain intact. Focused checks
+use the real class loader for class selection, repeated changes, modifiers,
+scope, persistence and next-race restoration. Game build and all six focused
+Chaos/vehicle-spawn suites passed. In-game checks: repeat class changes in 1P/2P,
+handling changes while drifting, concurrent speed/gravity modifiers and retry.
+Review this effect before starting Small Kart Energy in block C.
+Engine audio now follows the selected class immediately, including repeat
+changes, ongoing pitch/volume updates and warp stop/restart. Reset restores the
+character's engine audio. The game rebuild and six focused suites passed after
+this correction; the effects suite performs 2,862 checks with zero failures.
+In-game validation should also confirm the audible transition on activation.
 
 Block A: focused runtime tests cover full timed capacity, instant notices without
 docking, repeat rewards, notice overflow, pause/reset/resident restore, inventory

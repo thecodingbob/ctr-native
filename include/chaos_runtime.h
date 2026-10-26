@@ -51,6 +51,8 @@ struct ChaosRuntime
 	bool raceInitialized;
 	bool touchingTurboPad[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
 	struct ChaosControlShuffle controls[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
+	u8 engineClass[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
+	bool engineClassChanged[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
 };
 
 #endif

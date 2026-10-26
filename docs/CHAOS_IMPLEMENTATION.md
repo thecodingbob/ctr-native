@@ -8,6 +8,7 @@
 | Save encoding and runtime layouts             | `include/chaos_save.h`, `include/namespace_Memcard.h`, `include/chaos_runtime.h` |
 | Eligibility and runtime                       | `include/chaos_gate.h`, `game/231/RB_Chaos.c`                                    |
 | Effect implementations                        | `game/231/RB_ChaosEffects.c`                                                      |
+| Shared driving-class constant loader          | `game/Vehicle/VehBirth_Consts.c` (included by `VehBirth.c`)                       |
 | Creation flow and shared settings screen      | `game/230/MM_NewLoad.c`, `game/230/MM_ChaosConfig.c`                             |
 | Pause entry and HUD                           | `game/MAIN/MainFreeze_Chaos.c`, `game/UI/UI_Chaos.c`                             |
 | External filesystem interface                 | `platform/native_chaos_ipc.c`                                                    |
@@ -26,7 +27,7 @@ launch and teardown without loading the Chaos runtime.
 sharing `Chaos_TargetsDriver` for recipient checks. `RB_ChaosEffects.c` contains
 only private effect operations: callers check activation and applicability.
 Effect operations retain their gameplay conditions (terrain, fuel, pickup
-queues) but never query the Chaos runtime. The gameplay hooks preserve modifier
+queues) but never query active-effect eligibility. The gameplay hooks preserve modifier
 ordering and check eligibility before calling them; No Reserves is tested
 through `Chaos_ApplyDriver`.
 
@@ -205,7 +206,7 @@ U-turn and rescue resets. `COLL_MOVED_ScrubImpact` skips clearing reserves and
 checking Chaos protection.
 
 Sabotage (ID 22, `sabotage`) filters driver-local resolved brake input through
-`Chaos_ApplyDriver` before braking can clear reserves or affect target speed.
+`Chaos_ApplyInputRules` before braking can clear reserves or affect target speed.
 It disables Square and the positive/reverse halves of both vertical sticks,
 preserving forward throttle and shared gamepad input. Recipient/activation checks
 remain in `RB_Chaos.c`; `RB_ChaosEffects.c` owns the input operation.
@@ -234,6 +235,28 @@ eligibility without changing cooldowns or queuing a repeated jump. Activation
 removes No Hopping/Hydraulics, preserves gravity modifiers and uses only an instant
 announcement. Focused tests capture the launch vector at the conversion boundary;
 full trajectory validation is in game.
+
+Who Bound This? (ID 26, `who-bound-this`) keeps independent per-human permutations
+and analog edge history in `ChaosRuntime`. `Chaos_ApplyInputRules` remaps fresh
+local pad copies before applying Inverted/Wobble Steering and Sabotage. Driving
+physics, drift entry and drift updates all use the same logical controls;
+shared pad/menu input remains unchanged. Analog throttle/reverse become mapped
+button actions while the effect is active. No Hopping/Hydraulics stay in
+`Chaos_ApplyDriver`, after normal jump-input resolution.
+
+Try Something New (ID 27, `try-something-new`) is a one-off class change lasting
+until race end. The runtime remembers the selected standard class so repeats
+exclude the live class rather than always excluding the character baseline.
+`VehBirth_SetConstsForClass` shares the ordinary metaphysics table loader and
+configured multipliers; `VehBirth_SetConsts` still selects the character's class
+for normal birth. Both live in `VehBirth_Consts.c`, allowing focused tests to use
+the real loader without spawning vehicles. Changing class leaves characters,
+shared metadata and current race state intact. Race teardown clears the selected
+class bookkeeping; normal vehicle birth restores the character's class.
+Class changes also stop the previous engine loop and start the selected class's
+loop. `Chaos_EngineClassForDriver` keeps engine updates, audio initialization and
+warp teardown on that same class, without overriding ghosts that share a player
+ID. Reset restores the character's engine loop before clearing the override.
 
 ## HUD and audio
 

@@ -108,6 +108,8 @@ enabled in the file. Setup and a manual submission example are in the
 | **This Is Fire**        | Upgrade existing turbo and new boosts to USF without free reserves. Earned USF remains after expiry until normal gameplay removes it.                                           |
 | **Hydraulics**          | Automatically hop with normal force as soon as normal jump rules allow, including while drifting.                                                                               |
 | **My Planet Needs Me**  | Instantly add an upward impulse at 6× normal jump force, even in midair. Gravity effects still apply.                                                                           |
+| **Who Bound This?** | Randomize throttle, brake, item and both hop/drift controls independently per human for the effect's duration. Steering, pause and menus remain unchanged. |
+| **Try Something New** | Switch to a different standard driving class and its engine sound until race end, keeping the character. Repeats select a class different from the current one. |
 
 Effects can overlap: Duration does not delay the next trigger. For example,
 Duration 30 seconds with Interval 10 seconds allows several effects at once.
@@ -122,8 +124,8 @@ Duration 30 seconds with Interval 10 seconds allows several effects at once.
   **No Hopping / Hydraulics**.
 - **Use This!** ends **No Items**; **Reserve Injection** ends **No Reserves**.
 - **My Planet Needs Me** ends **No Hopping** and **Hydraulics** before launching.
-- The six instant effects (**Use This!**, **Juiced Up**, **It is I**,
-  **Providence**, **Reserve Injection**, **My Planet Needs Me**) take no timed slot.
+- The seven instant effects (**Use This!**, **Juiced Up**, **It is I**,
+  **Providence**, **Reserve Injection**, **My Planet Needs Me**, **Try Something New**) take no timed slot.
   Repeating one applies it again.
 
 ## During a race

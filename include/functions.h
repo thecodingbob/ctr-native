@@ -714,6 +714,7 @@ void VehBirth_TeleportSelf(struct Driver *d, u32 spawnFlag, int spawnPosY);
 void VehBirth_TeleportAll(struct GameTracker *gGT, u32 spawnFlags);
 struct Model *VehBirth_GetModelByName(char *searchName);
 void VehBirth_SetConsts(struct Driver *driver);
+void VehBirth_SetConstsForClass(struct Driver *driver, int engineID);
 void VehBirth_EngineAudio_AllPlayers(void);
 void VehBirth_TireSprites(struct Thread *t);
 void VehBirth_NonGhost(struct Thread *t, int index);
@@ -1319,6 +1320,7 @@ int Chaos_JumpForceForDriver(const struct Driver *driver, int force);
 int Chaos_AccelerationForDriver(const struct Driver *driver, int acceleration);
 int Chaos_ReservesForDriver(const struct Driver *driver, int reserves);
 int Chaos_FireLevelForDriver(const struct Driver *driver, int fireLevel);
+int Chaos_EngineClassForDriver(const struct Driver *driver, int engineClass);
 void Chaos_ApplyItemRules(struct Driver *driver);
 void Chaos_ApplyCrateRules(struct Driver *driver, struct Instance *crateInst);
 bool Chaos_IsHardCrateForDriver(const struct Instance *crateInst, const struct Thread *collidingTh,

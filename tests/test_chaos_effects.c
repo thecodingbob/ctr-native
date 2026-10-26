@@ -278,8 +278,8 @@ static void TestWhoBoundThis(void)
 			.buttonsTapped = inputs[i] | BTN_START,
 		};
 		struct GamepadBuffer pad = ShuffledPad(&human, &raw);
-		CTR_TEST_CHECK_EQ(pad.buttonsHeldCurrFrame, outputs[i] | untouched, "only the five gameplay buttons are permuted");
-		CTR_TEST_CHECK_EQ(pad.buttonsTapped, outputs[i] | BTN_START, "tap edges follow the mapped action without changing pause");
+		CTR_TEST_CHECK_EQ((u32)pad.buttonsHeldCurrFrame, outputs[i] | untouched, "only the five gameplay buttons are permuted");
+		CTR_TEST_CHECK_EQ((u32)pad.buttonsTapped, outputs[i] | BTN_START, "tap edges follow the mapped action without changing pause");
 		CTR_TEST_CHECK_EQ(pad.stickLX, 42, "left-stick steering is unchanged");
 		struct GamepadBuffer released = raw;
 		released.buttonsHeldPrevFrame = inputs[i];
@@ -349,6 +349,96 @@ static void TestWhoBoundThis(void)
 	Tick(1000);
 	pad = ShuffledPad(&human, &s_gamepads.gamepad[0]);
 	CTR_TEST_CHECK(memcmp(&pad, &s_gamepads.gamepad[0], sizeof(pad)) == 0, "expiry immediately returns the complete live pad");
+}
+
+static void TestTrySomethingNew(void)
+{
+	CTR_TEST_SECTION("Try Something New changes class constants until race end without changing character or race state");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_TRY_SOMETHING_NEW] = true;
+	sdata->chaosSettings.enabledCount++;
+	data.characterIDs[0] = CRASH_BANDICOOT;
+	data.characterIDs[1] = COCO_BANDICOOT;
+	data.MetaDataCharacters[CRASH_BANDICOOT].engineID = BALANCED;
+	data.MetaDataCharacters[COCO_BANDICOOT].engineID = ACCEL;
+	const struct MetaDataCHAR crashMetadata = data.MetaDataCharacters[CRASH_BANDICOOT];
+	const struct MetaDataCHAR cocoMetadata = data.MetaDataCharacters[COCO_BANDICOOT];
+	data.metaPhys[0] = (struct MetaPhys){.offset = SPEED_CLASS_STAT_OFFSET, .size = 2, .value = {10000, 12000, 14000, 8000}};
+	data.metaPhys[1] = (struct MetaPhys){.offset = TURN_RATE_OFFSET, .size = 1, .value = {28, 26, 24, 48}};
+	data.metaPhys[2] = (struct MetaPhys){.offset = GRAVITY_OFFSET, .size = 2, .value = {900, 900, 900, 900}};
+	data.metaPhys[3] = (struct MetaPhys){.offset = JUMP_OFFSET, .size = 2, .value = {4596, 4596, 4596, 4596}};
+	data.metaPhys[4] = (struct MetaPhys){.offset = TURBO_FULL_BAR_RESERVE_GAIN_OFFSET, .size = 1, .value = {10, 20, 30, 40}};
+	g_config.speedMultiplier = 150;
+	g_config.turnMultiplier = 100;
+	g_config.gravityMultiplier = 200;
+	g_config.jumpMultiplier = 50;
+	g_config.reserveMultiplier = 100;
+	struct Driver human = {
+		.driverID = 0, .reserves = 500, .fireSpeedCap = 4096, .heldItemID = HELD_ITEM_POTION,
+		.posCurr = {10, 20, 30}, .speed = 10000,
+	};
+	struct Driver partner = {.driverID = 1};
+	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT, .const_Speed_ClassStat = 1234};
+	s_tracker.drivers[0] = &human;
+	s_tracker.drivers[1] = &partner;
+	s_tracker.drivers[2] = &bot;
+	VehBirth_SetConsts(&human);
+	VehBirth_SetConsts(&partner);
+	CTR_TEST_CHECK_EQ(human.const_Speed_ClassStat, 15000, "ordinary vehicle birth retains character-based class and configured multipliers");
+	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 10000);
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_TRY_SOMETHING_NEW, 1000), "the class change activates as a one-off effect");
+	int current = sdata->chaosRuntime.engineClass[0];
+	CTR_TEST_CHECK_EQ(s_engineStopped[0], BALANCED * 4, "the old engine loop stops at the class change");
+	CTR_TEST_CHECK_EQ(s_engineStarted[0], (u32)(current * 4), "the new class engine loop starts immediately");
+	CTR_TEST_CHECK_EQ(Chaos_EngineClassForDriver(&human, BALANCED), current, "ongoing engine updates resolve the selected class");
+	CTR_TEST_CHECK_EQ(s_engineStarted[1], (u32)(sdata->chaosRuntime.engineClass[1] * 4 + 1), "each human uses their own engine audio slot");
+	struct Driver ghost = {.driverID = 0};
+	CTR_TEST_CHECK_EQ(Chaos_EngineClassForDriver(&ghost, BALANCED), BALANCED, "a ghost sharing a driver ID retains its own engine class");
+	CTR_TEST_CHECK(current != BALANCED && current < NUM_CLASSES, "the first class change excludes the character's current standard class");
+	CTR_TEST_CHECK(sdata->chaosRuntime.engineClass[1] != ACCEL && sdata->chaosRuntime.engineClassChanged[1],
+	               "the second human receives a class different from their own baseline");
+	CTR_TEST_CHECK_EQ(human.const_Speed_ClassStat, data.metaPhys[0].value[current] * 150 / 100, "new class speed retains the configured multiplier");
+	CTR_TEST_CHECK_EQ(human.const_TurnRate, data.metaPhys[1].value[current], "byte-sized handling stats switch with the class");
+	CTR_TEST_CHECK_EQ(human.const_turboFullBarReserveGain, data.metaPhys[4].value[current], "reserve-gain constants switch through the shared table loader");
+	CTR_TEST_CHECK(human.const_Gravity == 1800 && human.const_JumpForce == 2298, "class reload preserves configured gravity and jump multipliers");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 450, "existing continuous Chaos modifiers still use the new constants");
+	CTR_TEST_CHECK(human.reserves == 500 && human.fireSpeedCap == 4096 && human.heldItemID == HELD_ITEM_POTION,
+	               "class changes preserve current boost and inventory");
+	CTR_TEST_CHECK(human.posCurr.x == 10 && human.posCurr.y == 20 && human.posCurr.z == 30 && human.speed == 10000,
+	               "class changes do not reset position or momentum");
+	CTR_TEST_CHECK_EQ(bot.const_Speed_ClassStat, 1234, "bots retain their existing class constants");
+	CTR_TEST_CHECK(data.characterIDs[0] == CRASH_BANDICOOT && data.characterIDs[1] == COCO_BANDICOOT &&
+	               memcmp(&crashMetadata, &data.MetaDataCharacters[CRASH_BANDICOOT], sizeof(crashMetadata)) == 0 &&
+	               memcmp(&cocoMetadata, &data.MetaDataCharacters[COCO_BANDICOOT], sizeof(cocoMetadata)) == 0,
+	               "characters and shared character metadata remain unchanged");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 1, "the class change takes no timed slot and preserves Low Gravity");
+	Tick(4000);
+	CTR_TEST_CHECK_EQ(human.const_Speed_ClassStat, data.metaPhys[0].value[current] * 150 / 100, "notice expiry does not restore the old class");
+	for (int i = 0; i < 20; i++)
+	{
+		Chaos_Activate(CHAOS_EFFECT_TRY_SOMETHING_NEW, 1000);
+		const int next = sdata->chaosRuntime.engineClass[0];
+		CTR_TEST_CHECK(next != current && next < NUM_CLASSES, "repeat activations exclude the live Chaos class rather than the character baseline");
+		CTR_TEST_CHECK_EQ(s_engineStopped[0], (u32)(current * 4), "repeat changes stop the currently playing class loop");
+		CTR_TEST_CHECK_EQ(s_engineStarted[0], (u32)(next * 4), "repeat changes start the newly selected engine loop");
+		current = next;
+	}
+	const struct ChaosRuntime saved = sdata->chaosRuntime;
+	Chaos_Reset();
+	CTR_TEST_CHECK_EQ(s_engineStopped[0], (u32)(current * 4), "teardown stops the changed engine loop");
+	CTR_TEST_CHECK_EQ(s_engineStarted[0], BALANCED * 4, "teardown restores the character engine for post-race updates");
+	CTR_TEST_CHECK_EQ(Chaos_EngineClassForDriver(&human, BALANCED), BALANCED, "teardown clears the audio class override");
+	CTR_TEST_CHECK(!sdata->chaosRuntime.engineClassChanged[0], "race teardown clears class-selection bookkeeping");
+	sdata->chaosRuntime = saved;
+	const int partnerClass = sdata->chaosRuntime.engineClass[1];
+	partner.actionsFlagSet = ACTION_RACE_FINISHED;
+	const int partnerStarts = s_engineStarts[1];
+	Chaos_Activate(CHAOS_EFFECT_TRY_SOMETHING_NEW, 1000);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.engineClass[1], partnerClass, "finished humans receive no further class changes");
+	CTR_TEST_CHECK_EQ(s_engineStarts[1], partnerStarts, "finished humans receive no engine restart on later activations");
+	Chaos_BeginRace(&s_tracker);
+	VehBirth_SetConsts(&human);
+	CTR_TEST_CHECK_EQ(human.const_Speed_ClassStat, 15000, "the next race starts with the character's ordinary class");
 }
 
 static void TestWobbleSteering(void)
@@ -1941,6 +2031,7 @@ int main(void)
 	TestHydraulics();
 	TestMyPlanetNeedsMe();
 	TestWhoBoundThis();
+	TestTrySomethingNew();
 	TestWobbleSteering();
 	TestGravityEffects();
 	TestSpeedEffects();

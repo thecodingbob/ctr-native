@@ -39,6 +39,23 @@ static int s_shieldGrants;
 static int s_itemSounds;
 static u32 s_itemSound;
 static int s_juicedSounds;
+static u32 s_engineStarted[4];
+static u32 s_engineStopped[4];
+static int s_engineStarts[4];
+
+b32 EngineAudio_InitOnce(u32 soundID, u32 flags)
+{
+	CTR_TEST_CHECK_EQ(flags, HOWL_SFX_CENTER_NO_DISTORTION, "class changes use normal engine audio flags");
+	s_engineStarted[soundID % 4] = soundID;
+	s_engineStarts[soundID % 4]++;
+	return true;
+}
+
+void EngineAudio_Stop(u32 soundID)
+{
+	s_engineStopped[soundID % 4] = soundID;
+}
+
 void VehStuckProc_RIP_Init(struct Thread *thread, struct Driver *driver)
 {
 	(void)thread;
@@ -93,6 +110,7 @@ void VehPickupItem_ShootNow(struct Driver *driver, s32 weapon, s32 flags)
 enum { SOUND_CLOCK = 0x44 };
 
 #include <game/Vehicle/VehPhysCrash.c>
+#include <game/Vehicle/VehBirth_Consts.c>
 #include <game/Vehicle/VehPhysForce.c>
 #include <game/Vehicle/VehPickState.c>
 #include <game/Vehicle/VehPhysGeneral.c>
@@ -421,6 +439,9 @@ struct Particle *Particle_Init(u32 flags, struct IconGroup *icons, struct Partic
 
 static void SetupRace(int trigger)
 {
+	memset(data.metaPhys, 0, sizeof(data.metaPhys));
+	memset(data.MetaDataCharacters, 0, sizeof(data.MetaDataCharacters));
+	memset(data.characterIDs, 0, sizeof(data.characterIDs));
 	// Stand-in retail storage: repeated entries must not weight uniform gifts.
 	memset(data.RNG_itemSetRace2, HELD_ITEM_TURBO, sizeof(data.RNG_itemSetRace2));
 	int poolIndex = 0;
@@ -437,6 +458,9 @@ static void SetupRace(int trigger)
 	s_squishSounds = 0;
 	s_crateExplosions = 0;
 	s_crateSounds = 0;
+	memset(s_engineStarted, 0, sizeof(s_engineStarted));
+	memset(s_engineStopped, 0, sizeof(s_engineStopped));
+	memset(s_engineStarts, 0, sizeof(s_engineStarts));
 	memset(s_launchConversions, 0, sizeof(s_launchConversions));
 	memset(s_launchVelocity, 0, sizeof(s_launchVelocity));
 	s_lastExplodingCrate = NULL;
