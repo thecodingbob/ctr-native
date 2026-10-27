@@ -33,6 +33,10 @@ enum
 	CHAOS_TRANSFORM_SMOKE_SCALE = 0x2000,
 	CHAOS_TRANSFORM_SMOKE_GROWTH = 0x200,
 	CHAOS_TELEPORT_LAP_DIVISOR = 10,
+	CHAOS_DEFECTIVE_TELEPORT_RADIUS_DIVISOR = 5,
+	CHAOS_DEFECTIVE_TELEPORT_SAMPLE_ATTEMPTS = 64,
+	CHAOS_DEFECTIVE_TELEPORT_HEIGHT_LIMIT = 0x100,
+	CHAOS_DEFECTIVE_TELEPORT_GEOMETRY_MARGIN = 50,
 	CHAOS_TELEPORT_PROBE_HALF_HEIGHT = 0x100,
 	CHAOS_PATH_INVALID_NODE = 0xff,
 	CHAOS_TRACK_DISTANCE_SCALE = 8,
@@ -941,6 +945,37 @@ static void Chaos_ReleaseRepositionHold(struct Driver *driver)
 	}
 }
 
+static void Chaos_MoveDriver(struct Driver *driver, const Vec3 *position, int yaw)
+{
+	Chaos_ReleaseRepositionHold(driver);
+	driver->posCurr = *position;
+	driver->posPrev = driver->posCurr;
+	driver->underDriver = NULL;
+	driver->currBlockTouching = NULL;
+	driver->distanceDrivenBackwards = 0;
+	driver->collisionFlags = 0;
+	driver->stepFlagSet = 0;
+	driver->actionsFlagSet &= ~(ACTION_DRIVING_WRONG_WAY | ACTION_CHECKPOINT_BRANCH_PENDING | ACTION_WARP);
+	driver->angle = yaw;
+	driver->rotCurr = (SVec3Slot){0, yaw, 0, 0};
+	driver->rotPrev = driver->rotCurr;
+	Chaos_ResetSteeringPose(driver);
+	driver->axisRotationX = yaw;
+	VehPhysForce_RotAxisAngle(&driver->matrixMovingDir, CTR_VECTOR_DATA(&driver->AxisAngle2_normalVec), yaw);
+	driver->matrixFacingDir = driver->matrixMovingDir;
+	VehPhysForce_ConvertSpeedToVec(driver, &driver->velocity);
+	driver->xSpeed = driver->velocity.x;
+	driver->ySpeed = driver->velocity.y;
+	driver->zSpeed = driver->velocity.z;
+	driver->accel = (SVec3){0};
+	driver->instSelf->matrix.t[0] = driver->posCurr.x >> FRACTIONAL_BITS_8;
+	driver->instSelf->matrix.t[1] = driver->posCurr.y >> FRACTIONAL_BITS_8;
+	driver->instSelf->matrix.t[2] = driver->posCurr.z >> FRACTIONAL_BITS_8;
+	Chaos_FollowBody(driver->driverID, driver);
+	sdata->chaosRuntime.touchingTurboPad[driver->driverID] = false;
+	OtherFX_Play(SOUND_INVISIBILITY, 1);
+}
+
 static bool Chaos_RepositionDriver(struct Driver *driver, const struct ChaosTrackDestination *destination)
 {
 	struct GameTracker *tracker = GAME_TRACKER;
@@ -960,19 +995,17 @@ static bool Chaos_RepositionDriver(struct Driver *driver, const struct ChaosTrac
 	}
 	struct QuadBlock *ground = sps->hit.ptrQuadblock;
 	const SVec3 normal = sps->hit.plane.normal;
-	const int groundY = sps->Union.QuadBlockColl.hitPos.y * FP8(1);
-	Chaos_ReleaseRepositionHold(driver);
-	driver->posCurr = destination->pos;
-	driver->posCurr.y = groundY;
-	driver->posPrev = driver->posCurr;
-	driver->underDriver = ground;
-	driver->lastValid = ground;
-	driver->currBlockTouching = ground;
-	driver->quadBlockHeight = groundY;
+	Vec3 position = destination->pos;
+	position.y = sps->Union.QuadBlockColl.hitPos.y * FP8(1);
 	driver->AxisAngle1_normalVec = normal;
 	driver->AxisAngle2_normalVec = normal;
 	driver->AxisAngle3_normalVec = normal;
 	driver->normalVecUP = normal;
+	Chaos_MoveDriver(driver, &position, destination->yaw);
+	driver->underDriver = ground;
+	driver->lastValid = ground;
+	driver->currBlockTouching = ground;
+	driver->quadBlockHeight = position.y;
 	driver->currentTerrain = ground->terrain_type;
 	driver->terrainMeta1 = VehAfterColl_GetTerrain(driver->currentTerrain);
 	driver->terrainMeta2 = driver->terrainMeta1;
@@ -980,29 +1013,101 @@ static bool Chaos_RepositionDriver(struct Driver *driver, const struct ChaosTrac
 	    ground->checkpointIndex : destination->checkpoint;
 	driver->distanceToFinish_curr = destination->distanceToFinish;
 	driver->distanceToFinish_checkpoint = destination->distanceToFinish;
-	driver->distanceDrivenBackwards = 0;
-	driver->collisionFlags = 0;
-	driver->stepFlagSet = 0;
-	driver->actionsFlagSet &= ~(ACTION_DRIVING_WRONG_WAY | ACTION_CHECKPOINT_BRANCH_PENDING | ACTION_WARP);
-	driver->angle = destination->yaw;
-	driver->rotCurr = (SVec3Slot){0, destination->yaw, 0, 0};
-	driver->rotPrev = driver->rotCurr;
-	Chaos_ResetSteeringPose(driver);
-	driver->axisRotationX = destination->yaw;
-	VehPhysForce_RotAxisAngle(&driver->matrixMovingDir, CTR_VECTOR_DATA(&driver->AxisAngle2_normalVec), destination->yaw);
-	driver->matrixFacingDir = driver->matrixMovingDir;
-	VehPhysForce_ConvertSpeedToVec(driver, &driver->velocity);
-	driver->xSpeed = driver->velocity.x;
-	driver->ySpeed = driver->velocity.y;
-	driver->zSpeed = driver->velocity.z;
-	driver->accel = (SVec3){0};
-	driver->instSelf->matrix.t[0] = driver->posCurr.x >> FRACTIONAL_BITS_8;
-	driver->instSelf->matrix.t[1] = driver->posCurr.y >> FRACTIONAL_BITS_8;
-	driver->instSelf->matrix.t[2] = driver->posCurr.z >> FRACTIONAL_BITS_8;
-	Chaos_FollowBody(driver->driverID, driver);
-	sdata->chaosRuntime.touchingTurboPad[driver->driverID] = false;
-	OtherFX_Play(SOUND_INVISIBILITY, 1);
 	return true;
+}
+
+static bool Chaos_IsTeleportNearGeometry(const struct mesh_info *mesh, const Vec3 *position)
+{
+	const int x = position->x >> FRACTIONAL_BITS_8;
+	const int y = position->y >> FRACTIONAL_BITS_8;
+	const int z = position->z >> FRACTIONAL_BITS_8;
+	const struct BoundingBox *bounds = &mesh->bspRoot->box;
+	if (x < bounds->min.x || x > bounds->max.x || z < bounds->min.z || z > bounds->max.z)
+	{
+		return false;
+	}
+	for (int i = 0; i < mesh->numBspNodes; i++)
+	{
+		const struct BSP *node = &mesh->bspRoot[i];
+		if ((node->flag & BSP_NODE_FLAG_LEAF) == 0 || node->data.leaf.numQuads == 0)
+		{
+			continue;
+		}
+		bounds = &node->box;
+		if (x >= bounds->min.x - CHAOS_DEFECTIVE_TELEPORT_GEOMETRY_MARGIN &&
+		    x <= bounds->max.x + CHAOS_DEFECTIVE_TELEPORT_GEOMETRY_MARGIN &&
+		    z >= bounds->min.z - CHAOS_DEFECTIVE_TELEPORT_GEOMETRY_MARGIN &&
+		    z <= bounds->max.z + CHAOS_DEFECTIVE_TELEPORT_GEOMETRY_MARGIN &&
+		    y >= bounds->min.y - CHAOS_DEFECTIVE_TELEPORT_HEIGHT_LIMIT &&
+		    y <= bounds->max.y + CHAOS_DEFECTIVE_TELEPORT_HEIGHT_LIMIT)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+static void Chaos_DefectiveTeleportDriver(struct Driver *driver)
+{
+	const struct Level *level = GAME_TRACKER->level1;
+	if (level == NULL || level->ptr_restart_points == NULL || level->cnt_restart_points == 0 ||
+	    level->ptr_mesh_info == NULL || level->ptr_mesh_info->bspRoot == NULL)
+	{
+		return;
+	}
+	const int radius = level->ptr_restart_points[0].distToFinish * CHAOS_TRACK_DISTANCE_SCALE /
+	    CHAOS_DEFECTIVE_TELEPORT_RADIUS_DIVISOR;
+	if (radius == 0)
+	{
+		return;
+	}
+	const int yaw = driver->angle;
+	const int sine = MATH_Sin(yaw);
+	const int cosine = MATH_Sin(yaw + ANG_HALF_PI);
+	const int heightLimit = radius < CHAOS_DEFECTIVE_TELEPORT_HEIGHT_LIMIT ? radius : CHAOS_DEFECTIVE_TELEPORT_HEIGHT_LIMIT;
+	const s64 worldRadius = radius * FP8(1);
+	const s64 worldRadiusSquared = worldRadius * worldRadius;
+	Vec3 position = driver->posCurr;
+	for (int attempt = 0; attempt < CHAOS_DEFECTIVE_TELEPORT_SAMPLE_ATTEMPTS; attempt++)
+	{
+		// Keep the rearward range, but flatten the sample vertically near level geometry.
+		const int back = (u64)ChaosEffect_NextRandom(&sdata->chaosRng) * (radius + 1) / (CHAOS_RANDOM_SAMPLE_MAX + 1);
+		const int side = (int)((u64)ChaosEffect_NextRandom(&sdata->chaosRng) * (2 * radius + 1) / (CHAOS_RANDOM_SAMPLE_MAX + 1)) - radius;
+		const int height = (int)((u64)ChaosEffect_NextRandom(&sdata->chaosRng) * (2 * heightLimit + 1) / (CHAOS_RANDOM_SAMPLE_MAX + 1)) - heightLimit;
+		// A vertical-only fallback remains possible at the world-coordinate edges.
+		position.y = driver->posCurr.y + height * FP8(1);
+		const Vec3 candidate = {
+			driver->posCurr.x + (s64)(side * cosine - back * sine) * FP8(1) / FP_ONE,
+			driver->posCurr.y + height * FP8(1),
+			driver->posCurr.z + (s64)(-side * sine - back * cosine) * FP8(1) / FP_ONE,
+		};
+		const s64 x = candidate.x - driver->posCurr.x;
+		const s64 y = candidate.y - driver->posCurr.y;
+		const s64 z = candidate.z - driver->posCurr.z;
+		if (x * x + y * y + z * z > worldRadiusSquared)
+		{
+			continue;
+		}
+		// Collision and camera coordinates still use signed 16-bit world units.
+		if (candidate.y >= INT16_MIN * FP8(1) && candidate.y <= INT16_MAX * FP8(1) &&
+		    Chaos_IsTeleportNearGeometry(level->ptr_mesh_info, &candidate))
+		{
+			position = candidate;
+			break;
+		}
+	}
+	position.y = position.y < INT16_MIN * FP8(1) ? INT16_MIN * FP8(1) :
+	             position.y > INT16_MAX * FP8(1) ? INT16_MAX * FP8(1) : position.y;
+	if (!Chaos_IsTeleportNearGeometry(level->ptr_mesh_info, &position))
+	{
+		return;
+	}
+	Chaos_MoveDriver(driver, &position, yaw);
+	driver->actionsFlagSet &= ~ACTION_TOUCH_GROUND;
+	driver->actionsFlagSet |= ACTION_AIRBORNE;
+	driver->currentTerrain = TERRAIN_NONE;
+	driver->terrainMeta1 = VehAfterColl_GetTerrain(TERRAIN_NONE);
+	driver->terrainMeta2 = driver->terrainMeta1;
 }
 
 static void Chaos_TeleportDriver(struct Driver *driver)

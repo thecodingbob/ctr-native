@@ -350,6 +350,30 @@ checks also run the real progress projection and vector normalization through
 the native GTE on a circuit with coherent world/progress distances, covering
 placement, subsequent frames, finish wrapping and alternate-branch surfaces.
 
+Defective Teleport (ID 37, `defective-teleport`) is instant, human-only and uses
+the same event exclusions. Per user revision it samples free 3D space rather than
+moving backward along checkpoints: the rear hemisphere relative to kart yaw,
+with radius one fifth of the retail lap length in world units and a fixed vertical
+offset cap of 256 world units. Chaos RNG samples independent local
+backward/lateral/vertical offsets. Destinations must stay inside the BSP root's
+XZ footprint and within 256 world units of a nonempty geometry leaf's bounding
+box, including vertically. This rejects empty space between distant track areas
+without filtering water, off-road or kill-plane surfaces. Rejected candidates are
+retried up to 64 times, then a vertical-only fallback is checked against the same
+bounds; no valid fallback means no movement. No ground snap is applied.
+
+Both teleports use `Chaos_MoveDriver` for hold/rescue release, pose/motion,
+camera recovery, turbo-pad latch invalidation and invisibility audio. Ordinary
+Teleport then installs its destination surfaces/progress. Defective Teleport
+keeps heading and canonical speed, clears current contacts/terrain, marks the
+kart airborne and retains `lastValid` for retail mask rescue. Normal physics and
+rescue rules can subsequently change speed or reserves.
+
+Progress, checkpoint validation and mask saves use the ordinary retail rules;
+Defective Teleport adds no progress suspension or artificial lap displacement.
+Regression checks cover 3D range/headings, geometry bounds, unsafe placements,
+repeatability, rescue anchors and lifecycle gates.
+
 Small Kart Energy (ID 28, `small-kart-energy`) uses the same size pipeline as
 Giant Karts. `Driver.kartScale` is a float multiplier (zero defaults to 1×),
 resolved by `VehPhysForce_GetKartScale`; finished drivers use 1×. Visual scales,

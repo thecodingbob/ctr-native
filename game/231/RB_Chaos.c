@@ -20,7 +20,7 @@ static bool Chaos_TargetsDriver(ChaosEffectId effect, const struct Driver *drive
 static bool Chaos_EffectFitsEvent(ChaosEffectId effect)
 {
 	const ChaosEffectDef *def = ChaosEffect_Def(effect);
-	if (effect == CHAOS_EFFECT_TELEPORT)
+	if (effect == CHAOS_EFFECT_TELEPORT || effect == CHAOS_EFFECT_DEFECTIVE_TELEPORT)
 	{
 		return (sdata->gGT->gameMode1 & (BATTLE_MODE | CRYSTAL_CHALLENGE)) == 0;
 	}
@@ -357,6 +357,9 @@ static void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation)
 					break;
 				case CHAOS_EFFECT_TELEPORT:
 					Chaos_TeleportDriver(driver);
+					break;
+				case CHAOS_EFFECT_DEFECTIVE_TELEPORT:
+					Chaos_DefectiveTeleportDriver(driver);
 					break;
 				case CHAOS_EFFECT_CLOCK_CURSE:
 					Chaos_ApplyClockCurse(driver, chaosActivation->remainingMS);

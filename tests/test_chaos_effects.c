@@ -921,6 +921,7 @@ struct TeleportWorld
 	struct BodySwapWorld racers;
 	struct Level level;
 	struct mesh_info mesh;
+	struct BSP bsp[3];
 	struct CheckpointNode nodes[13];
 };
 
@@ -933,6 +934,13 @@ static void SetupTeleport(struct TeleportWorld *world, int humans, int bots)
 	world->level.ptr_restart_points = world->nodes;
 	world->level.cnt_restart_points = 10;
 	world->level.ptr_mesh_info = &world->mesh;
+	world->mesh.bspRoot = world->bsp;
+	world->mesh.numBspNodes = 1;
+	world->bsp[0] = (struct BSP){
+		.flag = BSP_NODE_FLAG_LEAF,
+		.box = {.min = {-10000, -512, -10000}, .max = {10000, 512, 10000}},
+		.data.leaf.numQuads = 1,
+	};
 	s_tracker.level1 = &world->level;
 	for (int i = 0; i < 10; i++)
 	{
@@ -1211,6 +1219,195 @@ static void TestTeleport(void)
 	world.racers.drivers[0].actionsFlagSet |= ACTION_RACE_FINISHED;
 	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
 	CTR_TEST_CHECK_EQ(s_teleportProbes, 0, "finished humans are not repositioned");
+}
+
+static void EnableDefectiveTeleport(void)
+{
+	sdata->chaosSettings.effects[CHAOS_EFFECT_DEFECTIVE_TELEPORT] = true;
+	sdata->chaosSettings.enabledCount++;
+}
+
+static void TestDefectiveTeleport(void)
+{
+	CTR_TEST_SECTION("Defective Teleport samples a rear 3D hemisphere within one fifth of the lap without grounding");
+	struct TeleportWorld world;
+	bool above = false;
+	bool below = false;
+	bool left = false;
+	bool right = false;
+	for (int sample = 0; sample < 128; sample++)
+	{
+		SetupProjectedTeleport(&world);
+		EnableDefectiveTeleport();
+		sdata->chaosRng = (sample + 1) * 2654435761u;
+		struct Driver *driver = &world.racers.drivers[0];
+		driver->angle = sample * ANG_TWO_PI / 128;
+		const Vec3 origin = driver->posCurr;
+		const int yaw = driver->angle;
+		const int sounds = s_identitySounds;
+		s_teleportGroundMissing = true;
+		CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_TELEPORT, 1000), "Defective Teleport activates without requiring ground");
+		const s64 x = driver->posCurr.x - origin.x;
+		const s64 y = driver->posCurr.y - origin.y;
+		const s64 z = driver->posCurr.z - origin.z;
+		const s64 radius = 1600 * FP8(1);
+		CTR_TEST_CHECK(x * x + y * y + z * z <= radius * radius,
+		               "the full 3D displacement stays within twenty percent of the circuit length");
+		CTR_TEST_CHECK(llabs(y) <= 256 * FP8(1), "vertical displacement stays within the fixed height cap rather than scaling with lap length");
+		CTR_TEST_CHECK(x * MATH_Sin(yaw) + z * MATH_Sin(yaw + ANG_HALF_PI) <= FP_ONE,
+		               "the destination is behind the kart at every heading, including diagonal headings");
+		const s64 lateral = x * MATH_Sin(yaw + ANG_HALF_PI) - z * MATH_Sin(yaw);
+		above |= y > 0;
+		below |= y < 0;
+		left |= lateral < 0;
+		right |= lateral > 0;
+		CTR_TEST_CHECK(driver->angle == yaw && driver->posPrev.x == driver->posCurr.x &&
+		               driver->posPrev.y == driver->posCurr.y && driver->posPrev.z == driver->posCurr.z,
+		               "free teleport keeps the heading and never sweeps through the skipped world");
+		CTR_TEST_CHECK(driver->speed == 1000 && driver->baseSpeed == 900 && driver->fireSpeed == 100 &&
+		               driver->reserves == 2345 && driver->turbo_outsideTimer == 400 &&
+		               driver->heldItemID == HELD_ITEM_MISSILE_3X && driver->numHeldItems == 3,
+		               "free placement preserves canonical motion, turbo and inventory before normal physics or rescue");
+		CTR_TEST_CHECK(s_teleportProbes == 0 && s_identitySounds == sounds + 1 &&
+		               sdata->chaosRuntime.numActive == 0 && sdata->chaosRuntime.numInstantNotices == 1 &&
+		               Chaos_ConsumeCameraBlend(&s_tracker.cameraDC[0]),
+		               "an instant free teleport plays invisibility audio and realigns the camera without a terrain probe or timed slot");
+	}
+	CTR_TEST_CHECK(above && below && left && right, "random destinations cover both vertical and lateral directions");
+	SetupProjectedTeleport(&world);
+	EnableDefectiveTeleport();
+	world.bsp[0].box.min.x = INT16_MIN;
+	world.bsp[0].box.min.z = INT16_MIN;
+	world.bsp[0].box.max.x = INT16_MAX;
+	world.bsp[0].box.max.z = INT16_MAX;
+	world.racers.drivers[0].posCurr = (Vec3){INT16_MIN * FP8(1), 0, INT16_MIN * FP8(1)};
+	world.racers.drivers[0].angle = ANG_HALF_PI / 2;
+	Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_TELEPORT, 1000);
+	CTR_TEST_CHECK(world.racers.drivers[0].posCurr.x == INT16_MIN * FP8(1) &&
+	               world.racers.drivers[0].posCurr.z == INT16_MIN * FP8(1) &&
+	               abs(world.racers.drivers[0].posCurr.y) <= 256 * FP8(1),
+	               "an outward rear hemisphere at the world corner falls back vertically without an unbounded sample loop");
+
+	CTR_TEST_SECTION("Defective Teleport stays in the level footprint and near geometry, including unsafe water leaves");
+	SetupProjectedTeleport(&world);
+	EnableDefectiveTeleport();
+	world.mesh.numBspNodes = 3;
+	world.bsp[0] = (struct BSP){.box = {.min = {-2000, -128, -2000}, .max = {800, 64, 800}}};
+	world.bsp[1] = (struct BSP){
+		.flag = BSP_NODE_FLAG_LEAF,
+		.box = {.min = {0, 0, -400}, .max = {800, 64, 400}},
+		.data.leaf.numQuads = 1,
+	};
+	world.bsp[2] = (struct BSP){
+		.flag = BSP_NODE_FLAG_LEAF | BSP_LEAF_FLAG_WATER,
+		.box = {.min = {-1600, -128, -1600}, .max = {-800, 0, -800}},
+		.data.leaf.numQuads = 1,
+	};
+	const Vec3 water = {-1200 * FP8(1), -64 * FP8(1), -1200 * FP8(1)};
+	const Vec3 empty = {-1200 * FP8(1), 32 * FP8(1), 400 * FP8(1)};
+	const Vec3 outside = {900 * FP8(1), 32 * FP8(1), 0};
+	const Vec3 high = {400 * FP8(1), 1000 * FP8(1), 0};
+	CTR_TEST_CHECK(Chaos_IsTeleportNearGeometry(&world.mesh, &water), "water geometry remains a valid unsafe destination");
+	CTR_TEST_CHECK(!Chaos_IsTeleportNearGeometry(&world.mesh, &empty), "an empty gap inside the root bounds is not treated as rendered geometry");
+	CTR_TEST_CHECK(!Chaos_IsTeleportNearGeometry(&world.mesh, &outside), "the leaf margin cannot extend a destination beyond the level footprint");
+	CTR_TEST_CHECK(!Chaos_IsTeleportNearGeometry(&world.mesh, &high), "destinations high above local geometry are rejected");
+	for (int sample = 0; sample < 128; sample++)
+	{
+		struct Driver *kart = &world.racers.drivers[0];
+		kart->posCurr = (Vec3){400 * FP8(1), 32 * FP8(1), 0};
+		kart->angle = sample * ANG_TWO_PI / 128;
+		sdata->chaosRng = (sample + 1) * 2654435761u;
+		Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_TELEPORT, 1000);
+		const int x = kart->posCurr.x >> 8;
+		const int y = kart->posCurr.y >> 8;
+		const int z = kart->posCurr.z >> 8;
+		CTR_TEST_CHECK(x >= -2000 && x <= 800 && z >= -2000 && z <= 800 &&
+		               ((x >= -256 && z >= -656 && z <= 656 && y >= -256 && y <= 320) ||
+		                (x >= -1856 && x <= -544 && z >= -1856 && z <= -544 && y >= -384 && y <= 256)),
+		               "sampled destinations and fallbacks remain close to actual leaf geometry within the level footprint");
+	}
+	SetupProjectedTeleport(&world);
+	EnableDefectiveTeleport();
+	world.bsp[0].box.min.x = 10000;
+	world.bsp[0].box.max.x = 11000;
+	const struct Driver outsideGeometry = world.racers.drivers[0];
+	Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_TELEPORT, 1000);
+	CTR_TEST_CHECK(memcmp(&outsideGeometry, &world.racers.drivers[0], sizeof(outsideGeometry)) == 0,
+	               "an invalid fallback cannot move the kart when no destination is close to level geometry");
+
+	CTR_TEST_SECTION("free teleport retains the rescue anchor and uses ordinary retail progress projection");
+	SetupProjectedTeleport(&world);
+	EnableDefectiveTeleport();
+	struct Driver *driver = &world.racers.drivers[0];
+	struct QuadBlock rescueGround = {.checkpointIndex = 9};
+	driver->lastValid = &rescueGround;
+	driver->underDriver = &rescueGround;
+	driver->currBlockTouching = &rescueGround;
+	driver->actionsFlagSet |= ACTION_TOUCH_GROUND;
+	driver->collisionFlags = DRIVER_COLL_FLAG_GROUNDED;
+	Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_TELEPORT, 1000);
+	CTR_TEST_CHECK(driver->lastValid == &rescueGround && driver->underDriver == NULL && driver->currBlockTouching == NULL &&
+	               (driver->actionsFlagSet & ACTION_TOUCH_GROUND) == 0 && (driver->actionsFlagSet & ACTION_AIRBORNE) != 0 &&
+	               driver->collisionFlags == 0 && driver->terrainMeta1 == VehAfterColl_GetTerrain(TERRAIN_NONE),
+	               "stale contacts are discarded while lastValid remains usable by the normal mask save");
+	driver->lastValid = &s_teleportGround;
+	driver->posCurr = (Vec3){1200 * FP8(1), 32 * FP8(1), 0};
+	PlayLevel_UpdateLapStats();
+	CTR_TEST_CHECK(driver->distanceToFinish_curr == 6800 && driver->lapIndex == 0,
+	               "the real retail projection runs normally even while the teleported kart is airborne");
+
+	CTR_TEST_SECTION("free teleports restore deterministically and release existing rescue holds");
+	SetupProjectedTeleport(&world);
+	EnableDefectiveTeleport();
+	const struct Driver original = *driver;
+	const u32 rng = sdata->chaosRng;
+	Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_TELEPORT, 1000);
+	const Vec3 destination = driver->posCurr;
+	const u32 nextRng = sdata->chaosRng;
+	*driver = original;
+	sdata->chaosRng = rng;
+	Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_TELEPORT, 1000);
+	CTR_TEST_CHECK(driver->posCurr.x == destination.x && driver->posCurr.y == destination.y && driver->posCurr.z == destination.z &&
+	               sdata->chaosRng == nextRng, "restoring the Chaos RNG and original kart reproduces all three destination coordinates");
+	SetupProjectedTeleport(&world);
+	EnableDefectiveTeleport();
+	struct MaskHeadWeapon mask = {.duration = 1000};
+	driver->kartState = KS_MASK_GRABBED;
+	driver->KartStates.MaskGrab.maskObj = &mask;
+	driver->lastValid = &rescueGround;
+	sdata->chaosRuntime.restart[0].pending = true;
+	Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_TELEPORT, 1000);
+	CTR_TEST_CHECK(driver->kartState == KS_NORMAL && mask.duration == 0 && driver->lastValid == &rescueGround &&
+	               !sdata->chaosRuntime.restart[0].pending,
+	               "free teleport releases an existing rescue or deferred start hold while retaining its safe respawn anchor");
+
+	CTR_TEST_SECTION("free teleport moves both humans independently and leaves bots and finished humans untouched");
+	SetupTeleport(&world, 1, 1);
+	EnableDefectiveTeleport();
+	const struct Driver bot = world.racers.drivers[1];
+	Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_TELEPORT, 1000);
+	CTR_TEST_CHECK(memcmp(&bot, &world.racers.drivers[1], sizeof(bot)) == 0, "free teleport never moves a bot");
+	SetupTeleport(&world, 2, 0);
+	EnableDefectiveTeleport();
+	Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_TELEPORT, 1000);
+	CTR_TEST_CHECK(memcmp(&world.racers.drivers[0].posCurr, &world.racers.drivers[1].posCurr, sizeof(Vec3)) != 0,
+	               "both humans receive independent random destinations");
+	for (int mode = 0; mode < 3; mode++)
+	{
+		SetupTeleport(&world, 1, 0);
+		EnableDefectiveTeleport();
+		s_tracker.gameMode1 |= mode == 0 ? BATTLE_MODE : mode == 1 ? CRYSTAL_CHALLENGE : PAUSE_1;
+		const u32 beforeRng = sdata->chaosRng;
+		CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_TELEPORT, 1000) && sdata->chaosRng == beforeRng,
+		               "non-lap events and pause reject Defective Teleport without consuming destination RNG");
+	}
+	SetupTeleport(&world, 1, 0);
+	EnableDefectiveTeleport();
+	world.racers.drivers[0].actionsFlagSet |= ACTION_RACE_FINISHED;
+	const u32 beforeRng = sdata->chaosRng;
+	Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_TELEPORT, 1000);
+	CTR_TEST_CHECK(sdata->chaosRng == beforeRng,
+	               "finished humans do not receive a random destination");
 }
 
 static void TestWobbleSteering(void)
@@ -3435,6 +3632,7 @@ int main(void)
 	TestBodySwap();
 	TestTeleport();
 	TestTeleportProgressProjection();
+	TestDefectiveTeleport();
 	TestWobbleSteering();
 	TestGravityEffects();
 	TestSpeedEffects();
