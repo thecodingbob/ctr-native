@@ -17,6 +17,7 @@ static struct Driver s_defaultDrivers[2];
 static bool s_allHumansFinished;
 static int s_activationSounds;
 static int s_clockSounds;
+static int s_identitySounds;
 static int s_squishSounds;
 static int s_crateExplosions;
 static int s_crateSounds;
@@ -244,7 +245,7 @@ void VehPickupItem_ShootWarpball(struct Driver *driver, struct Driver *target)
 }
 
 // VehPickupItem.c precedes Chaos in the game unity build.
-enum { SOUND_CLOCK = 0x44 };
+enum { SOUND_CLOCK = 0x44, SOUND_INVISIBILITY = 0x61 };
 
 #include <game/LIST.c>
 #include <game/HOWL/HOWL_Voiceline.c>
@@ -426,6 +427,12 @@ s32 doCOP2(s32 op)
 }
 int OtherFX_Play(u32 soundID, int flags)
 {
+	if (soundID == SOUND_INVISIBILITY)
+	{
+		CTR_TEST_CHECK_EQ(flags, 1, "Identity Crisis uses the normal invisibility sound flags");
+		s_identitySounds++;
+		return 0;
+	}
 	if (soundID == DOT_LIGHT_FX_COUNTDOWN || soundID == DOT_LIGHT_FX_GREEN)
 	{
 		s_startCountdownSounds += soundID == DOT_LIGHT_FX_COUNTDOWN;
@@ -580,6 +587,7 @@ static void SetupRace(int trigger)
 	s_allHumansFinished = false;
 	s_activationSounds = 0;
 	s_clockSounds = 0;
+	s_identitySounds = 0;
 	s_squishSounds = 0;
 	s_crateExplosions = 0;
 	s_crateSounds = 0;

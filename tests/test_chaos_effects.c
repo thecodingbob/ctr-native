@@ -555,6 +555,7 @@ static void TestIdentityCrisis(void)
 		const int beforePartner = data.characterIDs[1];
 		const int previousClass = Chaos_EngineClassForDriver(&human, data.MetaDataCharacters[beforeHuman].engineID);
 		CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_IDENTITY_CRISIS, 1000), "Identity Crisis activates as an instant effect");
+		CTR_TEST_CHECK_EQ(s_identitySounds, repeat + 1, "each transformation plays one invisibility sound for both humans together");
 		const int character = data.characterIDs[0];
 		const int engine = data.MetaDataCharacters[character].engineID;
 		CTR_TEST_CHECK(character != beforeHuman && character != beforePartner && character != NITROS_OXIDE,

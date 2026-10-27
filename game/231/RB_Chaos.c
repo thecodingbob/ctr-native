@@ -213,6 +213,10 @@ static void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation)
 		// Clock sound needs to be only applied once, otherwise it plays once per player
 		OtherFX_Play(SOUND_CLOCK, 1);
 	}
+	if (effect == CHAOS_EFFECT_IDENTITY_CRISIS)
+	{
+		OtherFX_Play(SOUND_INVISIBILITY, 1);
+	}
 	for (int i = 0; i < (int)len(sdata->gGT->drivers); i++)
 	{
 		struct Driver *driver = sdata->gGT->drivers[i];

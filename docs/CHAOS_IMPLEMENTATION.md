@@ -278,6 +278,7 @@ Each human selection sees earlier transformations in the same activation.
 `Chaos_SetDrivingClass` shares class/audio updates with Try Something New, so the
 latest change wins. Reset restores original identities before resetting engine
 audio; ordinary birth restores class constants. No asset reads occur on activation.
+Activation plays the retail invisibility sound once, shared by all recipients.
 
 Small Kart Energy (ID 28, `small-kart-energy`) uses the same size pipeline as
 Giant Karts. `Driver.kartScale` is a float multiplier (zero defaults to 1×),
