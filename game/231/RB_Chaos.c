@@ -78,6 +78,11 @@ void Chaos_Reset(void)
 			struct Driver *driver = sdata->gGT->drivers[i];
 			if (driver != NULL)
 			{
+				if (i < (int)len(sdata->chaosRuntime.identity) && sdata->chaosRuntime.identity[i].changed)
+				{
+					const struct ChaosIdentity *identity = &sdata->chaosRuntime.identity[i];
+					Chaos_SetCharacterModel(driver, identity->originalCharacter, identity->originalModel);
+				}
 				if (i < (int)len(sdata->chaosRuntime.restart))
 				{
 					Chaos_EndRestartHold(&sdata->chaosRuntime.restart[i], driver);
@@ -92,6 +97,16 @@ void Chaos_Reset(void)
 		}
 	}
 	memset(&sdata->chaosRuntime, 0, sizeof(sdata->chaosRuntime));
+}
+
+void Chaos_LoadCharacterModels(struct GameTracker *gGT, struct BigHeader *bigfile)
+{
+	if (sdata->chaosSettings.armed && sdata->chaosSettings.effects[CHAOS_EFFECT_IDENTITY_CRISIS] &&
+	    ChaosGate_IsRaceEligible(gGT->gameMode1 & ~(PAUSE_ALL | LOADING),
+	                             OVERLAY_INDEX_RACING_OR_BATTLE, true, CHAOS_GATE_ADVENTURE_ONLY))
+	{
+		Chaos_PreloadCharacterModels(bigfile);
+	}
 }
 
 void Chaos_BeginRace(struct GameTracker *gGT)
@@ -255,6 +270,9 @@ static void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation)
 					{
 						Chaos_ChangeDrivingClass(driver);
 					}
+					break;
+				case CHAOS_EFFECT_IDENTITY_CRISIS:
+					Chaos_ChangeIdentity(driver);
 					break;
 				case CHAOS_EFFECT_CLOCK_CURSE:
 					Chaos_ApplyClockCurse(driver, chaosActivation->remainingMS);

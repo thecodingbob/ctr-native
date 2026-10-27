@@ -16,21 +16,12 @@ This plan tracks delivery, remaining specifications and outstanding validation.
 | A. Items and reserves | Use This!, Juiced Up, It is I, Providence, Reserve Injection, Too Boosted TO Fail | Implemented |
 | B. Driving, turbo and jumping | Sabotage, This Is Fire, Hydraulics, My Planet Needs Me, Who Bound This?, Try Something New | Implemented |
 | C. Size, camera and bots | Small Kart Energy, Classic GTA, Arena Champions, You've Got Mail, Fresh Start, Senile Mask | Implemented |
-| D. Characters and movement | Identity Crisis, Body Swap, Teleport, Defective Teleport | Not started |
+| D. Characters and movement | Identity Crisis, Body Swap, Teleport, Defective Teleport | Identity Crisis implemented; remaining effects not started |
 | E. Time manipulation | Za Warudo, King Crimson | Not started |
 
-**Current effect: Senile Mask.** In-game validation is pending; Identity Crisis is next.
+**Current effect: Identity Crisis.** In-game validation is pending; Body Swap is next.
 
 ## Remaining specifications
-
-### Identity Crisis
-
-Until race end, switch to a random playable character not already present in the
-race, regardless of unlocks, including that character's driving class. For this
-effect and Try Something New, the most recent class change wins until race end.
-
-Investigate character resource availability/loading and interaction with class
-overrides and engine audio.
 
 ### Body Swap
 
@@ -108,5 +99,6 @@ behavior.
 | Arena Champions | 1P/2P, bosses/cups, cornering/jumps, boost/damage, expiry and coexistence with human Super Speed. |
 | Fresh Start | Suspension/mask visuals, neutral pose and camera smoothing during drift/jumps; rescue deferral, starting boost/over-rev, damage recovery, repeated activation, 1P/2P lights/audio and HUD spacing, pause/reset, unchanged bots/global timer. |
 | Senile Mask | Flashing prompt in each correct-direction human viewport, including relic/crystal events; repeated Aku Aku/Uka Uka voice with half cooldown, no overlapping XA playback; silence/no prompt when actually wrong-way, normal warnings restored at expiry/reset. |
+| Identity Crisis | All character models/textures, including bosses and Oxide; repeated 1P/2P transformations while driving, jumping, damaged or rescued; no duplicate live characters; class/engine ordering with Try Something New; retry/end-of-race and quick-state restoration. |
 
 Record remaining failures and reproducible tracks/quick states here.

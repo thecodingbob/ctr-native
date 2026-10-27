@@ -501,6 +501,97 @@ static void TestTrySomethingNew(void)
 	CTR_TEST_CHECK_EQ(human.const_Speed_ClassStat, 15000, "the next race starts with the character's ordinary class");
 }
 
+static void TestIdentityCrisis(void)
+{
+	CTR_TEST_SECTION("Identity Crisis prepares resident models only for eligible races without consuming Chaos RNG");
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	Chaos_LoadCharacterModels(&s_tracker, NULL);
+	CTR_TEST_CHECK_EQ(s_characterModelReads, 0, "disabled Identity Crisis does not load extra models");
+	sdata->chaosSettings.effects[CHAOS_EFFECT_IDENTITY_CRISIS] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_TRY_SOMETHING_NEW] = true;
+	sdata->chaosSettings.enabledCount += 2;
+	s_tracker.gameMode1 |= ADVENTURE_ARENA;
+	Chaos_LoadCharacterModels(&s_tracker, NULL);
+	CTR_TEST_CHECK_EQ(s_characterModelReads, 0, "Adventure hubs do not load transformation models");
+	s_tracker.gameMode1 &= ~ADVENTURE_ARENA;
+	for (int character = 0; character < GAME_CHARACTER_COUNT; character++)
+	{
+		snprintf(s_characterModelFiles[character].model.name, sizeof(s_characterModelFiles[character].model.name), "racer%d", character);
+		data.MetaDataCharacters[character].name_Debug = s_characterModelFiles[character].model.name;
+	}
+	s_residentCharacterModels[CRASH_BANDICOOT] = &s_characterModelFiles[CRASH_BANDICOOT].model;
+	const u32 rng = sdata->chaosRng;
+	Chaos_LoadCharacterModels(&s_tracker, NULL);
+	CTR_TEST_CHECK_EQ(s_characterModelReads, GAME_CHARACTER_COUNT - 1, "only missing playable models are loaded regardless of unlocks");
+	CTR_TEST_CHECK(sdata->chaosCharacterModels[CRASH_BANDICOOT] == s_residentCharacterModels[CRASH_BANDICOOT],
+	               "an already resident character model is reused");
+	CTR_TEST_CHECK_EQ(sdata->chaosRng, rng, "resource preparation leaves effect selection deterministic");
+	for (int i = 0; i < GAME_CHARACTER_COUNT; i++)
+	{
+		CTR_TEST_CHECK(sdata->chaosCharacterModels[i] == &s_characterModelFiles[i].model,
+		               "the resident model excludes the relocatable file header");
+		data.MetaDataCharacters[i].engineID = i % NUM_CLASSES;
+	}
+	data.metaPhys[0] = (struct MetaPhys){.offset = SPEED_CLASS_STAT_OFFSET, .size = 2, .value = {10000, 12000, 14000, 8000}};
+	g_config.speedMultiplier = 100;
+	struct Model originalModels[2] = {0};
+	struct Instance instances[2] = {{.model = &originalModels[0], .animFrame = 100}, {.model = &originalModels[1]}};
+	struct Driver human = {
+		.driverID = 0, .instSelf = &instances[0], .heldItemID = HELD_ITEM_POTION,
+		.reserves = 500, .speed = 10000, .posCurr = {10, 20, 30}, .kartState = KS_SPINNING,
+	};
+	struct Driver partner = {.driverID = 1, .instSelf = &instances[1]};
+	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT};
+	s_tracker.drivers[0] = &human;
+	s_tracker.drivers[1] = &partner;
+	s_tracker.drivers[2] = &bot;
+	data.characterIDs[0] = CRASH_BANDICOOT;
+	data.characterIDs[1] = COCO_BANDICOOT;
+	data.characterIDs[2] = NITROS_OXIDE;
+	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 10000);
+	for (int repeat = 0; repeat < 20; repeat++)
+	{
+		const int beforeHuman = data.characterIDs[0];
+		const int beforePartner = data.characterIDs[1];
+		const int previousClass = Chaos_EngineClassForDriver(&human, data.MetaDataCharacters[beforeHuman].engineID);
+		CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_IDENTITY_CRISIS, 1000), "Identity Crisis activates as an instant effect");
+		const int character = data.characterIDs[0];
+		const int engine = data.MetaDataCharacters[character].engineID;
+		CTR_TEST_CHECK(character != beforeHuman && character != beforePartner && character != NITROS_OXIDE,
+		               "the first human excludes every character present before their change");
+		CTR_TEST_CHECK(data.characterIDs[1] != character && data.characterIDs[1] != beforePartner && data.characterIDs[1] != NITROS_OXIDE,
+		               "the partner excludes their current character, the transformed human and bots");
+		CTR_TEST_CHECK(instances[0].model == sdata->chaosCharacterModels[character], "the existing instance uses the selected character model");
+		CTR_TEST_CHECK_EQ(human.const_Speed_ClassStat, data.metaPhys[0].value[engine], "the selected character supplies the driving class");
+		CTR_TEST_CHECK_EQ(s_engineStopped[0], (u32)(previousClass * 4), "transformation stops the live class engine");
+		CTR_TEST_CHECK_EQ(s_engineStarted[0], (u32)(engine * 4), "transformation starts the selected character engine");
+		CTR_TEST_CHECK(sdata->chaosRuntime.identity[0].originalCharacter == CRASH_BANDICOOT &&
+		               sdata->chaosRuntime.identity[0].originalModel == &originalModels[0],
+		               "repeated transformations preserve the original race identity");
+		Chaos_Activate(CHAOS_EFFECT_TRY_SOMETHING_NEW, 1000);
+		CTR_TEST_CHECK(sdata->chaosRuntime.engineClass[0] != engine && data.characterIDs[0] == character,
+		               "a later Try Something New replaces the class without replacing the identity");
+	}
+	CTR_TEST_CHECK(human.heldItemID == HELD_ITEM_POTION && human.reserves == 500 && human.speed == 10000 &&
+	               human.posCurr.x == 10 && human.posCurr.y == 20 && human.posCurr.z == 30 && human.kartState == KS_SPINNING,
+	               "identity and class changes preserve inventory, motion, reserves and damage state");
+	CTR_TEST_CHECK_EQ(s_characterModelReads, GAME_CHARACTER_COUNT - 1, "activations perform no further asset reads");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 1, "transformations preserve the timed effect without taking a slot");
+	const int finishedCharacter = data.characterIDs[1];
+	partner.actionsFlagSet = ACTION_RACE_FINISHED;
+	Chaos_Activate(CHAOS_EFFECT_IDENTITY_CRISIS, 1000);
+	CTR_TEST_CHECK_EQ(data.characterIDs[1], finishedCharacter, "finished humans receive no further transformations");
+	CTR_TEST_CHECK_EQ(data.characterIDs[2], NITROS_OXIDE, "bots keep their identity");
+	Tick(4000);
+	CTR_TEST_CHECK_EQ(data.characterIDs[1], finishedCharacter, "announcement expiry does not undo a transformation");
+	Chaos_Reset();
+	CTR_TEST_CHECK(data.characterIDs[0] == CRASH_BANDICOOT && data.characterIDs[1] == COCO_BANDICOOT &&
+	               instances[0].model == &originalModels[0] && instances[1].model == &originalModels[1],
+	               "race teardown restores both original identities, including finished humans");
+	CTR_TEST_CHECK_EQ(s_engineStarted[0], (u32)(data.MetaDataCharacters[CRASH_BANDICOOT].engineID * 4),
+	                  "race teardown restores the original character engine after mixed class changes");
+}
+
 static void TestWobbleSteering(void)
 {
 	CTR_TEST_SECTION("Wobble oscillates in game time with calibrated limits and human-only scope");
@@ -2719,6 +2810,7 @@ int main(void)
 	TestLaunchSpeedLimit();
 	TestWhoBoundThis();
 	TestTrySomethingNew();
+	TestIdentityCrisis();
 	TestWobbleSteering();
 	TestGravityEffects();
 	TestSpeedEffects();

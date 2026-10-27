@@ -457,9 +457,19 @@ static void Chaos_ChangeEngineAudio(const struct Driver *driver, int previous, i
 	EngineAudio_InitOnce(next * CHAOS_ENGINE_AUDIO_CLASS_STRIDE + driver->driverID, HOWL_SFX_CENTER_NO_DISTORTION);
 }
 
-static void Chaos_ChangeDrivingClass(struct Driver *driver)
+static void Chaos_SetDrivingClass(struct Driver *driver, int next)
 {
 	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	const int player = driver->driverID;
+	const int previous = Chaos_EngineClassForDriver(driver, GAME_CHARACTER_METADATA[GAME_CHARACTER_IDS[player]].engineID);
+	runtime->engineClass[player] = next;
+	runtime->engineClassChanged[player] = true;
+	VehBirth_SetConstsForClass(driver, next);
+	Chaos_ChangeEngineAudio(driver, previous, next);
+}
+
+static void Chaos_ChangeDrivingClass(struct Driver *driver)
+{
 	const int player = driver->driverID;
 	const int current = Chaos_EngineClassForDriver(driver, GAME_CHARACTER_METADATA[GAME_CHARACTER_IDS[player]].engineID);
 	int next = ChaosEffect_NextRandom(&sdata->chaosRng) % (NUM_CLASSES - 1);
@@ -467,10 +477,83 @@ static void Chaos_ChangeDrivingClass(struct Driver *driver)
 	{
 		next++;
 	}
-	runtime->engineClass[player] = next;
-	runtime->engineClassChanged[player] = true;
-	VehBirth_SetConstsForClass(driver, next);
-	Chaos_ChangeEngineAudio(driver, current, next);
+	Chaos_SetDrivingClass(driver, next);
+}
+
+static void Chaos_PreloadCharacterModels(struct BigHeader *bigfile)
+{
+	for (int character = 0; character < GAME_CHARACTER_COUNT; character++)
+	{
+		struct Model *model = VehBirth_GetModelByName(GAME_CHARACTER_METADATA[character].name_Debug);
+		if (model != NULL)
+		{
+			sdata->chaosCharacterModels[character] = model;
+			continue;
+		}
+		u32 size;
+		u8 *file = LOAD_DramFile(bigfile, BI_RACERMODELHI + character, NULL, &size, -1);
+		if (file != NULL)
+		{
+			sdata->chaosCharacterModels[character] = (struct Model *)(file + LOAD_MODEL_FILE_HEADER_BYTES);
+		}
+	}
+}
+
+static void Chaos_SetCharacterModel(struct Driver *driver, int character, struct Model *model)
+{
+	struct Instance *instance = driver->instSelf;
+	GAME_CHARACTER_IDS[driver->driverID] = character;
+	instance->model = model;
+	memcpy(instance->name, model->name, sizeof(instance->name));
+	int frames = VehFrameInst_GetNumAnimFrames(instance, instance->animIndex);
+	if (frames == 0)
+	{
+		instance->animIndex = 0;
+		frames = VehFrameInst_GetNumAnimFrames(instance, 0);
+	}
+	if (instance->animFrame >= frames)
+	{
+		instance->animFrame = VehFrameInst_GetStartFrame(instance->animIndex, frames);
+	}
+	driver->matrixArray = BAKED_GTE_MATRIX_NONE;
+	driver->matrixIndex = 0;
+	driver->wheelSize = character == NITROS_OXIDE ? 0 : VEH_BIRTH_WHEEL_SIZE;
+}
+
+static void Chaos_ChangeIdentity(struct Driver *driver)
+{
+	bool present[GAME_CHARACTER_COUNT] = {0};
+	for (int i = 0; i < (int)len(GAME_TRACKER->drivers); i++)
+	{
+		if (GAME_TRACKER->drivers[i] != NULL)
+		{
+			present[GAME_CHARACTER_IDS[i]] = true;
+		}
+	}
+	int choices[GAME_CHARACTER_COUNT];
+	int count = 0;
+	for (int character = 0; character < GAME_CHARACTER_COUNT; character++)
+	{
+		if (!present[character] && sdata->chaosCharacterModels[character] != NULL)
+		{
+			choices[count++] = character;
+		}
+	}
+	if (count == 0)
+	{
+		return;
+	}
+	const int player = driver->driverID;
+	const int character = choices[ChaosEffect_NextRandom(&sdata->chaosRng) % count];
+	struct ChaosIdentity *identity = &sdata->chaosRuntime.identity[player];
+	if (!identity->changed)
+	{
+		identity->originalCharacter = GAME_CHARACTER_IDS[player];
+		identity->originalModel = driver->instSelf->model;
+		identity->changed = true;
+	}
+	Chaos_SetDrivingClass(driver, GAME_CHARACTER_METADATA[character].engineID);
+	Chaos_SetCharacterModel(driver, character, sdata->chaosCharacterModels[character]);
 }
 
 static void Chaos_LaunchDriver(struct Driver *driver)

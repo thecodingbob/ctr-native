@@ -266,6 +266,19 @@ loop. `Chaos_EngineClassForDriver` keeps engine updates, audio initialization an
 warp teardown on that same class, without overriding ghosts that share a player
 ID. Reset restores the character's engine loop before clearing the override.
 
+Identity Crisis (ID 34, `identity-crisis`) changes human identities once until
+race end. Eligible races with the effect enabled reuse resident character models
+through `VehBirth_GetModelByName` and preload missing high-detail models at load
+stage 6 through the synchronous relocating DRAM loader;
+the models live below the race-retry MEMPACK bookmark. SDATA stores their pointers
+and each human's first original model/character; checkpoint restoration relocates
+these pointers. Activation uses Chaos RNG to select a resident character absent
+from live driver slots, updating the existing instance, animation bounds and tires.
+Each human selection sees earlier transformations in the same activation.
+`Chaos_SetDrivingClass` shares class/audio updates with Try Something New, so the
+latest change wins. Reset restores original identities before resetting engine
+audio; ordinary birth restores class constants. No asset reads occur on activation.
+
 Small Kart Energy (ID 28, `small-kart-energy`) uses the same size pipeline as
 Giant Karts. `Driver.kartScale` is a float multiplier (zero defaults to 1×),
 resolved by `VehPhysForce_GetKartScale`; finished drivers use 1×. Visual scales,

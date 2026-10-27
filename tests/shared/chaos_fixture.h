@@ -9,6 +9,8 @@
 struct sData sdata_static;
 struct Data data;
 NativeConfig g_config;
+// VehBirth.c precedes Chaos in the game unity build; this fixture doubles birth.
+enum { VEH_BIRTH_WHEEL_SIZE = 0xccc };
 static struct GameTracker s_tracker;
 static struct GamepadSystem s_gamepads;
 static struct Driver s_defaultDrivers[2];
@@ -55,6 +57,36 @@ static int s_wrongWayVoices;
 static int s_wrongWayVoiceID;
 static bool s_voicePlayFails;
 static struct Driver *s_voiceDriver;
+static struct
+{
+	u32 header;
+	struct Model model;
+} s_characterModelFiles[GAME_CHARACTER_COUNT];
+static int s_characterModelReads;
+static struct Model *s_residentCharacterModels[GAME_CHARACTER_COUNT];
+
+struct Model *VehBirth_GetModelByName(char *name)
+{
+	for (int character = 0; character < GAME_CHARACTER_COUNT; character++)
+	{
+		if (name == GAME_CHARACTER_METADATA[character].name_Debug)
+		{
+			return s_residentCharacterModels[character];
+		}
+	}
+	return NULL;
+}
+
+void *LOAD_DramFile(void *bigfile, int fileIndex, void *destination, u32 *size, int callbackOrFlags)
+{
+	(void)bigfile;
+	CTR_TEST_CHECK(destination == NULL && callbackOrFlags == -1, "character models are prepared with the synchronous relocatable loader");
+	const int character = fileIndex - BI_RACERMODELHI;
+	CTR_TEST_CHECK(character >= 0 && character < GAME_CHARACTER_COUNT, "preloading requests a playable character model");
+	s_characterModelReads++;
+	*size = sizeof(s_characterModelFiles[character]);
+	return &s_characterModelFiles[character];
+}
 
 void UI_DrawWrongWay(const struct Driver *driver)
 {
@@ -556,6 +588,8 @@ static void SetupRace(int trigger)
 	s_wrongWayVoiceID = 0;
 	s_voicePlayFails = false;
 	s_voiceDriver = NULL;
+	s_characterModelReads = 0;
+	memset(s_residentCharacterModels, 0, sizeof(s_residentCharacterModels));
 	memset(s_engineStarted, 0, sizeof(s_engineStarted));
 	memset(s_engineStopped, 0, sizeof(s_engineStopped));
 	memset(s_engineStarts, 0, sizeof(s_engineStarts));

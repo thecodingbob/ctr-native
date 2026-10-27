@@ -1312,6 +1312,7 @@ void Chaos_Init(u32 seed);
 void Chaos_Reset(void);
 bool Chaos_IsRunning(const struct GameTracker *gGT);
 void Chaos_BeginRace(struct GameTracker *gGT);
+void Chaos_LoadCharacterModels(struct GameTracker *gGT, struct BigHeader *bigfile);
 void Chaos_Update(struct GameTracker *gGT);
 void Chaos_PublishEffects(void);
 bool Chaos_Activate(ChaosEffectId effect, s32 durationMS);

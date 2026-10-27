@@ -116,6 +116,7 @@ enabled in the file. Setup and a manual submission example are in the
 | **You've Got Mail** | The last-place unfinished bot launches a normal orb at the leading unfinished human. Its target stays fixed, and the bot keeps its inventory. Available in events with bot racing. |
 | **Fresh Start** | Stop humans, clear reserves and replay the starting lights with starting boost available. Airborne karts are held aloft in the rescue falling pose by an orbiting mask; other karts return to neutral. An ongoing rescue finishes before the lights start. Bots keep racing. |
 | **Senile Mask** | Flash the wrong-way warning only while humans drive in the correct direction; suppress the warning and voice when actually going the wrong way. The mask voice repeats with half its normal cooldown, without overlapping speech. Race progress is unaffected. |
+| **Identity Crisis** | Switch each human to a random playable character not currently present in the race, regardless of unlocks, with that character's driving class and engine sound until race end. Preserve race state and inventory. The latest class change from this effect or Try Something New wins. |
 
 Effects can overlap: Duration does not delay the next trigger. For example,
 Duration 30 seconds with Interval 10 seconds allows several effects at once.
@@ -130,9 +131,9 @@ Duration 30 seconds with Interval 10 seconds allows several effects at once.
   **No Hopping / Hydraulics**, and **Giant Karts / Small Kart Energy**.
 - **Use This!** ends **No Items**; **Reserve Injection** ends **No Reserves**.
 - **My Planet Needs Me** ends **No Hopping** and **Hydraulics** before launching.
-- The nine instant effects (**Use This!**, **Juiced Up**, **It is I**,
+- The ten instant effects (**Use This!**, **Juiced Up**, **It is I**,
   **Providence**, **Reserve Injection**, **My Planet Needs Me**, **Try Something New**,
-  **You've Got Mail**, **Fresh Start**) take no timed slot.
+  **You've Got Mail**, **Fresh Start**, **Identity Crisis**) take no timed slot.
   Repeating one applies it again.
 
 ## During a race

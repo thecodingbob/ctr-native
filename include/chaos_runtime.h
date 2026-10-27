@@ -51,6 +51,13 @@ struct ChaosRestart
 	struct MaskHeadWeapon *mask;
 };
 
+struct ChaosIdentity
+{
+	struct Model *originalModel;
+	s16 originalCharacter;
+	bool changed;
+};
+
 // Race-only state, captured in SDATA; unique effects in activation order.
 struct ChaosRuntime
 {
@@ -65,6 +72,7 @@ struct ChaosRuntime
 	u8 engineClass[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
 	bool engineClassChanged[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
 	struct ChaosRestart restart[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
+	struct ChaosIdentity identity[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
 };
 
 #endif

@@ -1441,6 +1441,14 @@ internal void NativeCheckpoint_RelocateHowlLists(const struct NativeCheckpointHe
 
 internal void NativeCheckpoint_RelocateSDataPointers(const struct NativeCheckpointHeader *oldHeader, const struct NativeCheckpointHeader *liveHeader)
 {
+	for (u32 i = 0; i < len(sdata_static.chaosCharacterModels); i++)
+	{
+		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.chaosCharacterModels[i]);
+	}
+	for (u32 i = 0; i < len(sdata_static.chaosRuntime.identity); i++)
+	{
+		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.chaosRuntime.identity[i].originalModel);
+	}
 	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.arcade_difficultyParams);
 	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.cup_difficultyParams);
 	for (u32 i = 0; i < len(sdata_static.PausePtrsVRAM); i++)
