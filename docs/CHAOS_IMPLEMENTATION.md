@@ -273,10 +273,15 @@ stage 6 through the synchronous relocating DRAM loader;
 the models live below the race-retry MEMPACK bookmark. SDATA stores their pointers
 and each human's first original model/character; checkpoint restoration relocates
 these pointers. Activation uses Chaos RNG to select a resident character absent
-from live driver slots, updating the existing instance, animation bounds and tires.
-Each human selection sees earlier transformations in the same activation.
+from live driver slots and pending transformations. Eight growing retail burn-smoke
+particles follow each kart in all viewports, scaled through `VehPhysForce_ScaleParticle`.
+After 100 ms of eligible race time, the existing instance, animation bounds and
+tires switch to the pending character. The retail emitter owns smoke fade/lifetime
+(about 0.3 seconds). Pause freezes the delay; finished humans cancel it and reset
+discards it. Particle pool exhaustion does not prevent the model change.
 `Chaos_SetDrivingClass` shares class/audio updates with Try Something New, so the
-latest change wins. Reset restores original identities before resetting engine
+latest change wins: class/audio update at activation, while only the model waits
+for smoke coverage. Reset restores original identities before resetting engine
 audio; ordinary birth restores class constants. No asset reads occur on activation.
 Activation plays the retail invisibility sound once, shared by all recipients.
 

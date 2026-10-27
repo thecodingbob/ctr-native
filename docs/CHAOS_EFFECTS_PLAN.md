@@ -99,6 +99,6 @@ behavior.
 | Arena Champions | 1P/2P, bosses/cups, cornering/jumps, boost/damage, expiry and coexistence with human Super Speed. |
 | Fresh Start | Suspension/mask visuals, neutral pose and camera smoothing during drift/jumps; rescue deferral, starting boost/over-rev, damage recovery, repeated activation, 1P/2P lights/audio and HUD spacing, pause/reset, unchanged bots/global timer. |
 | Senile Mask | Flashing prompt in each correct-direction human viewport, including relic/crystal events; repeated Aku Aku/Uka Uka voice with half cooldown, no overlapping XA playback; silence/no prompt when actually wrong-way, normal warnings restored at expiry/reset. |
-| Identity Crisis | All character models/textures, including bosses and Oxide; repeated 1P/2P transformations while driving, jumping, damaged or rescued; no duplicate live characters; class/engine ordering with Try Something New; retry/end-of-race and quick-state restoration. |
+| Identity Crisis | All character models/textures, including bosses and Oxide; smoke coverage/timing at speed and at 0.5×/1×/2× size in both viewports; repeated 1P/2P transformations while driving, jumping, damaged or rescued; no duplicate live characters; class/engine ordering with Try Something New; retry/end-of-race and quick-state restoration, including during the smoke delay. |
 
 Record remaining failures and reproducible tracks/quick states here.

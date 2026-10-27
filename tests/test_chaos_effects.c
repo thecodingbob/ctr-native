@@ -556,6 +556,9 @@ static void TestIdentityCrisis(void)
 		const int previousClass = Chaos_EngineClassForDriver(&human, data.MetaDataCharacters[beforeHuman].engineID);
 		CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_IDENTITY_CRISIS, 1000), "Identity Crisis activates as an instant effect");
 		CTR_TEST_CHECK_EQ(s_identitySounds, repeat + 1, "each transformation plays one invisibility sound for both humans together");
+		CTR_TEST_CHECK(data.characterIDs[0] == beforeHuman && data.characterIDs[1] == beforePartner,
+		               "the original models remain while the transformation smoke expands");
+		Tick(CHAOS_TRANSFORM_DELAY_MS);
 		const int character = data.characterIDs[0];
 		const int engine = data.MetaDataCharacters[character].engineID;
 		CTR_TEST_CHECK(character != beforeHuman && character != beforePartner && character != NITROS_OXIDE,
@@ -578,12 +581,39 @@ static void TestIdentityCrisis(void)
 	               "identity and class changes preserve inventory, motion, reserves and damage state");
 	CTR_TEST_CHECK_EQ(s_characterModelReads, GAME_CHARACTER_COUNT - 1, "activations perform no further asset reads");
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 1, "transformations preserve the timed effect without taking a slot");
+	CTR_TEST_CHECK_EQ(s_transformationSmokeCount, 20 * CHAOS_TRANSFORM_SMOKE_COUNT * 2, "each human receives a complete smoke cloud");
+	human.kartScale = 2.0f;
+	partner.kartScale = 0.5f;
+	Chaos_Activate(CHAOS_EFFECT_IDENTITY_CRISIS, 1000);
+	CTR_TEST_CHECK(s_transformationSmoke[0].owner.driverInst == &instances[0] &&
+	               s_transformationSmoke[CHAOS_TRANSFORM_SMOKE_COUNT].owner.driverInst == &instances[1],
+	               "each cloud stays attached to its own moving kart");
+	CTR_TEST_CHECK(s_transformationSmoke[0].driverID == -1 &&
+	               (s_transformationSmoke[0].flagsSetColor & PARTICLE_SET_COLOR_FLAG_DRIVER_LOCAL) != 0,
+	               "attached smoke is visible from every split-screen camera");
+	CTR_TEST_CHECK_EQ(s_transformationSmoke[0].axis[PARTICLE_AXIS_SCALE_X_OR_LINE_SCALE].startVal,
+	                  CHAOS_TRANSFORM_SMOKE_SCALE * 2, "giant karts receive proportionally larger smoke");
+	CTR_TEST_CHECK_EQ(s_transformationSmoke[CHAOS_TRANSFORM_SMOKE_COUNT].axis[PARTICLE_AXIS_SCALE_X_OR_LINE_SCALE].startVal,
+	                  CHAOS_TRANSFORM_SMOKE_SCALE / 2, "small karts receive proportionally smaller smoke");
+	s_tracker.gameMode1 |= PAUSE_1;
+	Tick(500);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.identity[0].transformRemainingMS, CHAOS_TRANSFORM_DELAY_MS,
+	                  "pause freezes the pending model change together with its visual effect");
+	s_tracker.gameMode1 &= ~PAUSE_1;
+	Chaos_Activate(CHAOS_EFFECT_TRY_SOMETHING_NEW, 1000);
+	const int newerClass = sdata->chaosRuntime.engineClass[0];
+	Tick(CHAOS_TRANSFORM_DELAY_MS - 1);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.identity[0].transformRemainingMS, 1, "the change waits for the full smoke expansion delay");
+	Tick(1);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.engineClass[0], newerClass, "a pending model change preserves a more recent class activation");
+	s_transformationSmokeExhausted = true;
 	const int finishedCharacter = data.characterIDs[1];
 	partner.actionsFlagSet = ACTION_RACE_FINISHED;
 	Chaos_Activate(CHAOS_EFFECT_IDENTITY_CRISIS, 1000);
 	CTR_TEST_CHECK_EQ(data.characterIDs[1], finishedCharacter, "finished humans receive no further transformations");
 	CTR_TEST_CHECK_EQ(data.characterIDs[2], NITROS_OXIDE, "bots keep their identity");
 	Tick(4000);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.identity[0].transformRemainingMS, 0, "particle pool exhaustion does not block transformation completion");
 	CTR_TEST_CHECK_EQ(data.characterIDs[1], finishedCharacter, "announcement expiry does not undo a transformation");
 	Chaos_Reset();
 	CTR_TEST_CHECK(data.characterIDs[0] == CRASH_BANDICOOT && data.characterIDs[1] == COCO_BANDICOOT &&

@@ -56,6 +56,8 @@ struct ChaosIdentity
 	struct Model *originalModel;
 	s16 originalCharacter;
 	bool changed;
+	s16 pendingCharacter;
+	s32 transformRemainingMS;
 };
 
 // Race-only state, captured in SDATA; unique effects in activation order.

@@ -27,6 +27,11 @@ enum
 	CHAOS_TOP_DOWN_YAW_OFFSET = 0x800,
 	CHAOS_TOP_DOWN_CUTAWAY_HEIGHT = 0x80,
 	CHAOS_WRONG_WAY_CADENCE_MULTIPLIER = 2,
+	CHAOS_TRANSFORM_DELAY_MS = 100,
+	CHAOS_TRANSFORM_SMOKE_COUNT = 8,
+	CHAOS_TRANSFORM_SMOKE_ICON_GROUP = 1,
+	CHAOS_TRANSFORM_SMOKE_SCALE = 0x2000,
+	CHAOS_TRANSFORM_SMOKE_GROWTH = 0x200,
 };
 
 static const float s_chaosSmallScale = 0.5f;
@@ -520,6 +525,33 @@ static void Chaos_SetCharacterModel(struct Driver *driver, int character, struct
 	driver->wheelSize = character == NITROS_OXIDE ? 0 : VEH_BIRTH_WHEEL_SIZE;
 }
 
+static void Chaos_SpawnTransformationSmoke(struct Driver *driver)
+{
+	for (int i = 0; i < CHAOS_TRANSFORM_SMOKE_COUNT; i++)
+	{
+		struct Particle *particle = Particle_Init(0, GAME_TRACKER->iconGroup[CHAOS_TRANSFORM_SMOKE_ICON_GROUP], data.emSet_BurnSmoke);
+		if (particle == NULL)
+		{
+			break;
+		}
+		particle->axis[PARTICLE_AXIS_SCALE_X_OR_LINE_SCALE].startVal = CHAOS_TRANSFORM_SMOKE_SCALE;
+		particle->axis[PARTICLE_AXIS_SCALE_X_OR_LINE_SCALE].velocity = CHAOS_TRANSFORM_SMOKE_GROWTH;
+		VehPhysForce_ScaleParticle(driver, particle);
+		particle->owner.driverInst = driver->instSelf;
+		particle->otIndexOffset = driver->instSelf->depthBiasNormal;
+	}
+}
+
+static void Chaos_TickTransformation(struct ChaosIdentity *identity, struct Driver *driver, s32 elapsedMS)
+{
+	identity->transformRemainingMS -= elapsedMS;
+	if (identity->transformRemainingMS <= 0)
+	{
+		identity->transformRemainingMS = 0;
+		Chaos_SetCharacterModel(driver, identity->pendingCharacter, sdata->chaosCharacterModels[identity->pendingCharacter]);
+	}
+}
+
 static void Chaos_ChangeIdentity(struct Driver *driver)
 {
 	bool present[GAME_CHARACTER_COUNT] = {0};
@@ -528,6 +560,14 @@ static void Chaos_ChangeIdentity(struct Driver *driver)
 		if (GAME_TRACKER->drivers[i] != NULL)
 		{
 			present[GAME_CHARACTER_IDS[i]] = true;
+		}
+	}
+	for (int i = 0; i < (int)len(sdata->chaosRuntime.identity); i++)
+	{
+		const struct ChaosIdentity *identity = &sdata->chaosRuntime.identity[i];
+		if (identity->transformRemainingMS > 0)
+		{
+			present[identity->pendingCharacter] = true;
 		}
 	}
 	int choices[GAME_CHARACTER_COUNT];
@@ -553,7 +593,9 @@ static void Chaos_ChangeIdentity(struct Driver *driver)
 		identity->changed = true;
 	}
 	Chaos_SetDrivingClass(driver, GAME_CHARACTER_METADATA[character].engineID);
-	Chaos_SetCharacterModel(driver, character, sdata->chaosCharacterModels[character]);
+	identity->pendingCharacter = character;
+	identity->transformRemainingMS = CHAOS_TRANSFORM_DELAY_MS;
+	Chaos_SpawnTransformationSmoke(driver);
 }
 
 static void Chaos_LaunchDriver(struct Driver *driver)

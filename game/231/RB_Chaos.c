@@ -877,6 +877,27 @@ static void Chaos_UpdateRestarts(s32 elapsedMS)
 	}
 }
 
+static void Chaos_UpdateTransformations(struct GameTracker *gGT)
+{
+	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	for (int i = 0; i < (int)len(runtime->identity); i++)
+	{
+		struct ChaosIdentity *identity = &runtime->identity[i];
+		struct Driver *driver = gGT->drivers[i];
+		if (identity->transformRemainingMS > 0 && driver != NULL)
+		{
+			if ((driver->actionsFlagSet & ACTION_RACE_FINISHED) != 0)
+			{
+				identity->transformRemainingMS = 0;
+			}
+			else
+			{
+				Chaos_TickTransformation(identity, driver, gGT->elapsedTimeMS);
+			}
+		}
+	}
+}
+
 void Chaos_Update(struct GameTracker *gGT)
 {
 	if (!Chaos_IsRunning(gGT) || gGT->elapsedTimeMS <= 0)
@@ -887,6 +908,7 @@ void Chaos_Update(struct GameTracker *gGT)
 	const struct ChaosSettings *settings = &sdata->chaosSettings;
 	Chaos_TickActivations(gGT->elapsedTimeMS);
 	Chaos_UpdateRestarts(gGT->elapsedTimeMS);
+	Chaos_UpdateTransformations(gGT);
 	Chaos_UpdateControlAxes();
 	if (settings->trigger == CHAOS_TRIGGER_EXTERNAL)
 	{

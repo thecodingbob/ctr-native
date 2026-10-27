@@ -18,6 +18,9 @@ static bool s_allHumansFinished;
 static int s_activationSounds;
 static int s_clockSounds;
 static int s_identitySounds;
+static struct Particle s_transformationSmoke[16];
+static int s_transformationSmokeCount;
+static bool s_transformationSmokeExhausted;
 static int s_squishSounds;
 static int s_crateExplosions;
 static int s_crateSounds;
@@ -564,7 +567,21 @@ u32 MFC2(int reg)
 }
 struct Particle *Particle_Init(u32 flags, struct IconGroup *icons, struct ParticleEmitter *emitter)
 {
-	(void)flags; (void)icons; (void)emitter;
+	(void)flags; (void)icons;
+	if (emitter == data.emSet_BurnSmoke)
+	{
+		if (s_transformationSmokeExhausted)
+		{
+			return NULL;
+		}
+		struct Particle *particle = &s_transformationSmoke[s_transformationSmokeCount++ % len(s_transformationSmoke)];
+		*particle = (struct Particle){
+			.flagsSetColor = PARTICLE_SET_COLOR_FLAG_DRIVER_LOCAL,
+			.flagsAxis = PARTICLE_AXIS_FLAG_SCALE_X,
+			.driverID = -1,
+		};
+		return particle;
+	}
 	CtrTest_Bail("scale/contact checks must not spawn particles");
 	return NULL;
 }
@@ -588,6 +605,8 @@ static void SetupRace(int trigger)
 	s_activationSounds = 0;
 	s_clockSounds = 0;
 	s_identitySounds = 0;
+	s_transformationSmokeCount = 0;
+	s_transformationSmokeExhausted = false;
 	s_squishSounds = 0;
 	s_crateExplosions = 0;
 	s_crateSounds = 0;
