@@ -689,8 +689,11 @@ void RB_Warpball_ThTick(struct Thread *t)
 			b16 hadTargetPathFlag = tw->flags & TRACKER_FLAG_WARPBALL_TARGET_PATH;
 			TrackerWeaponFlags flagsBeforeHit;
 
-			RB_Hazard_HurtDriver(hitDriver, 2, tw->driverParent, 0);
-			hitDriver->damageColorTimer = 0x1e;
+			if (!Chaos_DeferDriverDamage(hitDriver, 2, tw->driverParent, 0))
+			{
+				RB_Hazard_HurtDriver(hitDriver, 2, tw->driverParent, 0);
+				hitDriver->damageColorTimer = 0x1e;
+			}
 
 			flagsBeforeHit = tw->flags | TRACKER_FLAG_WARPBALL_HIT_DRIVER;
 			tw->flags = flagsBeforeHit;

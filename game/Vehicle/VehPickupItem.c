@@ -706,6 +706,7 @@ static void VehPickupItem_ShootTargeted(struct Driver *d, s32 weaponID, s32 flag
 		weaponInst->thread->funcThCollide = (void *)RB_Hazard_ThCollide_Missile;
 
 		tw = weaponInst->thread->object;
+		tw->instParent = d->instSelf;
 		tw->flags = 0;
 		tw->driverParent = d;
 		tw->timeAlive = 0;
@@ -786,7 +787,6 @@ static void VehPickupItem_ShootTargeted(struct Driver *d, s32 weaponID, s32 flag
 
 		tw->parentSafetyFrames = TRACKER_PARENT_SAFETY_FRAMES;
 		tw->blindFrames = 0;
-		tw->instParent = d->instSelf;
 		break;
 	}
 
@@ -922,6 +922,8 @@ static void VehPickupItem_ShootTargeted(struct Driver *d, s32 weaponID, s32 flag
 
 		weaponInst->thread->funcThDestroy = PROC_DestroyInstance;
 
+		tw = weaponInst->thread->object;
+		tw->instParent = d->instSelf;
 		PlaySound3D(SOUND_WARPBALL, weaponInst);
 
 		// if human and not AI (AIs can not use Warpball)
@@ -929,8 +931,6 @@ static void VehPickupItem_ShootTargeted(struct Driver *d, s32 weaponID, s32 flag
 		{
 			Voiceline_RequestPlay(VOICELINE_WARPBALL, GAME_CHARACTER_IDS[d->driverID], VOICELINE_WEAPON_PRIORITY);
 		}
-
-		tw = weaponInst->thread->object;
 
 		tw->soundIDCount = 0;
 		GAME_TRACKER->gameMode1 |= WARPBALL_HELD;
@@ -942,11 +942,14 @@ static void VehPickupItem_ShootTargeted(struct Driver *d, s32 weaponID, s32 flag
 		tw->vel.z = (d->instSelf->matrix.m[2][2] * WARPBALL_VELOCITY_NUMERATOR) >> WARPBALL_VELOCITY_SHIFT;
 		tw->parentSafetyFrames = WARPBALL_PARENT_SAFETY_FRAMES;
 		tw->dir.y = d->angle;
-		tw->instParent = d->instSelf;
 
 		p = Particle_Init(0, GAME_TRACKER->iconGroup[WARPBALL_PARTICLE_ICON_GROUP], &data.emSet_Warpball[0]);
 
 		tw->ptrParticle = p;
+		if (p != NULL && Chaos_IsHumanThread(d->instSelf->thread))
+		{
+			p->flagsAxis |= PARTICLE_AXIS_FLAG_HUMAN_EFFECT;
+		}
 
 		if (p != 0)
 		{
@@ -1040,6 +1043,8 @@ static void VehPickupItem_ShootTargeted(struct Driver *d, s32 weaponID, s32 flag
 		weaponInst->thread->funcThDestroy = PROC_DestroyInstance;
 		weaponInst->thread->funcThCollide = (void *)RB_Hazard_ThCollide_Generic;
 
+		mw = weaponInst->thread->object;
+		mw->instParent = d->instSelf;
 		PlaySound3D(soundID, soundInstance);
 
 		if ((d->actionsFlagSet & ACTION_BOT) == 0)
@@ -1047,8 +1052,6 @@ static void VehPickupItem_ShootTargeted(struct Driver *d, s32 weaponID, s32 flag
 			Voiceline_RequestPlay(VOICELINE_MINE_DROP, GAME_CHARACTER_IDS[d->driverID], VOICELINE_WEAPON_PRIORITY);
 		}
 
-		mw = weaponInst->thread->object;
-		mw->instParent = d->instSelf;
 		mw->velocity.x = 0;
 		mw->velocity.y = 0;
 		mw->velocity.z = 0;

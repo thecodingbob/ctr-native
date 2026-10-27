@@ -83,6 +83,10 @@ void RB_Blowup_Init(struct Instance *weaponInst)
 	effectInst->flags |= (VISIBLE_DURING_GAMEPLAY | DRAW_BILLBOARD);
 
 	explosionTh = effectInst->thread;
+	if (Chaos_IsHumanOwnedThread(weaponInst->thread))
+	{
+		explosionTh->flags |= THREAD_FLAG_HUMAN_EFFECT;
+	}
 	blowup = explosionTh->object;
 
 	blowup->explosion = effectInst;

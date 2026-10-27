@@ -1,4 +1,6 @@
 #include <common.h>
+#include "RB_Collision.h"
+#include <platform/native_audio.h>
 
 // Effect operations only; RB_Chaos.c checks activation and driver eligibility.
 
@@ -40,7 +42,511 @@ enum
 	CHAOS_TELEPORT_PROBE_HALF_HEIGHT = 0x100,
 	CHAOS_PATH_INVALID_NODE = 0xff,
 	CHAOS_TRACK_DISTANCE_SCALE = 8,
+	CHAOS_TIME_STOP_CRATE_DELAY_MS = 200,
+	CHAOS_TIME_STOP_TICK_PERIOD_MS = 192,
+	CHAOS_TIME_STOP_TICK_COUNT = 6,
+	CHAOS_POTION_HIT_RADIUS_SQUARED = 0x1900,
 };
+
+bool Chaos_IsHumanThread(const struct Thread *thread)
+{
+	if (thread == NULL || thread->modelIndex != DYNAMIC_PLAYER || thread->object == NULL)
+	{
+		return false;
+	}
+	const struct Driver *driver = thread->object;
+	return driver->driverID < GAME_TRACKER->numPlyrCurrGame && (driver->actionsFlagSet & ACTION_BOT) == 0;
+}
+
+bool Chaos_IsHumanCharacter(int character)
+{
+	for (int i = 0; i < GAME_TRACKER->numPlyrCurrGame; i++)
+	{
+		if (GAME_CHARACTER_IDS[i] == character)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Chaos_IsHumanOwnedThread(const struct Thread *thread)
+{
+	if (thread == NULL)
+	{
+		return false;
+	}
+	if (Chaos_IsHumanThread(thread) || (thread->flags & THREAD_FLAG_HUMAN_EFFECT) != 0)
+	{
+		return true;
+	}
+	const int bucket = thread->flags & 0xff;
+	if (thread->object != NULL && thread->funcThTick == VehTurbo_ThTick && bucket == TURBO)
+	{
+		const struct Driver *driver = ((const struct Turbo *)thread->object)->driver;
+		return driver != NULL && driver->instSelf != NULL && Chaos_IsHumanThread(driver->instSelf->thread);
+	}
+	if (thread->object != NULL && (bucket == MINE || bucket == TRACKING))
+	{
+		const struct Instance *owner = bucket == MINE ? ((const struct MineWeapon *)thread->object)->instParent :
+		    ((const struct TrackerWeapon *)thread->object)->instParent;
+		// Level mines also carry a driver pointer; they belong to the world.
+		if (thread->inst == NULL || thread->inst->instDef != NULL || owner == NULL)
+		{
+			return false;
+		}
+		// Pooled weapon payloads may still contain the previous allocation's owner during birth.
+		for (int i = 0; i < GAME_TRACKER->numPlyrCurrGame; i++)
+		{
+			const struct Driver *driver = GAME_TRACKER->drivers[i];
+			if (driver != NULL && owner == driver->instSelf && (driver->actionsFlagSet & ACTION_BOT) == 0)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+	return Chaos_IsHumanThread(thread->parentThread);
+}
+
+bool Chaos_HasDeferredImpact(const struct Thread *thread)
+{
+	for (int i = 0; i < sdata->chaosRuntime.numDeferredImpacts; i++)
+	{
+		const struct ChaosDeferredImpact *impact = &sdata->chaosRuntime.deferredImpacts[i];
+		if (impact->source == thread || impact->target == thread)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Chaos_IsFrozenWorldThread(const struct Thread *thread)
+{
+	return thread != NULL && Chaos_IsTimeStopped() && !Chaos_IsHumanOwnedThread(thread);
+}
+
+static bool Chaos_IsContactTriggeredMine(const struct Thread *thread)
+{
+	return thread->modelIndex == PU_EXPLOSIVE_CRATE || thread->modelIndex == STATIC_BEAKER_RED || thread->modelIndex == STATIC_BEAKER_GREEN;
+}
+
+static bool Chaos_IsWaitingProjectileImpact(enum ChaosImpactKind kind)
+{
+	return kind == CHAOS_IMPACT_MINE_DRIVER || kind == CHAOS_IMPACT_MOVING_DRIVER;
+}
+
+bool Chaos_DeferImpact(enum ChaosImpactKind kind, struct Thread *source, struct Thread *target, struct BSP *bsp)
+{
+	if (!Chaos_IsTimeStopped() || source == NULL)
+	{
+		return false;
+	}
+	const bool delayedMineContact = kind == CHAOS_IMPACT_MINE_DRIVER && Chaos_IsContactTriggeredMine(source);
+	if (!delayedMineContact && (!Chaos_IsHumanOwnedThread(source) ||
+	    (target != NULL && !Chaos_IsFrozenWorldThread(target))))
+	{
+		return false;
+	}
+	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	for (int i = 0; i < runtime->numDeferredImpacts; i++)
+	{
+		const struct ChaosDeferredImpact *impact = &runtime->deferredImpacts[i];
+		if (impact->kind == kind && impact->source == source && impact->target == target && impact->bsp == bsp)
+		{
+			return true;
+		}
+	}
+	if (runtime->numDeferredImpacts == CHAOS_MAX_DEFERRED_IMPACTS)
+	{
+		return false;
+	}
+	runtime->deferredImpacts[runtime->numDeferredImpacts++] = (struct ChaosDeferredImpact){
+		.kind = kind, .source = source, .target = target, .bsp = bsp,
+		.pos = source->inst != NULL ? (SVec3){source->inst->matrix.t[0], source->inst->matrix.t[1], source->inst->matrix.t[2]} : (SVec3){0},
+	};
+	return true;
+}
+
+bool Chaos_DeferDriverDamage(struct Driver *victim, int damage, struct Driver *attacker, int reason)
+{
+	if (attacker == NULL || attacker->instSelf == NULL || victim->instSelf == NULL ||
+	    !Chaos_IsHumanThread(attacker->instSelf->thread) || !Chaos_IsFrozenWorldThread(victim->instSelf->thread))
+	{
+		return false;
+	}
+	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	if (runtime->numDeferredImpacts == CHAOS_MAX_DEFERRED_IMPACTS)
+	{
+		return false;
+	}
+	runtime->deferredImpacts[runtime->numDeferredImpacts++] = (struct ChaosDeferredImpact){
+		.kind = CHAOS_IMPACT_DRIVER_DAMAGE, .source = attacker->instSelf->thread, .target = victim->instSelf->thread,
+		.damage = damage, .reason = reason, .attackerSlot = attacker->driverID,
+	};
+	return true;
+}
+
+void Chaos_RecordFrozenMaskContacts(struct Driver *attacker)
+{
+	if (!Chaos_IsTimeStopped() || !g_config.maskDamagesOthers ||
+	    (attacker->actionsFlagSet & ACTION_MASK_WEAPON) == 0 || attacker->instSelf == NULL ||
+	    !Chaos_IsHumanThread(attacker->instSelf->thread))
+	{
+		return;
+	}
+	enum { MASK_DAMAGE = 2, MASK_DAMAGE_REASON = 6 };
+	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	for (int i = 0; i < (int)len(GAME_TRACKER->drivers); i++)
+	{
+		struct Driver *victim = GAME_TRACKER->drivers[i];
+		if (victim == NULL || victim->instSelf == NULL || !Chaos_IsFrozenWorldThread(victim->instSelf->thread) ||
+		    (victim->actionsFlagSet & ACTION_MASK_WEAPON) != 0 ||
+		    (victim->instSelf->thread->flags & (THREAD_FLAG_DEAD | THREAD_FLAG_DISABLE_COLLISION)) != 0)
+		{
+			continue;
+		}
+		const int radius = VehPhysForce_ScaleValue(attacker, attacker->instSelf->thread->driverHitRadius) +
+		    VehPhysForce_ScaleValue(victim, victim->instSelf->thread->driverHitRadius);
+		const s64 dx = (s64)attacker->instSelf->matrix.t[0] - victim->instSelf->matrix.t[0];
+		const s64 dy = (s64)attacker->instSelf->matrix.t[1] - victim->instSelf->matrix.t[1];
+		const s64 dz = (s64)attacker->instSelf->matrix.t[2] - victim->instSelf->matrix.t[2];
+		if (dx * dx + dy * dy + dz * dz >= (s64)radius * radius)
+		{
+			continue;
+		}
+		bool recorded = false;
+		for (int j = 0; j < runtime->numDeferredImpacts; j++)
+		{
+			const struct ChaosDeferredImpact *impact = &runtime->deferredImpacts[j];
+			if (impact->kind == CHAOS_IMPACT_DRIVER_DAMAGE && impact->target == victim->instSelf->thread &&
+			    impact->source == attacker->instSelf->thread && impact->reason == MASK_DAMAGE_REASON)
+			{
+				recorded = true;
+				break;
+			}
+		}
+		if (!recorded)
+		{
+			Chaos_DeferDriverDamage(victim, MASK_DAMAGE, attacker, MASK_DAMAGE_REASON);
+		}
+	}
+}
+
+static void Chaos_ResolveTriggeredMine(struct Thread *source)
+{
+	struct MineWeapon *mine = source->object;
+	if (source->modelIndex != PU_EXPLOSIVE_CRATE)
+	{
+		// Potions retain their normal contact radius and effects, but use current positions.
+		struct Instance *hit = RB_Hazard_CollideWithDrivers(source->inst, mine->parentSafetyFrames,
+		    CHAOS_POTION_HIT_RADIUS_SQUARED, mine->instParent);
+		if (hit != NULL)
+		{
+			RB_GenericMine_CollideDriver(source, hit->thread);
+			return;
+		}
+	}
+	// Nitro's ordinary blast checks its area; a missed potion still shatters.
+	RB_GenericMine_ThDestroy(source, source->inst, mine);
+}
+
+static void Chaos_ResolveDeferredImpact(struct ChaosDeferredImpact impact)
+{
+	const bool triggeredMine = impact.kind == CHAOS_IMPACT_MINE_DRIVER && Chaos_IsContactTriggeredMine(impact.source);
+	if (Chaos_IsWaitingProjectileImpact(impact.kind) && (impact.source->flags & THREAD_FLAG_DEAD) != 0)
+	{
+		return;
+	}
+	if (!triggeredMine && impact.target != NULL && (impact.target->flags & THREAD_FLAG_DEAD) != 0)
+	{
+		return;
+	}
+	struct ScratchpadStruct *sps = CTR_SCRATCHPAD_PTR(struct ScratchpadStruct, 0x108);
+	memset(sps, 0, sizeof(*sps));
+	sps->Union.ThBuckColl.thread = impact.source;
+	sps->Input1.modelID = impact.source->modelIndex;
+	sps->Input1.pos = impact.pos;
+	sps->bspHitbox = impact.bsp;
+	switch (impact.kind)
+	{
+	case CHAOS_IMPACT_MINE_DRIVER:
+		if (triggeredMine)
+		{
+			Chaos_ResolveTriggeredMine(impact.source);
+		}
+		else
+		{
+			RB_GenericMine_CollideDriver(impact.source, impact.target);
+		}
+		break;
+	case CHAOS_IMPACT_MOVING_DRIVER:
+		RB_MovingExplosive_CollideDriver(impact.source, impact.target);
+		break;
+	case CHAOS_IMPACT_BURST_THREAD:
+		RB_Burst_CollThBucket(sps, impact.target);
+		break;
+	case CHAOS_IMPACT_BURST_LEVEL:
+		RB_Burst_CollLevInst(sps, impact.bsp);
+		break;
+	case CHAOS_IMPACT_HAZARD_THREAD:
+		if (impact.target->funcThCollide != NULL)
+		{
+			((ThreadScratchCollideFunc)impact.target->funcThCollide)(impact.target, impact.source, impact.target->funcThCollide, NULL);
+		}
+		break;
+	case CHAOS_IMPACT_HAZARD_LEVEL:
+		RB_Hazard_CollLevInst(sps, impact.source);
+		if (impact.source->modelIndex != DYNAMIC_WARPBALL && impact.bsp->data.hitbox.instDef != NULL && impact.bsp->data.hitbox.instDef->modelID == STATIC_TEETH &&
+		    impact.bsp->data.hitbox.instDef->ptrInstance != NULL)
+		{
+			RB_Teeth_OpenDoor(impact.bsp->data.hitbox.instDef->ptrInstance);
+		}
+		break;
+	case CHAOS_IMPACT_DRIVER_DAMAGE:
+		RB_Hazard_HurtDriver(impact.target->object, impact.damage, GAME_TRACKER->drivers[impact.attackerSlot], impact.reason);
+		((struct Driver *)impact.target->object)->damageColorTimer = 0x1e;
+		break;
+	}
+}
+
+void Chaos_ResolveDeferredImpacts(void)
+{
+	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	if (Chaos_IsTimeStopped())
+	{
+		return;
+	}
+	for (int i = 0; i < runtime->numDeferredImpacts; i++)
+	{
+		Chaos_ResolveDeferredImpact(runtime->deferredImpacts[i]);
+	}
+	runtime->numDeferredImpacts = 0;
+}
+
+bool Chaos_ShouldFreezeThread(const struct Thread *thread)
+{
+	if (!Chaos_IsTimeStopped())
+	{
+		return false;
+	}
+	for (int i = 0; i < sdata->chaosRuntime.numDeferredImpacts; i++)
+	{
+		const struct ChaosDeferredImpact *impact = &sdata->chaosRuntime.deferredImpacts[i];
+		if (impact->source == thread && Chaos_IsWaitingProjectileImpact(impact->kind))
+		{
+			return true;
+		}
+	}
+	const int bucket = thread->flags & 0xff;
+	if (Chaos_IsHumanOwnedThread(thread) || bucket == CAMERA || bucket == HUD || bucket == STARTTEXT)
+	{
+		return false;
+	}
+	return true;
+}
+
+void Chaos_CollideFrozenThread(struct Thread *thread)
+{
+	if (!Chaos_IsFrozenWorldThread(thread) || thread->inst == NULL || thread->object == NULL ||
+	    (thread->flags & (THREAD_FLAG_DEAD | THREAD_FLAG_DISABLE_COLLISION)) != 0)
+	{
+		return;
+	}
+	const bool previousAudio = Chaos_SetHumanAudio(true);
+	if (thread->funcThTick == RB_GenericMine_ThTick)
+	{
+		const struct MineWeapon *mine = thread->object;
+		const int radius = (u32)(u16)thread->modelIndex - STATIC_BEAKER_RED < 2 ? CHAOS_POTION_HIT_RADIUS_SQUARED : 0x3840;
+		struct Instance *hit = RB_Hazard_CollideWithDrivers(thread->inst, mine->parentSafetyFrames, radius, mine->instParent);
+		if (hit != NULL)
+		{
+			RB_GenericMine_CollideDriver(thread, hit->thread);
+		}
+	}
+	else if (thread->funcThTick == RB_MovingExplosive_ThTick)
+	{
+		const struct TrackerWeapon *weapon = thread->object;
+		struct Instance *hit = RB_Hazard_CollideWithDrivers(thread->inst, weapon->parentSafetyFrames, 0x2400, weapon->instParent);
+		if (hit != NULL)
+		{
+			RB_MovingExplosive_CollideDriver(thread, hit->thread);
+		}
+	}
+	else if (thread->funcThTick == RB_Warpball_ThTick)
+	{
+		const struct TrackerWeapon *weapon = thread->object;
+		struct Instance *hit = RB_Hazard_CollideWithDrivers(thread->inst, weapon->parentSafetyFrames, 0x9000, weapon->instParent);
+		if (hit != NULL && hit->thread->object != weapon->driverParent)
+		{
+			RB_Hazard_HurtDriver(hit->thread->object, 2, weapon->driverParent, 0);
+		}
+	}
+	else if (thread->funcThTick == RB_Minecart_ThTick)
+	{
+		RB_Minecart_CollideDrivers(thread);
+	}
+	else if (thread->funcThTick == RB_Snowball_ThTick)
+	{
+		RB_Snowball_CollideDrivers(thread);
+	}
+	else if (thread->funcThTick == RB_Baron_ThTick)
+	{
+		RB_Baron_CollideDrivers(thread);
+	}
+	else if (thread->funcThTick == RB_Spider_ThTick)
+	{
+		RB_Spider_CollideDrivers(thread);
+	}
+	else if (thread->funcThTick == RB_Plant_ThTick_Hungry)
+	{
+		RB_Plant_ThTick_Hungry(thread);
+	}
+	else if (thread->funcThTick == RB_FlameJet_ThTick)
+	{
+		RB_FlameJet_CollideDrivers(thread);
+	}
+	else if (thread->funcThTick == RB_Armadillo_ThTick_Rolling || thread->funcThTick == RB_Armadillo_ThTick_TurnAround)
+	{
+		RB_CheckHazardCollisions(thread->inst, thread, 1, 0x2400, 0x71);
+	}
+	else if (thread->funcThTick == RB_Seal_ThTick_Move || thread->funcThTick == RB_Seal_ThTick_TurnAround)
+	{
+		RB_CheckHazardCollisions(thread->inst, thread, 1, 0x4000, 0x78);
+	}
+	else if (thread->funcThTick == RB_Fireball_ThTick)
+	{
+		const struct Fireball *fireball = thread->object;
+		if (fireball->cooldown == 0 && thread->inst->instDef != NULL &&
+		    thread->inst->matrix.t[1] >= thread->inst->instDef->pos.y - 0x440)
+		{
+			RB_CheckHazardCollisions(thread->inst, thread, 4, 0x10000, 0);
+		}
+	}
+	Chaos_SetHumanAudio(previousAudio);
+}
+
+bool Chaos_ShouldFreezeParticle(const struct Particle *particle)
+{
+	if (!Chaos_IsTimeStopped() || (particle->flagsAxis & PARTICLE_AXIS_FLAG_HUMAN_EFFECT) != 0)
+	{
+		return false;
+	}
+	for (int i = 0; i < GAME_TRACKER->numPlyrCurrGame; i++)
+	{
+		const struct Driver *driver = GAME_TRACKER->drivers[i];
+		if (driver != NULL && driver->instSelf != NULL && particle->owner.driverInst == driver->instSelf &&
+		    Chaos_IsHumanThread(driver->instSelf->thread))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool Chaos_SetHumanAudio(bool human)
+{
+	const bool previous = sdata->chaosRuntime.humanAudioContext;
+	sdata->chaosRuntime.humanAudioContext = human;
+	return previous;
+}
+
+void Chaos_TagAudioChannel(struct ChannelStats *channel)
+{
+	channel->flags &= ~HOWL_CHANNEL_HUMAN_AUDIO;
+	if (sdata->chaosRuntime.humanAudioContext)
+	{
+		channel->flags |= HOWL_CHANNEL_HUMAN_AUDIO;
+	}
+}
+
+bool Chaos_IsMenuPreviewSong(const struct Song *song)
+{
+	return sdata->OptionSlider_BoolPlay && sdata->OptionSlider_Index == HOWL_VOLUME_TYPE_MUSIC &&
+	    (song->id == CSEQ_SONG_AKU || song->id == CSEQ_SONG_UKA);
+}
+
+bool Chaos_ShouldFreezeAudioChannel(const struct ChannelStats *channel)
+{
+	if (!Chaos_IsTimeStopped())
+	{
+		return false;
+	}
+	const u16 soundID = channel->soundID & 0xffff;
+	if (channel->type == HOWL_CHANNEL_TYPE_OTHER_FX &&
+	    (soundID == MENU_SFX_MOVE || soundID == MENU_SFX_BACK ||
+	     soundID == MENU_SFX_CONFIRM || soundID == MENU_SFX_LOCKED))
+	{
+		return false;
+	}
+	if (channel->type == HOWL_CHANNEL_TYPE_MUSIC)
+	{
+		if ((u32)channel->soundID < len(sdata->songSeq))
+		{
+			const struct SongSeq *sequence = &sdata->songSeq[channel->soundID];
+			if (sequence->songPoolIndex < len(sdata->songPool))
+			{
+				return !Chaos_IsMenuPreviewSong(&sdata->songPool[sequence->songPoolIndex]);
+			}
+		}
+		return true;
+	}
+	if (channel->type == HOWL_CHANNEL_TYPE_ENGINE_FX)
+	{
+		for (int i = 0; i < GAME_TRACKER->numPlyrCurrGame; i++)
+		{
+			const struct Driver *driver = GAME_TRACKER->drivers[i];
+			if (driver != NULL && (driver->actionsFlagSet & ACTION_BOT) == 0 &&
+			    channel->soundID == Chaos_EngineClassForDriver(driver, GAME_CHARACTER_METADATA[GAME_CHARACTER_IDS[i]].engineID) *
+			        CHAOS_ENGINE_AUDIO_CLASS_STRIDE + i)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+	return (channel->flags & HOWL_CHANNEL_HUMAN_AUDIO) == 0;
+}
+
+void Chaos_UpdateTimeStopAudio(void)
+{
+	u32 paused = 0;
+	for (const struct ChannelStats *channel = (const struct ChannelStats *)sdata->channelTaken.first;
+	     channel != NULL; channel = channel->link.links.next)
+	{
+		if (Chaos_ShouldFreezeAudioChannel(channel))
+		{
+			paused |= 1u << channel->channelID;
+		}
+	}
+	NativeAudio_SetPausedVoices(paused, Chaos_IsTimeStopped() && !sdata->chaosRuntime.humanXA);
+}
+
+static void Chaos_PlayTimeStopSound(int sound)
+{
+	const bool previous = Chaos_SetHumanAudio(true);
+	OtherFX_Play(sound, 1);
+	Chaos_SetHumanAudio(previous);
+}
+
+static void Chaos_TickTimeStopSound(const struct ChaosActivation *entry, s32 elapsedMS)
+{
+	if (entry->elapsedMS < CHAOS_TIME_STOP_CRATE_DELAY_MS &&
+	    (entry->elapsedMS + elapsedMS >= CHAOS_TIME_STOP_CRATE_DELAY_MS || entry->remainingMS <= elapsedMS))
+	{
+		Chaos_PlayTimeStopSound(HOWL_SFX_TIME_CRATE_BREAK);
+	}
+	s32 cueMS = CHAOS_TIME_STOP_CRATE_DELAY_MS;
+	for (int i = 0; i < CHAOS_TIME_STOP_TICK_COUNT; i++)
+	{
+		if (entry->elapsedMS < cueMS && entry->elapsedMS + elapsedMS >= cueMS && entry->remainingMS > elapsedMS)
+		{
+			Chaos_PlayTimeStopSound(HOWL_SFX_TIME_CRATE_TICK);
+		}
+		cueMS += CHAOS_TIME_STOP_TICK_PERIOD_MS;
+	}
+}
 
 static const float s_chaosSmallScale = 0.5f;
 

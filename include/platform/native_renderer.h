@@ -9,6 +9,7 @@ void NativeRenderer_Shutdown(void);
 void NativeRenderer_ResetDevice(void);
 void NativeRenderer_BeginScene(void);
 void NativeRenderer_EndScene(void);
+void NativeRenderer_ApplyTimeStopPalette(void);
 void NativeRenderer_EndGpuFrame(void);
 void NativeRenderer_FinishGpuMeasurements(void);
 void NativeRenderer_UpdateSwapIntervalState(int swapInterval);

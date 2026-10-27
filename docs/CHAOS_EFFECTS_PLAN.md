@@ -17,9 +17,10 @@ This plan tracks delivery, remaining specifications and outstanding validation.
 | B. Driving, turbo and jumping | Sabotage, This Is Fire, Hydraulics, My Planet Needs Me, Who Bound This?, Try Something New | Implemented |
 | C. Size, camera and bots | Small Kart Energy, Classic GTA, Arena Champions, You've Got Mail, Fresh Start, Senile Mask | Implemented |
 | D. Characters and movement | Identity Crisis, Body Swap, Teleport, Defective Teleport | Implemented |
-| E. Time manipulation | Za Warudo, King Crimson | Not started |
+| E. Time manipulation | Za Warudo, King Crimson | Za Warudo implemented; King Crimson next |
 
-**Current effect: Defective Teleport.** In-game validation is pending; Za Warudo is next.
+**Current effect: Za Warudo.** Implemented; in-game validation is pending.
+The user's Defective Teleport smoke test passed.
 
 Teleport's user smoke test passed; combined 2P/Body Swap/rescue checks remain pending.
 
@@ -31,21 +32,44 @@ synthetic circuit: destination stability, finish wrapping and selected branches.
 ### Za Warudo
 
 Humans keep driving while bots and the dynamic environment freeze, including
-hazards, environmental animations, world particles and all weapons. Newly fired
-human weapons also freeze until expiry. Crates and pickups remain collectible;
-frozen objects retain collisions.
+hazards, environmental animations, world particles and nonhuman weapons.
+Human-owned weapons keep moving; their effects on frozen entities are retained
+until time resumes. Crates and pickups remain collectible. Karts are mutually
+pass-through. Nitro and potions also allow passage: contact records an impact
+without blocking or damaging the human, then detonates when time resumes.
+Other frozen hazards retain collision checks and can still hurt humans.
+Triggered Nitro uses the ordinary explosion radius at resumption; red/green
+potions recheck their normal contact radius and shatter even if nobody remains
+nearby. Humans who have moved outside the relevant radius take no damage or red
+cloud from the old contact. Mask hits on frozen karts are recorded
+without blocking passage and apply once on resumption.
+Human masks, boost flames and kart particles keep following/animating with their
+kart; mask power-up duration remains suspended.
 
 Duration is the smaller of the Chaos duration and 10 seconds. Race/special-event
 clocks, power-up timers and other Chaos timers stop; only this effect's expiry
 clock continues alongside human driving.
 
 Use a blue/yellow-emphasized palette. Play the clock item sound followed by a
-breaking time crate. Suspend music and world/bot sounds; human sounds and any
-dedicated effect sound remain active.
+breaking time crate, then six normal-pitch time-crate ticks at equal intervals;
+the rest of the freeze is silent apart from human sounds.
+Suspend music and world/bot sounds; human sounds, menu navigation/confirmation
+and dedicated effect sounds remain active, including pause entry and exit.
+Options FX/voice/music slider previews also remain audible; the music preview
+does not resume the race soundtrack.
 
-Investigate selective thread updates, an independent expiry clock and resumption
-without accumulated catch-up time. Stretch goal: defer crate-breaking animations
-and damage to opponents until the effect ends.
+Implemented with selective thread updates, a separate activation expiry, frozen
+world/texture/particle clocks, selective audio suspension and a blue/yellow render
+pass before the HUD, with vivid scene colors and unmodified HUD colors.
+Human driving, cameras, masks, boost flames and kart particles continue;
+item-effect durations stop.
+Driving cooldowns and reserve consumption continue with human physics.
+Direct human collections remain immediate. Human weapon impacts against frozen
+karts, weapons and level objects resolve on resumption; pending participants stay
+allocated until dispatch. Human pickup, launch and weapon sounds remain audible.
+Activation retest must include recycled missile/orb/mine payloads and human weapon
+particles: launch audio requires initialized ownership, and particle metadata
+must not advance axes beyond the eleven-element array.
 
 ### King Crimson
 
@@ -87,6 +111,7 @@ behavior.
 | Identity Crisis | All character models/textures, including bosses and Oxide; smoke coverage/timing at speed and at 0.5×/1×/2× size in both viewports; repeated 1P/2P transformations while driving, jumping, damaged or rescued; no duplicate live characters; class/engine ordering with Try Something New; retry/end-of-race and quick-state restoration, including during the smoke delay. |
 | Body Swap | Human/human and human/bot input, camera/HUD and engine audio; damage/airborne takeover, bot navigation reattachment, active weapons/shields/masks, boss/cup behavior; modifiers follow players while class/Identity Crisis follow karts; immediate activation/expiry during rescue/start holds and pending transformations, reactivation, final-lap early return, retry/results and quick states. Relic/crystal/battle 2P pairs and solo events without targets. |
 | Teleport | Combined 2P/Body Swap/rescue checks remain pending after the user smoke test. |
-| Defective Teleport | Recheck the reduced vertical offset and BSP geometry bounds after excessive height/out-of-area destinations were reported; retain water/off-road placements and mask saves. Camera/audio, repeated 1P/2P activations, Body Swap, Fresh Start/rescues and retry/quick states. |
+| Defective Teleport | Combined 2P/Body Swap/Fresh Start/rescue and retry/quick-state checks remain pending after the user smoke test. |
+| Za Warudo | 1P/2P passage through karts and Nitro/potions; touched Nitro/potions detonate only on resumption. Other frozen mines, missiles and track hazards retain collisions; frozen world particles and live human masks/flames/smoke. Human projectiles and their effects continue, with external impacts deferred exactly once until resumption; test blasts against several targets, potion/door impacts and quick states with pending hits. Crates/pickups stay collectible, with audible Wumpa/launch sounds. Race/relic/crystal clocks, item-effect durations and other Chaos timers stop/resume normally. Blue/yellow grading excludes HUD; six normal-pitch ticks precede silence, while music/world/bot sounds pause and human sounds continue. Rescue, Body Swap, Fresh Start, pause, expiry and results/retry remain pending in-game checks. |
 
 Record remaining failures and reproducible tracks/quick states here.

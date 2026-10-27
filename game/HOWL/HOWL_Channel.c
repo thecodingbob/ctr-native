@@ -150,6 +150,7 @@ struct ChannelStats *Channel_AllocSlot(int flags, struct ChannelAttr *attr)
 	*newAttr = *attr;
 
 	stats->flags = 1;
+	Chaos_TagAudioChannel(stats);
 
 	return stats;
 }
@@ -317,7 +318,7 @@ void Channel_ParseSongToChannels()
 		}
 
 		// if paused, skip
-		if ((song->flags & 2) != 0)
+		if ((song->flags & 2) != 0 || (Chaos_IsTimeStopped() && !Chaos_IsMenuPreviewSong(song)))
 		{
 			continue;
 		}

@@ -108,6 +108,8 @@ struct NativeRenderTarget
 };
 
 global_variable struct NativeRenderTarget s_mainRenderTarget;
+global_variable struct NativeRenderTarget s_timeStopTarget;
+global_variable GLuint s_timeStopShader;
 global_variable struct NativeRenderTarget s_offscreenRenderTarget;
 
 global_variable TextureID s_whiteTexture = (TextureID)-1;
@@ -276,6 +278,8 @@ void NativeRenderer_Shutdown(void)
 	glDeleteBuffers(2, s_glVertexBuffer);
 
 	NativeRenderer_DestroyRenderTarget(&s_mainRenderTarget);
+	NativeRenderer_DestroyRenderTarget(&s_timeStopTarget);
+	glDeleteProgram(s_timeStopShader);
 	NativeRenderer_DestroyRenderTarget(&s_offscreenRenderTarget);
 	NativeAntialiasing_Shutdown();
 	glDeleteFramebuffers(1, &s_glVramFramebuffer);
@@ -1222,6 +1226,18 @@ internal void NativeRenderer_InitVRAMPipelines(void)
 	glUseProgram(0);
 
 	s_presentVramShader = NativeRenderer_Shader_Compile(ctr_present_vram_shader, false);
+	s_timeStopShader = NativeRenderer_Shader_Compile(
+	    "#ifdef VERTEX\n"
+	    "attribute vec2 a_position; varying vec2 uv;\n"
+	    "void main() { uv = a_position * 0.5 + 0.5; gl_Position = vec4(a_position, 0.0, 1.0); }\n"
+	    "#endif\n#ifdef FRAGMENT\n"
+	    "varying vec2 uv; uniform sampler2D s_texture;\n"
+	    "void main() { vec4 c = texture2D(s_texture, uv);\n"
+	    "float l = dot(c.rgb, vec3(0.299, 0.587, 0.114));\n"
+	    "vec3 blue = mix(vec3(0.005, 0.015, 0.08), vec3(0.03, 0.20, 1.0), smoothstep(0.0, 0.55, l));\n"
+	    "vec3 yellow = mix(vec3(1.0, 0.78, 0.015), vec3(1.0, 1.0, 0.28), smoothstep(0.55, 1.0, l));\n"
+	    "vec3 palette = mix(blue, yellow, smoothstep(0.45, 0.60, l));\n"
+	    "fragColor = vec4(mix(c.rgb, palette, 0.80) * 0.92, c.a); }\n#endif\n", false);
 	s_presentVramSourceRectLoc = glGetUniformLocation(s_presentVramShader, "sourceRect");
 
 	glGenVertexArrays(1, &s_vramQuadVAO);
@@ -1233,6 +1249,38 @@ internal void NativeRenderer_InitVRAMPipelines(void)
 	glVertexAttribPointer(a_position, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
 	glBindVertexArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void NativeRenderer_ApplyTimeStopPalette(void)
+{
+	if (s_mainRenderTarget.width <= 0 || s_mainRenderTarget.height <= 0)
+	{
+		return;
+	}
+	if (s_previousOffscreenState)
+	{
+		NativeRenderer_SetOffscreenState(&s_previousOffscreen, 0);
+	}
+	const int width = s_mainRenderTarget.width;
+	const int height = s_mainRenderTarget.height;
+	NativeRenderer_EnsureRenderTarget(&s_timeStopTarget, width, height);
+	glDisable(GL_STENCIL_TEST);
+	NativeRenderer_SetScissorState(0);
+	NativeRenderer_EnableDepth(0);
+	NativeRenderer_SetBlendMode(BM_NONE);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, s_mainRenderTarget.framebuffer);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, s_timeStopTarget.framebuffer);
+	glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+	glBindFramebuffer(GL_FRAMEBUFFER, s_mainRenderTarget.framebuffer);
+	NativeRenderer_SetViewPort(0, 0, width, height);
+	glUseProgram(s_timeStopShader);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, s_timeStopTarget.texture);
+	glBindVertexArray(s_vramQuadVAO);
+	NativeRenderer_DrawTriangles(0, 2);
+	glEnable(GL_STENCIL_TEST);
+	s_previousShader = (ShaderID)-1;
+	s_lastBoundTexture = (TextureID)-1;
 }
 
 internal void NativeRenderer_InitRG8LUT(void)
@@ -1291,6 +1339,7 @@ int NativeRenderer_InitialisePSX(void)
 	// main target stays at CTR's logical display size; host scaling is deferred
 	// to presentation.
 	NativeRenderer_InitRenderTarget(&s_mainRenderTarget);
+	NativeRenderer_InitRenderTarget(&s_timeStopTarget);
 	NativeRenderer_InitRenderTarget(&s_offscreenRenderTarget);
 	NativeAntialiasing_Init();
 

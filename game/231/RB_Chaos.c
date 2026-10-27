@@ -7,6 +7,7 @@
 enum
 {
 	CHAOS_RANDOM_GAP_MIN_PERCENT = 30,
+	CHAOS_TIME_STOP_MAX_MS = 10000,
 };
 
 static bool Chaos_TargetsDriver(ChaosEffectId effect, const struct Driver *driver)
@@ -80,6 +81,26 @@ static bool Chaos_CanSwapBody(int slot)
 	       (driver->actionsFlagSet & ACTION_RACE_FINISHED) == 0;
 }
 
+bool Chaos_IsTimeStopped(void)
+{
+	const struct GameTracker *tracker = GAME_TRACKER;
+	const struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	// Pause suspends expiry but retains the frozen scene and audio ownership.
+	if (!runtime->raceInitialized || sdata->Loading.stage != LOAD_IDLE ||
+	    (tracker->gameMode1 & (END_OF_RACE | MAIN_MENU | GAME_CUTSCENE | ADVENTURE_ARENA | LOADING)) != 0)
+	{
+		return false;
+	}
+	for (int i = 0; i < runtime->numActive; i++)
+	{
+		if (runtime->active[i].effect == CHAOS_EFFECT_ZA_WARUDO)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 static void Chaos_BeginBodySwaps(void)
 {
 	struct GameTracker *tracker = GAME_TRACKER;
@@ -139,6 +160,7 @@ void Chaos_ReturnBodySwapsNearFinish(struct GameTracker *tracker, int nearDistan
 
 void Chaos_Reset(void)
 {
+	NativeAudio_SetPausedVoices(0, false);
 	if (sdata->chaosRuntime.raceInitialized)
 	{
 		Chaos_ReturnBodySwaps();
@@ -401,6 +423,10 @@ bool Chaos_Activate(ChaosEffectId effect, s32 durationMS)
 		return false;
 	}
 	Chaos_RemoveReplacedEffects(effect);
+	if (effect == CHAOS_EFFECT_ZA_WARUDO && durationMS > CHAOS_TIME_STOP_MAX_MS)
+	{
+		durationMS = CHAOS_TIME_STOP_MAX_MS;
+	}
 	const bool instant = ChaosEffect_IsInstant(effect);
 	if (!instant && runtime->numActive == CHAOS_MAX_ACTIVATIONS)
 	{
@@ -421,6 +447,11 @@ bool Chaos_Activate(ChaosEffectId effect, s32 durationMS)
 		runtime->active[runtime->numActive++] = activation;
 	}
 	Chaos_ApplyOneOff(&activation);
+	if (effect == CHAOS_EFFECT_ZA_WARUDO)
+	{
+		Chaos_PlayTimeStopSound(SOUND_CLOCK);
+		Chaos_UpdateTimeStopAudio();
+	}
 	OtherFX_Play_LowLevel(HOWL_SFX_SWISH, 1, HOWL_SFX_DEFAULT_FLAGS | HOWL_SFX_GAIN_DOUBLE_FLAG);
 	return true;
 }
@@ -793,7 +824,7 @@ u32 Chaos_ApplyDriver(struct Driver *driver, u32 actions)
 		{
 			Chaos_ClearReserves(driver);
 		}
-		else if (effect == CHAOS_EFFECT_WUMPA_DRAIN)
+		else if (effect == CHAOS_EFFECT_WUMPA_DRAIN && !Chaos_IsTimeStopped())
 		{
 			Chaos_TickWumpaDrain(runtime->active[i].elapsedMS, driver);
 		}
@@ -804,9 +835,14 @@ u32 Chaos_ApplyDriver(struct Driver *driver, u32 actions)
 static void Chaos_TickActivations(s32 elapsedMS)
 {
 	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	const bool timeStopped = Chaos_IsTimeStopped();
 	for (int i = 0; i < runtime->numInstantNotices;)
 	{
 		struct ChaosActivation *notice = &runtime->instantNotices[i];
+		if (timeStopped)
+		{
+			break;
+		}
 		notice->elapsedMS += elapsedMS;
 		notice->noticeRemainingMS -= elapsedMS;
 		if (notice->noticeRemainingMS <= 0)
@@ -822,6 +858,15 @@ static void Chaos_TickActivations(s32 elapsedMS)
 	for (int i = 0; i < runtime->numActive;)
 	{
 		struct ChaosActivation *entry = &runtime->active[i];
+		if (timeStopped && entry->effect != CHAOS_EFFECT_ZA_WARUDO)
+		{
+			i++;
+			continue;
+		}
+		if (entry->effect == CHAOS_EFFECT_ZA_WARUDO)
+		{
+			Chaos_TickTimeStopSound(entry, elapsedMS);
+		}
 		if (entry->remainingMS <= elapsedMS)
 		{
 			Chaos_RemoveActivation(i);
@@ -846,7 +891,12 @@ void Chaos_Update(struct GameTracker *gGT)
 	}
 	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
 	const struct ChaosSettings *settings = &sdata->chaosSettings;
+	const bool wasTimeStopped = Chaos_IsTimeStopped();
 	Chaos_TickActivations(gGT->elapsedTimeMS);
+	if (wasTimeStopped)
+	{
+		return;
+	}
 	Chaos_UpdateRestarts(gGT->elapsedTimeMS);
 	Chaos_UpdateTransformations(gGT);
 	Chaos_UpdateControlAxes();

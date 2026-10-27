@@ -320,6 +320,10 @@ void VehPhysCrash_AnyTwoCars(struct Thread *thread, struct DriverCollisionSearch
 
 	CTR_PSX_KEEP_VALUE(search);
 	CTR_PSX_KEEP_VALUE(selfVel);
+	if (Chaos_IsTimeStopped())
+	{
+		return;
+	}
 	distance = MATH_FastSqrt(search->bucket.bestDistSq, 0);
 	hitDirZ = VEH_PHYS_CRASH_UNIT_VECTOR_SCALE;
 

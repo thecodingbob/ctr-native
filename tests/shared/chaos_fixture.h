@@ -20,6 +20,88 @@ static SVec3 s_teleportProbe;
 static int s_teleportProbes;
 static bool s_allowRaceEnd;
 static int s_teleportRaceEnds;
+static u32 s_pausedVoices;
+static b32 s_pausedXA;
+static int s_timeStopCrateSounds;
+static int s_timeStopTickSounds;
+static u32 s_timeStopTickFlags;
+static struct ChannelStats s_timeStopTickChannel;
+static int s_deferredCollisions;
+static int s_deferredNitroBlasts;
+static int s_deferredPotionShatters;
+static struct Thread *s_lastMineDriver;
+static int s_frozenObstacleCollisions;
+
+void RB_GenericMine_ThTick(struct Thread *thread) { (void)thread; }
+void RB_MovingExplosive_ThTick(struct Thread *thread) { (void)thread; }
+void RB_Warpball_ThTick(struct Thread *thread) { (void)thread; }
+void RB_Minecart_ThTick(struct Thread *thread) { (void)thread; }
+void RB_Snowball_ThTick(struct Thread *thread) { (void)thread; }
+void RB_Baron_ThTick(struct Thread *thread) { (void)thread; }
+void RB_Spider_ThTick(struct Thread *thread) { (void)thread; }
+void RB_Plant_ThTick_Hungry(struct Thread *thread) { (void)thread; }
+void RB_FlameJet_ThTick(struct Thread *thread) { (void)thread; }
+void RB_Armadillo_ThTick_Rolling(struct Thread *thread) { (void)thread; }
+void RB_Armadillo_ThTick_TurnAround(struct Thread *thread) { (void)thread; }
+void RB_Seal_ThTick_Move(struct Thread *thread) { (void)thread; }
+void RB_Seal_ThTick_TurnAround(struct Thread *thread) { (void)thread; }
+void RB_Fireball_ThTick(struct Thread *thread) { (void)thread; }
+struct Instance *LinkedCollide_Radius(struct Instance *inst, struct Thread *thread, struct Thread *bucket, u32 radius)
+{
+	(void)inst; (void)thread; (void)bucket; (void)radius;
+	CtrTest_Bail("isolated Chaos checks must not run a hazard's spherical collision query");
+	return NULL;
+}
+void RB_Minecart_CollideDrivers(struct Thread *thread) { (void)thread; s_frozenObstacleCollisions++; }
+void RB_Snowball_CollideDrivers(struct Thread *thread) { (void)thread; s_frozenObstacleCollisions++; }
+void RB_Baron_CollideDrivers(struct Thread *thread) { (void)thread; s_frozenObstacleCollisions++; }
+void RB_Spider_CollideDrivers(struct Thread *thread) { (void)thread; s_frozenObstacleCollisions++; }
+void RB_FlameJet_CollideDrivers(struct Thread *thread) { (void)thread; s_frozenObstacleCollisions++; }
+void RB_GenericMine_CollideDriver(struct Thread *thread, struct Thread *driver)
+{
+	s_lastMineDriver = driver;
+	if (thread->modelIndex == STATIC_BEAKER_RED || thread->modelIndex == STATIC_BEAKER_GREEN)
+	{
+		thread->flags |= THREAD_FLAG_DEAD;
+	}
+	s_deferredCollisions++;
+}
+void RB_GenericMine_ThDestroy(struct Thread *thread, struct Instance *inst, struct MineWeapon *mine)
+{
+	(void)inst; (void)mine;
+	thread->flags |= THREAD_FLAG_DEAD;
+	if (thread->modelIndex == PU_EXPLOSIVE_CRATE)
+	{
+		s_deferredNitroBlasts++;
+	}
+	else
+	{
+		s_deferredPotionShatters++;
+	}
+	s_deferredCollisions++;
+}
+void RB_MovingExplosive_CollideDriver(struct Thread *thread, struct Thread *driver) { (void)thread; (void)driver; s_deferredCollisions++; }
+void RB_Burst_CollThBucket(struct ScratchpadStruct *sps, void *target) { (void)sps; (void)target; s_deferredCollisions++; }
+void RB_Burst_CollLevInst(struct ScratchpadStruct *sps, void *target) { (void)sps; (void)target; s_deferredCollisions++; }
+void RB_Teeth_OpenDoor(struct Instance *inst) { (void)inst; }
+void RB_MinePool_Remove(struct MineWeapon *mine) { (void)mine; }
+void RB_Blowup_Init(struct Instance *inst) { (void)inst; }
+void RB_Explosion_InitGeneric(struct Instance *inst) { (void)inst; }
+void OtherFX_RecycleMute(u32 *sound) { *sound = 0; }
+u32 BOTS_ChangeState(struct Driver *victim, int damage, struct Driver *attacker, int reason)
+{
+	(void)attacker;
+	(void)reason;
+	victim->kartState = damage == 2 ? KS_BLASTED : KS_SPINNING;
+	return 1;
+}
+struct MetaDataMODEL *COLL_LevModelMeta(u32 id) { (void)id; return NULL; }
+
+void NativeAudio_SetPausedVoices(u32 voices, b32 pauseXA)
+{
+	s_pausedVoices = voices;
+	s_pausedXA = pauseXA;
+}
 
 void COLL_SearchBSP_CallbackQUADBLK(const SVec3 *top, const SVec3 *bottom, struct ScratchpadStruct *sps, s32 radius)
 {
@@ -354,6 +436,7 @@ static void CaptureLaunchVelocity(struct Driver *driver, Vec3 *velocity)
 #define VehPhysCrash_ConvertVecToSpeed CaptureLaunchVelocity
 #define VehPhysForce_RotAxisAngle TestTeleportMatrix
 #include <game/231/RB_Warpball_Path.c>
+#include <game/231/RB_Hazard.c>
 #include <game/231/RB_ChaosEffects.c>
 #undef VehPhysForce_RotAxisAngle
 #undef VehPhysCrash_ConvertVecToSpeed
@@ -505,6 +588,16 @@ s32 doCOP2(s32 op)
 }
 int OtherFX_Play(u32 soundID, int flags)
 {
+	if (soundID == 0x40)
+	{
+		return OtherFX_Play_LowLevel(soundID, flags, HOWL_SFX_DEFAULT_FLAGS);
+	}
+	if (soundID == 0x3c)
+	{
+		CTR_TEST_CHECK(sdata->chaosRuntime.humanAudioContext, "the time-stop cue remains audible while world sounds pause");
+		s_timeStopCrateSounds++;
+		return 0;
+	}
 	if (soundID == SOUND_INVISIBILITY)
 	{
 		CTR_TEST_CHECK_EQ(flags, 1, "Identity Crisis uses the normal invisibility sound flags");
@@ -534,6 +627,21 @@ int OtherFX_Play(u32 soundID, int flags)
 }
 int OtherFX_Play_LowLevel(u32 soundID, u8 antiSpam, u32 flags)
 {
+	if (soundID == 0x40)
+	{
+		CTR_TEST_CHECK(sdata->chaosRuntime.humanAudioContext, "time-stop ticks remain audible while world audio is suspended");
+		if (s_timeStopTickSounds == 0)
+		{
+			LIST_AddBack(&sdata->channelTaken, &s_timeStopTickChannel.link.item);
+		}
+		s_timeStopTickSounds++;
+		s_timeStopTickFlags = flags;
+		s_timeStopTickChannel.type = HOWL_CHANNEL_TYPE_OTHER_FX;
+		s_timeStopTickChannel.soundID = 0x10040;
+		s_timeStopTickChannel.timeLeft = 10;
+		Chaos_TagAudioChannel(&s_timeStopTickChannel);
+		return s_timeStopTickChannel.soundID;
+	}
 	(void)antiSpam;
 	s_activationSounds++;
 	s_lastSound = soundID;
@@ -593,13 +701,9 @@ void VehTurbo_ThDestroy(struct Thread *thread)
 	(void)thread;
 }
 
+#include <game/MATH/MATH_2_FastSqrt.c>
+
 // These full-physics paths are outside the asset-free scale/contact checks.
-s32 MATH_FastSqrt(u32 value, s32 shift)
-{
-	(void)value; (void)shift;
-	CtrTest_Bail("scale/contact checks must not search collision buckets");
-	return 0;
-}
 int ratan2(int y, int x)
 {
 	return (int)lround(atan2((double)y, (double)x) * ANG_HALF_PI / atan2(1.0, 0.0));
@@ -634,6 +738,11 @@ void PROC_CollidePointWithBucket(struct Thread *thread, struct BucketSearchParam
 	(void)thread; (void)search;
 	CtrTest_Bail("scale/contact checks must not search collision buckets");
 }
+void PROC_CollidePointWithSelf(struct Thread *thread, struct BucketSearchParams *search)
+{
+	(void)thread; (void)search;
+	CtrTest_Bail("isolated scale checks must not search frozen driver buckets");
+}
 u32 MFC2(int reg)
 {
 	(void)reg;
@@ -663,6 +772,10 @@ struct Particle *Particle_Init(u32 flags, struct IconGroup *icons, struct Partic
 
 static void SetupRace(int trigger)
 {
+	s_timeStopCrateSounds = 0;
+	s_timeStopTickSounds = 0;
+	s_timeStopTickFlags = 0;
+	memset(&s_timeStopTickChannel, 0, sizeof(s_timeStopTickChannel));
 	s_allowRaceEnd = false;
 	memset(data.metaPhys, 0, sizeof(data.metaPhys));
 	memset(data.MetaDataCharacters, 0, sizeof(data.MetaDataCharacters));

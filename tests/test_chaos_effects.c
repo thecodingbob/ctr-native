@@ -21,6 +21,36 @@ s32 TestUnexpectedCOP2(s32 op);
 #include <platform/native_gte_core.c>
 #include <platform/native_inline_c.c>
 
+// Keep the fixture's emission double, but exercise real particle lifetime/axis updates.
+struct Particle *TestRealParticleInit(u32 flags, struct IconGroup *icons, struct ParticleEmitter *emitter);
+#define Particle_Init TestRealParticleInit
+#include <game/Particle.c>
+#undef Particle_Init
+
+u32 MixRNG_GetValue(s32 seed)
+{
+	(void)seed;
+	CtrTest_Bail("particle axis regression must not evaluate random oscillators");
+	return 0;
+}
+s32 MixRNG_Particles(s32 range)
+{
+	(void)range;
+	CtrTest_Bail("particle axis regression must not randomize emitters");
+	return 0;
+}
+void PushBuffer_SetPsyqGeom(struct PushBuffer *buffer)
+{
+	(void)buffer;
+	CtrTest_Bail("particle axis regression must not render geometry");
+}
+uint32_t NativeGpuLinks_FromHostPointerAt(const void *pointer, const char *file, int line, const char *function)
+{
+	(void)pointer; (void)file; (void)line; (void)function;
+	CtrTest_Bail("particle axis regression must not submit GPU primitives");
+	return 0;
+}
+
 int SquareRoot0_stub(int value)
 {
 	return (int)sqrt((double)value);
@@ -1408,6 +1438,390 @@ static void TestDefectiveTeleport(void)
 	Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_TELEPORT, 1000);
 	CTR_TEST_CHECK(sdata->chaosRng == beforeRng,
 	               "finished humans do not receive a random destination");
+}
+
+static void TestTimeStopPotionContacts(void)
+{
+	CTR_TEST_SECTION("deferred red and green potions use current contact positions at resumption");
+	enum { TARGET_NEAR, TARGET_AT_RADIUS, TARGET_ABOVE, DIFFERENT_TARGET_NEAR, ORIGINAL_TARGET_DEAD, NUM_SCENARIOS };
+	const int models[] = {STATIC_BEAKER_RED, STATIC_BEAKER_GREEN};
+	for (int color = 0; color < (int)len(models); color++)
+	{
+		for (int scenario = 0; scenario < NUM_SCENARIOS; scenario++)
+		{
+			SetupRace(CHAOS_TRIGGER_EXTERNAL);
+			sdata->chaosSettings.effects[CHAOS_EFFECT_ZA_WARUDO] = true;
+			sdata->chaosSettings.enabledCount++;
+			struct Instance karts[2] = {0};
+			struct Thread drivers[2] = {0};
+			for (int i = 0; i < 2; i++)
+			{
+				drivers[i] = (struct Thread){.modelIndex = DYNAMIC_PLAYER, .object = s_tracker.drivers[i], .inst = &karts[i]};
+				karts[i].thread = &drivers[i];
+				s_tracker.drivers[i]->instSelf = &karts[i];
+			}
+			karts[1].matrix.t[0] = 1000;
+			struct Model model = {.id = models[color]};
+			struct MineWeapon mine = {.instParent = &karts[0]};
+			struct Instance potion = {.model = &model};
+			struct Thread thread = {.flags = MINE, .modelIndex = models[color], .inst = &potion, .object = &mine};
+			potion.thread = &thread;
+			Chaos_Activate(CHAOS_EFFECT_ZA_WARUDO, 1000);
+			CTR_TEST_CHECK(Chaos_DeferImpact(CHAOS_IMPACT_MINE_DRIVER, &thread, &drivers[0], NULL), "potion contact is retained while time is stopped");
+
+			// Retail potion contact uses a 3D radius of 80 units (0x1900 squared).
+			karts[0].matrix.t[0] = scenario == TARGET_NEAR ? 79 : 80;
+			if (scenario == TARGET_ABOVE)
+			{
+				karts[0].matrix.t[0] = 0;
+				karts[0].matrix.t[1] = 80;
+			}
+			if (scenario == DIFFERENT_TARGET_NEAR)
+			{
+				karts[1].matrix.t[0] = 0;
+			}
+			if (scenario == ORIGINAL_TARGET_DEAD)
+			{
+				drivers[0].flags |= THREAD_FLAG_DEAD;
+			}
+			const int shattersBefore = s_deferredPotionShatters;
+			s_lastMineDriver = NULL;
+			Tick(1000);
+			Chaos_ResolveDeferredImpacts();
+			struct Thread *expected = NULL;
+			if (scenario == TARGET_NEAR || scenario == DIFFERENT_TARGET_NEAR)
+			{
+				expected = &drivers[scenario == TARGET_NEAR ? 0 : 1];
+			}
+			CTR_TEST_CHECK(s_lastMineDriver == expected, "only a kart currently inside the potion radius receives its ordinary contact effect");
+			CTR_TEST_CHECK_EQ(s_deferredPotionShatters, shattersBefore + (expected == NULL), "a triggered potion still shatters when its former toucher is out of range or gone");
+			CTR_TEST_CHECK((thread.flags & THREAD_FLAG_DEAD) != 0, "every triggered potion resolves once instead of remaining as a live mine");
+			CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numDeferredImpacts, 0, "resumption releases the original potion contact");
+			Chaos_Reset();
+		}
+	}
+}
+
+static void TestTimeStop(void)
+{
+	CTR_TEST_SECTION("Za Warudo caps its own clock and suspends other Chaos timers without catch-up");
+	SetupRace(CHAOS_TRIGGER_INTERVAL);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_ZA_WARUDO] = true;
+	sdata->chaosSettings.enabledCount++;
+	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 30000);
+	Tick(32);
+	const struct ChaosActivation gravity = sdata->chaosRuntime.active[0];
+	const int interval = sdata->chaosRuntime.intervalRemainingMS;
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_ZA_WARUDO, 30000), "time stop activates alongside an existing modifier");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[1].remainingMS, 10000, "time stop is capped at ten seconds");
+	CTR_TEST_CHECK(Chaos_IsTimeStopped(), "time stop freezes the world immediately on activation");
+	CTR_TEST_CHECK_EQ(s_clockSounds, 1, "the clock cue plays on activation");
+	Tick(100);
+	CTR_TEST_CHECK_EQ(s_timeStopCrateSounds, 0, "the breaking crate cue follows rather than overlaps the clock cue");
+	CTR_TEST_CHECK_EQ(s_timeStopTickSounds, 0, "time-crate ticking waits for the initial clock cue");
+	Tick(100);
+	CTR_TEST_CHECK_EQ(s_timeStopCrateSounds, 1, "the second cue plays once at its delayed threshold");
+	CTR_TEST_CHECK_EQ(s_timeStopTickSounds, 1, "time-crate ticking begins after the clock cue");
+	CTR_TEST_CHECK_EQ(HowlSfx_Distortion(s_timeStopTickFlags), HOWL_SFX_DISTORTION_NONE, "the tick plays at its normal pitch");
+	CTR_TEST_CHECK_EQ(s_timeStopTickChannel.timeLeft, 10, "normal-speed playback retains the sample's ordinary lifetime");
+	CTR_TEST_CHECK(!Chaos_ShouldFreezeAudioChannel(&s_timeStopTickChannel), "the real world-audio filter exempts the time-stop tick channel");
+	Tick(191);
+	CTR_TEST_CHECK_EQ(s_timeStopTickSounds, 1, "ticking does not repeat before its normal cadence");
+	Tick(1);
+	CTR_TEST_CHECK_EQ(s_timeStopTickSounds, 2, "the next tick follows after 192 milliseconds");
+	for (int i = 0; i < 4; i++)
+	{
+		Tick(191);
+		CTR_TEST_CHECK_EQ(s_timeStopTickSounds, i + 2, "each remaining tick waits for the same interval");
+		Tick(1);
+		CTR_TEST_CHECK_EQ(s_timeStopTickSounds, i + 3, "the next tick plays once at its scheduled time");
+		CTR_TEST_CHECK_EQ(HowlSfx_Distortion(s_timeStopTickFlags), HOWL_SFX_DISTORTION_NONE, "all six ticks retain normal pitch");
+		CTR_TEST_CHECK_EQ(s_timeStopTickChannel.timeLeft, 10, "each tick retains its ordinary sample lifetime");
+	}
+	Tick(8640);
+	CTR_TEST_CHECK_EQ(s_timeStopTickSounds, 6, "ticking stops after six sounds throughout the rest of time stop");
+	CTR_TEST_CHECK(memcmp(&gravity, &sdata->chaosRuntime.active[0], sizeof(gravity)) == 0,
+	               "other activation duration, phase and notice clocks stay unchanged");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.intervalRemainingMS, interval, "the automatic trigger clock stays frozen");
+	s_tracker.gameMode1 |= PAUSE_1;
+	Tick(5000);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[1].remainingMS, 200, "game pause also suspends time-stop expiry");
+	s_tracker.gameMode1 &= ~PAUSE_1;
+	Tick(200);
+	CTR_TEST_CHECK(!Chaos_IsTimeStopped(), "time stop ends on its own clock");
+	CTR_TEST_CHECK_EQ(s_timeStopCrateSounds, 1, "expiry does not repeat the delayed cue");
+	Tick(32);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[0].remainingMS, gravity.remainingMS - 32,
+	                  "other effects resume by one ordinary frame without accumulated catch-up");
+
+	CTR_TEST_SECTION("time stop freezes bots while preserving human driving and weapons");
+	Chaos_Activate(CHAOS_EFFECT_ZA_WARUDO, 1000);
+	struct Driver human = {.driverID = 0};
+	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT};
+	struct Thread humanThread = {.modelIndex = DYNAMIC_PLAYER, .object = &human, .flags = PLAYER};
+	struct Thread botThread = {.modelIndex = DYNAMIC_ROBOT_CAR, .object = &bot, .flags = ROBOT};
+	struct Thread weapon = {.modelIndex = DYNAMIC_BOMB, .flags = TRACKING, .parentThread = &humanThread};
+	struct Thread camera = {.flags = CAMERA};
+	struct Thread crate = {.flags = STATIC};
+	struct MaskHeadWeapon maskObject = {0};
+	struct Thread mask = {.modelIndex = STATIC_AKUAKU, .flags = OTHER, .parentThread = &humanThread, .object = &maskObject};
+	CTR_TEST_CHECK(!Chaos_ShouldFreezeThread(&humanThread) && !Chaos_ShouldFreezeThread(&camera), "humans and cameras keep updating");
+	CTR_TEST_CHECK(Chaos_ShouldFreezeThread(&botThread) && !Chaos_ShouldFreezeThread(&weapon), "bots freeze while newly created human weapons keep moving");
+	CTR_TEST_CHECK(Chaos_ShouldFreezeThread(&crate) && (crate.flags & THREAD_FLAG_DISABLE_COLLISION) == 0,
+	               "crate animation freezes without disabling collection or collisions");
+	CTR_TEST_CHECK(!Chaos_ShouldFreezeThread(&mask), "a human weapon mask keeps following and orbiting its kart");
+	human.kartState = KS_MASK_GRABBED;
+	human.KartStates.MaskGrab.maskObj = &maskObject;
+	CTR_TEST_CHECK(!Chaos_ShouldFreezeThread(&mask), "a human mask rescue can complete during time stop");
+	mask.parentThread = &botThread;
+	CTR_TEST_CHECK(Chaos_ShouldFreezeThread(&mask), "a bot mask remains frozen");
+	struct Instance humanInstance = {.thread = &humanThread};
+	struct Instance botInstance = {.thread = &botThread};
+	human.instSelf = &humanInstance;
+	bot.instSelf = &botInstance;
+	struct Turbo turbo = {.driver = &human};
+	struct Thread fire = {.modelIndex = STATIC_TURBO_EFFECT, .flags = TURBO, .object = &turbo, .funcThTick = VehTurbo_ThTick};
+	CTR_TEST_CHECK(!Chaos_ShouldFreezeThread(&fire), "human boost flames keep following and animating with the kart");
+	turbo.driver = &bot;
+	CTR_TEST_CHECK(Chaos_ShouldFreezeThread(&fire), "bot boost flames remain frozen");
+	struct Thread scenery = {.modelIndex = STATIC_TURBO_EFFECT, .flags = STATIC, .object = (void *)1};
+	CTR_TEST_CHECK(Chaos_ShouldFreezeThread(&scenery), "static scenery sharing the flame model is never interpreted as a Turbo object");
+	s_tracker.drivers[0] = &human;
+	struct Particle exhaust = {.owner.driverInst = &humanInstance, .driverID = -1};
+	struct Particle botExhaust = {.owner.driverInst = &botInstance, .driverID = 0};
+	struct Particle worldParticle = {.driverID = 0};
+	CTR_TEST_CHECK(!Chaos_ShouldFreezeParticle(&exhaust), "human smoke advances even when visible in every viewport");
+	CTR_TEST_CHECK(Chaos_ShouldFreezeParticle(&botExhaust) && Chaos_ShouldFreezeParticle(&worldParticle),
+	               "bot and world particles stay frozen regardless of their camera filter");
+	struct Particle weaponParticle = {.flagsAxis = PARTICLE_AXIS_FLAG_HUMAN_EFFECT};
+	CTR_TEST_CHECK(!Chaos_ShouldFreezeParticle(&weaponParticle), "human weapon particles keep advancing without borrowing a kart owner pointer");
+
+	CTR_TEST_SECTION("human weapons retain ownership and postpone external impacts until time resumes");
+	humanThread.inst = &humanInstance;
+	botThread.inst = &botInstance;
+	struct TrackerWeapon trackerWeapon = {.instParent = &humanInstance};
+	struct Instance weaponInstance = {.thread = &weapon};
+	weapon.inst = &weaponInstance;
+	weapon.object = &trackerWeapon;
+	weapon.parentThread = NULL;
+	CTR_TEST_CHECK(!Chaos_ShouldFreezeThread(&weapon), "weapons use their real owner even when they have no thread parent");
+	trackerWeapon.instParent = (struct Instance *)(uintptr_t)0x0004fe6c;
+	CTR_TEST_CHECK(!Chaos_IsHumanOwnedThread(&weapon), "a recycled missile owner is compared against live karts without dereferencing it");
+	trackerWeapon.instParent = NULL;
+	CTR_TEST_CHECK(!Chaos_IsHumanOwnedThread(&weapon), "a weapon without an initialized owner has no human exemption");
+	trackerWeapon.instParent = &humanInstance;
+	struct MineWeapon levelMineObject = {.instParent = &humanInstance};
+	struct InstDef levelMineDefinition = {0};
+	struct Thread levelMine = {.flags = MINE, .object = &levelMineObject};
+	struct Instance levelMineInstance = {.thread = &levelMine, .instDef = &levelMineDefinition};
+	levelMine.inst = &levelMineInstance;
+	CTR_TEST_CHECK(Chaos_ShouldFreezeThread(&levelMine), "a level mine's retail driver pointer never grants human ownership");
+	levelMineInstance.instDef = NULL;
+	levelMineObject.instParent = (struct Instance *)(uintptr_t)0x0004fe6c;
+	CTR_TEST_CHECK(!Chaos_IsHumanOwnedThread(&levelMine), "a recycled mine owner is never dereferenced during audio attribution");
+	struct Model missileModel = {.id = DYNAMIC_ROCKET};
+	struct TrackerWeapon enemyWeaponObject = {.instParent = &botInstance};
+	struct Thread enemyWeapon = {.flags = TRACKING, .object = &enemyWeaponObject, .modelIndex = DYNAMIC_ROCKET};
+	struct Instance enemyWeaponInstance = {.thread = &enemyWeapon, .model = &missileModel};
+	enemyWeapon.inst = &enemyWeaponInstance;
+	s_tracker.drivers[2] = &bot;
+	s_tracker.drivers[1] = NULL;
+	human.kartState = KS_NORMAL;
+	humanInstance.matrix.t[0] = 1000;
+	CTR_TEST_CHECK(RB_Hazard_CollideWithDrivers(&enemyWeaponInstance, 0, 0x2400, NULL) == NULL,
+	               "collision-only checks never make a frozen weapon hit a frozen bot");
+	humanInstance.matrix.t[0] = 0;
+	CTR_TEST_CHECK(RB_Hazard_CollideWithDrivers(&enemyWeaponInstance, 0, 0x2400, NULL) == &humanInstance,
+	               "a human can still collide with a motionless enemy missile");
+	s_deferredCollisions = 0;
+	CTR_TEST_CHECK(Chaos_DeferImpact(CHAOS_IMPACT_MOVING_DRIVER, &weapon, &botThread, NULL), "an impact against a frozen kart is retained");
+	CTR_TEST_CHECK(Chaos_DeferImpact(CHAOS_IMPACT_MOVING_DRIVER, &weapon, &botThread, NULL), "repeated detection retains the same pending impact");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numDeferredImpacts, 1, "one contact produces one queued operation");
+	CTR_TEST_CHECK(Chaos_ShouldFreezeThread(&weapon), "a weapon that has reached its target waits at the impact point");
+	CTR_TEST_CHECK(Chaos_HasDeferredImpact(&weapon) && Chaos_HasDeferredImpact(&botThread), "pending collision participants cannot be recycled");
+	CTR_TEST_CHECK(!Chaos_DeferImpact(CHAOS_IMPACT_MOVING_DRIVER, &weapon, &humanThread, NULL), "impacts against humans remain immediate");
+	Chaos_ResolveDeferredImpacts();
+	CTR_TEST_CHECK_EQ(s_deferredCollisions, 0, "frozen time never dispatches a queued collision");
+	Tick(1000);
+	Chaos_ResolveDeferredImpacts();
+	CTR_TEST_CHECK_EQ(s_deferredCollisions, 1, "time resumption resolves the retained collision exactly once");
+	Chaos_ResolveDeferredImpacts();
+	CTR_TEST_CHECK_EQ(s_deferredCollisions, 1, "later frames cannot replay an old collision");
+	CTR_TEST_CHECK(!Chaos_HasDeferredImpact(&weapon), "resolving the queue releases its participant references");
+
+	Chaos_Activate(CHAOS_EFFECT_ZA_WARUDO, 1000);
+	s_tracker.drivers[2] = &bot;
+	CTR_TEST_SECTION("direct damage resumes through the ordinary bot state machine");
+	Chaos_DeferImpact(CHAOS_IMPACT_MOVING_DRIVER, &weapon, &botThread, NULL);
+	weapon.flags |= THREAD_FLAG_DEAD;
+	bot.kartState = KS_NORMAL;
+	RB_Hazard_HurtDriver(&bot, 2, &human, 3);
+	CTR_TEST_CHECK_EQ(bot.kartState, KS_NORMAL, "human weapon damage leaves a frozen bot's state unchanged");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numDeferredImpacts, 2, "direct weapon damage also retains an operation");
+	Tick(1000);
+	Chaos_ResolveDeferredImpacts();
+	CTR_TEST_CHECK_EQ(s_deferredCollisions, 1, "a waiting projectile destroyed by another impact cannot explode twice on resumption");
+	CTR_TEST_CHECK_EQ(bot.kartState, KS_BLASTED, "the retained damage reaches the ordinary bot state machine on resumption");
+
+	CTR_TEST_SECTION("Nitro and potion contact waits until time stop expires, regardless of ownership");
+	Chaos_Activate(CHAOS_EFFECT_ZA_WARUDO, 1000);
+	const int mineModels[] = {PU_EXPLOSIVE_CRATE, STATIC_BEAKER_RED, STATIC_BEAKER_GREEN};
+	struct Thread mines[3] = {0};
+	struct Instance mineInstances[3] = {0};
+	struct MineWeapon mineObjects[3] = {0};
+	struct Model mineModelData[3] = {0};
+	const int collisionsBeforeMines = s_deferredCollisions;
+	const int nitroBlastsBefore = s_deferredNitroBlasts;
+	for (int i = 0; i < (int)len(mines); i++)
+	{
+		mines[i] = (struct Thread){.flags = MINE, .modelIndex = mineModels[i], .inst = &mineInstances[i], .object = &mineObjects[i]};
+		mineInstances[i].thread = &mines[i];
+		mineModelData[i].id = mineModels[i];
+		mineInstances[i].model = &mineModelData[i];
+		mineInstances[i].instDef = &levelMineDefinition;
+		mineObjects[i].instParent = &botInstance;
+		CTR_TEST_CHECK(Chaos_DeferImpact(CHAOS_IMPACT_MINE_DRIVER, &mines[i], &humanThread, NULL),
+		               "touching a world Nitro or potion records the human contact without detonating it");
+		mineInstances[i].instDef = NULL;
+		mineObjects[i].instParent = &humanInstance;
+		CTR_TEST_CHECK(Chaos_DeferImpact(CHAOS_IMPACT_MINE_DRIVER, &mines[i], &humanThread, NULL),
+		               "human-owned Nitro and potions also defer contact with another human");
+		CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numDeferredImpacts, i + 1, "repeated mine contact retains one operation per object");
+		CTR_TEST_CHECK(Chaos_ShouldFreezeThread(&mines[i]), "a touched mine waits without advancing or being destroyed");
+	}
+	Tick(999);
+	Chaos_ResolveDeferredImpacts();
+	CTR_TEST_CHECK_EQ(s_deferredCollisions, collisionsBeforeMines, "Nitro and potion contacts stay pending throughout the timer");
+	Tick(1);
+	Chaos_ResolveDeferredImpacts();
+	CTR_TEST_CHECK_EQ(s_deferredCollisions, collisionsBeforeMines + 3, "all retained Nitro and potion contacts resolve when the timer expires");
+	CTR_TEST_CHECK_EQ(s_deferredNitroBlasts, nitroBlastsBefore + 1, "triggered Nitro uses its area explosion instead of replaying direct damage to the former toucher");
+	CTR_TEST_CHECK(!Chaos_DeferImpact(CHAOS_IMPACT_MINE_DRIVER, &mines[0], &humanThread, NULL), "ordinary Nitro contact remains immediate outside time stop");
+
+	Chaos_Activate(CHAOS_EFFECT_ZA_WARUDO, 1000);
+	humanThread.driverHitRadius = THREAD_DRIVER_HIT_RADIUS;
+	CTR_TEST_SECTION("karts are mutually collision-free during time stop");
+	botThread.driverHitRadius = THREAD_DRIVER_HIT_RADIUS;
+	struct DriverCollisionSearch contact = {.bucket = {.th = &botThread, .bestDistSq = 900, .dist = {-30, 0, 0}}};
+	Vec3 incoming = {1000, 0, 0};
+	const struct Driver frozenBot = bot;
+	VehPhysCrash_AnyTwoCars(&humanThread, &contact, &incoming);
+	CTR_TEST_CHECK_EQ(incoming.x, 1000, "a frozen bot cannot push back or block a human kart");
+	CTR_TEST_CHECK(memcmp(&bot, &frozenBot, sizeof(bot)) == 0, "collision response never advances or changes a frozen bot");
+	human.velocity = incoming;
+	human.stepFlagSet = 0;
+	human.collisionFlags = 0;
+	VehPhysForce_CollideDrivers(&humanThread, &human);
+	CTR_TEST_CHECK_EQ(human.velocity.x, 1000, "the driver collision stage skips kart searches during time stop");
+	CTR_TEST_SECTION("pass-through mask contacts are retained once and displayed on resumption");
+	bot.kartState = KS_NORMAL;
+	bot.actionsFlagSet &= ~ACTION_MASK_WEAPON;
+	human.actionsFlagSet |= ACTION_MASK_WEAPON;
+	g_config.maskDamagesOthers = true;
+	const struct Driver botBeforeMask = bot;
+	const Vec3 velocityBeforeMask = human.velocity;
+	VehPhysForce_CollideDrivers(&humanThread, &human);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numDeferredImpacts, 1, "passing through a frozen bot with a mask records its hit");
+	VehPhysForce_CollideDrivers(&humanThread, &human);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numDeferredImpacts, 1, "remaining inside a kart cannot queue the same mask hit every frame");
+	CTR_TEST_CHECK(memcmp(&bot, &botBeforeMask, sizeof(bot)) == 0, "mask contact leaves the frozen bot unchanged until resumption");
+	CTR_TEST_CHECK(memcmp(&human.velocity, &velocityBeforeMask, sizeof(human.velocity)) == 0, "recording a mask hit never blocks or bounces the human");
+	humanInstance.matrix.t[0] += 10000;
+	Tick(1000);
+	Chaos_ResolveDeferredImpacts();
+	CTR_TEST_CHECK_EQ(bot.kartState, KS_BLASTED, "the recorded mask hit blasts the bot after time resumes even after the attacker leaves");
+	humanInstance.matrix.t[0] -= 10000;
+	human.actionsFlagSet &= ~ACTION_MASK_WEAPON;
+	Chaos_Activate(CHAOS_EFFECT_ZA_WARUDO, 1000);
+	CTR_TEST_SECTION("obstacle collisions continue without advancing their animation");
+	struct Thread obstacle = {.flags = STATIC, .funcThTick = RB_Snowball_ThTick, .inst = &botInstance, .object = &bot};
+	s_frozenObstacleCollisions = 0;
+	Chaos_CollideFrozenThread(&obstacle);
+	CTR_TEST_CHECK_EQ(s_frozenObstacleCollisions, 1, "frozen moving obstacles still receive their collision-only pass");
+
+	CTR_TEST_SECTION("human particle metadata never advances a nonexistent axis into its neighbor");
+	struct Particle particles[2] = {
+		{.framesLeftInLife = 10, .flagsAxis = PARTICLE_AXIS_FLAG_HUMAN_EFFECT | PARTICLE_AXIS_FLAG_ICON_FRAME_OR_LINE_COLOR},
+		{.framesLeftInLife = 10, .owner.driverInst = &botInstance},
+	};
+	particles[0].next = &particles[1];
+	particles[0].axis[PARTICLE_AXIS_ICON_FRAME_OR_LINE_COLOR] = (struct ParticleAxis){.startVal = 100, .velocity = 7, .accel = 2};
+	// The former axis-15 write landed exactly on the next particle's owner union.
+	particles[1].axis[0].velocity = 123;
+	const struct Particle neighbor = particles[1];
+	struct Particle *head = particles;
+	Particle_UpdateList(&head, head);
+	CTR_TEST_CHECK_EQ(particles[0].framesLeftInLife, 9, "human weapon particle lifetime still advances during time stop");
+	CTR_TEST_CHECK_EQ(particles[0].axis[PARTICLE_AXIS_ICON_FRAME_OR_LINE_COLOR].startVal, 107, "the eleventh real axis keeps its ordinary integration");
+	CTR_TEST_CHECK_EQ(particles[0].axis[PARTICLE_AXIS_ICON_FRAME_OR_LINE_COLOR].velocity, 9, "real particle acceleration is preserved");
+	CTR_TEST_CHECK(memcmp(&particles[1], &neighbor, sizeof(neighbor)) == 0, "human ownership metadata cannot overwrite the frozen neighboring particle");
+
+	CTR_TEST_SECTION("audio ownership pauses world and music channels and survives channel reuse");
+	struct ChannelStats world = {.channelID = 3, .type = HOWL_CHANNEL_TYPE_OTHER_FX, .soundID = HOWL_SFX_TNT_EXPLOSION};
+	struct ChannelStats music = {.channelID = 4, .type = HOWL_CHANNEL_TYPE_MUSIC};
+	Chaos_SetHumanAudio(true);
+	Chaos_TagAudioChannel(&world);
+	CTR_TEST_CHECK(!Chaos_ShouldFreezeAudioChannel(&world), "human sounds stay audible");
+	Chaos_SetHumanAudio(false);
+	Chaos_TagAudioChannel(&world);
+	CTR_TEST_CHECK(Chaos_ShouldFreezeAudioChannel(&world), "reusing a human channel for a world sound removes the old exemption");
+	const int menuSounds[] = {MENU_SFX_MOVE, MENU_SFX_BACK, MENU_SFX_CONFIRM, MENU_SFX_LOCKED};
+	for (int i = 0; i < (int)len(menuSounds); i++)
+	{
+		struct ChannelStats menu = {.type = HOWL_CHANNEL_TYPE_OTHER_FX, .soundID = menuSounds[i]};
+		CTR_TEST_CHECK(!Chaos_ShouldFreezeAudioChannel(&menu), "menu navigation, back, confirm and locked sounds remain audible during time stop");
+		// OtherFX_Play_LowLevel packs CountSounds() into the upper half of soundID.
+		menu.soundID |= 0x12340000;
+		CTR_TEST_CHECK(!Chaos_ShouldFreezeAudioChannel(&menu), "real packed menu handles retain their exemption regardless of the sound-instance counter");
+		s_tracker.gameMode1 |= PAUSE_1;
+		CTR_TEST_CHECK(!Chaos_ShouldFreezeAudioChannel(&menu), "opening pause does not freeze menu sounds");
+		CTR_TEST_CHECK(Chaos_ShouldFreezeAudioChannel(&world), "allowing pause-menu sounds does not unfreeze world audio");
+		menu.channelID = 5;
+		menu.link.links.next = &world;
+		sdata->channelTaken.first = &menu.link.item;
+		Chaos_UpdateTimeStopAudio();
+		CTR_TEST_CHECK_EQ(s_pausedVoices, 1u << world.channelID, "the mixer pauses only the world channel while a packed menu sound is playing");
+		sdata->channelTaken.first = NULL;
+		s_tracker.gameMode1 &= ~PAUSE_1;
+		CTR_TEST_CHECK(!Chaos_ShouldFreezeAudioChannel(&menu), "the back sound remains audible after closing pause");
+		menu.type = HOWL_CHANNEL_TYPE_MUSIC;
+		CTR_TEST_CHECK(Chaos_ShouldFreezeAudioChannel(&menu), "music sharing a menu sound number still freezes");
+	}
+	Chaos_SetHumanAudio(true);
+	Chaos_TagAudioChannel(&music);
+	Chaos_SetHumanAudio(false);
+	CTR_TEST_CHECK(Chaos_ShouldFreezeAudioChannel(&music), "music cannot inherit a human channel exemption");
+	CTR_TEST_SECTION("audio slider previews continue while race music remains frozen");
+	sdata->OptionSlider_BoolPlay = true;
+	sdata->OptionSlider_Index = HOWL_VOLUME_TYPE_MUSIC;
+	sdata->songSeq[0].songPoolIndex = 1;
+	sdata->songSeq[1].songPoolIndex = 0;
+	sdata->songPool[0].id = CSEQ_SONG_LEVEL;
+	const int previewSongs[] = {CSEQ_SONG_AKU, CSEQ_SONG_UKA};
+	for (int i = 0; i < (int)len(previewSongs); i++)
+	{
+		sdata->songPool[1].id = previewSongs[i];
+		CTR_TEST_CHECK(Chaos_IsMenuPreviewSong(&sdata->songPool[1]), "the selected mask-song preview may advance its sequencer during time stop");
+		CTR_TEST_CHECK(!Chaos_ShouldFreezeAudioChannel(&music), "the music slider preview remains audible in its own song pool slot");
+		struct ChannelStats background = {.type = HOWL_CHANNEL_TYPE_MUSIC, .soundID = 1};
+		CTR_TEST_CHECK(Chaos_ShouldFreezeAudioChannel(&background), "the preview does not resume the race soundtrack in another song pool slot");
+	}
+	sdata->OptionSlider_Index = HOWL_VOLUME_TYPE_FX;
+	CTR_TEST_CHECK(Chaos_ShouldFreezeAudioChannel(&music), "leaving the music slider removes its preview exemption");
+	sdata->OptionSlider_BoolPlay = false;
+	sdata->OptionSlider_Index = HOWL_VOLUME_TYPE_MUSIC;
+	CTR_TEST_CHECK(Chaos_ShouldFreezeAudioChannel(&music), "stopping preview freezes music again even if its slider remains selected");
+	sdata->channelTaken.first = &world.link.item;
+	Chaos_UpdateTimeStopAudio();
+	CTR_TEST_CHECK(s_pausedVoices == (1u << 3) && s_pausedXA, "the backend receives the frozen voices and XA pause state");
+	sdata->chaosRuntime.humanXA = true;
+	Chaos_UpdateTimeStopAudio();
+	CTR_TEST_CHECK(!s_pausedXA, "human XA voices remain audible");
+	s_tracker.gameMode1 |= END_OF_RACE;
+	Chaos_UpdateTimeStopAudio();
+	CTR_TEST_CHECK(s_pausedVoices == 0 && !s_pausedXA, "race completion releases suspended audio without waiting for effect expiry");
+	Chaos_Reset();
+	CTR_TEST_CHECK(!Chaos_IsTimeStopped() && s_pausedVoices == 0, "reset leaves no time stop or audio suspension behind");
 }
 
 static void TestWobbleSteering(void)
@@ -3633,6 +4047,8 @@ int main(void)
 	TestTeleport();
 	TestTeleportProgressProjection();
 	TestDefectiveTeleport();
+	TestTimeStop();
+	TestTimeStopPotionContacts();
 	TestWobbleSteering();
 	TestGravityEffects();
 	TestSpeedEffects();

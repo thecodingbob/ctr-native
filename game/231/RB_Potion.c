@@ -17,7 +17,10 @@ void RB_Potion_OnShatter_TeethCallback(struct ScratchpadStruct *sps, void *hitOb
 		{
 			if ((s16)instDef->modelID == STATIC_TEETH) // tiger temple door
 			{
-				RB_Teeth_OpenDoor(teethInst);
+				if (!Chaos_DeferImpact(CHAOS_IMPACT_BURST_LEVEL, sps->Union.ThBuckColl.thread, NULL, bspHitbox))
+				{
+					RB_Teeth_OpenDoor(teethInst);
+				}
 			}
 		}
 	}

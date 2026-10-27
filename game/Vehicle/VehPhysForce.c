@@ -1021,7 +1021,11 @@ void VehPhysForce_CollideDrivers(struct Thread *thread, struct Driver *driver)
 		thread->inst->flags &= ~SPLIT_LINE;
 	}
 
-	if ((thread->flags & THREAD_FLAG_DISABLE_COLLISION) == 0)
+	if ((thread->flags & THREAD_FLAG_DISABLE_COLLISION) == 0 && Chaos_IsTimeStopped())
+	{
+		Chaos_RecordFrozenMaskContacts(driver);
+	}
+	if ((thread->flags & THREAD_FLAG_DISABLE_COLLISION) == 0 && !Chaos_IsTimeStopped())
 	{
 		struct DriverCollisionSearch search;
 		int bucketPosY;

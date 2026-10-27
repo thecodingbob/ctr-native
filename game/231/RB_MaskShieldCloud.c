@@ -193,10 +193,13 @@ void RB_MaskWeapon_ThTick(struct Thread *maskTh)
 
 	if (mask->duration != 0)
 	{
-		mask->duration = (u16)mask->duration - (u16)GAME_TRACKER->elapsedTimeMS;
-		if (mask->duration < 0)
+		if (!Chaos_IsTimeStopped())
 		{
-			mask->duration = 0;
+			mask->duration = (u16)mask->duration - (u16)GAME_TRACKER->elapsedTimeMS;
+			if (mask->duration < 0)
+			{
+				mask->duration = 0;
+			}
 		}
 	}
 	else
@@ -390,7 +393,10 @@ void RB_ShieldDark_ThTick_Grow(struct Thread *th)
 			PlaySound3D(0x58, shieldInst);
 			goto destroyShield;
 		}
-		shield->duration -= 32;
+		if (!Chaos_IsTimeStopped())
+		{
+			shield->duration -= 32;
+		}
 		if (shield->duration < 1920)
 		{
 			s16 alpha = ((60 - (shield->duration >> 5)) * 3072) / 60 + 0x400;
@@ -546,7 +552,10 @@ void RB_RainCloud_ThTick(struct Thread *t)
 	{
 		if (rcloud->timeMS != 0)
 		{
-			rcloud->timeMS = (u16)rcloud->timeMS - (u16)GAME_TRACKER->elapsedTimeMS;
+			if (!Chaos_IsTimeStopped())
+			{
+				rcloud->timeMS = (u16)rcloud->timeMS - (u16)GAME_TRACKER->elapsedTimeMS;
+			}
 			if (rcloud->timeMS < 0)
 			{
 				rcloud->timeMS = 0;

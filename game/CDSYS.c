@@ -634,6 +634,7 @@ int CDSYS_XAPlay(int categoryID, int xaID)
 		}
 
 		sdata->XA_State = XA_PLAYING;
+		sdata->chaosRuntime.humanXA = false;
 		sdata->XA_Playing_Index = xaID;
 		sdata->XA_Playing_Category = categoryID;
 		sdata->XA_VolumeBitshift = nativeVol << CDSYS_XA_VOLUME_SHIFT;
@@ -677,6 +678,7 @@ int CDSYS_XAPlay(int categoryID, int xaID)
 	}
 
 	sdata->XA_State = XA_STARTING;
+	sdata->chaosRuntime.humanXA = false;
 
 	int vol = sdata->vol_Voice;
 	if (categoryID == CDSYS_XA_TYPE_MUSIC)

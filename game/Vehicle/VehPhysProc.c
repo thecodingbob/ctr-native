@@ -322,7 +322,7 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 	// If Super Engine Cheat is not enabled
 	if ((GAME_TRACKER->gameMode2 & CHEAT_ENGINE) == 0)
 	{
-		if (superEngineTimer > 0)
+		if (superEngineTimer > 0 && !Chaos_IsTimeStopped())
 		{
 			superEngineTimer = CTR_MipsAddLo(superEngineTimer, msPerFrameNeg);
 			if (superEngineTimer < 0)
@@ -333,7 +333,7 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 		}
 	}
 
-	if (clockTimer > 0)
+	if (clockTimer > 0 && !Chaos_IsTimeStopped())
 	{
 		clockTimer = CTR_MipsAddLo(clockTimer, msPerFrameNeg);
 		if (clockTimer < 0)
@@ -578,7 +578,7 @@ itemRollDone:
 	// If invisible, without Permanent Invisibility cheat,
 	// dont remove invisibleTimer check, or an invalid
 	// instFlagsBackup overwrites instFlags
-	if ((driver->invisibleTimer != 0) && ((GAME_TRACKER->gameMode2 & CHEAT_INVISIBLE) == 0))
+	if ((driver->invisibleTimer != 0) && ((GAME_TRACKER->gameMode2 & CHEAT_INVISIBLE) == 0) && !Chaos_IsTimeStopped())
 	{
 		driver->invisibleTimer = CTR_MipsSubLo(driver->invisibleTimer, GAME_TRACKER->elapsedTimeMS);
 

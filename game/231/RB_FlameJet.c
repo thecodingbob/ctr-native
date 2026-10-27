@@ -356,25 +356,44 @@ void RB_FlameJet_Particles(struct Instance *inst, struct FlameJet *fjObj)
 	}
 }
 
+void RB_FlameJet_CollideDrivers(struct Thread *t)
+{
+	const struct FlameJet *jet = t->object;
+	if (jet->cooldown != 0 || jet->cycleTimer >= 0x2d)
+	{
+		return;
+	}
+	struct HitboxDesc query = {.inst = t->inst, .thread = t, .bbox = fjBounds,
+	    .bucket = GAME_TRACKER->threadBuckets[PLAYER].thread};
+	struct Instance *hit = LinkedCollide_Hitbox_Desc(&query);
+	if (hit == NULL)
+	{
+		query.bucket = GAME_TRACKER->threadBuckets[ROBOT].thread;
+		hit = LinkedCollide_Hitbox_Desc(&query);
+	}
+	if (hit != NULL)
+	{
+		RB_Hazard_HurtDriver(hit->thread->object, 4, NULL, 0);
+		return;
+	}
+	query.bucket = GAME_TRACKER->threadBuckets[MINE].thread;
+	hit = LinkedCollide_Hitbox_Desc(&query);
+	if (hit != NULL && !Chaos_IsTimeStopped())
+	{
+		struct ThreadCollisionArgs collision = {.self = hit->thread, .other = t,
+		    .funcThCollide = hit->thread->funcThCollide, .sps = NULL};
+		RB_Hazard_ThCollide_Generic_Alt(&collision);
+	}
+}
+
 void RB_FlameJet_ThTick(struct Thread *t)
 {
 	struct FlameJetLight light = fjLightDir;
-	struct
-	{
-		struct HitboxDesc query;
-		struct ThreadCollisionArgs collision;
-	} collision;
 	struct Instance *fjInst;
 	struct FlameJet *fjObj;
-	struct Instance *hitInst;
 
 	fjObj = t->object;
 	fjInst = t->inst;
-	collision.query.inst = fjInst;
-	collision.query.thread = t;
-	collision.query.bbox = fjBounds;
-	collision.collision.other = t;
-	collision.collision.sps = NULL;
 
 	while (fjObj->cooldown != 0)
 	{
@@ -393,28 +412,7 @@ void RB_FlameJet_ThTick(struct Thread *t)
 			fjObj->unusedPhase += 0x100;
 			RB_FlameJet_Particles(fjInst, fjObj);
 
-			collision.query.bucket = GAME_TRACKER->threadBuckets[PLAYER].thread;
-			hitInst = LinkedCollide_Hitbox_Desc(&collision.query);
-			if (hitInst == NULL)
-			{
-				collision.query.bucket = GAME_TRACKER->threadBuckets[ROBOT].thread;
-				hitInst = LinkedCollide_Hitbox_Desc(&collision.query);
-			}
-			if (hitInst != NULL)
-			{
-				RB_Hazard_HurtDriver(hitInst->thread->object, 4, NULL, 0);
-			}
-			else
-			{
-				collision.query.bucket = GAME_TRACKER->threadBuckets[MINE].thread;
-				hitInst = LinkedCollide_Hitbox_Desc(&collision.query);
-				if (hitInst != NULL)
-				{
-					collision.collision.self = hitInst->thread;
-					collision.collision.funcThCollide = hitInst->thread->funcThCollide;
-					RB_Hazard_ThCollide_Generic_Alt(&collision.collision);
-				}
-			}
+			RB_FlameJet_CollideDrivers(t);
 		}
 		else if (fjObj->cycleTimer == 0x2d)
 		{

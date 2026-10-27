@@ -124,6 +124,8 @@ enum ParticleAxisFlags
 	PARTICLE_AXIS_FLAG_COLOR_B = 0x0200,
 	PARTICLE_AXIS_FLAG_ICON_FRAME_OR_LINE_COLOR = 0x0400,
 	PARTICLE_AXIS_FLAG_FUNC_INIT = 0x1000,
+	// Native ownership tag; outside the eleven retail axis bits.
+	PARTICLE_AXIS_FLAG_HUMAN_EFFECT = 0x8000,
 };
 
 struct Particle

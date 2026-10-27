@@ -18,7 +18,6 @@ void RB_Minecart_ThTick(struct Thread *t)
 {
 	struct Instance *minecartInst;
 	struct Minecart *minecartObj;
-	struct Instance *hitInst;
 
 	minecartInst = t->inst;
 	minecartObj = t->object;
@@ -101,7 +100,13 @@ void RB_Minecart_ThTick(struct Thread *t)
 	                  0x72, // minecart sound
 	                  minecartInst);
 
-	hitInst = RB_FindDriverCollision(minecartInst, t);
+	RB_Minecart_CollideDrivers(t);
+}
+
+void RB_Minecart_CollideDrivers(struct Thread *t)
+{
+	struct Instance *minecartInst = t->inst;
+	struct Instance *hitInst = RB_FindDriverCollision(minecartInst, t);
 	if (hitInst != NULL)
 	{
 		RB_Hazard_HurtDriver(hitInst->thread->object, minecartInst->model->id == DYNAMIC_SKUNK ? 1 : 3, 0, 0);

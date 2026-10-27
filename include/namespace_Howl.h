@@ -42,7 +42,9 @@ struct VoicelineItem
 
 enum HowlSfxId
 {
+	HOWL_SFX_TIME_CRATE_BREAK = 0x3c,
 	HOWL_SFX_TNT_EXPLOSION = 0x3d,
+	HOWL_SFX_TIME_CRATE_TICK = 0x40,
 	HOWL_SFX_ITEM_ROULETTE = 0x5d,
 	HOWL_SFX_SWISH = 0x65,
 };
@@ -73,6 +75,7 @@ enum HowlSfxParam
 enum HowlChannelFlag
 {
 	HOWL_CHANNEL_GAIN_DOUBLE = 0x10,
+	HOWL_CHANNEL_HUMAN_AUDIO = 0x20,
 };
 
 

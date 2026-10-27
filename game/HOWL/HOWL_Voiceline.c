@@ -323,6 +323,7 @@ void Voiceline_StartPlay(struct Item *voiceLine)
 	}
 
 	sdata->voicelineCooldown = (s16)(CDSYS_XAGetTrackLength(CDSYS_XA_TYPE_GAME, xaID) / 5) + 0x1e;
+	sdata->chaosRuntime.humanXA = Chaos_IsHumanCharacter(characterID);
 }
 
 void Voiceline_PlayWrongWay(struct Driver *driver)
@@ -331,6 +332,7 @@ void Voiceline_PlayWrongWay(struct Driver *driver)
 	sdata->voicelineCooldown = 0x1e;
 	if (CDSYS_XAPlay(CDSYS_XA_TYPE_EXTRA, voiceID) != 0)
 	{
+		sdata->chaosRuntime.humanXA = true;
 		sdata->voicelineCooldown += CDSYS_XAGetTrackLength(CDSYS_XA_TYPE_EXTRA, voiceID) / 5;
 	}
 }
@@ -391,6 +393,10 @@ playQueuedVoice:
 	if (sdata->Voiceline2.first != NULL)
 	{
 		struct Item *first = sdata->Voiceline2.first;
+		if (Chaos_IsTimeStopped() && !Chaos_IsHumanCharacter(((struct VoicelineItem *)first)->characterID))
+		{
+			return;
+		}
 
 		LIST_RemoveMember(&sdata->Voiceline2, first);
 		LIST_AddBack(&sdata->Voiceline1, first);

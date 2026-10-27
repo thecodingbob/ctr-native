@@ -1449,6 +1449,13 @@ internal void NativeCheckpoint_RelocateSDataPointers(const struct NativeCheckpoi
 	{
 		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.chaosRuntime.identity[i].originalModel);
 	}
+	for (int i = 0; i < sdata_static.chaosRuntime.numDeferredImpacts; i++)
+	{
+		struct ChaosDeferredImpact *impact = &sdata_static.chaosRuntime.deferredImpacts[i];
+		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &impact->source);
+		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &impact->target);
+		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &impact->bsp);
+	}
 	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.arcade_difficultyParams);
 	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.cup_difficultyParams);
 	for (u32 i = 0; i < len(sdata_static.PausePtrsVRAM); i++)

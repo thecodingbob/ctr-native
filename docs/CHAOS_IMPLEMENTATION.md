@@ -34,6 +34,74 @@ gameplay conditions (terrain, fuel, pickup queues). The gameplay hooks preserve 
 ordering and check eligibility before calling them; No Reserves is tested
 through `Chaos_ApplyDriver`.
 
+## Time stop
+
+Za Warudo (ID 38, `za-warudo`) is timed and capped at 10,000 ms.
+`Chaos_Update` runs before the event clock and world updates. While stopped,
+only its activation clock advances; other activation/notice/trigger clocks,
+Fresh Start and transformation delays retain their values. Wumpa Drain cannot
+repeat a suspended pulse. Ordinary human driving cooldowns/reserves still advance.
+
+`Chaos_ShouldFreezeThread` filters the staged driver loop, native thread walker
+and direct tick transitions. Human drivers, cameras/HUD, attached masks, boost
+flames and human-owned weapons continue. Turbo ownership is read only for TURBO-bucket threads running
+`VehTurbo_ThTick`; static scenery can share the flame model ID with another object
+layout. Frozen hazards run collision-only operations without advancing motion,
+animation or cooldowns. Kart-to-kart collision searches and responses are skipped
+during time stop. Nitro/potion contacts are retained regardless of ownership,
+allowing passage without immediate damage or detonation. On resumption, Nitro
+uses its ordinary area blast; red/green potions recheck their normal 3D contact
+radius against current kart positions. An empty-radius potion still shatters,
+without damaging its former toucher or applying a red cloud remotely.
+Queue traversal and single-impact dispatch are separate; triggered-mine resolution
+shares classification with enqueueing. Mask contacts with frozen karts
+are recorded once per attacker/target and resolve on resumption without physical
+collision response. Pickups remain
+collectible through collision callbacks. World frame/texture,
+vertex-animation and bot-global updates are skipped. Particle updates retain
+human kart emissions by live owner-instance identity, not the camera filter;
+new particles clear stale pool ownership and tag human-created weapon effects.
+Particle integration is bounded to the eleven real axes: ownership metadata in
+the flag word must never index past `Particle.axis` into the next pool record.
+Split-screen exhaust emission uses the
+live frame counter while the world clock is stopped. Human invisibility,
+super-engine, received/sent clock, mask and shield/cloud durations stop separately
+while human attachments update. Direct human collection and damage to humans
+remain immediate. Human weapon impacts on frozen karts, weapons and level objects
+are retained in the resident deferred-impact queue and dispatched before world
+updates resume. An impacting mine/projectile waits at contact; explosion callbacks
+retain their original source until dispatch. Dead participants cannot be recycled
+while referenced. Reset discards pending operations; checkpoints relocate their
+source, target and BSP pointers.
+
+Audio context tags human FX in `ChannelStats.flags`, preserving ownership through
+retail pause backups and quick states. Menu move/back/confirm/locked effects are
+always exempt from time stop, including opening and closing pause. Menu sound
+matching uses only the low 16-bit sample ID, excluding the instance counter packed
+by `OtherFX_Play_LowLevel`. Positional sounds preserve an enclosing human context,
+including Wumpa collection after its instance loses its thread; weapon sounds
+also inherit live owner identity. Options slider FX/voice previews explicitly
+enter human audio context. The active
+music slider's Aku/Uka preview alone may advance its sequencer and music channels;
+channels resolve their sequence's song-pool slot, leaving race music suspended.
+Other music sequencing and frozen FX lifetimes
+stop; native audio suspends selected SPU voices and nonhuman XA without advancing
+samples or envelopes. Human engine channels and human XA voices remain active.
+Weapon owners are initialized before launch audio, and attribution compares owner
+addresses against live human karts without dereferencing a recycled payload pointer.
+Audio snapshot version 3 includes selective suspension. At the UI ordering-table
+boundary, the GPU bridge flushes the completed world viewports and grades the main
+target before drawing HUD/menu primitives. Luminance remaps the scene to a saturated
+navy/electric-blue and gold/lemon-yellow palette, blended at 80% strength with
+the original image and slightly dimmed for readability.
+HUD colors are untouched in Original and direct/scaled presentation. Race completion/reset
+releases suspension.
+
+After the initial clock/crate cues, the retail time-crate tick (`0x40`) plays
+six times at normal pitch and sample lifetime, spaced 192 ms apart, then stops.
+It uses the normal demand-loading path from `KART.HWL` and is
+tagged as effect audio so world-audio suspension does not mute it.
+
 ## Adventure saves
 
 SLOTS uses native 32-bit little-endian layout. The retail profile and advertised

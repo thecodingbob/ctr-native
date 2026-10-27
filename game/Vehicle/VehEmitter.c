@@ -1563,16 +1563,17 @@ skidAudioDone:
 
 		gGT = GAME_TRACKER;
 		numPlyr = gGT->numPlyrCurrGame;
+		const int exhaustFrame = Chaos_IsTimeStopped() ? gGT->framesInThisLEV : gGT->timer;
 		if (numPlyr >= 2 && !sdata->highDetailSplitScreenLevel)
 		{
 			if (numPlyr == 2)
 			{
-				if ((gGT->timer & 1) == d->driverID)
+				if ((exhaustFrame & 1) == d->driverID)
 				{
 					goto exhaustAllowed;
 				}
 			}
-			if ((gGT->timer & 3) != d->driverID)
+			if ((exhaustFrame & 3) != d->driverID)
 			{
 				goto exhaustDone;
 			}

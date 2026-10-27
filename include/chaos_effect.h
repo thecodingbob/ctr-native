@@ -61,6 +61,7 @@ typedef enum {
 	CHAOS_EFFECT_BODY_SWAP = 35,
 	CHAOS_EFFECT_TELEPORT = 36,
 	CHAOS_EFFECT_DEFECTIVE_TELEPORT = 37,
+	CHAOS_EFFECT_ZA_WARUDO = 38,
 
 	// IDs are saved bit positions: append new IDs, never renumber or reuse one.
 	// Growth within the saved bitset capacity does not change its layout.
@@ -122,6 +123,7 @@ static const ChaosEffectDef g_chaosEffectDefs[CHAOS_EFFECT_COUNT] =
 	[CHAOS_EFFECT_BODY_SWAP] = { "body-swap", "Body Swap", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_TELEPORT] = { "teleport", "Teleport", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_DEFECTIVE_TELEPORT] = { "defective-teleport", "Defective Teleport", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_ZA_WARUDO] = { "za-warudo", "Za Warudo", CHAOS_SCOPE_ALL },
 };
 
 static inline bool ChaosEffect_IsInstant(ChaosEffectId id)

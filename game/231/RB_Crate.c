@@ -160,7 +160,7 @@ int RB_CrateWeapon_ThCollide(struct Thread *crateThread, struct Thread *collidin
 			explosionInst->matrix.t[2] = crateInst->matrix.t[2];
 			ConvertRotToMatrix(&matrix, &rot);
 			MatrixRotate(&explosionInst->matrix, &crateInst->matrix, &matrix);
-			PlaySound3D(0x3c, crateInst);
+			PlaySound3D(HOWL_SFX_TIME_CRATE_BREAK, crateInst);
 
 			if ((sps->Input1.modelID != DYNAMIC_BOMB) && (sps->Input1.modelID != DYNAMIC_ROCKET) && (sps->Input1.modelID != DYNAMIC_PLAYER) &&
 			    (sps->Input1.modelID != DYNAMIC_SHIELD) && (sps->Input1.modelID != DYNAMIC_SHIELD_GREEN))
@@ -328,7 +328,7 @@ int RB_CrateFruit_ThCollide(struct Thread *crateThread, struct Thread *colliding
 			explosionInst->colorRGBA = 0xf2953a0;
 			explosionInst->alphaScale = 0x1000;
 			explosionInst->matrix = crateInst->matrix;
-			PlaySound3D(0x3c, crateInst);
+			PlaySound3D(HOWL_SFX_TIME_CRATE_BREAK, crateInst);
 
 			// NOTE(aalhendi): Breaking the crate advances the RNG even for an unrecognized hitter.
 			random = MixRNG_Scramble();
@@ -467,7 +467,7 @@ int RB_CrateTime_ThCollide(struct Thread *crateThread, struct Thread *driverTh, 
 			explosionInst->matrix.t[2] = crateInst->matrix.t[2];
 			ConvertRotToMatrix(&matrix, &rot);
 			MatrixRotate(&explosionInst->matrix, &crateInst->matrix, &matrix);
-			PlaySound3D(0x3c, crateInst);
+			PlaySound3D(HOWL_SFX_TIME_CRATE_BREAK, crateInst);
 
 			if ((sps->Input1.modelID != DYNAMIC_BOMB) && (sps->Input1.modelID != DYNAMIC_ROCKET) && (sps->Input1.modelID != DYNAMIC_PLAYER) &&
 			    (sps->Input1.modelID != DYNAMIC_SHIELD) && (sps->Input1.modelID != DYNAMIC_SHIELD_GREEN))

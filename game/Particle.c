@@ -420,6 +420,12 @@ void Particle_UpdateList(struct Particle **listHead, struct Particle *p)
 	while (p != NULL)
 	{
 		struct Particle *next = p->next;
+		if (Chaos_ShouldFreezeParticle(p))
+		{
+			link = &p->next;
+			p = next;
+			continue;
+		}
 		u16 flagsSetColor;
 		u32 axisFlags;
 		u16 activeFlags;
@@ -453,7 +459,7 @@ void Particle_UpdateList(struct Particle **listHead, struct Particle *p)
 		axisFlags = Particle_GetAxisFlags(p);
 		osc = p->oscillator;
 
-		for (int axisIndex = 0; axisFlags != 0; axisIndex++)
+		for (int axisIndex = 0; axisIndex < (int)len(p->axis) && axisFlags != 0; axisIndex++)
 		{
 			if ((axisFlags & 1) != 0)
 			{
@@ -1485,6 +1491,7 @@ struct Particle *Particle_Init(u32 param_1, struct IconGroup *ig, struct Particl
 	}
 
 	gGT->numParticles++;
+	p->owner.driverInst = NULL;
 
 	p->ptrIconGroup = ig;
 	if (ig != NULL && ig->numIcons != 0 && ig->numIcons > 0)

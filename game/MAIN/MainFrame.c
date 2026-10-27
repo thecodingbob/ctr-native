@@ -138,7 +138,7 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 		{
 			psVar9 = (struct Driver *)psVar12->object;
 
-			if (psVar9->clockSend)
+			if (psVar9->clockSend && !Chaos_IsTimeStopped())
 			{
 				psVar9->clockSend--;
 			}
@@ -171,12 +171,14 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 			else
 			{
 				DISPLAY_Blur_Main(pushBuffer, -uVar3);
-				psVar9->clockFlash--;
+				if (!Chaos_IsTimeStopped())
+				{
+					psVar9->clockFlash--;
+				}
 			}
 		LAB_80034e74:
 			pushBuffer = pushBuffer + 1;
 		}
-		gGT->timer = gGT->timer + 1;
 		gGT->framesInThisLEV = gGT->framesInThisLEV + 1;
 		gGT->unk1cc4[4] = 0;
 
@@ -203,9 +205,16 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 		NativeReplayScheduler_ConsumeFrameElapsedTimeMS(&gGT->elapsedTimeMS);
 #endif
 		gGT->msInThisLEV += gGT->elapsedTimeMS;
+		MainFrame_Tow_Update(gGT, gGamepads);
+		Chaos_Update(gGT);
+		Chaos_ResolveDeferredImpacts();
+		if (!Chaos_IsTimeStopped())
+		{
+			gGT->timer++;
+		}
 		if (gGT->trafficLightsTimer < 1)
 		{
-			if ((gGT->gameMode1 & DEBUG_MENU) == 0)
+			if ((gGT->gameMode1 & DEBUG_MENU) == 0 && !Chaos_IsTimeStopped())
 			{
 				if (gGT->frozenTimeRemaining < 1)
 				{
@@ -229,11 +238,11 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 						{
 							if (uVar3 == (uVar3 / 0xc) * 0xc)
 							{
-								OtherFX_Play_LowLevel(0x40, '\0', 0x8c9080);
+								OtherFX_Play_LowLevel(HOWL_SFX_TIME_CRATE_TICK, '\0', 0x8c9080);
 							}
 							else
 							{
-								OtherFX_Play_LowLevel(0x40, '\0', 0x8c8880);
+								OtherFX_Play_LowLevel(HOWL_SFX_TIME_CRATE_TICK, '\0', 0x8c8880);
 							}
 						}
 					}
@@ -245,8 +254,11 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 			gGT->elapsedEventTime = 0;
 		}
 
-		CTR_CycleTex_AllModels(-1, (struct Model **)sdata->PLYROBJECTLIST, gGT->timer);
-		CTR_CycleTex_AllModels(gGT->level1->numModels, gGT->level1->ptrModelsPtrArray, gGT->timer);
+		if (!Chaos_IsTimeStopped())
+		{
+			CTR_CycleTex_AllModels(-1, (struct Model **)sdata->PLYROBJECTLIST, gGT->timer);
+			CTR_CycleTex_AllModels(gGT->level1->numModels, gGT->level1->ptrModelsPtrArray, gGT->timer);
+		}
 
 		psVar8 = 0;
 		psVar9 = 0;
@@ -284,9 +296,6 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 			psVar8->quip2 = (s16)iVar4;
 		}
 
-		MainFrame_Tow_Update(gGT, gGamepads);
-		Chaos_Update(gGT);
-
 		for (iVar4 = 0; iVar4 < PAUSE; iVar4++)
 		{
 			if ((((gGT->gameMode1 & DEBUG_MENU) == 0) || ((gGT->threadBuckets[iVar4].boolCantPause & 1) != 0)) &&
@@ -298,7 +307,13 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 				{
 					for (psVar12 = gGT->threadBuckets[iVar4].thread; psVar12 != 0; psVar12 = psVar12->siblingThread)
 					{
+						if (Chaos_ShouldFreezeThread(psVar12))
+						{
+							continue;
+						}
+						const bool humanAudio = Chaos_SetHumanAudio(Chaos_IsHumanThread(psVar12));
 						VehPickupItem_ShootOnCirclePress((struct Driver *)psVar12->object);
+						Chaos_SetHumanAudio(humanAudio);
 					}
 
 					// run all driver funcPtrs,
@@ -310,7 +325,7 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 						{
 							// if PLYR converted to robotcar at end of race,
 							// dont run funcPtrs from inside driver struct
-							if (psVar12->funcThTick != 0)
+							if (psVar12->funcThTick != 0 || Chaos_ShouldFreezeThread(psVar12))
 							{
 								continue;
 							}
@@ -321,7 +336,9 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 
 							if (pcVar5 != 0)
 							{
+								const bool humanAudio = Chaos_SetHumanAudio(Chaos_IsHumanThread(psVar12));
 								pcVar5(psVar12, psVar9);
+								Chaos_SetHumanAudio(humanAudio);
 							}
 						}
 					}
@@ -331,7 +348,10 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 			}
 		}
 
-		BOTS_UpdateGlobals();
+		if (!Chaos_IsTimeStopped())
+		{
+			BOTS_UpdateGlobals();
+		}
 		GhostTape_WriteMoves(0);
 		gGT->unk1cc4[4] = (u32)(gGT->unk1cc4[4] * 10000) / 0x147e;
 
@@ -350,7 +370,7 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 	uVar5 = LOAD_IsOpen_RacingOrBattle();
 	if (uVar5 != 0)
 	{
-		if ((gGT->gameMode1 & PAUSE_ALL) == 0)
+		if ((gGT->gameMode1 & PAUSE_ALL) == 0 && !Chaos_IsTimeStopped())
 		{
 			RB_Bubbles_RoosTubes();
 		}
@@ -362,10 +382,15 @@ void MainFrame_GameLogic(struct GameTracker *gGT, struct GamepadSystem *gGamepad
 
 	PROC_CheckAllForDead();
 
-	if ((gGT->gameMode1 & PAUSE_ALL) == 0)
+	if ((gGT->gameMode1 & PAUSE_ALL) == 0 && !Chaos_IsTimeStopped())
 	{
 		Audio_Update1();
 	}
+	else if ((gGT->gameMode1 & PAUSE_ALL) == 0 && Chaos_IsTimeStopped())
+	{
+		Voiceline_Update();
+	}
+	Chaos_UpdateTimeStopAudio();
 
 	gGT->gameMode1_prevFrame = gGT->gameMode1;
 	uVar5 = GAMEPAD_GetNumConnected(gGamepads);

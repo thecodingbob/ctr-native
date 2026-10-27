@@ -13,6 +13,30 @@ enum ChaosRuntimeConstants
 	CHAOS_WOBBLE_PERIOD_MS = 2000,
 	CHAOS_WUMPA_DRAIN_PERIOD_MS = 1000,
 	CHAOS_INJECTION_RESERVES = 10 * 960,
+	CHAOS_MAX_DEFERRED_IMPACTS = 1024,
+};
+
+enum ChaosImpactKind
+{
+	CHAOS_IMPACT_MINE_DRIVER,
+	CHAOS_IMPACT_MOVING_DRIVER,
+	CHAOS_IMPACT_BURST_THREAD,
+	CHAOS_IMPACT_BURST_LEVEL,
+	CHAOS_IMPACT_HAZARD_THREAD,
+	CHAOS_IMPACT_HAZARD_LEVEL,
+	CHAOS_IMPACT_DRIVER_DAMAGE,
+};
+
+struct ChaosDeferredImpact
+{
+	enum ChaosImpactKind kind;
+	struct Thread *source;
+	struct Thread *target;
+	struct BSP *bsp;
+	SVec3 pos;
+	s16 damage;
+	s16 reason;
+	s16 attackerSlot;
 };
 
 struct ChaosActivation
@@ -79,6 +103,10 @@ struct ChaosRuntime
 	u8 bodySwapPartner[LOAD_CHARACTER_ID_COUNT];
 	bool cameraBlendPending[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
 	u8 teleportForwardCrossings[LOAD_CHARACTER_ID_COUNT];
+	bool humanAudioContext;
+	bool humanXA;
+	int numDeferredImpacts;
+	struct ChaosDeferredImpact deferredImpacts[CHAOS_MAX_DEFERRED_IMPACTS];
 };
 
 #endif

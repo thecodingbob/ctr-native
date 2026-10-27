@@ -12,6 +12,18 @@ u8 *gCTRNativeScratchpadBase;
 static struct Instance *s_spawnedOrb;
 static struct Particle *s_particle;
 
+bool Chaos_IsHumanThread(const struct Thread *thread)
+{
+	return thread != NULL && thread->modelIndex == DYNAMIC_PLAYER && thread->object != NULL &&
+	       (((const struct Driver *)thread->object)->actionsFlagSet & ACTION_BOT) == 0;
+}
+bool Chaos_DeferDriverDamage(struct Driver *victim, int damage, struct Driver *attacker, int reason)
+{
+	(void)victim; (void)damage; (void)attacker; (void)reason;
+	CtrTest_Bail("orb launch must not defer driver damage");
+	return false;
+}
+
 // Orb regression checks exercise launch and teardown without world assets.
 s32 MATH_VectorNormalize(SVec3 *vector)
 {
@@ -88,7 +100,8 @@ struct Particle *Particle_Init(u32 flags, struct IconGroup *icons, struct Partic
 void PlaySound3D(u32 sound, struct Instance *inst)
 {
 	(void)sound;
-	(void)inst;
+	const struct TrackerWeapon *weapon = inst->thread->object;
+	CTR_TEST_CHECK(weapon->instParent == s_defaultDrivers[0].instSelf, "orb ownership is initialized before its launch sound inspects it");
 }
 
 // The real item dispatcher also links the other weapons; none may run here.

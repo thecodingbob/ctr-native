@@ -73,6 +73,9 @@ enum RectMenuState
 
 enum MenuSfx
 {
+	MENU_SFX_MOVE = 0,
+	MENU_SFX_BACK = 1,
+	MENU_SFX_CONFIRM = 2,
 	MENU_SFX_LOCKED = 5,
 };
 
