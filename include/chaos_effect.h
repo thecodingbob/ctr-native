@@ -59,6 +59,7 @@ typedef enum {
 	CHAOS_EFFECT_SENILE_MASK = 33,
 	CHAOS_EFFECT_IDENTITY_CRISIS = 34,
 	CHAOS_EFFECT_BODY_SWAP = 35,
+	CHAOS_EFFECT_TELEPORT = 36,
 
 	// IDs are saved bit positions: append new IDs, never renumber or reuse one.
 	// Growth within the saved bitset capacity does not change its layout.
@@ -118,6 +119,7 @@ static const ChaosEffectDef g_chaosEffectDefs[CHAOS_EFFECT_COUNT] =
 	[CHAOS_EFFECT_SENILE_MASK] = { "senile-mask", "Senile Mask", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_IDENTITY_CRISIS] = { "identity-crisis", "Identity Crisis", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_BODY_SWAP] = { "body-swap", "Body Swap", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_TELEPORT] = { "teleport", "Teleport", CHAOS_SCOPE_HUMANS },
 };
 
 static inline bool ChaosEffect_IsInstant(ChaosEffectId id)
@@ -126,7 +128,8 @@ static inline bool ChaosEffect_IsInstant(ChaosEffectId id)
 	       id == CHAOS_EFFECT_IT_IS_I || id == CHAOS_EFFECT_PROVIDENCE ||
 	       id == CHAOS_EFFECT_RESERVE_INJECTION || id == CHAOS_EFFECT_MY_PLANET_NEEDS_ME ||
 	       id == CHAOS_EFFECT_TRY_SOMETHING_NEW || id == CHAOS_EFFECT_YOUVE_GOT_MAIL ||
-	       id == CHAOS_EFFECT_FRESH_START || id == CHAOS_EFFECT_IDENTITY_CRISIS;
+	       id == CHAOS_EFFECT_FRESH_START || id == CHAOS_EFFECT_IDENTITY_CRISIS ||
+	       id == CHAOS_EFFECT_TELEPORT;
 }
 
 static inline const ChaosEffectDef *ChaosEffect_Def(ChaosEffectId id)

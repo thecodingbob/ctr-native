@@ -16,22 +16,25 @@ This plan tracks delivery, remaining specifications and outstanding validation.
 | A. Items and reserves | Use This!, Juiced Up, It is I, Providence, Reserve Injection, Too Boosted TO Fail | Implemented |
 | B. Driving, turbo and jumping | Sabotage, This Is Fire, Hydraulics, My Planet Needs Me, Who Bound This?, Try Something New | Implemented |
 | C. Size, camera and bots | Small Kart Energy, Classic GTA, Arena Champions, You've Got Mail, Fresh Start, Senile Mask | Implemented |
-| D. Characters and movement | Identity Crisis, Body Swap, Teleport, Defective Teleport | Identity Crisis and Body Swap implemented; teleports not started |
+| D. Characters and movement | Identity Crisis, Body Swap, Teleport, Defective Teleport | Through Teleport implemented; Defective Teleport not started |
 | E. Time manipulation | Za Warudo, King Crimson | Not started |
 
-**Current effect: Body Swap.** In-game validation is pending; Teleport is next.
+**Current effect: Teleport.** In-game validation is pending; Defective Teleport is next.
+
+Teleport regression checks include real retail progress projection on a coherent
+synthetic circuit: destination stability, finish wrapping and selected branches.
 
 ## Remaining specifications
 
-### Teleport / Defective Teleport
+### Defective Teleport
 
-Move forward/backward 10% of a lap along the track path. Crossing the finish line
-in either direction updates laps/checkpoints accordingly. Preserve speed,
+Move backward 10% of a lap along the track path. Crossing the finish line
+backward updates laps/checkpoints accordingly. Preserve speed,
 reserves and inventory; align orientation/camera to the destination. Follow the
 chosen branch, otherwise the main path.
 
-Use a shared repositioning operation that updates terrain, checkpoints, rescue
-state and camera together. Investigate path branches and lap validation.
+Reuse Teleport's repositioning operation for terrain, checkpoints, rescue state
+and camera. Add backward branch traversal and lap accounting.
 
 ### Za Warudo
 
@@ -91,5 +94,6 @@ behavior.
 | Senile Mask | Flashing prompt in each correct-direction human viewport, including relic/crystal events; repeated Aku Aku/Uka Uka voice with half cooldown, no overlapping XA playback; silence/no prompt when actually wrong-way, normal warnings restored at expiry/reset. |
 | Identity Crisis | All character models/textures, including bosses and Oxide; smoke coverage/timing at speed and at 0.5×/1×/2× size in both viewports; repeated 1P/2P transformations while driving, jumping, damaged or rescued; no duplicate live characters; class/engine ordering with Try Something New; retry/end-of-race and quick-state restoration, including during the smoke delay. |
 | Body Swap | Human/human and human/bot input, camera/HUD and engine audio; damage/airborne takeover, bot navigation reattachment, active weapons/shields/masks, boss/cup behavior; modifiers follow players while class/Identity Crisis follow karts; immediate activation/expiry during rescue/start holds and pending transformations, reactivation, final-lap early return, retry/results and quick states. Relic/crystal/battle 2P pairs and solo events without targets. |
+| Teleport | Grounding on every track, including ramps, gaps and stacked roads; branch choice, 1P/2P, airborne/damaged/rescued karts, preserved turbo/inventory; initial-line and final-lap crossings, retry/quick states and Body Swap interaction. |
 
 Record remaining failures and reproducible tracks/quick states here.

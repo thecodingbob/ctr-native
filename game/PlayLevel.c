@@ -177,6 +177,7 @@ void PlayLevel_UpdateLapStats(void)
 		distToFinish_prev = currDriver->distanceToFinish_curr;
 		VehLap_UpdateProgress(currDriver);
 		distToFinish_curr = currDriver->distanceToFinish_curr;
+		const bool teleportedAcrossFinish = Chaos_ConsumeTeleportLapCrossing(currDriver);
 
 		int drivenBackwards = currDriver->distanceDrivenBackwards + (distToFinish_curr - distToFinish_prev);
 
@@ -204,7 +205,8 @@ void PlayLevel_UpdateLapStats(void)
 
 		if ((gGT->gameMode1 & BATTLE_MODE) == 0 &&
 		    // crossed finishline (forwards)
-		    (distToFinish_prev < PLAYLEVEL_FINISHLINE_NEAR_DISTANCE) && (distToFinish_curr > PLAYLEVEL_FINISHLINE_FAR_DISTANCE))
+		    (teleportedAcrossFinish ||
+		     ((distToFinish_prev < PLAYLEVEL_FINISHLINE_NEAR_DISTANCE) && (distToFinish_curr > PLAYLEVEL_FINISHLINE_FAR_DISTANCE))))
 		{
 			// Set racer's distance driven backwards to zero
 			currDriver->distanceDrivenBackwards = 0;

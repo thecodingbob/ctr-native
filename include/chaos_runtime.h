@@ -77,7 +77,8 @@ struct ChaosRuntime
 	struct ChaosIdentity identity[LOAD_CHARACTER_ID_COUNT];
 	// Partner slot plus one; zero means this controller owns its original kart.
 	u8 bodySwapPartner[LOAD_CHARACTER_ID_COUNT];
-	bool bodySwapCameraBlend[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
+	bool cameraBlendPending[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
+	u8 teleportForwardCrossings[LOAD_CHARACTER_ID_COUNT];
 };
 
 #endif

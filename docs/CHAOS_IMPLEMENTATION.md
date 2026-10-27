@@ -324,6 +324,32 @@ pairing, lifecycle and the real human takeover's progress/motion transfer; drivi
 callbacks and AI conversion are doubled. Actual bot/human transitions still require
 in-game validation.
 
+Teleport (ID 36, `teleport`) is instant and human-only, excluded from battle and
+crystal challenges. It advances one tenth of the lap's retail progress distance,
+interpolating checkpoint positions along the selected route. It reuses
+`RB_Warpball_NewPathNode`, extracted unchanged into `RB_Warpball_Path.c` so the
+asset-free suites also exercise retail branch selection. An unknown branch uses
+the main route; traversal is bounded by the checkpoint count.
+
+`Chaos_RepositionDriver` probes destination ground before mutating the driver.
+No ground means no movement. A successful placement refreshes surfaces, terrain,
+checkpoint/anti-cut state, previous position and orientation, preserving speed,
+reserves and held items. Existing rescues/start holds are released; ordinary
+damage callbacks remain installed. Motion is realigned to the destination yaw,
+and the shared camera handover requests one recovery blend.
+
+`ChaosRuntime.teleportForwardCrossings` queues skipped finish crossings for
+`PlayLevel_UpdateLapStats`, preserving retail lap times, start-line debt, final-lap
+announcements and results. Crossings are consumed once and follow the physical
+kart through Body Swap; a pending final crossing returns its pair before results.
+Exact-line destinations use the subsequent physical crossing. Runtime checkpoints
+capture pending crossings and the shared `cameraBlendPending` array.
+Tests run the real route selection, repositioning and lap/results flow with world
+collision, matrix construction and end-screen setup doubled. Focused geometry
+checks also run the real progress projection and vector normalization through
+the native GTE on a circuit with coherent world/progress distances, covering
+placement, subsequent frames, finish wrapping and alternate-branch surfaces.
+
 Small Kart Energy (ID 28, `small-kart-energy`) uses the same size pipeline as
 Giant Karts. `Driver.kartScale` is a float multiplier (zero defaults to 1×),
 resolved by `VehPhysForce_GetKartScale`; finished drivers use 1×. Visual scales,
@@ -407,7 +433,7 @@ mutating that timer; requested Chaos duration does not affect the countdown.
 Synchronized players share light audio. Rendering and HUD reservations use the
 same animated `DotLights_GetBounds`, alongside Final Lap bounds.
 
-`Chaos_ConsumeStartCameraBlend` requests the normal follow camera's eight-frame
+`Chaos_ConsumeCameraBlend` requests the normal follow camera's eight-frame
 damage-recovery interpolation for eye and look-at positions once at countdown
 entry. Freecam and end-of-race cameras do not consume it.
 

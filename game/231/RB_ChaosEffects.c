@@ -32,6 +32,10 @@ enum
 	CHAOS_TRANSFORM_SMOKE_ICON_GROUP = 1,
 	CHAOS_TRANSFORM_SMOKE_SCALE = 0x2000,
 	CHAOS_TRANSFORM_SMOKE_GROWTH = 0x200,
+	CHAOS_TELEPORT_LAP_DIVISOR = 10,
+	CHAOS_TELEPORT_PROBE_HALF_HEIGHT = 0x100,
+	CHAOS_PATH_INVALID_NODE = 0xff,
+	CHAOS_TRACK_DISTANCE_SCALE = 8,
 };
 
 static const float s_chaosSmallScale = 0.5f;
@@ -272,20 +276,25 @@ static void Chaos_GiveRandomItem(struct Driver *driver)
 	VehPhysProc_PlayItemAcquireSound(driver);
 }
 
+static void Chaos_ResetSteeringPose(struct Driver *driver)
+{
+	driver->turnAngleCurr = 0;
+	driver->turnAnglePrev = 0;
+	driver->turnAngleLerpTarget = 0;
+	driver->turnAngleLerpVel = 0;
+	driver->turnWobbleTimer = 0;
+	driver->turnWobbleAngle = 0;
+	driver->turnWobbleVelocity = 0;
+}
+
 static void Chaos_NeutralRestartPose(struct Driver *driver)
 {
 	driver->matrixArray = BAKED_GTE_MATRIX_NONE;
 	driver->matrixIndex = 0;
 	driver->simpTurnState = 0;
 	driver->ampTurnState = 0;
-	driver->turnAngleCurr = 0;
-	driver->turnAnglePrev = 0;
-	driver->turnAngleLerpTarget = 0;
-	driver->turnAngleLerpVel = 0;
 	driver->rotationSpinRate = 0;
-	driver->turnWobbleTimer = 0;
-	driver->turnWobbleAngle = 0;
-	driver->turnWobbleVelocity = 0;
+	Chaos_ResetSteeringPose(driver);
 	// Driving reconstructs visual yaw from angle plus drift/wobble offsets.
 	driver->angle = ANG_MODULO_TWO_PI(driver->rotCurr.y);
 	driver->rotCurr.x = 0;
@@ -396,7 +405,7 @@ bool Chaos_IsWaitingForStart(const struct Driver *driver)
 	    sdata->chaosRuntime.restart[driver->driverID].timer > 0;
 }
 
-bool Chaos_ConsumeStartCameraBlend(struct CameraDC *camera)
+bool Chaos_ConsumeCameraBlend(struct CameraDC *camera)
 {
 	const struct Driver *driver = camera->driverToFollow;
 	if (driver == NULL || driver->driverID >= (int)len(sdata->chaosRuntime.restart) || camera->cameraMode != 0 ||
@@ -405,8 +414,8 @@ bool Chaos_ConsumeStartCameraBlend(struct CameraDC *camera)
 		return false;
 	}
 	struct ChaosRestart *restart = &sdata->chaosRuntime.restart[driver->driverID];
-	bool pending = sdata->chaosRuntime.bodySwapCameraBlend[driver->driverID];
-	sdata->chaosRuntime.bodySwapCameraBlend[driver->driverID] = false;
+	bool pending = sdata->chaosRuntime.cameraBlendPending[driver->driverID];
+	sdata->chaosRuntime.cameraBlendPending[driver->driverID] = false;
 	if (Chaos_IsWaitingForStart(driver))
 	{
 		pending |= restart->cameraBlendPending;
@@ -798,7 +807,7 @@ static void Chaos_FollowBody(int player, struct Driver *driver)
 	camera->flags |= CAMERA_FLAG_DIRECTION_CHANGED | CAMERA_FLAG_RESET_RAIN_POS;
 	memset(&camera->BlastedLerp, 0, sizeof(camera->BlastedLerp));
 	camera->heightSmoothing = (struct CameraHeightSmoothing){0};
-	sdata->chaosRuntime.bodySwapCameraBlend[player] = true;
+	sdata->chaosRuntime.cameraBlendPending[player] = true;
 }
 
 static void Chaos_SwapBodies(int first, int second)
@@ -828,6 +837,9 @@ static void Chaos_SwapBodies(int first, int second)
 	runtime->engineClassChanged[first] = runtime->engineClassChanged[second];
 	runtime->engineClass[second] = engine;
 	runtime->engineClassChanged[second] = changed;
+	const u8 crossings = runtime->teleportForwardCrossings[first];
+	runtime->teleportForwardCrossings[first] = runtime->teleportForwardCrossings[second];
+	runtime->teleportForwardCrossings[second] = crossings;
 
 	Chaos_SetKartScale(CHAOS_KART_SCALE_NORMAL, a);
 	Chaos_SetKartScale(CHAOS_KART_SCALE_NORMAL, b);
@@ -876,6 +888,179 @@ static void Chaos_ReturnBodySwaps(void)
 			Chaos_ReturnBodySwap(first);
 		}
 	}
+}
+
+struct ChaosTrackDestination
+{
+	Vec3 pos;
+	int yaw;
+	int checkpoint;
+	int distanceToFinish;
+};
+
+static void Chaos_ReleaseRepositionHold(struct Driver *driver)
+{
+	struct Thread *thread = driver->instSelf->thread;
+	const bool resumeDriving = Chaos_IsBeingRescued(driver) || driver->kartState == KS_ENGINE_REVVING ||
+	    driver->kartState == KS_WARP_PAD;
+	struct MaskHeadWeapon *mask = NULL;
+	if (thread->funcThTick == BOTS_ThTick_RevEngine)
+	{
+		mask = driver->botData.maskObj;
+	}
+	else if (driver->kartState == KS_MASK_GRABBED)
+	{
+		mask = driver->KartStates.MaskGrab.maskObj;
+	}
+	else if (driver->kartState == KS_ENGINE_REVVING && driver->KartStates.RevEngine.boolMaskGrab)
+	{
+		mask = driver->KartStates.RevEngine.maskObj;
+	}
+	if (mask != NULL)
+	{
+		mask->scale = MASK_HEAD_SCALE_NORMAL;
+		mask->rot.z &= ~MASK_HEAD_ROT_WORLD_SPACE;
+		if (!driver->boolHadMaskBeforeOOB)
+		{
+			mask->duration = 0;
+		}
+	}
+	struct ChaosRestart *restart = &sdata->chaosRuntime.restart[driver->driverID];
+	Chaos_EndRestartHold(restart, driver);
+	*restart = (struct ChaosRestart){0};
+	if (resumeDriving)
+	{
+		thread->funcThTick = NULL;
+		thread->flags &= ~THREAD_FLAG_DISABLE_COLLISION;
+		driver->instSelf->flags &= ~HIDE_MODEL;
+		driver->botData.maskObj = NULL;
+		VehPhysProc_Driving_Init(thread, driver);
+		driver->NoInputTimer = 0;
+		driver->matrixArray = BAKED_GTE_MATRIX_NONE;
+		driver->matrixIndex = 0;
+	}
+}
+
+static bool Chaos_RepositionDriver(struct Driver *driver, const struct ChaosTrackDestination *destination)
+{
+	struct GameTracker *tracker = GAME_TRACKER;
+	struct ScratchpadStruct *sps = CTR_SCRATCHPAD_PTR(struct ScratchpadStruct, 0x108);
+	const SVec3 top = {destination->pos.x >> FRACTIONAL_BITS_8,
+	    (destination->pos.y >> FRACTIONAL_BITS_8) - CHAOS_TELEPORT_PROBE_HALF_HEIGHT,
+	    destination->pos.z >> FRACTIONAL_BITS_8};
+	const SVec3 bottom = {top.x, top.y + 2 * CHAOS_TELEPORT_PROBE_HALF_HEIGHT, top.z};
+	sps->ptr_mesh_info = tracker->level1->ptr_mesh_info;
+	sps->Union.QuadBlockColl.quadFlagsWanted = QUADBLOCK_FLAG_GROUND;
+	sps->Union.QuadBlockColl.quadFlagsIgnored = QUADBLOCK_FLAG_KILL_PLANE;
+	sps->Union.QuadBlockColl.searchFlags = tracker->numPlyrCurrGame < 3 ? COLL_SEARCH_HIGH_LOD : 0;
+	COLL_SearchBSP_CallbackQUADBLK(&top, &bottom, sps, 0);
+	if (!sps->boolDidTouchQuadblock)
+	{
+		return false;
+	}
+	struct QuadBlock *ground = sps->hit.ptrQuadblock;
+	const SVec3 normal = sps->hit.plane.normal;
+	const int groundY = sps->Union.QuadBlockColl.hitPos.y * FP8(1);
+	Chaos_ReleaseRepositionHold(driver);
+	driver->posCurr = destination->pos;
+	driver->posCurr.y = groundY;
+	driver->posPrev = driver->posCurr;
+	driver->underDriver = ground;
+	driver->lastValid = ground;
+	driver->currBlockTouching = ground;
+	driver->quadBlockHeight = groundY;
+	driver->AxisAngle1_normalVec = normal;
+	driver->AxisAngle2_normalVec = normal;
+	driver->AxisAngle3_normalVec = normal;
+	driver->normalVecUP = normal;
+	driver->currentTerrain = ground->terrain_type;
+	driver->terrainMeta1 = VehAfterColl_GetTerrain(driver->currentTerrain);
+	driver->terrainMeta2 = driver->terrainMeta1;
+	driver->checkpoint.currentIndex = ground->checkpointIndex != CHAOS_PATH_INVALID_NODE ?
+	    ground->checkpointIndex : destination->checkpoint;
+	driver->distanceToFinish_curr = destination->distanceToFinish;
+	driver->distanceToFinish_checkpoint = destination->distanceToFinish;
+	driver->distanceDrivenBackwards = 0;
+	driver->collisionFlags = 0;
+	driver->stepFlagSet = 0;
+	driver->actionsFlagSet &= ~(ACTION_DRIVING_WRONG_WAY | ACTION_CHECKPOINT_BRANCH_PENDING | ACTION_WARP);
+	driver->angle = destination->yaw;
+	driver->rotCurr = (SVec3Slot){0, destination->yaw, 0, 0};
+	driver->rotPrev = driver->rotCurr;
+	Chaos_ResetSteeringPose(driver);
+	driver->axisRotationX = destination->yaw;
+	VehPhysForce_RotAxisAngle(&driver->matrixMovingDir, CTR_VECTOR_DATA(&driver->AxisAngle2_normalVec), destination->yaw);
+	driver->matrixFacingDir = driver->matrixMovingDir;
+	VehPhysForce_ConvertSpeedToVec(driver, &driver->velocity);
+	driver->xSpeed = driver->velocity.x;
+	driver->ySpeed = driver->velocity.y;
+	driver->zSpeed = driver->velocity.z;
+	driver->accel = (SVec3){0};
+	driver->instSelf->matrix.t[0] = driver->posCurr.x >> FRACTIONAL_BITS_8;
+	driver->instSelf->matrix.t[1] = driver->posCurr.y >> FRACTIONAL_BITS_8;
+	driver->instSelf->matrix.t[2] = driver->posCurr.z >> FRACTIONAL_BITS_8;
+	Chaos_FollowBody(driver->driverID, driver);
+	sdata->chaosRuntime.touchingTurboPad[driver->driverID] = false;
+	OtherFX_Play(SOUND_INVISIBILITY, 1);
+	return true;
+}
+
+static void Chaos_TeleportDriver(struct Driver *driver)
+{
+	const struct Level *level = GAME_TRACKER->level1;
+	if (level == NULL || level->ptr_restart_points == NULL || level->ptr_mesh_info == NULL ||
+	    level->cnt_restart_points < 2 || level->cnt_restart_points > CHAOS_PATH_INVALID_NODE ||
+	    driver->checkpoint.currentIndex >= level->cnt_restart_points)
+	{
+		return;
+	}
+	const int length = level->ptr_restart_points[0].distToFinish * CHAOS_TRACK_DISTANCE_SCALE;
+	if (length < CHAOS_TELEPORT_LAP_DIVISOR)
+	{
+		return;
+	}
+	const int before = driver->distanceToFinish_curr % length;
+	const int unwrapped = before - length / CHAOS_TELEPORT_LAP_DIVISOR;
+	const int target = (unwrapped + length) % length;
+	struct CheckpointNode *node = &level->ptr_restart_points[driver->checkpoint.currentIndex];
+	for (int visited = 0; visited < level->cnt_restart_points; visited++)
+	{
+		struct CheckpointNode *next = RB_Warpball_NewPathNode(node,
+		    driver->checkpoint.branchChoiceIndex < level->cnt_restart_points ? driver : NULL);
+		const int span = ((node->distToFinish - next->distToFinish) * CHAOS_TRACK_DISTANCE_SCALE + length) % length;
+		const int along = (node->distToFinish * CHAOS_TRACK_DISTANCE_SCALE - target + length) % length;
+		if (span > 0 && along < span)
+		{
+			struct ChaosTrackDestination destination = {
+				.pos = {
+					node->pos.x * FP8(1) + (s64)(next->pos.x - node->pos.x) * FP8(1) * along / span,
+					node->pos.y * FP8(1) + (s64)(next->pos.y - node->pos.y) * FP8(1) * along / span,
+					node->pos.z * FP8(1) + (s64)(next->pos.z - node->pos.z) * FP8(1) * along / span,
+				},
+				.yaw = ratan2(next->pos.x - node->pos.x, next->pos.z - node->pos.z),
+				.checkpoint = (int)(node - level->ptr_restart_points),
+				.distanceToFinish = target,
+			};
+			if (Chaos_RepositionDriver(driver, &destination) && unwrapped < 0 &&
+			    sdata->chaosRuntime.teleportForwardCrossings[driver->driverID] < UINT8_MAX)
+			{
+				sdata->chaosRuntime.teleportForwardCrossings[driver->driverID]++;
+			}
+			return;
+		}
+		node = next;
+	}
+}
+
+bool Chaos_ConsumeTeleportLapCrossing(const struct Driver *driver)
+{
+	u8 *crossings = &sdata->chaosRuntime.teleportForwardCrossings[driver->driverID];
+	if (*crossings == 0)
+	{
+		return false;
+	}
+	(*crossings)--;
+	return true;
 }
 
 static void Chaos_LaunchDriver(struct Driver *driver)

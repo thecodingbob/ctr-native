@@ -1,4 +1,55 @@
+#include <common.h>
+// Keep the fixture's unexpected-projection guards for the isolated effect paths.
+void TestUnexpectedCTC2(u32 value, s32 reg);
+void TestUnexpectedMTC2(u32 value, s32 reg);
+u32 TestUnexpectedMFC2(s32 reg);
+s32 TestUnexpectedMFC2_S(s32 reg);
+s32 TestUnexpectedCOP2(s32 op);
+#define CTC2 TestUnexpectedCTC2
+#define MTC2 TestUnexpectedMTC2
+#define MFC2 TestUnexpectedMFC2
+#define MFC2_S TestUnexpectedMFC2_S
+#define doCOP2 TestUnexpectedCOP2
 #include <shared/chaos_fixture.h>
+#undef CTC2
+#undef MTC2
+#undef MFC2
+#undef MFC2_S
+#undef doCOP2
+
+#include <platform/native_pgxp.c>
+#include <platform/native_gte_core.c>
+#include <platform/native_inline_c.c>
+
+int SquareRoot0_stub(int value)
+{
+	return (int)sqrt((double)value);
+}
+#include <game/MATH/MATH_4_VectorLength.c>
+#include <game/MATH/MATH_5_VectorNormalize.c>
+#include <game/Vehicle/VehLap.c>
+
+// Existing results-only checks isolate projection; the geometry checks enable it.
+static bool s_projectLapProgress;
+static int s_teleportSavedLaps;
+static void TestLapProgress(struct Driver *driver)
+{
+	if (s_projectLapProgress)
+	{
+		VehLap_UpdateProgress(driver);
+	}
+}
+void UI_SaveLapTime(int numLaps, int lapTime, s16 driverID)
+{
+	(void)numLaps; (void)lapTime; (void)driverID;
+	s_teleportSavedLaps++;
+}
+b32 MainGameEnd_IsCoopRace(struct GameTracker *tracker) { (void)tracker; return false; }
+b32 MainGameEnd_AdventureRaceWon(struct GameTracker *tracker) { (void)tracker; return false; }
+void BOTS_Driver_Convert(struct Driver *driver) { driver->actionsFlagSet |= ACTION_BOT; }
+#define VehLap_UpdateProgress TestLapProgress
+#include <game/PlayLevel.c>
+#undef VehLap_UpdateProgress
 #include <game/Vehicle/VehPhysProc_Input.c>
 
 static u32 PreparedDriver(struct Driver *driver, const struct GamepadBuffer *pad, int *steering, u32 actions)
@@ -712,8 +763,8 @@ static void TestBodySwap(void)
 	               s_tracker.cameraDC[0].heightSmoothing.framesRemaining == 0,
 	               "camera handover drops the previous kart's damage, rescue and height-recovery state");
 	CTR_TEST_CHECK_EQ(s_tracker.cameraDC[0].nearOrFar, 1, "camera handover retains the player's zoom preference");
-	CTR_TEST_CHECK(Chaos_ConsumeStartCameraBlend(&s_tracker.cameraDC[0]) &&
-	               !Chaos_ConsumeStartCameraBlend(&s_tracker.cameraDC[0]),
+	CTR_TEST_CHECK(Chaos_ConsumeCameraBlend(&s_tracker.cameraDC[0]) &&
+	               !Chaos_ConsumeCameraBlend(&s_tracker.cameraDC[0]),
 	               "the camera blends to the possessed kart once without requiring a Fresh Start countdown");
 	CTR_TEST_CHECK(borrowed->lastValid == NULL && borrowed->underDriver == NULL && borrowed->currBlockTouching == NULL,
 	               "the first human collision acquires the current surface without retaining a stale spawn quad");
@@ -863,6 +914,303 @@ static void TestBodySwap(void)
 	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
 	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[1] && s_tracker.drivers[1] == &world.drivers[0],
 	               "scripted states, start holds and pending transformations do not gate controller exchange");
+}
+
+struct TeleportWorld
+{
+	struct BodySwapWorld racers;
+	struct Level level;
+	struct mesh_info mesh;
+	struct CheckpointNode nodes[13];
+};
+
+static void SetupTeleport(struct TeleportWorld *world, int humans, int bots)
+{
+	memset(world, 0, sizeof(*world));
+	SetupBodySwap(&world->racers, humans, bots);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_TELEPORT] = true;
+	sdata->chaosSettings.enabledCount++;
+	world->level.ptr_restart_points = world->nodes;
+	world->level.cnt_restart_points = 10;
+	world->level.ptr_mesh_info = &world->mesh;
+	s_tracker.level1 = &world->level;
+	for (int i = 0; i < 10; i++)
+	{
+		world->nodes[i] = (struct CheckpointNode){
+			.pos = {i * 1000, 32, 0}, .distToFinish = (10 - i) * 1000,
+			.nextIndex_forward = (i + 1) % 10, .nextIndex_backward = (i + 9) % 10,
+			.nextIndex_left = 0xff, .nextIndex_right = 0xff,
+		};
+	}
+	for (int i = 0; i < humans + bots; i++)
+	{
+		struct Driver *driver = &world->racers.drivers[i];
+		driver->posCurr = (Vec3){500 * 256, 32 * 256, 0};
+		driver->distanceToFinish_curr = 76000;
+		driver->checkpoint.currentIndex = 0;
+		driver->checkpoint.branchChoiceIndex = 0xff;
+		driver->speed = 1000;
+		driver->speedApprox = 1000;
+		driver->baseSpeed = 900;
+		driver->fireSpeed = 100;
+		driver->reserves = 2345;
+		driver->turbo_outsideTimer = 400;
+		driver->heldItemID = HELD_ITEM_MISSILE_3X;
+		driver->numHeldItems = 3;
+	}
+	s_teleportGround = (struct QuadBlock){.checkpointIndex = 1, .quadFlags = QUADBLOCK_FLAG_GROUND};
+	s_teleportGroundMissing = false;
+	s_teleportProbes = 0;
+	s_teleportSavedLaps = 0;
+	s_teleportRaceEnds = 0;
+	s_allowRaceEnd = true;
+	s_projectLapProgress = false;
+}
+
+static void SetupProjectedTeleport(struct TeleportWorld *world)
+{
+	SetupTeleport(world, 1, 0);
+	const SVec3 positions[10] = {
+		{0, 32, 0}, {800, 32, 0}, {1600, 32, 0}, {2400, 32, 0}, {2400, 32, 800},
+		{2400, 32, 1600}, {1600, 32, 1600}, {800, 32, 1600}, {0, 32, 1600}, {0, 32, 800},
+	};
+	for (int i = 0; i < 10; i++)
+	{
+		world->nodes[i].pos = positions[i];
+		world->nodes[i].distToFinish = (10 - i) * 100;
+	}
+	world->racers.drivers[0].posCurr = (Vec3){400 * FP8(1), 32 * FP8(1), 0};
+	world->racers.drivers[0].distanceToFinish_curr = 7600;
+	// Retail projects from the two nodes after the surface's checkpoint.
+	s_teleportGround.checkpointIndex = 0;
+	s_projectLapProgress = true;
+}
+
+static void TestTeleportProgressProjection(void)
+{
+	CTR_TEST_SECTION("Teleport geometry agrees with retail progress projection on placement and the following frame");
+	struct TeleportWorld world;
+	SetupProjectedTeleport(&world);
+	struct Driver *driver = &world.racers.drivers[0];
+	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	CTR_TEST_CHECK_EQ(driver->posCurr.x, 1200 * FP8(1), "one tenth of an 8000-unit circuit moves 800 world units");
+	PlayLevel_UpdateLapStats();
+	CTR_TEST_CHECK_EQ(driver->distanceToFinish_curr, 6800, "projected distance matches the main-route destination");
+	CTR_TEST_CHECK(driver->distanceToFinish_curr == 6800 && driver->distanceToFinish_checkpoint == 6800 && driver->lapIndex == 0,
+	               "real progress projection agrees with the interpolated destination and anti-cut baseline");
+	PlayLevel_UpdateLapStats();
+	CTR_TEST_CHECK(driver->distanceToFinish_curr == 6800 && driver->distanceDrivenBackwards == 0 && driver->lapIndex == 0,
+	               "the next frame leaves progress stable without a false reverse penalty or lap");
+
+	CTR_TEST_SECTION("a teleported finish crossing remains stable after real progress projection");
+	SetupProjectedTeleport(&world);
+	driver->checkpoint.currentIndex = 9;
+	driver->distanceToFinish_curr = 400;
+	s_teleportGround.checkpointIndex = 9;
+	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	PlayLevel_UpdateLapStats();
+	CTR_TEST_CHECK_EQ(driver->distanceToFinish_curr, 7600, "projected distance matches the wrapped destination");
+	CTR_TEST_CHECK(driver->distanceToFinish_curr == 7600 && driver->lapIndex == 1,
+	               "the ground checkpoint projects across the seam and records exactly one lap");
+	PlayLevel_UpdateLapStats();
+	CTR_TEST_CHECK(driver->distanceToFinish_curr == 7600 && driver->lapIndex == 1 && driver->distanceDrivenBackwards == 0,
+	               "a second projected frame does not repeat the skipped finish crossing");
+
+	CTR_TEST_SECTION("selected branch surfaces preserve progress under the real retail projection");
+	SetupProjectedTeleport(&world);
+	world.level.cnt_restart_points = 13;
+	world.nodes[1].nextIndex_left = 10;
+	world.nodes[10] = (struct CheckpointNode){
+		.pos = {800, 32, 800}, .distToFinish = 800, .nextIndex_forward = 11,
+		.nextIndex_backward = 1, .nextIndex_left = 0xff, .nextIndex_right = 0xff,
+	};
+	world.nodes[11] = (struct CheckpointNode){
+		.pos = {1600, 32, 800}, .distToFinish = 700, .nextIndex_forward = 4,
+		.nextIndex_backward = 10, .nextIndex_left = 0xff, .nextIndex_right = 0xff,
+	};
+	world.nodes[12] = (struct CheckpointNode){
+		.pos = world.nodes[1].pos, .distToFinish = 900, .nextIndex_forward = 10,
+		.nextIndex_backward = 0, .nextIndex_left = 0xff, .nextIndex_right = 0xff,
+	};
+	driver->distanceToFinish_curr = 6800;
+	driver->checkpoint.branchChoiceIndex = 11;
+	s_teleportGround.checkpointIndex = 12;
+	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	CTR_TEST_CHECK(driver->posCurr.x == 1200 * FP8(1) && driver->posCurr.z == 800 * FP8(1),
+	               "the selected alternate route receives the interpolated destination");
+	PlayLevel_UpdateLapStats();
+	PlayLevel_UpdateLapStats();
+	CTR_TEST_CHECK_EQ(driver->distanceToFinish_curr, 6000, "projected distance matches the alternate-route destination");
+	CTR_TEST_CHECK(driver->distanceToFinish_curr == 6000 && driver->distanceToFinish_checkpoint == 6000 &&
+	               driver->checkpoint.currentIndex == 12 && driver->checkpoint.branchChoiceIndex == 11 && driver->lapIndex == 0,
+	               "the alternate surface, branch selection and progress remain coherent on subsequent frames");
+	s_projectLapProgress = false;
+}
+
+static void TestTeleport(void)
+{
+	CTR_TEST_SECTION("Teleport moves each unfinished human forward one tenth of a lap, preserving motion and inventory");
+	struct TeleportWorld world;
+	SetupTeleport(&world, 2, 1);
+	world.racers.drivers[1].axisRotationY = 0x100;
+	const struct Driver bot = world.racers.drivers[2];
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000), "Teleport activates as an instant effect");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 0, "Teleport does not occupy a timed slot");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numInstantNotices, 1, "Teleport announces once across both humans");
+	for (int i = 0; i < 2; i++)
+	{
+		const struct Driver *driver = &world.racers.drivers[i];
+		CTR_TEST_CHECK(driver->posCurr.x == 1500 * 256 && driver->posCurr.y == 32 * 256 && driver->posCurr.z == 0,
+		               "the destination interpolates along the path instead of selecting a whole checkpoint");
+		CTR_TEST_CHECK(driver->distanceToFinish_curr == 68000 && driver->distanceToFinish_checkpoint == 68000 &&
+		               driver->checkpoint.currentIndex == 1 && driver->lastValid == &s_teleportGround &&
+		               driver->underDriver == &s_teleportGround && driver->terrainMeta1 == driver->terrainMeta2,
+		               "the current terrain and anti-cut references describe the destination");
+		CTR_TEST_CHECK(driver->posPrev.x == driver->posCurr.x && driver->angle == ANG_HALF_PI &&
+		               driver->axisRotationX == ANG_HALF_PI && driver->rotCurr.w == 0,
+		               "orientation faces forward along the destination segment without sweeping the skipped world");
+		CTR_TEST_CHECK(driver->speed == 1000 && driver->speedApprox == 1000 && driver->baseSpeed == 900 &&
+		               driver->fireSpeed == 100 && driver->reserves == 2345 && driver->turbo_outsideTimer == 400 &&
+		               driver->heldItemID == HELD_ITEM_MISSILE_3X && driver->numHeldItems == 3,
+		               "speed, turbo state and held inventory survive repositioning");
+		CTR_TEST_CHECK(Chaos_ConsumeCameraBlend(&s_tracker.cameraDC[i]), "each viewport requests a destination camera blend");
+		CTR_TEST_CHECK(!Chaos_ConsumeTeleportLapCrossing(driver), "moving within the lap does not invent a finish crossing");
+	}
+	CTR_TEST_CHECK(world.racers.drivers[1].ySpeed > 0, "airborne vertical motion survives the yaw realignment");
+	CTR_TEST_CHECK(memcmp(&bot, &world.racers.drivers[2], sizeof(bot)) == 0, "Teleport leaves bot karts untouched");
+	SetupTeleport(&world, 1, 0);
+	const struct ChaosActivation fullSlots[CHAOS_MAX_ACTIVATIONS] = {
+		{.effect = CHAOS_EFFECT_INVERTED_STEERING, .remainingMS = 5000},
+		{.effect = CHAOS_EFFECT_LOW_GRAVITY, .remainingMS = 5000},
+		{.effect = CHAOS_EFFECT_SPEED_CAPPED, .remainingMS = 5000},
+		{.effect = CHAOS_EFFECT_NO_ITEMS, .remainingMS = 5000},
+	};
+	memcpy(sdata->chaosRuntime.active, fullSlots, sizeof(fullSlots));
+	sdata->chaosRuntime.numActive = CHAOS_MAX_ACTIVATIONS;
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000) &&
+	               memcmp(sdata->chaosRuntime.active, fullSlots, sizeof(fullSlots)) == 0,
+	               "Teleport works at full timed capacity without changing existing activations");
+
+	CTR_TEST_SECTION("Teleport follows the retail branch selection and otherwise takes the main route");
+	SetupTeleport(&world, 1, 0);
+	world.level.cnt_restart_points = 12;
+	world.nodes[1].nextIndex_left = 10;
+	world.nodes[10] = (struct CheckpointNode){
+		.pos = {1500, 32, 500}, .distToFinish = 8500, .nextIndex_forward = 11,
+		.nextIndex_backward = 1, .nextIndex_left = 0xff, .nextIndex_right = 0xff,
+	};
+	world.nodes[11] = (struct CheckpointNode){
+		.pos = {1800, 32, 500}, .distToFinish = 8200, .nextIndex_forward = 2,
+		.nextIndex_backward = 10, .nextIndex_left = 0xff, .nextIndex_right = 0xff,
+	};
+	world.racers.drivers[0].checkpoint.branchChoiceIndex = 11;
+	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	CTR_TEST_CHECK(world.racers.drivers[0].posCurr.x == 1500 * 256 && world.racers.drivers[0].posCurr.z == 500 * 256,
+	               "an already selected alternate branch is resolved by the real retail path helper");
+	SetupTeleport(&world, 1, 0);
+	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	CTR_TEST_CHECK_EQ(world.racers.drivers[0].posCurr.z, 0, "without a branch selection the main path remains the default");
+
+	CTR_TEST_SECTION("finish crossings are queued for retail lap/results handling and travel with the kart through Body Swap");
+	SetupTeleport(&world, 1, 1);
+	world.racers.drivers[0].distanceToFinish_curr = 4000;
+	world.racers.drivers[0].checkpoint.currentIndex = 9;
+	s_teleportGround.checkpointIndex = 0;
+	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	CTR_TEST_CHECK_EQ(world.racers.drivers[0].distanceToFinish_curr, 76000, "forward movement wraps across the finish line");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.teleportForwardCrossings[0], 1, "the crossing survives until lap statistics run");
+	const struct ChaosRuntime checkpoint = sdata->chaosRuntime;
+	CTR_TEST_CHECK(Chaos_ConsumeTeleportLapCrossing(&world.racers.drivers[0]), "a pending crossing can be consumed before restore");
+	sdata->chaosRuntime = checkpoint;
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.teleportForwardCrossings[0], 1, "resident checkpoint restoration restores the pending crossing");
+	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.teleportForwardCrossings[1], 1, "an unconsumed crossing stays with the physical kart");
+	CTR_TEST_CHECK(Chaos_ConsumeTeleportLapCrossing(&world.racers.drivers[0]) &&
+	               !Chaos_ConsumeTeleportLapCrossing(&world.racers.drivers[0]), "lap processing consumes each crossing exactly once");
+	Chaos_Reset();
+	SetupTeleport(&world, 1, 1);
+	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
+	s_tracker.drivers[0]->lapIndex = 2;
+	s_tracker.drivers[0]->checkpoint.currentIndex = 9;
+	s_tracker.drivers[0]->distanceToFinish_curr = 4000;
+	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	Chaos_ReturnBodySwapsNearFinish(&s_tracker, 1200);
+	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.racers.drivers[0] && sdata->chaosRuntime.bodySwapPartner[0] == 0 &&
+	               sdata->chaosRuntime.teleportForwardCrossings[1] == 1,
+	               "a final-lap teleport returns the pair before the possessed kart records its finish");
+	Chaos_Reset();
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.teleportForwardCrossings[0] + sdata->chaosRuntime.teleportForwardCrossings[1], 0,
+	                  "reset discards pending crossings");
+
+	CTR_TEST_SECTION("Teleport finish crossings use the real lap statistics, lap times and race completion exactly once");
+	SetupTeleport(&world, 1, 0);
+	s_tracker.gameMode1 |= ARCADE_MODE;
+	s_tracker.elapsedEventTime = 10000;
+	world.racers.drivers[0].lapTime = 1000;
+	world.racers.drivers[0].checkpoint.currentIndex = 9;
+	world.racers.drivers[0].distanceToFinish_curr = 4000;
+	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	PlayLevel_UpdateLapStats();
+	CTR_TEST_CHECK(world.racers.drivers[0].lapIndex == 1 && world.racers.drivers[0].lapTime == 10000 &&
+	               s_teleportSavedLaps == 1 && s_teleportRaceEnds == 0,
+	               "a skipped finish crossing records the lap through the retail results path");
+	PlayLevel_UpdateLapStats();
+	CTR_TEST_CHECK(world.racers.drivers[0].lapIndex == 1 && s_teleportSavedLaps == 1,
+	               "the next frame does not count the same teleport as another lap");
+	SetupTeleport(&world, 1, 0);
+	s_tracker.gameMode1 |= ARCADE_MODE;
+	world.racers.drivers[0].checkpoint.currentIndex = 9;
+	world.racers.drivers[0].distanceToFinish_curr = 4000;
+	world.racers.drivers[0].lapIndex = 2;
+	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	PlayLevel_UpdateLapStats();
+	CTR_TEST_CHECK(world.racers.drivers[0].lapIndex == 3 &&
+	               (world.racers.drivers[0].actionsFlagSet & ACTION_RACE_FINISHED) != 0 &&
+	               sdata->numPlayersFinishedRace == 1 && s_teleportRaceEnds == 1 &&
+	               world.racers.drivers[0].heldItemID == HELD_ITEM_NONE,
+	               "a final-lap teleport records a normal finish and completes the event");
+	SetupTeleport(&world, 1, 0);
+	world.racers.drivers[0].checkpoint.currentIndex = 9;
+	world.racers.drivers[0].distanceToFinish_curr = 4000;
+	world.racers.drivers[0].actionsFlagSet |= ACTION_BEHIND_START_LINE;
+	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	PlayLevel_UpdateLapStats();
+	CTR_TEST_CHECK(world.racers.drivers[0].lapIndex == 0 &&
+	               (world.racers.drivers[0].actionsFlagSet & ACTION_BEHIND_START_LINE) == 0,
+	               "teleporting across the initial starting line begins the lap instead of awarding a completed lap");
+
+	CTR_TEST_SECTION("repositioning ends existing rescues/start holds and missing ground leaves the complete kart unchanged");
+	SetupTeleport(&world, 1, 0);
+	struct MaskHeadWeapon mask = {.duration = 1000};
+	world.racers.drivers[0].kartState = KS_MASK_GRABBED;
+	world.racers.drivers[0].KartStates.MaskGrab.maskObj = &mask;
+	world.racers.drivers[0].collisionFlags = DRIVER_COLL_FLAG_MASK_GRAB_REQUEST;
+	sdata->chaosRuntime.restart[0].pending = true;
+	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	CTR_TEST_CHECK(world.racers.drivers[0].kartState == KS_NORMAL && mask.duration == 0 &&
+	               world.racers.drivers[0].collisionFlags == 0 && !sdata->chaosRuntime.restart[0].pending,
+	               "the destination releases rescue state and prevents a deferred restart from moving the kart again");
+	SetupTeleport(&world, 1, 0);
+	s_teleportGroundMissing = true;
+	const struct Driver original = world.racers.drivers[0];
+	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	CTR_TEST_CHECK(memcmp(&original, &world.racers.drivers[0], sizeof(original)) == 0,
+	               "failure to find ground does not partially change inventory, motion or progression");
+	for (int mode = 0; mode < 2; mode++)
+	{
+		SetupTeleport(&world, 1, 0);
+		s_tracker.gameMode1 |= mode == 0 ? BATTLE_MODE : CRYSTAL_CHALLENGE;
+		CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000), "non-lap events reject Teleport before activation");
+		CTR_TEST_CHECK_EQ(s_teleportProbes, 0, "unavailable events never search world geometry");
+	}
+	SetupTeleport(&world, 1, 0);
+	s_tracker.gameMode1 |= PAUSE_1;
+	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000) && s_teleportProbes == 0,
+	               "pause prevents instant movement");
+	SetupTeleport(&world, 1, 0);
+	world.racers.drivers[0].actionsFlagSet |= ACTION_RACE_FINISHED;
+	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	CTR_TEST_CHECK_EQ(s_teleportProbes, 0, "finished humans are not repositioned");
 }
 
 static void TestWobbleSteering(void)
@@ -2172,11 +2520,11 @@ static void TestFreshStart(void)
 	CTR_TEST_CHECK(!sdata->chaosRuntime.restart[1].floating && instances[1].animIndex == 0 && instances[1].animFrame == 20, "grounded karts return directly to the neutral forward-facing frame");
 	for (int i = 0; i < 2; i++)
 	{
-		CTR_TEST_CHECK(Chaos_ConsumeStartCameraBlend(&s_tracker.cameraDC[i]), "each human's camera starts the existing recovery blend at activation");
-		CTR_TEST_CHECK(!Chaos_ConsumeStartCameraBlend(&s_tracker.cameraDC[i]), "the camera blend is not restarted on every countdown frame");
+		CTR_TEST_CHECK(Chaos_ConsumeCameraBlend(&s_tracker.cameraDC[i]), "each human's camera starts the existing recovery blend at activation");
+		CTR_TEST_CHECK(!Chaos_ConsumeCameraBlend(&s_tracker.cameraDC[i]), "the camera blend is not restarted on every countdown frame");
 	}
 	struct CameraDC botCamera = {.driverToFollow = &bot};
-	CTR_TEST_CHECK(!Chaos_ConsumeStartCameraBlend(&botCamera), "bot cameras do not consume a human restart transition");
+	CTR_TEST_CHECK(!Chaos_ConsumeCameraBlend(&botCamera), "bot cameras do not consume a human restart transition");
 	CTR_TEST_CHECK_EQ(Chaos_StartTimerForDriver(&bot), DOT_LIGHT_TIMER_SHOW_MIN - 1, "bots continue to see the completed global countdown");
 	CTR_TEST_CHECK(bot.speed == 9000 && bot.reserves == 1000, "restart does not stop or drain bots");
 	s_tracker.gameMode1 |= PAUSE_ALL;
@@ -2203,9 +2551,9 @@ static void TestFreshStart(void)
 	Chaos_Activate(CHAOS_EFFECT_FRESH_START, 1000);
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.restart[0].timer, DOT_LIGHT_TIMER_HIDE, "repeated activation starts a fresh countdown");
 	s_tracker.cameraDC[0].cameraMode = CAMERA_MODE_FREECAM;
-	CTR_TEST_CHECK(!Chaos_ConsumeStartCameraBlend(&s_tracker.cameraDC[0]), "a non-follow camera is not redirected by the restart blend");
+	CTR_TEST_CHECK(!Chaos_ConsumeCameraBlend(&s_tracker.cameraDC[0]), "a non-follow camera is not redirected by the restart blend");
 	s_tracker.cameraDC[0].cameraMode = 0;
-	CTR_TEST_CHECK(Chaos_ConsumeStartCameraBlend(&s_tracker.cameraDC[0]), "repeated activation requests a fresh blend when driver follow resumes");
+	CTR_TEST_CHECK(Chaos_ConsumeCameraBlend(&s_tracker.cameraDC[0]), "repeated activation requests a fresh blend when driver follow resumes");
 	s_tracker.drivers[1]->actionsFlagSet |= ACTION_RACE_FINISHED;
 	Chaos_Activate(CHAOS_EFFECT_FRESH_START, 1000);
 	Tick(1);
@@ -2217,7 +2565,7 @@ static void TestFreshStart(void)
 	Chaos_Activate(CHAOS_EFFECT_FRESH_START, 1000);
 	Tick(960);
 	CTR_TEST_CHECK(sdata->chaosRuntime.restart[0].pending && !sdata->chaosRuntime.restart[0].active, "an ongoing rescue delays both the hold and its traffic lights");
-	CTR_TEST_CHECK(!Chaos_ConsumeStartCameraBlend(&s_tracker.cameraDC[0]), "pending restart does not disturb the camera during an ongoing rescue");
+	CTR_TEST_CHECK(!Chaos_ConsumeCameraBlend(&s_tracker.cameraDC[0]), "pending restart does not disturb the camera during an ongoing rescue");
 	s_tracker.drivers[0]->kartState = KS_ENGINE_REVVING;
 	s_tracker.drivers[0]->KartStates.RevEngine.boolMaskGrab = true;
 	Tick(960);
@@ -2225,7 +2573,7 @@ static void TestFreshStart(void)
 	s_tracker.drivers[0]->kartState = KS_NORMAL;
 	Tick(1);
 	CTR_TEST_CHECK(sdata->chaosRuntime.restart[0].active && sdata->chaosRuntime.restart[0].timer == DOT_LIGHT_TIMER_HIDE, "rescue completion starts a full independent countdown");
-	CTR_TEST_CHECK(Chaos_ConsumeStartCameraBlend(&s_tracker.cameraDC[0]), "the deferred restart blends only after rescue completion");
+	CTR_TEST_CHECK(Chaos_ConsumeCameraBlend(&s_tracker.cameraDC[0]), "the deferred restart blends only after rescue completion");
 	Chaos_Reset();
 	CTR_TEST_CHECK_EQ(Chaos_StartTimerForDriver(s_tracker.drivers[0]), DOT_LIGHT_TIMER_SHOW_MIN - 1, "reset releases local start gating");
 	s_tracker.trafficLightsTimer = DOT_LIGHT_TIMER_HIDE;
@@ -3085,6 +3433,8 @@ int main(void)
 	TestTrySomethingNew();
 	TestIdentityCrisis();
 	TestBodySwap();
+	TestTeleport();
+	TestTeleportProgressProjection();
 	TestWobbleSteering();
 	TestGravityEffects();
 	TestSpeedEffects();

@@ -20,6 +20,10 @@ static bool Chaos_TargetsDriver(ChaosEffectId effect, const struct Driver *drive
 static bool Chaos_EffectFitsEvent(ChaosEffectId effect)
 {
 	const ChaosEffectDef *def = ChaosEffect_Def(effect);
+	if (effect == CHAOS_EFFECT_TELEPORT)
+	{
+		return (sdata->gGT->gameMode1 & (BATTLE_MODE | CRYSTAL_CHALLENGE)) == 0;
+	}
 	return def->scope != CHAOS_SCOPE_BOTS || (sdata->gGT->gameMode1 & RACE_FIELD_NO_BOT_MODES) == 0;
 }
 
@@ -119,7 +123,8 @@ void Chaos_ReturnBodySwapsNearFinish(struct GameTracker *tracker, int nearDistan
 	{
 		struct Driver *driver = tracker->drivers[slot];
 		if (sdata->chaosRuntime.bodySwapPartner[slot] != 0 && driver != NULL &&
-		    driver->lapIndex + 1 >= tracker->numLaps && driver->distanceToFinish_curr < (u32)nearDistance &&
+		    driver->lapIndex + 1 >= tracker->numLaps &&
+		    (driver->distanceToFinish_curr < (u32)nearDistance || sdata->chaosRuntime.teleportForwardCrossings[slot] != 0) &&
 		    (driver->actionsFlagSet & ACTION_BEHIND_START_LINE) == 0)
 		{
 			Chaos_ReturnBodySwap(slot);
@@ -349,6 +354,9 @@ static void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation)
 					break;
 				case CHAOS_EFFECT_IDENTITY_CRISIS:
 					Chaos_ChangeIdentity(driver);
+					break;
+				case CHAOS_EFFECT_TELEPORT:
+					Chaos_TeleportDriver(driver);
 					break;
 				case CHAOS_EFFECT_CLOCK_CURSE:
 					Chaos_ApplyClockCurse(driver, chaosActivation->remainingMS);

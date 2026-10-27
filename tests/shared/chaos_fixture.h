@@ -14,6 +14,34 @@ enum { VEH_BIRTH_WHEEL_SIZE = 0xccc };
 static struct GameTracker s_tracker;
 static struct GamepadSystem s_gamepads;
 static struct Driver s_defaultDrivers[2];
+static struct QuadBlock s_teleportGround;
+static bool s_teleportGroundMissing;
+static SVec3 s_teleportProbe;
+static int s_teleportProbes;
+static bool s_allowRaceEnd;
+static int s_teleportRaceEnds;
+
+void COLL_SearchBSP_CallbackQUADBLK(const SVec3 *top, const SVec3 *bottom, struct ScratchpadStruct *sps, s32 radius)
+{
+	(void)radius;
+	s_teleportProbe = (SVec3){top->x, (top->y + bottom->y) / 2, top->z};
+	s_teleportProbes++;
+	sps->boolDidTouchQuadblock = !s_teleportGroundMissing;
+	sps->hit.ptrQuadblock = &s_teleportGround;
+	sps->hit.plane.normal = (SVec3){0, FP_ONE, 0};
+	sps->Union.QuadBlockColl.hitPos = s_teleportProbe;
+}
+
+static void TestTeleportMatrix(MATRIX *matrix, s16 *normal, s32 yaw)
+{
+	(void)normal;
+	*matrix = (MATRIX){0};
+	matrix->m[0][0] = MATH_Sin(yaw + ANG_HALF_PI);
+	matrix->m[0][2] = MATH_Sin(yaw);
+	matrix->m[1][1] = FP_ONE;
+	matrix->m[2][0] = -MATH_Sin(yaw);
+	matrix->m[2][2] = MATH_Sin(yaw + ANG_HALF_PI);
+}
 
 static void TestBotTick(struct Thread *thread)
 {
@@ -231,7 +259,12 @@ void VehStuckProc_RIP_Init(struct Thread *thread, struct Driver *driver)
 
 void MainGameEnd_Initialize(void)
 {
-	CtrTest_Bail("Wumpa crediting must not end the race");
+	if (!s_allowRaceEnd)
+	{
+		CtrTest_Bail("Wumpa crediting must not end the race");
+	}
+	s_teleportRaceEnds++;
+	s_tracker.gameMode1 |= END_OF_RACE;
 }
 
 s32 MixRNG_Scramble(void)
@@ -319,7 +352,10 @@ static void CaptureLaunchVelocity(struct Driver *driver, Vec3 *velocity)
 }
 
 #define VehPhysCrash_ConvertVecToSpeed CaptureLaunchVelocity
+#define VehPhysForce_RotAxisAngle TestTeleportMatrix
+#include <game/231/RB_Warpball_Path.c>
 #include <game/231/RB_ChaosEffects.c>
+#undef VehPhysForce_RotAxisAngle
 #undef VehPhysCrash_ConvertVecToSpeed
 #include <game/231/RB_Chaos.c>
 
@@ -627,6 +663,7 @@ struct Particle *Particle_Init(u32 flags, struct IconGroup *icons, struct Partic
 
 static void SetupRace(int trigger)
 {
+	s_allowRaceEnd = false;
 	memset(data.metaPhys, 0, sizeof(data.metaPhys));
 	memset(data.MetaDataCharacters, 0, sizeof(data.MetaDataCharacters));
 	memset(data.characterIDs, 0, sizeof(data.characterIDs));
