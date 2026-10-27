@@ -117,6 +117,7 @@ enabled in the file. Setup and a manual submission example are in the
 | **Fresh Start** | Stop humans, clear reserves and replay the starting lights with starting boost available. Airborne karts are held aloft in the rescue falling pose by an orbiting mask; other karts return to neutral. An ongoing rescue finishes before the lights start. Bots keep racing. |
 | **Senile Mask** | Flash the wrong-way warning only while humans drive in the correct direction; suppress the warning and voice when actually going the wrong way. The mask voice repeats with half its normal cooldown, without overlapping speech. Race progress is unaffected. |
 | **Identity Crisis** | Switch each human to a random playable character not currently present in the race, regardless of unlocks, with that character's driving class and engine sound until race end. A brief smoke poof and the invisibility sound accompany the transformation. Preserve race state and inventory. The latest class change from this effect or Try Something New wins. |
+| **Body Swap** | Temporarily exchange karts with another human or bot in random disjoint pairs. Take the kart's character, current class, inventory, damage and race progress; human driving modifiers follow the player. Control and camera switch immediately, including during rescues. Return at expiry or on either kart's final finish-line approach. |
 
 Effects can overlap: Duration does not delay the next trigger. For example,
 Duration 30 seconds with Interval 10 seconds allows several effects at once.

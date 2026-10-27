@@ -1534,6 +1534,8 @@ void VehPhysProc_Driving_Update(struct Thread *t, struct Driver *d)
 }
 
 
+#include "VehPhysProc_TakeControl.c"
+
 void VehPhysProc_Driving_Init(struct Thread *t, struct Driver *d)
 {
 	if (Chaos_IsWaitingForStart(d))

@@ -42,6 +42,38 @@ static void Chaos_PlaySenileVoice(struct Driver *driver)
 	sdata->voicelineCooldown /= CHAOS_WRONG_WAY_CADENCE_MULTIPLIER;
 }
 
+bool Chaos_OverridesWrongWayWarning(const struct Driver *driver)
+{
+	return Chaos_IsActiveForDriver(CHAOS_EFFECT_SENILE_MASK, driver);
+}
+
+void Chaos_DrawWrongWayWarnings(struct GameTracker *gGT)
+{
+	for (int i = 0; i < gGT->numPlyrCurrGame; i++)
+	{
+		const struct Driver *driver = gGT->drivers[i];
+		if (Chaos_OverridesWrongWayWarning(driver) && (driver->actionsFlagSet & ACTION_DRIVING_WRONG_WAY) == 0)
+		{
+			UI_DrawWrongWay(driver);
+		}
+	}
+}
+
+bool Chaos_PlayWrongWayVoice(void)
+{
+	struct GameTracker *gGT = sdata->gGT;
+	for (int i = 0; i < gGT->numPlyrCurrGame; i++)
+	{
+		struct Driver *driver = gGT->drivers[i];
+		if (Chaos_OverridesWrongWayWarning(driver) && (driver->actionsFlagSet & ACTION_DRIVING_WRONG_WAY) == 0)
+		{
+			Chaos_PlaySenileVoice(driver);
+			return true;
+		}
+	}
+	return false;
+}
+
 static void Chaos_SetTopDownCamera(struct CameraDC *camera, const struct Driver *driver)
 {
 	struct PushBuffer *pushBuffer = camera->pushBuffer;
@@ -133,6 +165,19 @@ static u32 Chaos_AnalogActions(const struct GamepadBuffer *pad)
 		actions |= BTN_SQUARE_one;
 	}
 	return actions;
+}
+
+static void Chaos_UpdateControlAxes(void)
+{
+	for (int i = 0; i < (int)len(sdata->chaosRuntime.controls); i++)
+	{
+		if (Chaos_IsActiveForDriver(CHAOS_EFFECT_WHO_BOUND_THIS, sdata->gGT->drivers[i]))
+		{
+			struct ChaosControlShuffle *controls = &sdata->chaosRuntime.controls[i];
+			controls->analogPrev = controls->analogHeld;
+			controls->analogHeld = Chaos_AnalogActions(&GAMEPADS->gamepad[i]);
+		}
+	}
 }
 
 static void Chaos_ShuffleControls(struct ChaosControlShuffle *controls, const struct GamepadBuffer *pad)
@@ -274,6 +319,12 @@ static void Chaos_UpdateRestartMask(struct ChaosRestart *restart, const struct D
 	}
 }
 
+static bool Chaos_IsBeingRescued(const struct Driver *driver)
+{
+	return driver->kartState == KS_MASK_GRABBED ||
+	    (driver->kartState == KS_ENGINE_REVVING && driver->KartStates.RevEngine.boolMaskGrab);
+}
+
 static void Chaos_RestartDriver(struct Driver *driver, struct ChaosRestart *restart)
 {
 	restart->active = true;
@@ -325,6 +376,77 @@ static void Chaos_TickRestart(struct ChaosRestart *restart, struct Driver *drive
 	if (restart->timer < DOT_LIGHT_TIMER_SHOW_MIN || (driver->actionsFlagSet & ACTION_RACE_FINISHED))
 	{
 		restart->active = false;
+	}
+}
+
+int Chaos_StartTimerForDriver(const struct Driver *driver)
+{
+	const struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	if (driver->driverID < (int)len(runtime->restart) && runtime->restart[driver->driverID].active)
+	{
+		return runtime->restart[driver->driverID].timer;
+	}
+	return GAME_TRACKER->trafficLightsTimer;
+}
+
+bool Chaos_IsWaitingForStart(const struct Driver *driver)
+{
+	return driver->driverID < (int)len(sdata->chaosRuntime.restart) &&
+	    sdata->chaosRuntime.restart[driver->driverID].active &&
+	    sdata->chaosRuntime.restart[driver->driverID].timer > 0;
+}
+
+bool Chaos_ConsumeStartCameraBlend(struct CameraDC *camera)
+{
+	const struct Driver *driver = camera->driverToFollow;
+	if (driver == NULL || driver->driverID >= (int)len(sdata->chaosRuntime.restart) || camera->cameraMode != 0 ||
+	    (camera->flags & CAMERA_FLAG_ARCADE_END_OF_RACE_REQUESTED))
+	{
+		return false;
+	}
+	struct ChaosRestart *restart = &sdata->chaosRuntime.restart[driver->driverID];
+	bool pending = sdata->chaosRuntime.bodySwapCameraBlend[driver->driverID];
+	sdata->chaosRuntime.bodySwapCameraBlend[driver->driverID] = false;
+	if (Chaos_IsWaitingForStart(driver))
+	{
+		pending |= restart->cameraBlendPending;
+		restart->cameraBlendPending = false;
+	}
+	return pending;
+}
+
+void Chaos_ApplyStartPose(struct Driver *driver)
+{
+	if (Chaos_IsWaitingForStart(driver) && sdata->chaosRuntime.restart[driver->driverID].floating)
+	{
+		VehStuckProc_MaskGrab_SetFallPose(driver);
+	}
+}
+
+static void Chaos_UpdateRestarts(s32 elapsedMS)
+{
+	for (int i = 0; i < (int)len(sdata->chaosRuntime.restart); i++)
+	{
+		struct ChaosRestart *restart = &sdata->chaosRuntime.restart[i];
+		struct Driver *driver = sdata->gGT->drivers[i];
+		if (driver == NULL)
+		{
+			continue;
+		}
+		if ((driver->actionsFlagSet & ACTION_RACE_FINISHED) && restart->pending)
+		{
+			restart->pending = false;
+		}
+		if (restart->pending && !Chaos_IsBeingRescued(driver))
+		{
+			Chaos_RestartDriver(driver, restart);
+			continue;
+		}
+		if (!restart->active)
+		{
+			continue;
+		}
+		Chaos_TickRestart(restart, driver, elapsedMS);
 	}
 }
 
@@ -485,6 +607,17 @@ static void Chaos_ChangeDrivingClass(struct Driver *driver)
 	Chaos_SetDrivingClass(driver, next);
 }
 
+int Chaos_EngineClassForDriver(const struct Driver *driver, int engineClass)
+{
+	if (driver != NULL && driver->driverID < (int)len(sdata->chaosRuntime.engineClass) &&
+	    sdata->chaosRuntime.engineClassChanged[driver->driverID] &&
+	    sdata->gGT->drivers[driver->driverID] == driver)
+	{
+		return sdata->chaosRuntime.engineClass[driver->driverID];
+	}
+	return engineClass;
+}
+
 static void Chaos_PreloadCharacterModels(struct BigHeader *bigfile)
 {
 	for (int character = 0; character < GAME_CHARACTER_COUNT; character++)
@@ -552,6 +685,27 @@ static void Chaos_TickTransformation(struct ChaosIdentity *identity, struct Driv
 	}
 }
 
+static void Chaos_UpdateTransformations(struct GameTracker *gGT)
+{
+	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	for (int i = 0; i < (int)len(runtime->identity); i++)
+	{
+		struct ChaosIdentity *identity = &runtime->identity[i];
+		struct Driver *driver = gGT->drivers[i];
+		if (identity->transformRemainingMS > 0 && driver != NULL)
+		{
+			if ((driver->actionsFlagSet & ACTION_RACE_FINISHED) != 0)
+			{
+				identity->transformRemainingMS = 0;
+			}
+			else
+			{
+				Chaos_TickTransformation(identity, driver, gGT->elapsedTimeMS);
+			}
+		}
+	}
+}
+
 static void Chaos_ChangeIdentity(struct Driver *driver)
 {
 	bool present[GAME_CHARACTER_COUNT] = {0};
@@ -596,6 +750,132 @@ static void Chaos_ChangeIdentity(struct Driver *driver)
 	identity->pendingCharacter = character;
 	identity->transformRemainingMS = CHAOS_TRANSFORM_DELAY_MS;
 	Chaos_SpawnTransformationSmoke(driver);
+}
+
+static void Chaos_MoveDriverThread(struct Driver *driver, int from, int to)
+{
+	struct Thread *thread = driver->instSelf->thread;
+	struct Thread **link = &GAME_TRACKER->threadBuckets[from].thread;
+	while (*link != thread)
+	{
+		link = &(*link)->siblingThread;
+	}
+	*link = thread->siblingThread;
+	thread->siblingThread = GAME_TRACKER->threadBuckets[to].thread;
+	GAME_TRACKER->threadBuckets[to].thread = thread;
+	thread->flags = (thread->flags & ~0xffu) | to;
+}
+
+static void Chaos_RefreshBodySwapModifiers(void)
+{
+	for (int player = 0; player < GAME_TRACKER->numPlyrCurrGame; player++)
+	{
+		struct Driver *driver = GAME_TRACKER->drivers[player];
+		if (driver == NULL || (driver->actionsFlagSet & ACTION_RACE_FINISHED) != 0)
+		{
+			continue;
+		}
+		if (Chaos_IsActive(CHAOS_EFFECT_GIANT_KARTS))
+		{
+			Chaos_SetKartScale(CHAOS_GIANT_SCALE, driver);
+		}
+		else if (Chaos_IsActive(CHAOS_EFFECT_SMALL_KART_ENERGY))
+		{
+			Chaos_SetKartScale(s_chaosSmallScale, driver);
+		}
+		if (Chaos_IsActive(CHAOS_EFFECT_THIS_IS_FIRE))
+		{
+			Chaos_UpgradeTurbo(driver);
+		}
+	}
+}
+
+static void Chaos_FollowBody(int player, struct Driver *driver)
+{
+	struct CameraDC *camera = &GAME_TRACKER->cameraDC[player];
+	camera->driverToFollow = driver;
+	camera->flags &= ~CAMERA_FLAG_MASK_GRAB;
+	camera->flags |= CAMERA_FLAG_DIRECTION_CHANGED | CAMERA_FLAG_RESET_RAIN_POS;
+	memset(&camera->BlastedLerp, 0, sizeof(camera->BlastedLerp));
+	camera->heightSmoothing = (struct CameraHeightSmoothing){0};
+	sdata->chaosRuntime.bodySwapCameraBlend[player] = true;
+}
+
+static void Chaos_SwapBodies(int first, int second)
+{
+	struct GameTracker *tracker = GAME_TRACKER;
+	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	struct Driver *a = tracker->drivers[first];
+	struct Driver *b = tracker->drivers[second];
+	const bool aHuman = first < tracker->numPlyrCurrGame;
+	const bool bHuman = second < tracker->numPlyrCurrGame;
+	const int aEngine = Chaos_EngineClassForDriver(a, GAME_CHARACTER_METADATA[GAME_CHARACTER_IDS[first]].engineID);
+	const int bEngine = Chaos_EngineClassForDriver(b, GAME_CHARACTER_METADATA[GAME_CHARACTER_IDS[second]].engineID);
+	const s16 character = GAME_CHARACTER_IDS[first];
+	GAME_CHARACTER_IDS[first] = GAME_CHARACTER_IDS[second];
+	GAME_CHARACTER_IDS[second] = character;
+	tracker->drivers[first] = b;
+	tracker->drivers[second] = a;
+	a->driverID = second;
+	b->driverID = first;
+
+	const struct ChaosIdentity identity = runtime->identity[first];
+	runtime->identity[first] = runtime->identity[second];
+	runtime->identity[second] = identity;
+	const u8 engine = runtime->engineClass[first];
+	const bool changed = runtime->engineClassChanged[first];
+	runtime->engineClass[first] = runtime->engineClass[second];
+	runtime->engineClassChanged[first] = runtime->engineClassChanged[second];
+	runtime->engineClass[second] = engine;
+	runtime->engineClassChanged[second] = changed;
+
+	Chaos_SetKartScale(CHAOS_KART_SCALE_NORMAL, a);
+	Chaos_SetKartScale(CHAOS_KART_SCALE_NORMAL, b);
+	if (aHuman != bHuman)
+	{
+		struct Driver *human = aHuman ? b : a;
+		struct Driver *bot = aHuman ? a : b;
+		Chaos_MoveDriverThread(human, ROBOT, PLAYER);
+		Chaos_MoveDriverThread(bot, PLAYER, ROBOT);
+		LIST_RemoveMember(&sdata->navBotList[human->botData.botPath], &human->botData.item);
+		VehPhysProc_TakeControl(human);
+		bot->instSelf->thread->modelIndex = DYNAMIC_ROBOT_CAR;
+		BOTS_Driver_Resume(bot);
+	}
+	if (aHuman)
+	{
+		Chaos_ChangeEngineAudio(b, aEngine, bEngine);
+		Chaos_FollowBody(first, b);
+		runtime->touchingTurboPad[first] = false;
+	}
+	if (bHuman)
+	{
+		Chaos_ChangeEngineAudio(a, bEngine, aEngine);
+		Chaos_FollowBody(second, a);
+		runtime->touchingTurboPad[second] = false;
+	}
+}
+
+static void Chaos_ReturnBodySwap(int first)
+{
+	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	const int second = runtime->bodySwapPartner[first] - 1;
+	runtime->bodySwapPartner[first] = 0;
+	runtime->bodySwapPartner[second] = 0;
+	Chaos_SwapBodies(first, second);
+}
+
+static void Chaos_ReturnBodySwaps(void)
+{
+	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	for (int first = 0; first < (int)len(runtime->bodySwapPartner); first++)
+	{
+		const int second = runtime->bodySwapPartner[first] - 1;
+		if (second > first)
+		{
+			Chaos_ReturnBodySwap(first);
+		}
+	}
 }
 
 static void Chaos_LaunchDriver(struct Driver *driver)

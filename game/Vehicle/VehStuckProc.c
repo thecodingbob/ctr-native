@@ -1441,6 +1441,23 @@ void VehStuckProc_Tumble_Animate(struct Thread *thread, struct Driver *driver)
 }
 
 
+void VehStuckProc_Tumble_SetFunctions(struct Driver *driver)
+{
+	driver->funcPtrs[DRIVER_FUNC_UPDATE] = VehStuckProc_Tumble_Update;
+	driver->funcPtrs[DRIVER_FUNC_PHYS_LINEAR] = VehStuckProc_Tumble_PhysLinear;
+	driver->funcPtrs[DRIVER_FUNC_AUDIO] = VehPhysProc_Driving_Audio;
+	driver->funcPtrs[DRIVER_FUNC_PHYS_ANGULAR] = VehStuckProc_Tumble_PhysAngular;
+	driver->funcPtrs[DRIVER_FUNC_APPLY_FORCES] = VehPhysForce_OnApplyForces;
+	driver->funcPtrs[DRIVER_FUNC_COLL_MOVED] = COLL_MOVED_PlayerSearch;
+	driver->funcPtrs[DRIVER_FUNC_COLLIDE_DRIVERS] = VehPhysForce_CollideDrivers;
+	driver->funcPtrs[DRIVER_FUNC_COLL_FIXED] = COLL_FIXED_PlayerSearch;
+	driver->funcPtrs[DRIVER_FUNC_JUMP_FRICTION] = VehPhysGeneral_JumpAndFriction;
+	driver->funcPtrs[DRIVER_FUNC_TRANSLATE_MATRIX] = VehPhysForce_TranslateMatrix;
+	driver->funcPtrs[DRIVER_FUNC_ANIMATE] = VehStuckProc_Tumble_Animate;
+	driver->funcPtrs[DRIVER_FUNC_INIT] = NULL;
+	driver->funcPtrs[DRIVER_FUNC_PARTICLES] = VehEmitter_DriverMain;
+}
+
 void VehStuckProc_Tumble_Init(struct Thread *thread, struct Driver *driver)
 {
 	int numAnimFrames;
@@ -1467,19 +1484,7 @@ void VehStuckProc_Tumble_Init(struct Thread *thread, struct Driver *driver)
 	rng = MixRNG_Scramble();
 	driver->KartStates.Blasted.boolPlayBackwards = rng & VEH_TUMBLE_BACKWARDS_RNG_MASK;
 
-	driver->funcPtrs[DRIVER_FUNC_UPDATE] = VehStuckProc_Tumble_Update;
-	driver->funcPtrs[DRIVER_FUNC_PHYS_LINEAR] = VehStuckProc_Tumble_PhysLinear;
-	driver->funcPtrs[DRIVER_FUNC_AUDIO] = VehPhysProc_Driving_Audio;
-	driver->funcPtrs[DRIVER_FUNC_PHYS_ANGULAR] = VehStuckProc_Tumble_PhysAngular;
-	driver->funcPtrs[DRIVER_FUNC_APPLY_FORCES] = VehPhysForce_OnApplyForces;
-	driver->funcPtrs[DRIVER_FUNC_COLL_MOVED] = COLL_MOVED_PlayerSearch;
-	driver->funcPtrs[DRIVER_FUNC_COLLIDE_DRIVERS] = VehPhysForce_CollideDrivers;
-	driver->funcPtrs[DRIVER_FUNC_COLL_FIXED] = COLL_FIXED_PlayerSearch;
-	driver->funcPtrs[DRIVER_FUNC_JUMP_FRICTION] = VehPhysGeneral_JumpAndFriction;
-	driver->funcPtrs[DRIVER_FUNC_TRANSLATE_MATRIX] = VehPhysForce_TranslateMatrix;
-	driver->funcPtrs[DRIVER_FUNC_ANIMATE] = VehStuckProc_Tumble_Animate;
-	driver->funcPtrs[DRIVER_FUNC_INIT] = NULL;
-	driver->funcPtrs[DRIVER_FUNC_PARTICLES] = VehEmitter_DriverMain;
+	VehStuckProc_Tumble_SetFunctions(driver);
 
 	simpTurnState = driver->simpTurnState;
 	if (simpTurnState > 0)

@@ -71,10 +71,13 @@ struct ChaosRuntime
 	bool raceInitialized;
 	bool touchingTurboPad[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
 	struct ChaosControlShuffle controls[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
-	u8 engineClass[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
-	bool engineClassChanged[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
+	u8 engineClass[LOAD_CHARACTER_ID_COUNT];
+	bool engineClassChanged[LOAD_CHARACTER_ID_COUNT];
 	struct ChaosRestart restart[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
-	struct ChaosIdentity identity[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
+	struct ChaosIdentity identity[LOAD_CHARACTER_ID_COUNT];
+	// Partner slot plus one; zero means this controller owns its original kart.
+	u8 bodySwapPartner[LOAD_CHARACTER_ID_COUNT];
+	bool bodySwapCameraBlend[ADV_MULTIPLAYER_NUM_PLAYERS_MAX];
 };
 
 #endif

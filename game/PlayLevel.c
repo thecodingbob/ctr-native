@@ -142,6 +142,7 @@ void PlayLevel_UpdateLapStats(void)
 	struct GameTracker *gGT = sdata->gGT;
 
 	finishedHumanCount = 0;
+	Chaos_ReturnBodySwapsNearFinish(gGT, PLAYLEVEL_FINISHLINE_NEAR_DISTANCE);
 	currRank = 0;
 	coopRace = MainGameEnd_IsCoopRace(gGT);
 

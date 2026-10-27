@@ -639,7 +639,14 @@ void BOTS_ThTick_RevEngine(struct Thread *botThread)
 		botDriver->clockReceive = 0;
 		botDriver->squishTimer = 0;
 
-		ThTick_SetAndExec(botThread, BOTS_ThTick_Drive);
+		if ((botDriver->actionsFlagSet & ACTION_BOT) == 0)
+		{
+			VehPhysProc_TakeControl(botDriver);
+		}
+		else
+		{
+			ThTick_SetAndExec(botThread, BOTS_ThTick_Drive);
+		}
 	}
 }
 
@@ -3067,15 +3074,18 @@ struct Driver *BOTS_Driver_Init(int driverID)
 	return d;
 }
 
-void BOTS_Driver_Convert(struct Driver *d)
+static bool BOTS_ConvertDriver(struct Driver *d, bool recordFinish)
 {
 	// if already AI, quit
 	if ((d->actionsFlagSet & ACTION_BOT) != 0)
 	{
-		return;
+		return true;
 	}
 
-	UI_RaceEnd_GetDriverClock(d);
+	if (recordFinish)
+	{
+		UI_RaceEnd_GetDriverClock(d);
+	}
 
 	s8 initialNavPathIndex = sdata->driver_pathIndexIDs[d->driverID];
 	s8 navPathIndex = initialNavPathIndex;
@@ -3099,7 +3109,7 @@ void BOTS_Driver_Convert(struct Driver *d)
 		// If all 3 are checked, quit
 		if (navPathIndex == initialNavPathIndex)
 		{
-			return;
+			return false;
 		}
 	}
 
@@ -3116,6 +3126,23 @@ void BOTS_Driver_Convert(struct Driver *d)
 	d->botData.aiPhysics.speedLinear = speedApprox;
 
 	struct NavFrame *firstNavFrame = sdata->NavPath_ptrNavFrameArray[navPathIndex];
+	if (!recordFinish)
+	{
+		s64 nearestDistance = INT64_MAX;
+		struct NavHeader *header = sdata->NavPath_ptrHeader[navPathIndex];
+		for (struct NavFrame *frame = firstNavFrame; frame < header->last; frame++)
+		{
+			s64 x = (d->posCurr.x >> 8) - frame->pos.x;
+			s64 y = (d->posCurr.y >> 8) - frame->pos.y;
+			s64 z = (d->posCurr.z >> 8) - frame->pos.z;
+			s64 distance = x * x + y * y + z * z;
+			if (distance < nearestDistance)
+			{
+				nearestDistance = distance;
+				firstNavFrame = frame + 1 < header->last ? frame + 1 : sdata->NavPath_ptrNavFrameArray[navPathIndex];
+			}
+		}
+	}
 
 	d->botData.navProgressRemainder = 0;
 	d->turnAngleCurr = 0;
@@ -3127,7 +3154,7 @@ void BOTS_Driver_Convert(struct Driver *d)
 
 	d->instSelf->thread->funcThTick = BOTS_ThTick_Drive;
 
-	if ((sdata->gGT->gameMode1 & BATTLE_MODE) != 0)
+	if (recordFinish && (sdata->gGT->gameMode1 & BATTLE_MODE) != 0)
 	{ // you are in battle mode
 		struct NavFrame *nf = NAVHEADER_GETFRAME(sdata->NavPath_ptrHeader[navPathIndex]);
 		d->posCurr.x = CTR_MipsSll(nf->pos.x, 8);
@@ -3145,7 +3172,7 @@ void BOTS_Driver_Convert(struct Driver *d)
 
 	d->actionsFlagSet = (oldActionFlagsSet & ~(ACTION_JUMP_BUTTON_HELD | ACTION_ACCEL_PREVENTION)) | ACTION_BOT;
 
-	if ((oldActionFlagsSet & ACTION_RACE_FINISHED) != 0)
+	if (recordFinish && (oldActionFlagsSet & ACTION_RACE_FINISHED) != 0)
 	{
 		CAM_EndOfRace(&sdata->gGT->cameraDC[d->driverID], d);
 	}
@@ -3154,7 +3181,7 @@ void BOTS_Driver_Convert(struct Driver *d)
 	switch (d->kartState)
 	{
 	default:
-		return;
+		return true;
 	case KS_SPINNING:
 		damageType = 1;
 		break;
@@ -3164,4 +3191,51 @@ void BOTS_Driver_Convert(struct Driver *d)
 	}
 
 	BOTS_ChangeState(d, damageType, NULL, 0);
+	return true;
+}
+
+void BOTS_Driver_Convert(struct Driver *driver)
+{
+	BOTS_ConvertDriver(driver, true);
+}
+
+bool BOTS_Driver_Resume(struct Driver *driver)
+{
+	const bool botRescue = driver->instSelf->thread->funcThTick == BOTS_ThTick_RevEngine;
+	const bool rescuing = driver->kartState == KS_MASK_GRABBED ||
+	    (driver->kartState == KS_ENGINE_REVVING && driver->KartStates.RevEngine.boolMaskGrab);
+	struct MaskHeadWeapon *mask = botRescue ? driver->botData.maskObj :
+	    driver->kartState == KS_MASK_GRABBED ? driver->KartStates.MaskGrab.maskObj :
+	    rescuing ? driver->KartStates.RevEngine.maskObj : NULL;
+	const Vec3 rescueDestination = driver->botData.positionBackup;
+	const int reserves = driver->reserves;
+	const int outsideTimer = driver->turbo_outsideTimer;
+	const int speed = driver->speedApprox;
+	const int verticalSpeed = driver->ySpeed;
+	const bool converted = BOTS_ConvertDriver(driver, false);
+	if (converted)
+	{
+		driver->reserves = reserves;
+		driver->turbo_outsideTimer = outsideTimer;
+		driver->botData.aiPhysics.speedLinear = speed < 0 ? -speed : speed;
+		driver->botData.aiPhysics.speedY = verticalSpeed;
+		driver->botData.ai_quadblock_checkpointIndex = driver->checkpoint.currentIndex;
+		memset(driver->funcPtrs, 0, sizeof(driver->funcPtrs));
+		if (rescuing)
+		{
+			// Continue the current rescue under AI ownership, reusing its mask.
+			const struct NavFrame *frame = driver->botData.botNavFrame;
+			driver->botData.positionBackup = botRescue ? rescueDestination : (Vec3){
+				CTR_MipsSll(frame->pos.x, FRACTIONAL_BITS_8),
+				CTR_MipsSll(frame->pos.y, FRACTIONAL_BITS_8),
+				CTR_MipsSll(frame->pos.z, FRACTIONAL_BITS_8),
+			};
+			driver->posCurr.x = driver->botData.positionBackup.x;
+			driver->posCurr.z = driver->botData.positionBackup.z;
+			driver->botData.maskObj = mask;
+			driver->kartState = KS_MASK_GRABBED;
+			driver->instSelf->thread->funcThTick = BOTS_ThTick_RevEngine;
+		}
+	}
+	return converted;
 }

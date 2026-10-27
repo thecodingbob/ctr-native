@@ -623,6 +623,248 @@ static void TestIdentityCrisis(void)
 	                  "race teardown restores the original character engine after mixed class changes");
 }
 
+struct BodySwapWorld
+{
+	struct Driver drivers[LOAD_CHARACTER_ID_COUNT];
+	struct Instance instances[LOAD_CHARACTER_ID_COUNT];
+	struct Thread threads[LOAD_CHARACTER_ID_COUNT];
+};
+
+static void SetupBodySwap(struct BodySwapWorld *world, int humans, int bots)
+{
+	SetupRace(CHAOS_TRIGGER_EXTERNAL);
+	memset(world, 0, sizeof(*world));
+	memset(s_tracker.drivers, 0, sizeof(s_tracker.drivers));
+	s_tracker.numPlyrCurrGame = humans;
+	s_tracker.numLaps = 3;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_BODY_SWAP] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_TRY_SOMETHING_NEW] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_SMALL_KART_ENERGY] = true;
+	sdata->chaosSettings.enabledCount += 3;
+	for (int i = 0; i < humans + bots; i++)
+	{
+		const bool human = i < humans;
+		const int bucket = human ? PLAYER : ROBOT;
+		world->drivers[i] = (struct Driver){
+			.driverID = i, .instSelf = &world->instances[i], .kartScale = 1.0f,
+			.actionsFlagSet = human ? 0 : ACTION_BOT, .heldItemID = HELD_ITEM_POTION,
+			.reserves = 100 + i, .lapIndex = i % 2, .distanceToFinish_curr = 10000,
+			.posCurr = {1000 * i, 0, 2000 * i}, .speed = 1000 + i,
+		};
+		world->threads[i] = (struct Thread){
+			.object = &world->drivers[i], .inst = &world->instances[i], .flags = bucket,
+			.modelIndex = human ? DYNAMIC_PLAYER : DYNAMIC_ROBOT_CAR,
+			.funcThTick = human ? NULL : TestBotTick,
+			.siblingThread = s_tracker.threadBuckets[bucket].thread,
+		};
+		world->instances[i].thread = &world->threads[i];
+		s_tracker.threadBuckets[bucket].thread = &world->threads[i];
+		s_tracker.drivers[i] = &world->drivers[i];
+		data.characterIDs[i] = i;
+		data.MetaDataCharacters[i].engineID = i % NUM_CLASSES;
+		if (!human)
+		{
+			LIST_AddFront(&sdata->navBotList[0], &world->drivers[i].botData.item);
+		}
+	}
+}
+
+static void TestBodySwap(void)
+{
+	CTR_TEST_SECTION("bot takeover replaces spawn-only anti-cut references and carries actual world motion into human physics");
+	struct BodySwapWorld handover;
+	SetupBodySwap(&handover, 1, 1);
+	struct Driver *borrowed = &handover.drivers[1];
+	struct QuadBlock spawnQuad = {0};
+	borrowed->lastValid = &spawnQuad;
+	borrowed->underDriver = &spawnQuad;
+	borrowed->currBlockTouching = &spawnQuad;
+	borrowed->distanceToFinish_checkpoint = 80000;
+	borrowed->distanceToFinish_curr = 12000;
+	borrowed->checkpoint.currentIndex = 0;
+	borrowed->botData.ai_quadblock_checkpointIndex = 27;
+	borrowed->collisionFlags = DRIVER_COLL_FLAG_MASK_GRAB_REQUEST;
+	borrowed->stepFlagSet = COLL_STEP_FLAG_KILL_PLANE;
+	borrowed->xSpeed = 300;
+	borrowed->ySpeed = -400;
+	borrowed->zSpeed = 1200;
+	borrowed->rotCurr.w = -0xf80;
+	borrowed->rotPrev.w = 8;
+	s_tracker.cameraDC[0].flags = CAMERA_FLAG_MASK_GRAB;
+	s_tracker.cameraDC[0].BlastedLerp.boolLerpPending = true;
+	s_tracker.cameraDC[0].BlastedLerp.framesRemaining = 7;
+	s_tracker.cameraDC[0].BlastedLerp.desiredPos.x = 2000;
+	s_tracker.cameraDC[0].heightSmoothing.currentOffset = 500;
+	s_tracker.cameraDC[0].heightSmoothing.framesRemaining = 6;
+	s_tracker.cameraDC[0].nearOrFar = 1;
+	const Vec3 position = borrowed->posCurr;
+	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
+	CTR_TEST_CHECK(s_tracker.drivers[0] == borrowed && borrowed->distanceToFinish_checkpoint == 12000 &&
+	               borrowed->checkpoint.currentIndex == 27,
+	               "the human anti-cut baseline starts at the bot's live progression rather than its spawn checkpoint");
+	CTR_TEST_CHECK(borrowed->rotCurr.w == 0 && borrowed->rotPrev.w == 0,
+	               "AI wrapped camera lag does not become a nearly full-turn human recovery offset");
+	CTR_TEST_CHECK((s_tracker.cameraDC[0].flags & CAMERA_FLAG_MASK_GRAB) == 0 &&
+	               (s_tracker.cameraDC[0].flags & CAMERA_FLAG_DIRECTION_CHANGED) != 0 &&
+	               s_tracker.cameraDC[0].BlastedLerp.framesRemaining == 0 &&
+	               !s_tracker.cameraDC[0].BlastedLerp.boolLerpPending &&
+	               s_tracker.cameraDC[0].heightSmoothing.currentOffset == 0 &&
+	               s_tracker.cameraDC[0].heightSmoothing.framesRemaining == 0,
+	               "camera handover drops the previous kart's damage, rescue and height-recovery state");
+	CTR_TEST_CHECK_EQ(s_tracker.cameraDC[0].nearOrFar, 1, "camera handover retains the player's zoom preference");
+	CTR_TEST_CHECK(Chaos_ConsumeStartCameraBlend(&s_tracker.cameraDC[0]) &&
+	               !Chaos_ConsumeStartCameraBlend(&s_tracker.cameraDC[0]),
+	               "the camera blends to the possessed kart once without requiring a Fresh Start countdown");
+	CTR_TEST_CHECK(borrowed->lastValid == NULL && borrowed->underDriver == NULL && borrowed->currBlockTouching == NULL,
+	               "the first human collision acquires the current surface without retaining a stale spawn quad");
+	CTR_TEST_CHECK(borrowed->collisionFlags == 0 && borrowed->stepFlagSet == 0,
+	               "stale collision/rescue flags cannot trigger a fresh rescue on takeover");
+	CTR_TEST_CHECK(memcmp(&borrowed->posCurr, &position, sizeof(position)) == 0 &&
+	               memcmp(&borrowed->posPrev, &position, sizeof(position)) == 0,
+	               "taking control does not reposition the kart or sweep collisions from a stale previous position");
+	Vec3 motion;
+	VehPhysForce_ConvertSpeedToVec(borrowed, &motion);
+	CTR_TEST_CHECK(abs(motion.x - 300) < 10 && abs(motion.y + 400) < 10 && abs(motion.z - 1200) < 10,
+	               "real polar conversion preserves the bot's horizontal and vertical motion");
+
+	CTR_TEST_SECTION("ownership changes during an existing rescue without replacing its mask or waiting for landing");
+	SetupBodySwap(&handover, 1, 1);
+	struct MaskHeadWeapon rescueMask = {0};
+	borrowed = &handover.drivers[1];
+	borrowed->kartState = KS_MASK_GRABBED;
+	borrowed->botData.maskObj = &rescueMask;
+	handover.threads[1].funcThTick = BOTS_ThTick_RevEngine;
+	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
+	CTR_TEST_CHECK(s_tracker.drivers[0] == borrowed && borrowed->driverID == 0 &&
+	               (borrowed->actionsFlagSet & ACTION_BOT) == 0 && s_tracker.cameraDC[0].driverToFollow == borrowed,
+	               "input ownership and camera transfer immediately to the kart already under rescue");
+	CTR_TEST_CHECK(borrowed->kartState == KS_MASK_GRABBED && borrowed->botData.maskObj == &rescueMask &&
+	               handover.threads[1].funcThTick == BOTS_ThTick_RevEngine,
+	               "the existing rescue mask and descent continue without another rescue activation");
+	Tick(1000);
+	CTR_TEST_CHECK(s_tracker.drivers[0] == &handover.drivers[0] && sdata->chaosRuntime.bodySwapPartner[0] == 0,
+	               "expiry does not wait for the possessed kart's rescue to finish");
+
+	CTR_TEST_SECTION("Body Swap exchanges controller ownership while complete kart state and class stay on the kart");
+	struct BodySwapWorld world;
+	SetupBodySwap(&world, 2, 0);
+	world.drivers[0].rotCurr.w = 120;
+	world.drivers[1].rotCurr.w = -160;
+	s_tracker.cameraDC[0].BlastedLerp.boolLerpPending = true;
+	s_tracker.cameraDC[1].BlastedLerp.framesRemaining = 4;
+	sdata->chaosRuntime.engineClass[0] = SPEED;
+	sdata->chaosRuntime.engineClassChanged[0] = true;
+	world.drivers[1].kartState = KS_SPINNING;
+	world.drivers[1].heldItemID = HELD_ITEM_MISSILE_3X;
+	world.drivers[1].checkpoint.currentIndex = 7;
+	Chaos_Activate(CHAOS_EFFECT_SMALL_KART_ENERGY, 5000);
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000), "Body Swap occupies a timed effect slot");
+	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[1] && s_tracker.drivers[1] == &world.drivers[0],
+	               "each human controls the other complete driver object");
+	CTR_TEST_CHECK(data.characterIDs[0] == 1 && data.characterIDs[1] == 0 &&
+	               world.drivers[1].driverID == 0 && world.drivers[0].driverID == 1,
+	               "character and input identities agree with controller slots");
+	CTR_TEST_CHECK(s_tracker.drivers[0]->kartState == KS_SPINNING && s_tracker.drivers[0]->heldItemID == HELD_ITEM_MISSILE_3X &&
+	               s_tracker.drivers[0]->checkpoint.currentIndex == 7 && s_tracker.drivers[0]->reserves == 101 &&
+	               s_tracker.drivers[0]->lapIndex == 1 && s_tracker.drivers[0]->posCurr.x == 1000,
+	               "damage, inventory, reserves, position and progression remain on the possessed kart");
+	CTR_TEST_CHECK_EQ(Chaos_EngineClassForDriver(s_tracker.drivers[0], 1), 1, "the player takes the target kart class");
+	CTR_TEST_CHECK_EQ(Chaos_EngineClassForDriver(s_tracker.drivers[1], 0), SPEED, "an existing class override remains with its original kart");
+	CTR_TEST_CHECK(s_tracker.cameraDC[0].driverToFollow == s_tracker.drivers[0] &&
+	               s_tracker.cameraDC[1].driverToFollow == s_tracker.drivers[1], "both cameras follow their newly possessed kart");
+	CTR_TEST_CHECK(!s_tracker.cameraDC[0].BlastedLerp.boolLerpPending &&
+	               s_tracker.cameraDC[1].BlastedLerp.framesRemaining == 0 &&
+	               world.drivers[0].rotCurr.w == 120 && world.drivers[1].rotCurr.w == -160,
+	               "both viewports reset old camera transitions while human kart drift offsets stay intact");
+	Chaos_Activate(CHAOS_EFFECT_TRY_SOMETHING_NEW, 1000);
+	const int borrowedClass = sdata->chaosRuntime.engineClass[0];
+	Tick(1000);
+	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[0] && s_tracker.drivers[1] == &world.drivers[1],
+	               "expiry returns both controllers to their original kart");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.engineClass[1], borrowedClass, "a class change during possession stays on the borrowed kart after return");
+	CTR_TEST_CHECK(world.drivers[0].kartScale == 0.5f && world.drivers[1].kartScale == 0.5f,
+	               "timed human size modifiers survive controller return");
+
+	CTR_TEST_SECTION("human and bot possession changes physics buckets without replacing instances or navigation-list members");
+	SetupBodySwap(&world, 1, 1);
+	Chaos_Activate(CHAOS_EFFECT_SMALL_KART_ENERGY, 5000);
+	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
+	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[1] &&
+	               (world.drivers[1].actionsFlagSet & ACTION_BOT) == 0 &&
+	               (world.drivers[0].actionsFlagSet & ACTION_BOT) != 0,
+	               "human control and AI control exchange physical karts");
+	CTR_TEST_CHECK(s_tracker.threadBuckets[PLAYER].thread == &world.threads[1] &&
+	               s_tracker.threadBuckets[ROBOT].thread == &world.threads[0], "the correct physics pipeline owns each thread");
+	CTR_TEST_CHECK(world.threads[1].modelIndex == DYNAMIC_PLAYER && world.threads[1].funcThTick == NULL &&
+	               world.threads[0].modelIndex == DYNAMIC_ROBOT_CAR && world.threads[0].funcThTick == TestBotTick,
+	               "model identity and execution mode match the new controller");
+	CTR_TEST_CHECK(sdata->navBotList[0].count == 1 && sdata->navBotList[0].first == &world.drivers[0].botData.item,
+	               "the navigation list replaces the former bot with the unattended original kart");
+	CTR_TEST_CHECK(world.drivers[1].kartScale == 0.5f && world.drivers[0].kartScale == 1.0f,
+	               "the human size modifier follows the player rather than the old kart");
+	const struct ChaosRuntime saved = sdata->chaosRuntime;
+	s_tracker.gameMode1 |= PAUSE_1;
+	Tick(5000);
+	CTR_TEST_CHECK(memcmp(&saved, &sdata->chaosRuntime, sizeof(saved)) == 0, "pause freezes possession and its expiry");
+	s_tracker.gameMode1 &= ~PAUSE_1;
+	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 2000);
+	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[1] && sdata->navBotList[0].count == 1,
+	               "reactivation returns the old pair before forming a fresh pair without duplicating navigation membership");
+	Tick(2000);
+	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[0] && s_tracker.drivers[1] == &world.drivers[1] &&
+	               s_tracker.threadBuckets[PLAYER].thread == &world.threads[0] && sdata->navBotList[0].first == &world.drivers[1].botData.item,
+	               "expiry restores both role pipelines and the original navigation-list owner");
+	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
+	s_tracker.drivers[0]->kartState = KS_MASK_GRABBED;
+	Tick(1000);
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_BODY_SWAP) && s_tracker.drivers[0] == &world.drivers[0],
+	               "expiry returns ownership immediately even while a kart is being rescued");
+	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 2000);
+	s_tracker.drivers[0]->lapIndex = 2;
+	s_tracker.drivers[0]->distanceToFinish_curr = 500;
+	Chaos_ReturnBodySwapsNearFinish(&s_tracker, 1200);
+	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[0] && sdata->chaosRuntime.bodySwapPartner[0] == 0 &&
+	               (world.drivers[1].actionsFlagSet & ACTION_RACE_FINISHED) == 0,
+	               "the pair returns on the final finish-line approach before either kart records a finish");
+	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 2000);
+	Chaos_Reset();
+	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[0] && data.characterIDs[0] == 0 && world.drivers[0].driverID == 0,
+	               "race teardown restores original ownership before clearing class and identity state");
+
+	CTR_TEST_SECTION("Body Swap forms disjoint pairs involving humans and skips unavailable controllers");
+	SetupBodySwap(&world, 4, 4);
+	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
+	for (int slot = 0; slot < LOAD_CHARACTER_ID_COUNT; slot++)
+	{
+		const int partner = sdata->chaosRuntime.bodySwapPartner[slot] - 1;
+		if (partner >= 0)
+		{
+			CTR_TEST_CHECK(partner != slot && sdata->chaosRuntime.bodySwapPartner[partner] == slot + 1,
+			               "pair membership is symmetric and a controller cannot possess itself");
+			CTR_TEST_CHECK(slot < 4 || partner < 4, "every pair involves a human controller");
+		}
+		CTR_TEST_CHECK_EQ(s_tracker.drivers[slot]->driverID, slot, "every live kart ID agrees with its controller slot");
+	}
+	Chaos_Reset();
+	SetupBodySwap(&world, 1, 0);
+	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
+	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[0] && sdata->chaosRuntime.bodySwapPartner[0] == 0,
+	               "a solo event without another kart leaves ownership intact");
+	SetupBodySwap(&world, 1, 1);
+	world.drivers[1].actionsFlagSet |= ACTION_RACE_FINISHED;
+	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
+	CTR_TEST_CHECK(sdata->chaosRuntime.bodySwapPartner[0] == 0, "finished targets cannot be possessed");
+	SetupBodySwap(&world, 2, 0);
+	world.drivers[0].kartState = KS_ENGINE_REVVING;
+	world.drivers[1].kartState = KS_WARP_PAD;
+	sdata->chaosRuntime.restart[0].active = true;
+	sdata->chaosRuntime.restart[1].pending = true;
+	sdata->chaosRuntime.identity[1].transformRemainingMS = 100;
+	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
+	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[1] && s_tracker.drivers[1] == &world.drivers[0],
+	               "scripted states, start holds and pending transformations do not gate controller exchange");
+}
+
 static void TestWobbleSteering(void)
 {
 	CTR_TEST_SECTION("Wobble oscillates in game time with calibrated limits and human-only scope");
@@ -2842,6 +3084,7 @@ int main(void)
 	TestWhoBoundThis();
 	TestTrySomethingNew();
 	TestIdentityCrisis();
+	TestBodySwap();
 	TestWobbleSteering();
 	TestGravityEffects();
 	TestSpeedEffects();

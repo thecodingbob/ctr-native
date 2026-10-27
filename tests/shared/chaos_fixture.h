@@ -14,6 +14,42 @@ enum { VEH_BIRTH_WHEEL_SIZE = 0xccc };
 static struct GameTracker s_tracker;
 static struct GamepadSystem s_gamepads;
 static struct Driver s_defaultDrivers[2];
+
+static void TestBotTick(struct Thread *thread)
+{
+	(void)thread;
+}
+
+bool BOTS_Driver_Resume(struct Driver *driver)
+{
+	driver->actionsFlagSet |= ACTION_BOT;
+	driver->instSelf->thread->funcThTick = TestBotTick;
+	memset(&driver->botData, 0, sizeof(driver->botData));
+	LIST_AddFront(&sdata->navBotList[0], &driver->botData.item);
+	return true;
+}
+
+void BOTS_ThTick_RevEngine(struct Thread *thread)
+{
+	(void)thread;
+}
+
+void VehPhysProc_Driving_Init(struct Thread *thread, struct Driver *driver)
+{
+	(void)thread;
+	driver->kartState = KS_NORMAL;
+}
+
+void VehPhysProc_SpinFirst_InitSetUpdate(struct Thread *thread, struct Driver *driver)
+{
+	(void)thread;
+	(void)driver;
+}
+
+void VehStuckProc_Tumble_SetFunctions(struct Driver *driver)
+{
+	(void)driver;
+}
 static bool s_allHumansFinished;
 static int s_activationSounds;
 static int s_clockSounds;
@@ -257,6 +293,9 @@ enum { SOUND_CLOCK = 0x44, SOUND_INVISIBILITY = 0x61 };
 #include <game/Vehicle/VehBirth_Consts.c>
 #include <game/Vehicle/VehCalc.c>
 #include <game/Vehicle/VehPhysForce.c>
+// Exercise the real bot-to-human handover; only driving callbacks are doubled.
+enum { BOTS_DAMAGE_STATE_SPIN = 1, BOTS_DAMAGE_STATE_BLAST = 2, VEH_PHYS_PROC_SPIN_INITIAL_RATE = 300 };
+#include <game/Vehicle/VehPhysProc_TakeControl.c>
 #include <game/Vehicle/VehPickState.c>
 #include <game/Vehicle/VehPhysGeneral.c>
 #include <game/Vehicle/VehPhysProc_Items.c>

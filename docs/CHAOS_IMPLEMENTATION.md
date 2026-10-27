@@ -25,9 +25,12 @@ launch and teardown without loading the Chaos runtime.
 
 `RB_Chaos.c` owns activation, gameplay hooks and per-driver dispatch,
 sharing `Chaos_TargetsDriver` for recipient checks. `RB_ChaosEffects.c` owns
-effect operations and start-light drawing; callers check activation and applicability.
-Effect operations retain their gameplay conditions (terrain, fuel, pickup
-queues) but never query active-effect eligibility. The gameplay hooks preserve modifier
+effect operations, effect-specific state updates and queries, start-light drawing,
+and Senile Mask warnings/voice. Body Swap pair selection and finish-line eligibility
+stay in the runtime; returning the selected pairs is an effect operation.
+Gameplay hooks check activation and applicability before invoking operations;
+effect-specific adapters also query activation where needed. Operations retain their
+gameplay conditions (terrain, fuel, pickup queues). The gameplay hooks preserve modifier
 ordering and check eligibility before calling them; No Reserves is tested
 through `Chaos_ApplyDriver`.
 
@@ -264,7 +267,8 @@ class bookkeeping; normal vehicle birth restores the character's class.
 Class changes also stop the previous engine loop and start the selected class's
 loop. `Chaos_EngineClassForDriver` keeps engine updates, audio initialization and
 warp teardown on that same class, without overriding ghosts that share a player
-ID. Reset restores the character's engine loop before clearing the override.
+ID. Reset restores character constants and the human engine loop before clearing
+the override, including class changes left on a bot-controlled kart by Body Swap.
 
 Identity Crisis (ID 34, `identity-crisis`) changes human identities once until
 race end. Eligible races with the effect enabled reuse resident character models
@@ -284,6 +288,41 @@ latest change wins: class/audio update at activation, while only the model waits
 for smoke coverage. Reset restores original identities before resetting engine
 audio; ordinary birth restores class constants. No asset reads occur on activation.
 Activation plays the retail invisibility sound once, shared by all recipients.
+
+Body Swap (ID 35, `body-swap`) stores symmetric controller-slot partners in
+`ChaosRuntime`. Operations exchange `GameTracker.drivers`, driver IDs and character
+IDs rather than copying/recreating karts, preserving weapon ownership and physical
+race state. Effective class overrides and Identity Crisis baselines move with the
+kart; their arrays cover all eight slots. Input shuffles and timed driving modifiers
+remain player-owned. Size and existing USF overrides refresh on the newly controlled
+humans, and former human karts return to normal size under AI control.
+
+Human/bot swaps move the existing root threads between PLAYER/ROBOT buckets.
+`VehPhysProc_TakeControl` installs human physics without reapplying impact penalties;
+`BOTS_Driver_Resume` shares the retail conversion core without recording race results
+or moving battle racers to their starting point. It reconnects navigation near the
+current position and preserves reserves, damage timers and motion. The ordinary
+end-of-race converter retains its existing behavior. Navigation-list membership,
+thread model IDs and tick callbacks follow the new controller. Camera targets and
+engine loops update per human, using the existing one-shot camera recovery blend.
+
+Activation skips finished drivers. Ownership and camera switch immediately regardless
+of kart state; expiry/reactivation also returns pairs without waiting for rescues or
+start holds. Bot takeover seeds the human anti-cut baseline from live progress,
+discards spawn-only surface references and converts world motion to human polar
+speed. An existing bot rescue retains its mask/descent callback under human ownership,
+then installs human driving on landing; return to AI reuses an existing rescue mask.
+Human takeover clears AI-only wrapped yaw lag and its human recovery velocity.
+Camera retargeting invalidates the previous body's damage/rescue/height smoothing
+and requests direction reinitialization before the one-shot blend; zoom stays player-owned.
+Reset returns all pairs before class and identity teardown.
+`PlayLevel_UpdateLapStats` returns a pair on either kart's
+last-lap near-finish segment, before evaluating lap completion, using the retail
+near-line distance. Crystal/battle events have no such segment. Partner slots and
+class/identity ownership are checkpoint state. Asset-free tests cover ownership,
+pairing, lifecycle and the real human takeover's progress/motion transfer; driving
+callbacks and AI conversion are doubled. Actual bot/human transitions still require
+in-game validation.
 
 Small Kart Energy (ID 28, `small-kart-energy`) uses the same size pipeline as
 Giant Karts. `Driver.kartScale` is a float multiplier (zero defaults to 1×),

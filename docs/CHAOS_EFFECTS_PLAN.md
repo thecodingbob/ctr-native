@@ -16,22 +16,12 @@ This plan tracks delivery, remaining specifications and outstanding validation.
 | A. Items and reserves | Use This!, Juiced Up, It is I, Providence, Reserve Injection, Too Boosted TO Fail | Implemented |
 | B. Driving, turbo and jumping | Sabotage, This Is Fire, Hydraulics, My Planet Needs Me, Who Bound This?, Try Something New | Implemented |
 | C. Size, camera and bots | Small Kart Energy, Classic GTA, Arena Champions, You've Got Mail, Fresh Start, Senile Mask | Implemented |
-| D. Characters and movement | Identity Crisis, Body Swap, Teleport, Defective Teleport | Identity Crisis implemented; remaining effects not started |
+| D. Characters and movement | Identity Crisis, Body Swap, Teleport, Defective Teleport | Identity Crisis and Body Swap implemented; teleports not started |
 | E. Time manipulation | Za Warudo, King Crimson | Not started |
 
-**Current effect: Identity Crisis.** In-game validation is pending; Body Swap is next.
+**Current effect: Body Swap.** In-game validation is pending; Teleport is next.
 
 ## Remaining specifications
-
-### Body Swap
-
-For the Chaos duration, possess another kart with its character, class, inventory,
-reserves, damage and lap/checkpoint progression; the other controller takes the
-previous kart. Form random disjoint pairs involving humans, with bot or human
-targets. Return at expiry, or end the pair's swap before either kart finishes.
-Human Chaos modifiers follow the player.
-
-Investigate input/HUD ownership and interaction with character/class changes.
 
 ### Teleport / Defective Teleport
 
@@ -100,5 +90,6 @@ behavior.
 | Fresh Start | Suspension/mask visuals, neutral pose and camera smoothing during drift/jumps; rescue deferral, starting boost/over-rev, damage recovery, repeated activation, 1P/2P lights/audio and HUD spacing, pause/reset, unchanged bots/global timer. |
 | Senile Mask | Flashing prompt in each correct-direction human viewport, including relic/crystal events; repeated Aku Aku/Uka Uka voice with half cooldown, no overlapping XA playback; silence/no prompt when actually wrong-way, normal warnings restored at expiry/reset. |
 | Identity Crisis | All character models/textures, including bosses and Oxide; smoke coverage/timing at speed and at 0.5×/1×/2× size in both viewports; repeated 1P/2P transformations while driving, jumping, damaged or rescued; no duplicate live characters; class/engine ordering with Try Something New; retry/end-of-race and quick-state restoration, including during the smoke delay. |
+| Body Swap | Human/human and human/bot input, camera/HUD and engine audio; damage/airborne takeover, bot navigation reattachment, active weapons/shields/masks, boss/cup behavior; modifiers follow players while class/Identity Crisis follow karts; immediate activation/expiry during rescue/start holds and pending transformations, reactivation, final-lap early return, retry/results and quick states. Relic/crystal/battle 2P pairs and solo events without targets. |
 
 Record remaining failures and reproducible tracks/quick states here.
