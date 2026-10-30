@@ -1302,7 +1302,7 @@ static void Chaos_RefreshBodySwapModifiers(void)
 		{
 			continue;
 		}
-		if (Chaos_IsActive(CHAOS_EFFECT_GIANT_KARTS))
+		if (Chaos_IsActive(CHAOS_EFFECT_BIG_KART_ENERGY))
 		{
 			Chaos_SetKartScale(CHAOS_GIANT_SCALE, driver);
 		}

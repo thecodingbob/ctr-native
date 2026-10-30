@@ -212,9 +212,9 @@ static void TestEffectsCommitAndPageTransitions(void)
 	CTR_TEST_CHECK(s_drawnTitle != NULL && strcmp(s_drawnTitle, "CHAOS EFFECTS") == 0, "opening Effects draws its title immediately");
 	CTR_TEST_CHECK_EQ(s_drawnRows, FULLSCREEN_MENU_MAX_VISIBLE_ROWS, "Effects uses the shared visible-row limit");
 	CTR_TEST_CHECK(s_drewOnOff, "creation still shows the editable effect toggles");
-	MM_menuChaosConfig.rowSelected = CHAOS_EFFECT_LOW_GRAVITY;
+	MM_menuChaosConfig.rowSelected = CHAOS_EFFECT_FLY_ME_TO_THE_MOON;
 	Frame(BTN_CROSS, 0);
-	CTR_TEST_CHECK(!sdata->chaosSettings.effects[CHAOS_EFFECT_LOW_GRAVITY], "Cross updates the stored effect without leaving its page");
+	CTR_TEST_CHECK(!sdata->chaosSettings.effects[CHAOS_EFFECT_FLY_ME_TO_THE_MOON], "Cross updates the stored effect without leaving its page");
 	CTR_TEST_CHECK_EQ(sdata->chaosSettings.enabledCount, CHAOS_EFFECT_COUNT - 1, "the cached count changes with the toggle");
 	Frame(BTN_TRIANGLE, 0);
 	CTR_TEST_CHECK(s_drawnTitle != NULL && strcmp(s_drawnTitle, "CHAOS SETUP") == 0, "Back draws Settings immediately");
@@ -463,9 +463,9 @@ static void TestFilteredActiveEffects(void)
 	CTR_TEST_SECTION("Active Effects lists only enabled names and handles an empty selection");
 	EnterSetup();
 	memset(sdata->chaosSettings.effects, 0, sizeof(sdata->chaosSettings.effects));
-	sdata->chaosSettings.effects[CHAOS_EFFECT_NO_HOPPING] = true;
-	sdata->chaosSettings.effects[CHAOS_EFFECT_NO_ITEMS] = true;
-	sdata->chaosSettings.effects[CHAOS_EFFECT_GIANT_KARTS] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_GROUNDED] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_FAIR_MODE] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_BIG_KART_ENERGY] = true;
 	sdata->chaosSettings.enabledCount = 3;
 	struct RectMenu pause = {0};
 	MM_ChaosConfig_OpenReadOnly(&pause);
@@ -474,9 +474,9 @@ static void TestFilteredActiveEffects(void)
 	CTR_TEST_CHECK(s_drawnLabels[3] != NULL && strcmp(s_drawnLabels[3], "Active Effects") == 0, "the Rules action names the filtered page");
 	Frame(BTN_CROSS, 0);
 	CTR_TEST_CHECK_EQ(s_drawnRows, 3, "disabled effects do not leave rows or gaps");
-	CTR_TEST_CHECK(s_drawnLabels[0] != NULL && strcmp(s_drawnLabels[0], "No Hopping") == 0, "the first visible row maps past the disabled first effect");
-	CTR_TEST_CHECK(s_drawnLabels[1] != NULL && strcmp(s_drawnLabels[1], "No Items") == 0, "the next row skips disabled effects in the middle");
-	CTR_TEST_CHECK(s_drawnLabels[2] != NULL && strcmp(s_drawnLabels[2], "Giant Karts") == 0, "the final enabled effect is included");
+	CTR_TEST_CHECK(s_drawnLabels[0] != NULL && strcmp(s_drawnLabels[0], "Grounded") == 0, "the first visible row maps past the disabled first effect");
+	CTR_TEST_CHECK(s_drawnLabels[1] != NULL && strcmp(s_drawnLabels[1], "Fair Mode") == 0, "the next row skips disabled effects in the middle");
+	CTR_TEST_CHECK(s_drawnLabels[2] != NULL && strcmp(s_drawnLabels[2], "Big Kart Energy") == 0, "the final enabled effect is included");
 	CTR_TEST_CHECK(!s_drewOnOff, "the read-only list has no ON/OFF column");
 	Frame(BTN_UP, 0);
 	CTR_TEST_CHECK_EQ(MM_menuChaosConfig.rowSelected, 2, "navigation wraps within the filtered list");
@@ -524,12 +524,12 @@ static void TestChaosRaceShortcut(void)
 	CTR_TEST_CHECK_EQ(s_testLevel, -1, "Start on a settings row does not launch a race");
 	MM_menuChaosConfig.rowSelected = sdata->chaosMenu.effectsRow;
 	Frame(BTN_CROSS, 0);
-	MM_menuChaosConfig.rowSelected = CHAOS_EFFECT_LOW_GRAVITY;
+	MM_menuChaosConfig.rowSelected = CHAOS_EFFECT_FLY_ME_TO_THE_MOON;
 	Frame(BTN_START, 0);
 	CTR_TEST_CHECK_EQ(s_testLevel, -1, "the shortcut is disabled by default");
 	g_config.chaosQuickRace = true;
 	s_tracker.podiumRewardID = STATIC_TROPHY;
-	sdata->chaosSettings.effects[CHAOS_EFFECT_LOW_GRAVITY] = false;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_FLY_ME_TO_THE_MOON] = false;
 	Frame(BTN_START, 0);
 	CTR_TEST_CHECK_EQ(s_testLevel, CRASH_COVE, "Start launches Crash Cove even when the highlighted toggle is off");
 	CTR_TEST_CHECK_EQ(s_tracker.gameMode1, ADVENTURE_MODE, "the test is an Adventure race");
@@ -542,14 +542,14 @@ static void TestChaosRaceShortcut(void)
 	CTR_TEST_CHECK_EQ(sdata->chaosSettings.enabledCount, 1, "only one effect is counted");
 	for (int id = 0; id < CHAOS_EFFECT_COUNT; id++)
 	{
-		CTR_TEST_CHECK(sdata->chaosSettings.effects[id] == (id == CHAOS_EFFECT_LOW_GRAVITY), "only the highlighted effect is enabled");
+		CTR_TEST_CHECK(sdata->chaosSettings.effects[id] == (id == CHAOS_EFFECT_FLY_ME_TO_THE_MOON), "only the highlighted effect is enabled");
 	}
 	CTR_TEST_CHECK(s_drewBeforeExit, "the menu draws before requesting the transition");
 
 	// Return to creation after another completed Adventure event in this session.
 	MM_ChaosConfig_OnEnter();
 	sdata->chaosMenu.page = CHAOS_PAGE_EFFECTS;
-	MM_menuChaosConfig.rowSelected = CHAOS_EFFECT_GIANT_KARTS;
+	MM_menuChaosConfig.rowSelected = CHAOS_EFFECT_BIG_KART_ENERGY;
 	s_tracker.podiumRewardID = STATIC_RELIC;
 	memset(sdata->kartSpawnOrderArray, 0, sizeof(sdata->kartSpawnOrderArray));
 	s_testLevel = -1;
@@ -558,8 +558,8 @@ static void TestChaosRaceShortcut(void)
 	CheckTestRaceGrid();
 	CTR_TEST_CHECK_EQ(s_tracker.podiumRewardID, NOFUNC, "every shortcut launch clears pending podium rewards");
 	CTR_TEST_CHECK_EQ(sdata->chaosSettings.enabledCount, 1, "a subsequent launch still enables exactly one effect");
-	CTR_TEST_CHECK(sdata->chaosSettings.effects[CHAOS_EFFECT_GIANT_KARTS] &&
-	               !sdata->chaosSettings.effects[CHAOS_EFFECT_LOW_GRAVITY],
+	CTR_TEST_CHECK(sdata->chaosSettings.effects[CHAOS_EFFECT_BIG_KART_ENERGY] &&
+	               !sdata->chaosSettings.effects[CHAOS_EFFECT_FLY_ME_TO_THE_MOON],
 	               "a subsequent launch replaces the previous tested effect");
 
 	struct RectMenu pause = {0};

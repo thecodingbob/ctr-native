@@ -81,22 +81,22 @@ Duration and must be enabled in the file. Setup and a manual submission example 
 
 | Effect                  | What happens                                                                                                                                                                      |
 |-------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Inverted Steering**   | Left and right steering are reversed.                                                                                                                                             |
-| **No Hopping**          | Manual hopping is disabled. Existing drifts and forced jumps can still happen.                                                                                                    |
-| **Wobble Steering**     | Steering sways from side to side, making a straight line harder to hold.                                                                                                          |
-| **Low Gravity**         | Gravity falls to one quarter of normal, keeping you airborne longer.                                                                                                              |
-| **Heavy Karts**         | Gravity triples, bringing you down sooner after jumps.                                                                                                                            |
-| **Speed Capped**        | Forward target speed is capped at half your kart's normal class speed, including while boosting.                                                                                  |
-| **Super Speed**         | Doubles forward target speed and acceleration. The game's usual speed ceiling still applies.                                                                                      |
-| **No Reserves**         | Continually clears stored boost fuel, preventing you from building up reserves.                                                                                                   |
-| **No Items**            | Empties held items and cancels item rolls. Already deployed items, shields and masks remain active.                                                                               |
-| **Explosive Crates**    | Item, Wumpa and time crates explode when you drive into and break them. The blast can hurt you through mask or shield protection.                                                 |
-| **Wumpa Drain**         | Removes one collected Wumpa per second until you reach zero.                                                                                                                      |
-| **Clock Curse**         | Applies an initial spin hit and clock slowdown. The initial hit bypasses mask and shield protection.                                                                              |
-| **Defective Boosts**    | While you have reserves, the fire-speed bonus becomes a penalty instead.                                                                                                          |
+| **Mirror, Mirror** | Left and right steering are reversed. |
+| **Grounded** | Manual hopping is disabled. Existing drifts and forced jumps can still happen. |
+| **Totally Sober** | Steering sways from side to side, making a straight line harder to hold. |
+| **Fly Me to the Moon** | Gravity falls to one quarter of normal, keeping you airborne longer. |
+| **Heavy Metal** | Gravity triples, bringing you down sooner after jumps. |
+| **Sunday Driver** | Forward target speed is capped at half your kart's normal class speed, including while boosting. |
+| **Gotta Go Fast** | Doubles forward target speed and acceleration. The game's usual speed ceiling still applies. |
+| **Hole in the Tank** | Continually clears stored boost fuel, preventing you from building up reserves. |
+| **Fair Mode** | Empties held items and cancels item rolls. Already deployed items, shields and masks remain active. |
+| **Unboxing Gone Wrong** | Item, Wumpa and time crates explode when you drive into and break them. The blast can hurt you through mask or shield protection. |
+| **Wumpa Tax** | Removes one collected Wumpa per second until you reach zero. |
+| **Clockblocked** | Applies an initial spin hit and clock slowdown. The initial hit bypasses mask and shield protection. |
+| **Brown Fire** | While you have reserves, the fire-speed bonus becomes a penalty instead. |
 | **Anxious Mask**        | Contact with slowing terrain, such as off-road surfaces, requests a normal mask rescue back to a checkpoint. Normal rescue penalties apply.                                       |
-| **Hard Crates**         | Item, Wumpa and time crates become solid obstacles when you drive into them, instead of breaking and giving rewards.                                                              |
-| **Giant Karts**         | Doubles kart size and lateral collision size, adds 30% to forward target speed and jump force, and lets larger karts squash smaller ones. Protected karts can resist squashing.   |
+| **Unbreakable** | Item, Wumpa and time crates become solid obstacles when you drive into them, instead of breaking and giving rewards. |
+| **Big Kart Energy** | Doubles kart size and lateral collision size, adds 30% to forward target speed and jump force, and lets larger karts squash smaller ones. Protected karts can resist squashing. |
 | **Use This!**           | Replace each human's item with a random one.                                                                                                                                      |
 | **Juiced Up**           | Fill Wumpas to ten.                                                                                                                                                               |
 | **It is I**             | Activate or renew a normal mask without consuming inventory, using normal Wumpa and duration rules.                                                                               |
@@ -117,7 +117,7 @@ Duration and must be enabled in the file. Setup and a manual submission example 
 | **Senile Mask** | Flash the wrong-way warning only while humans drive in the correct direction; suppress the warning and voice when actually going the wrong way. The mask voice repeats with half its normal cooldown, without overlapping speech. Race progress is unaffected. |
 | **Identity Crisis** | Switch each human to a random playable character not currently present in the race, regardless of unlocks, with that character's driving class and engine sound until race end. A brief smoke poof and the invisibility sound accompany the transformation. Preserve race state and inventory. The latest class change from this effect or Try Something New wins. |
 | **Body Swap** | Temporarily exchange karts with another human or bot in random disjoint pairs. Take the kart's character, current class, inventory, damage and race progress; human driving modifiers follow the player. Control and camera switch immediately, including during rescues. Return at expiry or on either kart's final finish-line approach. |
-| **Teleport** | Instantly move each unfinished human forward by 10% of a lap along the track path, following the selected branch or the main route. Preserve speed, reserves and held items; face the destination route and realign the camera. Finish-line crossings count normally, including completing the race. Unavailable in battle and crystal challenges. |
+| **Yardrat Training** | Instantly move each unfinished human forward by 10% of a lap along the track path, following the selected branch or the main route. Preserve speed, reserves and held items; face the destination route and realign the camera. Finish-line crossings count normally, including completing the race. Unavailable in battle and crystal challenges. |
 | **Defective Teleport** | Instantly move each unfinished human to a random point in the space behind their kart, also sideways, above or below. The maximum 3D displacement is 20% of the lap length, with a vertical offset limited to 256 world units. Destinations stay within the level footprint and near track geometry; they do not follow the racing line. Water, off-road positions and normal mask saves are allowed. Preserve speed, reserves and inventory at teleport time; subsequent landings and rescues use normal game rules. Keep the heading, realign the camera and play the invisibility sound. Unavailable in battle and crystal challenges. |
 | **Za Warudo** | Stop time for up to ten seconds while humans keep driving. Bots, hazards, world animations/particles and nonhuman weapons freeze. Karts can pass through each other; touched Nitro and potions also allow passage and detonate only when time resumes, affecting karts within their respective blast/contact radius at that moment. Other hazards retain their collisions. Human weapons keep moving, but their impacts on frozen entities take effect when time resumes. Human masks, boost flames and kart smoke keep animating; crates and pickups remain collectible. Race clocks, item-effect durations and other Chaos timers stop. Blue/yellow scene colors leave the HUD unchanged. Clock/time-crate cues and six ticks mark the effect; music and world/bot sounds pause while human pickup, launch and weapon sounds remain active. |
 | **King Crimson** | Instantly skip ten seconds: advance unfinished bots along the track according to their current speed and add ten seconds to the race clock. Human positions, weapons, power-ups and other effect timers do not advance through the skipped interval. Bots can complete laps and finish, with normal finish order/results handling. A half-second blue/yellow world palette and clock/time-crate cues mark the skip. Available only in events that support racing bots. Replaces Za Warudo; Za Warudo also cancels its short presentation. |
@@ -129,16 +129,16 @@ Duration 30 seconds with Interval 10 seconds allows several effects at once.
   ignored; refreshing or replacing an existing effect is still possible.
 - Triggering an active effect starts its duration over and announces it again;
   it does not multiply that effect's strength.
-- These pairs replace one another: **Inverted Steering / Wobble Steering**,
-  **Low Gravity / Heavy Karts**, **Speed Capped / Super Speed**,
-  **No Reserves / Too Boosted TO Fail**, **This Is Fire / Defective Boosts**,
-  **No Hopping / Hydraulics**, **Giant Karts / Small Kart Energy**, and
+- These pairs replace one another: **Mirror, Mirror / Totally Sober**,
+  **Fly Me to the Moon / Heavy Metal**, **Sunday Driver / Gotta Go Fast**,
+  **Hole in the Tank / Too Boosted TO Fail**, **This Is Fire / Brown Fire**,
+  **Grounded / Hydraulics**, **Big Kart Energy / Small Kart Energy**, and
   **Za Warudo / King Crimson**.
-- **Use This!** ends **No Items**; **Reserve Injection** ends **No Reserves**.
-- **My Planet Needs Me** ends **No Hopping** and **Hydraulics** before launching.
+- **Use This!** ends **Fair Mode**; **Reserve Injection** ends **Hole in the Tank**.
+- **My Planet Needs Me** ends **Grounded** and **Hydraulics** before launching.
 - Instant effects (**Use This!**, **Juiced Up**, **It is I**,
   **Providence**, **Reserve Injection**, **My Planet Needs Me**, **Try Something New**,
-  **You've Got Mail**, **Fresh Start**, **Identity Crisis**, **Teleport**,
+  **You've Got Mail**, **Fresh Start**, **Identity Crisis**, **Yardrat Training**,
   **Defective Teleport**, **King Crimson**) take no timed slot.
   Repeating one applies it again.
 

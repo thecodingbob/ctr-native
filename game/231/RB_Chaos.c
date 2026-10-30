@@ -21,7 +21,7 @@ static bool Chaos_TargetsDriver(ChaosEffectId effect, const struct Driver *drive
 static bool Chaos_EffectFitsEvent(ChaosEffectId effect)
 {
 	const ChaosEffectDef *def = ChaosEffect_Def(effect);
-	if (effect == CHAOS_EFFECT_TELEPORT || effect == CHAOS_EFFECT_DEFECTIVE_TELEPORT)
+	if (effect == CHAOS_EFFECT_YARDRAT_TRAINING || effect == CHAOS_EFFECT_DEFECTIVE_TELEPORT)
 	{
 		return (sdata->gGT->gameMode1 & (BATTLE_MODE | CRYSTAL_CHALLENGE)) == 0;
 	}
@@ -231,7 +231,7 @@ static void Chaos_OnEffectDeactivated(ChaosEffectId effect)
 		struct Driver *driver = sdata->gGT->drivers[i];
 		if (driver != NULL)
 		{
-			if (effect == CHAOS_EFFECT_GIANT_KARTS || effect == CHAOS_EFFECT_SMALL_KART_ENERGY)
+			if (effect == CHAOS_EFFECT_BIG_KART_ENERGY || effect == CHAOS_EFFECT_SMALL_KART_ENERGY)
 			{
 				Chaos_SetKartScale(CHAOS_KART_SCALE_NORMAL, driver);
 			}
@@ -261,13 +261,13 @@ static void Chaos_RemoveReplacedEffects(ChaosEffectId effect)
 {
 	ChaosEffectId replaced = CHAOS_EFFECT_NONE;
 	static const ChaosEffectId opposites[][2] = {
-		{CHAOS_EFFECT_INVERTED_STEERING, CHAOS_EFFECT_WOBBLE_STEERING},
-		{CHAOS_EFFECT_LOW_GRAVITY, CHAOS_EFFECT_HEAVY_KARTS},
-		{CHAOS_EFFECT_SPEED_CAPPED, CHAOS_EFFECT_SUPER_SPEED},
-		{CHAOS_EFFECT_NO_RESERVES, CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL},
-		{CHAOS_EFFECT_THIS_IS_FIRE, CHAOS_EFFECT_DEFECTIVE_BOOSTS},
-		{CHAOS_EFFECT_NO_HOPPING, CHAOS_EFFECT_HYDRAULICS},
-		{CHAOS_EFFECT_GIANT_KARTS, CHAOS_EFFECT_SMALL_KART_ENERGY},
+		{CHAOS_EFFECT_MIRROR_MIRROR, CHAOS_EFFECT_TOTALLY_SOBER},
+		{CHAOS_EFFECT_FLY_ME_TO_THE_MOON, CHAOS_EFFECT_HEAVY_METAL},
+		{CHAOS_EFFECT_SUNDAY_DRIVER, CHAOS_EFFECT_GOTTA_GO_FAST},
+		{CHAOS_EFFECT_HOLE_IN_THE_TANK, CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL},
+		{CHAOS_EFFECT_THIS_IS_FIRE, CHAOS_EFFECT_BROWN_FIRE},
+		{CHAOS_EFFECT_GROUNDED, CHAOS_EFFECT_HYDRAULICS},
+		{CHAOS_EFFECT_BIG_KART_ENERGY, CHAOS_EFFECT_SMALL_KART_ENERGY},
 		{CHAOS_EFFECT_ZA_WARUDO, CHAOS_EFFECT_KING_CRIMSON},
 	};
 	for (int i = 0; i < (int)len(opposites); i++)
@@ -281,11 +281,11 @@ static void Chaos_RemoveReplacedEffects(ChaosEffectId effect)
 	// Instant gifts remove a restriction; the reverse is not a conflict.
 	if (effect == CHAOS_EFFECT_RESERVE_INJECTION)
 	{
-		replaced = CHAOS_EFFECT_NO_RESERVES;
+		replaced = CHAOS_EFFECT_HOLE_IN_THE_TANK;
 	}
 	else if (effect == CHAOS_EFFECT_USE_THIS)
 	{
-		replaced = CHAOS_EFFECT_NO_ITEMS;
+		replaced = CHAOS_EFFECT_FAIR_MODE;
 	}
 	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
 	for (int i = 0; i < runtime->numInstantNotices;)
@@ -304,7 +304,7 @@ static void Chaos_RemoveReplacedEffects(ChaosEffectId effect)
 	{
 		const ChaosEffectId active = runtime->active[i].effect;
 		const bool replacesJumpEffect = effect == CHAOS_EFFECT_MY_PLANET_NEEDS_ME &&
-		    (active == CHAOS_EFFECT_NO_HOPPING || active == CHAOS_EFFECT_HYDRAULICS);
+		    (active == CHAOS_EFFECT_GROUNDED || active == CHAOS_EFFECT_HYDRAULICS);
 		if (active == effect || active == replaced || replacesJumpEffect)
 		{
 			Chaos_RemoveActivation(i);
@@ -336,7 +336,7 @@ static void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation)
 	{
 		Chaos_SendWarpball();
 	}
-	if (effect == CHAOS_EFFECT_CLOCK_CURSE)
+	if (effect == CHAOS_EFFECT_CLOCKBLOCKED)
 	{
 		// Clock sound needs to be only applied once, otherwise it plays once per player
 		OtherFX_Play(SOUND_CLOCK, 1);
@@ -352,7 +352,7 @@ static void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation)
 		{
 			switch ((int)effect)
 			{
-				case CHAOS_EFFECT_GIANT_KARTS:
+				case CHAOS_EFFECT_BIG_KART_ENERGY:
 					Chaos_SetKartScale(CHAOS_GIANT_SCALE, driver);
 					break;
 				case CHAOS_EFFECT_SMALL_KART_ENERGY:
@@ -406,13 +406,13 @@ static void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation)
 				case CHAOS_EFFECT_IDENTITY_CRISIS:
 					Chaos_ChangeIdentity(driver);
 					break;
-				case CHAOS_EFFECT_TELEPORT:
+				case CHAOS_EFFECT_YARDRAT_TRAINING:
 					Chaos_TeleportDriver(driver);
 					break;
 				case CHAOS_EFFECT_DEFECTIVE_TELEPORT:
 					Chaos_DefectiveTeleportDriver(driver);
 					break;
-				case CHAOS_EFFECT_CLOCK_CURSE:
+				case CHAOS_EFFECT_CLOCKBLOCKED:
 					Chaos_ApplyClockCurse(driver, chaosActivation->remainingMS);
 					break;
 				default:
@@ -592,11 +592,11 @@ bool Chaos_IsActiveForDriver(ChaosEffectId effect, const struct Driver *driver)
 int Chaos_GravityForDriver(const struct Driver *driver)
 {
 	const int gravity = driver->const_Gravity;
-	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_LOW_GRAVITY, driver))
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_FLY_ME_TO_THE_MOON, driver))
 	{
 		return Chaos_LowGravity(gravity);
 	}
-	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_HEAVY_KARTS, driver))
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_HEAVY_METAL, driver))
 	{
 		return Chaos_HeavyGravity(gravity);
 	}
@@ -609,11 +609,11 @@ int Chaos_SpeedForDriver(const struct Driver *driver, int speed)
 	{
 		return speed;
 	}
-	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_DEFECTIVE_BOOSTS, driver))
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_BROWN_FIRE, driver))
 	{
 		speed = Chaos_DefectiveBoostSpeed(driver, speed);
 	}
-	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_GIANT_KARTS, driver))
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_BIG_KART_ENERGY, driver))
 	{
 		speed = Chaos_GiantForce(speed);
 	}
@@ -621,11 +621,11 @@ int Chaos_SpeedForDriver(const struct Driver *driver, int speed)
 	{
 		speed = Chaos_SmallForce(speed);
 	}
-	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SPEED_CAPPED, driver))
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SUNDAY_DRIVER, driver))
 	{
 		return Chaos_CappedSpeed(driver, speed);
 	}
-	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SUPER_SPEED, driver) ||
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_GOTTA_GO_FAST, driver) ||
 	    Chaos_IsActiveForDriver(CHAOS_EFFECT_ARENA_CHAMPIONS, driver))
 	{
 		speed = Chaos_SuperSpeed(speed);
@@ -635,7 +635,7 @@ int Chaos_SpeedForDriver(const struct Driver *driver, int speed)
 
 int Chaos_JumpForceForDriver(const struct Driver *driver, int force)
 {
-	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_GIANT_KARTS, driver))
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_BIG_KART_ENERGY, driver))
 	{
 		return Chaos_GiantForce(force);
 	}
@@ -649,7 +649,7 @@ int Chaos_JumpForceForDriver(const struct Driver *driver, int force)
 int Chaos_AccelerationForDriver(const struct Driver *driver, int acceleration)
 {
 	if (driver->baseSpeed > 0 && acceleration > 0 &&
-	    Chaos_IsActiveForDriver(CHAOS_EFFECT_SUPER_SPEED, driver))
+	    Chaos_IsActiveForDriver(CHAOS_EFFECT_GOTTA_GO_FAST, driver))
 	{
 		return Chaos_SuperSpeed(acceleration);
 	}
@@ -680,7 +680,7 @@ void Chaos_ApplyRescueRules(struct Driver *driver)
 
 void Chaos_ApplyCrateRules(struct Driver *driver, struct Instance *crateInst)
 {
-	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_EXPLOSIVE_CRATES, driver))
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_UNBOXING_GONE_WRONG, driver))
 	{
 		Chaos_ExplodeCrate(driver, crateInst);
 	}
@@ -690,12 +690,12 @@ bool Chaos_IsHardCrateForDriver(const struct Instance *crateInst, const struct T
                                const struct ScratchpadStruct *sps)
 {
 	return crateInst->scale.x == 0x1000 && sps->Input1.modelID == DYNAMIC_PLAYER &&
-	       Chaos_IsActiveForDriver(CHAOS_EFFECT_HARD_CRATES, collidingTh->object);
+	       Chaos_IsActiveForDriver(CHAOS_EFFECT_UNBREAKABLE, collidingTh->object);
 }
 
 void Chaos_ApplyItemRules(struct Driver *driver)
 {
-	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_NO_ITEMS, driver))
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_FAIR_MODE, driver))
 	{
 		Chaos_ClearItems(driver);
 	}
@@ -752,11 +752,11 @@ void Chaos_ApplyInputRules(const struct Driver *driver, struct GamepadBuffer *pa
 		{
 			continue;
 		}
-		if (effect == CHAOS_EFFECT_INVERTED_STEERING)
+		if (effect == CHAOS_EFFECT_MIRROR_MIRROR)
 		{
 			pad->stickLX = Chaos_InvertSteering(pad);
 		}
-		else if (effect == CHAOS_EFFECT_WOBBLE_STEERING)
+		else if (effect == CHAOS_EFFECT_TOTALLY_SOBER)
 		{
 			pad->stickLX = Chaos_WobbleSteering(&runtime->active[i], pad);
 		}
@@ -857,7 +857,7 @@ u32 Chaos_ApplyDriver(struct Driver *driver, u32 actions)
 		{
 			continue;
 		}
-		if (effect == CHAOS_EFFECT_NO_HOPPING)
+		if (effect == CHAOS_EFFECT_GROUNDED)
 		{
 			actions = Chaos_PreventHopping(driver, actions);
 		}
@@ -869,11 +869,11 @@ u32 Chaos_ApplyDriver(struct Driver *driver, u32 actions)
 				Chaos_RequestHop(driver);
 			}
 		}
-		else if (effect == CHAOS_EFFECT_NO_RESERVES)
+		else if (effect == CHAOS_EFFECT_HOLE_IN_THE_TANK)
 		{
 			Chaos_ClearReserves(driver);
 		}
-		else if (effect == CHAOS_EFFECT_WUMPA_DRAIN && !Chaos_IsTimeStopped())
+		else if (effect == CHAOS_EFFECT_WUMPA_TAX && !Chaos_IsTimeStopped())
 		{
 			Chaos_TickWumpaDrain(runtime->active[i].elapsedMS, driver);
 		}

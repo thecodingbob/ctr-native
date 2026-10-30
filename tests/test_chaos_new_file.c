@@ -87,7 +87,7 @@ static void TestNewAfterChaosCreation(void)
 			sdata->chaosSettings.durationSeconds = 45;
 			sdata->chaosSettings.triggerIntervalSeconds = 90;
 			sdata->chaosSettings.trigger = CHAOS_TRIGGER_PICKUP;
-			ChaosEffect_Toggle(sdata->chaosSettings.effects, &sdata->chaosSettings.enabledCount, CHAOS_EFFECT_LOW_GRAVITY);
+			ChaosEffect_Toggle(sdata->chaosSettings.effects, &sdata->chaosSettings.enabledCount, CHAOS_EFFECT_FLY_ME_TO_THE_MOON);
 
 			g_config.chaosMode = prompt != 0;
 			g_config.multiplayerAdventure = players != 0;
@@ -112,7 +112,7 @@ static void TestNewAfterLoadedChaosSettings(void)
 		.trigger = CHAOS_TRIGGER_EXTERNAL,
 		.armed = true,
 	};
-	saved.effects[CHAOS_EFFECT_HARD_CRATES] = true;
+	saved.effects[CHAOS_EFFECT_UNBREAKABLE] = true;
 	saved.enabledCount = (u8)ChaosEffect_CountEnabled(saved.effects);
 	sdata->chaosSettings = saved;
 

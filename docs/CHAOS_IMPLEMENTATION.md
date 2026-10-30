@@ -34,7 +34,7 @@ stay in the runtime; returning the selected pairs is an effect operation.
 Gameplay hooks check activation and applicability before invoking operations;
 effect-specific adapters also query activation where needed. Operations retain their
 gameplay conditions (terrain, fuel, pickup queues). The gameplay hooks preserve modifier
-ordering and check eligibility before calling them; No Reserves is tested
+ordering and check eligibility before calling them; Hole in the Tank is tested
 through `Chaos_ApplyDriver`.
 
 ## Time skip
@@ -42,9 +42,9 @@ through `Chaos_ApplyDriver`.
 King Crimson (instant ID 39, `king-crimson`) advances the event clock by 10,000 ms
 and estimates unfinished bot travel from current AI speed in retail navigation
 units, including Arena Champions' motion multiplier. `Chaos_GetTrackLength` shares
-checkpoint-data validation with Teleport; `Chaos_FindTrackDestination` shares its
+checkpoint-data validation with Yardrat Training; `Chaos_FindTrackDestination` shares its
 route traversal and interpolation, including selected checkpoint branches.
-Track-path lookup needs no mesh; only Teleport's ground-placement operation
+Track-path lookup needs no mesh; only Yardrat Training's ground-placement operation
 requires one. `BOTS_FindClosestNavFrame` is shared with bot handover;
 `BOTS_SetRotation` rebuilds the destination navigation estimate. Bot position,
 backup, render translation and checkpoint projection are synchronized without
@@ -71,7 +71,7 @@ replace each other; pending time-stop impacts resolve before bot relocation.
 Za Warudo (ID 38, `za-warudo`) is timed and capped at 10,000 ms.
 `Chaos_Update` runs before the event clock and world updates. While stopped,
 only its activation clock advances; other activation/notice/trigger clocks,
-Fresh Start and transformation delays retain their values. Wumpa Drain cannot
+Fresh Start and transformation delays retain their values. Wumpa Tax cannot
 repeat a suspended pulse. External command polling is also suspended: requests
 remain pending until time resumes. Ordinary human driving cooldowns/reserves
 still advance.
@@ -199,7 +199,7 @@ generator once at process startup; the host supplies a seed from SDL's
 automatically seeded RNG, before replay restoration;
 Adventure saves do not restore it. Checkpoints restore its exact captured state.
 Use that RNG for scheduling and
-selection rather than retail RNG. Hard Crates' retail weapon interactions can
+selection rather than retail RNG. Unbreakable's retail weapon interactions can
 still consume retail RNG; do not conceal this by restoring it.
 
 Timed activations are ordered, with at most four unique IDs. Reactivation removes the
@@ -228,7 +228,7 @@ Triggers normally do not wait for earlier effects to expire; Za Warudo suspends
 trigger clocks and external polling until time resumes.
 
 Pickup hooks run after full-size crates, loose Wumpa, crystals or CTR letters are
-consumed. Weapon-owned rewards, hidden/regrowing crates, intact Hard Crates, bots
+consumed. Weapon-owned rewards, hidden/regrowing crates, crates made solid by Unbreakable, bots
 and finished humans do not count. Normal/super turbo pads dispatch after the
 retail boost: one captured latch per human prevents repeats until leaving all
 pad terrain. Pause freezes latches; race reset clears them.
@@ -257,20 +257,20 @@ guarantee teardown.
 
 | Effect                     | Hook and constraints                                                                                                                                                                    |
 |----------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Inverted Steering          | Mirror the resolved axis around the calibrated center.                                                                                                                                  |
-| No Hopping                 | Clear resolved manual hop latch/buffer after input resolution; preserve drift, forced jumps and cloud ownership.                                                                        |
-| Wobble Steering            | Two-second sine wave at 75% of controller range, clamped; phase uses captured activation elapsed time.                                                                                  |
-| Low Gravity / Heavy Karts  | Derive gravity from the live constant at 1/4 or 3× before terrain multipliers; preserve jump impulse and terminal velocity.                                                             |
-| Speed Capped / Super Speed | Half-class-speed ceiling / double forward target and positive acceleration; preserve reverse and the retail `0x6400` target limit.                                                      |
-| No Reserves                | Clear both fuel timers in the driver-input hook; later retail grants survive until the next application.                                                                                |
-| No Items                   | Clear inventory, pending launch and roulette before item processing; deployed effects remain active.                                                                                    |
-| Wumpa Drain                | Remove one credited fruit per crossed game second, at most once per frame; preserve pending HUD awards and stop at zero. No pulse at activation or expiry.                              |
-| Clock Curse                | One-off spin and clock audio bypass protection without consuming it; assign full duration to 32-bit `clockReceive`. Retail countdown owns it thereafter, even after a Chaos-only reset. |
-| Defective Boosts           | Subtract twice the live fire-speed bonus while reserves remain, clamping the forward target to zero; retain ordinary fuel/fire bookkeeping.                                             |
+| Mirror, Mirror | Mirror the resolved axis around the calibrated center. |
+| Grounded | Clear resolved manual hop latch/buffer after input resolution; preserve drift, forced jumps and cloud ownership. |
+| Totally Sober | Two-second sine wave at 75% of controller range, clamped; phase uses captured activation elapsed time. |
+| Fly Me to the Moon / Heavy Metal | Derive gravity from the live constant at 1/4 or 3× before terrain multipliers; preserve jump impulse and terminal velocity. |
+| Sunday Driver / Gotta Go Fast | Half-class-speed ceiling / double forward target and positive acceleration; preserve reverse and the retail `0x6400` target limit. |
+| Hole in the Tank | Clear both fuel timers in the driver-input hook; later retail grants survive until the next application. |
+| Fair Mode | Clear inventory, pending launch and roulette before item processing; deployed effects remain active. |
+| Wumpa Tax | Remove one credited fruit per crossed game second, at most once per frame; preserve pending HUD awards and stop at zero. No pulse at activation or expiry. |
+| Clockblocked | One-off spin and clock audio bypass protection without consuming it; assign full duration to 32-bit `clockReceive`. Retail countdown owns it thereafter, even after a Chaos-only reset. |
+| Brown Fire | Subtract twice the live fire-speed bonus while reserves remain, clamping the forward target to zero; retain ordinary fuel/fire bookkeeping. |
 | Anxious Mask               | Physical slowing terrain requests retail rescue before checkpoint progress; retail eligibility, destination and penalties remain authoritative.                                         |
-| Explosive Crates           | Direct human contact with a consumed item/Wumpa/time crate creates the retail burst and protection-bypassing damage; retain rewards and weapon-hit behavior.                            |
-| Hard Crates                | Full-size item/Wumpa/time crates return the solid-hitbox response before breaking or granting rewards; retain weapon/bot/regrowth behavior.                                             |
-| Giant Karts                | Target `Driver.kartScale = 2`; double models, tires and lateral collision radii, retain ground clearance, add 30% forward speed/jump force. Restore target 1 on deactivation/reset.     |
+| Unboxing Gone Wrong | Direct human contact with a consumed item/Wumpa/time crate creates the retail burst and protection-bypassing damage; retain rewards and weapon-hit behavior. |
+| Unbreakable | Full-size item/Wumpa/time crates return the solid-hitbox response before breaking or granting rewards; retain weapon/bot/regrowth behavior. |
+| Big Kart Energy | Target `Driver.kartScale = 2`; double models, tires and lateral collision radii, retain ground clearance, add 30% forward speed/jump force. Restore target 1 on deactivation/reset. |
 
 Scale calculations belong in `VehPhysForce.c`; Chaos sets driver targets. Retail
 interpolation owns body growth/squash/stretch. Giant-vs-smaller collisions use
@@ -327,7 +327,7 @@ sets new boost grants to `VEH_PHYS_FORCE_SUPER_TURBO_PAD_FIRE_LEVEL`, using the 
 `VehFire_SetLevel` shares normal fire speed/size assignment between activation
 and `VehFire_Increment`; activation does not add reserves or count a boost.
 `Chaos_FireLevelForDriver` filters new grants before their normal bookkeeping.
-The effect replaces Defective Boosts symmetrically. Expiry does not restore a
+The effect replaces Brown Fire symmetrically. Expiry does not restore a
 previous fire tier; earned USF remains subject to normal boost-loss rules.
 
 Hydraulics (ID 24, `hydraulics`) renews a normal hop request in
@@ -336,14 +336,14 @@ step. It preserves genuine input buffers and never changes shared pad input or
 simulates a held shoulder. Normal jump/friction checks own eligibility and force,
 so there is no extra delay, airborne impulse or cooldown bypass. Requests also
 apply while drifting; damage states and jump-lockout clouds do not receive them.
-Hydraulics and No Hopping replace each other.
+Hydraulics and Grounded replace each other.
 
 My Planet Needs Me (ID 25, `my-planet-needs-me`) adds one world-up impulse at
 six times the effective normal jump force, including while airborne. It uses
 the existing speed/vector converters and synchronizes the working velocity,
 preserving horizontal momentum, inventory and reserves. It bypasses normal-hop
 eligibility without changing cooldowns or queuing a repeated jump. Activation
-removes No Hopping/Hydraulics and preserves gravity modifiers. Before conversion,
+removes Grounded/Hydraulics and preserves gravity modifiers. Before conversion,
 the vertical component is bounded by the remaining length available in signed
 16-bit `Driver.speed`, keeping the full vector at or below `INT16_MAX`. Horizontal
 momentum is retained unless its reconstruction alone exceeds that limit through
@@ -355,10 +355,10 @@ math-backed test double.
 
 Who Bound This? (ID 26, `who-bound-this`) keeps independent per-human permutations
 and analog edge history in `ChaosRuntime`. `Chaos_ApplyInputRules` remaps fresh
-local pad copies before applying Inverted/Wobble Steering and Sabotage. Driving
+local pad copies before applying Mirror, Mirror / Totally Sober and Sabotage. Driving
 physics, drift entry and drift updates all use the same logical controls;
 shared pad/menu input remains unchanged. Analog throttle/reverse become mapped
-button actions while the effect is active. No Hopping/Hydraulics stay in
+button actions while the effect is active. Grounded/Hydraulics stay in
 `Chaos_ApplyDriver`, after normal jump-input resolution.
 
 Try Something New (ID 27, `try-something-new`) is a one-off class change lasting
@@ -429,7 +429,7 @@ class/identity ownership are checkpoint state. Asset-free tests cover ownership,
 pairing, lifecycle and the real human takeover's progress/motion transfer; driving
 callbacks and AI conversion are doubled.
 
-Teleport (ID 36, `teleport`) is instant and human-only, excluded from battle and
+Yardrat Training (ID 36, `yardrat-training`) is instant and human-only, excluded from battle and
 crystal challenges. It advances one tenth of the lap's retail progress distance,
 interpolating checkpoint positions along the selected route. It reuses
 `RB_Warpball_NewPathNode`, extracted unchanged into `RB_Warpball_Path.c` so the
@@ -469,7 +469,7 @@ bounds; no valid fallback means no movement. No ground snap is applied.
 
 Both teleports use `Chaos_MoveDriver` for hold/rescue release, pose/motion,
 camera recovery, turbo-pad latch invalidation and invisibility audio. Ordinary
-Teleport then installs its destination surfaces/progress. Defective Teleport
+Yardrat Training then installs its destination surfaces/progress. Defective Teleport
 keeps heading and canonical speed, clears current contacts/terrain, marks the
 kart airborne and retains `lastValid` for retail mask rescue. Normal physics and
 rescue rules can subsequently change speed or reserves.
@@ -480,7 +480,7 @@ Regression checks cover 3D range/headings, geometry bounds, unsafe placements,
 repeatability, rescue anchors and lifecycle gates.
 
 Small Kart Energy (ID 28, `small-kart-energy`) uses the same size pipeline as
-Giant Karts. `Driver.kartScale` is a float multiplier (zero defaults to 1×),
+Big Kart Energy. `Driver.kartScale` is a float multiplier (zero defaults to 1×),
 resolved by `VehPhysForce_GetKartScale`; finished drivers use 1×. Visual scales,
 tires and contact radii convert to integer dimensions through
 `VehPhysForce_ScaleValue`. Squash compares the floating-point multipliers without
@@ -527,7 +527,7 @@ or shared flags, and do not require checkpoint-owned camera state.
 
 Arena Champions (ID 30, `arena-champions`) uses bots-only scope. Normal
 rank/distance/leader-stat rubber-banding, boost, terrain and damage rules still
-run. `Chaos_SpeedForDriver` reuses the same 2x operation as Super Speed for
+run. `Chaos_SpeedForDriver` reuses the same 2x operation as Gotta Go Fast for
 the final navigation speed and horizontal velocity. AI dynamics stay in retail
 units: doubling the output doubles actual acceleration too, keeps existing caps
 and airborne square calculations valid, and avoids accumulating multipliers.

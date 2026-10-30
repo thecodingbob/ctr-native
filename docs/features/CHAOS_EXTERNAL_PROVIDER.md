@@ -8,7 +8,7 @@ externally written file.
 | File            | Owner             | Contents                                      |
 |-----------------|-------------------|-----------------------------------------------|
 | `chaos/effects` | Game              | One enabled, event-applicable effect slug per line |
-| `chaos/command` | External producer | One effect slug, e.g. `low-gravity`           |
+| `chaos/command` | External producer | One effect slug, e.g. `fly-me-to-the-moon` |
 
 Final files have no extension. Use ASCII or UTF-8 without a BOM. A command may
 have surrounding whitespace but no verbs, duration or extra arguments. It must
@@ -37,7 +37,7 @@ PowerShell example, run from the asset base directory:
 if (-not (Test-Path -LiteralPath 'chaos/command')) {
     [System.IO.File]::WriteAllText(
         (Join-Path (Get-Location) 'chaos/command.tmp'),
-        'low-gravity',
+        'fly-me-to-the-moon',
         [System.Text.Encoding]::ASCII)
     Move-Item -LiteralPath 'chaos/command.tmp' -Destination 'chaos/command'
 }

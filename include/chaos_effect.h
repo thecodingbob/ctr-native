@@ -19,26 +19,26 @@ typedef enum {
 
 	// Tier A: continuous driving/input modifiers. Restore Chaos-owned baseline
 	// constants once per driver before applying active overrides in order.
-	CHAOS_EFFECT_INVERTED_STEERING = 0,
-	CHAOS_EFFECT_NO_HOPPING = 1,
-	CHAOS_EFFECT_WOBBLE_STEERING = 2,
-	CHAOS_EFFECT_LOW_GRAVITY = 3,
-	CHAOS_EFFECT_HEAVY_KARTS = 4,
-	CHAOS_EFFECT_SPEED_CAPPED = 5,
-	CHAOS_EFFECT_SUPER_SPEED = 6,
-	CHAOS_EFFECT_NO_RESERVES = 7,
+	CHAOS_EFFECT_MIRROR_MIRROR = 0,
+	CHAOS_EFFECT_GROUNDED = 1,
+	CHAOS_EFFECT_TOTALLY_SOBER = 2,
+	CHAOS_EFFECT_FLY_ME_TO_THE_MOON = 3,
+	CHAOS_EFFECT_HEAVY_METAL = 4,
+	CHAOS_EFFECT_SUNDAY_DRIVER = 5,
+	CHAOS_EFFECT_GOTTA_GO_FAST = 6,
+	CHAOS_EFFECT_HOLE_IN_THE_TANK = 7,
 
 	// Tier B: items, wumpa, the economy.
-	CHAOS_EFFECT_NO_ITEMS = 8,
-	CHAOS_EFFECT_EXPLOSIVE_CRATES = 9,
-	CHAOS_EFFECT_WUMPA_DRAIN = 10,
-	CHAOS_EFFECT_CLOCK_CURSE = 11,
-	CHAOS_EFFECT_DEFECTIVE_BOOSTS = 12,
+	CHAOS_EFFECT_FAIR_MODE = 8,
+	CHAOS_EFFECT_UNBOXING_GONE_WRONG = 9,
+	CHAOS_EFFECT_WUMPA_TAX = 10,
+	CHAOS_EFFECT_CLOCKBLOCKED = 11,
+	CHAOS_EFFECT_BROWN_FIRE = 12,
 
 	// Tier C: driver and collision interventions.
 	CHAOS_EFFECT_ANXIOUS_MASK = 13,
-	CHAOS_EFFECT_HARD_CRATES = 14,
-	CHAOS_EFFECT_GIANT_KARTS = 15,
+	CHAOS_EFFECT_UNBREAKABLE = 14,
+	CHAOS_EFFECT_BIG_KART_ENERGY = 15,
 	CHAOS_EFFECT_USE_THIS = 16,
 	CHAOS_EFFECT_JUICED_UP = 17,
 	CHAOS_EFFECT_IT_IS_I = 18,
@@ -59,7 +59,7 @@ typedef enum {
 	CHAOS_EFFECT_SENILE_MASK = 33,
 	CHAOS_EFFECT_IDENTITY_CRISIS = 34,
 	CHAOS_EFFECT_BODY_SWAP = 35,
-	CHAOS_EFFECT_TELEPORT = 36,
+	CHAOS_EFFECT_YARDRAT_TRAINING = 36,
 	CHAOS_EFFECT_DEFECTIVE_TELEPORT = 37,
 	CHAOS_EFFECT_ZA_WARUDO = 38,
 	CHAOS_EFFECT_KING_CRIMSON = 39,
@@ -86,22 +86,22 @@ typedef struct
 
 static const ChaosEffectDef g_chaosEffectDefs[CHAOS_EFFECT_COUNT] =
 {
-	[CHAOS_EFFECT_INVERTED_STEERING] = { "inverted-steering", "Inverted Steering", CHAOS_SCOPE_HUMANS },
-	[CHAOS_EFFECT_NO_HOPPING] = { "no-hopping", "No Hopping", CHAOS_SCOPE_HUMANS },
-	[CHAOS_EFFECT_WOBBLE_STEERING] = { "wobble-steering", "Wobble Steering", CHAOS_SCOPE_HUMANS },
-	[CHAOS_EFFECT_LOW_GRAVITY] = { "low-gravity", "Low Gravity", CHAOS_SCOPE_HUMANS },
-	[CHAOS_EFFECT_HEAVY_KARTS] = { "heavy-karts", "Heavy Karts", CHAOS_SCOPE_HUMANS },
-	[CHAOS_EFFECT_SPEED_CAPPED] = { "speed-capped", "Speed Capped", CHAOS_SCOPE_HUMANS },
-	[CHAOS_EFFECT_SUPER_SPEED] = { "super-speed", "Super Speed", CHAOS_SCOPE_HUMANS },
-	[CHAOS_EFFECT_NO_RESERVES] = { "no-reserves", "No Reserves", CHAOS_SCOPE_HUMANS },
-	[CHAOS_EFFECT_NO_ITEMS] = { "no-items", "No Items", CHAOS_SCOPE_HUMANS },
-	[CHAOS_EFFECT_EXPLOSIVE_CRATES] = { "explosive-crates", "Explosive Crates", CHAOS_SCOPE_HUMANS },
-	[CHAOS_EFFECT_WUMPA_DRAIN] = { "wumpa-drain", "Wumpa Drain", CHAOS_SCOPE_HUMANS },
-	[CHAOS_EFFECT_CLOCK_CURSE] = { "clock-curse", "Clock Curse", CHAOS_SCOPE_HUMANS },
-	[CHAOS_EFFECT_DEFECTIVE_BOOSTS] = { "defective-boosts", "Defective Boosts", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_MIRROR_MIRROR] = { "mirror-mirror", "Mirror, Mirror", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_GROUNDED] = { "grounded", "Grounded", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_TOTALLY_SOBER] = { "totally-sober", "Totally Sober", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_FLY_ME_TO_THE_MOON] = { "fly-me-to-the-moon", "Fly Me to the Moon", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_HEAVY_METAL] = { "heavy-metal", "Heavy Metal", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_SUNDAY_DRIVER] = { "sunday-driver", "Sunday Driver", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_GOTTA_GO_FAST] = { "gotta-go-fast", "Gotta Go Fast", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_HOLE_IN_THE_TANK] = { "hole-in-the-tank", "Hole in the Tank", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_FAIR_MODE] = { "fair-mode", "Fair Mode", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_UNBOXING_GONE_WRONG] = { "unboxing-gone-wrong", "Unboxing Gone Wrong", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_WUMPA_TAX] = { "wumpa-tax", "Wumpa Tax", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_CLOCKBLOCKED] = { "clockblocked", "Clockblocked", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_BROWN_FIRE] = { "brown-fire", "Brown Fire", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_ANXIOUS_MASK] = { "anxious-mask", "Anxious Mask", CHAOS_SCOPE_HUMANS },
-	[CHAOS_EFFECT_HARD_CRATES] = { "hard-crates", "Hard Crates", CHAOS_SCOPE_HUMANS },
-	[CHAOS_EFFECT_GIANT_KARTS] = { "giant-karts", "Giant Karts", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_UNBREAKABLE] = { "unbreakable", "Unbreakable", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_BIG_KART_ENERGY] = { "big-kart-energy", "Big Kart Energy", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_USE_THIS] = { "use-this", "Use This!", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_JUICED_UP] = { "juiced-up", "Juiced Up", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_IT_IS_I] = { "it-is-i", "It is I", CHAOS_SCOPE_HUMANS },
@@ -122,7 +122,7 @@ static const ChaosEffectDef g_chaosEffectDefs[CHAOS_EFFECT_COUNT] =
 	[CHAOS_EFFECT_SENILE_MASK] = { "senile-mask", "Senile Mask", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_IDENTITY_CRISIS] = { "identity-crisis", "Identity Crisis", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_BODY_SWAP] = { "body-swap", "Body Swap", CHAOS_SCOPE_HUMANS },
-	[CHAOS_EFFECT_TELEPORT] = { "teleport", "Teleport", CHAOS_SCOPE_HUMANS },
+	[CHAOS_EFFECT_YARDRAT_TRAINING] = { "yardrat-training", "Yardrat Training", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_DEFECTIVE_TELEPORT] = { "defective-teleport", "Defective Teleport", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_ZA_WARUDO] = { "za-warudo", "Za Warudo", CHAOS_SCOPE_ALL },
 	[CHAOS_EFFECT_KING_CRIMSON] = { "king-crimson", "King Crimson", CHAOS_SCOPE_BOTS },
@@ -135,7 +135,7 @@ static inline bool ChaosEffect_IsInstant(ChaosEffectId id)
 	       id == CHAOS_EFFECT_RESERVE_INJECTION || id == CHAOS_EFFECT_MY_PLANET_NEEDS_ME ||
 	       id == CHAOS_EFFECT_TRY_SOMETHING_NEW || id == CHAOS_EFFECT_YOUVE_GOT_MAIL ||
 	       id == CHAOS_EFFECT_FRESH_START || id == CHAOS_EFFECT_IDENTITY_CRISIS ||
-	       id == CHAOS_EFFECT_TELEPORT || id == CHAOS_EFFECT_DEFECTIVE_TELEPORT || id == CHAOS_EFFECT_KING_CRIMSON;
+	       id == CHAOS_EFFECT_YARDRAT_TRAINING || id == CHAOS_EFFECT_DEFECTIVE_TELEPORT || id == CHAOS_EFFECT_KING_CRIMSON;
 }
 
 static inline const ChaosEffectDef *ChaosEffect_Def(ChaosEffectId id)

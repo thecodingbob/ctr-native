@@ -88,16 +88,16 @@ int main(void)
 {
 	CtrTestScratch_Open(s_base, sizeof(s_base), "test_chaos_ipc", NULL);
 	CTR_TEST_SECTION("catalogues are atomically replaced, including an empty selection");
-	NativeChaosIPC_WriteEffectsCatalogue("low-gravity\ngiant-karts\n");
-	CheckCatalogue("low-gravity\ngiant-karts\n");
-	NativeChaosIPC_WriteEffectsCatalogue("inverted-steering\n");
-	CheckCatalogue("inverted-steering\n");
+	NativeChaosIPC_WriteEffectsCatalogue("fly-me-to-the-moon\nbig-kart-energy\n");
+	CheckCatalogue("fly-me-to-the-moon\nbig-kart-energy\n");
+	NativeChaosIPC_WriteEffectsCatalogue("mirror-mirror\n");
+	CheckCatalogue("mirror-mirror\n");
 	NativeChaosIPC_WriteEffectsCatalogue("");
 	CheckCatalogue("");
 
 	CTR_TEST_SECTION("only the fixed atomically published command is consumed");
 	char command[NATIVE_CHAOS_COMMAND_SIZE];
-	const char padded[] = " \tlow-gravity\r\n";
+	const char padded[] = " \tfly-me-to-the-moon\r\n";
 	WriteFile("command.tmp", padded, strlen(padded));
 	CTR_TEST_CHECK_EQ(ReadAgain(command), NATIVE_CHAOS_NO_COMMAND, "temporary files are ignored");
 	char temporary[CHAOS_IPC_PATH_SIZE];
@@ -106,12 +106,12 @@ int main(void)
 	FixturePath(path, "command");
 	CTR_TEST_CHECK(SDL_RenamePath(temporary, path), "the producer can atomically publish a completed command");
 	CTR_TEST_CHECK_EQ(ReadAgain(command), NATIVE_CHAOS_COMMAND, "a published command is delivered");
-	CTR_TEST_CHECK(strcmp(command, "low-gravity") == 0, "the engine receives a slug without surrounding whitespace");
+	CTR_TEST_CHECK(strcmp(command, "fly-me-to-the-moon") == 0, "the engine receives a slug without surrounding whitespace");
 	CTR_TEST_CHECK(!Exists("command"), "delivery deletes the command to release the slot");
 	CTR_TEST_CHECK_EQ(ReadAgain(command), NATIVE_CHAOS_NO_COMMAND, "a consumed command cannot run twice");
 
 	CTR_TEST_SECTION("failed deletion and playback retain commands without delivering them");
-	WriteFile("command", "giant-karts", strlen("giant-karts"));
+	WriteFile("command", "big-kart-energy", strlen("big-kart-energy"));
 	s_failDelete = true;
 	CTR_TEST_CHECK_EQ(ReadAgain(command), NATIVE_CHAOS_NO_COMMAND, "failed deletion prevents activation");
 	CTR_TEST_CHECK(Exists("command"), "failed deletion keeps the pending command");
@@ -120,7 +120,7 @@ int main(void)
 	s_playback = 1;
 	CTR_TEST_CHECK_EQ(ReadAgain(command), NATIVE_CHAOS_NO_COMMAND, "playback never delivers live commands");
 	CTR_TEST_CHECK(Exists("command"), "playback preserves the command for later");
-	NativeChaosIPC_WriteEffectsCatalogue("low-gravity\n");
+	NativeChaosIPC_WriteEffectsCatalogue("fly-me-to-the-moon\n");
 	CheckCatalogue("");
 	s_playback = 0;
 	CTR_TEST_CHECK_EQ(ReadAgain(command), NATIVE_CHAOS_COMMAND, "a retained command is available after playback");
@@ -131,7 +131,7 @@ int main(void)
 	WriteFile("command", oversized, sizeof(oversized));
 	CTR_TEST_CHECK_EQ(ReadAgain(command), NATIVE_CHAOS_INVALID_COMMAND, "oversized input is explicitly rejected");
 	CTR_TEST_CHECK(!Exists("command"), "oversized input does not block the slot");
-	const char binary[] = "low-gravity\0giant-karts";
+	const char binary[] = "fly-me-to-the-moon\0big-kart-energy";
 	WriteFile("command", binary, sizeof(binary) - 1);
 	CTR_TEST_CHECK_EQ(ReadAgain(command), NATIVE_CHAOS_INVALID_COMMAND, "embedded NUL cannot silently truncate a command");
 	CTR_TEST_CHECK(!Exists("command"), "binary input is consumed");

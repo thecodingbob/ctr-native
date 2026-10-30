@@ -116,7 +116,7 @@ static void TestSteeringAndDriverScope(void)
 	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT};
 	struct GamepadBuffer pad = {.stickLX = 0};
 	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 0, "inactive steering preserves the axis");
-	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 1000);
+	Chaos_Activate(CHAOS_EFFECT_MIRROR_MIRROR, 1000);
 	const int axes[] = {0, 1, 64, 127, 128, 129, 192, 255};
 	for (int i = 0; i < (int)len(axes); i++)
 	{
@@ -138,21 +138,21 @@ static void TestSteeringAndDriverScope(void)
 	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 100, "the wheel's neutral position stays neutral");
 	pad.stickLX = 60;
 	Tick(500);
-	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 1000);
+	Chaos_Activate(CHAOS_EFFECT_MIRROR_MIRROR, 1000);
 	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 140, "duplicate activations do not invert twice and cancel");
 	Tick(500);
 	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 140, "the later activation keeps steering inverted after the first expires");
 	Tick(500);
 	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 60, "steering returns to the live input after final expiry");
 	CTR_TEST_CHECK(!Chaos_IsActiveForDriver(CHAOS_EFFECT_NONE, &human), "invalid effect IDs cannot apply to a driver");
-	CTR_TEST_CHECK(!Chaos_IsActiveForDriver(CHAOS_EFFECT_INVERTED_STEERING, NULL), "a missing driver cannot receive an effect");
+	CTR_TEST_CHECK(!Chaos_IsActiveForDriver(CHAOS_EFFECT_MIRROR_MIRROR, NULL), "a missing driver cannot receive an effect");
 }
 
 static void EnableWobble(void)
 {
 	EnableInputEffects();
 	sdata->chaosSettings.trigger = CHAOS_TRIGGER_EXTERNAL;
-	sdata->chaosSettings.effects[CHAOS_EFFECT_WOBBLE_STEERING] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_TOTALLY_SOBER] = true;
 	sdata->chaosSettings.enabledCount++;
 	// Cardinal samples exercise the game's real sine lookup and quadrant handling.
 	data.trigApprox[0] = (struct TrigTable){ .sin = 0, .cos = FP(1.0) };
@@ -203,9 +203,9 @@ static void TestHydraulics(void)
 	struct Driver bot = {.driverID = 2, .kartState = KS_NORMAL, .actionsFlagSet = ACTION_BOT};
 	PreparedJump(&human, 0, 0, RAIN_CLOUD_EFFECT_NONE, ACTION_TOUCH_GROUND);
 	CTR_TEST_CHECK_EQ(human.jump_TenBuffer, 0, "inactive Hydraulics does not request a hop");
-	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 5000);
+	Chaos_Activate(CHAOS_EFFECT_GROUNDED, 5000);
 	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_HYDRAULICS, 1000), "Hydraulics activates as a timed effect");
-	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_NO_HOPPING), "Hydraulics replaces No Hopping");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_GROUNDED), "Hydraulics replaces No Hopping");
 	const u8 states[] = {KS_NORMAL, KS_DRIFTING, KS_ANTIVSHIFT};
 	for (size_t i = 0; i < len(states); i++)
 	{
@@ -246,7 +246,7 @@ static void TestHydraulics(void)
 	PreparedJump(&human, 0, 0, RAIN_CLOUD_EFFECT_NONE, 0);
 	CTR_TEST_CHECK_EQ(human.jump_TenBuffer, 0, "expiry leaves no automatic input held or buffered");
 	Chaos_Activate(CHAOS_EFFECT_HYDRAULICS, 5000);
-	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 1000);
+	Chaos_Activate(CHAOS_EFFECT_GROUNDED, 1000);
 	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_HYDRAULICS), "No Hopping also replaces Hydraulics");
 }
 
@@ -272,9 +272,9 @@ static void TestMyPlanetNeedsMe(void)
 	s_tracker.drivers[0] = &human;
 	s_tracker.drivers[1] = &partner;
 	s_tracker.drivers[2] = &bot;
-	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 5000);
+	Chaos_Activate(CHAOS_EFFECT_GROUNDED, 5000);
 	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_MY_PLANET_NEEDS_ME, 1000), "the immediate launch activates without normal jump eligibility");
-	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_NO_HOPPING), "the launch replaces No Hopping");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_GROUNDED), "the launch replaces No Hopping");
 	CTR_TEST_CHECK_EQ(s_launchConversions[0], 1, "activation commits one launch to the ground driver's canonical speed representation");
 	CTR_TEST_CHECK_EQ(s_launchVelocity[0].y, 27576, "a grounded driver receives six times the real normal jump force upward");
 	CTR_TEST_CHECK(s_launchVelocity[0].x == 0 && s_launchVelocity[0].z == 3000, "launch preserves horizontal momentum");
@@ -291,15 +291,15 @@ static void TestMyPlanetNeedsMe(void)
 	Chaos_Activate(CHAOS_EFFECT_MY_PLANET_NEEDS_ME, 1000);
 	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_HYDRAULICS), "the launch also replaces Hydraulics");
 	CTR_TEST_CHECK_EQ(s_launchConversions[0], 2, "an explicit second activation applies one new impulse");
-	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 5000);
-	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 5000);
-	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 5000);
-	Chaos_Activate(CHAOS_EFFECT_NO_ITEMS, 5000);
+	Chaos_Activate(CHAOS_EFFECT_FLY_ME_TO_THE_MOON, 5000);
+	Chaos_Activate(CHAOS_EFFECT_MIRROR_MIRROR, 5000);
+	Chaos_Activate(CHAOS_EFFECT_SUNDAY_DRIVER, 5000);
+	Chaos_Activate(CHAOS_EFFECT_FAIR_MODE, 5000);
 	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_MY_PLANET_NEEDS_ME, 1000), "launch still works at full timed capacity");
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, CHAOS_MAX_ACTIVATIONS, "launch preserves unrelated timed effects");
 	CTR_TEST_CHECK_EQ(s_launchVelocity[0].y, 27576, "Low Gravity does not change the launch impulse");
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 250, "Low Gravity continues to govern the flight");
-	Chaos_Activate(CHAOS_EFFECT_HEAVY_KARTS, 5000);
+	Chaos_Activate(CHAOS_EFFECT_HEAVY_METAL, 5000);
 	Chaos_Activate(CHAOS_EFFECT_MY_PLANET_NEEDS_ME, 1000);
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 3000, "Heavy Karts also remains effective after launch");
 	human.actionsFlagSet |= ACTION_RACE_FINISHED;
@@ -527,7 +527,7 @@ static void TestTrySomethingNew(void)
 	VehBirth_SetConsts(&human);
 	VehBirth_SetConsts(&partner);
 	CTR_TEST_CHECK_EQ(human.const_Speed_ClassStat, 15000, "ordinary vehicle birth retains character-based class and configured multipliers");
-	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 10000);
+	Chaos_Activate(CHAOS_EFFECT_FLY_ME_TO_THE_MOON, 10000);
 	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_TRY_SOMETHING_NEW, 1000), "the class change activates as a one-off effect");
 	int current = sdata->chaosRuntime.engineClass[0];
 	CTR_TEST_CHECK_EQ(s_engineStopped[0], BALANCED * 4, "the old engine loop stops at the class change");
@@ -630,7 +630,7 @@ static void TestIdentityCrisis(void)
 	data.characterIDs[0] = CRASH_BANDICOOT;
 	data.characterIDs[1] = COCO_BANDICOOT;
 	data.characterIDs[2] = NITROS_OXIDE;
-	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 10000);
+	Chaos_Activate(CHAOS_EFFECT_FLY_ME_TO_THE_MOON, 10000);
 	for (int repeat = 0; repeat < 20; repeat++)
 	{
 		const int beforeHuman = data.characterIDs[0];
@@ -960,7 +960,7 @@ static void SetupTeleport(struct TeleportWorld *world, int humans, int bots)
 {
 	memset(world, 0, sizeof(*world));
 	SetupBodySwap(&world->racers, humans, bots);
-	sdata->chaosSettings.effects[CHAOS_EFFECT_TELEPORT] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_YARDRAT_TRAINING] = true;
 	sdata->chaosSettings.enabledCount++;
 	world->level.ptr_restart_points = world->nodes;
 	world->level.cnt_restart_points = 10;
@@ -1043,7 +1043,7 @@ static void TestKingCrimson(void)
 	world.racers.drivers[3].botData.aiPhysics.speedLinear = 0;
 	const struct Driver humans[2] = {world.racers.drivers[0], world.racers.drivers[1]};
 	const struct Driver stopped = world.racers.drivers[3];
-	const struct ChaosActivation active = {.effect = CHAOS_EFFECT_LOW_GRAVITY, .remainingMS = 5432, .elapsedMS = 876};
+	const struct ChaosActivation active = {.effect = CHAOS_EFFECT_FLY_ME_TO_THE_MOON, .remainingMS = 5432, .elapsedMS = 876};
 	sdata->chaosRuntime.active[0] = active;
 	sdata->chaosRuntime.numActive = 1;
 	s_tracker.elapsedEventTime = 12000;
@@ -1158,7 +1158,7 @@ static void TestTeleportProgressProjection(void)
 	struct TeleportWorld world;
 	SetupProjectedTeleport(&world);
 	struct Driver *driver = &world.racers.drivers[0];
-	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	Chaos_Activate(CHAOS_EFFECT_YARDRAT_TRAINING, 1000);
 	CTR_TEST_CHECK_EQ(driver->posCurr.x, 1200 * FP8(1), "one tenth of an 8000-unit circuit moves 800 world units");
 	PlayLevel_UpdateLapStats();
 	CTR_TEST_CHECK_EQ(driver->distanceToFinish_curr, 6800, "projected distance matches the main-route destination");
@@ -1173,7 +1173,7 @@ static void TestTeleportProgressProjection(void)
 	driver->checkpoint.currentIndex = 9;
 	driver->distanceToFinish_curr = 400;
 	s_teleportGround.checkpointIndex = 9;
-	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	Chaos_Activate(CHAOS_EFFECT_YARDRAT_TRAINING, 1000);
 	PlayLevel_UpdateLapStats();
 	CTR_TEST_CHECK_EQ(driver->distanceToFinish_curr, 7600, "projected distance matches the wrapped destination");
 	CTR_TEST_CHECK(driver->distanceToFinish_curr == 7600 && driver->lapIndex == 1,
@@ -1201,7 +1201,7 @@ static void TestTeleportProgressProjection(void)
 	driver->distanceToFinish_curr = 6800;
 	driver->checkpoint.branchChoiceIndex = 11;
 	s_teleportGround.checkpointIndex = 12;
-	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	Chaos_Activate(CHAOS_EFFECT_YARDRAT_TRAINING, 1000);
 	CTR_TEST_CHECK(driver->posCurr.x == 1200 * FP8(1) && driver->posCurr.z == 800 * FP8(1),
 	               "the selected alternate route receives the interpolated destination");
 	PlayLevel_UpdateLapStats();
@@ -1220,7 +1220,7 @@ static void TestTeleport(void)
 	SetupTeleport(&world, 2, 1);
 	world.racers.drivers[1].axisRotationY = 0x100;
 	const struct Driver bot = world.racers.drivers[2];
-	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000), "Teleport activates as an instant effect");
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_YARDRAT_TRAINING, 1000), "Teleport activates as an instant effect");
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 0, "Teleport does not occupy a timed slot");
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numInstantNotices, 1, "Teleport announces once across both humans");
 	for (int i = 0; i < 2; i++)
@@ -1246,14 +1246,14 @@ static void TestTeleport(void)
 	CTR_TEST_CHECK(memcmp(&bot, &world.racers.drivers[2], sizeof(bot)) == 0, "Teleport leaves bot karts untouched");
 	SetupTeleport(&world, 1, 0);
 	const struct ChaosActivation fullSlots[CHAOS_MAX_ACTIVATIONS] = {
-		{.effect = CHAOS_EFFECT_INVERTED_STEERING, .remainingMS = 5000},
-		{.effect = CHAOS_EFFECT_LOW_GRAVITY, .remainingMS = 5000},
-		{.effect = CHAOS_EFFECT_SPEED_CAPPED, .remainingMS = 5000},
-		{.effect = CHAOS_EFFECT_NO_ITEMS, .remainingMS = 5000},
+		{.effect = CHAOS_EFFECT_MIRROR_MIRROR, .remainingMS = 5000},
+		{.effect = CHAOS_EFFECT_FLY_ME_TO_THE_MOON, .remainingMS = 5000},
+		{.effect = CHAOS_EFFECT_SUNDAY_DRIVER, .remainingMS = 5000},
+		{.effect = CHAOS_EFFECT_FAIR_MODE, .remainingMS = 5000},
 	};
 	memcpy(sdata->chaosRuntime.active, fullSlots, sizeof(fullSlots));
 	sdata->chaosRuntime.numActive = CHAOS_MAX_ACTIVATIONS;
-	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000) &&
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_YARDRAT_TRAINING, 1000) &&
 	               memcmp(sdata->chaosRuntime.active, fullSlots, sizeof(fullSlots)) == 0,
 	               "Teleport works at full timed capacity without changing existing activations");
 
@@ -1270,11 +1270,11 @@ static void TestTeleport(void)
 		.nextIndex_backward = 10, .nextIndex_left = 0xff, .nextIndex_right = 0xff,
 	};
 	world.racers.drivers[0].checkpoint.branchChoiceIndex = 11;
-	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	Chaos_Activate(CHAOS_EFFECT_YARDRAT_TRAINING, 1000);
 	CTR_TEST_CHECK(world.racers.drivers[0].posCurr.x == 1500 * 256 && world.racers.drivers[0].posCurr.z == 500 * 256,
 	               "an already selected alternate branch is resolved by the real retail path helper");
 	SetupTeleport(&world, 1, 0);
-	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	Chaos_Activate(CHAOS_EFFECT_YARDRAT_TRAINING, 1000);
 	CTR_TEST_CHECK_EQ(world.racers.drivers[0].posCurr.z, 0, "without a branch selection the main path remains the default");
 
 	CTR_TEST_SECTION("finish crossings are queued for retail lap/results handling and travel with the kart through Body Swap");
@@ -1282,7 +1282,7 @@ static void TestTeleport(void)
 	world.racers.drivers[0].distanceToFinish_curr = 4000;
 	world.racers.drivers[0].checkpoint.currentIndex = 9;
 	s_teleportGround.checkpointIndex = 0;
-	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	Chaos_Activate(CHAOS_EFFECT_YARDRAT_TRAINING, 1000);
 	CTR_TEST_CHECK_EQ(world.racers.drivers[0].distanceToFinish_curr, 76000, "forward movement wraps across the finish line");
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.teleportForwardCrossings[0], 1, "the crossing survives until lap statistics run");
 	const struct ChaosRuntime checkpoint = sdata->chaosRuntime;
@@ -1299,7 +1299,7 @@ static void TestTeleport(void)
 	s_tracker.drivers[0]->lapIndex = 2;
 	s_tracker.drivers[0]->checkpoint.currentIndex = 9;
 	s_tracker.drivers[0]->distanceToFinish_curr = 4000;
-	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	Chaos_Activate(CHAOS_EFFECT_YARDRAT_TRAINING, 1000);
 	Chaos_ReturnBodySwapsNearFinish(&s_tracker, 1200);
 	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.racers.drivers[0] && sdata->chaosRuntime.bodySwapPartner[0] == 0 &&
 	               sdata->chaosRuntime.teleportForwardCrossings[1] == 1,
@@ -1315,7 +1315,7 @@ static void TestTeleport(void)
 	world.racers.drivers[0].lapTime = 1000;
 	world.racers.drivers[0].checkpoint.currentIndex = 9;
 	world.racers.drivers[0].distanceToFinish_curr = 4000;
-	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	Chaos_Activate(CHAOS_EFFECT_YARDRAT_TRAINING, 1000);
 	PlayLevel_UpdateLapStats();
 	CTR_TEST_CHECK(world.racers.drivers[0].lapIndex == 1 && world.racers.drivers[0].lapTime == 10000 &&
 	               s_teleportSavedLaps == 1 && s_teleportRaceEnds == 0,
@@ -1328,7 +1328,7 @@ static void TestTeleport(void)
 	world.racers.drivers[0].checkpoint.currentIndex = 9;
 	world.racers.drivers[0].distanceToFinish_curr = 4000;
 	world.racers.drivers[0].lapIndex = 2;
-	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	Chaos_Activate(CHAOS_EFFECT_YARDRAT_TRAINING, 1000);
 	PlayLevel_UpdateLapStats();
 	CTR_TEST_CHECK(world.racers.drivers[0].lapIndex == 3 &&
 	               (world.racers.drivers[0].actionsFlagSet & ACTION_RACE_FINISHED) != 0 &&
@@ -1339,7 +1339,7 @@ static void TestTeleport(void)
 	world.racers.drivers[0].checkpoint.currentIndex = 9;
 	world.racers.drivers[0].distanceToFinish_curr = 4000;
 	world.racers.drivers[0].actionsFlagSet |= ACTION_BEHIND_START_LINE;
-	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	Chaos_Activate(CHAOS_EFFECT_YARDRAT_TRAINING, 1000);
 	PlayLevel_UpdateLapStats();
 	CTR_TEST_CHECK(world.racers.drivers[0].lapIndex == 0 &&
 	               (world.racers.drivers[0].actionsFlagSet & ACTION_BEHIND_START_LINE) == 0,
@@ -1352,30 +1352,30 @@ static void TestTeleport(void)
 	world.racers.drivers[0].KartStates.MaskGrab.maskObj = &mask;
 	world.racers.drivers[0].collisionFlags = DRIVER_COLL_FLAG_MASK_GRAB_REQUEST;
 	sdata->chaosRuntime.restart[0].pending = true;
-	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	Chaos_Activate(CHAOS_EFFECT_YARDRAT_TRAINING, 1000);
 	CTR_TEST_CHECK(world.racers.drivers[0].kartState == KS_NORMAL && mask.duration == 0 &&
 	               world.racers.drivers[0].collisionFlags == 0 && !sdata->chaosRuntime.restart[0].pending,
 	               "the destination releases rescue state and prevents a deferred restart from moving the kart again");
 	SetupTeleport(&world, 1, 0);
 	s_teleportGroundMissing = true;
 	const struct Driver original = world.racers.drivers[0];
-	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	Chaos_Activate(CHAOS_EFFECT_YARDRAT_TRAINING, 1000);
 	CTR_TEST_CHECK(memcmp(&original, &world.racers.drivers[0], sizeof(original)) == 0,
 	               "failure to find ground does not partially change inventory, motion or progression");
 	for (int mode = 0; mode < 2; mode++)
 	{
 		SetupTeleport(&world, 1, 0);
 		s_tracker.gameMode1 |= mode == 0 ? BATTLE_MODE : CRYSTAL_CHALLENGE;
-		CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000), "non-lap events reject Teleport before activation");
+		CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_YARDRAT_TRAINING, 1000), "non-lap events reject Teleport before activation");
 		CTR_TEST_CHECK_EQ(s_teleportProbes, 0, "unavailable events never search world geometry");
 	}
 	SetupTeleport(&world, 1, 0);
 	s_tracker.gameMode1 |= PAUSE_1;
-	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000) && s_teleportProbes == 0,
+	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_YARDRAT_TRAINING, 1000) && s_teleportProbes == 0,
 	               "pause prevents instant movement");
 	SetupTeleport(&world, 1, 0);
 	world.racers.drivers[0].actionsFlagSet |= ACTION_RACE_FINISHED;
-	Chaos_Activate(CHAOS_EFFECT_TELEPORT, 1000);
+	Chaos_Activate(CHAOS_EFFECT_YARDRAT_TRAINING, 1000);
 	CTR_TEST_CHECK_EQ(s_teleportProbes, 0, "finished humans are not repositioned");
 }
 
@@ -1636,7 +1636,7 @@ static void TestTimeStop(void)
 	SetupRace(CHAOS_TRIGGER_INTERVAL);
 	sdata->chaosSettings.effects[CHAOS_EFFECT_ZA_WARUDO] = true;
 	sdata->chaosSettings.enabledCount++;
-	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 30000);
+	Chaos_Activate(CHAOS_EFFECT_FLY_ME_TO_THE_MOON, 30000);
 	Tick(32);
 	const struct ChaosActivation gravity = sdata->chaosRuntime.active[0];
 	const int interval = sdata->chaosRuntime.intervalRemainingMS;
@@ -1960,7 +1960,7 @@ static void TestWobbleSteering(void)
 	struct Driver partner = {.driverID = 1};
 	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT};
 	struct GamepadBuffer pad = {.stickLX = 128};
-	Chaos_Activate(CHAOS_EFFECT_WOBBLE_STEERING, 6000);
+	Chaos_Activate(CHAOS_EFFECT_TOTALLY_SOBER, 6000);
 	const u32 rng = sdata->chaosRng;
 	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 128, "Wobble begins at the live steering input");
 	Tick(500);
@@ -2005,25 +2005,25 @@ static void TestWobbleSteering(void)
 
 	CTR_TEST_SECTION("steering reactivation resets phase and replaces the previous lifetime");
 	EnableWobble();
-	Chaos_Activate(CHAOS_EFFECT_WOBBLE_STEERING, 6000);
+	Chaos_Activate(CHAOS_EFFECT_TOTALLY_SOBER, 6000);
 	Tick(500);
-	Chaos_Activate(CHAOS_EFFECT_WOBBLE_STEERING, 1000);
+	Chaos_Activate(CHAOS_EFFECT_TOTALLY_SOBER, 1000);
 	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 128, "a new Wobble activation uses its own phase instead of adding both waves");
 	Tick(500);
 	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 224, "the latest Wobble supplies one oscillation amplitude");
 	Tick(500);
 	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 128, "expiry of reactivated Wobble cannot reveal the replaced oscillator");
 	pad.stickLX = 64;
-	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 500);
+	Chaos_Activate(CHAOS_EFFECT_MIRROR_MIRROR, 500);
 	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 192, "later Inverted Steering overrides the older Wobble");
-	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_WOBBLE_STEERING), "Inverted Steering immediately deactivates conflicting Wobble entries");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_TOTALLY_SOBER), "Inverted Steering immediately deactivates conflicting Wobble entries");
 	Tick(500);
 	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 64, "expiry of Inverted Steering returns to live input without reviving Wobble");
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 0, "replaced effects do not remain dormant in the activation queue");
 	EnableWobble();
-	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 4000);
-	Chaos_Activate(CHAOS_EFFECT_WOBBLE_STEERING, 1000);
-	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_INVERTED_STEERING), "Wobble immediately deactivates conflicting Inverted Steering");
+	Chaos_Activate(CHAOS_EFFECT_MIRROR_MIRROR, 4000);
+	Chaos_Activate(CHAOS_EFFECT_TOTALLY_SOBER, 1000);
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_MIRROR_MIRROR), "Wobble immediately deactivates conflicting Inverted Steering");
 	Tick(500);
 	CTR_TEST_CHECK_EQ(PreparedSteering(&human, &pad), 160, "later Wobble overrides Inverted Steering using live input");
 	Tick(500);
@@ -2033,19 +2033,19 @@ static void TestWobbleSteering(void)
 
 	CTR_TEST_SECTION("conflict replacement frees capacity and preserves unrelated effects");
 	EnableWobble();
-	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 6000);
-	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 6000);
-	sdata->chaosSettings.effects[CHAOS_EFFECT_LOW_GRAVITY] = true;
-	sdata->chaosSettings.effects[CHAOS_EFFECT_NO_ITEMS] = true;
-	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 5000);
-	Chaos_Activate(CHAOS_EFFECT_NO_ITEMS, 5000);
+	Chaos_Activate(CHAOS_EFFECT_GROUNDED, 6000);
+	Chaos_Activate(CHAOS_EFFECT_MIRROR_MIRROR, 6000);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_FLY_ME_TO_THE_MOON] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_FAIR_MODE] = true;
+	Chaos_Activate(CHAOS_EFFECT_FLY_ME_TO_THE_MOON, 5000);
+	Chaos_Activate(CHAOS_EFFECT_FAIR_MODE, 5000);
 	Tick(500);
 	const struct ChaosActivation firstHop = sdata->chaosRuntime.active[0];
 	const struct ChaosActivation gravity = sdata->chaosRuntime.active[2];
 	const struct ChaosActivation items = sdata->chaosRuntime.active[3];
-	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_WOBBLE_STEERING, 0), "invalid activation cannot cancel conflicting running effects");
+	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_TOTALLY_SOBER, 0), "invalid activation cannot cancel conflicting running effects");
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 4, "a rejected conflict replacement preserves all running activations");
-	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_WOBBLE_STEERING, 1000), "a conflicting replacement can activate even when all four slots were occupied");
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_TOTALLY_SOBER, 1000), "a conflicting replacement can activate even when all four slots were occupied");
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 4, "replacement removes the conflicting effect before adding the new activation");
 	CTR_TEST_CHECK(memcmp(&firstHop, &sdata->chaosRuntime.active[0], sizeof(firstHop)) == 0,
 	    "replacement preserves the first unrelated activation and its timers");
@@ -2059,14 +2059,14 @@ static void TestGravityEffects(void)
 {
 	CTR_TEST_SECTION("gravity effects derive from live driver constants without accumulating or overwriting them");
 	SetupRace(CHAOS_TRIGGER_EXTERNAL);
-	sdata->chaosSettings.effects[CHAOS_EFFECT_HEAVY_KARTS] = true;
-	sdata->chaosSettings.effects[CHAOS_EFFECT_NO_HOPPING] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_HEAVY_METAL] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_GROUNDED] = true;
 	sdata->chaosSettings.enabledCount += 2;
 	struct Driver human = {.driverID = 0, .const_Gravity = 1000, .const_JumpForce = 800};
 	struct Driver partner = {.driverID = 1, .const_Gravity = 1500};
 	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT, .const_Gravity = 2000};
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 1000, "inactive Chaos preserves normal gravity");
-	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 2000);
+	Chaos_Activate(CHAOS_EFFECT_FLY_ME_TO_THE_MOON, 2000);
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 250, "Low Gravity applies one quarter of the human driver's gravity");
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 250, "repeated physics reads do not repeatedly divide gravity");
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&partner), 375, "the co-op partner uses their own gravity baseline");
@@ -2076,14 +2076,14 @@ static void TestGravityEffects(void)
 	human.const_Gravity = 1200;
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 300, "legitimate constant changes immediately become the new baseline");
 	Tick(500);
-	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 1500);
+	Chaos_Activate(CHAOS_EFFECT_FLY_ME_TO_THE_MOON, 1500);
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 300, "reactivating Low Gravity does not compound");
 	Tick(500);
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 300, "reactivated gravity retains its replacement lifetime");
 	Tick(1000);
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 1200, "final expiry immediately uses the current baseline rather than a stale snapshot");
-	Chaos_Activate(CHAOS_EFFECT_HEAVY_KARTS, 3000);
-	Chaos_Activate(CHAOS_EFFECT_HEAVY_KARTS, 3000);
+	Chaos_Activate(CHAOS_EFFECT_HEAVY_METAL, 3000);
+	Chaos_Activate(CHAOS_EFFECT_HEAVY_METAL, 3000);
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 3600, "reactivating Heavy Karts does not compound gravity");
 	CTR_TEST_CHECK_EQ(human.const_JumpForce, 800, "Heavy Karts changes gravity without disabling the jump impulse");
 	human.const_Gravity = 32767;
@@ -2106,25 +2106,25 @@ static void TestGravityEffects(void)
 
 	CTR_TEST_SECTION("opposite gravity effects deactivate each other while preserving jumping and unrelated effects");
 	Chaos_BeginRace(&s_tracker);
-	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 10000);
-	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 3000);
-	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 2000);
-	Chaos_Activate(CHAOS_EFFECT_HEAVY_KARTS, 1000);
+	Chaos_Activate(CHAOS_EFFECT_GROUNDED, 10000);
+	Chaos_Activate(CHAOS_EFFECT_FLY_ME_TO_THE_MOON, 3000);
+	Chaos_Activate(CHAOS_EFFECT_FLY_ME_TO_THE_MOON, 2000);
+	Chaos_Activate(CHAOS_EFFECT_HEAVY_METAL, 1000);
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 2, "Heavy Karts replaces Low Gravity but preserves unrelated effects");
-	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_LOW_GRAVITY), "replaced Low Gravity entries are permanently deactivated");
-	CTR_TEST_CHECK(Chaos_IsActive(CHAOS_EFFECT_NO_HOPPING), "gravity replacement leaves No Hopping active");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_FLY_ME_TO_THE_MOON), "replaced Low Gravity entries are permanently deactivated");
+	CTR_TEST_CHECK(Chaos_IsActive(CHAOS_EFFECT_GROUNDED), "gravity replacement leaves No Hopping active");
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 3600, "the latest gravity effect takes effect immediately");
 	Tick(1000);
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 1200, "expiry of Heavy Karts cannot revive replaced Low Gravity");
-	Chaos_Activate(CHAOS_EFFECT_HEAVY_KARTS, 3000);
-	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 1000);
-	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_HEAVY_KARTS), "Low Gravity also permanently deactivates Heavy Karts");
+	Chaos_Activate(CHAOS_EFFECT_HEAVY_METAL, 3000);
+	Chaos_Activate(CHAOS_EFFECT_FLY_ME_TO_THE_MOON, 1000);
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_HEAVY_METAL), "Low Gravity also permanently deactivates Heavy Karts");
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 300, "Low Gravity can replace Heavy Karts without multiplying modified values");
 	Tick(1000);
 	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&human), 1200, "expiry of Low Gravity cannot revive replaced Heavy Karts");
 	Chaos_Reset();
 	Chaos_BeginRace(&s_tracker);
-	Chaos_Activate(CHAOS_EFFECT_HEAVY_KARTS, 1000);
+	Chaos_Activate(CHAOS_EFFECT_HEAVY_METAL, 1000);
 	CTR_TEST_CHECK((PreparedJump(&human, BTN_L1, BTN_L1, RAIN_CLOUD_EFFECT_NONE, 0) & ACTION_JUMP_BUTTON_HELD) != 0,
 	    "Heavy Karts still allows manual hops");
 	CTR_TEST_CHECK_EQ(human.jump_TenBuffer, 10, "Heavy Karts retains the retail hop buffer");
@@ -2136,8 +2136,8 @@ static void TestSpeedEffects(void)
 {
 	CTR_TEST_SECTION("speed effects derive targets and acceleration from live values without overwriting kart constants");
 	SetupRace(CHAOS_TRIGGER_EXTERNAL);
-	sdata->chaosSettings.effects[CHAOS_EFFECT_SPEED_CAPPED] = true;
-	sdata->chaosSettings.effects[CHAOS_EFFECT_SUPER_SPEED] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_SUNDAY_DRIVER] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_GOTTA_GO_FAST] = true;
 	sdata->chaosSettings.enabledCount += 2;
 	struct Driver human = {
 		.driverID = 0, .baseSpeed = 12000, .const_Speed_ClassStat = 12000,
@@ -2149,7 +2149,7 @@ static void TestSpeedEffects(void)
 	const struct Driver original = human;
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 15000), 15000, "inactive Chaos preserves the resolved speed target");
 	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 100), 100, "inactive Chaos preserves acceleration");
-	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 2000);
+	Chaos_Activate(CHAOS_EFFECT_SUNDAY_DRIVER, 2000);
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 6000, "Speed Capped limits the target to half the unboosted class speed");
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 6000, "boosted targets cannot bypass the class-based ceiling");
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 4000), 4000, "a slower target from damage or partial speed remains below the ceiling");
@@ -2162,14 +2162,14 @@ static void TestSpeedEffects(void)
 	human.const_Speed_ClassStat = 14000;
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 7000, "legitimate class changes immediately update the ceiling");
 	Tick(500);
-	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 1500);
+	Chaos_Activate(CHAOS_EFFECT_SUNDAY_DRIVER, 1500);
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 7000, "reactivating the cap does not halve the ceiling again");
 	Tick(500);
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 7000, "the replacement cap remains active until its own expiry");
 	Tick(1000);
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 20000, "final cap expiry returns the current retail target");
 
-	Chaos_Activate(CHAOS_EFFECT_SUPER_SPEED, 2000);
+	Chaos_Activate(CHAOS_EFFECT_GOTTA_GO_FAST, 2000);
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 24000, "Super Speed doubles the resolved forward target before the retail hard limit");
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 4000), 8000, "Super Speed scales the current damaged target rather than restoring an old one");
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 0), 0, "Super Speed preserves a zero target");
@@ -2187,7 +2187,7 @@ static void TestSpeedEffects(void)
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&bot, 12000), 12000, "Super Speed preserves bot targets");
 	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&bot, 100), 100, "Super Speed preserves bot acceleration");
 	Tick(500);
-	Chaos_Activate(CHAOS_EFFECT_SUPER_SPEED, 1500);
+	Chaos_Activate(CHAOS_EFFECT_GOTTA_GO_FAST, 1500);
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 24000, "reactivating Super Speed does not compound speed");
 	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 100), 200, "reactivating Super Speed does not compound acceleration");
 	Tick(500);
@@ -2212,26 +2212,26 @@ static void TestSpeedEffects(void)
 
 	CTR_TEST_SECTION("opposite speed effects permanently replace each other and preserve unrelated activations");
 	Chaos_BeginRace(&s_tracker);
-	Chaos_Activate(CHAOS_EFFECT_LOW_GRAVITY, 10000);
-	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 3000);
-	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 3000);
-	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 3000);
+	Chaos_Activate(CHAOS_EFFECT_FLY_ME_TO_THE_MOON, 10000);
+	Chaos_Activate(CHAOS_EFFECT_SUNDAY_DRIVER, 3000);
+	Chaos_Activate(CHAOS_EFFECT_SUNDAY_DRIVER, 3000);
+	Chaos_Activate(CHAOS_EFFECT_SUNDAY_DRIVER, 3000);
 	const struct ChaosActivation gravity = sdata->chaosRuntime.active[0];
-	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_SUPER_SPEED, 1000), "Super Speed can replace a refreshed cap");
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_GOTTA_GO_FAST, 1000), "Super Speed can replace a refreshed cap");
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 2, "replacement removes the cap but keeps the unrelated gravity effect");
 	CTR_TEST_CHECK(memcmp(&gravity, &sdata->chaosRuntime.active[0], sizeof(gravity)) == 0, "replacement preserves unrelated timers and order");
-	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_SPEED_CAPPED), "replaced caps are deactivated immediately");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_SUNDAY_DRIVER), "replaced caps are deactivated immediately");
 	Tick(1000);
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 12000, "Super Speed expiry cannot revive replaced caps");
-	Chaos_Activate(CHAOS_EFFECT_SUPER_SPEED, 3000);
-	Chaos_Activate(CHAOS_EFFECT_SUPER_SPEED, 3000);
-	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 1000);
-	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_SUPER_SPEED), "Speed Capped removes all Super Speed copies");
+	Chaos_Activate(CHAOS_EFFECT_GOTTA_GO_FAST, 3000);
+	Chaos_Activate(CHAOS_EFFECT_GOTTA_GO_FAST, 3000);
+	Chaos_Activate(CHAOS_EFFECT_SUNDAY_DRIVER, 1000);
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_GOTTA_GO_FAST), "Speed Capped removes all Super Speed copies");
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 7000, "the replacement cap uses the live unmodified class speed");
 	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 100), 100, "the replacement cap removes increased acceleration immediately");
 	Tick(1000);
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 12000, "cap expiry cannot revive replaced Super Speed");
-	Chaos_Activate(CHAOS_EFFECT_SUPER_SPEED, 1000);
+	Chaos_Activate(CHAOS_EFFECT_GOTTA_GO_FAST, 1000);
 	s_tracker.gameMode1 |= ADVENTURE_ARENA;
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 12000, "Adventure hubs preserve ordinary speed targets");
 	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 100), 100, "Adventure hubs preserve ordinary acceleration");
@@ -2241,7 +2241,7 @@ static void TestDefectiveBoosts(void)
 {
 	CTR_TEST_SECTION("Defective Boosts inverts fire speed while retaining ordinary reserve grants");
 	SetupRace(CHAOS_TRIGGER_EXTERNAL);
-	sdata->chaosSettings.effects[CHAOS_EFFECT_DEFECTIVE_BOOSTS] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_BROWN_FIRE] = true;
 	sdata->chaosSettings.enabledCount++;
 	struct Thread thread = {.modelIndex = DYNAMIC_PLAYER};
 	struct Instance inst = {.thread = &thread};
@@ -2265,7 +2265,7 @@ static void TestDefectiveBoosts(void)
 	human.reserves = 1000;
 	human.fireSpeedCap = 3000;
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 15000), 15000, "inactive Defective Boosts retains the ordinary fire bonus");
-	Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_BOOSTS, 5000);
+	Chaos_Activate(CHAOS_EFFECT_BROWN_FIRE, 5000);
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 15000), 9000, "the existing three-thousand fire bonus becomes a three-thousand penalty");
 	for (size_t i = 0; i < len(types); i++)
 	{
@@ -2304,7 +2304,7 @@ static void TestDefectiveBoosts(void)
 	s_tracker.gameMode1 |= ADVENTURE_ARENA;
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 14000), 14000, "Adventure hubs retain ordinary boost bonuses");
 	s_tracker.gameMode1 &= ~ADVENTURE_ARENA;
-	Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_BOOSTS, 5000);
+	Chaos_Activate(CHAOS_EFFECT_BROWN_FIRE, 5000);
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 14000), 10000, "duplicate activations invert the bonus only once");
 	Tick(1000);
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 14000), 10000, "the replacement activation retains the penalty");
@@ -2318,7 +2318,7 @@ static void TestThisIsFire(void)
 	CTR_TEST_SECTION("This Is Fire upgrades existing turbo without granting fuel or a synthetic boost");
 	SetupRace(CHAOS_TRIGGER_EXTERNAL);
 	sdata->chaosSettings.effects[CHAOS_EFFECT_THIS_IS_FIRE] = true;
-	sdata->chaosSettings.effects[CHAOS_EFFECT_DEFECTIVE_BOOSTS] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_BROWN_FIRE] = true;
 	sdata->chaosSettings.enabledCount += 2;
 	struct Thread driverThread = {.modelIndex = DYNAMIC_PLAYER};
 	struct Instance driverInst = {.thread = &driverThread};
@@ -2342,9 +2342,9 @@ static void TestThisIsFire(void)
 	struct Turbo turbo = {.driver = &human, .fireSize = 5};
 	struct Thread turboThread = {.object = &turbo};
 	s_tracker.threadBuckets[TURBO].thread = &turboThread;
-	Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_BOOSTS, 5000);
+	Chaos_Activate(CHAOS_EFFECT_BROWN_FIRE, 5000);
 	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_THIS_IS_FIRE, 1000), "This Is Fire activates as a timed effect");
-	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_DEFECTIVE_BOOSTS), "This Is Fire replaces Defective Boosts");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_BROWN_FIRE), "This Is Fire replaces Defective Boosts");
 	CTR_TEST_CHECK_EQ(human.fireSpeedCap, 9000, "existing turbo immediately receives the super-pad speed tier");
 	CTR_TEST_CHECK_EQ(turbo.fireSize, 8, "existing exhaust receives normal USF flame sizing");
 	CTR_TEST_CHECK(human.reserves == 500 && human.turbo_outsideTimer == 100, "upgrading existing fire preserves both fuel fields");
@@ -2376,7 +2376,7 @@ static void TestThisIsFire(void)
 	VehFire_Increment(&human, 100, POWER_SLIDE_HANG_TIME, 128);
 	CTR_TEST_CHECK_EQ(human.fireSpeedCap, 1500, "the next weaker boost cancels USF normally after expiry");
 	Chaos_Activate(CHAOS_EFFECT_THIS_IS_FIRE, 5000);
-	Chaos_Activate(CHAOS_EFFECT_DEFECTIVE_BOOSTS, 1000);
+	Chaos_Activate(CHAOS_EFFECT_BROWN_FIRE, 1000);
 	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_THIS_IS_FIRE), "Defective Boosts also replaces This Is Fire");
 }
 
@@ -2384,7 +2384,7 @@ static void TestNoReserves(void)
 {
 	CTR_TEST_SECTION("No Reserves clears fuel at driver application while boost grants remain retail");
 	SetupRace(CHAOS_TRIGGER_EXTERNAL);
-	sdata->chaosSettings.effects[CHAOS_EFFECT_NO_RESERVES] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_HOLE_IN_THE_TANK] = true;
 	sdata->chaosSettings.enabledCount++;
 	struct Thread thread = {.modelIndex = DYNAMIC_PLAYER};
 	struct Instance inst = {.thread = &thread};
@@ -2398,7 +2398,7 @@ static void TestNoReserves(void)
 	PreparedDriver(&human, &pad, &steering, human.actionsFlagSet);
 	CTR_TEST_CHECK_EQ(human.reserves, 2000, "inactive Chaos leaves accumulated reserves alone");
 	CTR_TEST_CHECK_EQ(human.turbo_outsideTimer, 1000, "inactive Chaos leaves the outside turbo timer alone");
-	Chaos_Activate(CHAOS_EFFECT_NO_RESERVES, 2000);
+	Chaos_Activate(CHAOS_EFFECT_HOLE_IN_THE_TANK, 2000);
 	const u32 actions = ACTION_JUMP_BUTTON_HELD | ACTION_MASK_WEAPON;
 	CTR_TEST_CHECK_EQ(PreparedDriver(&human, &pad, &steering, actions), actions,
 	                  "No Reserves preserves manual hops and mask input flags");
@@ -2446,7 +2446,7 @@ static void TestNoReserves(void)
 	CTR_TEST_CHECK(memcmp(&saved, &sdata->chaosRuntime, sizeof(saved)) == 0, "pause freezes No Reserves lifetimes");
 	s_tracker.gameMode1 &= ~PAUSE_1;
 	Tick(1000);
-	Chaos_Activate(CHAOS_EFFECT_NO_RESERVES, 1000);
+	Chaos_Activate(CHAOS_EFFECT_HOLE_IN_THE_TANK, 1000);
 	Tick(500);
 	VehFire_Increment(&human, 1000, POWER_SLIDE_HANG_TIME, 100);
 	PreparedDriver(&human, &pad, &steering, human.actionsFlagSet);
@@ -2465,7 +2465,7 @@ static void TestNoReserves(void)
 	CTR_TEST_CHECK_EQ(human.reserves, 1000, "reset immediately restores normal boost grants");
 	CTR_TEST_CHECK_EQ(human.turbo_outsideTimer, 1000, "reset also restores ordinary outside turbo bookkeeping");
 	Chaos_BeginRace(&s_tracker);
-	Chaos_Activate(CHAOS_EFFECT_NO_RESERVES, 1000);
+	Chaos_Activate(CHAOS_EFFECT_HOLE_IN_THE_TANK, 1000);
 	s_tracker.gameMode1 |= ADVENTURE_ARENA;
 	PreparedDriver(&human, &pad, &steering, human.actionsFlagSet);
 	CTR_TEST_CHECK_EQ(human.reserves, 1000, "Adventure hubs do not receive reserve restrictions");
@@ -2475,7 +2475,7 @@ static void TestNoItems(void)
 {
 	CTR_TEST_SECTION("No Items discards inventory and pending requests before roulette and weapon processing");
 	SetupRace(CHAOS_TRIGGER_EXTERNAL);
-	sdata->chaosSettings.effects[CHAOS_EFFECT_NO_ITEMS] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_FAIR_MODE] = true;
 	sdata->chaosSettings.enabledCount++;
 	struct Instance shield = {0};
 	struct Instance bomb = {0};
@@ -2494,7 +2494,7 @@ static void TestNoItems(void)
 	const struct Driver original = human;
 	Chaos_ApplyItemRules(&human);
 	CTR_TEST_CHECK(memcmp(&human, &original, sizeof(human)) == 0, "inactive No Items leaves inventory and pending requests intact");
-	Chaos_Activate(CHAOS_EFFECT_NO_ITEMS, 2000);
+	Chaos_Activate(CHAOS_EFFECT_FAIR_MODE, 2000);
 	const u8 items[] = {
 		HELD_ITEM_TURBO, HELD_ITEM_BOMB_1X, HELD_ITEM_MISSILE_1X, HELD_ITEM_TNT,
 		HELD_ITEM_POTION, HELD_ITEM_SPRING, HELD_ITEM_SHIELD, HELD_ITEM_MASK,
@@ -2572,7 +2572,7 @@ static void TestNoItems(void)
 	CTR_TEST_CHECK(memcmp(&saved, &sdata->chaosRuntime, sizeof(saved)) == 0, "pause freezes No Items lifetimes");
 	s_tracker.gameMode1 &= ~PAUSE_1;
 	Tick(1000);
-	Chaos_Activate(CHAOS_EFFECT_NO_ITEMS, 1000);
+	Chaos_Activate(CHAOS_EFFECT_FAIR_MODE, 1000);
 	Tick(500);
 	Chaos_ApplyItemRules(&human);
 	CTR_TEST_CHECK_EQ(human.heldItemID, HELD_ITEM_NONE, "the refreshed restriction discards items until its own expiry");
@@ -2616,7 +2616,7 @@ static void TestWumpaDrain(void)
 {
 	CTR_TEST_SECTION("Wumpa Drain loses one credited fruit per game second for unfinished humans only");
 	SetupRace(CHAOS_TRIGGER_EXTERNAL);
-	sdata->chaosSettings.effects[CHAOS_EFFECT_WUMPA_DRAIN] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_WUMPA_TAX] = true;
 	sdata->chaosSettings.enabledCount++;
 	struct Driver human = {.driverID = 0, .numWumpas = 10, .numTimesWumpa = 20, .reserves = 1000};
 	struct Driver partner = {.driverID = 1, .numWumpas = 7};
@@ -2628,7 +2628,7 @@ static void TestWumpaDrain(void)
 	const u32 rng = sdata->chaosRng;
 	TickAndApplyDrivers(2000);
 	CTR_TEST_CHECK_EQ(human.numWumpas, 10, "inactive Wumpa Drain leaves fruit intact");
-	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 5000);
+	Chaos_Activate(CHAOS_EFFECT_WUMPA_TAX, 5000);
 	CTR_TEST_CHECK_EQ(human.numWumpas, 10, "activation waits for the first full second");
 	TickAndApplyDrivers(999);
 	CTR_TEST_CHECK_EQ(human.numWumpas, 10, "partial seconds do not drain fruit early");
@@ -2653,15 +2653,15 @@ static void TestWumpaDrain(void)
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 0, "the drain activation expires normally");
 	TickAndApplyDrivers(2000);
 	CTR_TEST_CHECK_EQ(human.numWumpas, 8, "expired Wumpa Drain cannot remove more fruit");
-	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 500);
+	Chaos_Activate(CHAOS_EFFECT_WUMPA_TAX, 500);
 	TickAndApplyDrivers(2000);
 	CTR_TEST_CHECK_EQ(human.numWumpas, 8, "a sub-second activation cannot drain a whole second from a longer frame");
-	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 1500);
+	Chaos_Activate(CHAOS_EFFECT_WUMPA_TAX, 1500);
 	TickAndApplyDrivers(3000);
 	CTR_TEST_CHECK_EQ(human.numWumpas, 8, "a frame extending past expiry cannot apply a removed activation");
 	human.numWumpas = 1;
 	partner.numWumpas = 0;
-	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 4000);
+	Chaos_Activate(CHAOS_EFFECT_WUMPA_TAX, 4000);
 	TickAndApplyDrivers(3000);
 	CTR_TEST_CHECK_EQ(human.numWumpas, 0, "draining the last fruit stops at zero");
 	CTR_TEST_CHECK_EQ(partner.numWumpas, 0, "an empty inventory cannot underflow");
@@ -2671,9 +2671,9 @@ static void TestWumpaDrain(void)
 	Chaos_Reset();
 	Chaos_BeginRace(&s_tracker);
 	human.numWumpas = 10;
-	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 2500);
+	Chaos_Activate(CHAOS_EFFECT_WUMPA_TAX, 2500);
 	TickAndApplyDrivers(750);
-	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 2500);
+	Chaos_Activate(CHAOS_EFFECT_WUMPA_TAX, 2500);
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 1, "reactivated drain occupies a single slot");
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.active[0].elapsedMS, 0, "reactivated drain resets its pulse clock");
 	TickAndApplyDrivers(250);
@@ -2690,7 +2690,7 @@ static void TestWumpaDrain(void)
 	CTR_TEST_CHECK_EQ(human.numWumpas, 8, "the replacement produces one second pulse");
 	TickAndApplyDrivers(500);
 	CTR_TEST_CHECK_EQ(human.numWumpas, 8, "replacement expiry applies no extra pulse");
-	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 2000);
+	Chaos_Activate(CHAOS_EFFECT_WUMPA_TAX, 2000);
 	TickAndApplyDrivers(750);
 	CTR_TEST_CHECK_EQ(human.numWumpas, 8, "a new activation after expiry starts with a fresh second");
 	TickAndApplyDrivers(250);
@@ -2704,7 +2704,7 @@ static void TestWumpaDrain(void)
 	human.numWumpas = 10;
 	partner.numWumpas = 10;
 	partner.actionsFlagSet = ACTION_RACE_FINISHED;
-	Chaos_Activate(CHAOS_EFFECT_WUMPA_DRAIN, 5000);
+	Chaos_Activate(CHAOS_EFFECT_WUMPA_TAX, 5000);
 	TickAndApplyDrivers(500);
 	const struct ChaosRuntime saved = sdata->chaosRuntime;
 	s_tracker.gameMode1 |= PAUSE_1;
@@ -2732,15 +2732,15 @@ static void TestWumpaDrain(void)
 
 	CTR_TEST_SECTION("timed scheduling gives a new drain its full first second");
 	SetupRace(CHAOS_TRIGGER_INTERVAL);
-	sdata->chaosSettings.effects[CHAOS_EFFECT_LOW_GRAVITY] = false;
-	sdata->chaosSettings.effects[CHAOS_EFFECT_WUMPA_DRAIN] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_FLY_ME_TO_THE_MOON] = false;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_WUMPA_TAX] = true;
 	sdata->chaosSettings.triggerIntervalSeconds = 1;
 	sdata->chaosSettings.durationSeconds = 2;
 	Chaos_BeginRace(&s_tracker);
 	human.numWumpas = 10;
 	s_tracker.drivers[0] = &human;
 	TickAndApplyDrivers(1000);
-	CTR_TEST_CHECK(Chaos_IsActive(CHAOS_EFFECT_WUMPA_DRAIN), "Interval can schedule Wumpa Drain");
+	CTR_TEST_CHECK(Chaos_IsActive(CHAOS_EFFECT_WUMPA_TAX), "Interval can schedule Wumpa Drain");
 	CTR_TEST_CHECK_EQ(human.numWumpas, 10, "the scheduling frame does not retroactively consume the new drain's first second");
 	TickAndApplyDrivers(1000);
 	CTR_TEST_CHECK_EQ(human.numWumpas, 10, "scheduled reactivation resets the drain clock before driver application");
@@ -2846,7 +2846,7 @@ static void TestExplosiveCrates(void)
 {
 	CTR_TEST_SECTION("Explosive Crates applies one blast per contact and bypasses protections");
 	SetupRace(CHAOS_TRIGGER_EXTERNAL);
-	sdata->chaosSettings.effects[CHAOS_EFFECT_EXPLOSIVE_CRATES] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_UNBOXING_GONE_WRONG] = true;
 	sdata->chaosSettings.enabledCount++;
 	struct Model model = {.id = PU_RANDOM_CRATE};
 	struct Instance crate = {.model = &model};
@@ -2855,8 +2855,8 @@ static void TestExplosiveCrates(void)
 	struct Driver human = {.driverID = 0, .instSelf = &inst, .reserves = 1000, .heldItemID = HELD_ITEM_POTION};
 	Chaos_ApplyCrateRules(&human, &crate);
 	CTR_TEST_CHECK_EQ(s_crateExplosions, 0, "inactive explosive crates do not create explosions");
-	Chaos_Activate(CHAOS_EFFECT_EXPLOSIVE_CRATES, 5000);
-	Chaos_Activate(CHAOS_EFFECT_EXPLOSIVE_CRATES, 1000);
+	Chaos_Activate(CHAOS_EFFECT_UNBOXING_GONE_WRONG, 5000);
+	Chaos_Activate(CHAOS_EFFECT_UNBOXING_GONE_WRONG, 1000);
 	CTR_TEST_CHECK_EQ(s_crateExplosions, 0, "activation waits for a crate contact");
 	Chaos_ApplyCrateRules(&human, &crate);
 	CTR_TEST_CHECK_EQ(s_crateExplosions, 1, "overlapping activations cause only one explosion per contact");
@@ -2919,7 +2919,7 @@ static void TestHardCrates(void)
 {
 	CTR_TEST_SECTION("Hard Crates routes unfinished human contacts to solid crate collision");
 	SetupRace(CHAOS_TRIGGER_EXTERNAL);
-	sdata->chaosSettings.effects[CHAOS_EFFECT_HARD_CRATES] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_UNBREAKABLE] = true;
 	sdata->chaosSettings.enabledCount++;
 	struct Instance crate = {.scale.x = 0x1000};
 	struct ScratchpadStruct sps = {0};
@@ -2927,7 +2927,7 @@ static void TestHardCrates(void)
 	struct Driver human = {.driverID = 0};
 	struct Thread collidingTh = {.object = &human};
 	CTR_TEST_CHECK(!Chaos_IsHardCrateForDriver(&crate, &collidingTh, &sps), "inactive effect leaves crates breakable");
-	Chaos_Activate(CHAOS_EFFECT_HARD_CRATES, 5000);
+	Chaos_Activate(CHAOS_EFFECT_UNBREAKABLE, 5000);
 	CTR_TEST_CHECK(Chaos_IsHardCrateForDriver(&crate, &collidingTh, &sps), "active effect routes an unfinished human into solid collision");
 	crate.scale.x = 0;
 	CTR_TEST_CHECK(!Chaos_IsHardCrateForDriver(&crate, &collidingTh, &sps), "invisible crates cannot block the kart");
@@ -2950,7 +2950,7 @@ static void TestHardCrates(void)
 	s_tracker.gameMode1 |= ADVENTURE_ARENA;
 	CTR_TEST_CHECK(!Chaos_IsHardCrateForDriver(&crate, &collidingTh, &sps), "Adventure hubs retain ordinary crates");
 	s_tracker.gameMode1 &= ~ADVENTURE_ARENA;
-	Chaos_Activate(CHAOS_EFFECT_HARD_CRATES, 1000);
+	Chaos_Activate(CHAOS_EFFECT_UNBREAKABLE, 1000);
 	Tick(1000);
 	CTR_TEST_CHECK(!Chaos_IsHardCrateForDriver(&crate, &collidingTh, &sps), "the shorter replacement restores breakable crates at its expiry");
 	Tick(4000);
@@ -2963,7 +2963,7 @@ static void TestGiantKarts(void)
 {
 	CTR_TEST_SECTION("Giant Karts doubles visual/contact size and raises forward speed by 30 percent");
 	SetupRace(CHAOS_TRIGGER_EXTERNAL);
-	sdata->chaosSettings.effects[CHAOS_EFFECT_GIANT_KARTS] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_BIG_KART_ENERGY] = true;
 	sdata->chaosSettings.enabledCount++;
 	struct Instance humanInst = {.scale = {0xccc, 0xccc, 0xccc}};
 	struct Driver human = {.driverID = 0, .instSelf = &humanInst, .wheelSize = 0xccc};
@@ -2973,16 +2973,16 @@ static void TestGiantKarts(void)
 	s_tracker.drivers[1] = &partner;
 	CTR_TEST_CHECK_EQ(human.kartScale, 0, "before activation the driver uses retail scale");
 	CTR_TEST_CHECK_EQ(Chaos_JumpForceForDriver(&human, 1000), 1000, "inactive effect preserves ordinary jumps");
-	Chaos_Activate(CHAOS_EFFECT_GIANT_KARTS, 3000);
+	Chaos_Activate(CHAOS_EFFECT_BIG_KART_ENERGY, 3000);
 	CTR_TEST_CHECK_EQ(human.kartScale, CHAOS_GIANT_SCALE, "activation changes the driver's scale target once");
 	CTR_TEST_CHECK_EQ(partner.kartScale, CHAOS_GIANT_SCALE, "co-op partner receives the same scale target");
 	CTR_TEST_CHECK_EQ(humanInst.scale.x, 0xccc, "activation leaves the current scale for retail interpolation");
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 10000), 13000, "forward target increases by 30 percent");
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, -2000), -2000, "reverse speed stays retail");
 	human.const_Speed_ClassStat = 20000;
-	sdata->chaosSettings.effects[CHAOS_EFFECT_SPEED_CAPPED] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_SUNDAY_DRIVER] = true;
 	sdata->chaosSettings.enabledCount++;
-	Chaos_Activate(CHAOS_EFFECT_SPEED_CAPPED, 1000);
+	Chaos_Activate(CHAOS_EFFECT_SUNDAY_DRIVER, 1000);
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 10000), 10000, "Speed Capped still limits a giant's boosted forward speed");
 	CTR_TEST_CHECK_EQ(bot.kartScale, 0, "bot keeps the retail scale");
 	CTR_TEST_CHECK_EQ(Chaos_JumpForceForDriver(&human, 1000), 1300, "normal, forced and spring jumps gain 30 percent impulse");
@@ -3011,11 +3011,11 @@ static void TestGiantKarts(void)
 	Tick(1000);
 	CTR_TEST_CHECK_EQ(human.kartScale, CHAOS_GIANT_SCALE, "pause freezes the enlarged target");
 	s_tracker.gameMode1 &= ~PAUSE_1;
-	Chaos_Activate(CHAOS_EFFECT_GIANT_KARTS, 1000);
+	Chaos_Activate(CHAOS_EFFECT_BIG_KART_ENERGY, 1000);
 	CTR_TEST_CHECK_EQ(human.kartScale, CHAOS_GIANT_SCALE, "duplicate activation does not compound the scale target");
 	human.actionsFlagSet |= ACTION_RACE_FINISHED;
 	Tick(1000);
-	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_GIANT_KARTS), "the replacement expiry deactivates Giant Karts without a surviving copy");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_BIG_KART_ENERGY), "the replacement expiry deactivates Giant Karts without a surviving copy");
 	CTR_TEST_CHECK_EQ(human.kartScale, 1, "deactivating Giant Karts restores the scale even for a finished human");
 	human.actionsFlagSet &= ~ACTION_RACE_FINISHED;
 	Tick(2000);
@@ -3023,7 +3023,7 @@ static void TestGiantKarts(void)
 	CTR_TEST_CHECK_EQ(partner.kartScale, 1, "final expiry restores the co-op partner's target");
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 10000), 10000, "expiry restores speed");
 	CTR_TEST_CHECK_EQ(Chaos_JumpForceForDriver(&human, 1000), 1000, "expiry restores jump force");
-	Chaos_Activate(CHAOS_EFFECT_GIANT_KARTS, 1000);
+	Chaos_Activate(CHAOS_EFFECT_BIG_KART_ENERGY, 1000);
 	CTR_TEST_CHECK_EQ(human.kartScale, CHAOS_GIANT_SCALE, "a new activation changes the target again");
 	Chaos_Reset();
 	CTR_TEST_CHECK_EQ(human.kartScale, 1, "race reset restores the normal target");
@@ -3037,7 +3037,7 @@ static void TestGiantKarts(void)
 	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, 25), 75, "collision size follows arbitrary driver scale");
 	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, human.wheelSize), 0x2664, "wheel size uses the same scale as the body");
 	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, 0), 0, "squish preserves zero vertical scale");
-	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_GIANT_KARTS), "no Chaos activation is needed for dimension-based collision");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_BIG_KART_ENERGY), "no Chaos activation is needed for dimension-based collision");
 	CTR_TEST_CHECK(VehPhysCrash_TrySquashSmallerKart(&bot, &human), "a larger kart squashes a smaller enlarged kart without Chaos");
 	human.actionsFlagSet |= ACTION_RACE_FINISHED;
 	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, 25), 25, "finished drivers use retail dimensions");
@@ -3051,7 +3051,7 @@ static void TestSmallKartEnergy(void)
 	CTR_TEST_SECTION("Small Kart Energy halves dimensions and uses normal size-based squash protection");
 	SetupRace(CHAOS_TRIGGER_EXTERNAL);
 	sdata->chaosSettings.effects[CHAOS_EFFECT_SMALL_KART_ENERGY] = true;
-	sdata->chaosSettings.effects[CHAOS_EFFECT_GIANT_KARTS] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_BIG_KART_ENERGY] = true;
 	sdata->chaosSettings.enabledCount += 2;
 	struct Thread humanThread = {0};
 	struct Instance humanInst = {.thread = &humanThread, .scale = {0xccc, 0xccc, 0xccc}};
@@ -3099,11 +3099,11 @@ static void TestSmallKartEnergy(void)
 	CTR_TEST_CHECK(VehPhysCrash_TrySquashSmallerKart(&bot, &human), "continued contact passes over an already squashed small kart");
 	CTR_TEST_CHECK(human.squishTimer == timer && bot.forcedJumpType == FORCED_JUMP_NONE,
 	               "continued contact does not renew damage or hop repeatedly");
-	Chaos_Activate(CHAOS_EFFECT_GIANT_KARTS, 3000);
+	Chaos_Activate(CHAOS_EFFECT_BIG_KART_ENERGY, 3000);
 	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_SMALL_KART_ENERGY), "Giant Karts removes Small Kart Energy");
 	CTR_TEST_CHECK_EQ(VehPhysForce_ScaleValue(&human, 100), 200, "replacement grows directly to the giant target");
 	Chaos_Activate(CHAOS_EFFECT_SMALL_KART_ENERGY, 3000);
-	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_GIANT_KARTS), "Small Kart Energy removes Giant Karts");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_BIG_KART_ENERGY), "Small Kart Energy removes Giant Karts");
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 10000), 7000, "replacement does not retain the giant speed multiplier");
 	s_tracker.gameMode1 |= PAUSE_1;
 	Tick(3000);
@@ -3396,9 +3396,9 @@ static void TestArenaChampions(void)
 		previousNominalSpeed = nominalSpeeds[i];
 	}
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(human, 9000), 9000, "human driving speed remains unchanged");
-	sdata->chaosSettings.effects[CHAOS_EFFECT_SUPER_SPEED] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_GOTTA_GO_FAST] = true;
 	sdata->chaosSettings.enabledCount++;
-	Chaos_Activate(CHAOS_EFFECT_SUPER_SPEED, 1000);
+	Chaos_Activate(CHAOS_EFFECT_GOTTA_GO_FAST, 1000);
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(human, 9000), 18000, "human Super Speed can coexist with bot Arena Champions");
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&bot, 9000), 18000, "human Super Speed does not double the bots a second time");
 	human->actionsFlagSet |= ACTION_BOT;
@@ -3573,7 +3573,7 @@ static void TestClockCurse(void)
 {
 	CTR_TEST_SECTION("Clock Curse sets the received clock once and bypasses protection");
 	SetupRace(CHAOS_TRIGGER_EXTERNAL);
-	sdata->chaosSettings.effects[CHAOS_EFFECT_CLOCK_CURSE] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_CLOCKBLOCKED] = true;
 	sdata->chaosSettings.enabledCount++;
 	g_config.maskProtectsFromDamage = true;
 	struct Shield shieldObject = {0};
@@ -3597,7 +3597,7 @@ static void TestClockCurse(void)
 	TickAndApplyDrivers(32);
 	CTR_TEST_CHECK_EQ(human.clockReceive, 0, "inactive Clock Curse does not introduce a received clock");
 	CTR_TEST_CHECK_EQ(VehPickState_NewState(&human, 1, NULL, 0), 0, "ordinary damage still respects mask and invincibility protection");
-	Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 1000);
+	Chaos_Activate(CHAOS_EFFECT_CLOCKBLOCKED, 1000);
 	CTR_TEST_CHECK_EQ(human.clockReceive, 1000, "activation immediately assigns the full clock duration");
 	CTR_TEST_CHECK(human.funcPtrs[DRIVER_FUNC_INIT] == VehPhysProc_SpinFirst_Init, "the initial clock spin bypasses mask and invincibility");
 	CTR_TEST_CHECK(partner.funcPtrs[DRIVER_FUNC_INIT] == VehPhysProc_SpinFirst_Init, "the initial clock spin bypasses shields");
@@ -3624,7 +3624,7 @@ static void TestClockCurse(void)
 	CTR_TEST_CHECK_EQ(partner.clockReceive, 3968, "a later retail clock counts down without being overwritten by Chaos");
 	human.clockReceive = 9000;
 	TickAndApplyDrivers(1000);
-	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_CLOCK_CURSE), "the curse expires on its independent Chaos timer");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_CLOCKBLOCKED), "the curse expires on its independent Chaos timer");
 	CTR_TEST_CHECK_EQ(human.clockReceive, 8000, "curse expiry preserves a longer clock received during the effect");
 	CTR_TEST_CHECK_EQ(partner.clockReceive, 2968, "Chaos expiry leaves a later retail clock intact");
 
@@ -3632,9 +3632,9 @@ static void TestClockCurse(void)
 	Chaos_BeginRace(&s_tracker);
 	human.clockReceive = 0;
 	partner.clockReceive = 0;
-	Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 256);
+	Chaos_Activate(CHAOS_EFFECT_CLOCKBLOCKED, 256);
 	TickAndApplyDrivers(32);
-	Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 64);
+	Chaos_Activate(CHAOS_EFFECT_CLOCKBLOCKED, 64);
 	TickAndApplyDrivers(32);
 	CTR_TEST_CHECK_EQ(human.clockReceive, 32, "the replacement assigns its own remaining duration");
 	TickAndApplyDrivers(32);
@@ -3645,9 +3645,9 @@ static void TestClockCurse(void)
 		CTR_TEST_CHECK_EQ(human.clockReceive, 0, "the superseded activation cannot resume the overwritten clock");
 	}
 	TickAndApplyDrivers(32);
-	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_CLOCK_CURSE), "the last curse expires without a separate restoration step");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_CLOCKBLOCKED), "the last curse expires without a separate restoration step");
 	CTR_TEST_CHECK_EQ(human.clockReceive, 0, "the received clock reaches zero with the final curse timer");
-	Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 60000);
+	Chaos_Activate(CHAOS_EFFECT_CLOCKBLOCKED, 60000);
 	CTR_TEST_CHECK_EQ(human.clockReceive, 60000, "a one-off activation stores the full sixty-second duration");
 	TickAndApplyDrivers(32);
 	CTR_TEST_CHECK_EQ(human.clockReceive, 59968, "the received clock retains durations above the signed 16-bit range");
@@ -3657,7 +3657,7 @@ static void TestClockCurse(void)
 	CTR_TEST_CHECK_EQ(human.clockReceive, 0, "long curses also reach zero at final expiry");
 
 	CTR_TEST_SECTION("Clock Curse respects race gates and driver scope without a separate baseline snapshot");
-	Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 5000);
+	Chaos_Activate(CHAOS_EFFECT_CLOCKBLOCKED, 5000);
 	s_tracker.elapsedTimeMS = 32;
 	PreparedDriver(&bot, &pad, &steering, bot.actionsFlagSet);
 	CTR_TEST_CHECK_EQ(bot.clockReceive, 3000, "Clock Curse does not change bot clocks");
@@ -3670,13 +3670,13 @@ static void TestClockCurse(void)
 	const struct ChaosRuntime saved = sdata->chaosRuntime;
 	TickAndApplyDrivers(5000);
 	CTR_TEST_CHECK_EQ(human.clockReceive, 0, "pause cannot reapply one-off clock damage");
-	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 5000), "pause blocks a new one-off activation");
+	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_CLOCKBLOCKED, 5000), "pause blocks a new one-off activation");
 	CTR_TEST_CHECK(memcmp(&saved, &sdata->chaosRuntime, sizeof(saved)) == 0, "pause freezes curse lifetimes");
 	s_tracker.gameMode1 &= ~PAUSE_1;
 	s_tracker.gameMode1 |= ADVENTURE_ARENA;
 	TickAndApplyDrivers(5000);
 	CTR_TEST_CHECK_EQ(human.clockReceive, 0, "Adventure hubs do not receive Clock Curse");
-	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 5000), "Adventure hubs block a new one-off activation");
+	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_CLOCKBLOCKED, 5000), "Adventure hubs block a new one-off activation");
 	s_tracker.gameMode1 &= ~ADVENTURE_ARENA;
 	TickAndApplyDrivers(32);
 	CTR_TEST_CHECK_EQ(human.clockReceive, 0, "reopening the race gate does not repeat a one-off activation");
@@ -3697,24 +3697,24 @@ static void TestClockCurse(void)
 	human.funcPtrs[DRIVER_FUNC_INIT] = NULL;
 	partner.funcPtrs[DRIVER_FUNC_INIT] = NULL;
 	s_tracker.drivers[2] = &bot;
-	Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 1000);
+	Chaos_Activate(CHAOS_EFFECT_CLOCKBLOCKED, 1000);
 	CTR_TEST_CHECK(human.funcPtrs[DRIVER_FUNC_INIT] == NULL && partner.funcPtrs[DRIVER_FUNC_INIT] == NULL, "the initial hit skips finished humans");
 	CTR_TEST_CHECK(bot.funcPtrs[DRIVER_FUNC_INIT] == NULL, "the initial hit skips bots");
 	human.actionsFlagSet &= ~ACTION_RACE_FINISHED;
 	for (int i = 1; i < CHAOS_MAX_ACTIVATIONS; i++)
 	{
 		human.funcPtrs[DRIVER_FUNC_INIT] = NULL;
-		Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 1000);
+		Chaos_Activate(CHAOS_EFFECT_CLOCKBLOCKED, 1000);
 		CTR_TEST_CHECK(human.funcPtrs[DRIVER_FUNC_INIT] == VehPhysProc_SpinFirst_Init, "each successful reactivation delivers a new initial hit");
 	}
 	human.funcPtrs[DRIVER_FUNC_INIT] = NULL;
 	const int clockSounds = s_clockSounds;
-	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 1000), "reactivation accepts another curse");
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_CLOCKBLOCKED, 1000), "reactivation accepts another curse");
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 1, "repeated curses still occupy only one slot");
 	CTR_TEST_CHECK(human.funcPtrs[DRIVER_FUNC_INIT] == VehPhysProc_SpinFirst_Init, "reactivation repeats the one-off clock hit");
 	CTR_TEST_CHECK_EQ(s_clockSounds, clockSounds + 1, "reactivation replays the clock sound once");
 	human.funcPtrs[DRIVER_FUNC_INIT] = NULL;
-	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_CLOCK_CURSE, 0), "invalid reactivation rejects another curse");
+	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_CLOCKBLOCKED, 0), "invalid reactivation rejects another curse");
 	CTR_TEST_CHECK(human.funcPtrs[DRIVER_FUNC_INIT] == NULL, "rejected activations cannot inflict clock damage");
 	CTR_TEST_CHECK_EQ(s_clockSounds, clockSounds + 1, "rejected activations cannot play clock audio");
 	CTR_TEST_CHECK_EQ(VehPickState_NewState(&partner, 1, NULL, 0), 0, "ordinary damage still respects shield protection");
@@ -3741,7 +3741,7 @@ static void TestHopInputAndCloudOwnership(void)
 	CTR_TEST_CHECK_EQ(driver.jump_TenBuffer, 0, "releasing the shoulders clears the ordinary jump buffer");
 	driver.rainCloudEffect = RAIN_CLOUD_EFFECT_ITEM_ROLL;
 	driver.jump_TenBuffer = 4;
-	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 1000);
+	Chaos_Activate(CHAOS_EFFECT_GROUNDED, 1000);
 	actions = PreparedJump(&driver, BTN_R1, BTN_R1, driver.rainCloudEffect, unrelated | ACTION_JUMP_BUTTON_HELD);
 	CTR_TEST_CHECK_EQ(actions, unrelated, "active No Hopping clears only the jump latch");
 	CTR_TEST_CHECK_EQ(driver.jump_TenBuffer, 0, "a hop buffered before activation cannot fire later");
@@ -3749,7 +3749,7 @@ static void TestHopInputAndCloudOwnership(void)
 	CTR_TEST_CHECK_EQ(PreparedJump(&driver, 0, BTN_L1, RAIN_CLOUD_EFFECT_NONE, unrelated), unrelated,
 	                  "holding a shoulder cannot refill the buffer during No Hopping");
 	Tick(500);
-	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 1000);
+	Chaos_Activate(CHAOS_EFFECT_GROUNDED, 1000);
 	Tick(500);
 	CTR_TEST_CHECK_EQ(PreparedJump(&driver, BTN_R1, BTN_R1, RAIN_CLOUD_EFFECT_NONE, unrelated), unrelated,
 	                  "the second independent activation continues blocking hops");
@@ -3761,7 +3761,7 @@ static void TestHopInputAndCloudOwnership(void)
 	CTR_TEST_CHECK_EQ(actions, unrelated, "retail cloud lockout still blocks hops after Chaos expires");
 	CTR_TEST_CHECK_EQ(driver.jump_TenBuffer, 0, "Chaos expiry does not clear the retail cloud's jump lockout");
 
-	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 1000);
+	Chaos_Activate(CHAOS_EFFECT_GROUNDED, 1000);
 	driver.driverID = 2;
 	actions = PreparedJump(&driver, BTN_L1, BTN_L1, RAIN_CLOUD_EFFECT_NONE, unrelated);
 	CTR_TEST_CHECK((actions & ACTION_JUMP_BUTTON_HELD) != 0, "No Hopping does not suppress input for a bot slot");
@@ -3790,9 +3790,9 @@ static void TestDriverApplication(void)
 		.buttonsTapped = BTN_L1 | BTN_CIRCLE,
 	};
 	const struct GamepadBuffer original = pad;
-	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 1000);
-	Chaos_Activate(CHAOS_EFFECT_INVERTED_STEERING, 1000);
-	Chaos_Activate(CHAOS_EFFECT_NO_HOPPING, 1000);
+	Chaos_Activate(CHAOS_EFFECT_GROUNDED, 1000);
+	Chaos_Activate(CHAOS_EFFECT_MIRROR_MIRROR, 1000);
+	Chaos_Activate(CHAOS_EFFECT_GROUNDED, 1000);
 	int steering = pad.stickLX;
 	u32 actions = VehPhysProc_JumpInput(&driver, pad.buttonsTapped, pad.buttonsHeldCurrFrame,
 	                                   RAIN_CLOUD_EFFECT_NONE, driver.actionsFlagSet);
@@ -3844,8 +3844,8 @@ static void TestInstantGifts(void)
 	CTR_TEST_SECTION("instant rewards bypass timed capacity and never dock");
 	EnableGiftEffects();
 	const ChaosEffectId timed[] = {
-		CHAOS_EFFECT_LOW_GRAVITY, CHAOS_EFFECT_NO_HOPPING,
-		CHAOS_EFFECT_NO_ITEMS, CHAOS_EFFECT_INVERTED_STEERING,
+		CHAOS_EFFECT_FLY_ME_TO_THE_MOON, CHAOS_EFFECT_GROUNDED,
+		CHAOS_EFFECT_FAIR_MODE, CHAOS_EFFECT_MIRROR_MIRROR,
 	};
 	for (size_t i = 0; i < len(timed); i++)
 	{
@@ -3949,7 +3949,7 @@ static void TestRandomItemGift(void)
 {
 	CTR_TEST_SECTION("Use This! uses Chaos RNG and respects inventory and orb ownership");
 	EnableGiftEffects();
-	Chaos_Activate(CHAOS_EFFECT_NO_ITEMS, 10000);
+	Chaos_Activate(CHAOS_EFFECT_FAIR_MODE, 10000);
 	struct Driver *human = &s_defaultDrivers[0];
 	s_itemSounds = 0;
 	human->heldItemID = HELD_ITEM_ROULETTE;
@@ -3962,7 +3962,7 @@ static void TestRandomItemGift(void)
 	human->numWumpas = DRIVER_WUMPA_JUICED_COUNT;
 	Chaos_GiveRandomItem(human);
 	CTR_TEST_CHECK_EQ(s_itemSound, 0x41, "juiced item grants use the ordinary upgraded-item sound");
-	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_NO_ITEMS), "No Items cannot immediately erase the gift");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_FAIR_MODE), "No Items cannot immediately erase the gift");
 	CTR_TEST_CHECK_EQ(human->itemRollTimer, 0, "the previous roulette stops");
 	CTR_TEST_CHECK_EQ(human->noItemTimer, 0, "the new item is immediately available");
 	CTR_TEST_CHECK((human->actionsFlagSet & ACTION_WEAPON_FIRE_REQUEST) == 0, "a stale launch request cannot fire the new item");
@@ -4025,9 +4025,9 @@ static void TestReserveGifts(void)
 	human->const_SacredFireSpeed = 2000;
 	s_defaultDrivers[1].reserves = 100;
 	s_defaultDrivers[1].fireSpeedCap = 3000;
-	Chaos_Activate(CHAOS_EFFECT_NO_RESERVES, 10000);
+	Chaos_Activate(CHAOS_EFFECT_HOLE_IN_THE_TANK, 10000);
 	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_RESERVE_INJECTION, 1000), "Reserve Injection ends No Reserves and grants fuel");
-	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_NO_RESERVES), "No Reserves is removed before the grant");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_HOLE_IN_THE_TANK), "No Reserves is removed before the grant");
 	CTR_TEST_CHECK_EQ(human->reserves, CHAOS_INJECTION_RESERVES, "the empty kart receives ten seconds of reserves");
 	CTR_TEST_CHECK_EQ(human->fireSpeedCap, 1500, "an empty kart gets the third drift boost's normal fire level");
 	CTR_TEST_CHECK_EQ(s_defaultDrivers[1].fireSpeedCap, 3000, "an existing stronger fire level is preserved");
@@ -4050,12 +4050,12 @@ static void TestReserveGifts(void)
 	CTR_TEST_CHECK_EQ(Chaos_ReservesForDriver(human, 0), 0, "expiry restores reserve losses");
 	sdata->chaosRuntime = snapshot;
 	CTR_TEST_CHECK_EQ(Chaos_ReservesForDriver(human, 0), 2500, "resident restore restores reserve protection");
-	Chaos_Activate(CHAOS_EFFECT_NO_RESERVES, 1000);
+	Chaos_Activate(CHAOS_EFFECT_HOLE_IN_THE_TANK, 1000);
 	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL), "No Reserves replaces reserve protection");
 	PreparedSteering(human, &(struct GamepadBuffer){0});
 	CTR_TEST_CHECK_EQ(human->reserves, 0, "the replacement rule clears fuel immediately when applied");
 	Chaos_Activate(CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL, 1000);
-	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_NO_RESERVES), "reserve protection replaces No Reserves in the opposite order");
+	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_HOLE_IN_THE_TANK), "reserve protection replaces No Reserves in the opposite order");
 }
 
 static void TestSenileMask(void)

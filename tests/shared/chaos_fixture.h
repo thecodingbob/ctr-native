@@ -857,7 +857,7 @@ static void SetupRace(int trigger)
 		.armed = true, .trigger = (u8)trigger, .durationSeconds = 30,
 		.triggerIntervalSeconds = 5, .enabledCount = 1,
 	};
-	sdata->chaosSettings.effects[CHAOS_EFFECT_LOW_GRAVITY] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_FLY_ME_TO_THE_MOON] = true;
 	Chaos_BeginRace(&s_tracker);
 }
 
@@ -871,8 +871,8 @@ static void EnableInputEffects(void)
 {
 	SetupRace(CHAOS_TRIGGER_INTERVAL);
 	memset(sdata->chaosSettings.effects, 0, sizeof(sdata->chaosSettings.effects));
-	sdata->chaosSettings.effects[CHAOS_EFFECT_INVERTED_STEERING] = true;
-	sdata->chaosSettings.effects[CHAOS_EFFECT_NO_HOPPING] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_MIRROR_MIRROR] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_GROUNDED] = true;
 	sdata->chaosSettings.enabledCount = 2;
 }
 
