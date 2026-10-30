@@ -10,6 +10,7 @@ s32 TestUnexpectedCOP2(s32 op);
 #define MFC2 TestUnexpectedMFC2
 #define MFC2_S TestUnexpectedMFC2_S
 #define doCOP2 TestUnexpectedCOP2
+#define CHAOS_FIXTURE_REAL_LAP_STATS
 #include <shared/chaos_fixture.h>
 #undef CTC2
 #undef MTC2
@@ -1022,6 +1023,133 @@ static void SetupProjectedTeleport(struct TeleportWorld *world)
 	// Retail projects from the two nodes after the surface's checkpoint.
 	s_teleportGround.checkpointIndex = 0;
 	s_projectLapProgress = true;
+}
+
+static void TestKingCrimson(void)
+{
+	CTR_TEST_SECTION("King Crimson skips bot paths and the race clock without advancing other race state");
+	struct TeleportWorld world;
+	SetupTeleport(&world, 2, 2);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_KING_CRIMSON] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_ZA_WARUDO] = true;
+	sdata->chaosSettings.enabledCount += 2;
+	struct NavFrame navigation[2] = {0};
+	sdata->NavPath_ptrNavFrameArray[0] = navigation;
+	struct Driver *bot = &world.racers.drivers[2];
+	bot->botData.aiPhysics.speedLinear = 8192;
+	bot->botData.botPath = 0;
+	bot->clockReceive = 4567;
+	bot->squishTimer = 987;
+	world.racers.drivers[3].botData.aiPhysics.speedLinear = 0;
+	const struct Driver humans[2] = {world.racers.drivers[0], world.racers.drivers[1]};
+	const struct Driver stopped = world.racers.drivers[3];
+	const struct ChaosActivation active = {.effect = CHAOS_EFFECT_LOW_GRAVITY, .remainingMS = 5432, .elapsedMS = 876};
+	sdata->chaosRuntime.active[0] = active;
+	sdata->chaosRuntime.numActive = 1;
+	s_tracker.elapsedEventTime = 12000;
+	s_tracker.frozenTimeRemaining = 3000;
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_KING_CRIMSON, 1000), "King Crimson activates as an instant effect");
+	CTR_TEST_CHECK_EQ(s_tracker.elapsedEventTime, 22000, "the race clock skips ten seconds even with frozen relic-clock time");
+	CTR_TEST_CHECK_EQ(bot->distanceToFinish_curr, 66000, "bot travel uses the existing speed-to-navigation units");
+	CTR_TEST_CHECK(bot->posCurr.x == 1750 * FP8(1) && bot->botData.positionBackup.x == bot->posCurr.x &&
+	               bot->botData.botNavFrame == navigation && (bot->botData.botFlags & BOT_FLAG_ESTIMATE_NAV) != 0,
+	               "the shared track interpolation places the bot and reanchors navigation at its destination");
+	CTR_TEST_CHECK(memcmp(humans, world.racers.drivers, sizeof(humans)) == 0,
+	               "both human karts retain every field across the skip");
+	CTR_TEST_CHECK(memcmp(&stopped, &world.racers.drivers[3], sizeof(stopped)) == 0,
+	               "a stationary bot remains stationary");
+	CTR_TEST_CHECK(bot->reserves == 2345 && bot->turbo_outsideTimer == 400 && bot->clockReceive == 4567 &&
+	               bot->squishTimer == 987 && bot->heldItemID == HELD_ITEM_MISSILE_3X && s_tracker.frozenTimeRemaining == 3000,
+	               "boost fuel, damage, inventory and frozen race-clock duration do not consume skipped time");
+	CTR_TEST_CHECK(sdata->chaosRuntime.numActive == 1 && memcmp(&active, sdata->chaosRuntime.active, sizeof(active)) == 0,
+	               "instant activation preserves existing Chaos timers and uses no timed slot");
+	CTR_TEST_CHECK(Chaos_UsesTimePalette() && !Chaos_IsTimeStopped(), "the short palette treatment does not freeze simulation");
+	CTR_TEST_CHECK_EQ(s_clockSounds, 1, "the shared clock cue plays once");
+	Tick(200);
+	CTR_TEST_CHECK(s_timeStopCrateSounds == 1 && s_timeStopTickSounds == 0,
+	               "the delayed crate break reuses the cue scheduler without time-stop ticks");
+	Tick(299);
+	CTR_TEST_CHECK(Chaos_UsesTimePalette(), "the palette remains enabled until half a second");
+	Tick(1);
+	CTR_TEST_CHECK(!Chaos_UsesTimePalette(), "the palette expires at half a second independently of the instant banner");
+	Chaos_Activate(CHAOS_EFFECT_ZA_WARUDO, 1000);
+	Chaos_Activate(CHAOS_EFFECT_KING_CRIMSON, 1000);
+	CTR_TEST_CHECK(!Chaos_IsTimeStopped() && s_pausedVoices == 0 && Chaos_UsesTimePalette(),
+	               "King Crimson replaces time stop and releases its audio suspension");
+	Chaos_Activate(CHAOS_EFFECT_ZA_WARUDO, 1000);
+	CTR_TEST_CHECK(sdata->chaosRuntime.numInstantNotices == 0,
+	               "Za Warudo replaces the entire King Crimson notice and its pending presentation");
+	Tick(1000);
+	CTR_TEST_CHECK(!Chaos_UsesTimePalette(), "replacing King Crimson with time stop cancels its unfinished presentation");
+	Chaos_Reset();
+
+	CTR_TEST_SECTION("skipped bot finish crossings use retail laps and chronological finish ranks");
+	SetupTeleport(&world, 1, 2);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_KING_CRIMSON] = true;
+	sdata->chaosSettings.enabledCount++;
+	sdata->NavPath_ptrNavFrameArray[0] = navigation;
+	s_tracker.elapsedEventTime = 12000;
+	for (int slot = 1; slot <= 2; slot++)
+	{
+		bot = &world.racers.drivers[slot];
+		bot->botData.botPath = 0;
+		bot->botData.aiPhysics.speedLinear = 8192;
+		bot->distanceToFinish_curr = slot == 1 ? 8000 : 4000;
+		bot->checkpoint.currentIndex = 9;
+		bot->lapIndex = 2;
+	}
+	Chaos_Activate(CHAOS_EFFECT_KING_CRIMSON, 1000);
+	CTR_TEST_CHECK(world.racers.drivers[2].driverRank == 0 && world.racers.drivers[1].driverRank == 1 &&
+	               sdata->numPlayersFinishedRace == 2,
+	               "the earlier finish ranks first even when its slot is processed later");
+	CTR_TEST_CHECK(world.racers.drivers[2].timeElapsedInRace == 16000 && world.racers.drivers[1].timeElapsedInRace == 20000,
+	               "each bot finish retains its time within the skip");
+	CTR_TEST_CHECK(world.racers.drivers[1].lapIndex == 3 && world.racers.drivers[2].lapIndex == 3 &&
+	               world.racers.drivers[1].heldItemID == HELD_ITEM_NONE && world.racers.drivers[2].heldItemID == HELD_ITEM_NONE,
+	               "retail finish handling completes the final laps and clears finished inventories");
+	PlayLevel_UpdateLapStats();
+	CTR_TEST_CHECK(sdata->numPlayersFinishedRace == 2 && s_teleportRaceEnds == 0,
+	               "ordinary results sorting does not repeat skipped finishes or end a solo race before its human finishes");
+	Chaos_Reset();
+
+	CTR_TEST_SECTION("multi-lap skips stay consistent with real bot checkpoint projection");
+	SetupTeleport(&world, 1, 1);
+	sdata->chaosSettings.effects[CHAOS_EFFECT_KING_CRIMSON] = true;
+	sdata->chaosSettings.enabledCount++;
+	sdata->NavPath_ptrNavFrameArray[0] = navigation;
+	s_tracker.numLaps = 7;
+	const SVec3 positions[10] = {
+		{0, 32, 0}, {800, 32, 0}, {1600, 32, 0}, {2400, 32, 0}, {2400, 32, 800},
+		{2400, 32, 1600}, {1600, 32, 1600}, {800, 32, 1600}, {0, 32, 1600}, {0, 32, 800},
+	};
+	for (int i = 0; i < 10; i++)
+	{
+		world.nodes[i].pos = positions[i];
+		world.nodes[i].distToFinish = (10 - i) * 100;
+	}
+	bot = &world.racers.drivers[1];
+	bot->distanceToFinish_curr = 7600;
+	bot->lapIndex = 0;
+	bot->botData.aiPhysics.speedLinear = 24576;
+	bot->botData.botPath = 0;
+	Chaos_Activate(CHAOS_EFFECT_KING_CRIMSON, 1000);
+	CTR_TEST_CHECK(bot->lapIndex == 3 && bot->distanceToFinish_curr == 1600,
+	               "a short circuit counts every skipped lap instead of collapsing crossings into a single flag");
+	VehLap_UpdateProgress(bot);
+	CTR_TEST_CHECK_EQ(bot->distanceToFinish_curr, 1600, "real bot projection agrees with the destination surface checkpoint");
+	PlayLevel_UpdateLapStats();
+	CTR_TEST_CHECK(bot->lapIndex == 3 && bot->distanceDrivenBackwards == 0,
+	               "ordinary lap statistics do not repeat crossings or penalize the skipped forward distance");
+	Chaos_Reset();
+	const int excluded[] = {BATTLE_MODE, CRYSTAL_CHALLENGE, RELIC_RACE, TIME_TRIAL};
+	for (int i = 0; i < (int)len(excluded); i++)
+	{
+		SetupTeleport(&world, 1, 0);
+		sdata->chaosSettings.effects[CHAOS_EFFECT_KING_CRIMSON] = true;
+		s_tracker.gameMode1 |= excluded[i];
+		CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_KING_CRIMSON, 1000), "events without racing bots reject King Crimson");
+	}
+	sdata->NavPath_ptrNavFrameArray[0] = NULL;
 }
 
 static void TestTeleportProgressProjection(void)
@@ -4045,6 +4173,7 @@ int main(void)
 	TestIdentityCrisis();
 	TestBodySwap();
 	TestTeleport();
+	TestKingCrimson();
 	TestTeleportProgressProjection();
 	TestDefectiveTeleport();
 	TestTimeStop();

@@ -523,26 +523,34 @@ void Chaos_UpdateTimeStopAudio(void)
 	NativeAudio_SetPausedVoices(paused, Chaos_IsTimeStopped() && !sdata->chaosRuntime.humanXA);
 }
 
-static void Chaos_PlayTimeStopSound(int sound)
+static void Chaos_PlayTimeEffectSound(int sound)
 {
 	const bool previous = Chaos_SetHumanAudio(true);
 	OtherFX_Play(sound, 1);
 	Chaos_SetHumanAudio(previous);
 }
 
-static void Chaos_TickTimeStopSound(const struct ChaosActivation *entry, s32 elapsedMS)
+static void Chaos_TickTimeEffectSound(const struct ChaosActivation *entry, s32 elapsedMS)
 {
+	if (entry->effect != CHAOS_EFFECT_ZA_WARUDO && entry->effect != CHAOS_EFFECT_KING_CRIMSON)
+	{
+		return;
+	}
 	if (entry->elapsedMS < CHAOS_TIME_STOP_CRATE_DELAY_MS &&
 	    (entry->elapsedMS + elapsedMS >= CHAOS_TIME_STOP_CRATE_DELAY_MS || entry->remainingMS <= elapsedMS))
 	{
-		Chaos_PlayTimeStopSound(HOWL_SFX_TIME_CRATE_BREAK);
+		Chaos_PlayTimeEffectSound(HOWL_SFX_TIME_CRATE_BREAK);
+	}
+	if (entry->effect != CHAOS_EFFECT_ZA_WARUDO)
+	{
+		return;
 	}
 	s32 cueMS = CHAOS_TIME_STOP_CRATE_DELAY_MS;
 	for (int i = 0; i < CHAOS_TIME_STOP_TICK_COUNT; i++)
 	{
 		if (entry->elapsedMS < cueMS && entry->elapsedMS + elapsedMS >= cueMS && entry->remainingMS > elapsedMS)
 		{
-			Chaos_PlayTimeStopSound(HOWL_SFX_TIME_CRATE_TICK);
+			Chaos_PlayTimeEffectSound(HOWL_SFX_TIME_CRATE_TICK);
 		}
 		cueMS += CHAOS_TIME_STOP_TICK_PERIOD_MS;
 	}
@@ -1485,6 +1493,10 @@ static void Chaos_MoveDriver(struct Driver *driver, const Vec3 *position, int ya
 static bool Chaos_RepositionDriver(struct Driver *driver, const struct ChaosTrackDestination *destination)
 {
 	struct GameTracker *tracker = GAME_TRACKER;
+	if (tracker->level1->ptr_mesh_info == NULL)
+	{
+		return false;
+	}
 	struct ScratchpadStruct *sps = CTR_SCRATCHPAD_PTR(struct ScratchpadStruct, 0x108);
 	const SVec3 top = {destination->pos.x >> FRACTIONAL_BITS_8,
 	    (destination->pos.y >> FRACTIONAL_BITS_8) - CHAOS_TELEPORT_PROBE_HALF_HEIGHT,
@@ -1616,23 +1628,25 @@ static void Chaos_DefectiveTeleportDriver(struct Driver *driver)
 	driver->terrainMeta2 = driver->terrainMeta1;
 }
 
-static void Chaos_TeleportDriver(struct Driver *driver)
+static int Chaos_GetTrackLength(const struct Level *level)
 {
-	const struct Level *level = GAME_TRACKER->level1;
-	if (level == NULL || level->ptr_restart_points == NULL || level->ptr_mesh_info == NULL ||
-	    level->cnt_restart_points < 2 || level->cnt_restart_points > CHAOS_PATH_INVALID_NODE ||
-	    driver->checkpoint.currentIndex >= level->cnt_restart_points)
+	if (level == NULL || level->ptr_restart_points == NULL ||
+	    level->cnt_restart_points < 2 || level->cnt_restart_points > CHAOS_PATH_INVALID_NODE)
 	{
-		return;
+		return 0;
 	}
 	const int length = level->ptr_restart_points[0].distToFinish * CHAOS_TRACK_DISTANCE_SCALE;
-	if (length < CHAOS_TELEPORT_LAP_DIVISOR)
+	return length > 0 ? length : 0;
+}
+
+static bool Chaos_FindTrackDestination(struct Driver *driver, int target, struct ChaosTrackDestination *destination)
+{
+	const struct Level *level = GAME_TRACKER->level1;
+	const int length = Chaos_GetTrackLength(level);
+	if (length == 0 || driver->checkpoint.currentIndex >= level->cnt_restart_points)
 	{
-		return;
+		return false;
 	}
-	const int before = driver->distanceToFinish_curr % length;
-	const int unwrapped = before - length / CHAOS_TELEPORT_LAP_DIVISOR;
-	const int target = (unwrapped + length) % length;
 	struct CheckpointNode *node = &level->ptr_restart_points[driver->checkpoint.currentIndex];
 	for (int visited = 0; visited < level->cnt_restart_points; visited++)
 	{
@@ -1642,7 +1656,7 @@ static void Chaos_TeleportDriver(struct Driver *driver)
 		const int along = (node->distToFinish * CHAOS_TRACK_DISTANCE_SCALE - target + length) % length;
 		if (span > 0 && along < span)
 		{
-			struct ChaosTrackDestination destination = {
+			*destination = (struct ChaosTrackDestination){
 				.pos = {
 					node->pos.x * FP8(1) + (s64)(next->pos.x - node->pos.x) * FP8(1) * along / span,
 					node->pos.y * FP8(1) + (s64)(next->pos.y - node->pos.y) * FP8(1) * along / span,
@@ -1652,14 +1666,27 @@ static void Chaos_TeleportDriver(struct Driver *driver)
 				.checkpoint = (int)(node - level->ptr_restart_points),
 				.distanceToFinish = target,
 			};
-			if (Chaos_RepositionDriver(driver, &destination) && unwrapped < 0 &&
-			    sdata->chaosRuntime.teleportForwardCrossings[driver->driverID] < UINT8_MAX)
-			{
-				sdata->chaosRuntime.teleportForwardCrossings[driver->driverID]++;
-			}
-			return;
+			return true;
 		}
 		node = next;
+	}
+	return false;
+}
+
+static void Chaos_TeleportDriver(struct Driver *driver)
+{
+	const int length = Chaos_GetTrackLength(GAME_TRACKER->level1);
+	if (length < CHAOS_TELEPORT_LAP_DIVISOR)
+	{
+		return;
+	}
+	const int unwrapped = driver->distanceToFinish_curr % length - length / CHAOS_TELEPORT_LAP_DIVISOR;
+	struct ChaosTrackDestination destination;
+	if (Chaos_FindTrackDestination(driver, (unwrapped + length) % length, &destination) &&
+	    Chaos_RepositionDriver(driver, &destination) && unwrapped < 0 &&
+	    sdata->chaosRuntime.teleportForwardCrossings[driver->driverID] < UINT8_MAX)
+	{
+		sdata->chaosRuntime.teleportForwardCrossings[driver->driverID]++;
 	}
 }
 
@@ -1672,6 +1699,124 @@ bool Chaos_ConsumeTeleportLapCrossing(const struct Driver *driver)
 	}
 	(*crossings)--;
 	return true;
+}
+
+enum
+{
+	CHAOS_TIME_SKIP_MS = 10000,
+	CHAOS_TIME_SKIP_PALETTE_MS = 500,
+	// Bot navigation integrates speed * milliseconds / 32 in 24.8 positions.
+	CHAOS_BOT_DISTANCE_TIME_SCALE = 32 * FP8(1),
+};
+
+static void Chaos_MoveSkippedBot(struct Driver *driver, const struct ChaosTrackDestination *destination, struct NavFrame *next)
+{
+	driver->posCurr = destination->pos;
+	driver->posPrev = destination->pos;
+	driver->botData.positionBackup = destination->pos;
+	driver->botData.botNavFrame = next;
+	BOTS_SetRotation(driver, 0);
+	// Retail projects from the segment after the surface checkpoint.
+	const int checkpoint = GAME_TRACKER->level1->ptr_restart_points[destination->checkpoint].nextIndex_backward;
+	driver->checkpoint.currentIndex = checkpoint;
+	driver->botData.ai_quadblock_checkpointIndex = checkpoint;
+	driver->distanceToFinish_curr = destination->distanceToFinish;
+	driver->distanceToFinish_checkpoint = destination->distanceToFinish;
+	driver->distanceDrivenBackwards = 0;
+	driver->underDriver = NULL;
+	driver->currBlockTouching = NULL;
+	for (int axis = 0; axis < 3; axis++)
+	{
+		driver->instSelf->matrix.t[axis] = CTR_VECTOR_DATA(&driver->posCurr)[axis] >> FRACTIONAL_BITS_8;
+	}
+}
+
+struct ChaosBotSkip
+{
+	struct Driver *driver;
+	struct ChaosTrackDestination destination;
+	struct NavFrame *next;
+	int speed;
+	s64 nextCrossingDistance;
+};
+
+static void Chaos_PrepareBotSkip(struct ChaosBotSkip *skip, struct Driver *driver, int length)
+{
+	if (driver == NULL || (driver->actionsFlagSet & (ACTION_BOT | ACTION_RACE_FINISHED)) != ACTION_BOT)
+	{
+		return;
+	}
+	const int speed = Chaos_SpeedForDriver(driver, driver->botData.aiPhysics.speedLinear);
+	if (speed <= 0)
+	{
+		return;
+	}
+	const int before = driver->distanceToFinish_curr % length;
+	const s64 distance = (s64)speed * CHAOS_TIME_SKIP_MS / CHAOS_BOT_DISTANCE_TIME_SCALE;
+	const int target = (before - distance % length + length) % length;
+	if (!Chaos_FindTrackDestination(driver, target, &skip->destination))
+	{
+		return;
+	}
+	skip->next = BOTS_FindClosestNavFrame(driver->botData.botPath, &skip->destination.pos);
+	if (skip->next != NULL)
+	{
+		skip->driver = driver;
+		skip->speed = speed;
+		skip->nextCrossingDistance = before;
+	}
+}
+
+static void Chaos_SkipBotTime(void)
+{
+	struct GameTracker *tracker = GAME_TRACKER;
+	const int startTime = tracker->elapsedEventTime;
+	const int length = Chaos_GetTrackLength(tracker->level1);
+	if (length == 0)
+	{
+		return;
+	}
+	struct ChaosBotSkip skips[LOAD_CHARACTER_ID_COUNT] = {0};
+	for (int slot = tracker->numPlyrCurrGame; slot < (int)len(tracker->drivers); slot++)
+	{
+		Chaos_PrepareBotSkip(&skips[slot], tracker->drivers[slot], length);
+	}
+	// Dispatch crossings chronologically so finish order and clocks use skip time.
+	for (;;)
+	{
+		int first = -1;
+		s64 firstMS = CHAOS_TIME_SKIP_MS + 1;
+		for (int slot = 0; slot < (int)len(skips); slot++)
+		{
+			if (skips[slot].driver == NULL || (skips[slot].driver->actionsFlagSet & ACTION_RACE_FINISHED) != 0)
+			{
+				continue;
+			}
+			const s64 crossingMS = (skips[slot].nextCrossingDistance * CHAOS_BOT_DISTANCE_TIME_SCALE +
+			    skips[slot].speed - 1) / skips[slot].speed;
+			if (crossingMS < firstMS)
+			{
+				first = slot;
+				firstMS = crossingMS;
+			}
+		}
+		if (first < 0)
+		{
+			break;
+		}
+		tracker->elapsedEventTime = startTime + firstMS;
+		skips[first].driver->timeElapsedInRace = tracker->elapsedEventTime;
+		PlayLevel_CrossFinishLine(skips[first].driver, false, false);
+		skips[first].nextCrossingDistance += length;
+	}
+	for (int slot = 0; slot < (int)len(skips); slot++)
+	{
+		if (skips[slot].driver != NULL)
+		{
+			Chaos_MoveSkippedBot(skips[slot].driver, &skips[slot].destination, skips[slot].next);
+		}
+	}
+	tracker->elapsedEventTime = startTime + CHAOS_TIME_SKIP_MS;
 }
 
 static void Chaos_LaunchDriver(struct Driver *driver)

@@ -1244,7 +1244,7 @@ void RenderVSYNC(struct GameTracker *gGT)
 
 void RenderSubmit(struct GameTracker *gGT)
 {
-	NativeGpu_SetTimeStopPaletteBoundary(Chaos_IsTimeStopped() ? &gGT->pushBuffer_UI.ptrOT[UI_HUD_ORDERING_SLOT_LOWEST] : NULL);
+	NativeGpu_SetTimeStopPaletteBoundary(Chaos_UsesTimePalette() ? &gGT->pushBuffer_UI.ptrOT[UI_HUD_ORDERING_SLOT_LOWEST] : NULL);
 	// 1 VSYNC = 60fps
 	// 2 VSYNCs = 30fps
 

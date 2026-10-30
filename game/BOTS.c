@@ -3074,6 +3074,35 @@ struct Driver *BOTS_Driver_Init(int driverID)
 	return d;
 }
 
+struct NavFrame *BOTS_FindClosestNavFrame(int path, const Vec3 *position)
+{
+	if (path < 0 || path >= (int)len(sdata->NavPath_ptrHeader))
+	{
+		return NULL;
+	}
+	const struct NavHeader *header = sdata->NavPath_ptrHeader[path];
+	struct NavFrame *first = sdata->NavPath_ptrNavFrameArray[path];
+	if (header == NULL || first == NULL || header->numPoints < 2 || header->last <= first)
+	{
+		return NULL;
+	}
+	s64 nearestDistance = INT64_MAX;
+	struct NavFrame *next = first;
+	for (struct NavFrame *frame = first; frame < header->last; frame++)
+	{
+		const s64 x = (position->x >> FRACTIONAL_BITS_8) - frame->pos.x;
+		const s64 y = (position->y >> FRACTIONAL_BITS_8) - frame->pos.y;
+		const s64 z = (position->z >> FRACTIONAL_BITS_8) - frame->pos.z;
+		const s64 distance = x * x + y * y + z * z;
+		if (distance < nearestDistance)
+		{
+			nearestDistance = distance;
+			next = frame + 1 < header->last ? frame + 1 : first;
+		}
+	}
+	return next;
+}
+
 static bool BOTS_ConvertDriver(struct Driver *d, bool recordFinish)
 {
 	// if already AI, quit
@@ -3128,20 +3157,7 @@ static bool BOTS_ConvertDriver(struct Driver *d, bool recordFinish)
 	struct NavFrame *firstNavFrame = sdata->NavPath_ptrNavFrameArray[navPathIndex];
 	if (!recordFinish)
 	{
-		s64 nearestDistance = INT64_MAX;
-		struct NavHeader *header = sdata->NavPath_ptrHeader[navPathIndex];
-		for (struct NavFrame *frame = firstNavFrame; frame < header->last; frame++)
-		{
-			s64 x = (d->posCurr.x >> 8) - frame->pos.x;
-			s64 y = (d->posCurr.y >> 8) - frame->pos.y;
-			s64 z = (d->posCurr.z >> 8) - frame->pos.z;
-			s64 distance = x * x + y * y + z * z;
-			if (distance < nearestDistance)
-			{
-				nearestDistance = distance;
-				firstNavFrame = frame + 1 < header->last ? frame + 1 : sdata->NavPath_ptrNavFrameArray[navPathIndex];
-			}
-		}
+		firstNavFrame = BOTS_FindClosestNavFrame(navPathIndex, &d->posCurr);
 	}
 
 	d->botData.navProgressRemainder = 0;

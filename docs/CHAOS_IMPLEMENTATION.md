@@ -34,6 +34,26 @@ gameplay conditions (terrain, fuel, pickup queues). The gameplay hooks preserve 
 ordering and check eligibility before calling them; No Reserves is tested
 through `Chaos_ApplyDriver`.
 
+## Time skip
+
+King Crimson (instant ID 39, `king-crimson`) advances the event clock by 10,000 ms
+and estimates unfinished bot travel from current AI speed in retail navigation
+units. `Chaos_FindTrackDestination` is shared with Teleport, including selected
+checkpoint branches. `BOTS_FindClosestNavFrame` is shared with bot handover;
+`BOTS_SetRotation` rebuilds the destination navigation estimate. Bot position,
+backup, render translation and checkpoint projection are synchronized without
+running world physics or consuming damage/item/Chaos durations. Stationary bots
+and unavailable destinations are left in place.
+
+`PlayLevel_CrossFinishLine` is extracted from ordinary lap statistics and handles
+both normal crossings and skipped bot crossings. Skip crossings are dispatched in
+time order, including multiple laps, so finished bots retain their actual order
+and time within the interval. The next ordinary results update sorts the field
+and applies the existing event-completion rules. King Crimson uses an instant
+notice for its 500-ms world-only palette window and delayed time-crate break;
+the cue helper suppresses Za Warudo's ticks for this effect. The two effects
+replace each other; pending time-stop impacts resolve before bot relocation.
+
 ## Time stop
 
 Za Warudo (ID 38, `za-warudo`) is timed and capped at 10,000 ms.

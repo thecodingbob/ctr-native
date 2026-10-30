@@ -62,6 +62,7 @@ typedef enum {
 	CHAOS_EFFECT_TELEPORT = 36,
 	CHAOS_EFFECT_DEFECTIVE_TELEPORT = 37,
 	CHAOS_EFFECT_ZA_WARUDO = 38,
+	CHAOS_EFFECT_KING_CRIMSON = 39,
 
 	// IDs are saved bit positions: append new IDs, never renumber or reuse one.
 	// Growth within the saved bitset capacity does not change its layout.
@@ -124,6 +125,7 @@ static const ChaosEffectDef g_chaosEffectDefs[CHAOS_EFFECT_COUNT] =
 	[CHAOS_EFFECT_TELEPORT] = { "teleport", "Teleport", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_DEFECTIVE_TELEPORT] = { "defective-teleport", "Defective Teleport", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_ZA_WARUDO] = { "za-warudo", "Za Warudo", CHAOS_SCOPE_ALL },
+	[CHAOS_EFFECT_KING_CRIMSON] = { "king-crimson", "King Crimson", CHAOS_SCOPE_BOTS },
 };
 
 static inline bool ChaosEffect_IsInstant(ChaosEffectId id)
@@ -133,7 +135,7 @@ static inline bool ChaosEffect_IsInstant(ChaosEffectId id)
 	       id == CHAOS_EFFECT_RESERVE_INJECTION || id == CHAOS_EFFECT_MY_PLANET_NEEDS_ME ||
 	       id == CHAOS_EFFECT_TRY_SOMETHING_NEW || id == CHAOS_EFFECT_YOUVE_GOT_MAIL ||
 	       id == CHAOS_EFFECT_FRESH_START || id == CHAOS_EFFECT_IDENTITY_CRISIS ||
-	       id == CHAOS_EFFECT_TELEPORT || id == CHAOS_EFFECT_DEFECTIVE_TELEPORT;
+	       id == CHAOS_EFFECT_TELEPORT || id == CHAOS_EFFECT_DEFECTIVE_TELEPORT || id == CHAOS_EFFECT_KING_CRIMSON;
 }
 
 static inline const ChaosEffectDef *ChaosEffect_Def(ChaosEffectId id)

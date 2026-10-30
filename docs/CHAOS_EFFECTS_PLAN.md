@@ -17,9 +17,9 @@ This plan tracks delivery, remaining specifications and outstanding validation.
 | B. Driving, turbo and jumping | Sabotage, This Is Fire, Hydraulics, My Planet Needs Me, Who Bound This?, Try Something New | Implemented |
 | C. Size, camera and bots | Small Kart Energy, Classic GTA, Arena Champions, You've Got Mail, Fresh Start, Senile Mask | Implemented |
 | D. Characters and movement | Identity Crisis, Body Swap, Teleport, Defective Teleport | Implemented |
-| E. Time manipulation | Za Warudo, King Crimson | Za Warudo implemented; King Crimson next |
+| E. Time manipulation | Za Warudo, King Crimson | Za Warudo implemented; King Crimson prototype implemented |
 
-**Current effect: Za Warudo.** Implemented; in-game validation is pending.
+**Current effect: King Crimson.** Technical prototype implemented; in-game validation is pending.
 The user's Defective Teleport smoke test passed.
 
 Teleport's user smoke test passed; combined 2P/Body Swap/rescue checks remain pending.
@@ -87,7 +87,37 @@ Investigate path-based advancement, lap/checkpoint consistency and destination
 placement without moving humans. The two time effects replace each other on
 activation.
 
+Prototype: instant ID 39, `king-crimson`, restricted to events that support racing
+bots. Reuses Teleport's checkpoint traversal/branch selection and interpolation,
+then reconnects each moving unfinished bot to its existing AI path using the
+nearest-navigation search shared with Body Swap's bot handover. Travel uses the
+current AI speed, including Arena Champions' motion multiplier, for 10,000 ms;
+there is no physics, collision or item simulation during the skipped interval.
+Stationary bots remain stationary. The shared ordinary finish-line operation
+counts every crossing chronologically, preserving finish order and skip-relative
+finish times. Ordinary lap-statistics/results processing handles event completion.
+The race clock advances even when a bot cannot be placed because its track/nav
+data is unavailable; that bot stays put. Other Chaos, damage, reserve and item
+timers do not consume skipped time. The instant notice supplies the 500-ms palette
+window and delayed crate cue, sharing Za Warudo's grading and audio helpers without
+ticks or a timed slot. Replacing Za Warudo releases audio and resolves its queued
+impacts before relocating bots. Replacing King Crimson cancels its pending short
+presentation.
+
+Offline validation: application build and all 26 CTest checks pass. Chaos effects
+suite: 8,094 assertions, including unchanged human/timer state, chronological bot
+finishes, multi-lap skips with real checkpoint projection, mutually exclusive time
+effects, the 500-ms palette window and shared cues without King Crimson ticks.
+
 ## Outstanding in-game validation
+
+King Crimson: check 1P/2P, corners/ramps and stacked or alternate routes; bots must
+continue forward smoothly after placement. Verify the ten-second clock jump,
+multi-bot final-lap finish order and results, Body Swap ownership, Arena Champions,
+rescues, stationary/damaged bots, repeated skips, pause/retry and quick states
+during the half-second palette. Check both replacement orders with Za Warudo,
+including pending deferred hits, and confirm unchanged human positions, HUD/menu
+colors, weapons, power-ups and other effect durations at activation.
 
 Asset-free suites cover scheduling, lifecycle/conflicts, driver scope, HUD and
 gameplay operations. They do not replace the following visual, audio and physics

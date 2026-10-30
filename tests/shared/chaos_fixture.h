@@ -130,6 +130,27 @@ static void TestBotTick(struct Thread *thread)
 	(void)thread;
 }
 
+struct NavFrame *BOTS_FindClosestNavFrame(int path, const Vec3 *position)
+{
+	(void)position;
+	return sdata->NavPath_ptrNavFrameArray[path];
+}
+
+void BOTS_SetRotation(struct Driver *driver, int spawnYaw)
+{
+	(void)spawnYaw;
+	driver->botData.navProgressRemainder = 0;
+	driver->botData.botFlags |= BOT_FLAG_ESTIMATE_NAV;
+}
+
+#ifndef CHAOS_FIXTURE_REAL_LAP_STATS
+void PlayLevel_CrossFinishLine(struct Driver *driver, bool leadingHuman, bool coopRace)
+{
+	(void)driver; (void)leadingHuman; (void)coopRace;
+	CtrTest_Bail("this fixture must not dispatch a lap crossing");
+}
+#endif
+
 bool BOTS_Driver_Resume(struct Driver *driver)
 {
 	driver->actionsFlagSet |= ACTION_BOT;

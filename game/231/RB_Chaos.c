@@ -239,6 +239,14 @@ static void Chaos_OnEffectDeactivated(ChaosEffectId effect)
 	}
 }
 
+static void Chaos_RemoveInstantNotice(int index)
+{
+	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	struct ChaosActivation *notice = &runtime->instantNotices[index];
+	memmove(notice, notice + 1, (--runtime->numInstantNotices - index) * sizeof(*notice));
+	memset(&runtime->instantNotices[runtime->numInstantNotices], 0, sizeof(*notice));
+}
+
 static void Chaos_RemoveActivation(int index)
 {
 	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
@@ -260,6 +268,7 @@ static void Chaos_RemoveReplacedEffects(ChaosEffectId effect)
 		{CHAOS_EFFECT_THIS_IS_FIRE, CHAOS_EFFECT_DEFECTIVE_BOOSTS},
 		{CHAOS_EFFECT_NO_HOPPING, CHAOS_EFFECT_HYDRAULICS},
 		{CHAOS_EFFECT_GIANT_KARTS, CHAOS_EFFECT_SMALL_KART_ENERGY},
+		{CHAOS_EFFECT_ZA_WARUDO, CHAOS_EFFECT_KING_CRIMSON},
 	};
 	for (int i = 0; i < (int)len(opposites); i++)
 	{
@@ -279,6 +288,18 @@ static void Chaos_RemoveReplacedEffects(ChaosEffectId effect)
 		replaced = CHAOS_EFFECT_NO_ITEMS;
 	}
 	struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	for (int i = 0; i < runtime->numInstantNotices;)
+	{
+		struct ChaosActivation *notice = &runtime->instantNotices[i];
+		if (notice->effect == replaced)
+		{
+			Chaos_RemoveInstantNotice(i);
+		}
+		else
+		{
+			i++;
+		}
+	}
 	for (int i = 0; i < runtime->numActive;)
 	{
 		const ChaosEffectId active = runtime->active[i].effect;
@@ -298,6 +319,14 @@ static void Chaos_RemoveReplacedEffects(ChaosEffectId effect)
 static void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation)
 {
 	const ChaosEffectId effect = chaosActivation->effect;
+	if (effect == CHAOS_EFFECT_KING_CRIMSON)
+	{
+		Chaos_UpdateTimeStopAudio();
+		Chaos_ResolveDeferredImpacts();
+		Chaos_SkipBotTime();
+		Chaos_PlayTimeEffectSound(SOUND_CLOCK);
+		return;
+	}
 	if (effect == CHAOS_EFFECT_BODY_SWAP)
 	{
 		Chaos_BeginBodySwaps();
@@ -401,15 +430,13 @@ static void Chaos_EnqueueInstantNotice(const struct ChaosActivation *activation)
 	{
 		if (runtime->instantNotices[i].effect == activation->effect)
 		{
-			memmove(&runtime->instantNotices[i], &runtime->instantNotices[i + 1],
-			        (--runtime->numInstantNotices - i) * sizeof(*activation));
+			Chaos_RemoveInstantNotice(i);
 			break;
 		}
 	}
 	if (runtime->numInstantNotices == CHAOS_MAX_INSTANT_NOTICES)
 	{
-		memmove(runtime->instantNotices, runtime->instantNotices + 1,
-		        (--runtime->numInstantNotices) * sizeof(*activation));
+		Chaos_RemoveInstantNotice(0);
 	}
 	runtime->instantNotices[runtime->numInstantNotices++] = *activation;
 }
@@ -449,7 +476,7 @@ bool Chaos_Activate(ChaosEffectId effect, s32 durationMS)
 	Chaos_ApplyOneOff(&activation);
 	if (effect == CHAOS_EFFECT_ZA_WARUDO)
 	{
-		Chaos_PlayTimeStopSound(SOUND_CLOCK);
+		Chaos_PlayTimeEffectSound(SOUND_CLOCK);
 		Chaos_UpdateTimeStopAudio();
 	}
 	OtherFX_Play_LowLevel(HOWL_SFX_SWISH, 1, HOWL_SFX_DEFAULT_FLAGS | HOWL_SFX_GAIN_DOUBLE_FLAG);
@@ -465,6 +492,28 @@ bool Chaos_IsActive(ChaosEffectId effect)
 	for (int i = 0; i < sdata->chaosRuntime.numActive; i++)
 	{
 		if (sdata->chaosRuntime.active[i].effect == effect)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Chaos_UsesTimePalette(void)
+{
+	if (Chaos_IsTimeStopped())
+	{
+		return true;
+	}
+	if (!Chaos_IsRunning(GAME_TRACKER))
+	{
+		return false;
+	}
+	const struct ChaosRuntime *runtime = &sdata->chaosRuntime;
+	for (int i = 0; i < runtime->numInstantNotices; i++)
+	{
+		if (runtime->instantNotices[i].effect == CHAOS_EFFECT_KING_CRIMSON &&
+		    runtime->instantNotices[i].elapsedMS < CHAOS_TIME_SKIP_PALETTE_MS)
 		{
 			return true;
 		}
@@ -843,12 +892,12 @@ static void Chaos_TickActivations(s32 elapsedMS)
 		{
 			break;
 		}
+		Chaos_TickTimeEffectSound(notice, elapsedMS);
 		notice->elapsedMS += elapsedMS;
 		notice->noticeRemainingMS -= elapsedMS;
 		if (notice->noticeRemainingMS <= 0)
 		{
-			memmove(notice, notice + 1, (--runtime->numInstantNotices - i) * sizeof(*notice));
-			memset(&runtime->instantNotices[runtime->numInstantNotices], 0, sizeof(*notice));
+			Chaos_RemoveInstantNotice(i);
 		}
 		else
 		{
@@ -863,10 +912,7 @@ static void Chaos_TickActivations(s32 elapsedMS)
 			i++;
 			continue;
 		}
-		if (entry->effect == CHAOS_EFFECT_ZA_WARUDO)
-		{
-			Chaos_TickTimeStopSound(entry, elapsedMS);
-		}
+		Chaos_TickTimeEffectSound(entry, elapsedMS);
 		if (entry->remainingMS <= elapsedMS)
 		{
 			Chaos_RemoveActivation(i);
