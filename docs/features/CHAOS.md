@@ -27,7 +27,7 @@ Existing Regular files stay Regular.
 
 | Setting | Meaning |
 | --- | --- |
-| **Duration** | How long timed effects last: 5–60 seconds, in 5-second steps. Default: 30 seconds. Instant rewards apply once. |
+| **Duration** | How long timed effects last: 5–60 seconds, in 5-second steps. Default: 30 seconds. Instant effects apply once. |
 | **Trigger** | What causes the next activation; see below. Default: Random. |
 | **Interval** | Gap used by Random, Interval and External: 5–120 seconds, in 5-second steps. Default: 35 seconds. Hidden for Pickup. |
 | **Effects** | Open the list and turn individual effects ON or OFF. All are selected initially. |
@@ -72,11 +72,10 @@ An external application chooses the effect by placing its name in a local file.
 The game waits one full Interval from GO, then reads the next request. Each
 successful activation starts a fresh interval. With no request, no effect starts.
 
-Requests wait through pauses and can carry over to the next race, which starts a
-new interval from GO. The selected effect uses your saved Duration and must be
-enabled in the file. Setup and a manual submission example are in the
+Requests wait through pauses and Za Warudo's time stop, and can carry over to the
+next race, which starts a new interval from GO. The selected effect uses your saved
+Duration and must be enabled in the file. Setup and a manual submission example are in the
 [external provider guide](CHAOS_EXTERNAL_PROVIDER.md).
-
 
 ## Effects
 
@@ -112,7 +111,7 @@ enabled in the file. Setup and a manual submission example are in the
 | **Try Something New** | Switch to a different standard driving class and its engine sound until race end, keeping the character. Repeats select a class different from the current one.                   |
 | **Small Kart Energy** | Halve kart dimensions and collision size; reduce forward speed and jump force to 70%. Larger karts can squash you, subject to normal mask, shield and immunity protections.       |
 | **Classic GTA** | Use a vertical top-down camera that turns with your kart. Nearby overhead scenery is cut away to reveal the road, including in tunnels. Each human viewport follows its own kart. |
-| **Arena Champions** | Double bot driving speed and acceleration, retaining normal rubber-banding. Human karts are unaffected. Excluded from relic and crystal events.                                    |
+| **Arena Champions** | Double bot driving speed and acceleration, retaining normal rubber-banding. Human karts are unaffected. Available in events with bot racing. |
 | **You've Got Mail** | The last-place unfinished bot launches a normal orb at the leading unfinished human. Its target stays fixed, and the bot keeps its inventory. Available in events with bot racing. |
 | **Fresh Start** | Stop humans, clear reserves and replay the starting lights with starting boost available. Airborne karts are held aloft in the rescue falling pose by an orbiting mask; other karts return to neutral. An ongoing rescue finishes before the lights start. Bots keep racing. |
 | **Senile Mask** | Flash the wrong-way warning only while humans drive in the correct direction; suppress the warning and voice when actually going the wrong way. The mask voice repeats with half its normal cooldown, without overlapping speech. Race progress is unaffected. |
@@ -133,23 +132,27 @@ Duration 30 seconds with Interval 10 seconds allows several effects at once.
 - These pairs replace one another: **Inverted Steering / Wobble Steering**,
   **Low Gravity / Heavy Karts**, **Speed Capped / Super Speed**,
   **No Reserves / Too Boosted TO Fail**, **This Is Fire / Defective Boosts**,
-  **No Hopping / Hydraulics**, and **Giant Karts / Small Kart Energy**.
+  **No Hopping / Hydraulics**, **Giant Karts / Small Kart Energy**, and
+  **Za Warudo / King Crimson**.
 - **Use This!** ends **No Items**; **Reserve Injection** ends **No Reserves**.
 - **My Planet Needs Me** ends **No Hopping** and **Hydraulics** before launching.
-- The ten instant effects (**Use This!**, **Juiced Up**, **It is I**,
+- Instant effects (**Use This!**, **Juiced Up**, **It is I**,
   **Providence**, **Reserve Injection**, **My Planet Needs Me**, **Try Something New**,
-  **You've Got Mail**, **Fresh Start**, **Identity Crisis**) take no timed slot.
+  **You've Got Mail**, **Fresh Start**, **Identity Crisis**, **Teleport**,
+  **Defective Teleport**, **King Crimson**) take no timed slot.
   Repeating one applies it again.
 
 ## During a race
 
 A sound and on-screen banner announce each activation. After a few seconds, its
-name moves into the smaller list on the right. Instant rewards show only the
+name moves into the smaller list on the right. Instant effects show only the
 initial banner and never dock, even when their gameplay result persists.
 
 ![Chaos activation banner and effect list during a race](images/chaos-race-hud.jpg)
 
-Chaos timers stop in pause menus and outside active races. 
+Chaos timers stop in pause menus and outside active races. During Za Warudo,
+only its own expiry advances; other Chaos timers remain suspended. King Crimson
+advances the race clock without consuming other effect durations.
 
 To inspect those rules, pause and choose **Chaos Rules**.
 

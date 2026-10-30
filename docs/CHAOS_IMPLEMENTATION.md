@@ -21,7 +21,10 @@ Asset-free regression suites mirror these responsibilities:
 `tests/test_chaos_effects.c` covers gameplay modifiers and instant rewards.
 Both use `tests/shared/chaos_fixture.h` for the shared world, real module include
 chain and integration doubles. `tests/test_warpball.c` independently covers orb
-launch and teardown without loading the Chaos runtime.
+launch and teardown without loading the Chaos runtime. Visual/audio presentation,
+AI movement after handover or time skip, and combined 2P/rescue/retry/quick-state
+behavior also need in-game coverage; the asset-free suites use integration doubles
+at those boundaries.
 
 `RB_Chaos.c` owns activation, gameplay hooks and per-driver dispatch,
 sharing `Chaos_TargetsDriver` for recipient checks. `RB_ChaosEffects.c` owns
@@ -38,12 +41,21 @@ through `Chaos_ApplyDriver`.
 
 King Crimson (instant ID 39, `king-crimson`) advances the event clock by 10,000 ms
 and estimates unfinished bot travel from current AI speed in retail navigation
-units. `Chaos_FindTrackDestination` is shared with Teleport, including selected
-checkpoint branches. `BOTS_FindClosestNavFrame` is shared with bot handover;
+units, including Arena Champions' motion multiplier. `Chaos_GetTrackLength` shares
+checkpoint-data validation with Teleport; `Chaos_FindTrackDestination` shares its
+route traversal and interpolation, including selected checkpoint branches.
+Track-path lookup needs no mesh; only Teleport's ground-placement operation
+requires one. `BOTS_FindClosestNavFrame` is shared with bot handover;
 `BOTS_SetRotation` rebuilds the destination navigation estimate. Bot position,
 backup, render translation and checkpoint projection are synchronized without
 running world physics or consuming damage/item/Chaos durations. Stationary bots
 and unavailable destinations are left in place.
+
+AI reattachment targets the frame after the nearest navigation point on the bot's
+current path. This is an accepted approximation, not a segment-projected or full
+ten-second simulation; it can skip a navigation point near a corner. With valid
+track data, the race clock still advances if a bot's destination/navigation is
+unavailable.
 
 `PlayLevel_CrossFinishLine` is extracted from ordinary lap statistics and handles
 both normal crossings and skipped bot crossings. Skip crossings are dispatched in
@@ -60,7 +72,9 @@ Za Warudo (ID 38, `za-warudo`) is timed and capped at 10,000 ms.
 `Chaos_Update` runs before the event clock and world updates. While stopped,
 only its activation clock advances; other activation/notice/trigger clocks,
 Fresh Start and transformation delays retain their values. Wumpa Drain cannot
-repeat a suspended pulse. Ordinary human driving cooldowns/reserves still advance.
+repeat a suspended pulse. External command polling is also suspended: requests
+remain pending until time resumes. Ordinary human driving cooldowns/reserves
+still advance.
 
 `Chaos_ShouldFreezeThread` filters the staged driver loop, native thread walker
 and direct tick transitions. Human drivers, cameras/HUD, attached masks, boost
@@ -117,8 +131,11 @@ the original image and slightly dimmed for readability.
 HUD colors are untouched in Original and direct/scaled presentation. Race completion/reset
 releases suspension.
 
-After the initial clock/crate cues, the retail time-crate tick (`0x40`) plays
-six times at normal pitch and sample lifetime, spaced 192 ms apart, then stops.
+`Chaos_PlayTimeEffectSound` preserves human audio context for both time effects.
+The crate-break cue follows the clock cue after 200 ms through
+`Chaos_TickTimeEffectSound`. Za Warudo additionally plays the retail time-crate
+tick (`0x40`) six times at normal pitch and sample lifetime, spaced 192 ms apart,
+then stops.
 It uses the normal demand-loading path from `KART.HWL` and is
 tagged as effect audio so world-audio suspension does not mute it.
 
@@ -207,7 +224,8 @@ human count. Event filtering reuses `RACE_FIELD_NO_BOT_MODES` from race setup.
 Trigger behavior is described in the [player guide](features/CHAOS.md#triggers).
 Interval/Random retain frame overshoot; rejected scheduled events still consume
 their gap and selection RNG. External restarts a full gap only after success.
-No trigger waits for earlier effects to expire.
+Triggers normally do not wait for earlier effects to expire; Za Warudo suspends
+trigger clocks and external polling until time resumes.
 
 Pickup hooks run after full-size crates, loose Wumpa, crystals or CTR letters are
 consumed. Weapon-owned rewards, hidden/regrowing crates, intact Hard Crates, bots
@@ -333,7 +351,7 @@ fixed-point rounding or the negative-speed endpoint; only then is it normalized
 to fit. Impulse/length calculations use 64-bit intermediates. Overflow regressions
 exercise the real speed converter and square root across headings, rising/falling
 motion, large jump forces and repeated launches; angle reconstruction uses a
-math-backed test double. The actual flight trajectory still needs in-game checks.
+math-backed test double.
 
 Who Bound This? (ID 26, `who-bound-this`) keeps independent per-human permutations
 and analog edge history in `ChaosRuntime`. `Chaos_ApplyInputRules` remaps fresh
@@ -409,8 +427,7 @@ last-lap near-finish segment, before evaluating lap completion, using the retail
 near-line distance. Crystal/battle events have no such segment. Partner slots and
 class/identity ownership are checkpoint state. Asset-free tests cover ownership,
 pairing, lifecycle and the real human takeover's progress/motion transfer; driving
-callbacks and AI conversion are doubled. Actual bot/human transitions still require
-in-game validation.
+callbacks and AI conversion are doubled.
 
 Teleport (ID 36, `teleport`) is instant and human-only, excluded from battle and
 crystal challenges. It advances one tenth of the lap's retail progress distance,
@@ -439,14 +456,14 @@ the native GTE on a circuit with coherent world/progress distances, covering
 placement, subsequent frames, finish wrapping and alternate-branch surfaces.
 
 Defective Teleport (ID 37, `defective-teleport`) is instant, human-only and uses
-the same event exclusions. Per user revision it samples free 3D space rather than
+the same event exclusions. It samples free 3D space rather than
 moving backward along checkpoints: the rear hemisphere relative to kart yaw,
 with radius one fifth of the retail lap length in world units and a fixed vertical
 offset cap of 256 world units. Chaos RNG samples independent local
 backward/lateral/vertical offsets. Destinations must stay inside the BSP root's
-XZ footprint and within 256 world units of a nonempty geometry leaf's bounding
-box, including vertically. This rejects empty space between distant track areas
-without filtering water, off-road or kill-plane surfaces. Rejected candidates are
+XZ footprint and inside a nonempty geometry leaf's bounding box expanded by 50
+world units horizontally and 256 vertically. This rejects empty space between
+distant track areas without filtering water, off-road or kill-plane surfaces. Rejected candidates are
 retried up to 64 times, then a vertical-only fallback is checked against the same
 bounds; no valid fallback means no movement. No ground snap is applied.
 

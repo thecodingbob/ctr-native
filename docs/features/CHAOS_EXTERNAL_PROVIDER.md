@@ -48,7 +48,8 @@ if (-not (Test-Path -LiteralPath 'chaos/command')) {
 - Requires an armed Chaos Adventure save with trigger **External**.
 - Wait one saved interval from GO, then one full interval after each successful
   activation. Only eligible active race time counts; pause, menus, countdown,
-  loading, hubs and results neither spend the interval nor consume commands.
+  loading, hubs, results and Za Warudo's time stop neither spend the interval nor
+  consume commands. A command submitted during time stop waits until time resumes.
 - Once ready, check at most every 100 ms on normal frames. An empty slot leaves
   the provider ready; an interval of zero permits a request on the next eligible poll.
 - Pending commands survive race changes; each new race waits a fresh interval.
