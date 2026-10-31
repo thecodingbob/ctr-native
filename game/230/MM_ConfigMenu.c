@@ -339,7 +339,12 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		{
 			sections[section] = g_configEntries[s_sectionToEntry[section]].section;
 		}
+		// Keep the section list under the menu that opened it: the title screen's menus
+		// sit on the right, while the pause menu is centred.
+		const int columnX = (s_configSession.context == CONFIG_MENU_MAIN)
+		                        ? FULLSCREEN_MENU_MAIN_X
+		                        : FULLSCREEN_MENU_TITLE_X;
 		FullScreenMenu_DrawSectionScreen(sdata->lngStrings[LNG_OPTIONS], sections, &s_configScroll,
-		                                s_numSections, menu->rowSelected, gGT, ot);
+		                                s_numSections, menu->rowSelected, columnX, gGT, ot);
 	}
 }

@@ -23,6 +23,7 @@ static bool s_sliderDrawn;
 static RECT s_sliderMarker;
 static s16 s_sliderTriangle[6];
 static int s_sliderBoxCount;
+static s16 s_centerX;
 static int s_volumes[GAME_OPTIONS_VOLUME_COUNT];
 static int s_stereo;
 static int s_previewRow;
@@ -102,6 +103,10 @@ s32 DecalFont_GetLineWidth(char *text, s16 font) { (void)font; return (s32)strle
 void DecalFont_DrawLineOT(char *text, s16 x, s16 y, s16 font, s16 flags, u32 *ot)
 {
 	(void)y; (void)font; (void)ot;
+	if ((flags & JUSTIFY_CENTER) != 0)
+	{
+		s_centerX = x;
+	}
 	if (x == FULLSCREEN_MENU_LABEL_X)
 	{
 		s_observingRow = s_observedLabel != NULL && strcmp(text, s_observedLabel) == 0;
@@ -174,6 +179,8 @@ static void TestSession(enum ConfigMenuContext context, int mode)
 	UpdateMenu();
 	CTR_TEST_CHECK(s_currentSection == -1, "opening confirm does not also enter a section");
 	CTR_TEST_CHECK(s_tracker.gameMode1 == mode, "opening preserves the caller's game and pause flags");
+	const int expectedColumn = (context == CONFIG_MENU_MAIN) ? FULLSCREEN_MENU_MAIN_X : FULLSCREEN_MENU_TITLE_X;
+	CTR_TEST_CHECK(s_centerX == expectedColumn, "the section list follows the calling menu's column");
 
 	SetInput(BTN_CROSS, 0);
 	int generalSection = -1;
