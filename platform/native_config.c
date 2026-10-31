@@ -164,6 +164,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "General",
         .key = "allow_oxide_station_multiplayer",
+    	.availableDuringPause = true,
         .label = "Oxide Station Multiplayer",
         .type = CFG_BOOL,
         .valuePtr = &g_config.allowOxideStationMultiplayer
@@ -171,6 +172,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "General",
         .key = "allow_race_tracks_in_battle",
+    	.availableDuringPause = true,
         .label = "Race Tracks in Battle",
         .type = CFG_BOOL,
         .valuePtr = &g_config.allowRaceTracksInBattle
@@ -178,6 +180,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "General",
         .key = "extended_multiplayer",
+    	.availableDuringPause = true,
         .label = "Extended Multiplayer",
         .type = CFG_BOOL,
         .valuePtr = &g_config.extendedMultiplayer
@@ -185,6 +188,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "General",
         .key = "bot_selection_mode",
+    	.availableDuringPause = true,
         .label = "Bot Selection Mode",
         .type = CFG_ENUM,
         .valuePtr = &g_config.botSelectionMode,
@@ -194,6 +198,7 @@ const ConfigEntry g_configEntries[] = {
       {
         .section = "General",
         .key = "mask_mode",
+      	.availableDuringPause = true,
         .label = "Mask Mode",
         .type = CFG_ENUM,
         .valuePtr = &g_config.maskMode,
@@ -228,6 +233,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Adventure",
         .key = "extended_character_select",
+    	.availableDuringPause = true,
         .label = "Extended Character Select",
         .type = CFG_BOOL,
         .valuePtr = &g_config.extendedAdventureCharacterSelect
@@ -235,6 +241,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Adventure",
         .key = "multiplayer_adventure",
+    	.availableDuringPause = true,
         .label = "Multiplayer Adventure",
         .type = CFG_BOOL,
         .valuePtr = &g_config.multiplayerAdventure
@@ -242,6 +249,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Adventure",
         .key = "save_anywhere",
+    	.availableDuringPause = true,
         .label = "Save Anywhere",
         .type = CFG_BOOL,
         .valuePtr = &g_config.saveAnywhere
@@ -263,6 +271,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Adventure",
         .key = "chaos_mode",
+    	.availableDuringPause = true,
         .label = "Chaos Mode",
         .type = CFG_BOOL,
         .valuePtr = &g_config.chaosMode
@@ -428,6 +437,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Unlocks",
         .key = "unlock_all_characters",
+    	.availableDuringPause = true,
         .label = "Unlock All Characters",
         .type = CFG_BOOL,
         .valuePtr = &g_config.unlockAllCharacters
@@ -435,6 +445,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Unlocks",
         .key = "unlock_nitros_oxide",
+    	.availableDuringPause = true,
         .label = "Unlock Nitros Oxide",
         .type = CFG_BOOL,
         .valuePtr = &g_config.unlockNitrosOxide
@@ -450,6 +461,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Graphics",
         .key = "disable_split_screen_lod",
+    	.availableDuringPause = true,
         .label = "High Quality Multiplayer",
         .type = CFG_BOOL,
         .valuePtr = &g_config.disableSplitScreenLod
