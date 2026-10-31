@@ -23,6 +23,13 @@ static const ConfigEnumValue kBotSelectionModeValues[] = {
 };
 #define NUM_BOT_SELECTION_MODES (sizeof(kBotSelectionModeValues) / sizeof(kBotSelectionModeValues[0]))
 
+static const ConfigEnumValue kBossCutsceneValues[] = {
+    {"Unskippable", BOSS_CUTSCENES_UNSKIPPABLE},
+    {"Skippable", BOSS_CUTSCENES_SKIPPABLE},
+    {"Skip", BOSS_CUTSCENES_SKIP},
+};
+#define NUM_BOSS_CUTSCENE_MODES (sizeof(kBossCutsceneValues) / sizeof(kBossCutsceneValues[0]))
+
 static const ConfigEnumValue kAspectRatioValues[] = {
     {"4:3", 0},
     {"16:9", 1},
@@ -56,6 +63,7 @@ NativeConfig g_config = {
   .extendedMultiplayer = false,
   .botSelectionMode = BOT_SELECTION_PREDETERMINED,
   .skipHints = false,
+  .bossCutscenes = BOSS_CUTSCENES_UNSKIPPABLE,
   .extendedAdventureCharacterSelect = false,
   .multiplayerAdventure = false,
   .chaosMode = false,
@@ -193,6 +201,15 @@ const ConfigEntry g_configEntries[] = {
         .label = "Skip Mask Hints",
         .type = CFG_BOOL,
         .valuePtr = &g_config.skipHints
+    },
+    {
+        .section = "Adventure",
+        .key = "boss_cutscenes",
+        .label = "Boss Cutscenes",
+        .type = CFG_ENUM,
+        .valuePtr = &g_config.bossCutscenes,
+        .enumValues = kBossCutsceneValues,
+        .numEnumValues = NUM_BOSS_CUTSCENE_MODES
     },
     {
         .section = "Adventure",
