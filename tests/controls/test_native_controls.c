@@ -143,6 +143,7 @@ static void ResetModule(void)
 	{
 		s_playerPref[player].kind = NATIVE_CONTROLS_PREF_AUTO;
 		s_playerPref[player].deviceKey[0] = '\0';
+		s_playerPref[player].vibrationEnabled = true;
 		s_playerDevice[player] = NATIVE_CONTROLS_NO_DEVICE;
 	}
 }
@@ -1632,6 +1633,52 @@ static void TestFileRefusesToDisablePlayerOne(void)
 	CTR_TEST_CHECK(s_playerPref[1].kind == NATIVE_CONTROLS_PREF_DISABLED, "player2 was disabled as asked");
 }
 
+static void TestVibrationPersistence(void)
+{
+	CTR_TEST_SECTION("vibration: per-player preferences are saved immediately");
+	ResetModule();
+	for (int player = 0; player < PLATFORM_INPUT_PAD_COUNT; player++)
+	{
+		CTR_TEST_CHECK(NativeControls_GetPlayerVibration(player), "vibration defaults to on for every player");
+		NativeControls_SetPlayerVibration(player, player % 2 == 0);
+	}
+	ResetModule();
+	NativeControls_Load();
+	for (int player = 0; player < PLATFORM_INPUT_PAD_COUNT; player++)
+	{
+		CTR_TEST_CHECK(NativeControls_GetPlayerVibration(player) == (player % 2 == 0),
+		               "each player's preference survives a reload without an explicit flush");
+	}
+	int pads[4];
+	int keyboard;
+	SetupDevices(1, pads, &keyboard);
+	NativeControls_SetPlayerPref(1, NATIVE_CONTROLS_PREF_DISABLED, NATIVE_CONTROLS_NO_DEVICE);
+	NativeControls_RestoreDeviceDefaults(pads[0]);
+	ResetModule();
+	NativeControls_Load();
+	CTR_TEST_CHECK(!NativeControls_GetPlayerVibration(1), "assignment changes and binding resets preserve vibration in the file");
+
+	char path[512];
+	TestFilePath(path, sizeof(path));
+	FILE *file = fopen(path, "w");
+	fprintf(file, "[Vibration]\nplayer1 = false\nplayer2 = nonsense\nplayer3 = 0\nplayer4 = TRUE\nplayer0 = false\nplayer5 = false\nplayer2bad = false\n");
+	fclose(file);
+	ResetModule();
+	NativeControls_Load();
+	CTR_TEST_CHECK(!NativeControls_GetPlayerVibration(0) && !NativeControls_GetPlayerVibration(2),
+	               "false and zero disable only the specified players");
+	CTR_TEST_CHECK(NativeControls_GetPlayerVibration(1) && NativeControls_GetPlayerVibration(3),
+	               "invalid keys and values preserve defaults and boolean values ignore case");
+	file = fopen(path, "w");
+	fprintf(file, "[Assignment]\nplayer1 = auto\n");
+	fclose(file);
+	NativeControls_Init();
+	for (int player = 0; player < PLATFORM_INPUT_PAD_COUNT; player++)
+	{
+		CTR_TEST_CHECK(NativeControls_GetPlayerVibration(player), "older files without vibration keep the default on");
+	}
+}
+
 int main(void)
 {
 	// NativeControls_Refresh queries the real gamepad list, so the subsystem has to
@@ -1686,6 +1733,7 @@ int main(void)
 	TestRestoreDeviceDefaults();
 	TestUnknownNamesKeepDefaults();
 	TestFileRefusesToDisablePlayerOne();
+	TestVibrationPersistence();
 
 	const int result = CtrTest_Summary();
 

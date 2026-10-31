@@ -24,7 +24,6 @@ void RaceConfig_LoadGameOptions(void)
 		memcpy(&data.rwd[0], &save->options.rwd[0], sizeof(data.rwd));
 	}
 
-	GAME_TRACKER->gameMode1 |= GAME_SAVE.options.gameMode1_vibrationFlags & GAME_MODE_VIBRATION_MASK;
 	howl_ModeSet((u8)GAME_SAVE.options.audioMode & 1);
 }
 
@@ -39,6 +38,5 @@ void RaceConfig_SaveGameOptions(void)
 	}
 
 	memcpy(&GAME_SAVE.options.rwd[0], &data.rwd[0], sizeof(data.rwd));
-	GAME_SAVE.options.gameMode1_vibrationFlags = GAME_TRACKER->gameMode1 & GAME_MODE_VIBRATION_MASK;
 	GAME_SAVE.options.audioMode = (u8)howl_ModeGet() != 0;
 }

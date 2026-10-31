@@ -19,6 +19,7 @@
 enum ControlsRowKind
 {
 	CONTROLS_ROW_DEVICE = 0,
+	CONTROLS_ROW_VIBRATION,
 	CONTROLS_ROW_BINDING,
 	CONTROLS_ROW_DEADZONE,
 	CONTROLS_ROW_RESTORE,
@@ -53,7 +54,7 @@ static struct FullScreenMenu_Scroll s_scroll = {0};
 
 // Rebuilt every frame from the selected player's device, because the device can
 // change under the cursor at any time via hotplug or the row above.
-static struct ControlsRow s_rows[NATIVE_CONTROLS_BIND_COUNT + 3];
+static struct ControlsRow s_rows[NATIVE_CONTROLS_BIND_COUNT + 4];
 static int s_rowCount;
 
 static char s_valueBuffer[80];
@@ -98,6 +99,10 @@ static void Controls_BuildRows(void)
 	s_rowCount = 0;
 
 	s_rows[s_rowCount].kind = CONTROLS_ROW_DEVICE;
+	s_rows[s_rowCount].binding = -1;
+	s_rowCount++;
+
+	s_rows[s_rowCount].kind = CONTROLS_ROW_VIBRATION;
 	s_rows[s_rowCount].binding = -1;
 	s_rowCount++;
 
@@ -467,6 +472,16 @@ static void Controls_HandleConfirm(int device, const struct ControlsRow *row)
 		OtherFX_Play(2, 1);
 		break;
 
+	case CONTROLS_ROW_VIBRATION:
+		if (!NativeControls_CanVibrate(device))
+		{
+			OtherFX_Play(2, 1);
+			break;
+		}
+		NativeControls_SetPlayerVibration(s_player, !NativeControls_GetPlayerVibration(s_player));
+		OtherFX_Play(1, 1);
+		break;
+
 	case CONTROLS_ROW_BINDING:
 		if (device == NATIVE_CONTROLS_NO_DEVICE)
 		{
@@ -534,6 +549,13 @@ static void Controls_DrawValue(int device, const struct ControlsRow *row, int y,
 		return;
 	}
 
+	if (row->kind == CONTROLS_ROW_VIBRATION)
+	{
+		const bool enabled = NativeControls_GetPlayerVibration(s_player);
+		FullScreenMenu_DrawOnOffColored(enabled, y, NativeControls_CanVibrate(device) ? WHITE : GRAY, ot);
+		return;
+	}
+
 	if ((row->kind == CONTROLS_ROW_DEADZONE) && (device != NATIVE_CONTROLS_NO_DEVICE))
 	{
 		FullScreenMenu_DrawPercent(NativeControls_GetDeadzone(device), y, ot);
@@ -575,6 +597,9 @@ static void Controls_DrawRow(const void *context, int index, int y, bool selecte
 	{
 	case CONTROLS_ROW_DEVICE:
 		label = "DEVICE";
+		break;
+	case CONTROLS_ROW_VIBRATION:
+		label = "Vibration";
 		break;
 	case CONTROLS_ROW_BINDING:
 		label = s_bindingGlyphs[row->binding];

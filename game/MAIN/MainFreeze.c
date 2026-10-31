@@ -1,4 +1,5 @@
 #include <common.h>
+#include <platform/native_controls.h>
 #include "MainFreeze_Chaos.c"
 
 
@@ -516,7 +517,8 @@ static b32 PROCESSINPUTS_MainFreeze_MenuPtrOptions(struct RectMenu *menu, GAMEPA
 				{
 					// selecting dualshock row
 					// toggle gamepad vibration
-					gGT->gameMode1 ^= data.gGT_gameMode1_VibPerPlayer[gamepad->gamepadId[gamepadRow]];
+					const int player = gamepad->gamepadId[gamepadRow];
+					NativeControls_SetPlayerVibration(player, !NativeControls_GetPlayerVibration(player));
 				}
 				else
 				{
@@ -678,7 +680,7 @@ static void DISPLAYRECTMENU_MainFreeze_MenuPtrOptions(struct RectMenu *menu, GAM
 			DecalFont_DrawLine(sdata->lngStrings[data.Options_StringIDs_Gamepads[currPad + multitapStringOffset]], lineWidth_vibrateOn, rowY, FONT_SMALL,
 			                   dualShockRowColor);
 
-			b32 boolDisabled = (gGT->gameMode1 & data.gGT_gameMode1_VibPerPlayer[currPad]) != 0;
+			b32 boolDisabled = !NativeControls_GetPlayerVibration(currPad);
 
 			if (dualShockRowColor != GRAY)
 			{

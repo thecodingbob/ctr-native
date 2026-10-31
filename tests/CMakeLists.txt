@@ -148,6 +148,10 @@ ctr_add_test_suite(test_native_controls
     LIBRARIES SDL3::SDL3
 )
 
+ctr_add_test_suite(test_controls_menu
+    SOURCES controls/test_controls_menu.c
+)
+
 # test_memtrack.c #includes platform/native_memtrack.c so it can read the
 # peaks, which are file-static and gated behind CTR_DIAGNOSTICS. It therefore
 # needs the same definition the game build has, or the module compiles to
