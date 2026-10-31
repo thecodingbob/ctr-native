@@ -49,6 +49,7 @@ static const ConfigEnumValue kPgxpModeValues[] = {
 
 NativeConfig g_config = {
   .skipIntro = false,
+  .skipPodiumCeremonies = false,
   .showReservesMeter = false,
   .allowOxideStationMultiplayer = false,
   .allowRaceTracksInBattle = false,
@@ -125,6 +126,13 @@ const ConfigEntry g_configEntries[] = {
         .label = "Skip Intros",
         .type = CFG_BOOL,
         .valuePtr = &g_config.skipIntro
+    },
+    {
+        .section = "General",
+        .key = "skip_podium_ceremonies",
+        .label = "Skip Podium Ceremonies",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.skipPodiumCeremonies
     },
     {
         .section = "General",

@@ -10,6 +10,7 @@ typedef struct {
 
 typedef struct {
     bool skipIntro;             // false = off (default), true = skip all intros
+    bool skipPodiumCeremonies;  // false = off (default), true = automatically leave post-event podiums
     bool showReservesMeter;     // true = show the in-game reserves meter (default = false)
     bool allowOxideStationMultiplayer; // false = retail 1P-only restriction, true = allow multiplayer
     bool allowRaceTracksInBattle; // false = battle arenas only, true = select race tracks in battle mode

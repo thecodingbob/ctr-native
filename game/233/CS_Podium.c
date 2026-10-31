@@ -420,6 +420,17 @@ void CS_Podium_Prize_ThTick1(struct Thread *th)
 	struct Prize *prize = th->object;
 	int trig;
 
+	if (g_config.skipPodiumCeremonies)
+	{
+		// Complete the reward handoff without the bounce/fly-to-HUD animation.
+		if (CS_FINISHED != 0)
+		{
+			prize->flyToHudFramesLeft = 1;
+			ThTick_SetAndExec(th, CS_Podium_Prize_ThTick3);
+		}
+		return;
+	}
+
 	if (CS_PRIZE_DROP_READY != 0)
 	{
 		if (th->modelIndex != STATIC_BIG1)
@@ -622,10 +633,21 @@ const struct CsPodiumNames csPodiumNames = {
     .s_victorycam = "victorycam",
 };
 
+static void CS_Podium_CreateCamera(void)
+{
+	struct Thread *victoryCamThread =
+	    (struct Thread *)PROC_BirthWithObject(PODIUM_VICTORY_CAMERA_THREAD_FLAGS, (void *)CS_Camera_ThTick_Podium, CS_PODIUM_VICTORYCAM_NAME, NULL);
+
+	if (victoryCamThread != NULL)
+	{
+		struct CsPodiumCameraThreadObj *podiumCamera = victoryCamThread->object;
+		podiumCamera->pathFrame32 = 0;
+	}
+}
+
 void CS_Podium_FullScene_Init(void)
 {
 	struct Instance *driverInstSelf;
-	struct Thread *victoryCamThread;
 	u32 podiumMusic;
 	struct CsThreadInitData InitData;
 	MATRIX podiumMatrix;
@@ -655,11 +677,26 @@ void CS_Podium_FullScene_Init(void)
 	CS_PHASE = CS_CAMERA_PAN;
 
 	CS_PRIZE_DROP_READY = 0;
+	CS_PODIUM_CAMERA_FRAME = 0;
+
+	if (g_config.skipPodiumCeremonies)
+	{
+		SVec3Slot prizePos = {0};
+		gGT = GAME_TRACKER;
+		gGT->numWinners = 0;
+		gGT->renderFlags &= ~RENDER_FLAG_CONFETTI;
+		gGT->gameMode2 |= VEH_FREEZE_PODIUM;
+		driver = gGT->drivers[0];
+		VehPhysProc_FreezeEndEvent_Init(driver->instSelf->thread, driver);
+		// Keep the reward thread and camera's exit logic for hints, saving,
+		// boss encounters, and the ending; no ceremony instances are needed.
+		CS_Podium_Prize_Init(gGT->podiumRewardID, CS_PODIUM_PRIZE_NAME, &prizePos);
+		CS_Podium_CreateCamera();
+		return;
+	}
 
 	driver = GAME_TRACKER->drivers[0];
 	driverInstSelf = driver->instSelf;
-
-	CS_PODIUM_CAMERA_FRAME = 0;
 
 	driverInstSelf->flags |= HIDE_MODEL;
 
@@ -749,15 +786,7 @@ void CS_Podium_FullScene_Init(void)
 
 	CS_Podium_Stand_Init(init);
 
-	victoryCamThread =
-	    (struct Thread *)PROC_BirthWithObject(PODIUM_VICTORY_CAMERA_THREAD_FLAGS, (void *)CS_Camera_ThTick_Podium, CS_PODIUM_VICTORYCAM_NAME, NULL);
-
-	// if it allocated correctly
-	if (victoryCamThread != 0)
-	{
-		struct CsPodiumCameraThreadObj *podiumCamera = victoryCamThread->object;
-		podiumCamera->pathFrame32 = 0;
-	}
+	CS_Podium_CreateCamera();
 
 	// change victory music based on who is first in the podium
 	switch (GAME_TRACKER->podium_modelIndex_First - STATIC_CRASHDANCE)

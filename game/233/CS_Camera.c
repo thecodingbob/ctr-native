@@ -186,6 +186,12 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 		GAME_TRACKER->drivers[0]->funcPtrs[DRIVER_FUNC_INIT] = VehStuckProc_RIP_Init;
 	}
 
+	if (g_config.skipPodiumCeremonies)
+	{
+		CS_PHASE = CS_WAIT_INPUT;
+		CS_PRIZE_DROP_READY = 1;
+	}
+
 	if (GAME_TRACKER->cameraDC[0].cameraMode != CAMERA_MODE_FREECAM)
 	{
 		if (CS_PHASE < CS_WAIT_INPUT)
@@ -222,10 +228,13 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 			goto check_skip_button;
 		}
 
-		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], CS_PODIUM_CONTINUE_TEXT_X, CS_PODIUM_CONTINUE_TEXT_Y, FONT_BIG,
-		                   JUSTIFY_CENTER | ORANGE);
+		if (!g_config.skipPodiumCeremonies)
+		{
+			DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], CS_PODIUM_CONTINUE_TEXT_X, CS_PODIUM_CONTINUE_TEXT_Y, FONT_BIG,
+			                   JUSTIFY_CENTER | ORANGE);
+		}
 	}
-	else
+	else if (!g_config.skipPodiumCeremonies)
 	{
 		s32 numPoints = CAM_Path_GetNumPoints();
 		// NOTE(aalhendi): Retail truncates the path clock before signed comparisons.
@@ -282,7 +291,7 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 		u32 tapped = GAMEPADS->gamepad[0].buttonsTapped;
 		s32 rewardId;
 
-		if (((tapped & BTN_START) == 0) && ((CS_PHASE == CS_CAMERA_PAN || (tapped & (BTN_START | BTN_CROSS_one)) == 0)) &&
+		if (!g_config.skipPodiumCeremonies && ((tapped & BTN_START) == 0) && ((CS_PHASE == CS_CAMERA_PAN || (tapped & (BTN_START | BTN_CROSS_one)) == 0)) &&
 		    ((modeFlags & VEH_FREEZE_PODIUM) != 0))
 		{
 			return;
