@@ -613,6 +613,13 @@ b32 MM_Controls_IsPickerOpen(void)
 	return s_pickerOpen;
 }
 
+void MM_Controls_ResetNavigation(void)
+{
+	Controls_ClosePicker();
+	s_scroll.offset = 0;
+	NativeControls_CancelCapture();
+}
+
 // Keeps the cursor and the scroll origin in step: a move resets the scroll so the cursor
 // stays visible, and so does a player switch.
 static void Controls_MoveSelection(struct RectMenu *menu, int delta)

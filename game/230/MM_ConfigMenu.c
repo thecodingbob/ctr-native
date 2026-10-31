@@ -39,6 +39,7 @@ void MM_MenuProc_Controls(struct RectMenu *menu);
 // True while the device picker is up, so this file leaves the back button to it
 // instead of backing out of the whole section.
 b32 MM_Controls_IsPickerOpen(void);
+void MM_Controls_ResetNavigation(void);
 
 // Union of the button presses this screen accepts: player 1's device and the selected
 // player's own. Used for the back button, which this file handles on its behalf.
@@ -104,11 +105,53 @@ static bool Config_IsCustomSection(int section)
 	return strcmp(g_configEntries[s_sectionToEntry[section]].section, CONFIG_SECTION_CONTROLS) == 0;
 }
 
-struct RectMenu g_configMenu = {
+static struct RectMenu g_configMenu = {
 	.stringIndexTitle = -1,
 	.state = EXECUTE_FUNCPTR | DISABLE_INPUT_ALLOW_FUNCPTRS,
 	.funcPtr = MM_MenuProc_Config,
 };
+
+static struct
+{
+	struct RectMenu *returnMenu;
+	enum ConfigMenuContext context;
+	s16 returnRow;
+} s_configSession;
+
+static void Config_ClearInput(void)
+{
+	RECTMENU_ClearInput();
+	// Config and Controls read taps directly. Keep held state intact: GAMEPAD
+	// uses it as the previous frame when deriving the next frame's taps.
+	for (int i = 0; i < PLATFORM_INPUT_PAD_COUNT; i++)
+	{
+		sdata->gGamepads->gamepad[i].buttonsTapped = 0;
+	}
+}
+
+void MM_ConfigMenu_Open(struct RectMenu *returnMenu, enum ConfigMenuContext context)
+{
+	s_configSession.returnMenu = returnMenu;
+	s_configSession.context = context;
+	s_configSession.returnRow = returnMenu->rowSelected;
+	s_currentSection = -1;
+	s_configScroll.offset = 0;
+	g_configMenu.rowSelected = 0;
+	BuildSectionMap();
+	MM_Controls_ResetNavigation();
+	Config_ClearInput();
+	sdata->ptrDesiredMenu = &g_configMenu;
+}
+
+static void Config_Close(void)
+{
+	MM_Controls_ResetNavigation();
+	NativeConfig_Save();
+	NativeControls_Save();
+	Config_ClearInput();
+	s_configSession.returnMenu->rowSelected = s_configSession.returnRow;
+	sdata->ptrDesiredMenu = s_configSession.returnMenu;
+}
 
 static void Config_UpdateSlider(const struct GamepadBuffer *pad, const int rowSelected,
                               const int localRow, int *value, const int min, const int max, const int step)
@@ -198,12 +241,12 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 		{
 			menu->rowSelected = s_currentSection;
 			s_currentSection = -1;
+			s_configScroll.offset = 0;
+			Config_ClearInput();
 		}
 		else
 		{
-			NativeConfig_Save();
-			NativeControls_Save();
-			sdata->ptrDesiredMenu = &D230.menuMainMenu;
+			Config_Close();
 		}
 	}
 

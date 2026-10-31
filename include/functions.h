@@ -856,6 +856,7 @@ void MM_ParseCheatCodes(void);
 void MM_QuickRace_RequestStart(struct RectMenu *mainMenu);
 void MM_QuickRace_SetupRace(void);
 void MM_MenuProc_Main(struct RectMenu *mainMenu);
+void MM_ConfigMenu_Open(struct RectMenu *returnMenu, enum ConfigMenuContext context);
 void MM_ToggleRows_PlayerCount(void);
 void MM_MenuProc_1p2p(struct RectMenu *menu);
 void MM_MenuProc_2p3p4p(struct RectMenu *menu);
