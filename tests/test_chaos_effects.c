@@ -2150,24 +2150,25 @@ static void TestSpeedEffects(void)
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 15000), 15000, "inactive Chaos preserves the resolved speed target");
 	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 100), 100, "inactive Chaos preserves acceleration");
 	Chaos_Activate(CHAOS_EFFECT_SUNDAY_DRIVER, 2000);
-	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 6000, "Speed Capped limits the target to half the unboosted class speed");
-	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 6000, "boosted targets cannot bypass the class-based ceiling");
-	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 4000), 4000, "a slower target from damage or partial speed remains below the ceiling");
-	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 0), 0, "Speed Capped does not introduce motion at rest");
-	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, -3000), -3000, "Speed Capped leaves reverse targets unchanged");
-	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&partner, 18000), 7000, "the co-op partner retains their own class-based ceiling");
-	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&bot, 18000), 18000, "Speed Capped does not affect bots");
-	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 100), 100, "Speed Capped preserves normal acceleration");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 8400, "Sunday Driver scales the resolved forward target to 70 percent");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 14000, "boosted targets retain 70 percent without a class-based ceiling");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 4000), 2800, "damage and partial-speed targets receive the same multiplier");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 1001), 700, "fractional target speeds truncate only after applying the percentage");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 0), 0, "Sunday Driver does not introduce motion at rest");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, -3000), -3000, "Sunday Driver leaves reverse targets unchanged");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&partner, 18000), 12600, "the co-op partner receives the same forward-speed multiplier");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&bot, 18000), 18000, "Sunday Driver does not affect bots");
+	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 100), 100, "Sunday Driver preserves normal acceleration");
 	CTR_TEST_CHECK(memcmp(&human, &original, sizeof(human)) == 0, "speed queries do not overwrite constants, motion or boost fuel");
 	human.const_Speed_ClassStat = 14000;
-	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 7000, "legitimate class changes immediately update the ceiling");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 14000, "class constants do not impose an extra ceiling on the current target");
 	Tick(500);
 	Chaos_Activate(CHAOS_EFFECT_SUNDAY_DRIVER, 1500);
-	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 7000, "reactivating the cap does not halve the ceiling again");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 14000, "reactivating Sunday Driver does not compound the multiplier");
 	Tick(500);
-	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 7000, "the replacement cap remains active until its own expiry");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 14000, "the replacement multiplier remains active until its own expiry");
 	Tick(1000);
-	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 20000, "final cap expiry returns the current retail target");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 20000), 20000, "Sunday Driver expiry returns the current retail target");
 
 	Chaos_Activate(CHAOS_EFFECT_GOTTA_GO_FAST, 2000);
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 24000, "Super Speed doubles the resolved forward target before the retail hard limit");
@@ -2227,7 +2228,7 @@ static void TestSpeedEffects(void)
 	Chaos_Activate(CHAOS_EFFECT_GOTTA_GO_FAST, 3000);
 	Chaos_Activate(CHAOS_EFFECT_SUNDAY_DRIVER, 1000);
 	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_GOTTA_GO_FAST), "Speed Capped removes all Super Speed copies");
-	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 7000, "the replacement cap uses the live unmodified class speed");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 8400, "Sunday Driver replaces Gotta Go Fast with the 70-percent target");
 	CTR_TEST_CHECK_EQ(Chaos_AccelerationForDriver(&human, 100), 100, "the replacement cap removes increased acceleration immediately");
 	Tick(1000);
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 12000), 12000, "cap expiry cannot revive replaced Super Speed");
@@ -2983,7 +2984,7 @@ static void TestGiantKarts(void)
 	sdata->chaosSettings.effects[CHAOS_EFFECT_SUNDAY_DRIVER] = true;
 	sdata->chaosSettings.enabledCount++;
 	Chaos_Activate(CHAOS_EFFECT_SUNDAY_DRIVER, 1000);
-	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 10000), 10000, "Speed Capped still limits a giant's boosted forward speed");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&human, 10000), 9100, "Sunday Driver scales the giant's 130-percent forward target to 70 percent");
 	CTR_TEST_CHECK_EQ(bot.kartScale, 0, "bot keeps the retail scale");
 	CTR_TEST_CHECK_EQ(Chaos_JumpForceForDriver(&human, 1000), 1300, "normal, forced and spring jumps gain 30 percent impulse");
 	CTR_TEST_CHECK_EQ(Chaos_JumpForceForDriver(&bot, 1000), 1000, "bots retain normal jump force");
@@ -3359,7 +3360,7 @@ static void TestYouveGotMail(void)
 
 static void TestArenaChampions(void)
 {
-	CTR_TEST_SECTION("Arena Champions doubles bot motion without compounding AI state");
+	CTR_TEST_SECTION("Arena Champions scales bot motion to 175 percent without compounding AI state");
 	SetupRace(CHAOS_TRIGGER_EXTERNAL);
 	sdata->chaosSettings.effects[CHAOS_EFFECT_ARENA_CHAMPIONS] = true;
 	sdata->chaosSettings.enabledCount++;
@@ -3386,21 +3387,22 @@ static void TestArenaChampions(void)
 	{
 		bot.botData.aiPhysics.speedLinear = nominalSpeeds[i];
 		const int actualSpeed = Chaos_SpeedForDriver(&bot, bot.botData.aiPhysics.speedLinear);
-		CTR_TEST_CHECK_EQ(actualSpeed, nominalSpeeds[i] * 2, "bot motion doubles through the full retail speed range, including boosted speeds");
-		CTR_TEST_CHECK_EQ(actualSpeed - previousActualSpeed, (nominalSpeeds[i] - previousNominalSpeed) * 2,
-		                  "the same AI acceleration produces twice the change in physical speed");
+		CTR_TEST_CHECK_EQ(actualSpeed, nominalSpeeds[i] * 175 / 100, "bot motion scales to 175 percent through the full retail speed range, including boosted speeds");
+		CTR_TEST_CHECK_EQ(actualSpeed - previousActualSpeed, (nominalSpeeds[i] - previousNominalSpeed) * 175 / 100,
+		                  "the same AI acceleration produces 175 percent of the change in physical speed");
 		CTR_TEST_CHECK_EQ(bot.botData.aiPhysics.speedLinear, nominalSpeeds[i], "motion scaling leaves persistent AI speed in retail units");
 		CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&bot, bot.botData.aiPhysics.speedLinear), actualSpeed,
 		                  "repeated motion queries never compound the speed multiplier");
 		previousActualSpeed = actualSpeed;
 		previousNominalSpeed = nominalSpeeds[i];
 	}
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&bot, 501), 876, "fractional bot speeds use the full 175-percent multiplier before truncation");
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(human, 9000), 9000, "human driving speed remains unchanged");
 	sdata->chaosSettings.effects[CHAOS_EFFECT_GOTTA_GO_FAST] = true;
 	sdata->chaosSettings.enabledCount++;
 	Chaos_Activate(CHAOS_EFFECT_GOTTA_GO_FAST, 1000);
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(human, 9000), 18000, "human Super Speed can coexist with bot Arena Champions");
-	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&bot, 9000), 18000, "human Super Speed does not double the bots a second time");
+	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&bot, 9000), 15750, "human Gotta Go Fast leaves the bot's independent 175-percent multiplier intact");
 	human->actionsFlagSet |= ACTION_BOT;
 	CTR_TEST_CHECK(!Chaos_IsActiveForDriver(CHAOS_EFFECT_ARENA_CHAMPIONS, human), "a human-owned slot on autopilot does not become an Arena Champions target");
 	human->actionsFlagSet &= ~ACTION_BOT;

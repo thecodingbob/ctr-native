@@ -13,7 +13,8 @@ enum
 	CHAOS_WOBBLE_RANGE_DENOMINATOR = 4,
 	CHAOS_LOW_GRAVITY_DIVISOR = 4,
 	CHAOS_HEAVY_GRAVITY_MULTIPLIER = 3,
-	CHAOS_SPEED_CAP_DIVISOR = 2,
+	CHAOS_SUNDAY_DRIVER_SPEED_PERCENT = 70,
+	CHAOS_ARENA_CHAMPIONS_SPEED_PERCENT = 175,
 	CHAOS_SUPER_SPEED_MULTIPLIER = 2,
 	CHAOS_KART_SCALE_NORMAL = 1,
 	CHAOS_GIANT_SCALE = 2,
@@ -1877,10 +1878,9 @@ static int Chaos_SmallForce(int force)
 	return force * CHAOS_SMALL_FORCE_PERCENT / CHAOS_PERCENT_SCALE;
 }
 
-static int Chaos_CappedSpeed(const struct Driver *driver, int speed)
+static int Chaos_ScaleSpeed(int speed, int percent)
 {
-	const int cap = driver->const_Speed_ClassStat / CHAOS_SPEED_CAP_DIVISOR;
-	return speed > cap ? cap : speed;
+	return (s64)speed * percent / CHAOS_PERCENT_SCALE;
 }
 
 static int Chaos_SuperSpeed(int speed)

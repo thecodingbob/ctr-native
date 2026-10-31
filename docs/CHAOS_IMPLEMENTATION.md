@@ -261,7 +261,7 @@ guarantee teardown.
 | Grounded | Clear resolved manual hop latch/buffer after input resolution; preserve drift, forced jumps and cloud ownership. |
 | Totally Sober | Two-second sine wave at 75% of controller range, clamped; phase uses captured activation elapsed time. |
 | Fly Me to the Moon / Heavy Metal | Derive gravity from the live constant at 1/4 or 3× before terrain multipliers; preserve jump impulse and terminal velocity. |
-| Sunday Driver / Gotta Go Fast | Half-class-speed ceiling / double forward target and positive acceleration; preserve reverse and the retail `0x6400` target limit. |
+| Sunday Driver / Gotta Go Fast | Scale the resolved forward target to 70% without a class-based cap / double forward target and positive acceleration. Preserve reverse and the retail `0x6400` target limit. |
 | Hole in the Tank | Clear both fuel timers in the driver-input hook; later retail grants survive until the next application. |
 | Fair Mode | Clear inventory, pending launch and roulette before item processing; deployed effects remain active. |
 | Wumpa Tax | Remove one credited fruit per crossed game second, at most once per frame; preserve pending HUD awards and stop at zero. No pulse at activation or expiry. |
@@ -527,9 +527,9 @@ or shared flags, and do not require checkpoint-owned camera state.
 
 Arena Champions (ID 30, `arena-champions`) uses bots-only scope. Normal
 rank/distance/leader-stat rubber-banding, boost, terrain and damage rules still
-run. `Chaos_SpeedForDriver` reuses the same 2x operation as Gotta Go Fast for
-the final navigation speed and horizontal velocity. AI dynamics stay in retail
-units: doubling the output doubles actual acceleration too, keeps existing caps
+run. `Chaos_SpeedForDriver` applies a 175% multiplier to the final navigation
+speed and horizontal velocity. AI dynamics stay in retail
+units: scaling the output scales actual acceleration too, keeps existing caps
 and airborne square calculations valid, and avoids accumulating multipliers.
 The 16-bit speed/reporting mirrors saturate rather than wrapping; navigation and
 32-bit horizontal velocity keep the full speed. Vertical jump/gravity and impact

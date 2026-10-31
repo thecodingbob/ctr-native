@@ -623,12 +623,15 @@ int Chaos_SpeedForDriver(const struct Driver *driver, int speed)
 	}
 	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SUNDAY_DRIVER, driver))
 	{
-		return Chaos_CappedSpeed(driver, speed);
+		return Chaos_ScaleSpeed(speed, CHAOS_SUNDAY_DRIVER_SPEED_PERCENT);
 	}
-	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_GOTTA_GO_FAST, driver) ||
-	    Chaos_IsActiveForDriver(CHAOS_EFFECT_ARENA_CHAMPIONS, driver))
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_GOTTA_GO_FAST, driver))
 	{
 		speed = Chaos_SuperSpeed(speed);
+	}
+	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_ARENA_CHAMPIONS, driver))
+	{
+		speed = Chaos_ScaleSpeed(speed, CHAOS_ARENA_CHAMPIONS_SPEED_PERCENT);
 	}
 	return speed;
 }

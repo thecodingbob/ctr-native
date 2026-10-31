@@ -86,7 +86,7 @@ Duration and must be enabled in the file. Setup and a manual submission example 
 | **Totally Sober** | Steering sways from side to side, making a straight line harder to hold. |
 | **Fly Me to the Moon** | Gravity falls to one quarter of normal, keeping you airborne longer. |
 | **Heavy Metal** | Gravity triples, bringing you down sooner after jumps. |
-| **Sunday Driver** | Forward target speed is capped at half your kart's normal class speed, including while boosting. |
+| **Sunday Driver** | Reduce forward target speed to 70%, including boosted speeds, without a class-based speed cap. |
 | **Gotta Go Fast** | Doubles forward target speed and acceleration. The game's usual speed ceiling still applies. |
 | **Hole in the Tank** | Continually clears stored boost fuel, preventing you from building up reserves. |
 | **Fair Mode** | Empties held items and cancels item rolls. Already deployed items, shields and masks remain active. |
@@ -111,7 +111,7 @@ Duration and must be enabled in the file. Setup and a manual submission example 
 | **Try Something New** | Switch to a different standard driving class and its engine sound until race end, keeping the character. Repeats select a class different from the current one.                   |
 | **Small Kart Energy** | Halve kart dimensions and collision size; reduce forward speed and jump force to 70%. Larger karts can squash you, subject to normal mask, shield and immunity protections.       |
 | **Classic GTA** | Use a vertical top-down camera that turns with your kart. Nearby overhead scenery is cut away to reveal the road, including in tunnels. Each human viewport follows its own kart. |
-| **Arena Champions** | Double bot driving speed and acceleration, retaining normal rubber-banding. Human karts are unaffected. Available in events with bot racing. |
+| **Arena Champions** | Increase bot driving speed and acceleration to 175%, retaining normal rubber-banding. Human karts are unaffected. Available in events with bot racing. |
 | **You've Got Mail** | The last-place unfinished bot launches a normal orb at the leading unfinished human. Its target stays fixed, and the bot keeps its inventory. Available in events with bot racing. |
 | **Fresh Start** | Stop humans, clear reserves and replay the starting lights with starting boost available. Airborne karts are held aloft in the rescue falling pose by an orbiting mask; other karts return to neutral. An ongoing rescue finishes before the lights start. Bots keep racing. |
 | **Senile Mask** | Flash the wrong-way warning only while humans drive in the correct direction; suppress the warning and voice when actually going the wrong way. The mask voice repeats with half its normal cooldown, without overlapping speech. Race progress is unaffected. |
