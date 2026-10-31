@@ -297,6 +297,7 @@ Setting the other options to `true` in `config.ini` therefore has no effect unti
 | `one_lap_races`           | `true` / `false`   | `false` | Forces every race to a single lap. Extends the 1-lap cheat code, which only covers Arcade and Versus, to all races with no exception                                             |
 | `tow_player_2`            | `true` / `false`   | `false` | Holds the Adventure co-op partner kart right behind the lead racer. `select` toggles the tow in-race                                                                             |
 | `quick_race`              | `true` / `false`   | `false` | `R3` in the main menu skips the menus and starts a 1P arcade race in Crash Cove as Crash, on the easiest difficulty and the default lap count.                                   |
+| `chaos_quick_race`        | `true` / `false`   | `false` | `Start` on a Chaos effect during save creation launches a 1P Adventure race as Crash in Crash Cove with only that effect, 5s duration and a 10s interval trigger. |
 | `skip_start_countdown`    | `true` / `false`   | `false` | Skips the traffic light countdown and the start-line fly-in, so every race goes the instant the level appears. Applies to restarts too.                                          |
 | `end_race_with_l3`        | `true` / `false`   | `false` | `L3` in-race ends the race on the placings the field is standing on, so the podium and results can be checked without running the whole route.                                   |
 

@@ -16,6 +16,21 @@ static u32 s_destination;
 static struct ChannelStats s_channel;
 static int s_mixedVolume;
 static struct GameTracker s_tracker;
+static bool s_freezeAudio;
+static bool s_previewHumanAudio;
+
+bool Chaos_SetHumanAudio(bool human)
+{
+	const bool previous = sdata->chaosRuntime.humanAudioContext;
+	sdata->chaosRuntime.humanAudioContext = human;
+	return previous;
+}
+
+bool Chaos_ShouldFreezeAudioChannel(const struct ChannelStats *channel)
+{
+	(void)channel;
+	return s_freezeAudio;
+}
 
 #include <game/HOWL/HOWL_Bank.c>
 #include <game/HOWL/HOWL_Sample.c>
@@ -78,6 +93,7 @@ void Smart_ExitCriticalSection(void) {}
 struct ChannelStats *Channel_AllocSlot_AntiSpam(s16 sound, u8 antiSpam, int flags, struct ChannelAttr *attr)
 {
 	(void)sound; (void)antiSpam;
+	s_previewHumanAudio = sdata->chaosRuntime.humanAudioContext;
 	s_channel = (struct ChannelStats){ .flags = 1 };
 	LIST_Clear(&sdata->channelTaken);
 	LIST_Clear(&sdata->channelFree);
@@ -118,6 +134,7 @@ void CseqMusic_Stop(u16 song) { (void)song; }
 int CseqMusic_Start(u16 song, int p2, struct SongSet *set, int p4, int p5)
 {
 	(void)song; (void)p2; (void)set; (void)p4; (void)p5;
+	s_previewHumanAudio = sdata->chaosRuntime.humanAudioContext;
 	return 0;
 }
 u32 Music_GetHighestSongPlayIndex(void) { return 0; }
@@ -249,5 +266,40 @@ int main(void)
 	OtherFX_Play(0, 1);
 	CTR_TEST_CHECK_EQ(s_mixedVolume, 3785, "ordinary playback retains vanilla gain");
 	CTR_TEST_CHECK((s_channel.flags & HOWL_CHANNEL_GAIN_DOUBLE) == 0, "reused channels do not inherit boosted gain");
+	CTR_TEST_SECTION("selectively frozen sounds retain their lifetime and resume without catch-up");
+	s_channel.flags = 1;
+	s_channel.timeLeft = 10;
+	s_freezeAudio = true;
+	howl_PlayAudio_Update();
+	howl_PlayAudio_Update();
+	CTR_TEST_CHECK_EQ(s_channel.timeLeft, 10, "frozen world sounds cannot expire while their samples are suspended");
+	s_freezeAudio = false;
+	howl_PlayAudio_Update();
+	CTR_TEST_CHECK_EQ(s_channel.timeLeft, 5, "resume advances only one ordinary audio tick");
+	howl_PlayAudio_Update();
+	CTR_TEST_CHECK(sdata->channelTaken.first == NULL, "a resumed sound returns its channel when its remaining lifetime expires");
+	CTR_TEST_SECTION("options slider playback uses human audio context without leaking it");
+	Reset();
+	struct OtherFX previewEffects[0x49];
+	for (int i = 0; i < (int)len(previewEffects); i++)
+	{
+		previewEffects[i] = s_effect;
+	}
+	s_header.numOtherFX = len(previewEffects);
+	sdata->howl_metaOtherFX = previewEffects;
+	struct Driver previewDriver = {.driverID = 0};
+	s_tracker.cameraDC[0].driverToFollow = &previewDriver;
+	s_tracker.frameTimer_MainFrame_ResetDB = 0;
+	const int rows[] = {HOWL_VOLUME_TYPE_FX, HOWL_VOLUME_TYPE_MUSIC, HOWL_VOLUME_TYPE_VOICE};
+	for (int i = 0; i < (int)len(rows); i++)
+	{
+		s_previewHumanAudio = false;
+		OptionsMenu_TestSound(rows[i], true);
+		CTR_TEST_CHECK(s_previewHumanAudio, "effect, music and voice preview launch in human audio context");
+		CTR_TEST_CHECK(!sdata->chaosRuntime.humanAudioContext, "slider playback restores the previous world audio context");
+	}
+	Chaos_SetHumanAudio(true);
+	OptionsMenu_TestSound(HOWL_VOLUME_TYPE_VOICE, false);
+	CTR_TEST_CHECK(sdata->chaosRuntime.humanAudioContext, "stopping preview preserves an enclosing human audio context");
 	return CtrTest_Summary();
 }

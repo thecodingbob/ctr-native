@@ -7,8 +7,8 @@ externally written file.
 
 | File            | Owner             | Contents                                      |
 |-----------------|-------------------|-----------------------------------------------|
-| `chaos/effects` | Game              | One enabled, implemented effect slug per line |
-| `chaos/command` | External producer | One effect slug, e.g. `low-gravity`           |
+| `chaos/effects` | Game              | One enabled, event-applicable effect slug per line |
+| `chaos/command` | External producer | One effect slug, e.g. `fly-me-to-the-moon` |
 
 Final files have no extension. Use ASCII or UTF-8 without a BOM. A command may
 have surrounding whitespace but no verbs, duration or extra arguments. It must
@@ -16,8 +16,10 @@ be shorter than 128 bytes; oversized input and embedded NUL bytes are rejected.
 
 The game creates `chaos/` and atomically publishes `effects` via `effects.tmp`
 at game initialization and in `Chaos_BeginRace()`, never in frame updates.
-The list reflects the save's selection for any trigger; it is empty when Chaos
-is unarmed or no effects are enabled. It is not a readiness signal or heartbeat.
+The list reflects the save's selection and current event for any trigger; it is
+empty outside eligible races, when Chaos is unarmed or when no selected effect
+applies. It is not a readiness signal or heartbeat. Execution validates
+eligibility again, including whether an unfinished target remains.
 Publication failures are logged; the next initialization attempts publication
 again, without frame retries.
 
@@ -35,7 +37,7 @@ PowerShell example, run from the asset base directory:
 if (-not (Test-Path -LiteralPath 'chaos/command')) {
     [System.IO.File]::WriteAllText(
         (Join-Path (Get-Location) 'chaos/command.tmp'),
-        'low-gravity',
+        'fly-me-to-the-moon',
         [System.Text.Encoding]::ASCII)
     Move-Item -LiteralPath 'chaos/command.tmp' -Destination 'chaos/command'
 }
@@ -46,7 +48,8 @@ if (-not (Test-Path -LiteralPath 'chaos/command')) {
 - Requires an armed Chaos Adventure save with trigger **External**.
 - Wait one saved interval from GO, then one full interval after each successful
   activation. Only eligible active race time counts; pause, menus, countdown,
-  loading, hubs and results neither spend the interval nor consume commands.
+  loading, hubs, results and Za Warudo's time stop neither spend the interval nor
+  consume commands. A command submitted during time stop waits until time resumes.
 - Once ready, check at most every 100 ms on normal frames. An empty slot leaves
   the provider ready; an interval of zero permits a request on the next eligible poll.
 - Pending commands survive race changes; each new race waits a fresh interval.

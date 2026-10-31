@@ -257,6 +257,7 @@ void howl_ModeSet(s32 newMode)
 
 void OptionsMenu_TestSound(s32 newRow, b32 newBoolPlay)
 {
+	const bool previousAudio = Chaos_SetHumanAudio(true);
 	// Stop the previous row's preview before changing the slider selection.
 	if (HOWL_SLIDER_PLAYING && newRow != HOWL_SLIDER_ROW)
 	{
@@ -369,4 +370,5 @@ void OptionsMenu_TestSound(s32 newRow, b32 newBoolPlay)
 			}
 		}
 	}
+	Chaos_SetHumanAudio(previousAudio);
 }

@@ -10,6 +10,7 @@
 
 void RB_MaskWeapon_FadeAway(struct Thread *t)
 {
+	const struct Driver *driver = t->parentThread->object;
 	struct MaskHeadScratch *mhs;
 	struct Instance *inst;
 	struct MaskHeadWeapon *mask;
@@ -27,16 +28,20 @@ void RB_MaskWeapon_FadeAway(struct Thread *t)
 	mhs->posOffset.y = height;
 	trig = MATH_Cos(mask->rot.y);
 	mhs->posOffset.z = CTR_MipsMulLo(height - ((mask->duration >> 5) * 4), trig) >> 12;
+	mhs->posOffset.x = (s16)VehPhysForce_ScaleValue(driver, mhs->posOffset.x);
+	mhs->posOffset.y = (s16)VehPhysForce_ScaleValue(driver, mhs->posOffset.y);
+	mhs->posOffset.z = (s16)VehPhysForce_ScaleValue(driver, mhs->posOffset.z);
 
 	// Move and shrink the head before aligning the beam.
 	LHMatrix_Parent(inst, ((struct Driver *)t->parentThread->object)->instSelf, &CTR_SCRATCHPAD_PTR(struct MaskHeadScratch, 0x108)->posOffset);
+	VehPhysForce_ScaleMatrix(driver, &inst->matrix);
 	mask->rot.y -= 0x100;
 	inst->scale.x -= 0x100;
 	inst->scale.y -= 0x100;
 	inst->scale.z -= 0x100;
 
 	mhs->posOffset.x = 0;
-	mhs->posOffset.y = height;
+	mhs->posOffset.y = (s16)VehPhysForce_ScaleValue(driver, height);
 	mhs->posOffset.z = 0;
 	LHMatrix_Parent(mask->maskBeamInst, ((struct Driver *)t->parentThread->object)->instSelf, &CTR_SCRATCHPAD_PTR(struct MaskHeadScratch, 0x108)->posOffset);
 
@@ -47,6 +52,7 @@ void RB_MaskWeapon_FadeAway(struct Thread *t)
 
 	m = &mask->maskBeamInst->matrix;
 	MatrixRotate(m, m, &CTR_SCRATCHPAD_PTR(struct MaskHeadScratch, 0x108)->m);
+	VehPhysForce_ScaleMatrix(driver, m);
 	// The beam shrinks after its rotation has been composed.
 	mask->maskBeamInst->scale.x -= 0x100;
 	mask->maskBeamInst->scale.y -= 0x100;
@@ -75,6 +81,7 @@ void RB_MaskWeapon_FadeAway(struct Thread *t)
 
 void RB_MaskWeapon_ThTick(struct Thread *maskTh)
 {
+	const struct Driver *driver = maskTh->parentThread->object;
 	struct MaskHeadScratch *mhs;
 	struct MaskHeadWeapon *mask;
 	struct Instance *maskInst;
@@ -128,6 +135,9 @@ void RB_MaskWeapon_ThTick(struct Thread *maskTh)
 	mhs->posOffset.x = CTR_MipsMulLo(CTR_MipsSll(MATH_Sin(mask->rot.y), 6) >> 12, mask->scale) >> 12;
 	mhs->posOffset.y = RB_MASK_POSITION[mask->maskBeamInst->animFrame] + 0x40;
 	mhs->posOffset.z = CTR_MipsMulLo(CTR_MipsSll(MATH_Cos(mask->rot.y), 6) >> 12, mask->scale) >> 12;
+	mhs->posOffset.x = (s16)VehPhysForce_ScaleValue(driver, mhs->posOffset.x);
+	mhs->posOffset.y = (s16)VehPhysForce_ScaleValue(driver, mhs->posOffset.y);
+	mhs->posOffset.z = (s16)VehPhysForce_ScaleValue(driver, mhs->posOffset.z);
 	mhs->rot.x = 0;
 	mhs->rot.y = mask->rot.y;
 	mhs->rot.z = 0;
@@ -147,8 +157,9 @@ void RB_MaskWeapon_ThTick(struct Thread *maskTh)
 	}
 
 	// NOTE(aalhendi): Resample beam state after the head transforms; it has no horizontal orbit offset.
+	VehPhysForce_ScaleMatrix(driver, &maskInst->matrix);
 	mhs->posOffset.x = 0;
-	mhs->posOffset.y = 0x40;
+	mhs->posOffset.y = (s16)VehPhysForce_ScaleValue(driver, 0x40);
 	mhs->posOffset.z = 0;
 	mhs->rot.x = 0;
 	mhs->rot.y = mask->rot.y;
@@ -169,6 +180,7 @@ void RB_MaskWeapon_ThTick(struct Thread *maskTh)
 		MatrixRotate(m, m, &mhs->m);
 	}
 
+	VehPhysForce_ScaleMatrix(driver, &mask->maskBeamInst->matrix);
 	if ((s32)mask->maskBeamInst->animFrame + 1 < INSTANCE_GetNumAnimFrames(mask->maskBeamInst, 0))
 	{
 		mask->maskBeamInst->animFrame++;
@@ -181,10 +193,13 @@ void RB_MaskWeapon_ThTick(struct Thread *maskTh)
 
 	if (mask->duration != 0)
 	{
-		mask->duration = (u16)mask->duration - (u16)GAME_TRACKER->elapsedTimeMS;
-		if (mask->duration < 0)
+		if (!Chaos_IsTimeStopped())
 		{
-			mask->duration = 0;
+			mask->duration = (u16)mask->duration - (u16)GAME_TRACKER->elapsedTimeMS;
+			if (mask->duration < 0)
+			{
+				mask->duration = 0;
+			}
 		}
 	}
 	else
@@ -228,6 +243,9 @@ void RB_ShieldDark_ThTick_Pop(struct Thread *t)
 	CTR_WriteU32AlignedLE(&sh->instColor->matrix.m[1][1], 0x1000);
 	CTR_WriteU32AlignedLE(&sh->instColor->matrix.m[2][0], 0);
 	sh->instColor->matrix.m[2][2] = 0x1000;
+	const struct Driver *driver = t->parentThread->object;
+	VehPhysForce_ScaleMatrix(driver, &instDark->matrix);
+	VehPhysForce_ScaleMatrix(driver, &sh->instColor->matrix);
 
 	if (sh->animFrame < 0xb)
 	{
@@ -338,6 +356,10 @@ void RB_ShieldDark_ThTick_Grow(struct Thread *th)
 	CTR_WriteU32AlignedLE(&shield->instColor->matrix.m[2][0], 0);
 	shield->instColor->matrix.m[2][2] = 0x1000;
 	ConvertRotToMatrix(&shield->instHighlight->matrix, &shield->highlightRot);
+	const struct Driver *driver = th->parentThread->object;
+	VehPhysForce_ScaleMatrix(driver, &shieldInst->matrix);
+	VehPhysForce_ScaleMatrix(driver, &shield->instColor->matrix);
+	VehPhysForce_ScaleMatrix(driver, &shield->instHighlight->matrix);
 
 	// The highlight keeps its own scale during growth, then joins the shared pulse.
 	if (shield->animFrame < 8)
@@ -371,7 +393,10 @@ void RB_ShieldDark_ThTick_Grow(struct Thread *th)
 			PlaySound3D(0x58, shieldInst);
 			goto destroyShield;
 		}
-		shield->duration -= 32;
+		if (!Chaos_IsTimeStopped())
+		{
+			shield->duration -= 32;
+		}
 		if (shield->duration < 1920)
 		{
 			s16 alpha = ((60 - (shield->duration >> 5)) * 3072) / 60 + 0x400;
@@ -457,6 +482,7 @@ destroyShield:
 
 void RB_RainCloud_FadeAway(struct Thread *t)
 {
+	const struct Driver *driver = t->parentThread->object;
 	struct Instance *inst;
 	struct Instance *parentInst;
 	struct RainCloud *rcloud;
@@ -467,12 +493,12 @@ void RB_RainCloud_FadeAway(struct Thread *t)
 
 	// Follow the driver halfway, retaining the cloud's upward offset.
 	inst->matrix.t[0] = (s32)((u32)inst->matrix.t[0] + parentInst->matrix.t[0]) >> 1;
-	inst->matrix.t[1] = (s32)((u32)inst->matrix.t[1] + parentInst->matrix.t[1] + 0x80) >> 1;
+	inst->matrix.t[1] = (s32)((u32)inst->matrix.t[1] + parentInst->matrix.t[1] + VehPhysForce_ScaleValue(driver, 0x80)) >> 1;
 	inst->matrix.t[2] = (s32)((u32)inst->matrix.t[2] + parentInst->matrix.t[2]) >> 1;
 
-	inst->scale.x += -0x100;
-	inst->scale.y += -0x100;
-	inst->scale.z += -0x100;
+	inst->scale.x -= VehPhysForce_ScaleValue(driver, 0x100);
+	inst->scale.y -= VehPhysForce_ScaleValue(driver, 0x100);
+	inst->scale.z -= VehPhysForce_ScaleValue(driver, 0x100);
 	rcloud->rainLocal->frameCount = CTR_MipsSubLo(rcloud->rainLocal->frameCount, 2);
 
 	if (inst->scale.x < 0)
@@ -526,7 +552,10 @@ void RB_RainCloud_ThTick(struct Thread *t)
 	{
 		if (rcloud->timeMS != 0)
 		{
-			rcloud->timeMS = (u16)rcloud->timeMS - (u16)GAME_TRACKER->elapsedTimeMS;
+			if (!Chaos_IsTimeStopped())
+			{
+				rcloud->timeMS = (u16)rcloud->timeMS - (u16)GAME_TRACKER->elapsedTimeMS;
+			}
 			if (rcloud->timeMS < 0)
 			{
 				rcloud->timeMS = 0;
@@ -574,7 +603,7 @@ void RB_RainCloud_Init(struct Driver *d)
 
 		// Follow the owner's position, with the cloud above the kart.
 		cloudInst->matrix.t[0] = d->instSelf->matrix.t[0];
-		cloudInst->matrix.t[1] = CTR_MipsAddLo(d->instSelf->matrix.t[1], 0x80);
+		cloudInst->matrix.t[1] = CTR_MipsAddLo(d->instSelf->matrix.t[1], VehPhysForce_ScaleValue(d, 0x80));
 		cloudInst->matrix.t[2] = d->instSelf->matrix.t[2];
 
 		cloudInst->alphaScale = 0x800;
@@ -599,7 +628,7 @@ void RB_RainCloud_Init(struct Driver *d)
 			rlocal->vel.z = 0;
 
 			rlocal->pos.x = d->instSelf->matrix.t[0];
-			rlocal->pos.y = (u16)d->instSelf->matrix.t[1] + 0x80;
+			rlocal->pos.y = (u16)d->instSelf->matrix.t[1] + VehPhysForce_ScaleValue(d, 0x80);
 			rlocal->pos.z = d->instSelf->matrix.t[2];
 		}
 

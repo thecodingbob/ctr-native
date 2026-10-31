@@ -124,10 +124,59 @@ static void PlayLevel_CelebrateWinner(struct GameTracker *gGT, struct Driver *wi
 	gGT->pushBuffer[driverID].fade_step = PLAYLEVEL_WINNER_FADE_STEP;
 }
 
+void PlayLevel_CrossFinishLine(struct Driver *driver, bool leadingHuman, bool coopRace)
+{
+	struct GameTracker *tracker = GAME_TRACKER;
+	driver->distanceDrivenBackwards = 0;
+	if ((driver->actionsFlagSet & ACTION_BEHIND_START_LINE) != 0)
+	{
+		driver->actionsFlagSet &= ~ACTION_BEHIND_START_LINE;
+		return;
+	}
+	driver->distanceToFinish_checkpoint = driver->distanceToFinish_curr;
+	if (driver->lapIndex < tracker->numLaps)
+	{
+		if ((tracker->gameMode1 & GAME_MODE_SAVE_LAP_TIME_MASK) != 0 && driver->instSelf->thread->modelIndex == DYNAMIC_PLAYER)
+		{
+			UI_SaveLapTime(driver->lapIndex, tracker->elapsedEventTime - driver->lapTime, driver->driverID);
+			tracker->lapTime[driver->lapIndex] = tracker->elapsedEventTime - driver->lapTime;
+		}
+		driver->lapTime = tracker->elapsedEventTime;
+		driver->lapIndex++;
+		if (leadingHuman)
+		{
+			OtherFX_Play(PLAYLEVEL_FINAL_LAP_SOUND, 1);
+			Voiceline_ClearTimeStamp();
+		}
+		if (driver->lapIndex == tracker->numLaps - 1 && (driver->actionsFlagSet & ACTION_BOT) == 0)
+		{
+			sdata->finalLapTextTimer[driver->driverID] = PLAYLEVEL_FINAL_LAP_TEXT_FRAMES;
+		}
+	}
+	if (driver->lapIndex != tracker->numLaps || (driver->actionsFlagSet & ACTION_RACE_FINISHED) != 0)
+	{
+		return;
+	}
+	driver->actionsFlagSet |= ACTION_RACE_FINISHED;
+	if ((tracker->gameMode1 & END_OF_RACE) == 0)
+	{
+		driver->driverRank = sdata->numPlayersFinishedRace++;
+	}
+	driver->heldItemID = HELD_ITEM_NONE;
+	if ((driver->actionsFlagSet & ACTION_BOT) == 0)
+	{
+		if (!coopRace && driver->driverRank == PLAYLEVEL_FIRST_PLACE_RANK)
+		{
+			PlayLevel_CelebrateWinner(tracker, driver, PLAYLEVEL_FIRST_WINNER_INDEX, PLAYLEVEL_SINGLE_WINNER_COUNT);
+		}
+		driver->noItemTimer = 0;
+		BOTS_Driver_Convert(driver);
+	}
+}
+
 void PlayLevel_UpdateLapStats(void)
 {
 	int bestDriverIndex;
-	u8 lapCounter;
 	int effectiveLapIndex;
 	struct Driver *farthestHuman;
 	struct Driver *currDriver;
@@ -142,6 +191,7 @@ void PlayLevel_UpdateLapStats(void)
 	struct GameTracker *gGT = sdata->gGT;
 
 	finishedHumanCount = 0;
+	Chaos_ReturnBodySwapsNearFinish(gGT, PLAYLEVEL_FINISHLINE_NEAR_DISTANCE);
 	currRank = 0;
 	coopRace = MainGameEnd_IsCoopRace(gGT);
 
@@ -176,6 +226,7 @@ void PlayLevel_UpdateLapStats(void)
 		distToFinish_prev = currDriver->distanceToFinish_curr;
 		VehLap_UpdateProgress(currDriver);
 		distToFinish_curr = currDriver->distanceToFinish_curr;
+		const bool teleportedAcrossFinish = Chaos_ConsumeTeleportLapCrossing(currDriver);
 
 		int drivenBackwards = currDriver->distanceDrivenBackwards + (distToFinish_curr - distToFinish_prev);
 
@@ -203,118 +254,10 @@ void PlayLevel_UpdateLapStats(void)
 
 		if ((gGT->gameMode1 & BATTLE_MODE) == 0 &&
 		    // crossed finishline (forwards)
-		    (distToFinish_prev < PLAYLEVEL_FINISHLINE_NEAR_DISTANCE) && (distToFinish_curr > PLAYLEVEL_FINISHLINE_FAR_DISTANCE))
+		    (teleportedAcrossFinish ||
+		     ((distToFinish_prev < PLAYLEVEL_FINISHLINE_NEAR_DISTANCE) && (distToFinish_curr > PLAYLEVEL_FINISHLINE_FAR_DISTANCE))))
 		{
-			// Set racer's distance driven backwards to zero
-			currDriver->distanceDrivenBackwards = 0;
-
-			if ((currDriver->actionsFlagSet & ACTION_BEHIND_START_LINE) != 0)
-			{
-				currDriver->actionsFlagSet &= ~ACTION_BEHIND_START_LINE;
-
-				goto UpdateFinishedDriverRank;
-			}
-
-			// update checkpoint with distToFinish
-			currDriver->distanceToFinish_checkpoint = distToFinish_curr;
-
-			// If finished last lap, clamp
-			if (gGT->numLaps < (currDriver->lapIndex + 1))
-			{
-				lapCounter = currDriver->lapIndex;
-			}
-
-			// if this is not final lap
-			else
-			{
-				if (
-				    // If you're in Arcade, or
-				    // If you're in Adventure, or
-				    // If you're in Time Trial
-				    ((gGT->gameMode1 & GAME_MODE_SAVE_LAP_TIME_MASK) != 0) &&
-
-				    // player of any kind
-				    (currDriver->instSelf->thread->modelIndex == DYNAMIC_PLAYER))
-				{
-					UI_SaveLapTime(currDriver->lapIndex, gGT->elapsedEventTime - currDriver->lapTime, currDriver->driverID);
-
-					gGT->lapTime[currDriver->lapIndex] = gGT->elapsedEventTime - currDriver->lapTime;
-				}
-
-				// time on the clock
-				currDriver->lapTime = gGT->elapsedEventTime;
-
-				// lap counter = lap counter + 1
-				currDriver->lapIndex++;
-
-				// if farthest-ahead human
-				if (currDriver == farthestHuman)
-				{
-					OtherFX_Play(PLAYLEVEL_FINAL_LAP_SOUND, 1);
-					Voiceline_ClearTimeStamp();
-				}
-
-				lapCounter = currDriver->lapIndex;
-
-				// If Final Lap
-				if (lapCounter == (gGT->numLaps - 1))
-				{
-					if ((currDriver->actionsFlagSet & ACTION_BOT) == 0)
-					{
-						// frames, so the animation lasts 3 seconds
-						sdata->finalLapTextTimer[driverIndex] = PLAYLEVEL_FINAL_LAP_TEXT_FRAMES;
-					}
-				}
-			}
-
-			// If did not just finish race
-			if (lapCounter != gGT->numLaps)
-			{
-				goto UpdateFinishedDriverRank;
-			}
-
-			// === If did just finish race ===
-
-			if ((currDriver->actionsFlagSet & ACTION_RACE_FINISHED) == 0)
-			{
-				currDriver->actionsFlagSet |= ACTION_RACE_FINISHED;
-
-				// === Run on first frame that race ends ===
-
-				// if total event hasn't finished (gGT->gameMode1)
-				if ((gGT->gameMode1 & END_OF_RACE) == 0)
-				{
-					// set driver placement rank, based on
-					// how many drivers have finished the race
-					currDriver->driverRank = sdata->numPlayersFinishedRace;
-					sdata->numPlayersFinishedRace++;
-				}
-
-				// you have no weapon
-				currDriver->heldItemID = HELD_ITEM_NONE;
-
-				if ((currDriver->actionsFlagSet & ACTION_BOT) == 0)
-				{
-					// If this racer is in first place. Co-op skips this: its racers
-					// only win as a pair, so the outcome is not known until the
-					// race-end block below.
-					if (!coopRace && (currDriver->driverRank == PLAYLEVEL_FIRST_PLACE_RANK))
-					{
-						// one person won,
-						// one person gets confetti
-						PlayLevel_CelebrateWinner(gGT, currDriver, PLAYLEVEL_FIRST_WINNER_INDEX, PLAYLEVEL_SINGLE_WINNER_COUNT);
-					}
-					if (currDriver->noItemTimer != 0)
-					{
-						currDriver->noItemTimer = 0;
-						currDriver->heldItemID = HELD_ITEM_NONE;
-					}
-
-					// turn driver into robotcar
-					BOTS_Driver_Convert(currDriver);
-				}
-				goto UpdateFinishedDriverRank;
-			}
+			PlayLevel_CrossFinishLine(currDriver, currDriver == farthestHuman, coopRace);
 		}
 
 		// if player did not just finish a lap (correctly)
@@ -349,16 +292,11 @@ void PlayLevel_UpdateLapStats(void)
 					currDriver->distanceToFinish_checkpoint = distToFinish_curr;
 				}
 			}
-
-		UpdateFinishedDriverRank:
-			if ((currDriver->actionsFlagSet & ACTION_RACE_FINISHED) == 0)
-			{
-				// set rank to "unsorted"
-				currDriver->driverRank = PLAYLEVEL_UNSORTED_RANK;
-
-				// skip next 5 lines of code
-				continue;
-			}
+		}
+		if ((currDriver->actionsFlagSet & ACTION_RACE_FINISHED) == 0)
+		{
+			currDriver->driverRank = PLAYLEVEL_UNSORTED_RANK;
+			continue;
 		}
 
 		// === Driver Finished Race ===

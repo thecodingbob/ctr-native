@@ -21,8 +21,6 @@ void RB_Baron_ThTick(struct Thread *t)
 	s32 numCoords;
 	SVec3 rot;
 
-	struct Driver *hitDriver;
-	struct Instance *hitInst;
 
 	baronInst = t->inst;
 	baronObj = (struct Baron *)t->object;
@@ -102,12 +100,18 @@ void RB_Baron_ThTick(struct Thread *t)
 		baronObj->otherInst->matrix.t[2] -= 0x21f;
 	}
 
+	RB_Baron_CollideDrivers(t);
+}
+
+void RB_Baron_CollideDrivers(struct Thread *t)
+{
+	struct Instance *baronInst = t->inst;
 	if (baronInst->model->id == DYNAMIC_DRUM)
 	{
-		hitInst = RB_Hazard_CollideWithDrivers(baronInst, 0, 0x19000, 0);
+		struct Instance *hitInst = RB_Hazard_CollideWithDrivers(baronInst, 0, 0x19000, 0);
 		if (hitInst != 0)
 		{
-			hitDriver = (struct Driver *)hitInst->thread->object;
+			struct Driver *hitDriver = hitInst->thread->object;
 			RB_Hazard_HurtDriver(hitDriver, 3, 0, 0);
 		}
 	}

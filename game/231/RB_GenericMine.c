@@ -60,15 +60,9 @@ void RB_GenericMine_LInB(struct Instance *inst)
 
 void RB_GenericMine_ThTick(struct Thread *t)
 {
-	struct GameTracker *gGT;
 	struct Instance *inst;
 	struct Instance *coll;
 	struct MineWeapon *mw;
-	struct Driver *d;
-	struct Crate *crate;
-	struct Instance *instCrate;
-	struct MineWeapon *tnt;
-	u16 model;
 	inst = t->inst;
 	mw = inst->thread->object;
 
@@ -150,16 +144,33 @@ void RB_GenericMine_ThTick(struct Thread *t)
 	}
 
 	coll = RB_Hazard_CollideWithDrivers(inst, mw->parentSafetyFrames, (u32)(u16)inst->model->id - STATIC_BEAKER_RED < 2 ? 0x1900 : 0x3840, mw->instParent);
+	RB_GenericMine_CollideDriver(t, coll != NULL ? coll->thread : NULL);
+}
+
+void RB_GenericMine_CollideDriver(struct Thread *t, struct Thread *driverThread)
+{
+	struct GameTracker *gGT;
+	struct Instance *inst = t->inst;
+	struct MineWeapon *mw = t->object;
+	struct Driver *d;
+	struct Crate *crate;
+	struct Instance *instCrate;
+	struct MineWeapon *tnt;
+	u16 model;
+	if (driverThread != NULL && Chaos_DeferImpact(CHAOS_IMPACT_MINE_DRIVER, t, driverThread, NULL))
+	{
+		return;
+	}
 
 	// if no collision
-	if (coll == 0)
+	if (driverThread == NULL)
 	{
 		goto checkPoolState;
 	}
 
 	// get driver who hit tnt (or nitro)
 	// from the object attached to thread
-	d = coll->thread->object;
+	d = driverThread->object;
 
 	if (((mw->crateInst != 0) && (mw->crateInst->thread != 0)) && (mw->crateInst->thread->object != 0))
 	{
@@ -362,6 +373,10 @@ void RB_GenericMine_ThTick(struct Thread *t)
 		}
 	}
 checkPoolState:
+	if (Chaos_ShouldFreezeThread(t))
+	{
+		return;
+	}
 
 	if (mw->parentSafetyFrames != 0)
 	{

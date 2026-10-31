@@ -24,9 +24,9 @@ static void TestBitsetWireFormat(void)
 	CTR_TEST_CHECK_EQ(live.enabledCount, 5, "the enabled count is reconstructed rather than stored");
 	for (int id = 0; id < CHAOS_EFFECT_COUNT; id++)
 	{
-		const bool expected = id == CHAOS_EFFECT_INVERTED_STEERING || id == CHAOS_EFFECT_LOW_GRAVITY ||
-		                      id == CHAOS_EFFECT_NO_RESERVES || id == CHAOS_EFFECT_NO_ITEMS ||
-		                              id == CHAOS_EFFECT_GIANT_KARTS;
+		const bool expected = id == CHAOS_EFFECT_MIRROR_MIRROR || id == CHAOS_EFFECT_FLY_ME_TO_THE_MOON ||
+		                      id == CHAOS_EFFECT_HOLE_IN_THE_TANK || id == CHAOS_EFFECT_FAIR_MODE ||
+		                              id == CHAOS_EFFECT_BIG_KART_ENERGY;
 		CTR_TEST_CHECK(live.effects[id] == expected, "each saved bit maps to its stable named effect, including across byte boundaries");
 	}
 	live.enabledCount = 99;
@@ -103,7 +103,7 @@ static void TestSlotIsolation(void)
 	for (int slot = 0; slot < MEMCARD_ADV_PROFILE_COUNT; slot++)
 	{
 		struct ChaosSettings live = {.armed = true, .durationSeconds = (u16)(10 + slot)};
-		live.effects[CHAOS_EFFECT_INVERTED_STEERING] = true;
+		live.effects[CHAOS_EFFECT_MIRROR_MIRROR] = true;
 		ChaosSave_Encode(&live, &card.extension.chaos[slot]);
 	}
 	for (int slot = 0; slot < MEMCARD_ADV_PROFILE_COUNT; slot++)

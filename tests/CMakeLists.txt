@@ -78,6 +78,14 @@ ctr_add_test_suite(test_chaos_runtime
     SOURCES test_chaos_runtime.c
 )
 
+ctr_add_test_suite(test_chaos_effects
+    SOURCES test_chaos_effects.c
+)
+
+ctr_add_test_suite(test_warpball
+    SOURCES test_warpball.c
+)
+
 ctr_add_test_suite(test_vehicle_spawn
     SOURCES test_vehicle_spawn.c
 )

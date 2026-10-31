@@ -68,6 +68,12 @@ internal s16 NativeGpu_SignExtend11(u32 value)
 DISPENV activeDispEnv;
 DRAWENV activeDrawEnv;
 int g_GPUDisabledState = 0;
+global_variable const void *s_timeStopPaletteBoundary;
+
+void NativeGpu_SetTimeStopPaletteBoundary(const void *boundary)
+{
+	s_timeStopPaletteBoundary = boundary;
+}
 
 typedef struct
 {
@@ -1164,6 +1170,14 @@ void ParsePrimitivesLinkedList(u32 *p, int singlePrimitive)
 		u8 *basePacket = (u8 *)p;
 		while (true)
 		{
+			if (basePacket == s_timeStopPaletteBoundary)
+			{
+				// The UI ordering table follows every world viewport. Flush the
+				// world before grading it, then draw HUD primitives normally.
+				s_timeStopPaletteBoundary = NULL;
+				DrawAllSplits();
+				NativeRenderer_ApplyTimeStopPalette();
+			}
 			const int tagLength = getlen(basePacket);
 			if (tagLength > 0)
 			{

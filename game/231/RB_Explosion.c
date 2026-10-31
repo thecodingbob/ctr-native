@@ -46,6 +46,10 @@ void RB_Explosion_InitPotion(struct Instance *inst)
 	// copy position and rotation from one instance to the other
 	shatterInst->matrix = inst->matrix;
 	shatterInst->thread->funcThDestroy = PROC_DestroyInstance;
+	if (Chaos_IsHumanOwnedThread(inst->thread))
+	{
+		shatterInst->thread->flags |= THREAD_FLAG_HUMAN_EFFECT;
+	}
 	shatterInst->scale.z = 0x800;
 	shatterInst->scale.y = 0x800;
 	shatterInst->scale.x = 0x800;
@@ -61,6 +65,10 @@ void RB_Explosion_InitPotion(struct Instance *inst)
 			if (p == NULL)
 			{
 				continue;
+			}
+			if (Chaos_IsHumanOwnedThread(inst->thread))
+			{
+				p->flagsAxis |= PARTICLE_AXIS_FLAG_HUMAN_EFFECT;
 			}
 
 			p->axis[0].startVal = (u32)p->axis[0].startVal + ((u32)shatterInst->matrix.t[0] << 8);

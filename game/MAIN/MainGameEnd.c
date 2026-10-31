@@ -669,6 +669,7 @@ void MainGameEnd_Initialize(void)
 	if ((gGT->gameMode1 & END_OF_RACE) == 0)
 	{
 		Chaos_Reset();
+		player = gGT->drivers[0];
 		for (int i = 0; i < 8; i++)
 		{
 			struct Driver *driver = gGT->drivers[i];

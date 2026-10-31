@@ -297,7 +297,7 @@ DamageApplied:
 	}
 
 	victimDriver->kartState = KS_NORMAL;
-	victimDriver->reserves = 0;
+	VehFire_SetReserves(victimDriver, 0);
 	victimDriver->turbo_outsideTimer = 0;
 	victimDriver->matrixArray = BAKED_GTE_MATRIX_NONE;
 	victimDriver->matrixIndex = 0;

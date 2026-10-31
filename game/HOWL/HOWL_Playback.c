@@ -60,6 +60,10 @@ void howl_PlayAudio_Update()
 		for (curr = (struct ChannelStats *)sdata->channelTaken.first; curr != NULL; curr = backupNext)
 		{
 			backupNext = curr->link.links.next;
+			if (Chaos_ShouldFreezeAudioChannel(curr))
+			{
+				continue;
+			}
 
 			// if sound has no timer (plays inf)
 			statFlags = curr->flags;

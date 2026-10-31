@@ -52,6 +52,7 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 	case 0:
 	{
 		Chaos_Reset();
+		memset(sdata->chaosCharacterModels, 0, sizeof(sdata->chaosCharacterModels));
 		if (!boolPlayMusicDuringLoading)
 		{
 			Cutscene_VolumeBackup();
@@ -393,6 +394,7 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 		}
 
 		LOAD_FinalizeExtraCharacterModels();
+		Chaos_LoadCharacterModels(gGT, bigfile);
 
 		// == banks are done parsing ===
 

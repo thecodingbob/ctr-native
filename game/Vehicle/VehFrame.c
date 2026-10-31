@@ -92,6 +92,7 @@ static inline void VehFrameProc_Driving_SpawnBurnSmoke(struct Driver *d)
 
 	if (p != NULL)
 	{
+		VehPhysForce_ScaleParticle(d, p);
 		p->otIndexOffset = d->instSelf->depthBiasNormal;
 		p->owner.driverInst = d->instSelf;
 		p->driverID = d->driverID;

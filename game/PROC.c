@@ -108,7 +108,7 @@ void PROC_CheckBloodlineForDead(struct Thread **replaceSelf, struct Thread *th)
 	{
 		struct Thread *siblingThread = th->siblingThread;
 
-		if ((th->flags & THREAD_FLAG_DEAD) != 0)
+		if ((th->flags & THREAD_FLAG_DEAD) != 0 && !Chaos_HasDeferredImpact(th))
 		{
 			if (th->childThread != 0)
 			{
@@ -562,12 +562,12 @@ static void ThTick_PushPending(struct Thread **pending, int *count, struct Threa
 	(*count)++;
 }
 
-internal struct Thread *ThTick_RunThreadNative(struct ThTickNativeContext *context, struct Thread *thread)
+internal struct Thread *ThTick_RunThreadNative(struct ThTickNativeContext *context, struct Thread *thread, ThreadFunc tick)
 {
 	context->currentThread = thread;
 	if (setjmp(context->env) == 0)
 	{
-		thread->funcThTick(thread);
+		tick(thread);
 	}
 
 	return context->currentThread;
@@ -590,6 +590,18 @@ void ThTick_RunBucket(struct Thread *thread)
 		struct Thread *t = pending[--count];
 
 		ThTick_PushPending(pending, &count, t->siblingThread);
+		if ((t->flags & THREAD_FLAG_DEAD) != 0)
+		{
+			continue;
+		}
+		if (Chaos_ShouldFreezeThread(t))
+		{
+			const bool previousAudio = Chaos_SetHumanAudio(true);
+			t = ThTick_RunThreadNative(&context, t, Chaos_CollideFrozenThread);
+			Chaos_SetHumanAudio(previousAudio);
+			ThTick_PushPending(pending, &count, t->childThread);
+			continue;
+		}
 
 		if (t->cooldownFrameCount < 0)
 		{
@@ -604,7 +616,9 @@ void ThTick_RunBucket(struct Thread *thread)
 
 		if (t->funcThTick != NULL)
 		{
-			t = ThTick_RunThreadNative(&context, t);
+			const bool humanAudio = Chaos_SetHumanAudio(Chaos_IsHumanOwnedThread(t));
+			t = ThTick_RunThreadNative(&context, t, t->funcThTick);
+			Chaos_SetHumanAudio(humanAudio);
 		}
 
 		ThTick_PushPending(pending, &count, t->childThread);
@@ -621,7 +635,10 @@ void ThTick_FastRET(struct Thread *thread)
 void ThTick_SetAndExec(struct Thread *thread, void (*funcThTick)(struct Thread *))
 {
 	thread->funcThTick = funcThTick;
-	funcThTick(thread);
+	if (!Chaos_ShouldFreezeThread(thread))
+	{
+		funcThTick(thread);
+	}
 
 	// NOTE(aalhendi): Retail restores the ThTick_RunBucket stack from
 	// scratchpad after the replacement tick returns. Native must not resume the

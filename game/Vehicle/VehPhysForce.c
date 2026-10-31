@@ -1021,7 +1021,11 @@ void VehPhysForce_CollideDrivers(struct Thread *thread, struct Driver *driver)
 		thread->inst->flags &= ~SPLIT_LINE;
 	}
 
-	if ((thread->flags & THREAD_FLAG_DISABLE_COLLISION) == 0)
+	if ((thread->flags & THREAD_FLAG_DISABLE_COLLISION) == 0 && Chaos_IsTimeStopped())
+	{
+		Chaos_RecordFrozenMaskContacts(driver);
+	}
+	if ((thread->flags & THREAD_FLAG_DISABLE_COLLISION) == 0 && !Chaos_IsTimeStopped())
 	{
 		struct DriverCollisionSearch search;
 		int bucketPosY;
@@ -1376,6 +1380,7 @@ static inline void VehPhysForce_TranslateMatrix_SpawnWakeParticle(struct Driver 
 
 	if (p != NULL)
 	{
+		VehPhysForce_ScaleParticle(d, p);
 		p->otIndexOffset = d->instSelf->depthBiasNormal;
 		p->owner.driverInst = d->instSelf;
 		p->driverID = d->driverID;
@@ -1492,10 +1497,10 @@ static inline void VehPhysForce_TranslateMatrix_UpdateWake(struct Instance *inst
 		}
 	}
 
-	wake->scale.x = d->wakeScale;
+	wake->scale.x = (s16)VehPhysForce_ScaleValue(d, d->wakeScale);
 	visibleWakeScale = (u16)d->wakeScale;
 	CTR_PSX_OBSERVE_VALUE(visibleWakeScale);
-	wake->scale.z = (s16)visibleWakeScale;
+	wake->scale.z = (s16)VehPhysForce_ScaleValue(d, visibleWakeScale);
 	return;
 
 RELOAD_AND_HIDE_WAKE:
@@ -1520,13 +1525,60 @@ HIDE_WAKE:
 	}
 }
 
-int VehPhysForce_ScaleValue(const struct Driver *driver, int value)
+float VehPhysForce_GetKartScale(const struct Driver *driver)
 {
 	if ((driver->actionsFlagSet & ACTION_RACE_FINISHED) != 0)
 	{
-		return value;
+		return VEH_PHYS_FORCE_KART_SCALE_NORMAL;
 	}
-	return value * (driver->kartScale != 0 ? driver->kartScale : VEH_PHYS_FORCE_KART_SCALE_NORMAL);
+	return driver->kartScale != 0 ? driver->kartScale : VEH_PHYS_FORCE_KART_SCALE_NORMAL;
+}
+
+int VehPhysForce_ScaleValue(const struct Driver *driver, int value)
+{
+	return (int)(value * VehPhysForce_GetKartScale(driver));
+}
+
+void VehPhysForce_ScaleMatrix(const struct Driver *driver, MATRIX *matrix)
+{
+	for (int row = 0; row < 3; row++)
+	{
+		for (int column = 0; column < 3; column++)
+		{
+			matrix->m[row][column] = (s16)VehPhysForce_ScaleValue(driver, matrix->m[row][column]);
+		}
+	}
+}
+
+void VehPhysForce_ScaleParticle(const struct Driver *driver, struct Particle *particle)
+{
+	const bool line = (particle->flagsSetColor & PARTICLE_SET_COLOR_FLAG_SPECIAL_LINE) != 0;
+	struct ParticleOscillator *oscillator = particle->oscillator;
+	for (int i = 0; i < (int)len(particle->axis); i++)
+	{
+		const bool spatial = i <= PARTICLE_AXIS_POS_Z ||
+		    i == PARTICLE_AXIS_SCALE_X_OR_LINE_SCALE || i == PARTICLE_AXIS_SCALE_Y_OR_LINE_PREV_Y ||
+		    (line && (i == PARTICLE_AXIS_ROT_X_OR_LINE_PREV_X || i == PARTICLE_AXIS_ROT_Y_OR_LINE_PREV_Z));
+		if (spatial)
+		{
+			struct ParticleAxis *axis = &particle->axis[i];
+			axis->startVal = VehPhysForce_ScaleValue(driver, axis->startVal);
+			axis->velocity = (s16)VehPhysForce_ScaleValue(driver, axis->velocity);
+			axis->accel = (s16)VehPhysForce_ScaleValue(driver, axis->accel);
+		}
+		if ((particle->flagsOscillatorAxis & (1 << i)) != 0 && oscillator != NULL)
+		{
+			if (spatial)
+			{
+				oscillator->previousValue = (s16)VehPhysForce_ScaleValue(driver, oscillator->previousValue);
+				oscillator->scale = (u16)VehPhysForce_ScaleValue(driver, oscillator->scale);
+				oscillator->offset = (s16)VehPhysForce_ScaleValue(driver, oscillator->offset);
+				oscillator->min = (s16)VehPhysForce_ScaleValue(driver, oscillator->min);
+				oscillator->max = (s16)VehPhysForce_ScaleValue(driver, oscillator->max);
+			}
+			oscillator = oscillator->next;
+		}
+	}
 }
 
 void VehPhysForce_TranslateMatrix(struct Thread *thread, struct Driver *driver)

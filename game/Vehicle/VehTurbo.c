@@ -244,6 +244,8 @@ void VehTurbo_ThTick(struct Thread *turboThread)
 		turbo->inst->matrix.m[2][0] = (s16)(-(int)instanceDriver->matrix.m[2][0] * fireSize >> TURBO_FIRE_MATRIX_SCALE_SHIFT);
 		turbo->inst->matrix.m[2][1] = (s16)(instanceDriver->matrix.m[2][1] * fireSize >> TURBO_FIRE_MATRIX_SCALE_SHIFT);
 		turbo->inst->matrix.m[2][2] = (s16)(instanceDriver->matrix.m[2][2] * fireSize >> TURBO_FIRE_MATRIX_SCALE_SHIFT);
+		VehPhysForce_ScaleMatrix(driver, &instance->matrix);
+		VehPhysForce_ScaleMatrix(driver, &turbo->inst->matrix);
 
 		MTC2(((u32)(driver->instSelf->scale.x * TURBO_FIRE_RIGHT_X_NUMERATOR >> TURBO_FIRE_RIGHT_X_SHIFT) & 0xffff) |
 		         ((u32)(driver->instSelf->scale.y * TURBO_FIRE_Y_NUMERATOR >> TURBO_FIRE_Y_SHIFT) << 16),

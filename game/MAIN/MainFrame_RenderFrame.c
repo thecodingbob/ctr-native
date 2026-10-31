@@ -2,6 +2,7 @@
 #include <platform/native_draw_distance.h>
 #include "../RenderLevel/RenderLevelLod.h"
 #include <platform/native_pgxp.h>
+#include <platform/native_gpu.h>
 
 #if defined(CTR_INTERNAL)
 #include <platform/native_perf.h>
@@ -168,6 +169,7 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 		    ((gGT->gameMode1 & (GAME_CUTSCENE | ADVENTURE_ARENA | MAIN_MENU)) == 0) && dotLightsLoadReady)
 		{
 			DotLights_AudioAndVideo(gGT);
+			Chaos_DrawStartLights(gGT);
 		}
 
 		if ((gGT->renderFlags & RENDER_FLAG_SPLIT_SCREEN_LINES) != 0)
@@ -181,7 +183,7 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 		if (sdata->Loading.stage == LOAD_IDLE)
 		{
 			// If game is not paused
-			if ((gGT->gameMode1 & PAUSE_ALL) == 0)
+			if ((gGT->gameMode1 & PAUSE_ALL) == 0 && !Chaos_IsTimeStopped())
 			{
 				PickupBots_Update();
 			}
@@ -1242,6 +1244,7 @@ void RenderVSYNC(struct GameTracker *gGT)
 
 void RenderSubmit(struct GameTracker *gGT)
 {
+	NativeGpu_SetTimeStopPaletteBoundary(Chaos_UsesTimePalette() ? &gGT->pushBuffer_UI.ptrOT[UI_HUD_ORDERING_SLOT_LOWEST] : NULL);
 	// 1 VSYNC = 60fps
 	// 2 VSYNCs = 30fps
 

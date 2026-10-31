@@ -16,7 +16,6 @@ enum
 	VEH_BIRTH_CHEAT_ITEM_MASK = HELD_ITEM_MASK,
 	VEH_BIRTH_CHEAT_ITEM_COUNT = 9,
 	VEH_BIRTH_CHEAT_DURATION = 0x2d00,
-	VEH_BIRTH_META_PHYS_COUNT = len(data.metaPhys),
 	VEH_BIRTH_WHEEL_SIZE = 0xccc,
 	VEH_BIRTH_KART_SCALE_NORMAL = 1,
 	VEH_BIRTH_RESERVED_0x412_INITIAL = 0x600,
@@ -577,8 +576,6 @@ enum
 };
 
 typedef u32 VehBirthModelNameWord CTR_MAY_ALIAS;
-typedef u16 VehBirthHalfword CTR_MAY_ALIAS;
-typedef u32 VehBirthWord CTR_MAY_ALIAS;
 
 #define VEH_BIRTH_MODEL_NAME_EQUALS(model, search)                                                          \
 	((((const VehBirthModelNameWord *)(model)->name)[0] == ((const VehBirthModelNameWord *)(search))[0]) && \
@@ -641,67 +638,7 @@ FoundModel:
 
 #undef VEH_BIRTH_MODEL_NAME_EQUALS
 
-void VehBirth_SetConsts(struct Driver *driver)
-{
-	register struct MetaPhys *metaPhysBase CTR_PSX_REGISTER("$8");
-	register struct MetaPhys *metaPhys CTR_PSX_REGISTER("$5");
-	register u32 metaPhysPage CTR_PSX_REGISTER("$2");
-	register u32 metaPhysByteOffset CTR_PSX_REGISTER("$6");
-	register u32 i CTR_PSX_REGISTER("$7");
-	struct MetaDataCHAR *characterMetadata;
-	register s16 *characterIDs;
-
-	i = 0;
-	characterMetadata = GAME_CHARACTER_METADATA;
-	characterIDs = GAME_CHARACTER_IDS;
-	VEH_LOAD_META_PHYS_BASE(metaPhysBase, metaPhysPage);
-	metaPhys = metaPhysBase;
-	metaPhysByteOffset = i;
-	for (; i < VEH_BIRTH_META_PHYS_COUNT; metaPhys++, i++, metaPhysByteOffset += sizeof(*metaPhys))
-	{
-	  u32 engineID =
-              characterMetadata[characterIDs[driver->driverID]].engineID;
-	  u32 rawValue = (u32)metaPhys->value[engineID];
-
-	  switch (metaPhys->offset)
-	  {
-	  case SPEED_CLASS_STAT_OFFSET:
-	    rawValue = rawValue * g_config.speedMultiplier / 100;
-	    break;
-	  case GRAVITY_OFFSET:
-	    rawValue = rawValue * g_config.gravityMultiplier / 100;
-	    break;
-	  case TURN_RATE_OFFSET:
-	    rawValue = rawValue * g_config.turnMultiplier / 100;
-	    break;
-	  case JUMP_OFFSET:
-	    rawValue = rawValue * g_config.jumpMultiplier / 100;
-	    break;
-	  case TURBO_FULL_BAR_RESERVE_GAIN_OFFSET:
-	    rawValue = rawValue * g_config.reserveMultiplier / 100;
-	    break;
-	  default:
-	    break;
-	  }
-
-	  u8 *driverField = (u8 *)driver + metaPhys->offset;
-
-	  switch ((u32)metaPhys->size)
-	  {
-	  case 1:
-	    driverField[0] = (u8)rawValue;
-	    break;
-
-	  case 2:
-	    *(VehBirthHalfword *)driverField = (VehBirthHalfword)rawValue;
-	    break;
-
-	  case 4:
-	    *(VehBirthWord *)driverField = rawValue;
-	    break;
-	  }
-	}
-}
+#include "VehBirth_Consts.c"
 
 void VehBirth_EngineAudio_AllPlayers(void)
 {
@@ -716,6 +653,7 @@ void VehBirth_EngineAudio_AllPlayers(void)
 		d = th->object;
 		driverID = d->driverID;
 		engine = GAME_CHARACTER_METADATA[GAME_CHARACTER_IDS[driverID]].engineID;
+		engine = Chaos_EngineClassForDriver(d, engine);
 		CTR_PSX_MEMORY_BARRIER();
 		engine = (engine * 4) + driverID;
 
