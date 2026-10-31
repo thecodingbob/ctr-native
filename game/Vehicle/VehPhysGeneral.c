@@ -1454,8 +1454,8 @@ enum ItemSet
 	ITEMSET_BOSS_LOSSES_REPLACE_MASK_CLOCK_WARPBALL = 3,
 	ITEMSET_BOSS_LOSSES_REPLACE_MASK_CLOCK = 4,
 	ITEMSET_BOSS_LOSSES_REPLACE_CLOCK = 5,
-	ITEMSET_THREE_MISSILES_MIN_PLAYERS = 3,
-	ITEMSET_THREE_MISSILES_HELD_LIMIT = 2,
+	ITEMSET_ACQUIRED_NORMAL_FX = 0x5e,
+	ITEMSET_ACQUIRED_JUICED_FX = 0x41,
 };
 
 // Itemset infographic (outdated):
@@ -1468,7 +1468,6 @@ void VehPhysGeneral_SetHeldItem(struct Driver *driver)
 	register int rank CTR_PSX_REGISTER("$3");
 	u32 rng;
 	register int selectedItem CTR_PSX_REGISTER("$2");
-	register struct GameTracker *gGT CTR_PSX_REGISTER("$4");
 
 	// NOTE(aalhendi): Retail classifies the field before choosing the mode-specific item set.
 	mode = GAME_TRACKER->numPlyrCurrGame + GAME_TRACKER->numBotsNextGame;
@@ -1692,54 +1691,7 @@ void VehPhysGeneral_SetHeldItem(struct Driver *driver)
 		driver->heldItemID = HELD_ITEM_TURBO;
 	}
 
-	// Make sure only 1 Warpball is instanced at once
-	if (driver->heldItemID == HELD_ITEM_WARPBALL)
-	{
-		VEH_LOAD_GAME_TRACKER(gGT);
-
-		// if somebody has warpball already, then give 3 missiles
-		if ((gGT->gameMode1 & WARPBALL_HELD) != 0)
-		{
-			driver->heldItemID = HELD_ITEM_MISSILE_3X;
-		}
-
-		// if nobody has warpball, then set flag that somebody has it
-		else
-		{
-			gGT->gameMode1 |= WARPBALL_HELD;
-		}
-	}
-
-	VEH_LOAD_GAME_TRACKER(gGT);
-	if (
-	    // if three or more players
-	    gGT->numPlyrCurrGame >= ITEMSET_THREE_MISSILES_MIN_PLAYERS &&
-
-	    // if not in battle mode
-	    ((gGT->gameMode1 & BATTLE_MODE) == 0) &&
-
-	    // if you got 3 missiles
-	    driver->heldItemID == HELD_ITEM_MISSILE_3X)
-	{
-		// if less than 2 drivers have 3 missiles, then increase number of drivers that have it
-		if (gGT->numPlayersWith3Missiles < ITEMSET_THREE_MISSILES_HELD_LIMIT)
-		{
-			gGT->numPlayersWith3Missiles++;
-		}
-
-		// if 2 drivers already have 3 missiles, now you have 1 missile
-		else
-		{
-			driver->heldItemID = HELD_ITEM_MISSILE_1X;
-		}
-	}
-
-	// Set number of held items
-	if ((u32)driver->heldItemID - HELD_ITEM_BOMB_3X < (HELD_ITEM_MISSILE_3X - HELD_ITEM_BOMB_3X + 1))
-	{
-		driver->numHeldItems = HELD_ITEM_STACK_COUNT;
-	}
-
+	VehPhysProc_AssignHeldItem(driver, driver->heldItemID);
 	if (driver->heldItemID == HELD_ITEM_MASK)
 	{
 		driver->maskIsAku = (s8)VehPickupItem_ApplyMaskMode(driver);
@@ -1748,8 +1700,6 @@ void VehPhysGeneral_SetHeldItem(struct Driver *driver)
 	{
 		driver->maskIsAku = -1;
 	}
-
-	return;
 }
 
 enum

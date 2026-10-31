@@ -4100,6 +4100,7 @@ struct sData
 	// the deadcoed pair, which the replay verifier compares every recorded frame.
 	u32 chaosRng;
 	struct ChaosRuntime chaosRuntime;
+	struct Model *chaosCharacterModels[len(((struct Data *)0)->MetaDataCharacters)];
 
 	struct NewLoadState newLoad;
 	struct ChaosMenuState chaosMenu;

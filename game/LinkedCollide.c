@@ -11,6 +11,11 @@ struct Instance *LinkedCollide_Radius(struct Instance *objInst, struct Thread *_
 	// if thread valid, loop through every thread in the linked list until there are no more threads
 	while (thBucket != 0)
 	{
+		if (Chaos_IsFrozenWorldThread(_objTh) && !Chaos_IsHumanThread(thBucket))
+		{
+			thBucket = thBucket->siblingThread;
+			continue;
+		}
 		thInst = thBucket->inst;
 
 		// get difference in X, Y, and Z, from both instances
@@ -64,6 +69,10 @@ struct Instance *LinkedCollide_Hitbox(struct Instance *objInst, struct Thread *_
 	// Loop over thBucket Linked List
 	for (; thBucket != 0; thBucket = thBucket->siblingThread)
 	{
+		if (Chaos_IsFrozenWorldThread(_objTh) && !Chaos_IsHumanThread(thBucket))
+		{
+			continue;
+		}
 		thInst = thBucket->inst;
 
 		thInstPos.vx = thInst->matrix.t[0];

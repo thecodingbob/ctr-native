@@ -7911,7 +7911,7 @@ static int Ovr226_800a0ef4_DrawFullDynamicBspList(struct VisMemBspListNode *slot
 				return 0;
 			}
 
-			if (Ovr226_800a0f34_ConsumeFullDynamicVisibilityBit())
+			if (Ovr226_800a0f34_ConsumeFullDynamicVisibilityBit() && !Chaos_HideCameraQuadBlock(pb, block, mesh->ptrVertexArray))
 			{
 				if (!Ovr226_800a0f78_EmitFullDynamicQuadBlock(pb, primMem, block, vertices))
 				{
@@ -8011,7 +8011,7 @@ static int DrawLevelOvr1P_DrawSplitGroundListABspList(struct VisMemBspListNode *
 				return 0;
 			}
 
-			if (Ovr226_800a0f34_ConsumeFullDynamicVisibilityBit())
+			if (Ovr226_800a0f34_ConsumeFullDynamicVisibilityBit() && !Chaos_HideCameraQuadBlock(pb, block, mesh->ptrVertexArray))
 			{
 				if (!DrawLevelOvr1P_EmitSplitGroundListAQuadBlock(pb, primMem, mesh, block))
 				{
@@ -8267,7 +8267,7 @@ static int DrawLevelOvr1P_DrawBspListQuadBlocks(struct VisMemBspListNode *slot, 
 				return 0;
 			}
 
-			if (Ovr226_800a0f34_ConsumeFullDynamicVisibilityBit())
+			if (Ovr226_800a0f34_ConsumeFullDynamicVisibilityBit() && !Chaos_HideCameraQuadBlock(pb, block, mesh->ptrVertexArray))
 			{
 				if (!DrawLevelOvr1P_EmitBspListQuadBlock(pb, primMem, mesh, block, role))
 				{
@@ -8953,7 +8953,7 @@ static int Ovr226_800a1e30_DrawWaterBspList(struct VisMemBspListNode *slot, stru
 				return 0;
 			}
 
-			if (Ovr226_800a1eb0_ConsumeWaterVisibilityBit())
+			if (Ovr226_800a1eb0_ConsumeWaterVisibilityBit() && !Chaos_HideCameraQuadBlock(pb, block, mesh->ptrVertexArray))
 			{
 				if (!Ovr226_800a1ee0_EmitWaterListQuadBlock(pb, primMem, mesh, block))
 				{

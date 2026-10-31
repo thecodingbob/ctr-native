@@ -70,6 +70,10 @@ static inline void RB_Burst_CollThread(struct ScratchpadStruct *sps, struct Thre
 	struct Thread *weaponTh;
 
 	weaponTh = sps->Union.ThBuckColl.thread;
+	if (Chaos_DeferImpact(CHAOS_IMPACT_BURST_THREAD, weaponTh, t, NULL))
+	{
+		return;
+	}
 	tw = weaponTh->object;
 	weaponObj = weaponTh->object;
 	model = t->modelIndex;
@@ -169,6 +173,10 @@ void RB_Burst_CollLevInst(struct ScratchpadStruct *sps, void *hitObject)
 	{
 		return;
 	}
+	if (Chaos_DeferImpact(CHAOS_IMPACT_BURST_LEVEL, sps->Union.ThBuckColl.thread, NULL, bspHitbox))
+	{
+		return;
+	}
 
 	model = instdef->modelID;
 	switch (model)
@@ -234,6 +242,10 @@ void RB_Burst_InitVisual(struct Instance *weaponInst)
 	currInst = INSTANCE_BirthWithThread_Stack(&birth);
 
 	t = currInst->thread;
+	if (Chaos_IsHumanOwnedThread(weaponInst->thread))
+	{
+		t->flags |= THREAD_FLAG_HUMAN_EFFECT;
+	}
 	burst = t->object;
 	burst->explosion = currInst;
 	currInst->depthBiasNormal -= 2;

@@ -140,9 +140,6 @@ s16 spiderArr[] = {
 
 void RB_Spider_ThTick(struct Thread *t)
 {
-	b32 wasNotSpinning;
-	struct Instance *hitInst;
-	struct Driver *victim;
 	struct Instance *spiderInst;
 	struct Spider *spider;
 
@@ -236,7 +233,15 @@ updatePosScale:
 	}
 
 checkCollision:
-	hitInst = LinkedCollide_Radius(spiderInst, t, GAME_TRACKER->threadBuckets[PLAYER].thread, 0x9000);
+	RB_Spider_CollideDrivers(t);
+}
+
+void RB_Spider_CollideDrivers(struct Thread *t)
+{
+	struct Instance *spiderInst = t->inst;
+	struct Instance *hitInst = LinkedCollide_Radius(spiderInst, t, GAME_TRACKER->threadBuckets[PLAYER].thread, 0x9000);
+	struct Driver *victim;
+	b32 wasNotSpinning;
 	if (hitInst != NULL)
 	{
 		victim = hitInst->thread->object;

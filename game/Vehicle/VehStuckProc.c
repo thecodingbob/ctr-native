@@ -394,6 +394,7 @@ void VehStuckProc_MaskGrab_Particles(struct Driver *d)
 		}
 
 		// position variables
+		VehPhysForce_ScaleParticle(d, p);
 		p->axis[0].startVal = CTR_MipsAddLo(p->axis[0].startVal, d->posCurr.x);
 		p->axis[1].startVal = CTR_MipsAddLo(p->axis[1].startVal, d->posCurr.y);
 		p->axis[2].startVal = CTR_MipsAddLo(p->axis[2].startVal, d->posCurr.z);
@@ -466,6 +467,14 @@ void VehStuckProc_MaskGrab_PhysLinear(struct Thread *t, struct Driver *d)
 }
 
 
+void VehStuckProc_MaskGrab_SetFallPose(struct Driver *driver)
+{
+	driver->matrixArray = BAKED_GTE_MATRIX_CRASH_FALL;
+	driver->matrixIndex = VEH_STUCK_MASK_GRAB_CRASH_FREEZE_FRAME;
+	driver->instSelf->animIndex = VEH_STUCK_MASK_GRAB_CRASH_ANIM_INDEX;
+	driver->instSelf->animFrame = VEH_STUCK_MASK_GRAB_CRASH_FREEZE_FRAME;
+}
+
 void VehStuckProc_MaskGrab_Animate(struct Thread *t, struct Driver *d)
 {
 	struct Instance *inst = t->inst;
@@ -526,10 +535,7 @@ void VehStuckProc_MaskGrab_Animate(struct Thread *t, struct Driver *d)
 		}
 		else
 		{
-			d->matrixArray = BAKED_GTE_MATRIX_CRASH_FALL;
-			d->matrixIndex = VEH_STUCK_MASK_GRAB_CRASH_FREEZE_FRAME;
-			inst->animIndex = VEH_STUCK_MASK_GRAB_CRASH_ANIM_INDEX;
-			inst->animFrame = VEH_STUCK_MASK_GRAB_CRASH_FREEZE_FRAME;
+			VehStuckProc_MaskGrab_SetFallPose(d);
 
 			if (VEH_STUCK_MASK_GRAB_SQUISH_DECREASE_LIMIT <= d->NoInputTimer)
 			{
@@ -637,7 +643,7 @@ void VehStuckProc_MaskGrab_Init(struct Thread *t, struct Driver *d)
 	d->KartStates.MaskGrab.maskObj = VehPickupItem_MaskUseWeapon(d, true);
 
 	d->turbo_MeterRoomLeft = 0;
-	d->reserves = 0;
+	VehFire_SetReserves(d, 0);
 	d->turbo_outsideTimer = 0;
 	d->matrixArray = BAKED_GTE_MATRIX_NONE;
 	d->matrixIndex = 0;
@@ -669,6 +675,7 @@ void VehStuckProc_MaskGrab_Init(struct Thread *t, struct Driver *d)
 					continue;
 				}
 
+				VehPhysForce_ScaleParticle(d, p);
 				p->otIndexOffset = d->instSelf->depthBiasNormal;
 				p->owner.driverInst = d->instSelf;
 				p->driverID = d->driverID;
@@ -882,7 +889,7 @@ void VehStuckProc_PlantEaten_Init(struct Thread *t, struct Driver *d)
 	d->KartStates.EatenByPlant.boolInited = false;
 
 	d->turbo_MeterRoomLeft = 0;
-	d->reserves = 0;
+	VehFire_SetReserves(d, 0);
 	d->turbo_outsideTimer = 0;
 
 	// drop bits for airborne and high-jump state
@@ -953,7 +960,7 @@ void VehStuckProc_RevEngine_Update(struct Thread *t, struct Driver *d)
 		}
 	}
 	// If this is the start of a race, wait for the traffic lights.
-	else if (0 < GAME_TRACKER->trafficLightsTimer)
+	else if (0 < Chaos_StartTimerForDriver(d))
 	{
 		return;
 	}
@@ -1266,11 +1273,11 @@ revEngineStateReady:
 	// this is a basic "squash and stretch" concept of animation, before motion
 
 	// Reduce height a little
-	inst->scale.y = (s16)CTR_MipsSubLo(VEH_STUCK_REV_MODEL_BASE_SCALE, (u16)d->jumpSquishStretch);
-	inst->scale.x = (s16)(d->jumpSquishStretch * VEH_STUCK_REV_MODEL_WIDTH_SQUISH_NUMERATOR / VEH_STUCK_REV_MODEL_WIDTH_SQUISH_DENOMINATOR +
+	inst->scale.y = (s16)VehPhysForce_ScaleValue(d, CTR_MipsSubLo(VEH_STUCK_REV_MODEL_BASE_SCALE, (u16)d->jumpSquishStretch));
+	inst->scale.x = (s16)VehPhysForce_ScaleValue(d, d->jumpSquishStretch * VEH_STUCK_REV_MODEL_WIDTH_SQUISH_NUMERATOR / VEH_STUCK_REV_MODEL_WIDTH_SQUISH_DENOMINATOR +
 	                      VEH_STUCK_REV_MODEL_BASE_SCALE);
-	inst->scale.z = (s16)(d->jumpSquishStretch * VEH_STUCK_REV_MODEL_WIDTH_SQUISH_NUMERATOR / VEH_STUCK_REV_MODEL_WIDTH_SQUISH_DENOMINATOR +
-	                      VEH_STUCK_REV_MODEL_BASE_SCALE);
+	inst->scale.z = inst->scale.x;
+	Chaos_ApplyStartPose(d);
 }
 
 
@@ -1289,7 +1296,8 @@ void VehStuckProc_RevEngine_Init(struct Thread *t, struct Driver *d)
 	d->KartStates.RevEngine.maskObj = NULL;
 
 	// if this is a mask grab
-	if (CTR_MipsAddLo(d->quadBlockHeight, VEH_STUCK_REV_MASK_GRAB_HEIGHT_TRIGGER) < d->posCurr.y)
+	if (CTR_MipsAddLo(d->quadBlockHeight, VEH_STUCK_REV_MASK_GRAB_HEIGHT_TRIGGER) < d->posCurr.y &&
+	    !Chaos_IsWaitingForStart(d))
 	{
 		// assume reason for revving is: mask grab
 		d->KartStates.RevEngine.boolMaskGrab = true;
@@ -1433,6 +1441,23 @@ void VehStuckProc_Tumble_Animate(struct Thread *thread, struct Driver *driver)
 }
 
 
+void VehStuckProc_Tumble_SetFunctions(struct Driver *driver)
+{
+	driver->funcPtrs[DRIVER_FUNC_UPDATE] = VehStuckProc_Tumble_Update;
+	driver->funcPtrs[DRIVER_FUNC_PHYS_LINEAR] = VehStuckProc_Tumble_PhysLinear;
+	driver->funcPtrs[DRIVER_FUNC_AUDIO] = VehPhysProc_Driving_Audio;
+	driver->funcPtrs[DRIVER_FUNC_PHYS_ANGULAR] = VehStuckProc_Tumble_PhysAngular;
+	driver->funcPtrs[DRIVER_FUNC_APPLY_FORCES] = VehPhysForce_OnApplyForces;
+	driver->funcPtrs[DRIVER_FUNC_COLL_MOVED] = COLL_MOVED_PlayerSearch;
+	driver->funcPtrs[DRIVER_FUNC_COLLIDE_DRIVERS] = VehPhysForce_CollideDrivers;
+	driver->funcPtrs[DRIVER_FUNC_COLL_FIXED] = COLL_FIXED_PlayerSearch;
+	driver->funcPtrs[DRIVER_FUNC_JUMP_FRICTION] = VehPhysGeneral_JumpAndFriction;
+	driver->funcPtrs[DRIVER_FUNC_TRANSLATE_MATRIX] = VehPhysForce_TranslateMatrix;
+	driver->funcPtrs[DRIVER_FUNC_ANIMATE] = VehStuckProc_Tumble_Animate;
+	driver->funcPtrs[DRIVER_FUNC_INIT] = NULL;
+	driver->funcPtrs[DRIVER_FUNC_PARTICLES] = VehEmitter_DriverMain;
+}
+
 void VehStuckProc_Tumble_Init(struct Thread *thread, struct Driver *driver)
 {
 	int numAnimFrames;
@@ -1459,19 +1484,7 @@ void VehStuckProc_Tumble_Init(struct Thread *thread, struct Driver *driver)
 	rng = MixRNG_Scramble();
 	driver->KartStates.Blasted.boolPlayBackwards = rng & VEH_TUMBLE_BACKWARDS_RNG_MASK;
 
-	driver->funcPtrs[DRIVER_FUNC_UPDATE] = VehStuckProc_Tumble_Update;
-	driver->funcPtrs[DRIVER_FUNC_PHYS_LINEAR] = VehStuckProc_Tumble_PhysLinear;
-	driver->funcPtrs[DRIVER_FUNC_AUDIO] = VehPhysProc_Driving_Audio;
-	driver->funcPtrs[DRIVER_FUNC_PHYS_ANGULAR] = VehStuckProc_Tumble_PhysAngular;
-	driver->funcPtrs[DRIVER_FUNC_APPLY_FORCES] = VehPhysForce_OnApplyForces;
-	driver->funcPtrs[DRIVER_FUNC_COLL_MOVED] = COLL_MOVED_PlayerSearch;
-	driver->funcPtrs[DRIVER_FUNC_COLLIDE_DRIVERS] = VehPhysForce_CollideDrivers;
-	driver->funcPtrs[DRIVER_FUNC_COLL_FIXED] = COLL_FIXED_PlayerSearch;
-	driver->funcPtrs[DRIVER_FUNC_JUMP_FRICTION] = VehPhysGeneral_JumpAndFriction;
-	driver->funcPtrs[DRIVER_FUNC_TRANSLATE_MATRIX] = VehPhysForce_TranslateMatrix;
-	driver->funcPtrs[DRIVER_FUNC_ANIMATE] = VehStuckProc_Tumble_Animate;
-	driver->funcPtrs[DRIVER_FUNC_INIT] = NULL;
-	driver->funcPtrs[DRIVER_FUNC_PARTICLES] = VehEmitter_DriverMain;
+	VehStuckProc_Tumble_SetFunctions(driver);
 
 	simpTurnState = driver->simpTurnState;
 	if (simpTurnState > 0)
@@ -1991,6 +2004,7 @@ void VehStuckProc_Warp_Init(struct Thread *th, struct Driver *d)
 	d->driverAudioPtrs[0] = 0;
 
 	engine = GAME_CHARACTER_METADATA[GAME_CHARACTER_IDS[d->driverID]].engineID;
+	engine = Chaos_EngineClassForDriver(d, engine);
 
 	EngineAudio_Stop((u16)((engine * VEH_WARP_ENGINE_AUDIO_STRIDE) + d->driverID));
 

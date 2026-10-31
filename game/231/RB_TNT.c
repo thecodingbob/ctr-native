@@ -91,6 +91,16 @@ static inline void RB_TNT_Detach(struct Thread *t, struct Instance *inst, struct
 	ThTick_SetAndExec(t, RB_TNT_ThTick_ThrowOffHead);
 }
 
+static void RB_TNT_AttachToDriver(struct Instance *inst, const struct MineWeapon *weapon)
+{
+	const struct Driver *driver = weapon->driverTarget;
+	SVec3 offset = weapon->deltaPos;
+	offset.x = (s16)VehPhysForce_ScaleValue(driver, offset.x);
+	offset.y = (s16)VehPhysForce_ScaleValue(driver, offset.y);
+	offset.z = (s16)VehPhysForce_ScaleValue(driver, offset.z);
+	LHMatrix_Parent(inst, driver->instSelf, &offset);
+}
+
 void RB_TNT_ThTick_SitOnHead(struct Thread *t)
 {
 	struct Instance *inst;
@@ -109,7 +119,7 @@ void RB_TNT_ThTick_SitOnHead(struct Thread *t)
 	// To: TNT instance
 	// From: obj->driverWhoHitMe->instance
 	// Delta: TNT -> 0x1c (position relative to driver)
-	LHMatrix_Parent(inst, mw->driverTarget->instSelf, &mw->deltaPos);
+	RB_TNT_AttachToDriver(inst, mw);
 
 	// Get Kart State
 	state = mw->driverTarget->kartState;
@@ -284,7 +294,7 @@ void RB_TNT_ThTick_ThrowOnHead(struct Thread *t)
 	}
 
 	// CopyMatrix
-	LHMatrix_Parent(inst, mw->driverTarget->instSelf, &mw->deltaPos);
+	RB_TNT_AttachToDriver(inst, mw);
 
 	// rotation
 	rot.x = 0;

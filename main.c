@@ -210,6 +210,7 @@ Platform_Init("CTR Native Expanded", 800, 600);
 
 	Platform_InitScratchpad();
 	Platform_RepairResidentPointers(0);
+	Chaos_Init(SDL_rand_bits());
 
 #if defined(CTR_INTERNAL)
 	if (NativeReplayScheduler_ConfigureFromArgs(argc, argv) != 0)

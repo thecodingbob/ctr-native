@@ -2547,7 +2547,8 @@ u32 COLL_MOVED_ScrubImpact(struct Driver *d, struct Thread *t, struct Scratchpad
 			d->actionsFlagSet |= ACTION_DRIVING_AGAINST_WALL;
 		}
 
-		if ((scrubFlags & SCRUB_FLAG_KEEP_RESERVES) == 0)
+		if ((scrubFlags & SCRUB_FLAG_KEEP_RESERVES) == 0 &&
+		    !Chaos_IsActiveForDriver(CHAOS_EFFECT_TOO_BOOSTED_TO_FAIL, d))
 		{
 			d->reserves = 0;
 			d->turbo_outsideTimer = 0;

@@ -1,5 +1,6 @@
 #include "VehCommon.h"
 #include "VehPhysProc_Input.c"
+#include "VehPhysProc_Items.c"
 
 // budget: 4624
 // curr: 4380
@@ -16,8 +17,6 @@ enum
 	VEH_PHYS_PROC_WEAPON_COOLDOWN_STACK_FRAMES = 5,
 	VEH_PHYS_PROC_ASSUMED_CROSS_BUTTON = BTN_CROSS_one,
 	VEH_PHYS_PROC_INVISIBLE_REAPPEAR_FX = 0x62,
-	VEH_PHYS_PROC_ITEM_ROLL_NORMAL_FX = 0x5e,
-	VEH_PHYS_PROC_ITEM_ROLL_JUICED_FX = 0x41,
 	VEH_PHYS_PROC_DISTANCE_SPEED_SHIFT = 8,
 	VEH_PHYS_PROC_TEN_WUMPA_COUNT = 10,
 	VEH_PHYS_PROC_HAZARD_MOVING_SPEED_MIN = 0x100,
@@ -120,7 +119,6 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 	struct Thread *driverThread;
 	int kartState;
 	register u8 heldItemID CTR_PSX_REGISTER("$3");
-	u8 hasJuicedWumpa;
 	u16 driverTimerNegativeFinal;
 	int approxTrig;
 	int approximateSpeed;
@@ -162,10 +160,10 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 	register int superEngineTimer CTR_PSX_REGISTER("$14");
 	register int jumpTenBuffer CTR_PSX_REGISTER("$18");
 	register int rainCloudEffect CTR_PSX_REGISTER("$20");
-	u32 itemSound;
 	register u32 actionsFlagSetNext CTR_PSX_REGISTER("$18");
 	register u32 buttonsHeld CTR_PSX_REGISTER("$5");
-	register int stickRY CTR_PSX_REGISTER("$21");
+	int stickRY;
+	int gasStickLY;
 	int scratchValue;
 	struct Shield *shield;
 	struct TrackerWeapon *bomb;
@@ -224,7 +222,7 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 		{
 			reservesTimer = 0;
 		}
-		driver->reserves = (s16)reservesTimer;
+		VehFire_SetReserves(driver, reservesTimer);
 		driver->timeSpentUsingReserves = CTR_MipsSubLo(driver->timeSpentUsingReserves, msPerFrameNeg);
 	}
 	if (turboTimer > 0)
@@ -324,7 +322,7 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 	// If Super Engine Cheat is not enabled
 	if ((GAME_TRACKER->gameMode2 & CHEAT_ENGINE) == 0)
 	{
-		if (superEngineTimer > 0)
+		if (superEngineTimer > 0 && !Chaos_IsTimeStopped())
 		{
 			superEngineTimer = CTR_MipsAddLo(superEngineTimer, msPerFrameNeg);
 			if (superEngineTimer < 0)
@@ -335,7 +333,7 @@ void VehPhysProc_Driving_PhysLinear(struct Thread *thread, struct Driver *driver
 		}
 	}
 
-	if (clockTimer > 0)
+	if (clockTimer > 0 && !Chaos_IsTimeStopped())
 	{
 		clockTimer = CTR_MipsAddLo(clockTimer, msPerFrameNeg);
 		if (clockTimer < 0)
@@ -545,19 +543,7 @@ hazardDone:
 		// Select a random weapon for driver.
 		VehPhysGeneral_SetHeldItem(driver);
 
-		itemSound = VEH_PHYS_PROC_ITEM_ROLL_NORMAL_FX;
-		if (driver->numWumpas >= DRIVER_WUMPA_JUICED_COUNT)
-		{
-			// Juiced wumpa count uses the alternate "ka-ching" sound.
-			itemSound = VEH_PHYS_PROC_ITEM_ROLL_JUICED_FX;
-			hasJuicedWumpa = true;
-		}
-		else
-		{
-			hasJuicedWumpa = false;
-		}
-
-		OtherFX_Play(itemSound, hasJuicedWumpa);
+		VehPhysProc_PlayItemAcquireSound(driver);
 	}
 itemRollDone:
 	CTR_PSX_KEEP_VALUE(normalVecIndex);
@@ -573,17 +559,7 @@ itemRollDone:
 		// if Item is about to be gone and Number of Items = 0
 		if ((normalVecIndex == 1) && (driver->numHeldItems == 0))
 		{
-			if (
-			    // multiplayer game, not battle, weapon was 3 missiles
-			    (2 < GAME_TRACKER->numPlyrCurrGame) && ((GAME_TRACKER->gameMode1 & BATTLE_MODE) == 0) && (driver->heldItemID == HELD_ITEM_MISSILE_3X) &&
-			    (GAME_TRACKER->numPlayersWith3Missiles > 0))
-			{
-				// keep count
-				GAME_TRACKER->numPlayersWith3Missiles--;
-			}
-
-			// take away weapon
-			driver->heldItemID = HELD_ITEM_NONE;
+			VehPhysProc_RemoveHeldItem(driver);
 		}
 
 		driver->noItemTimer = (s16)CTR_MipsSubLo(normalVecIndex, 1);
@@ -602,7 +578,7 @@ itemRollDone:
 	// If invisible, without Permanent Invisibility cheat,
 	// dont remove invisibleTimer check, or an invalid
 	// instFlagsBackup overwrites instFlags
-	if ((driver->invisibleTimer != 0) && ((GAME_TRACKER->gameMode2 & CHEAT_INVISIBLE) == 0))
+	if ((driver->invisibleTimer != 0) && ((GAME_TRACKER->gameMode2 & CHEAT_INVISIBLE) == 0) && !Chaos_IsTimeStopped())
 	{
 		driver->invisibleTimer = CTR_MipsSubLo(driver->invisibleTimer, GAME_TRACKER->elapsedTimeMS);
 
@@ -722,20 +698,20 @@ itemRollDone:
 
 
 	// pointer to gamepad input of current player (driver)
-	ptrgamepad = &GAMEPADS->gamepad[(u32)driver->driverID];
+	struct GamepadBuffer drivingPad = GAMEPADS->gamepad[(u32)driver->driverID];
+	Chaos_ApplyInputRules(driver, &drivingPad);
+	ptrgamepad = &drivingPad;
 
-	// no hold
 	buttonsHeld = 0;
+	buttonsTapped = 0;
+	stickRY = VEH_PHYS_PROC_STICK_CENTER;
+	gasStickLY = VEH_PHYS_PROC_STICK_CENTER;
 	if ((GAME_TRACKER->gameMode1 & END_OF_RACE) == 0)
 	{
 		buttonsHeld = ptrgamepad->buttonsHeldCurrFrame;
-	}
-
-	// no tap
-	buttonsTapped = 0;
-	if ((GAME_TRACKER->gameMode1 & END_OF_RACE) == 0)
-	{
 		buttonsTapped = ptrgamepad->buttonsTapped;
+		stickRY = ptrgamepad->stickRY;
+		gasStickLY = ptrgamepad->stickLY;
 	}
 
 	approximateSpeedRaw = buttonsHeld & BTN_CROSS_one;
@@ -863,7 +839,7 @@ CheckJumpButtonsReady:
 	actionsFlagSetCopy = VehPhysProc_JumpInput(driver, (u32)normalVecIndex, buttonsHeld, rainCloudEffect, actionsFlagSetCopy);
 	steeringInput = ptrgamepad->stickLX;
 	// Apply after input resolution, before jump and steering consumers use the result.
-	actionsFlagSetCopy = Chaos_ApplyDriver(driver, ptrgamepad, &steeringInput, actionsFlagSetCopy);
+	actionsFlagSetCopy = Chaos_ApplyDriver(driver, actionsFlagSetCopy);
 	CTR_PSX_OBSERVE_VALUE(buttonsHeld);
 	CTR_PSX_LOAD_WORD(approximateSpeedRaw, square);
 	if (
@@ -874,17 +850,7 @@ CheckJumpButtonsReady:
 	    ((driver->stepFlagSet & COLL_STEP_TRIGGER_TURBO_PAD_MASK) == 0))
 	{
 		// Set Reserves to zero
-		driver->reserves = 0;
-	}
-
-	// assume normal gas pedal
-	stickRY = VEH_PHYS_PROC_STICK_CENTER;
-
-	// If you're not in End-Of-Race menu
-	if ((GAME_TRACKER->gameMode1 & END_OF_RACE) == 0)
-	{
-		// gamepadBuffer -> stickRY (for gas or reverse)
-		stickRY = (int)ptrgamepad->stickRY;
+		VehFire_SetReserves(driver, 0);
 	}
 
 	if (
@@ -947,16 +913,7 @@ CheckJumpButtonsReady:
 
 	{
 		register int gasTargetSpeed CTR_PSX_REGISTER("$19");
-		register int gasStickLY CTR_PSX_REGISTER("$20");
 		register int gasScratchValue CTR_PSX_REGISTER("$16");
-
-		gasStickLY = VEH_PHYS_PROC_STICK_CENTER;
-
-		// If you're not in End-Of-Race menu
-		if ((GAME_TRACKER->gameMode1 & END_OF_RACE) == 0)
-		{
-			gasStickLY = ptrgamepad->stickLY;
-		}
 
 		if (((s8)driver->simpTurnState < 0) || (actionsFlagSetCopy &= ~ACTION_REVERSE_STEER_LEFT, (s8)driver->simpTurnState < 1))
 		{
@@ -1511,6 +1468,8 @@ void VehPhysProc_Driving_Audio(struct Thread *t, struct Driver *d)
 void VehPhysProc_Driving_Update(struct Thread *t, struct Driver *d)
 {
 	u8 turnRate;
+	struct GamepadBuffer drivingPad = GAMEPADS->gamepad[d->driverID];
+	Chaos_ApplyInputRules(d, &drivingPad);
 
 	// if racer touched the ground in this frame
 	if ((d->actionsFlagSet & ACTION_STARTED_TOUCH_GROUND) != 0)
@@ -1534,7 +1493,7 @@ void VehPhysProc_Driving_Update(struct Thread *t, struct Driver *d)
 		if (((((turnRate + turnConstTerm) >> VEH_PHYS_PROC_HALF_SPEED_SHIFT) < simpTurnState) &&
 
 		     // player has jump buttons held
-		     (GAMEPADS->gamepad[d->driverID].buttonsHeldCurrFrame & d->buttonUsedToStartDrift) != 0) &&
+		     (drivingPad.buttonsHeldCurrFrame & d->buttonUsedToStartDrift) != 0) &&
 
 		    // player is not in accel prevention or braking and
 		    ((d->actionsFlagSet & ACTION_ACCEL_PREVENTION) == 0) && ((d->const_Speed_ClassStat >> 1) <= d->speedApprox))
@@ -1571,9 +1530,15 @@ void VehPhysProc_Driving_Update(struct Thread *t, struct Driver *d)
 }
 
 
+#include "VehPhysProc_TakeControl.c"
+
 void VehPhysProc_Driving_Init(struct Thread *t, struct Driver *d)
 {
-	(void)t;
+	if (Chaos_IsWaitingForStart(d))
+	{
+		VehStuckProc_RevEngine_Init(t, d);
+		return;
+	}
 
 	if (((u32)(GAME_TRACKER->levelID - GEM_STONE_VALLEY) >= 5) || LOAD_IsOpen_AdvHub())
 	{
@@ -2313,8 +2278,10 @@ void VehPhysProc_PowerSlide_Finalize(struct Driver *d)
 
 void VehPhysProc_PowerSlide_Update(struct Thread *t, struct Driver *d)
 {
+	struct GamepadBuffer drivingPad = GAMEPADS->gamepad[d->driverID];
+	Chaos_ApplyInputRules(d, &drivingPad);
 	// If you press L1 or R1, attempt to convert the drift meter to reserves.
-	if ((GAMEPADS->gamepad[d->driverID].buttonsTapped & VEH_PHYS_PROC_JUMP_BUTTON_MASK) != 0)
+	if ((drivingPad.buttonsTapped & VEH_PHYS_PROC_JUMP_BUTTON_MASK) != 0)
 	{
 		int meterLeft = d->turbo_MeterRoomLeft;
 
@@ -2402,7 +2369,7 @@ void VehPhysProc_PowerSlide_Update(struct Thread *t, struct Driver *d)
 		       ((d->actionsFlagSet & (ACTION_DRIVING_AGAINST_WALL | ACTION_ACCEL_PREVENTION | ACTION_BRAKE_WITH_ACCEL)) != 0)) ||
 
 		      // If the gamepad input is...
-		      ((GAMEPADS->gamepad[d->driverID].buttonsHeldCurrFrame &
+		      ((drivingPad.buttonsHeldCurrFrame &
 
 		        // does not include the jump button that you used to start drifting
 		        d->buttonUsedToStartDrift) == 0))))
@@ -2573,7 +2540,7 @@ void VehPhysProc_SlamWall_Init(struct Thread *t, struct Driver *d)
 	d->velocity.y = 0;
 	d->velocity.z = 0;
 	d->speedometerNeedleValue = 0;
-	d->reserves = 0;
+	VehFire_SetReserves(d, 0);
 	d->turbo_outsideTimer = 0;
 	d->VehFire_AudioCooldown = 0;
 	d->Screen_OffsetY = 0;
@@ -2585,8 +2552,8 @@ void VehPhysProc_SlamWall_Init(struct Thread *t, struct Driver *d)
 	d->fireSpeed = 0;
 
 	// NOTE(aalhendi): Retail only writes X/Y scale here.
-	inst->scale.y = VEH_PHYS_PROC_CRASH_SCALE_XY;
-	inst->scale.x = VEH_PHYS_PROC_CRASH_SCALE_XY;
+	inst->scale.y = (s16)VehPhysForce_ScaleValue(d, VEH_PHYS_PROC_CRASH_SCALE_XY);
+	inst->scale.x = (s16)VehPhysForce_ScaleValue(d, VEH_PHYS_PROC_CRASH_SCALE_XY);
 
 	d->funcPtrs[DRIVER_FUNC_UPDATE] = VehPhysProc_SlamWall_Update;
 	d->funcPtrs[DRIVER_FUNC_INIT] = NULL;

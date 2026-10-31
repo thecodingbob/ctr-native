@@ -4,6 +4,10 @@
 int RB_Hazard_HurtDriver(struct Driver *driverVictim, int damageType, struct Driver *driverAttacker, int reason)
 {
 	int result;
+	if (Chaos_DeferDriverDamage(driverVictim, damageType, driverAttacker, reason))
+	{
+		return 0;
+	}
 
 	if ((driverVictim->actionsFlagSet & ACTION_BOT) != 0)
 	{
@@ -40,6 +44,10 @@ struct Instance *RB_Hazard_CollideWithDrivers(struct Instance *weaponInst, s16 p
 				continue;
 			}
 			if (driver->kartState == KS_MASK_GRABBED)
+			{
+				continue;
+			}
+			if (Chaos_IsFrozenWorldThread(weaponInst->thread) && !Chaos_IsHumanThread(driver->instSelf->thread))
 			{
 				continue;
 			}
@@ -260,7 +268,11 @@ s32 RB_Hazard_CollLevInst(struct ScratchpadStruct *sps, struct Thread *th)
 
 		if ((meta != NULL) && (meta->LInC != NULL))
 		{
-			s32 flag = meta->LInC(inst, th, sps);
+			s32 flag = 1;
+			if (!Chaos_DeferImpact(CHAOS_IMPACT_HAZARD_LEVEL, th, NULL, sps->bspHitbox))
+			{
+				flag = meta->LInC(inst, th, sps);
+			}
 
 			// NOTE(aalhendi): Pickups receive the collision, but do not stop the hazard.
 			// Classify the original level model, before its callback can change state.

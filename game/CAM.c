@@ -1336,7 +1336,8 @@ void CAM_FollowDriver_Normal(struct CameraDC *cDC, struct Driver *d, SVec3 *push
 		cDC->heightSmoothing.currentOffset = 0;
 	}
 
-	if ((d->kartState != KS_BLASTED) && ((d->actionsFlagSet & ACTION_TOUCH_GROUND) != 0) && (cDC->BlastedLerp.boolLerpPending != 0))
+	if (Chaos_ConsumeCameraBlend(cDC) ||
+	    ((d->kartState != KS_BLASTED) && ((d->actionsFlagSet & ACTION_TOUCH_GROUND) != 0) && (cDC->BlastedLerp.boolLerpPending != 0)))
 	{
 		cDC->BlastedLerp.boolLerpPending = 0;
 
@@ -2323,6 +2324,12 @@ SkipNewCameraEOR:
 
 LAB_8001c150:
 	cDC->cameraModePrev = cDC->cameraMode;
+	if (Chaos_ApplyCameraRules(cDC) && d->underDriver == NULL && d->currBlockTouching == NULL)
+	{
+		// Visibility follows the road under the kart, even with the eye above a tunnel.
+		const Vec3 probe = {d->posCurr.x >> 8, d->posCurr.y >> 8, d->posCurr.z >> 8};
+		CAM_FindClosestQuadblock((struct ScratchpadStruct *)scratchWork, cDC, d, &probe);
+	}
 
 	if (cDC->ptrQuadBlock != 0)
 	{

@@ -2,14 +2,20 @@
 
 static inline void RB_MovingExplosive_CollideAndExplode(struct Thread *hit, struct Thread *t, struct Instance *inst, struct TrackerWeapon *tw)
 {
-	((ThreadScratchCollideFunc)hit->funcThCollide)(hit, t, hit->funcThCollide, NULL);
+	if (!Chaos_DeferImpact(CHAOS_IMPACT_HAZARD_THREAD, t, hit, NULL))
+	{
+		((ThreadScratchCollideFunc)hit->funcThCollide)(hit, t, hit->funcThCollide, NULL);
+	}
 	// NOTE(aalhendi): The callback can rebind thread state; cleanup uses the tick's original instance and weapon.
 	RB_MovingExplosive_Explode(t, inst, tw);
 }
 
 static inline void RB_MovingExplosive_NotifyCollision(struct Thread *hit, struct Thread *other)
 {
-	((ThreadScratchCollideFunc)hit->funcThCollide)(hit, other, hit->funcThCollide, NULL);
+	if (!Chaos_DeferImpact(CHAOS_IMPACT_HAZARD_THREAD, other, hit, NULL))
+	{
+		((ThreadScratchCollideFunc)hit->funcThCollide)(hit, other, hit->funcThCollide, NULL);
+	}
 	// NOTE(aalhendi): Keep this callback site separate from the mine callback.
 	// GCC 2.8.1 otherwise folds their identical tails. This compiler-only boundary
 	// emits no PSX instructions and is a no-op on native; the call stays typed C.
@@ -197,6 +203,10 @@ void RB_MovingExplosive_ThTick(struct Thread *t)
 
 		if (p != 0)
 		{
+			if (Chaos_IsHumanOwnedThread(t))
+			{
+				p->flagsAxis |= PARTICLE_AXIS_FLAG_HUMAN_EFFECT;
+			}
 			p->axis[0].startVal = (u32)inst->matrix.t[0] << 8;
 			p->axis[1].startVal = (u32)inst->matrix.t[1] << 8;
 			p->axis[2].startVal = (u32)inst->matrix.t[2] << 8;
@@ -276,7 +286,8 @@ void RB_MovingExplosive_ThTick(struct Thread *t)
 
 			// Temple teeth open when a weapon hits their level instance.
 			if (((u8)bspHitbox->flag & 0x80) && (instDef = bspHitbox->data.hitbox.instDef) != NULL && instDef->ptrInstance != NULL &&
-			    (s16)instDef->modelID == STATIC_TEETH)
+			    (s16)instDef->modelID == STATIC_TEETH &&
+			    !Chaos_DeferImpact(CHAOS_IMPACT_HAZARD_LEVEL, t, NULL, bspHitbox))
 			{
 				RB_Teeth_OpenDoor(instDef->ptrInstance);
 			}
@@ -332,12 +343,8 @@ void RB_MovingExplosive_ThTick(struct Thread *t)
 	hitInst = RB_Hazard_CollideWithDrivers(inst, tw->parentSafetyFrames, 0x2400, tw->instParent);
 	if (hitInst != NULL)
 	{
-		((struct Driver *)hitInst->thread->object)->damageColorTimer = 0x1e;
-		if ((struct Driver *)hitInst->thread->object == tw->driverTarget)
-		{
-			tw->flags |= 0x10;
-		}
-		goto explode;
+		RB_MovingExplosive_CollideDriver(t, hitInst->thread);
+		return;
 	}
 
 	hitInst = RB_Hazard_CollideWithBucket(inst, t, GAME_TRACKER->threadBuckets[MINE].thread, tw->parentSafetyFrames, 0x2400, tw->instParent);
@@ -372,6 +379,22 @@ void RB_MovingExplosive_ThTick(struct Thread *t)
 	{
 		tw->parentSafetyFrames--;
 	}
+}
+
+void RB_MovingExplosive_CollideDriver(struct Thread *t, struct Thread *driverThread)
+{
+	if (Chaos_DeferImpact(CHAOS_IMPACT_MOVING_DRIVER, t, driverThread, NULL))
+	{
+		return;
+	}
+	struct TrackerWeapon *tw = t->object;
+	struct Driver *driver = driverThread->object;
+	driver->damageColorTimer = 0x1e;
+	if (driver == tw->driverTarget)
+	{
+		tw->flags |= 0x10;
+	}
+	RB_MovingExplosive_Explode(t, t->inst, tw);
 }
 
 void RB_MovingExplosive_Explode(struct Thread *t, struct Instance *inst, struct TrackerWeapon *tw)

@@ -41,7 +41,7 @@
 // NOTE(aalhendi): Little-endian tag `CTRA` = CTR native Audio snapshot.
 #define NATIVE_AUDIO_STATE_MAGIC             0x41525443
 // v2: voices snapshot streaming decode state, not decoded-PCM indices -penta3
-#define NATIVE_AUDIO_STATE_VERSION           2
+#define NATIVE_AUDIO_STATE_VERSION           3
 #define NATIVE_AUDIO_ADSR_MIN                (-0x8000)
 #define NATIVE_AUDIO_ADSR_MAX                0x7fff
 #define NATIVE_AUDIO_ADSR_STEP_BIT           0x8000u
@@ -274,6 +274,8 @@ struct NativeAudioState
 {
 	b32 init;
 	b32 muted;
+	u32 pausedVoices;
+	b32 pauseXA;
 	b32 reverbEnabled;
 	b32 cdMixEnabled;
 	b32 cdReverbEnabled;
@@ -345,6 +347,8 @@ struct NativeAudioSnapshot
 	u32 size;
 	b32 init;
 	b32 muted;
+	u32 pausedVoices;
+	b32 pauseXA;
 	int spuAllocCursor;
 	b32 reverbEnabled;
 	b32 cdMixEnabled;
@@ -2495,6 +2499,8 @@ int NativeAudio_CaptureState(void *dst, int dstSize)
 	snapshot->size = sizeof(*snapshot);
 	snapshot->init = s_audio.init;
 	snapshot->muted = s_audio.muted;
+	snapshot->pausedVoices = s_audio.pausedVoices;
+	snapshot->pauseXA = s_audio.pauseXA;
 	snapshot->spuAllocCursor = s_audio.spu.allocCursor;
 	snapshot->reverbEnabled = s_audio.reverbEnabled;
 	snapshot->cdMixEnabled = s_audio.cdMixEnabled;
@@ -2590,6 +2596,8 @@ int NativeAudio_RestoreState(const void *src, int srcSize)
 
 	s_audio.init = restoreInit;
 	s_audio.muted = snapshot->muted;
+	s_audio.pausedVoices = snapshot->pausedVoices;
+	s_audio.pauseXA = snapshot->pauseXA;
 	s_audio.spu.allocCursor = snapshot->spuAllocCursor;
 	s_audio.reverbEnabled = snapshot->reverbEnabled;
 	s_audio.cdMixEnabled = snapshot->cdMixEnabled;
@@ -2648,6 +2656,14 @@ int NativeAudio_RestoreState(const void *src, int srcSize)
 	return 1;
 }
 
+void NativeAudio_SetPausedVoices(u32 voices, b32 pauseXA)
+{
+	NativeAudio_LockOutput();
+	s_audio.pausedVoices = voices;
+	s_audio.pauseXA = pauseXA;
+	NativeAudio_UnlockOutput();
+}
+
 internal void NativeAudio_MixFrame(s16 *outLeft, s16 *outRight)
 {
 	int mixLeft = 0;
@@ -2658,7 +2674,7 @@ internal void NativeAudio_MixFrame(s16 *outLeft, s16 *outRight)
 	int reverbWetRight = 0;
 	int i;
 
-	if (s_audio.xa.active && (s_audio.xaStream.sectors != NULL))
+	if (s_audio.xa.active && !s_audio.pauseXA && (s_audio.xaStream.sectors != NULL))
 	{
 		u64 outputFrameCount = NativeAudio_GetXAOutputFrameCount(s_audio.xa.frameCount, s_audio.xa.sampleRate);
 
@@ -2693,7 +2709,8 @@ internal void NativeAudio_MixFrame(s16 *outLeft, s16 *outRight)
 		{
 			struct NativeAudioVoice *voice = &s_audio.voices[i];
 
-			if (!voice->active || !voice->stream.valid || voice->adsrPhase == NATIVE_AUDIO_ADSR_OFF)
+			if ((s_audio.pausedVoices & (1u << i)) != 0 ||
+			    !voice->active || !voice->stream.valid || voice->adsrPhase == NATIVE_AUDIO_ADSR_OFF)
 			{
 				continue;
 			}

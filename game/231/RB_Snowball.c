@@ -17,7 +17,6 @@ void RB_Snowball_ThTick(struct Thread *t)
 	int pointIndex;
 	int frameIndex;
 	SVec3 rot;
-	struct Instance *hitInst;
 
 	snowObj = (struct Snowball *)t->object;
 	snowInst = t->inst;
@@ -63,11 +62,7 @@ void RB_Snowball_ThTick(struct Thread *t)
 			snowInst->matrix.t[1] = RB_Snowball_GetFrame(snowObj, frameIndex)->pos.y;
 			snowInst->matrix.t[2] = RB_Snowball_GetFrame(snowObj, frameIndex)->pos.z;
 
-			hitInst = RB_FindDriverCollision(snowInst, t);
-			if (hitInst != NULL)
-			{
-				RB_Hazard_HurtDriver(hitInst->thread->object, 3, 0, 0);
-			}
+			RB_Snowball_CollideDrivers(t);
 		}
 
 		snowObj->pointIndex = (snowObj->pointIndex + 1) % (snowObj->numPoints * 2);
@@ -75,6 +70,15 @@ void RB_Snowball_ThTick(struct Thread *t)
 		// NOTE(aalhendi): Native ticks return as callbacks; retail yields through FastRET.
 		return;
 	} while (1);
+}
+
+void RB_Snowball_CollideDrivers(struct Thread *t)
+{
+	struct Instance *hitInst = RB_FindDriverCollision(t->inst, t);
+	if (hitInst != NULL)
+	{
+		RB_Hazard_HurtDriver(hitInst->thread->object, 3, 0, 0);
+	}
 }
 
 void RB_Snowball_LInB(struct Instance *inst)

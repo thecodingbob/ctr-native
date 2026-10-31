@@ -1776,7 +1776,6 @@ static int RenderBucket_BuildDepthRange(struct Instance *inst, struct ModelFrame
                                         struct InstDrawPerPlayer *idpp, struct RenderBucketQueueState *queueState, int viewDepth, int normalDepthBias,
                                         int secondaryDepthBias, u32 *instFlags, const struct RenderBucketSplitState *split, const MATRIX *projectionMvp)
 {
-	(void)inst;
 	struct RenderBucketBounds bounds;
 	int primaryRange;
 	int secondaryRange;
@@ -1785,6 +1784,12 @@ static int RenderBucket_BuildDepthRange(struct Instance *inst, struct ModelFrame
 	int maxDepth;
 
 	RenderBucket_ProjectFrameBounds(frame, nextFrame, pb, projectionMvp, &bounds, &geomScreenHalf);
+	const bool coversKart = bounds.minX <= pb->rect.w / 2 && bounds.maxX >= pb->rect.w / 2 &&
+	    bounds.minY <= pb->rect.h / 2 && bounds.maxY >= pb->rect.h / 2;
+	if (Chaos_HideCameraInstance(pb, inst, bounds.minZ, coversKart))
+	{
+		return 0;
+	}
 	RenderBucket_UpdatePushBufferMetadata(pb, &bounds, instFlags);
 	if (RenderBucket_AcceptProjectedBounds(&bounds, pb, geomScreenHalf) == 0)
 	{

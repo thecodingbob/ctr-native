@@ -227,6 +227,14 @@ void RB_Plant_ThTick_Hungry(struct Thread *t)
 	hitbox.thread = t;
 	hitbox.bbox = plantBounds;
 
+	if (Chaos_IsFrozenWorldThread(t))
+	{
+		if (plantInst->animIndex != PlantAnim_Hungry)
+		{
+			return;
+		}
+		goto checkCollision;
+	}
 	do
 	{
 		if (plantInst->animIndex != PlantAnim_Hungry)
@@ -249,6 +257,7 @@ void RB_Plant_ThTick_Hungry(struct Thread *t)
 			}
 		}
 
+	checkCollision:
 		hitbox.bucket = GAME_TRACKER->threadBuckets[PLAYER].thread;
 		hitInst = LinkedCollide_Hitbox_Desc(&hitbox);
 		if (hitInst != NULL)
