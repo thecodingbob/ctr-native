@@ -427,10 +427,7 @@ void MainFrame_Tow_Update(struct GameTracker *gGT, struct GamepadSystem *gGamepa
 void StateZero(void);
 void startSP(void);
 
-void MainFreeze_ConfigDrawNPC105(s16 startX, s16 startY, s16 radius, int angleStep, s16 angle, char *color, u32 *otMem, struct PrimMem *primMem);
-void MainFreeze_ConfigSetupEntry(void);
 void MainFreeze_SafeAdvDestroy(void);
-void MainFreeze_MenuPtrOptions(struct RectMenu *menu);
 void MainFreeze_MenuPtrQuit(struct RectMenu *menu);
 void MainFreeze_MenuPtrDefault(struct RectMenu *menu);
 void MainFreeze_IfPressStart(void);
@@ -858,6 +855,7 @@ void MM_QuickRace_RequestStart(struct RectMenu *mainMenu);
 void MM_QuickRace_SetupRace(void);
 void MM_MenuProc_Main(struct RectMenu *mainMenu);
 void MM_ConfigMenu_Open(struct RectMenu *returnMenu, enum ConfigMenuContext context);
+b32 MM_ConfigMenu_IsActive(void);
 void MM_MenuProc_Audio(struct RectMenu *menu);
 void MM_AudioConfig_Leave(void);
 void MM_ToggleRows_PlayerCount(void);

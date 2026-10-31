@@ -1,6 +1,17 @@
 # Issue #93 — Options disponibili durante la gara
 
-Stato: piano concordato con l'utente; punti 1–4 implementati. Punti 5–6 da completare.
+Stato: piano concordato con l'utente; punti 1–5 implementati. Punto 6 da completare.
+
+## Avanzamento — punto 5
+
+- La voce Options di tutti i menu pausa ora usa `MM_ConfigMenu_Open(menu, CONFIG_MENU_PAUSE)`; il menu principale usava già l'apertura condivisa. Conservati chiamante e riga selezionata, senza aggiungere una voce Config.
+- La pulizia `MainFreeze_SafeAdvDestroy` viene eseguita all'apertura dalla pausa; al ritorno il normale aggiornamento della pausa hub resta operativo. Il codice hub viene chiamato soltanto quando l'overlay è caricato.
+- Aggiunta `MM_ConfigMenu_IsActive` e aggiornata l'eccezione nel gestore globale di Start: Options gestisce il ritorno alle sezioni/alla pausa senza riprendere gara, audio o sfondo catturato. Resume conserva il percorso originale.
+- Rimossi menu audio/controller originale, callback, helper e schermate JogCon/NegCon raggiungibili esclusivamente da quel menu. Verificati i riferimenti: il layer input nativo emette pad analogici standard e Controls gestisce binding/deadzone. Conservati i campi dei layout residenti, compreso lo slot menu retail e la sua rilocazione checkpoint, senza inizializzarne il callback rimosso.
+- Aggiornati README e guida Controls: accesso comune principale/pausa, valori grigi, opzioni modificabili, ritorno, Audio e sistemi di persistenza.
+- `test_config_menu` include ora il vero `MainFreeze.c`: 1191 controlli passati, inclusi accessi Arcade, Time Trial, Battle, Adventure hub/gara/coppa e coppa Arcade, 1–4 giocatori, Chaos attivo/disattivo, pulizia hub, ritorno e Resume. Le righe menu nei test sono fixture; presentazione, input globale e resa effettiva richiedono la verifica in gioco del punto 6.
+- Tutte le 28 suite risultano passate: 27 nella sessione completa e Options dopo la correzione della fixture di aggiornamento hub. Compilazione unity x86, link e `--version` riusciti. Build di verifica: `build/ctr_native_expanded_issue93_phase5.exe` (eseguibile standard aperto).
+- Da verificare in gioco al punto 6: pausa → Options → sezioni → ritorno → Resume, audio/capture, sfondo e grafica runtime, split-screen e Adventure/Chaos.
 
 ## Avanzamento — punto 4
 

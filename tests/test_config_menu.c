@@ -3,6 +3,7 @@
 
 struct sData sdata_static;
 struct Data data;
+struct OverlayDATA_232 D232;
 #include <platform/native_config.c>
 
 static struct GameTracker s_tracker;
@@ -27,6 +28,12 @@ static int s_stereo;
 static int s_previewRow;
 static bool s_previewPlaying;
 static char *s_strings[LNG_STEREO + 1];
+static bool s_hubLoaded;
+static int s_hubDestroys;
+static int s_hubUpdates;
+static int s_unpauses;
+static int s_backgroundDeactivations;
+static struct RectMenu *s_chaosCaller;
 
 // Count menu persistence calls without touching any real configuration file.
 static void ConfigMenuTest_Save(void);
@@ -36,6 +43,7 @@ static void ConfigMenuTest_Save(void);
 #include <game/230/MM_AudioConfig.c>
 #include <game/UI/UI_VolumeSlider.c>
 #include <game/RaceConfig.c>
+#include <game/MAIN/MainFreeze.c>
 
 // The menu has no public page/scroll accessor; inspect those internals only to
 // distinguish staying at the section list from accidentally reopening a page.
@@ -47,6 +55,21 @@ const char *NativeAssets_GetBaseDir(void)
 	return NULL;
 }
 void NativeControls_Save(void) { s_controlsSaves++; }
+void GhostTape_Destroy(void) {}
+void MainRaceTrack_RequestLoad(s16 level) { (void)level; }
+b32 RaceFlag_IsFullyOnScreen(void) { return false; }
+b32 RaceFlag_IsFullyOffScreen(void) { return true; }
+void RaceFlag_BeginTransition(s32 direction) { (void)direction; }
+void ElimBG_Activate(struct GameTracker *tracker) { (void)tracker; }
+void ElimBG_Deactivate(struct GameTracker *tracker) { (void)tracker; s_backgroundDeactivations++; }
+void MainFrame_TogglePauseAudio(b32 paused) { s_unpauses += !paused; }
+void RECTMENU_Show(struct RectMenu *menu) { sdata->ptrDesiredMenu = menu; }
+void RECTMENU_Hide(struct RectMenu *menu) { (void)menu; }
+b32 LOAD_IsOpen_AdvHub(void) { return s_hubLoaded; }
+void AH_Pause_Destroy(void) { s_hubDestroys++; }
+void AH_Pause_Update(void) { s_hubUpdates++; }
+b32 VehPickupItem_MaskBoolGoodGuy(struct Driver *driver) { (void)driver; return true; }
+void MM_ChaosConfig_OpenReadOnly(struct RectMenu *menu) { s_chaosCaller = menu; }
 void NativeControls_CancelCapture(void) { s_capturing = false; }
 s32 howl_VolumeGet(s32 type) { return s_volumes[type]; }
 void howl_VolumeSet(s32 type, u8 volume) { s_volumes[type] = volume; }
@@ -436,6 +459,93 @@ static void TestAudio(enum ConfigMenuContext context, int gameMode)
 	s_observedLabel = NULL;
 }
 
+static void SetupPauseRows(struct RectMenu *menu, struct MenuRow *rows, int count)
+{
+	for (int row = 0; row < count - 1; row++)
+	{
+		rows[row] = (struct MenuRow){LNG_RESUME, 0, 0, 0, 0};
+	}
+	rows[2].stringIndex = LNG_OPTIONS;
+	rows[count - 1].stringIndex = RECTMENU_STRING_NONE;
+	menu->rows = rows;
+}
+
+static void TestPauseEntryPoints(void)
+{
+	SetupPauseRows(&data.menuAdvHub, data.rowsAdvHub, len(data.rowsAdvHub));
+	SetupPauseRows(&data.menuAdvRace, data.rowsAdvRace, len(data.rowsAdvRace));
+	SetupPauseRows(&data.menuAdvCup, data.rowsAdvCup, len(data.rowsAdvCup));
+	SetupPauseRows(&data.menuBattle, data.rowsBattle, len(data.rowsBattle));
+	SetupPauseRows(&data.menuArcadeCup, data.rowsArcadeCup, len(data.rowsArcadeCup));
+	SetupPauseRows(&data.menuArcadeRace, data.rowsArcadeRace, len(data.rowsArcadeRace));
+	const int modes[] = {ARCADE_MODE, TIME_TRIAL, BATTLE_MODE, ADVENTURE_MODE,
+	                     ADVENTURE_MODE | ADVENTURE_ARENA, ADVENTURE_MODE | ADVENTURE_CUP,
+	                     ARCADE_MODE};
+	for (int index = 0; index < (int)len(modes); index++)
+	{
+		for (int players = 1; players <= PLATFORM_INPUT_PAD_COUNT; players++)
+		{
+			for (int chaos = 0; chaos <= 1; chaos++)
+			{
+				s_tracker.gameMode1 = modes[index] | PAUSE_1;
+				s_tracker.gameMode2 = index == (int)len(modes) - 1 ? CUP_ANY_KIND : 0;
+				s_tracker.numPlyrCurrGame = players;
+				s_tracker.cooldownfromPauseUntilUnpause = 0;
+				sdata->chaosSettings.armed = chaos;
+				s_hubLoaded = true;
+				s_hubDestroys = 0;
+				s_hubUpdates = 0;
+				s_unpauses = 0;
+				s_backgroundDeactivations = 0;
+				struct RectMenu *caller = MainFreeze_GetMenuPtr();
+				caller->rowSelected = 2;
+				caller->funcState = RECTMENU_FUNC_STATE_INPUT;
+				sdata->ptrActiveMenu = caller;
+				const int mode = s_tracker.gameMode1;
+				MainFreeze_MenuPtrDefault(caller);
+				CTR_TEST_CHECK(sdata->ptrDesiredMenu == &g_configMenu && s_configSession.context == CONFIG_MENU_PAUSE,
+				               "every pause menu opens shared Options in pause context");
+				CTR_TEST_CHECK(s_hubDestroys == ((mode & ADVENTURE_ARENA) != 0),
+				               "opening Options cleans up Adventure hub presentation only in the hub");
+				sdata->ptrActiveMenu = sdata->ptrDesiredMenu;
+				CTR_TEST_CHECK(MM_ConfigMenu_IsActive(), "the global Start handler can recognize shared Options");
+				sdata->AnyPlayerTap = BTN_START;
+				SetInput(BTN_START, BTN_START);
+				UpdateMenu();
+				CTR_TEST_CHECK(sdata->ptrDesiredMenu == caller && caller->rowSelected == 2,
+				               "Start returns to the exact pause menu and Options row");
+				CTR_TEST_CHECK(s_tracker.gameMode1 == mode && s_unpauses == 0 && s_backgroundDeactivations == 0,
+				               "Options exit keeps the game, audio and captured background paused");
+				CTR_TEST_CHECK(sdata->AnyPlayerTap == 0, "Start is consumed before returning to pause");
+				sdata->ptrActiveMenu = caller;
+				CTR_TEST_CHECK(!MM_ConfigMenu_IsActive(), "Start can resume again after returning to the pause menu");
+				caller->funcState = RECTMENU_FUNC_STATE_UPDATE;
+				MainFreeze_MenuPtrDefault(caller);
+				CTR_TEST_CHECK(s_hubUpdates == ((mode & ADVENTURE_ARENA) != 0),
+				               "returning to Adventure hub pause restores its presentation update");
+				caller->funcState = RECTMENU_FUNC_STATE_INPUT;
+				caller->rowSelected = 0;
+				MainFreeze_MenuPtrDefault(caller);
+				CTR_TEST_CHECK((s_tracker.gameMode1 & PAUSE_ALL) == 0 && s_unpauses == 1 && s_backgroundDeactivations == 1,
+				               "Resume still unpauses the game and audio and releases the captured background");
+			}
+		}
+	}
+
+	s_tracker.gameMode1 = ADVENTURE_MODE | ADVENTURE_ARENA | PAUSE_1;
+	s_hubLoaded = false;
+	s_hubDestroys = 0;
+	data.menuAdvHub.rowSelected = 2;
+	MainFreeze_MenuPtrDefault(&data.menuAdvHub);
+	CTR_TEST_CHECK(s_hubDestroys == 0, "Options does not call unloaded Adventure hub code");
+	s_hubLoaded = true;
+	sdata->chaosSettings.armed = true;
+	struct RectMenu *caller = MainFreeze_GetMenuPtr();
+	caller->rowSelected = len(data.rowsAdvHub) - 1;
+	MainFreeze_MenuPtrDefault(caller);
+	CTR_TEST_CHECK(s_chaosCaller == caller, "Chaos Rules keeps its independent pause-menu entry point");
+}
+
 int main(void)
 {
 	// Other unity-build menus use these shared helpers; this suite tests Config only.
@@ -479,5 +589,7 @@ int main(void)
 	TestAudio(CONFIG_MENU_MAIN, MAIN_MENU);
 	CTR_TEST_SECTION("Audio while paused");
 	TestAudio(CONFIG_MENU_PAUSE, ARCADE_MODE | PAUSE_1);
+	CTR_TEST_SECTION("Pause entry points, hub cleanup, return and Resume");
+	TestPauseEntryPoints();
 	return CtrTest_Summary();
 }

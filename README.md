@@ -193,16 +193,29 @@ remains a startup error.
 
 ## Configuration
 
-All settings can be changed at runtime from the in-game config menu
-(Options → Config). This is the recommended way — changes take effect
-immediately and are saved automatically.
+Open **Options** from the main menu or any race/battle/Adventure pause menu.
+Both entry points use the same screen. During a pause, unavailable settings
+remain visible and selectable, with their current values in gray; confirm and
+Left/Right do not change them.
 
-For reference, the settings are persisted to `build/config.ini` (standard INI
-format). An example template is at `default_config.ini` in the project root.
+Some setting are read-only during pauses; edit them from the main menu.
 
-Input bindings and player assignment are kept separately in `build/controls.ini`
-and are edited from the **Controls** section of the same menu. See
+`Triangle` or `Start` goes back one screen. Leaving Options returns to the
+calling menu and its selected row. The game stays paused until you resume from
+the pause menu.
+
+Configuration changes apply at runtime and are saved when leaving Options.
+They are persisted to `build/config.ini` (standard INI format). An example
+template is at `default_config.ini` in the project root.
+
+Input bindings, deadzones, player assignment and per-player vibration are kept
+separately in `build/controls.ini` and edited from **Controls**. See
 [docs/features/CONTROLS.md](docs/features/CONTROLS.md).
+
+The **Audio** section contains the original effects/music/voice volume sliders
+and mono/stereo setting. Left/Right adjusts volumes; confirm switches mono/stereo.
+Previews stop when leaving Audio. In the main menu, Music uses the menu's existing
+music as feedback. Audio settings use the game's normal memory-card save system.
 
 ### General
 

@@ -1654,6 +1654,7 @@ struct Data
 
 	// 0x2C bytes large
 	// 80084190
+	// Unused retail Options menu slot, retained for the resident layout.
 	struct RectMenu menuRacingWheelConfig;
 
 	// 0x800841BC

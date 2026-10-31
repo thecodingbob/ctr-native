@@ -9,6 +9,8 @@ remembered in `controls.ini`.
 
 Options → **Controls**. The title reads `CONTROLS P1` through
 `CONTROLS P4`, so you always know whose controls you are looking at.
+The same screen is available through **Options** in pause menus. Returning to
+the pause menu keeps the game paused until you resume it.
 
 ![The Controls screen for player 1: L1 and R1 hints flank the CONTROLS P1 title, a DEVICE row
 shows the assigned controller, one row per button lists its current binding, and Restore Defaults

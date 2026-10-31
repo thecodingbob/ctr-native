@@ -155,6 +155,11 @@ static void Config_Close(void)
 	sdata->ptrDesiredMenu = s_configSession.returnMenu;
 }
 
+b32 MM_ConfigMenu_IsActive(void)
+{
+	return sdata->ptrActiveMenu == &g_configMenu;
+}
+
 static void Config_UpdateSlider(const struct GamepadBuffer *pad, int *value,
                                 const int min, const int max, const int step)
 {
