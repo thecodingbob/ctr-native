@@ -33,6 +33,7 @@ typedef struct {
     bool increaseDrawDistance;  // false = off (default), true = render NATIVE_DRAW_DISTANCE_SCALE x farther (platform/native_draw_distance.h)
     bool disableSplitScreenLod; // false = off (default), true = use full-detail split-screen assets and effects
     bool fullscreen;            // false = windowed, true = borderless fullscreen
+    bool vsync;                 // false = off (default), true = synchronize presentation to the display
     int aspectRatio;            // 0 = 4:3 (default), 1 = 16:9, 2 = 16:10, 3 = 21:10
     bool dithering;             // true = dithering enabled (default), false = disabled
     int renderScale;            // 1 = original, 2/3/4 = fixed multiples, 0 = native window

@@ -274,6 +274,7 @@ weapon icons and battle points/lives icons will be missing on those tracks.
 | `increase_draw_distance`   | `true` / `false`                       | `false`   | Extends viewing, model LOD, and texture detail distances to 4x the original distances                   |
 | `disable_split_screen_lod` | `true` / `false`                       | `false`   | Use full-detail tracks, models, and effects in split-screen                                             |
 | `fullscreen`               | `true` / `false`                       | `false`   | Borderless fullscreen on startup                                                                        |
+| `vsync`                    | `true` / `false`                       | `false`   | Synchronize presentation to the display refresh; applies immediately, gameplay timing stays unchanged    |
 | `aspect_ratio`             | `4:3`, `16:9`, `16:10`, `21:9`         | `4:3`     | Display aspect ratio                                                                                    |
 | `dithering`                | `true` / `false`                       | `true`    | Enable color dithering                                                                                  |
 | `render_scale`             | `Original`, `2X`, `3X`, `4X`, `Native` | `Native`  | Internal render resolution; Native follows the presentation viewport                                    |
