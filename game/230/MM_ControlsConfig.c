@@ -519,7 +519,7 @@ static void Controls_DrawHint(const char *text, int x, bool rightJustify, uint32
 {
 	const int textWidth = DecalFont_GetLineWidth((char *)text, FONT_SMALL);
 	const int textX = rightJustify ? (x - textWidth) : x;
-	const int textY = FULLSCREEN_MENU_TITLE_Y + FULLSCREEN_MENU_TITLE_BASELINE_NUDGE_Y;
+	const int textY = FullScreenMenu_TitleY(s_rowCount) + FULLSCREEN_MENU_TITLE_BASELINE_NUDGE_Y;
 
 	DecalFont_DrawLineOT((char *)text, textX, textY, FONT_SMALL, ORANGE, ot);
 }
@@ -645,13 +645,11 @@ void MM_Controls_ResetNavigation(void)
 	NativeControls_CancelCapture();
 }
 
-// Keeps the cursor and the scroll origin in step: a move resets the scroll so the cursor
-// stays visible, and so does a player switch.
+// Moves the cursor with the same minimal scrolling as the other full-screen menus, so the
+// list only scrolls once the cursor reaches the edge of the visible rows.
 static void Controls_MoveSelection(struct RectMenu *menu, int delta)
 {
 	menu->rowSelected = (s16)FullScreenMenu_MoveRow(&s_scroll, menu->rowSelected, delta, s_rowCount);
-	// Controls anchors the selection at the top instead of using minimal scrolling.
-	s_scroll.offset = menu->rowSelected;
 	OtherFX_Play(0, 1);
 }
 
@@ -752,7 +750,7 @@ static void Controls_DrawTitle(uint32_t *ot)
 	// Uppercase here, unlike the section name used in the options list: the retail
 	// titles this shares a font with are all caps.
 	snprintf(s_titleBuffer, sizeof(s_titleBuffer), "CONTROLS P%d", s_player + 1);
-	FullScreenMenu_DrawTitle(s_titleBuffer, 0, ot);
+	FullScreenMenu_DrawTitle(s_titleBuffer, s_rowCount, 0, ot);
 }
 
 void MM_MenuProc_Controls(struct RectMenu *menu)
@@ -783,5 +781,5 @@ void MM_MenuProc_Controls(struct RectMenu *menu)
 	Controls_DrawHint("R1", FULLSCREEN_MENU_VALUE_X, true, ot);
 	const int drawDevice = NativeControls_GetPlayerDevice(s_player);
 	FullScreenMenu_DrawRows(&s_scroll, s_rowCount, menu->rowSelected, Controls_DrawRow, &drawDevice, gGT, ot);
-	FullScreenMenu_DrawFrame(ot);
+	FullScreenMenu_DrawFrame(s_rowCount);
 }

@@ -98,6 +98,7 @@ void RECTMENU_ClearInput(void)
 }
 
 int OtherFX_Play(u32 id, int flags) { (void)id; (void)flags; return 0; }
+s32 DecalFont_GetLineWidth(char *text, s16 font) { (void)font; return (s32)strlen(text) * 8; }
 void DecalFont_DrawLineOT(char *text, s16 x, s16 y, s16 font, s16 flags, u32 *ot)
 {
 	(void)y; (void)font; (void)ot;
@@ -125,6 +126,7 @@ void CTR_Box_DrawClearBox(const RECT *rect, const Color *color, s32 transparency
 {
 	(void)rect; (void)color; (void)transparency; (void)ot; (void)prims;
 }
+void RECTMENU_DrawFullRect(struct RectMenu *menu, RECT *rect) { (void)menu; (void)rect; }
 
 void CTR_Box_DrawSolidBox(RECT *rect, const Color *color, u32 *ot, struct PrimMem *prims)
 {
@@ -242,6 +244,11 @@ static void TestAvailability(void)
 		"skip_hints", "boss_cutscenes", "increase_draw_distance", "dithering",
 		"fullscreen", "vsync", "aspect_ratio", "render_scale", "smooth_scaling",
 		"fxaa", "texture_filtering", "pgxp",
+		"allow_oxide_station_multiplayer", "allow_race_tracks_in_battle",
+		"extended_multiplayer", "bot_selection_mode", "mask_mode",
+		"extended_character_select", "multiplayer_adventure", "save_anywhere",
+		"chaos_mode", "unlock_all_characters", "unlock_nitros_oxide",
+		"disable_split_screen_lod",
 	};
 	for (int i = 0; i < g_numConfigEntries; i++)
 	{

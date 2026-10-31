@@ -98,6 +98,7 @@ void RECTMENU_DrawOuterRect_Edge(RECT *rect, const Color *color, u32 flags, u32 
 {
 	(void)rect; (void)color; (void)flags; (void)ot;
 }
+void RECTMENU_DrawFullRect(struct RectMenu *menu, RECT *rect) { (void)menu; (void)rect; }
 void CTR_Box_DrawClearBox(const RECT *rect, const Color *color, s32 transparency, u32 *ot, struct PrimMem *prims)
 {
 	(void)rect; (void)color; (void)transparency; (void)ot; (void)prims;
@@ -221,12 +222,46 @@ static void TestLegacyGameOptions(void)
 	               "loading and saving memory-card options cannot overwrite Controls vibration preferences");
 }
 
+// The list must not scroll on the first steps: it only moves once the cursor leaves the
+// visible window, so the highlight does not run away from the rows while browsing.
+static void TestScroll(void)
+{
+	s_player = 0;
+	s_menu.rowSelected = 0;
+	s_scroll.offset = 0;
+	for (int player = 0; player < PLATFORM_INPUT_PAD_COUNT; player++)
+	{
+		s_devices[player] = player == 0 ? 0 : NATIVE_CONTROLS_NO_DEVICE;
+		s_rumble[player] = true;
+	}
+	Press(0);
+	CTR_TEST_CHECK(s_scroll.offset == 0, "Controls opens with the list on the first row");
+	Press(BTN_DOWN);
+	CTR_TEST_CHECK(s_menu.rowSelected == 1 && s_scroll.offset == 0,
+	               "the first step keeps the list still instead of scrolling it");
+	for (int step = 1; step < FULLSCREEN_MENU_MAX_VISIBLE_ROWS - 1; step++)
+	{
+		Press(BTN_DOWN);
+	}
+	CTR_TEST_CHECK(s_menu.rowSelected == FULLSCREEN_MENU_MAX_VISIBLE_ROWS - 1 && s_scroll.offset == 0,
+	               "the list stays put until the cursor reaches the last visible row");
+	Press(BTN_DOWN);
+	CTR_TEST_CHECK(s_menu.rowSelected == FULLSCREEN_MENU_MAX_VISIBLE_ROWS && s_scroll.offset == 1,
+	               "one more step scrolls the list by a single row");
+
+	s_menu.rowSelected = (s16)(s_rowCount - 1);
+	Press(0);
+	CTR_TEST_CHECK(s_scroll.offset == s_rowCount - FULLSCREEN_MENU_MAX_VISIBLE_ROWS,
+	               "the last row clamps the scroll so the list stays full");
+}
+
 int main(void)
 {
 	(void)FullScreenMenu_RowActivate;
 	(void)FullScreenMenu_RowStep;
 	(void)FullScreenMenu_DrawRowValue;
 	(void)FullScreenMenu_DrawScreen;
+	(void)FullScreenMenu_DrawSectionScreen;
 	(void)FullScreenMenu_NavScroll;
 	sdata->gGT = &s_tracker;
 	sdata->gGamepads = &sdata->gamepadSystem;
@@ -239,6 +274,8 @@ int main(void)
 	TestUnavailableDevices();
 	CTR_TEST_SECTION("Device changes and restoring defaults");
 	TestDeviceChanges();
+	CTR_TEST_SECTION("Minimal list scrolling");
+	TestScroll();
 	TestLegacyGameOptions();
 	return CtrTest_Summary();
 }

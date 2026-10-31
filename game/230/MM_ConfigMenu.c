@@ -212,13 +212,6 @@ static void Config_DrawRow(const void *context, int row, int y, bool selected, u
 	Config_DrawValue(&entries[row], y, ot);
 }
 
-static void Config_DrawSectionRow(const void *context, int row, int y, bool selected, uint32_t *ot)
-{
-	(void)context;
-	(void)selected;
-	FullScreenMenu_DrawRowLabel(g_configEntries[s_sectionToEntry[row]].section, y, ot);
-}
-
 static void MM_MenuProc_Config(struct RectMenu *menu)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -341,7 +334,12 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 			s_configScroll.offset = 0;
 		}
 
-		FullScreenMenu_DrawScreen(sdata->lngStrings[LNG_OPTIONS], 0, &s_configScroll,
-		                          s_numSections, menu->rowSelected, Config_DrawSectionRow, NULL, gGT, ot);
+		const char *sections[CONFIG_MAX_SECTIONS];
+		for (int section = 0; section < s_numSections; section++)
+		{
+			sections[section] = g_configEntries[s_sectionToEntry[section]].section;
+		}
+		FullScreenMenu_DrawSectionScreen(sdata->lngStrings[LNG_OPTIONS], sections, &s_configScroll,
+		                                s_numSections, menu->rowSelected, gGT, ot);
 	}
 }
