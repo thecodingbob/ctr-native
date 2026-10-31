@@ -404,33 +404,12 @@ void VehEmitter_Terrain_Ground(struct Driver *d, struct ParticleEmitter *emSet)
 
 	while (numTires != 0)
 	{
-		switch (numTires)
-		{
-		case 4:
-			gteValue = CTR_PackS16Pair(VehPhysForce_ScaleValue(driver, VEH_EMITTER_TIRE_LEFT_X), VehPhysForce_ScaleValue(driver, VEH_EMITTER_TERRAIN_TIRE_Y));
-			MTC2(gteValue, 0);
-			gteValue = VehPhysForce_ScaleValue(driver, VEH_EMITTER_TIRE_FRONT_Z);
-			MTC2(gteValue, 1);
-			break;
-		case 3:
-			gteValue = CTR_PackS16Pair(VehPhysForce_ScaleValue(driver, VEH_EMITTER_TIRE_RIGHT_X), VehPhysForce_ScaleValue(driver, VEH_EMITTER_TERRAIN_TIRE_Y));
-			MTC2(gteValue, 0);
-			gteValue = VehPhysForce_ScaleValue(driver, VEH_EMITTER_TIRE_FRONT_Z);
-			MTC2(gteValue, 1);
-			break;
-		case 2:
-			gteValue = CTR_PackS16Pair(VehPhysForce_ScaleValue(driver, VEH_EMITTER_TIRE_LEFT_X), VehPhysForce_ScaleValue(driver, VEH_EMITTER_TERRAIN_TIRE_Y));
-			MTC2(gteValue, 0);
-			gteValue = VehPhysForce_ScaleValue(driver, VEH_EMITTER_TIRE_BACK_Z);
-			MTC2(gteValue, 1);
-			break;
-		default:
-			gteValue = CTR_PackS16Pair(VehPhysForce_ScaleValue(driver, VEH_EMITTER_TIRE_RIGHT_X), VehPhysForce_ScaleValue(driver, VEH_EMITTER_TERRAIN_TIRE_Y));
-			MTC2(gteValue, 0);
-			gteValue = VehPhysForce_ScaleValue(driver, VEH_EMITTER_TIRE_BACK_Z);
-			MTC2(gteValue, 1);
-			break;
-		}
+		const int tireX = numTires == 4 || numTires == 2 ? VEH_EMITTER_TIRE_LEFT_X : VEH_EMITTER_TIRE_RIGHT_X;
+		const int tireZ = numTires >= 3 ? VEH_EMITTER_TIRE_FRONT_Z : VEH_EMITTER_TIRE_BACK_Z;
+		gteValue = CTR_PackS16Pair(VehPhysForce_ScaleValue(driver, tireX), VehPhysForce_ScaleValue(driver, VEH_EMITTER_TERRAIN_TIRE_Y));
+		MTC2(gteValue, 0);
+		gteValue = VehPhysForce_ScaleValue(driver, tireZ);
+		MTC2(gteValue, 1);
 
 		CTR_PSX_GTE_PIPELINE_DELAY();
 		gte_rtv0();

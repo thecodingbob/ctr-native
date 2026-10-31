@@ -9,8 +9,6 @@ enum
 	DOT_LIGHT_SCALE_2P = 0xaaa,
 	DOT_LIGHT_SCALE_3P4P = FP(0.5),
 
-	DOT_LIGHT_STATE_OFF = 0,
-	DOT_LIGHT_STATE_ON = 1,
 	DOT_LIGHT_GREEN_ICON_OFFSET = 2,
 
 	DOT_LIGHT_TIMER_SHOW_MIN = -0x3bf,
@@ -28,6 +26,9 @@ enum
 	DOT_LIGHT_FX_VOL = 0,
 };
 
+static const s32 s_dotLightThresholds[DOT_LIGHT_COUNT] = {
+	DOT_LIGHT_TIMER_RED1, DOT_LIGHT_TIMER_RED2, DOT_LIGHT_TIMER_RED3, DOT_LIGHT_TIMER_GREEN,
+};
 
 static int DotLights_Scale(const struct GameTracker *gGT)
 {
@@ -38,18 +39,12 @@ static int DotLights_Scale(const struct GameTracker *gGT)
 	return gGT->numPlyrCurrGame == 2 ? DOT_LIGHT_SCALE_2P : DOT_LIGHT_SCALE_3P4P;
 }
 
-static void DotLights_Video(struct GameTracker *gGT, s32 red1, s32 red2, s32 red3, s32 green, s32 timer, u32 players)
+static void DotLights_Video(struct GameTracker *gGT, s32 timer, u32 players)
 {
 	if (gGT->numPlyrCurrGame == 0)
 	{
 		return;
 	}
-
-	s32 iconState[DOT_LIGHT_COUNT];
-	iconState[0] = red1;
-	iconState[1] = red2;
-	iconState[2] = red3;
-	iconState[DOT_LIGHT_GREEN_INDEX] = green;
 
 	const int scale = DotLights_Scale(gGT);
 	for (s32 playerIndex = 0; playerIndex < gGT->numPlyrCurrGame; playerIndex++)
@@ -71,7 +66,8 @@ static void DotLights_Video(struct GameTracker *gGT, s32 red1, s32 red2, s32 red
 
 		for (s32 lightIndex = 0; lightIndex < DOT_LIGHT_COUNT; lightIndex++)
 		{
-			s32 iconIndex = iconState[lightIndex] + (DOT_LIGHT_GREEN_ICON_OFFSET * (lightIndex == DOT_LIGHT_GREEN_INDEX));
+			const int iconIndex = (timer <= s_dotLightThresholds[lightIndex]) +
+			    DOT_LIGHT_GREEN_ICON_OFFSET * (lightIndex == DOT_LIGHT_GREEN_INDEX);
 			DecalHUD_DrawPolyFT4(gGT->trafficLightIcon[iconIndex], newPosX + (sizeX * lightIndex), newPosY, &gGT->backBuffer->primMem, pb->ptrOT, 0, scale);
 		}
 	}
@@ -111,71 +107,23 @@ bool DotLights_GetBounds(struct GameTracker *gGT, int player, s32 timer, RECT *b
 
 void DotLights_Sequence(struct GameTracker *gGT, s32 timer, s32 previous, u32 players)
 {
-	s32 red1;
-	s32 red2;
-	s32 red3;
-	s32 green;
-
-	if (timer >= DOT_LIGHT_TIMER_SHOW_MIN)
+	if (timer < DOT_LIGHT_TIMER_SHOW_MIN)
 	{
-		if (timer < DOT_LIGHT_TIMER_GREEN + 1)
-		{
-			if (previous > DOT_LIGHT_TIMER_GREEN)
-			{
-				OtherFX_Play(DOT_LIGHT_FX_GREEN, DOT_LIGHT_FX_VOL);
-			}
-
-			red1 = DOT_LIGHT_STATE_ON;
-			red2 = DOT_LIGHT_STATE_ON;
-			red3 = DOT_LIGHT_STATE_ON;
-			green = DOT_LIGHT_STATE_ON;
-		}
-		else if (timer < DOT_LIGHT_TIMER_RED3 + 1)
-		{
-			if (previous > DOT_LIGHT_TIMER_RED3)
-			{
-				OtherFX_Play(DOT_LIGHT_FX_COUNTDOWN, DOT_LIGHT_FX_VOL);
-			}
-
-			red1 = DOT_LIGHT_STATE_ON;
-			red2 = DOT_LIGHT_STATE_ON;
-			red3 = DOT_LIGHT_STATE_ON;
-			green = DOT_LIGHT_STATE_OFF;
-		}
-		else if (timer < DOT_LIGHT_TIMER_RED2 + 1)
-		{
-			if (previous > DOT_LIGHT_TIMER_RED2)
-			{
-				OtherFX_Play(DOT_LIGHT_FX_COUNTDOWN, DOT_LIGHT_FX_VOL);
-			}
-
-			red1 = DOT_LIGHT_STATE_ON;
-			red2 = DOT_LIGHT_STATE_ON;
-			red3 = DOT_LIGHT_STATE_OFF;
-			green = DOT_LIGHT_STATE_OFF;
-		}
-		else if (timer < DOT_LIGHT_TIMER_RED1 + 1)
-		{
-			if (previous > DOT_LIGHT_TIMER_RED1)
-			{
-				OtherFX_Play(DOT_LIGHT_FX_COUNTDOWN, DOT_LIGHT_FX_VOL);
-			}
-
-			red1 = DOT_LIGHT_STATE_ON;
-			red2 = DOT_LIGHT_STATE_OFF;
-			red3 = DOT_LIGHT_STATE_OFF;
-			green = DOT_LIGHT_STATE_OFF;
-		}
-		else
-		{
-			red1 = DOT_LIGHT_STATE_OFF;
-			red2 = DOT_LIGHT_STATE_OFF;
-			red3 = DOT_LIGHT_STATE_OFF;
-			green = DOT_LIGHT_STATE_OFF;
-		}
-
-		DotLights_Video(gGT, red1, red2, red3, green, timer, players);
+		return;
 	}
+	// At most one cue per frame, even when a long frame skips several lights.
+	for (int light = DOT_LIGHT_GREEN_INDEX; light >= 0; light--)
+	{
+		if (timer <= s_dotLightThresholds[light])
+		{
+			if (previous > s_dotLightThresholds[light])
+			{
+				OtherFX_Play(light == DOT_LIGHT_GREEN_INDEX ? DOT_LIGHT_FX_GREEN : DOT_LIGHT_FX_COUNTDOWN, DOT_LIGHT_FX_VOL);
+			}
+			break;
+		}
+	}
+	DotLights_Video(gGT, timer, players);
 }
 
 void DotLights_AudioAndVideo(struct GameTracker *gGT)

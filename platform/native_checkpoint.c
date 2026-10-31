@@ -1441,6 +1441,10 @@ internal void NativeCheckpoint_RelocateHowlLists(const struct NativeCheckpointHe
 
 internal void NativeCheckpoint_RelocateSDataPointers(const struct NativeCheckpointHeader *oldHeader, const struct NativeCheckpointHeader *liveHeader)
 {
+	for (u32 i = 0; i < len(sdata_static.chaosRuntime.restart); i++)
+	{
+		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.chaosRuntime.restart[i].mask);
+	}
 	for (u32 i = 0; i < len(sdata_static.chaosCharacterModels); i++)
 	{
 		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.chaosCharacterModels[i]);

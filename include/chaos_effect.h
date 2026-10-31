@@ -17,8 +17,7 @@
 typedef enum {
 	CHAOS_EFFECT_NONE = -1,
 
-	// Tier A: continuous driving/input modifiers. Restore Chaos-owned baseline
-	// constants once per driver before applying active overrides in order.
+	// Tier A: continuous driving/input modifiers applied to live values.
 	CHAOS_EFFECT_MIRROR_MIRROR = 0,
 	CHAOS_EFFECT_GROUNDED = 1,
 	CHAOS_EFFECT_TOTALLY_SOBER = 2,

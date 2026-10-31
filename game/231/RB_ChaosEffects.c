@@ -355,7 +355,6 @@ void Chaos_CollideFrozenThread(struct Thread *thread)
 	{
 		return;
 	}
-	const bool previousAudio = Chaos_SetHumanAudio(true);
 	if (thread->funcThTick == RB_GenericMine_ThTick)
 	{
 		const struct MineWeapon *mine = thread->object;
@@ -425,7 +424,6 @@ void Chaos_CollideFrozenThread(struct Thread *thread)
 			RB_CheckHazardCollisions(thread->inst, thread, 4, 0x10000, 0);
 		}
 	}
-	Chaos_SetHumanAudio(previousAudio);
 }
 
 bool Chaos_ShouldFreezeParticle(const struct Particle *particle)
@@ -1868,19 +1866,9 @@ static int Chaos_DefectiveBoostSpeed(const struct Driver *driver, int speed)
 	return speed > 0 ? speed : 0;
 }
 
-static int Chaos_GiantForce(int force)
+static int Chaos_PercentOf(int value, int percent)
 {
-	return force * CHAOS_GIANT_SPEED_PERCENT / CHAOS_PERCENT_SCALE;
-}
-
-static int Chaos_SmallForce(int force)
-{
-	return force * CHAOS_SMALL_FORCE_PERCENT / CHAOS_PERCENT_SCALE;
-}
-
-static int Chaos_ScaleSpeed(int speed, int percent)
-{
-	return (s64)speed * percent / CHAOS_PERCENT_SCALE;
+	return (s64)value * percent / CHAOS_PERCENT_SCALE;
 }
 
 static int Chaos_SuperSpeed(int speed)

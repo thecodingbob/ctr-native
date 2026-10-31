@@ -226,15 +226,16 @@ static void Chaos_OnEffectDeactivated(ChaosEffectId effect)
 		Chaos_ReturnBodySwaps();
 		Chaos_RefreshBodySwapModifiers();
 	}
+	if (effect != CHAOS_EFFECT_BIG_KART_ENERGY && effect != CHAOS_EFFECT_SMALL_KART_ENERGY)
+	{
+		return;
+	}
 	for (int i = 0; i < sdata->gGT->numPlyrCurrGame && i < (int) len(sdata->gGT->drivers); i++)
 	{
 		struct Driver *driver = sdata->gGT->drivers[i];
 		if (driver != NULL)
 		{
-			if (effect == CHAOS_EFFECT_BIG_KART_ENERGY || effect == CHAOS_EFFECT_SMALL_KART_ENERGY)
-			{
-				Chaos_SetKartScale(CHAOS_KART_SCALE_NORMAL, driver);
-			}
+			Chaos_SetKartScale(CHAOS_KART_SCALE_NORMAL, driver);
 		}
 	}
 }
@@ -615,15 +616,15 @@ int Chaos_SpeedForDriver(const struct Driver *driver, int speed)
 	}
 	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_BIG_KART_ENERGY, driver))
 	{
-		speed = Chaos_GiantForce(speed);
+		speed = Chaos_PercentOf(speed, CHAOS_GIANT_SPEED_PERCENT);
 	}
 	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SMALL_KART_ENERGY, driver))
 	{
-		speed = Chaos_SmallForce(speed);
+		speed = Chaos_PercentOf(speed, CHAOS_SMALL_FORCE_PERCENT);
 	}
 	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SUNDAY_DRIVER, driver))
 	{
-		return Chaos_ScaleSpeed(speed, CHAOS_SUNDAY_DRIVER_SPEED_PERCENT);
+		return Chaos_PercentOf(speed, CHAOS_SUNDAY_DRIVER_SPEED_PERCENT);
 	}
 	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_GOTTA_GO_FAST, driver))
 	{
@@ -631,7 +632,7 @@ int Chaos_SpeedForDriver(const struct Driver *driver, int speed)
 	}
 	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_ARENA_CHAMPIONS, driver))
 	{
-		speed = Chaos_ScaleSpeed(speed, CHAOS_ARENA_CHAMPIONS_SPEED_PERCENT);
+		speed = Chaos_PercentOf(speed, CHAOS_ARENA_CHAMPIONS_SPEED_PERCENT);
 	}
 	return speed;
 }
@@ -640,11 +641,11 @@ int Chaos_JumpForceForDriver(const struct Driver *driver, int force)
 {
 	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_BIG_KART_ENERGY, driver))
 	{
-		return Chaos_GiantForce(force);
+		return Chaos_PercentOf(force, CHAOS_GIANT_SPEED_PERCENT);
 	}
 	if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SMALL_KART_ENERGY, driver))
 	{
-		return Chaos_SmallForce(force);
+		return Chaos_PercentOf(force, CHAOS_SMALL_FORCE_PERCENT);
 	}
 	return force;
 }

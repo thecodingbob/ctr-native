@@ -857,14 +857,7 @@ static void VehPickupItem_ShootTargeted(struct Driver *d, s32 weaponID, s32 flag
 		OtherFX_Play(SOUND_SHIELD, 1);
 
 		shieldObj = weaponInst->thread->object;
-		if (d->numWumpas >= DRIVER_WUMPA_JUICED_COUNT)
-		{
-			shieldObj->instColor->model = GAME_TRACKER->modelPtr[DYNAMIC_SHIELD];
-		}
-		else
-		{
-			shieldObj->instColor->model = GAME_TRACKER->modelPtr[DYNAMIC_SHIELD_GREEN];
-		}
+		shieldObj->instColor->model = GAME_TRACKER->modelPtr[d->numWumpas >= DRIVER_WUMPA_JUICED_COUNT ? DYNAMIC_SHIELD : DYNAMIC_SHIELD_GREEN];
 
 		scale = SHIELD_SCALE;
 		shieldObj->instColor->scale.x = scale;

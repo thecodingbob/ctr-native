@@ -101,17 +101,16 @@ static int UI_Chaos_FreeRowY(const struct UI_Chaos_ReservedRow *rows, int count,
 }
 
 static s16 UI_Chaos_LayoutNotices(struct GameTracker *gGT, const struct ChaosActivation *const *entries,
-                                int count, const int *latest, int *rowY, int dockTop, int dockBottom)
+                                int count, const struct UI_Chaos_ReservedRow *reserved, int numReserved,
+                                int *rowY, int dockTop, int dockBottom)
 {
 	const bool stackDown = gGT->numPlyrCurrGame == 1;
-	struct UI_Chaos_ReservedRow reserved[ADV_MULTIPLAYER_NUM_PLAYERS_MAX * 2];
-	const int numReserved = UI_Chaos_CollectReservedRows(gGT, reserved);
 	const int soloHeight = gGT->pushBuffer[0].rect.h > 0 ? gGT->pushBuffer[0].rect.h : SCREEN_HEIGHT;
 	int y = gGT->numPlyrCurrGame > 1 ? UI_CHAOS_NOTICE_MULTIPLAYER_Y : soloHeight / 4;
 	for (int i = count - 1; i >= 0; i--)
 	{
 		const struct ChaosActivation *entry = entries[i];
-		if (ChaosEffect_Def(entry->effect) == NULL || latest[entry->effect] != i ||
+		if (ChaosEffect_Def(entry->effect) == NULL ||
 		    entry->noticeRemainingMS <= (ChaosEffect_IsInstant(entry->effect) ? 0 : CHAOS_ACTIVATION_DOCK_MS))
 		{
 			continue;
@@ -121,19 +120,19 @@ static s16 UI_Chaos_LayoutNotices(struct GameTracker *gGT, const struct ChaosAct
 		{
 			// A crowded announcement stack uses compact rows below the docked list.
 			y = dockBottom > dockTop ? dockBottom + UI_CHAOS_ROW_GAP : UI_CHAOS_SCREEN_MARGIN;
-			for (int effect = 0; effect < CHAOS_EFFECT_COUNT; effect++)
+			for (int j = 0; j < count; j++)
 			{
-				if (latest[effect] >= 0 && entries[latest[effect]]->noticeRemainingMS >
-				    (ChaosEffect_IsInstant((ChaosEffectId)effect) ? 0 : CHAOS_ACTIVATION_DOCK_MS))
+				if (entries[j]->noticeRemainingMS >
+				    (ChaosEffect_IsInstant(entries[j]->effect) ? 0 : CHAOS_ACTIVATION_DOCK_MS))
 				{
 					y = UI_Chaos_FreeRowY(reserved, numReserved, y, UI_CHAOS_COMPACT_BANNER_ROW_HEIGHT, true, true);
-					rowY[effect] = y;
+					rowY[j] = y;
 					y += UI_CHAOS_COMPACT_BANNER_ROW_HEIGHT;
 				}
 			}
 			return FONT_SMALL;
 		}
-		rowY[entry->effect] = y;
+		rowY[i] = y;
 		y += stackDown ? UI_CHAOS_BANNER_ROW_HEIGHT : -UI_CHAOS_BANNER_ROW_HEIGHT;
 	}
 	return FONT_BIG;
@@ -188,19 +187,8 @@ void UI_Chaos_DrawActivation(struct GameTracker *gGT)
 	const struct ChaosActivation *entries[UI_CHAOS_MAX_ENTRIES];
 	Chaos_DrawWrongWayWarnings(gGT);
 	const int count = UI_Chaos_CollectEntries(runtime, entries);
-	int latest[CHAOS_EFFECT_COUNT];
-	int rowY[CHAOS_EFFECT_COUNT];
-	for (int effect = 0; effect < CHAOS_EFFECT_COUNT; effect++)
-	{
-		latest[effect] = -1;
-	}
-	for (int i = 0; i < count; i++)
-	{
-		if (ChaosEffect_Def(entries[i]->effect) != NULL)
-		{
-			latest[entries[i]->effect] = i;
-		}
-	}
+	// Runtime activation and notice queues already contain unique effect IDs.
+	int rowY[UI_CHAOS_MAX_ENTRIES];
 	int docked[UI_CHAOS_MAX_DOCKED];
 	int numDocked = 0;
 	const int dockTop = gGT->numPlyrCurrGame > 1 ? UI_CHAOS_LIST_MULTIPLAYER_TOP : UI_CHAOS_LIST_TOP;
@@ -210,37 +198,37 @@ void UI_Chaos_DrawActivation(struct GameTracker *gGT)
 	for (int i = count - 1; i >= 0 && numDocked < UI_CHAOS_MAX_DOCKED; i--)
 	{
 		const struct ChaosActivation *entry = entries[i];
-		if (ChaosEffect_Def(entry->effect) != NULL && !ChaosEffect_IsInstant(entry->effect) && latest[entry->effect] == i &&
+		if (ChaosEffect_Def(entry->effect) != NULL && !ChaosEffect_IsInstant(entry->effect) &&
 		    entry->noticeRemainingMS <= CHAOS_ACTIVATION_DOCK_MS)
 		{
 			dockBottom = UI_Chaos_FreeRowY(reserved, numReserved, dockBottom, UI_CHAOS_LIST_ROW_HEIGHT, true, false);
-			rowY[entry->effect] = dockBottom;
+			rowY[i] = dockBottom;
 			docked[numDocked++] = i;
 			dockBottom += UI_CHAOS_LIST_ROW_HEIGHT;
 		}
 	}
-	const s16 bannerFont = UI_Chaos_LayoutNotices(gGT, entries, count, latest, rowY, dockTop, dockBottom);
+	const s16 bannerFont = UI_Chaos_LayoutNotices(gGT, entries, count, reserved, numReserved, rowY, dockTop, dockBottom);
 	for (int row = 0; row < numDocked; row++)
 	{
 		const struct ChaosActivation *entry = entries[docked[row]];
 		if (entry->noticeRemainingMS > 0)
 		{
-			UI_Chaos_DrawNotice(gGT, entry, rowY[entry->effect], FONT_SMALL);
+			UI_Chaos_DrawNotice(gGT, entry, rowY[docked[row]], FONT_SMALL);
 		}
 		else
 		{
-			DecalFont_DrawLineScaledOT((char *)g_chaosEffectDefs[entry->effect].label, UI_CHAOS_LIST_RIGHT, (s16)rowY[entry->effect],
+			DecalFont_DrawLineScaledOT((char *)g_chaosEffectDefs[entry->effect].label, UI_CHAOS_LIST_RIGHT, (s16)rowY[docked[row]],
 			                           FONT_SMALL, JUSTIFY_RIGHT | ORANGE, UI_CHAOS_LIST_SCALE,
 			                           &gGT->backBuffer->otMem.uiOT[UI_HUD_ORDERING_SLOT_BEHIND_HUD]);
 		}
 	}
-	for (int effect = 0; effect < CHAOS_EFFECT_COUNT; effect++)
+	for (int i = 0; i < count; i++)
 	{
-		if (latest[effect] >= 0 && entries[latest[effect]]->noticeRemainingMS >
-		    (ChaosEffect_IsInstant((ChaosEffectId)effect) ? 0 : CHAOS_ACTIVATION_DOCK_MS))
+		const struct ChaosActivation *entry = entries[i];
+		if (ChaosEffect_Def(entry->effect) != NULL && entry->noticeRemainingMS >
+		    (ChaosEffect_IsInstant(entry->effect) ? 0 : CHAOS_ACTIVATION_DOCK_MS))
 		{
-			const struct ChaosActivation *entry = entries[latest[effect]];
-			UI_Chaos_DrawNotice(gGT, entry, rowY[effect], bannerFont);
+			UI_Chaos_DrawNotice(gGT, entry, rowY[i], bannerFont);
 		}
 	}
 }

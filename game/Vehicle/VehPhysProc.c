@@ -702,18 +702,16 @@ itemRollDone:
 	Chaos_ApplyInputRules(driver, &drivingPad);
 	ptrgamepad = &drivingPad;
 
-	// no hold
 	buttonsHeld = 0;
+	buttonsTapped = 0;
+	stickRY = VEH_PHYS_PROC_STICK_CENTER;
+	gasStickLY = VEH_PHYS_PROC_STICK_CENTER;
 	if ((GAME_TRACKER->gameMode1 & END_OF_RACE) == 0)
 	{
 		buttonsHeld = ptrgamepad->buttonsHeldCurrFrame;
-	}
-
-	// no tap
-	buttonsTapped = 0;
-	if ((GAME_TRACKER->gameMode1 & END_OF_RACE) == 0)
-	{
 		buttonsTapped = ptrgamepad->buttonsTapped;
+		stickRY = ptrgamepad->stickRY;
+		gasStickLY = ptrgamepad->stickLY;
 	}
 
 	approximateSpeedRaw = buttonsHeld & BTN_CROSS_one;
@@ -840,8 +838,6 @@ CheckJumpButtons:
 CheckJumpButtonsReady:
 	actionsFlagSetCopy = VehPhysProc_JumpInput(driver, (u32)normalVecIndex, buttonsHeld, rainCloudEffect, actionsFlagSetCopy);
 	steeringInput = ptrgamepad->stickLX;
-	stickRY = (int)ptrgamepad->stickRY;
-	gasStickLY = ptrgamepad->stickLY;
 	// Apply after input resolution, before jump and steering consumers use the result.
 	actionsFlagSetCopy = Chaos_ApplyDriver(driver, actionsFlagSetCopy);
 	CTR_PSX_OBSERVE_VALUE(buttonsHeld);
