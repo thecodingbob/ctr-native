@@ -153,14 +153,9 @@ static void Config_Close(void)
 	sdata->ptrDesiredMenu = s_configSession.returnMenu;
 }
 
-static void Config_UpdateSlider(const struct GamepadBuffer *pad, const int rowSelected,
-                              const int localRow, int *value, const int min, const int max, const int step)
+static void Config_UpdateSlider(const struct GamepadBuffer *pad, int *value,
+                                const int min, const int max, const int step)
 {
-	if (rowSelected != localRow)
-	{
-		return;
-	}
-
 	for (int direction = -1; direction <= 1; direction += 2)
 	{
 		if (FullScreenMenu_OptionStepDue(pad->buttonsHeldCurrFrame, direction))
@@ -170,29 +165,35 @@ static void Config_UpdateSlider(const struct GamepadBuffer *pad, const int rowSe
 	}
 }
 
+static bool Config_CanEdit(const ConfigEntry *entry)
+{
+	return s_configSession.context == CONFIG_MENU_MAIN || entry->availableDuringPause;
+}
+
 static void Config_DrawValue(const ConfigEntry *e, int y, uint32_t *ot)
 {
+	const int color = Config_CanEdit(e) ? WHITE : GRAY;
 	if (e->type == CFG_BOOL)
 	{
-		FullScreenMenu_DrawOnOff(*(bool *)e->valuePtr, y, ot);
+		FullScreenMenu_DrawOnOffColored(*(bool *)e->valuePtr, y, color, ot);
 	}
 	else if (e->type == CFG_ENUM)
 	{
 		int val = *(int *)e->valuePtr;
-		const char *name = "?";
+		const char *text = "?";
 		for (int j = 0; j < e->numEnumValues; j++)
 		{
 			if (e->enumValues[j].value == val)
 			{
-				name = e->enumValues[j].name;
+				text = e->enumValues[j].name;
 				break;
 			}
 		}
-		FullScreenMenu_DrawValueText(name, y, ot);
+		FullScreenMenu_DrawValueTextColored(text, y, color, ot);
 	}
 	else
 	{
-		FullScreenMenu_DrawPercent(*(int *)e->valuePtr, y, ot);
+		FullScreenMenu_DrawPercentColored(*(int *)e->valuePtr, y, color, ot);
 	}
 }
 
@@ -265,39 +266,40 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 
 		FullScreenMenu_NavScroll(pad, &s_configScroll, &menu->rowSelected, numRows);
 
-		if ((pad->buttonsTapped & (BTN_CROSS | BTN_CIRCLE)) != 0)
+		const ConfigEntry *e = &g_configEntries[firstEntry + menu->rowSelected];
+		if (Config_CanEdit(e))
 		{
-			OtherFX_Play(1, 1);
-			const ConfigEntry *e = &g_configEntries[firstEntry + menu->rowSelected];
-			if (e->type == CFG_BOOL)
+			if ((pad->buttonsTapped & (BTN_CROSS | BTN_CIRCLE)) != 0)
 			{
-				*(bool *)e->valuePtr ^= 1;
-				NativeConfig_ApplyDependencies(e);
-				// Rebuild section map if visibility changed (e.g. Developer Hacks toggle)
-				BuildSectionMap();
-				// Turning the gate off hides the section we are standing in, so the
-				// cached index no longer names a section. Fall back to the section
-				// list instead of reading past the entry table.
-				if (s_currentSection >= s_numSections)
+				OtherFX_Play(1, 1);
+				if (e->type == CFG_BOOL)
 				{
-					s_currentSection = -1;
-					return;
+					*(bool *)e->valuePtr ^= 1;
+					NativeConfig_ApplyDependencies(e);
+					// Rebuild section map if visibility changed (e.g. Developer Hacks toggle)
+					BuildSectionMap();
+					// Turning the gate off hides the section we are standing in, so the
+					// cached index no longer names a section. Fall back to the section
+					// list instead of reading past the entry table.
+					if (s_currentSection >= s_numSections)
+					{
+						s_currentSection = -1;
+						menu->rowSelected = (s16)FullScreenMenu_ClampRow(sec, s_numSections);
+						s_configScroll.offset = 0;
+						Config_ClearInput();
+						return;
+					}
+				}
+				else if (e->type == CFG_ENUM)
+				{
+					int *val = (int *)e->valuePtr;
+					*val = (*val + 1) % e->numEnumValues;
 				}
 			}
-			else if (e->type == CFG_ENUM)
-			{
-				int *val = (int *)e->valuePtr;
-				*val = (*val + 1) % e->numEnumValues;
-			}
-		}
 
-		// slider update for int entries
-		for (int j = 0; j < numRows; j++)
-		{
-			const ConfigEntry *e = &g_configEntries[firstEntry + j];
 			if (e->type == CFG_INT)
 			{
-				Config_UpdateSlider(pad, menu->rowSelected, j, (int *)e->valuePtr, e->min, e->max, e->step);
+				Config_UpdateSlider(pad, (int *)e->valuePtr, e->min, e->max, e->step);
 			}
 		}
 

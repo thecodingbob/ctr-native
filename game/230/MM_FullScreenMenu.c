@@ -74,29 +74,49 @@ static void FullScreenMenu_DrawRowLabel(const char *label, int y, uint32_t *ot)
 // between rows, and that is what these four are for.
 
 // A piece of text: an option's name, or what a row that has no number of its own shows.
+static void FullScreenMenu_DrawValueTextColored(const char *text, int y, int color, uint32_t *ot)
+{
+	DecalFont_DrawLineOT((char *)text, FULLSCREEN_MENU_VALUE_X, y, FONT_SMALL, JUSTIFY_RIGHT | color, ot);
+}
+
 static void FullScreenMenu_DrawValueText(const char *text, int y, uint32_t *ot)
 {
-	DecalFont_DrawLineOT((char *)text, FULLSCREEN_MENU_VALUE_X, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+	FullScreenMenu_DrawValueTextColored(text, y, WHITE, ot);
+}
+
+static void FullScreenMenu_DrawOnOffColored(bool on, int y, int color, uint32_t *ot)
+{
+	FullScreenMenu_DrawValueTextColored(on ? "ON" : "OFF", y, color, ot);
 }
 
 static void FullScreenMenu_DrawOnOff(bool on, int y, uint32_t *ot)
 {
-	FullScreenMenu_DrawValueText(on ? "ON" : "OFF", y, ot);
+	FullScreenMenu_DrawOnOffColored(on, y, WHITE, ot);
 }
 
 // A number with a unit after it, for a setting that is not a percentage: seconds, frames,
 // megabytes. The unit is what tells two settings apart when both are plain numbers.
-static void FullScreenMenu_DrawValueWithSuffix(int value, const char *suffix, int y, uint32_t *ot)
+static void FullScreenMenu_DrawValueWithSuffixColored(int value, const char *suffix, int y, int color, uint32_t *ot)
 {
 	char text[16];
 
 	snprintf(text, sizeof(text), "%d%s", value, suffix);
-	FullScreenMenu_DrawValueText(text, y, ot);
+	FullScreenMenu_DrawValueTextColored(text, y, color, ot);
+}
+
+static void FullScreenMenu_DrawValueWithSuffix(int value, const char *suffix, int y, uint32_t *ot)
+{
+	FullScreenMenu_DrawValueWithSuffixColored(value, suffix, y, WHITE, ot);
+}
+
+static inline void FullScreenMenu_DrawPercentColored(int percent, int y, int color, uint32_t *ot)
+{
+	FullScreenMenu_DrawValueWithSuffixColored(percent, "%", y, color, ot);
 }
 
 static inline void FullScreenMenu_DrawPercent(int percent, int y, uint32_t *ot)
 {
-	FullScreenMenu_DrawValueWithSuffix(percent, "%", y, ot);
+	FullScreenMenu_DrawPercentColored(percent, y, WHITE, ot);
 }
 
 // One name out of a list, drawn where its value goes. A value outside the list falls back
