@@ -739,7 +739,7 @@ internal void NativeRenderer_ClearPresentationBars(void)
 void NativeRenderer_ResetDevice(void)
 {
 	NativeRenderer_UpdatePresentationViewport();
-	NativeRenderer_UpdateSwapIntervalState(0);
+	NativeRenderer_UpdateSwapIntervalState(g_config.vsync ? 1 : 0);
 }
 
 typedef struct

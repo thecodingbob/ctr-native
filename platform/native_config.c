@@ -89,6 +89,7 @@ NativeConfig g_config = {
   .disableSplitScreenLod = false,
 
   .fullscreen = false,
+  .vsync = false,
   .aspectRatio = 0,
   .dithering = true,
   .renderScale = 0,
@@ -452,6 +453,13 @@ const ConfigEntry g_configEntries[] = {
         .label = "Fullscreen",
         .type = CFG_BOOL,
         .valuePtr = &g_config.fullscreen
+    },
+    {
+        .section = "Graphics",
+        .key = "vsync",
+        .label = "VSync",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.vsync
     },
     {
         .section = "Graphics",
