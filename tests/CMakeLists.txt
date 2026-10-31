@@ -120,6 +120,10 @@ ctr_add_test_suite(test_menu_strings
     SOURCES test_menu_strings.c
 )
 
+ctr_add_test_suite(test_boss_cutscenes
+    SOURCES test_boss_cutscenes.c
+)
+
 ctr_add_test_suite(test_decal_font_scale
     SOURCES test_decal_font_scale.c
 )

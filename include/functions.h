@@ -1127,6 +1127,7 @@ void CS_Thread_LInB(struct Instance *inst);
 void CS_Cutscene_Start(void);
 void CS_LoadBossCallback(struct LoadQueueSlot *lqs);
 void CS_Camera_ThTick_Boss(struct Thread *t);
+void CS_Camera_EndBoss(void);
 b32 CS_Camera_BoolGotoBoss(void);
 void CS_Camera_ThTick_Podium(struct Thread *th);
 void CS_OVR233_ResetData(void);

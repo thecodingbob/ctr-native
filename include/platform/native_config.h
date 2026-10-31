@@ -10,12 +10,14 @@ typedef struct {
 
 typedef struct {
     bool skipIntro;             // false = off (default), true = skip all intros
+    bool skipPodiumCeremonies;  // false = off (default), true = automatically leave post-event podiums
     bool showReservesMeter;     // true = show the in-game reserves meter (default = false)
     bool allowOxideStationMultiplayer; // false = retail 1P-only restriction, true = allow multiplayer
     bool allowRaceTracksInBattle; // false = battle arenas only, true = select race tracks in battle mode
     bool extendedMultiplayer; // false = retail rosters, true = allow 3P/4P Arcade races and fill 2P/3P/4P Arcade and Adventure races with 8 racers
     int botSelectionMode;         // BOT_SELECTION_PREDETERMINED (default), RANDOM_UNLOCKED, or RANDOM_ALL
     bool skipHints;             // false = off (default), true = skip all mask hints in adventure mode
+    int bossCutscenes;          // BOSS_CUTSCENES_UNSKIPPABLE (default), SKIPPABLE, or SKIP
     bool extendedAdventureCharacterSelect; // false = garage, true = extended selector for new Adventure
     bool multiplayerAdventure;  // false = off (default), true = enable multiplayer Adventure setup
     bool chaosMode;              // false = off (default), true = ask whether to arm Chaos mode when creating an Adventure file
@@ -77,6 +79,13 @@ enum
     BOT_SELECTION_PREDETERMINED = 0,
     BOT_SELECTION_RANDOM_UNLOCKED = 1,
     BOT_SELECTION_RANDOM_ALL = 2,
+};
+
+enum
+{
+    BOSS_CUTSCENES_UNSKIPPABLE = 0,
+    BOSS_CUTSCENES_SKIPPABLE = 1,
+    BOSS_CUTSCENES_SKIP = 2,
 };
 
 // Sub-pixel vertex precision, implemented in platform/native_pgxp.c. The PS1

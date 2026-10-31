@@ -6,6 +6,9 @@ enum CutsceneCameraConstants
 	CS_CAMERA_FADE_STEP = 0x400,
 	CS_BOSS_MODEL_SCALE = FP_ONE,
 	CS_BOSS_CAMERA_ROT_X_OFFSET = ANG_PI,
+	CS_BOSS_END_OVERLAY_TRANSITION_FRAMES = 3,
+	CS_BOSS_SKIP_TEXT_X = 0x100,
+	CS_BOSS_SKIP_TEXT_Y = 0x94,
 	CS_PODIUM_PATH_FRAME_FRACTION_BITS = 5,
 	CS_PODIUM_PATH_FRAME_UNIT = 1 << CS_PODIUM_PATH_FRAME_FRACTION_BITS,
 	CS_PODIUM_PRIZE_DROP_LEAD_TIME = 0x12c0,
@@ -45,6 +48,53 @@ b32 CS_Camera_BoolGotoBoss(void)
 	return 1;
 }
 
+void CS_Camera_EndBoss(void)
+{
+	CS_FINISHED = 1;
+	CS_DestroyPodium_StartDriving();
+	CS_BOSS_INDEX = -1;
+	GAME_TRACKER->overlayTransition = CS_BOSS_END_OVERLAY_TRANSITION_FRAMES;
+	GAME_TRACKER->gameMode2 &= ~VEH_FREEZE_PODIUM;
+}
+
+static void CS_Camera_SkipBoss(struct Thread *camera, const struct BossCutsceneData *scene)
+{
+	struct CsOpcodeMeta meta = {0};
+	struct CutsceneObj script = {0};
+	script.metadataMeta = &meta;
+	CS_ScriptCmd_OpcodeAt(&script, scene->opcode);
+
+	// Read only the scene's terminal action. Pinstripe's key scene chains to
+	// Oxide, so skipping it must preserve that handoff rather than end early.
+	while (meta.opcode != CS_OPCODE_END_BOSS_CUTSCENE && meta.opcode != CS_OPCODE_SET_BOSS_CUTSCENE_INDEX)
+	{
+		CS_ScriptCmd_OpcodeNext(&script);
+	}
+
+	CDSYS_XAPauseForce();
+	for (struct Thread *cur = GAME_TRACKER->threadBuckets[OTHER].thread; cur != NULL; cur = cur->siblingThread)
+	{
+		cur->flags |= THREAD_FLAG_DEAD;
+	}
+
+	if (meta.opcode == CS_OPCODE_SET_BOSS_CUTSCENE_INDEX)
+	{
+		CS_BOSS_INDEX = meta.arg1.i;
+		if (CS_BOSS_INDEX == OXIDE_TROPHIES && GAME_TRACKER->currAdvProfile.numRelics >= ADV_OXIDE_FINAL_RELIC_COUNT)
+		{
+			CS_BOSS_INDEX = OXIDE_RELICS_GEMSTONE;
+		}
+		CS_PHASE = CS_WAIT_INPUT;
+		return;
+	}
+
+	CS_Camera_EndBoss();
+	GAME_TRACKER->podiumRewardID = NOFUNC;
+	GAME_TRACKER->pushBuffer_UI.fadeFromBlack_desiredResult = CS_CAMERA_FADE_FULL;
+	GAME_TRACKER->pushBuffer_UI.fade_step = CS_CAMERA_FADE_STEP;
+	camera->flags |= THREAD_FLAG_DEAD;
+}
+
 void CS_Camera_ThTick_Boss(struct Thread *t)
 {
 	const struct BossCutsceneData *bcd;
@@ -64,6 +114,28 @@ void CS_Camera_ThTick_Boss(struct Thread *t)
 			i++;
 		bcd = &D233.bossCS[i];
 	}
+	if (g_config.bossCutscenes == BOSS_CUTSCENES_SKIP)
+	{
+		CS_Camera_SkipBoss(t, bcd);
+		return;
+	}
+
+	if (g_config.bossCutscenes == BOSS_CUTSCENES_SKIPPABLE && CS_FINISHED == 0 &&
+	    (CS_PHASE == CS_FADE_IN || CS_PHASE == CS_WAIT_END))
+	{
+		if ((GAMEPADS->gamepad[0].buttonsTapped & BTN_START) != 0)
+		{
+			// Pause input is checked later in this frame, after driving resumes.
+			GAMEPADS->gamepad[0].buttonsTapped &= ~BTN_START;
+			sdata->AnyPlayerTap &= ~BTN_START;
+			CS_Camera_SkipBoss(t, bcd);
+			return;
+		}
+
+		// Boss subtitles start at y=170 (their box at y=166).
+		DecalFont_DrawLine("PRESS START TO SKIP", CS_BOSS_SKIP_TEXT_X, CS_BOSS_SKIP_TEXT_Y, FONT_SMALL, JUSTIFY_CENTER | ORANGE);
+	}
+
 	switch (CS_PHASE)
 	{
 	case CS_CAMERA_PAN:
@@ -186,6 +258,12 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 		GAME_TRACKER->drivers[0]->funcPtrs[DRIVER_FUNC_INIT] = VehStuckProc_RIP_Init;
 	}
 
+	if (g_config.skipPodiumCeremonies)
+	{
+		CS_PHASE = CS_WAIT_INPUT;
+		CS_PRIZE_DROP_READY = 1;
+	}
+
 	if (GAME_TRACKER->cameraDC[0].cameraMode != CAMERA_MODE_FREECAM)
 	{
 		if (CS_PHASE < CS_WAIT_INPUT)
@@ -222,10 +300,13 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 			goto check_skip_button;
 		}
 
-		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], CS_PODIUM_CONTINUE_TEXT_X, CS_PODIUM_CONTINUE_TEXT_Y, FONT_BIG,
-		                   JUSTIFY_CENTER | ORANGE);
+		if (!g_config.skipPodiumCeremonies)
+		{
+			DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[LNG_PRESS_TO_CONTINUE], CS_PODIUM_CONTINUE_TEXT_X, CS_PODIUM_CONTINUE_TEXT_Y, FONT_BIG,
+			                   JUSTIFY_CENTER | ORANGE);
+		}
 	}
-	else
+	else if (!g_config.skipPodiumCeremonies)
 	{
 		s32 numPoints = CAM_Path_GetNumPoints();
 		// NOTE(aalhendi): Retail truncates the path clock before signed comparisons.
@@ -282,7 +363,7 @@ void CS_Camera_ThTick_Podium(struct Thread *th)
 		u32 tapped = GAMEPADS->gamepad[0].buttonsTapped;
 		s32 rewardId;
 
-		if (((tapped & BTN_START) == 0) && ((CS_PHASE == CS_CAMERA_PAN || (tapped & (BTN_START | BTN_CROSS_one)) == 0)) &&
+		if (!g_config.skipPodiumCeremonies && ((tapped & BTN_START) == 0) && ((CS_PHASE == CS_CAMERA_PAN || (tapped & (BTN_START | BTN_CROSS_one)) == 0)) &&
 		    ((modeFlags & VEH_FREEZE_PODIUM) != 0))
 		{
 			return;

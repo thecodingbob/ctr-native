@@ -89,7 +89,6 @@ enum CsThreadConstants
 	CS_AUDIO_VOLUME_FX_BYTE_OFFSET = 2,
 	CS_AUDIO_VOLUME_MUSIC_BYTE_OFFSET = 4,
 	CS_AUDIO_VOLUME_VOICE_BYTE_OFFSET = 6,
-	CS_BOSS_END_OVERLAY_TRANSITION_FRAMES = 3,
 };
 
 CTR_STATIC_ASSERT(offsetof(struct CSThreadParentFrameScratch, parentPos) == 0x00);
@@ -415,13 +414,7 @@ afterCameraAndSkipChecks:
 			goto nextOpcode;
 		case CS_OPCODE_END_BOSS_CUTSCENE:
 		{
-			struct GameTracker *tracker;
-			CS_FINISHED = 1;
-			CS_DestroyPodium_StartDriving();
-			CS_BOSS_INDEX = -1;
-			tracker = GAME_TRACKER;
-			tracker->overlayTransition = CS_BOSS_END_OVERLAY_TRANSITION_FRAMES;
-			tracker->gameMode2 &= ~VEH_FREEZE_PODIUM;
+			CS_Camera_EndBoss();
 			CS_ScriptCmd_OpcodeNext(cs);
 			goto finishOpcodeStep;
 		}

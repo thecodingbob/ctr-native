@@ -23,6 +23,13 @@ static const ConfigEnumValue kBotSelectionModeValues[] = {
 };
 #define NUM_BOT_SELECTION_MODES (sizeof(kBotSelectionModeValues) / sizeof(kBotSelectionModeValues[0]))
 
+static const ConfigEnumValue kBossCutsceneValues[] = {
+    {"Unskippable", BOSS_CUTSCENES_UNSKIPPABLE},
+    {"Skippable", BOSS_CUTSCENES_SKIPPABLE},
+    {"Skip", BOSS_CUTSCENES_SKIP},
+};
+#define NUM_BOSS_CUTSCENE_MODES (sizeof(kBossCutsceneValues) / sizeof(kBossCutsceneValues[0]))
+
 static const ConfigEnumValue kAspectRatioValues[] = {
     {"4:3", 0},
     {"16:9", 1},
@@ -49,12 +56,14 @@ static const ConfigEnumValue kPgxpModeValues[] = {
 
 NativeConfig g_config = {
   .skipIntro = false,
+  .skipPodiumCeremonies = false,
   .showReservesMeter = false,
   .allowOxideStationMultiplayer = false,
   .allowRaceTracksInBattle = false,
   .extendedMultiplayer = false,
   .botSelectionMode = BOT_SELECTION_PREDETERMINED,
   .skipHints = false,
+  .bossCutscenes = BOSS_CUTSCENES_UNSKIPPABLE,
   .extendedAdventureCharacterSelect = false,
   .multiplayerAdventure = false,
   .chaosMode = false,
@@ -128,6 +137,13 @@ const ConfigEntry g_configEntries[] = {
     },
     {
         .section = "General",
+        .key = "skip_podium_ceremonies",
+        .label = "Skip Podium Ceremonies",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.skipPodiumCeremonies
+    },
+    {
+        .section = "General",
         .key = "show_reserves_meter",
         .label = "Show Reserves Meter",
         .type = CFG_BOOL,
@@ -185,6 +201,15 @@ const ConfigEntry g_configEntries[] = {
         .label = "Skip Mask Hints",
         .type = CFG_BOOL,
         .valuePtr = &g_config.skipHints
+    },
+    {
+        .section = "Adventure",
+        .key = "boss_cutscenes",
+        .label = "Boss Cutscenes",
+        .type = CFG_ENUM,
+        .valuePtr = &g_config.bossCutscenes,
+        .enumValues = kBossCutsceneValues,
+        .numEnumValues = NUM_BOSS_CUTSCENE_MODES
     },
     {
         .section = "Adventure",
