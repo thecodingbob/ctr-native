@@ -623,40 +623,10 @@ static void DISPLAYRECTMENU_MainFreeze_MenuPtrOptions(struct RectMenu *menu, GAM
 	for (int i = 0; i < 3; i++)
 	{
 		int volume = howl_VolumeGet(i) & 0xff;
-		int volumeSliderValue = volume * (volumeSliderWidth - 5);
-
 		s16 volumeSliderPosY = (menuRowsNegativePadding / 2) + (i * 10);
-
-		if (volumeSliderValue < 0)
-		{
-			volumeSliderValue += 0xff;
-		}
-
 		int volumeSliderTriangleLeftPosX = 30 + volumeSliderTriangleLeftMargin;
-		int volumeSliderBarPosX = 0x38 + volumeSliderTriangleLeftPosX + (s16)((u32)volumeSliderValue >> 8);
-
-		s16 volumeSliderTriangle[8] = {// 0, 1
-		                               volumeSliderTriangleLeftPosX + 56, volumeSliderPosY + 58,
-
-		                               // 2, 3
-		                               volumeSliderTriangleLeftPosX + volumeSliderWidth + 56, volumeSliderPosY + 48,
-
-		                               // 4, 5
-		                               0, 0};
-
-		volumeSliderTriangle[4] = volumeSliderTriangle[2];
-		volumeSliderTriangle[5] = volumeSliderTriangle[1];
-
-		RECT volumeSliderBar = {.x = volumeSliderBarPosX + 1, .y = volumeSliderPosY + 48, .w = 3, .h = 10};
-		color = *(Color *)(data.Options_VolumeSlider_Colors + 0xc);
-		CTR_Box_DrawSolidBox(&volumeSliderBar, &color, ot, primMem);
-
-		RECT volumeSliderBarOutline = {.x = volumeSliderBarPosX, .y = volumeSliderPosY + 47, .w = 5, .h = 12};
-
-		color = *(Color *)(data.Options_VolumeSlider_Colors + 0x10);
-		CTR_Box_DrawSolidBox(&volumeSliderBarOutline, &color, ot, primMem);
-
-		RECTMENU_DrawRwdTriangle(volumeSliderTriangle, data.Options_VolumeSlider_Colors, ot, primMem);
+		RECT slider = {volumeSliderTriangleLeftPosX + 56, volumeSliderPosY + 48, volumeSliderWidth, 10};
+		UI_DrawVolumeSlider(&slider, volume, ot);
 
 		// "FX:" "MUSIC:" "VOICE:"
 		DecalFont_DrawLine(sdata->lngStrings[data.Options_StringIDs_Audio[i]], 76, 50 + (menuRowsNegativePadding / 2) + (i * 10), FONT_SMALL, ORANGE);

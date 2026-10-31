@@ -120,6 +120,13 @@ NativeConfig g_config = {
 const ConfigEntry g_configEntries[] = {
 
     {
+        .section = CONFIG_SECTION_AUDIO,
+        .key = "audio",
+        .label = "Audio",
+        .type = CFG_ACTION,
+        .availableDuringPause = true,
+    },
+    {
         // No value backing: this row only exists so the options menu offers a
         // "Controls" section. MM_MenuProc_Config hands that section to
         // MM_MenuProc_Controls, which owns the screen, and the loader and saver

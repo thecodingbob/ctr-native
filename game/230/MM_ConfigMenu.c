@@ -93,16 +93,14 @@ static int s_currentSection = -1; // -1 = section selector, 0+ = submenu
 // First visible row in the section list.
 static struct FullScreenMenu_Scroll s_configScroll = {0};
 
-// True when the section at this index is one of the screens that draws and edits
-// its own rows instead of going through g_configEntries values.
-static bool Config_IsCustomSection(int section)
+static bool Config_IsSection(int section, const char *name)
 {
 	if ((section < 0) || (section >= s_numSections))
 	{
 		return false;
 	}
 
-	return strcmp(g_configEntries[s_sectionToEntry[section]].section, CONFIG_SECTION_CONTROLS) == 0;
+	return strcmp(g_configEntries[s_sectionToEntry[section]].section, name) == 0;
 }
 
 static struct RectMenu g_configMenu = {
@@ -131,6 +129,10 @@ static void Config_ClearInput(void)
 
 void MM_ConfigMenu_Open(struct RectMenu *returnMenu, enum ConfigMenuContext context)
 {
+	if (Config_IsSection(s_currentSection, CONFIG_SECTION_AUDIO))
+	{
+		MM_AudioConfig_Leave();
+	}
 	s_configSession.returnMenu = returnMenu;
 	s_configSession.context = context;
 	s_configSession.returnRow = returnMenu->rowSelected;
@@ -225,7 +227,7 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 
 	// Inside the Controls section the back button belongs to player 1's device and the
 	// selected player's own, so read it through the same union that screen uses.
-	const bool inControls = Config_IsCustomSection(s_currentSection);
+	const bool inControls = Config_IsSection(s_currentSection, CONFIG_SECTION_CONTROLS);
 	const u32 backTapped = inControls ? MM_Controls_MenuTapped() : (u32)pad->buttonsTapped;
 
 	// The device picker consumes back itself, so it must close before this file acts,
@@ -240,6 +242,10 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 
 		if (s_currentSection >= 0)
 		{
+			if (Config_IsSection(s_currentSection, CONFIG_SECTION_AUDIO))
+			{
+				MM_AudioConfig_Leave();
+			}
 			menu->rowSelected = s_currentSection;
 			s_currentSection = -1;
 			s_configScroll.offset = 0;
@@ -253,10 +259,15 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 
 	if (s_currentSection >= 0)
 	{
-		if (Config_IsCustomSection(s_currentSection))
+		if (Config_IsSection(s_currentSection, CONFIG_SECTION_CONTROLS))
 		{
 			// Draws and edits everything itself, including its own input.
 			MM_MenuProc_Controls(menu);
+			return;
+		}
+		if (Config_IsSection(s_currentSection, CONFIG_SECTION_AUDIO))
+		{
+			MM_MenuProc_Audio(menu);
 			return;
 		}
 

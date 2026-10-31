@@ -18,6 +18,7 @@ static int s_mixedVolume;
 static struct GameTracker s_tracker;
 static bool s_freezeAudio;
 static bool s_previewHumanAudio;
+static int s_previewSound;
 
 bool Chaos_SetHumanAudio(bool human)
 {
@@ -94,6 +95,7 @@ struct ChannelStats *Channel_AllocSlot_AntiSpam(s16 sound, u8 antiSpam, int flag
 {
 	(void)sound; (void)antiSpam;
 	s_previewHumanAudio = sdata->chaosRuntime.humanAudioContext;
+	s_previewSound = sound;
 	s_channel = (struct ChannelStats){ .flags = 1 };
 	LIST_Clear(&sdata->channelTaken);
 	LIST_Clear(&sdata->channelFree);
@@ -301,5 +303,21 @@ int main(void)
 	Chaos_SetHumanAudio(true);
 	OptionsMenu_TestSound(HOWL_VOLUME_TYPE_VOICE, false);
 	CTR_TEST_CHECK(sdata->chaosRuntime.humanAudioContext, "stopping preview preserves an enclosing human audio context");
+	CTR_TEST_SECTION("voice preview without a followed racer");
+	s_tracker.gameMode1 = MAIN_MENU;
+	s_tracker.cameraDC[0].driverToFollow = NULL;
+	GAME_CHARACTER_IDS[0] = NEO_CORTEX;
+	OptionsMenu_TestSound(HOWL_VOLUME_TYPE_VOICE, true);
+	CTR_TEST_CHECK(s_previewSound == NEO_CORTEX + 0x1c, "main-menu voice preview uses player 1 without a racer");
+	previewDriver.driverID = 1;
+	GAME_CHARACTER_IDS[1] = COCO_BANDICOOT;
+	s_tracker.cameraDC[0].driverToFollow = &previewDriver;
+	OptionsMenu_TestSound(HOWL_VOLUME_TYPE_VOICE, true);
+	CTR_TEST_CHECK(s_previewSound == NEO_CORTEX + 0x1c, "main-menu voice preview ignores stale followed-racer state");
+	s_tracker.gameMode1 = ARCADE_MODE | PAUSE_1;
+	s_tracker.frameTimer_MainFrame_ResetDB = 25;
+	OptionsMenu_TestSound(HOWL_VOLUME_TYPE_VOICE, true);
+	CTR_TEST_CHECK(s_previewSound == COCO_BANDICOOT + 0x2c, "paused voice preview still follows the camera's racer and alternates clips");
+	OptionsMenu_TestSound(HOWL_VOLUME_TYPE_VOICE, false);
 	return CtrTest_Summary();
 }

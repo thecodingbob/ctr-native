@@ -18,12 +18,24 @@ static bool s_observingRow;
 static bool s_valueDrawn;
 static int s_valueFlags;
 static char s_valueText[64];
+static bool s_sliderDrawn;
+static RECT s_sliderMarker;
+static s16 s_sliderTriangle[6];
+static int s_sliderBoxCount;
+static int s_volumes[GAME_OPTIONS_VOLUME_COUNT];
+static int s_stereo;
+static int s_previewRow;
+static bool s_previewPlaying;
+static char *s_strings[LNG_STEREO + 1];
 
 // Count menu persistence calls without touching any real configuration file.
 static void ConfigMenuTest_Save(void);
 #define NativeConfig_Save ConfigMenuTest_Save
 #include <game/230/MM_ConfigMenu.c>
 #undef NativeConfig_Save
+#include <game/230/MM_AudioConfig.c>
+#include <game/UI/UI_VolumeSlider.c>
+#include <game/RaceConfig.c>
 
 // The menu has no public page/scroll accessor; inspect those internals only to
 // distinguish staying at the section list from accidentally reopening a page.
@@ -36,6 +48,15 @@ const char *NativeAssets_GetBaseDir(void)
 }
 void NativeControls_Save(void) { s_controlsSaves++; }
 void NativeControls_CancelCapture(void) { s_capturing = false; }
+s32 howl_VolumeGet(s32 type) { return s_volumes[type]; }
+void howl_VolumeSet(s32 type, u8 volume) { s_volumes[type] = volume; }
+s32 howl_ModeGet(void) { return s_stereo; }
+void howl_ModeSet(s32 mode) { s_stereo = mode; }
+void OptionsMenu_TestSound(s32 row, b32 playing)
+{
+	s_previewRow = row;
+	s_previewPlaying = playing;
+}
 void MM_MenuProc_Controls(struct RectMenu *menu) { (void)menu; }
 b32 MM_Controls_IsPickerOpen(void) { return s_pickerOpen; }
 u32 MM_Controls_MenuTapped(void) { return (u32)sdata->gGamepads->gamepad[0].buttonsTapped; }
@@ -60,6 +81,7 @@ void DecalFont_DrawLineOT(char *text, s16 x, s16 y, s16 font, s16 flags, u32 *ot
 	if (x == FULLSCREEN_MENU_LABEL_X)
 	{
 		s_observingRow = s_observedLabel != NULL && strcmp(text, s_observedLabel) == 0;
+		s_sliderBoxCount = 0;
 	}
 	else if (x == FULLSCREEN_MENU_VALUE_X && s_observingRow)
 	{
@@ -79,6 +101,25 @@ void RECTMENU_DrawOuterRect_Edge(RECT *rect, const Color *color, u32 flags, u32 
 void CTR_Box_DrawClearBox(const RECT *rect, const Color *color, s32 transparency, u32 *ot, struct PrimMem *prims)
 {
 	(void)rect; (void)color; (void)transparency; (void)ot; (void)prims;
+}
+
+void CTR_Box_DrawSolidBox(RECT *rect, const Color *color, u32 *ot, struct PrimMem *prims)
+{
+	(void)color; (void)ot; (void)prims;
+	if (s_observingRow && s_sliderBoxCount++ == 0)
+	{
+		s_sliderMarker = *rect;
+	}
+}
+
+void RECTMENU_DrawRwdTriangle(s16 *position, char *color, u32 *ot, struct PrimMem *prims)
+{
+	(void)color; (void)ot; (void)prims;
+	if (s_observingRow)
+	{
+		s_sliderDrawn = true;
+		memcpy(s_sliderTriangle, position, sizeof(s_sliderTriangle));
+	}
 }
 
 static void SetInput(int tapped, int held)
@@ -110,9 +151,18 @@ static void TestSession(enum ConfigMenuContext context, int mode)
 	CTR_TEST_CHECK(s_tracker.gameMode1 == mode, "opening preserves the caller's game and pause flags");
 
 	SetInput(BTN_CROSS, 0);
-	sdata->ptrActiveMenu->rowSelected = 1; // Controls precedes General.
+	int generalSection = -1;
+	for (int section = 0; section < s_numSections; section++)
+	{
+		if (strcmp(g_configEntries[s_sectionToEntry[section]].section, "General") == 0)
+		{
+			generalSection = section;
+		}
+	}
+	CTR_TEST_CHECK(generalSection >= 0, "the General section is present");
+	sdata->ptrActiveMenu->rowSelected = (s16)generalSection;
 	UpdateMenu();
-	CTR_TEST_CHECK(s_currentSection == 1, "confirm enters the selected section");
+	CTR_TEST_CHECK(s_currentSection == generalSection, "confirm enters the selected section");
 	// Back and confirm together must not reopen the section or edit an option.
 	SetInput(BTN_TRIANGLE | BTN_CROSS, BTN_RIGHT);
 	UpdateMenu();
@@ -165,7 +215,7 @@ static void OpenEntry(int index, enum ConfigMenuContext context)
 static void TestAvailability(void)
 {
 	const char *const allowedKeys[] = {
-		"controls", "skip_intro", "skip_podium_ceremonies", "show_reserves_meter",
+		"audio", "controls", "skip_intro", "skip_podium_ceremonies", "show_reserves_meter",
 		"skip_hints", "boss_cutscenes", "increase_draw_distance", "dithering",
 		"fullscreen", "vsync", "aspect_ratio", "render_scale", "smooth_scaling",
 		"fxaa", "texture_filtering", "pgxp",
@@ -280,6 +330,112 @@ static void TestDeveloperGate(void)
 	CtrTest_Bail("the developer gate must exist");
 }
 
+static void TestAudio(enum ConfigMenuContext context, int gameMode)
+{
+	s_tracker.gameMode1 = gameMode;
+	s_volumes[HOWL_VOLUME_TYPE_FX] = 128;
+	s_volumes[HOWL_VOLUME_TYPE_MUSIC] = 64;
+	s_volumes[HOWL_VOLUME_TYPE_VOICE] = 192;
+	s_stereo = true;
+	int audioEntry = -1;
+	for (int i = 0; i < g_numConfigEntries; i++)
+	{
+		if (strcmp(g_configEntries[i].section, CONFIG_SECTION_AUDIO) == 0)
+		{
+			audioEntry = i;
+		}
+	}
+	CTR_TEST_CHECK(audioEntry >= 0, "Audio is available in Options");
+	OpenEntry(audioEntry, context);
+	const char *const labels[] = {"FX", "MUSIC", "VOICE"};
+	for (int row = 0; row < GAME_OPTIONS_VOLUME_COUNT; row++)
+	{
+		s_observedLabel = labels[row];
+		s_sliderDrawn = false;
+		SetInput(row == 0 ? 0 : BTN_DOWN, 0);
+		UpdateMenu();
+		CTR_TEST_CHECK(s_sliderDrawn, "each colon-free audio label is paired with an original-style slider");
+		CTR_TEST_CHECK(s_sliderTriangle[0] == AUDIO_CONFIG_SLIDER_X &&
+		               s_sliderTriangle[2] == FULLSCREEN_MENU_VALUE_X,
+		               "the original slider shape fits inside Audio's value column");
+		const int markerTravel = FULLSCREEN_MENU_VALUE_X - AUDIO_CONFIG_SLIDER_X - 5;
+		CTR_TEST_CHECK(s_sliderMarker.x == AUDIO_CONFIG_SLIDER_X + s_volumes[row] * markerTravel / 256 + 1,
+		               "the original slider marker displays the live channel volume");
+		if (row == HOWL_VOLUME_TYPE_MUSIC && context == CONFIG_MENU_MAIN)
+		{
+			CTR_TEST_CHECK(!s_previewPlaying, "the main menu's own music supplies feedback without an extra preview");
+		}
+		else
+		{
+			CTR_TEST_CHECK(s_previewPlaying && s_previewRow == row, "other volume rows select their original preview");
+		}
+		int before[GAME_OPTIONS_VOLUME_COUNT];
+		memcpy(before, s_volumes, sizeof(before));
+		SetInput(0, BTN_RIGHT);
+		UpdateMenu();
+		for (int channel = 0; channel < GAME_OPTIONS_VOLUME_COUNT; channel++)
+		{
+			CTR_TEST_CHECK(s_volumes[channel] == before[channel] + (channel == row ? 4 : 0),
+			               "a held direction edits only the selected audio channel");
+		}
+		SetInput(BTN_CROSS | BTN_CIRCLE, 0);
+		UpdateMenu();
+		CTR_TEST_CHECK(s_volumes[row] == before[row] + 4, "confirm does not edit volume sliders");
+	}
+	s_volumes[HOWL_VOLUME_TYPE_VOICE] = 254;
+	SetInput(0, BTN_RIGHT);
+	UpdateMenu();
+	CTR_TEST_CHECK(s_volumes[HOWL_VOLUME_TYPE_VOICE] == 255, "volume clamps at full scale");
+	s_volumes[HOWL_VOLUME_TYPE_VOICE] = 1;
+	SetInput(0, BTN_LEFT | BTN_RIGHT);
+	UpdateMenu();
+	CTR_TEST_CHECK(s_volumes[HOWL_VOLUME_TYPE_VOICE] == 0, "Left takes priority and volume clamps at silence");
+
+	s_observedLabel = "MODE";
+	s_valueDrawn = false;
+	SetInput(BTN_DOWN, 0);
+	UpdateMenu();
+	CTR_TEST_CHECK(!s_previewPlaying, "the mode row stops volume preview");
+	CTR_TEST_CHECK(s_valueDrawn && strcmp(s_valueText, s_strings[LNG_STEREO]) == 0,
+	               "the colon-free mode row displays the live stereo mode");
+	SetInput(BTN_CROSS, 0);
+	UpdateMenu();
+	CTR_TEST_CHECK(!s_stereo && strcmp(s_valueText, s_strings[LNG_MONO]) == 0, "Cross selects and displays mono");
+	SetInput(BTN_CIRCLE, 0);
+	UpdateMenu();
+	CTR_TEST_CHECK(s_stereo, "Circle selects stereo again");
+
+	SetInput(BTN_UP, 0);
+	UpdateMenu();
+	CTR_TEST_CHECK(s_previewPlaying, "returning to a volume row restarts its preview");
+	SetInput(BTN_TRIANGLE | BTN_CROSS, BTN_RIGHT);
+	UpdateMenu();
+	CTR_TEST_CHECK(!s_previewPlaying && s_currentSection == -1, "leaving Audio stops preview and returns to sections");
+	CTR_TEST_CHECK(s_tracker.gameMode1 == gameMode, "Audio preserves the session's game and pause flags");
+	for (int channel = 0; channel < GAME_OPTIONS_VOLUME_COUNT; channel++)
+	{
+		CTR_TEST_CHECK(GAME_SAVE.options.volumes[channel] == s_volumes[channel],
+		               "leaving Audio captures volume in the existing game options");
+	}
+	CTR_TEST_CHECK(GAME_SAVE.options.audioMode == s_stereo, "leaving Audio captures stereo in the existing game options");
+	memset(s_volumes, 0, sizeof(s_volumes));
+	s_stereo = false;
+	sdata->boolHasLoadedOptions = false;
+	RaceConfig_LoadGameOptions();
+	CTR_TEST_CHECK(s_volumes[HOWL_VOLUME_TYPE_FX] == 132 && s_volumes[HOWL_VOLUME_TYPE_MUSIC] == 68 &&
+	               s_volumes[HOWL_VOLUME_TYPE_VOICE] == 0 && s_stereo,
+	               "the existing game-options loader restores Audio's saved values");
+
+	OpenEntry(audioEntry, context);
+	SetInput(0, 0);
+	UpdateMenu();
+	MM_ConfigMenu_Open(&s_caller, context);
+	CTR_TEST_CHECK(!s_previewPlaying, "reopening Options from Audio also stops its preview");
+	CTR_TEST_CHECK(strcmp(s_strings[LNG_FX], "FX:") == 0 && strcmp(s_strings[LNG_MODE], "MODE:") == 0,
+	               "Audio leaves the shared localized strings intact");
+	s_observedLabel = NULL;
+}
+
 int main(void)
 {
 	// Other unity-build menus use these shared helpers; this suite tests Config only.
@@ -289,6 +445,14 @@ int main(void)
 	sdata->gGT = &s_tracker;
 	s_initialConfig = g_config;
 	sdata->gGamepads = &sdata->gamepadSystem;
+	sdata->lngStrings = s_strings;
+	s_strings[LNG_OPTIONS] = "OPTIONS";
+	s_strings[LNG_FX] = "FX:";
+	s_strings[LNG_MUSIC] = "MUSIC:";
+	s_strings[LNG_VOICE] = "VOICE:";
+	s_strings[LNG_MODE] = "MODE:";
+	s_strings[LNG_MONO] = "MONO";
+	s_strings[LNG_STEREO] = "STEREO";
 	s_tracker.backBuffer = &s_buffer;
 	CTR_TEST_SECTION("Main-menu session");
 	TestSession(CONFIG_MENU_MAIN, MAIN_MENU);
@@ -311,5 +475,9 @@ int main(void)
 	TestEditing(CONFIG_MENU_PAUSE);
 	CTR_TEST_SECTION("Disabling Developer Hacks while paused");
 	TestDeveloperGate();
+	CTR_TEST_SECTION("Audio from the main menu");
+	TestAudio(CONFIG_MENU_MAIN, MAIN_MENU);
+	CTR_TEST_SECTION("Audio while paused");
+	TestAudio(CONFIG_MENU_PAUSE, ARCADE_MODE | PAUSE_1);
 	return CtrTest_Summary();
 }
