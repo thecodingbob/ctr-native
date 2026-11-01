@@ -844,6 +844,7 @@ void VehStuckProc_Tumble_Init(struct Thread *thread, struct Driver *driver);
 void MM_Battle_DrawIcon_Character(struct Icon *icon, s32 posX, s32 posY, struct PrimMem *primMem, u32 *ot, u8 transparency, s16 scale);
 s32 MM_TransitionInOut(struct TransitionMeta *meta, s32 framesPassed, s32 numFrames);
 void MM_Title_MenuUpdate(void);
+void MM_Title_DrawBranding(void);
 void MM_Title_SetTrophyDPP(void);
 void MM_Title_CameraMove(struct Title *title, s16 frameIndex);
 u16 MM_Title_ThTick(struct Thread *title);

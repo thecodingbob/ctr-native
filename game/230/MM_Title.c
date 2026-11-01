@@ -1,5 +1,20 @@
 #include <common.h>
 
+void MM_Title_DrawBranding(void)
+{
+	if (MM_TITLE_MENU_STATE != TITLE_MENU_STATE_IN_MENU || MM_TITLE_OBJECT == NULL ||
+	    (s16)MM_TITLE_INTRO_FRAME <= TITLE_INTRO_TM_DRAW_MIN_FRAME)
+	{
+		return;
+	}
+
+	// Match the ring's horizontal displacement under widescreen projection.
+	s16 ringCenterX = SCREEN_WIDTH / 2 + (MM_TITLE_RING_CENTER_X_4_3 - SCREEN_WIDTH / 2) * Widescreen_GetFactor() / 1000;
+	u32 *ot = &GAME_TRACKER->backBuffer->otMem.uiOT[MM_TITLE_TM_OT_INDEX];
+	DecalFont_DrawLineScaledOT("EXPANDED", ringCenterX, MM_TITLE_EXPANDED_Y, FONT_BIG, JUSTIFY_CENTER | WHITE, FP(0.75), ot);
+	DecalFont_DrawLineScaledOT("v" CTR_NATIVE_EXPANDED_VERSION, MM_TITLE_VERSION_X, MM_TITLE_VERSION_Y, FONT_SMALL, WHITE, FP(0.75), ot);
+}
+
 void MM_Title_MenuUpdate(void)
 {
 	u16 seenDemo;
