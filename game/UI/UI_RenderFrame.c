@@ -7,6 +7,7 @@ enum
 {
 	UI_RACE_CLOCK_HUD_X = 0x14,
 	UI_RACE_CLOCK_HUD_Y = 0x8,
+	UI_CRYSTAL_2P_FIRST_WEAPON_Y_OFFSET = 32,
 };
 
 void UI_DrawWrongWay(const struct Driver *driver)
@@ -966,13 +967,6 @@ void UI_RenderFrame_CrystChall(void)
 	const int isSplitScreen = gGT->numPlyrCurrGame > 1;
 	struct UiElement2D *multiplayerHud = data.hudStructPtr[gGT->numPlyrCurrGame - 1];
 
-	// If game is not paused
-	if ((gGT->gameMode1 & PAUSE_ALL) == 0)
-	{
-		// execute Jump meter and landing boost processes
-		UI_JumpMeter_Update(player);
-	}
-
 	if (isSplitScreen)
 	{
 		// The engine HUD is a 1P element. Split-screen viewports get the same
@@ -990,10 +984,23 @@ void UI_RenderFrame_CrystChall(void)
 			{
 				UI_DrawSlideMeter(multiplayerHud[UI_HUD_SLOT_SLIDE_METER].x, multiplayerHud[UI_HUD_SLOT_SLIDE_METER].y, hudPlayer);
 			}
+			int weaponY = multiplayerHud[UI_HUD_SLOT_WEAPON].y;
+			if (gGT->numPlyrCurrGame == 2 && playerIndex == 0)
+			{
+				weaponY += UI_CRYSTAL_2P_FIRST_WEAPON_Y_OFFSET;
+			}
+			UI_Weapon_DrawSelf(multiplayerHud[UI_HUD_SLOT_WEAPON].x, weaponY,
+			                   multiplayerHud[UI_HUD_SLOT_WEAPON].scale, hudPlayer);
 		}
 	}
 	else
 	{
+		if ((gGT->gameMode1 & PAUSE_ALL) == 0)
+		{
+			UI_JumpMeter_Update(player);
+		}
+		UI_Weapon_DrawSelf(hudStructPtr[UI_HUD_SLOT_WEAPON].x, hudStructPtr[UI_HUD_SLOT_WEAPON].y,
+		                   hudStructPtr[UI_HUD_SLOT_WEAPON].scale, player);
 		UI_DrawSpeedNeedle(hudStructPtr[UI_HUD_SLOT_SPEEDOMETER].x, hudStructPtr[UI_HUD_SLOT_SPEEDOMETER].y, player);
 
 		UI_JumpMeter_Draw(hudStructPtr[UI_HUD_SLOT_JUMP_METER].x, hudStructPtr[UI_HUD_SLOT_JUMP_METER].y, player);
@@ -1008,9 +1015,6 @@ void UI_RenderFrame_CrystChall(void)
 	}
 
 	UI_DrawNumCrystal(hudStructPtr[UI_HUD_SLOT_CRYSTAL].x + 0x10, hudStructPtr[UI_HUD_SLOT_CRYSTAL].y - 0x10);
-
-	// Draw weapon and number of wumpa fruit in HUD
-	UI_Weapon_DrawSelf(hudStructPtr[UI_HUD_SLOT_WEAPON].x, hudStructPtr[UI_HUD_SLOT_WEAPON].y, hudStructPtr[UI_HUD_SLOT_WEAPON].scale, player);
 
 	DecalFont_DrawLine(sdata->lngStrings[LNG_TIME], 0x14, 8, FONT_SMALL, ORANGE);
 
@@ -1136,9 +1140,12 @@ LAB_800545e8:
 	{
 		return;
 	}
-	if (player->itemRollTimer != 0)
+	for (playerIndex = 0; playerIndex < gGT->numPlyrCurrGame; playerIndex++)
 	{
-		return;
+		if (gGT->drivers[playerIndex]->itemRollTimer != 0)
+		{
+			return;
+		}
 	}
 	if ((gGT->gameMode1 & ROLLING_ITEM) == 0)
 	{
