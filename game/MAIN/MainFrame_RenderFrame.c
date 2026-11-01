@@ -21,6 +21,19 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 {
 	struct Level *lev = gGT->level1;
 	struct mesh_info *ptr_mesh_info = 0;
+	int decalEntries = 0;
+	for (int i = 0; i < (int)len(gGT->drivers); i++)
+	{
+		if (gGT->drivers[i] != NULL)
+		{
+			decalEntries += gGT->numPlyrCurrGame - (i < gGT->numPlyrCurrGame);
+		}
+	}
+	// Retail reserves only enough decal slots for its smaller multiplayer grids.
+	// Larger fields render their kart models directly instead of overrunning them.
+	b32 useMultiplayerDecals = ((gGT->renderFlags & RENDER_FLAG_MULTIPLAYER_DECALS) != 0) &&
+	                           (gGT->numPlyrCurrGame > 1) && !sdata->highDetailSplitScreenLevel &&
+	                           (decalEntries <= (int)len(gGT->DecalMP));
 
 	MAINFRAME_PERF_BEGIN(NATIVE_PERF_BUCKET_MAINFRAME_SETUP);
 	DrawUnpluggedMsg(gGT, gGamepads);
@@ -84,7 +97,7 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 		RenderStars(&gGT->pushBuffer[0], &gGT->backBuffer->primMem, &gGT->stars, gGT->numPlyrCurrGame);
 	}
 
-	if (((gGT->renderFlags & RENDER_FLAG_MULTIPLAYER_DECALS) != 0) && (gGT->numPlyrCurrGame > 1) && !sdata->highDetailSplitScreenLevel)
+	if (useMultiplayerDecals)
 	{
 		DecalMP_01(gGT);
 	}
@@ -115,7 +128,7 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 
 	RenderDispEnv_World(gGT); // == RenderDispEnv_World ==
 
-	if (((gGT->renderFlags & RENDER_FLAG_MULTIPLAYER_DECALS) != 0) && (gGT->numPlyrCurrGame > 1) && !sdata->highDetailSplitScreenLevel)
+	if (useMultiplayerDecals)
 	{
 		DecalMP_02(gGT);
 	}
@@ -160,7 +173,7 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 			NativePgxp_SetWorldPhase(1);
 		}
 
-		if (((gGT->renderFlags & RENDER_FLAG_MULTIPLAYER_DECALS) != 0) && (gGT->numPlyrCurrGame > 1) && !sdata->highDetailSplitScreenLevel)
+		if (useMultiplayerDecals)
 		{
 			DecalMP_03(gGT);
 		}
