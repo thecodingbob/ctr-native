@@ -64,9 +64,8 @@ NativeConfig g_config = {
   .botSelectionMode = BOT_SELECTION_PREDETERMINED,
   .skipHints = false,
   .bossCutscenes = BOSS_CUTSCENES_UNSKIPPABLE,
-  .extendedAdventureCharacterSelect = false,
-  .multiplayerAdventure = false,
-  .chaosMode = false,
+  .expandedAdventureOptions = false,
+  .extraDifficultyLevels = false,
 
   .speedMultiplier = 100,
   .gravityMultiplier = 100,
@@ -213,6 +212,13 @@ const ConfigEntry g_configEntries[] = {
         .valuePtr = &g_config.autoEndRaceWhenOthersFinish
     },
     {
+        .section = "General",
+        .key = "extra_difficulty_levels",
+        .label = "Extra Difficulty Levels",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.extraDifficultyLevels
+    },
+    {
         .section = "Adventure",
         .key = "skip_hints",
         .availableDuringPause = true,
@@ -232,19 +238,11 @@ const ConfigEntry g_configEntries[] = {
     },
     {
         .section = "Adventure",
-        .key = "extended_character_select",
+        .key = "expanded_options",
     	.availableDuringPause = true,
-        .label = "Extended Character Select",
+        .label = "Expanded Options",
         .type = CFG_BOOL,
-        .valuePtr = &g_config.extendedAdventureCharacterSelect
-    },
-    {
-        .section = "Adventure",
-        .key = "multiplayer_adventure",
-    	.availableDuringPause = true,
-        .label = "Multiplayer Adventure",
-        .type = CFG_BOOL,
-        .valuePtr = &g_config.multiplayerAdventure
+        .valuePtr = &g_config.expandedAdventureOptions
     },
     {
         .section = "Adventure",
@@ -267,14 +265,6 @@ const ConfigEntry g_configEntries[] = {
         .label = "Open All Portals",
         .type = CFG_BOOL,
         .valuePtr = &g_config.unlockAllPortals
-    },
-    {
-        .section = "Adventure",
-        .key = "chaos_mode",
-    	.availableDuringPause = true,
-        .label = "Chaos Mode",
-        .type = CFG_BOOL,
-        .valuePtr = &g_config.chaosMode
     },
     {
         .section = "Vehicle",
@@ -669,21 +659,7 @@ void NativeConfig_ApplyDependencies(const ConfigEntry *changedEntry)
         return;
     }
 
-    if (changedEntry->valuePtr == &g_config.multiplayerAdventure)
-    {
-        if (g_config.multiplayerAdventure)
-        {
-            g_config.extendedAdventureCharacterSelect = true;
-        }
-    }
-    else if (changedEntry->valuePtr == &g_config.extendedAdventureCharacterSelect)
-    {
-        if (!g_config.extendedAdventureCharacterSelect)
-        {
-            g_config.multiplayerAdventure = false;
-        }
-    }
-    else if (changedEntry->valuePtr == &g_config.developerHacksEnabled)
+    if (changedEntry->valuePtr == &g_config.developerHacksEnabled)
     {
         NativeConfig_ResetDisabledDeveloperHacks();
     }
@@ -726,6 +702,8 @@ void NativeConfig_Load(void)
 
     char line[256];
     char section[64] = "";
+    bool hasExtraOptions = false;
+    bool legacyExtraOptions = false;
 
     while (fgets(line, sizeof(line), f))
     {
@@ -754,6 +732,19 @@ void NativeConfig_Load(void)
         *eq = '\0';
         char *key = trimWhitespace(p);
         char *value = trimWhitespace(eq + 1);
+
+        if (strcmp(section, "Adventure") == 0)
+        {
+            if (strcmp(key, "expanded_options") == 0)
+            {
+                hasExtraOptions = true;
+            }
+            else if (strcmp(key, "extra_options") == 0 || strcmp(key, "extended_character_select") == 0 ||
+                     strcmp(key, "multiplayer_adventure") == 0 || strcmp(key, "chaos_mode") == 0)
+            {
+                legacyExtraOptions |= ParseBool(value);
+            }
+        }
 
         for (int i = 0; i < g_numConfigEntries; i++)
         {
@@ -791,6 +782,11 @@ void NativeConfig_Load(void)
     }
 
     fclose(f);
+
+    if (!hasExtraOptions)
+    {
+        g_config.expandedAdventureOptions = legacyExtraOptions;
+    }
 
     // Applied after the whole file is parsed so key order in config.ini does
     // not matter: developer hack options only take effect while the section is

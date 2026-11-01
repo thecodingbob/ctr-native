@@ -1,8 +1,25 @@
 #include <shared/ctr_test.h>
 #include <common.h>
 #include <chaos_save.h>
+#include <adventure_difficulty_save.h>
 
 struct sData sdata_static;
+
+static void TestAdventureDifficultyEncoding(void)
+{
+	CTR_TEST_SECTION("Adventure difficulty card encoding");
+	u8 saved = 0;
+	CTR_TEST_CHECK_EQ(AdvDifficultySave_Decode(saved), ADV_DIFFICULTY_NORMAL, "old zeroed slots load as Normal");
+	for (int difficulty = 0; difficulty < ADV_DIFFICULTY_COUNT; difficulty++)
+	{
+		saved = AdvDifficultySave_Encode((enum AdventureDifficulty)difficulty);
+		CTR_TEST_CHECK_EQ((int)AdvDifficultySave_Decode(saved), difficulty, "each difficulty round-trips");
+	}
+	saved = ADV_DIFFICULTY_COUNT;
+	CTR_TEST_CHECK_EQ(AdvDifficultySave_Decode(saved), ADV_DIFFICULTY_NORMAL, "unknown difficulty loads as Normal");
+	saved = AdvDifficultySave_Encode((enum AdventureDifficulty)-1);
+	CTR_TEST_CHECK_EQ(AdvDifficultySave_Decode(saved), ADV_DIFFICULTY_NORMAL, "invalid live values save as Normal");
+}
 
 static void TestBitsetWireFormat(void)
 {
@@ -130,6 +147,7 @@ static void TestSlotIsolation(void)
 
 int main(void)
 {
+	TestAdventureDifficultyEncoding();
 	TestBitsetWireFormat();
 	TestUnusedBitsAndZeroEffects();
 	TestEmptyAndUnsupportedEntries();

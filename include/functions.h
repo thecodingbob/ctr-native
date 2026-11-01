@@ -126,6 +126,10 @@ void GAMEPROG_InitFullMemcard(struct MemcardData *mcd);
 void GAMEPROG_ResetAdvMultiplayer(struct AdvMultiplayerSettings *settings);
 void GAMEPROG_ResetChaosSettings(struct ChaosSettings *settings);
 int GAMEPROG_RelicTargetTime(int levelID, int tier);
+int GAMEPROG_AdventureTimeLimit(int time);
+int GAMEPROG_AdventureBossLosses(int losses);
+int GAMEPROG_AdventureBotDifficulty(int difficulty);
+int GAMEPROG_AdventureLossIndex(int losses);
 void GAMEPROG_SaveCupProgress(void);
 void GAMEPROG_SyncGameAndCard(struct GameProgress *memcardProg, struct GameProgress *currentProg);
 
@@ -558,6 +562,7 @@ void MEMPACK_PopToState(s32 id);
 
 void RECTMENU_DrawQuip(char *comment, s16 startX, int startY, u32 sizeX, s16 fontType, int textFlag, s16 boxFlag);
 void RECTMENU_DrawInnerRect(RECT *r, int x, u32 *ot);
+void RECTMENU_DrawInnerRectWithGaps(RECT *r, int type, u32 *ot, int topGap, int bottomGap);
 void RECTMENU_DrawSelf(struct RectMenu *menu, int param_2, s16 param_3, s16 width);
 void RECTMENU_DrawPolyGT4(struct Icon *icon, s32 posX, s32 posY, struct PrimMem *primMem, u32 *ot, Color color0, Color color1, Color color2, Color color3,
                           s32 transparency, s32 scale);
@@ -867,6 +872,7 @@ void MM_MenuProc_Difficulty(struct RectMenu *menu);
 void MM_MenuProc_SingleCup(struct RectMenu *menu);
 void MM_MenuProc_NewLoad(struct RectMenu *menu);
 void MM_MenuProc_Chaos(struct RectMenu *menu);
+void MM_MenuProc_AdvDifficulty(struct RectMenu *menu);
 
 // Cascading menu navigation, the only place a menu box is linked to another or
 // The new-file chain: the screens between the Adventure new/load menu and a new

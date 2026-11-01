@@ -10,8 +10,8 @@ including trophy, boss, CTR, relic, crystal and gem-cup challenges.
 
 ## Starting a Chaos file
 
-1. Enable **Chaos Mode** under **Adventure** in the in-game **Options Config**
-   menu, or set `chaos_mode = true` in the `[Adventure]` section of `config.ini`.
+1. Enable **Expanded Options** under **Adventure** in the in-game **Options Config**
+   menu, or set `expanded_options = true` in the `[Adventure]` section of `config.ini`.
 2. Start a **New Adventure** and choose **Chaos** at the mode prompt. Choose
    **Regular** to create an ordinary Adventure instead.
 3. Configure Chaos, select **Confirm**, then continue to character selection.

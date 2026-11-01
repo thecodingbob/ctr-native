@@ -4092,6 +4092,7 @@ struct sData
 	// Co-op Adventure settings of the profile in use. Mirrored from the card
 	// extension on load and written back on save.
 	struct AdvMultiplayerSettings advMultiplayer;
+	enum AdventureDifficulty advDifficulty;
 
 	// Chaos settings of the profile in use. Initialised on New, configured at creation,
 	// and mirrored to/from the card extension on save/load.

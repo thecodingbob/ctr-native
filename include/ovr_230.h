@@ -122,6 +122,7 @@ enum MainMenuFlowConstants
 	MM_RACE_TYPE_SELECTABLE_ROWS = 2,
 	MM_ADV_NEW_LOAD_ROUTE_COUNT = 2,
 	MM_DIFFICULTY_COUNT = 3,
+	MM_EXTRA_DIFFICULTY_COUNT = 5,
 	MM_CUP_TRACK_COUNT = 4,
 	MM_TITLE_TM_X = 0x10e,
 	MM_TITLE_TM_Y = 0x9c,
@@ -654,7 +655,7 @@ struct OverlayDATA_230
 	struct RectMenu menuPlayers2P3P4P;
 
 	// 800b45f0
-	struct MenuRow rowsDifficulty[4];
+	struct MenuRow rowsDifficulty[MM_EXTRA_DIFFICULTY_COUNT + 1];
 
 	// 800b4608
 	struct RectMenu menuDifficulty;

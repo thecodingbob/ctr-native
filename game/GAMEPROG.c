@@ -327,6 +327,7 @@ void GAMEPROG_NewGame_OnBoot(void)
 	GAMEPROG_NewProfile_OutsideAdv(&GAME_SAVE);
 	GAMEPROG_NewProfile_InsideAdv(&GAME_ADV_PROGRESS);
 	GAMEPROG_ResetAdvMultiplayer(&sdata->advMultiplayer);
+	sdata->advDifficulty = ADV_DIFFICULTY_NORMAL;
 	GAMEPROG_ResetChaosSettings(&sdata->chaosSettings);
 	Chaos_PublishEffects();
 	GAMEPROG_GetPtrHighScoreTrack();
@@ -366,6 +367,89 @@ enum
 // and a single crate pool, so the multiplayer penalty takes 30% off every target.
 static const float GAMEPROG_RELIC_2P_TIME_FACTOR = 0.7f;
 
+int GAMEPROG_AdventureLossIndex(int losses)
+{
+	enum { EASY_LOSS_BONUS = 2 };
+	if ((GAME_TRACKER->gameMode1 & ADVENTURE_MODE) != 0 &&
+	    sdata->advDifficulty == ADV_DIFFICULTY_EASY && losses > 0)
+	{
+		return losses + EASY_LOSS_BONUS;
+	}
+	return losses;
+}
+
+int GAMEPROG_AdventureBotDifficulty(int difficulty)
+{
+	enum
+	{
+		EASY_SCALE_NUMERATOR = 3,
+		EASY_SCALE_DENOMINATOR = 4,
+		EASY_MAX = 120,
+		HARD_VALUE = 240,
+		SUPER_HARD_VALUE = 320,
+		ULTRA_HARD_VALUE = 640,
+		FIXED_BOSS_BONUS = 20,
+	};
+	u32 mode = GAME_TRACKER->gameMode1;
+	if ((mode & ADVENTURE_MODE) == 0 || (mode & ARCADE_MODE) != 0)
+	{
+		return difficulty;
+	}
+	int result = difficulty;
+	switch (sdata->advDifficulty)
+	{
+	case ADV_DIFFICULTY_EASY:
+		result = difficulty * EASY_SCALE_NUMERATOR / EASY_SCALE_DENOMINATOR;
+		if (result > EASY_MAX)
+		{
+			result = EASY_MAX;
+		}
+		break;
+	case ADV_DIFFICULTY_HARD: result = HARD_VALUE; break;
+	case ADV_DIFFICULTY_SUPER_HARD: result = SUPER_HARD_VALUE; break;
+	case ADV_DIFFICULTY_ULTRA_HARD: result = ULTRA_HARD_VALUE; break;
+	case ADV_DIFFICULTY_NORMAL:
+	case ADV_DIFFICULTY_COUNT:
+	default: return difficulty;
+	}
+	if ((mode & ADVENTURE_BOSS) != 0 && sdata->advDifficulty >= ADV_DIFFICULTY_HARD)
+	{
+		result += FIXED_BOSS_BONUS;
+	}
+	return result;
+}
+
+int GAMEPROG_AdventureBossLosses(int losses)
+{
+	if ((GAME_TRACKER->gameMode1 & ADVENTURE_MODE) != 0 &&
+	    sdata->advDifficulty >= ADV_DIFFICULTY_HARD && sdata->advDifficulty < ADV_DIFFICULTY_COUNT)
+	{
+		return 0;
+	}
+	return losses;
+}
+
+int GAMEPROG_AdventureTimeLimit(int time)
+{
+	if ((GAME_TRACKER->gameMode1 & ADVENTURE_MODE) == 0)
+	{
+		return time;
+	}
+
+	int percent;
+	switch (sdata->advDifficulty)
+	{
+	case ADV_DIFFICULTY_EASY: percent = 120; break;
+	case ADV_DIFFICULTY_HARD: percent = 90; break;
+	case ADV_DIFFICULTY_SUPER_HARD: percent = 80; break;
+	case ADV_DIFFICULTY_ULTRA_HARD: percent = 70; break;
+	case ADV_DIFFICULTY_NORMAL:
+	case ADV_DIFFICULTY_COUNT:
+	default: return time;
+	}
+	return (int)((s64)time * percent / 100);
+}
+
 // The target time the pair has to beat. A lone racer keeps the retail target;
 // this is the single place both the HUD goal and the award check read, so the two
 // can never disagree about what the round demands.
@@ -373,12 +457,11 @@ int GAMEPROG_RelicTargetTime(int levelID, int tier)
 {
 	int soloTime = data.RelicTime[levelID * GAMEPROG_RELIC_TIER_COUNT + tier];
 
-	if (!MainGameEnd_IsCoopRace(GAME_TRACKER))
+	if (MainGameEnd_IsCoopRace(GAME_TRACKER))
 	{
-		return soloTime;
+		soloTime = (int)(soloTime * GAMEPROG_RELIC_2P_TIME_FACTOR);
 	}
-
-	return (int)(soloTime * GAMEPROG_RELIC_2P_TIME_FACTOR);
+	return GAMEPROG_AdventureTimeLimit(soloTime);
 }
 
 

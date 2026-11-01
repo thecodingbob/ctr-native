@@ -1,10 +1,26 @@
 #include <common.h>
 #include <chaos_save.h>
+#include <adventure_difficulty_save.h>
 
 // Defined with the profile load and save helpers further down.
 static void SelectProfile_ApplyAdvMultiplayerCharacter(void);
 static const struct AdvMultiplayerSettings *SelectProfile_AdvSettingsToShow(const struct AdvProgress *adv, int slot);
 static b32 SelectProfile_CardSlotIsChaos(int slot);
+static enum AdventureDifficulty SelectProfile_AdvDifficultyToShow(const struct AdvProgress *adv, int slot);
+
+static const char *SelectProfile_DifficultyLabel(enum AdventureDifficulty difficulty)
+{
+	switch (difficulty)
+	{
+	case ADV_DIFFICULTY_EASY: return RECTMENU_GetString(LNG_EASY);
+	case ADV_DIFFICULTY_HARD: return RECTMENU_GetString(LNG_HARD);
+	case ADV_DIFFICULTY_SUPER_HARD: return RECTMENU_GetString(LNG_PORT_SUPER_HARD);
+	case ADV_DIFFICULTY_ULTRA_HARD: return RECTMENU_GetString(LNG_PORT_ULTRA_HARD);
+	case ADV_DIFFICULTY_NORMAL:
+	case ADV_DIFFICULTY_COUNT:
+	default: return NULL;
+	}
+}
 
 void SelectProfile_QueueLoadHub_MenuProc(struct RectMenu *menu)
 {
@@ -130,6 +146,8 @@ void SelectProfile_DrawAdvProfile(struct AdvProgress *adv, int posX, int posY, s
 	int emptyColor;
 	int nameColor;
 	int percentColor;
+	const char *difficultyLabel = NULL;
+	const char *chaosLabel = NULL;
 
 	if ((menuFlag & SELECT_PROFILE_DRAW_STYLE_GREEN) != 0)
 	{
@@ -181,17 +199,10 @@ void SelectProfile_DrawAdvProfile(struct AdvProgress *adv, int posX, int posY, s
 
 		DecalFont_DrawLine(adv->name, posX + 0x6c, posY + 0x29, FONT_BIG, JUSTIFY_CENTER | nameColor);
 
+		difficultyLabel = SelectProfile_DifficultyLabel(SelectProfile_AdvDifficultyToShow(adv, profileSlot));
 		if (isChaos)
 		{
-			const char *label = RECTMENU_GetString(LNG_PORT_CHAOS);
-			int y = posY + SELECT_PROFILE_CHAOS_MARK_Y;
-
-			for (const char *c = label; *c != '\0'; c++, y += SELECT_PROFILE_CHAOS_MARK_STEP)
-			{
-				char letter[2] = {*c, '\0'};
-
-				DecalFont_DrawLine(letter, posX + SELECT_PROFILE_CHAOS_MARK_X, y, FONT_SMALL, numberColor);
-			}
+			chaosLabel = RECTMENU_GetString(LNG_PORT_CHAOS);
 		}
 
 		int profileTextColor = JUSTIFY_RIGHT | numberColor;
@@ -226,7 +237,19 @@ void SelectProfile_DrawAdvProfile(struct AdvProgress *adv, int posX, int posY, s
 		CTR_Box_DrawClearBox(&highlightRect, highlightColor, 1, &gGT->backBuffer->otMem.uiOT[3], &gGT->backBuffer->primMem);
 	}
 
-	RECTMENU_DrawInnerRect(&profileRect, (s16)menuFlag, &gGT->backBuffer->otMem.uiOT[3]);
+	enum { LABEL_GAP_PADDING = 6, TOP_LABEL_Y_OFFSET = 3, BOTTOM_LABEL_Y_OFFSET = 4 };
+	int centerX = posX + profileRect.w / 2;
+	int topGap = difficultyLabel != NULL ? DecalFont_GetLineWidth((char *)difficultyLabel, FONT_SMALL) + LABEL_GAP_PADDING : 0;
+	int bottomGap = chaosLabel != NULL ? DecalFont_GetLineWidth((char *)chaosLabel, FONT_SMALL) + LABEL_GAP_PADDING : 0;
+	if (difficultyLabel != NULL)
+	{
+		DecalFont_DrawLine((char *)difficultyLabel, centerX, posY - TOP_LABEL_Y_OFFSET, FONT_SMALL, JUSTIFY_CENTER | numberColor);
+	}
+	if (chaosLabel != NULL)
+	{
+		DecalFont_DrawLine((char *)chaosLabel, centerX, posY + profileRect.h - BOTTOM_LABEL_Y_OFFSET, FONT_SMALL, JUSTIFY_CENTER | numberColor);
+	}
+	RECTMENU_DrawInnerRectWithGaps(&profileRect, (s16)menuFlag, &gGT->backBuffer->otMem.uiOT[3], topGap, bottomGap);
 }
 
 
@@ -822,6 +845,19 @@ static void SelectProfile_ClearChaosSettings(int slot)
 	memset(&SelectProfile_MemcardData()->extension.chaos[slot], 0, sizeof(struct ChaosSettingsSaved));
 }
 
+static enum AdventureDifficulty SelectProfile_AdvDifficultyToShow(const struct AdvProgress *adv, int slot)
+{
+	if (adv == &sdata->advProgress)
+	{
+		return sdata->advDifficulty;
+	}
+	if (slot < 0 || slot >= MEMCARD_ADV_PROFILE_COUNT)
+	{
+		return ADV_DIFFICULTY_NORMAL;
+	}
+	return AdvDifficultySave_Decode(SelectProfile_MemcardData()->extension.difficulty[slot]);
+}
+
 static void SelectProfile_LoadAdvProfile(int slot)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -831,6 +867,7 @@ static void SelectProfile_LoadAdvProfile(int slot)
 	sdata->advProgress = memcard->advProgress[slot];
 	SelectProfile_LoadAdvMultiplayer(slot);
 	SelectProfile_LoadChaosSettings(slot);
+	sdata->advDifficulty = AdvDifficultySave_Decode(SelectProfile_MemcardData()->extension.difficulty[slot]);
 	data.characterIDs[0] = sdata->advProgress.characterID;
 	SelectProfile_ApplyAdvMultiplayerCharacter();
 	memmove(gGT->prevNameEntered, sdata->advProgress.name, sizeof(gGT->prevNameEntered));
@@ -845,6 +882,7 @@ static void SelectProfile_SaveAdvProfile(int slot)
 	memcard->advProgress[slot] = sdata->advProgress;
 	SelectProfile_SaveAdvMultiplayer(slot);
 	SelectProfile_SaveChaosSettings(slot);
+	SelectProfile_MemcardData()->extension.difficulty[slot] = AdvDifficultySave_Encode(sdata->advDifficulty);
 	MEMCARD_SetIcon(0);
 	RefreshCard_StartMemcardAction(3);
 	*(s16 *)&sdata->unk_memcardRelated_8008d928[0] = 1;
@@ -1265,6 +1303,7 @@ static int SelectProfile_HandleSelection(struct RectMenu *menu, int rowCount)
 		GAMEPROG_NewProfile_InsideAdv(&SelectProfile_MemcardProfile()->advProgress[menu->rowSelected]);
 		SelectProfile_ClearAdvMultiplayer(menu->rowSelected);
 		SelectProfile_ClearChaosSettings(menu->rowSelected);
+		SelectProfile_MemcardData()->extension.difficulty[menu->rowSelected] = ADV_DIFFICULTY_NORMAL;
 		MEMCARD_SetIcon(0);
 		RefreshCard_StartMemcardAction(3);
 		*(s16 *)&sdata->unk_memcardRelated_8008d928[0] = 1;

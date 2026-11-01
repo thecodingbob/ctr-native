@@ -128,14 +128,10 @@ HANDLE_EXITING:
 	        MM_Title_CameraReset();
 	        MM_Title_KillThread();
 
-		if (g_config.extendedAdventureCharacterSelect)
+		if (g_config.expandedAdventureOptions)
 		{
 		  // The normal Adventure path loads the garage. Keep the main-menu level
 		  // active instead so its full character roster can be selected first.
-		  if (!g_config.multiplayerAdventure)
-		  {
-		    GAME_TRACKER->numPlyrNextGame = 1;
-		  }
 		  sdata->ptrDesiredMenu = &D230.menuCharacterSelect;
 		  MM_Characters_RestoreIDs();
 		}
@@ -279,6 +275,12 @@ END_FUNCTION:
 
 	mainMenu->posX_curr = menuPos[TITLE_MENU_POS_MAIN].x + transition[TITLE_TRANSITION_MAIN].currX;
 	mainMenu->posY_curr = menuPos[TITLE_MENU_POS_MAIN].y + transition[TITLE_TRANSITION_MAIN].currY;
+	if (sdata->newLoad.step != NEWLOAD_STEP_NONE)
+	{
+		// The extra Adventure recap box increases the height of this menu chain.
+		enum { ADV_CREATION_MENU_UP_OFFSET = 16 };
+		mainMenu->posY_curr -= ADV_CREATION_MENU_UP_OFFSET;
+	}
 	MM_MENU_ADVENTURE.posX_curr = menuPos[TITLE_MENU_POS_ADVENTURE].x + transition[TITLE_TRANSITION_ADVENTURE].currX;
 	MM_MENU_ADVENTURE.posY_curr = menuPos[TITLE_MENU_POS_ADVENTURE].y + transition[TITLE_TRANSITION_ADVENTURE].currY;
 	MM_MENU_RACE_TYPE.posX_curr = menuPos[TITLE_MENU_POS_RACE_TYPE].x + transition[TITLE_TRANSITION_RACE_TYPE].currX;
