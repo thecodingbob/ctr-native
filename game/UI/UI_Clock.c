@@ -464,7 +464,12 @@ void UI_DrawLimitClock(s16 posX, s16 posY, s16 fontType)
 
 	// amount of time event should last, minus, time elapsed in the event.
 	// basically, time remaining in the event
-	int timeRemaining = gGT->originalEventTime - gGT->elapsedEventTime;
+	int timeLimit = gGT->originalEventTime;
+	if ((gGT->gameMode1 & CRYSTAL_CHALLENGE) != 0)
+	{
+		timeLimit = GAMEPROG_AdventureTimeLimit(timeLimit);
+	}
+	int timeRemaining = timeLimit - gGT->elapsedEventTime;
 
 	// if you run out of time
 	if (timeRemaining < 0)

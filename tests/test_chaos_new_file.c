@@ -18,6 +18,7 @@ NativeConfig g_config;
 
 static int s_setupEntries;
 static int s_titleReturns;
+static bool s_coop;
 
 void Chaos_PublishEffects(void) {}
 
@@ -34,7 +35,7 @@ void MM_JumpTo_Title_Returning(void)
 b32 MainGameEnd_IsCoopRace(struct GameTracker *gGT)
 {
 	(void)gGT;
-	return false;
+	return s_coop;
 }
 
 #include <game/GAMEPROG.c>
@@ -50,6 +51,7 @@ static void ResetFixture(void)
 	sdata->ptrActiveMenu = &MM_MENU_MAIN;
 	s_setupEntries = 0;
 	s_titleReturns = 0;
+	s_coop = false;
 }
 
 static void CheckFreshSettings(void)
@@ -108,6 +110,32 @@ static void TestDifficultyChoices(void)
 			CTR_TEST_CHECK_EQ(sdata->newLoad.step, NEWLOAD_STEP_CHAOS, "selection advances to Mode");
 		}
 	}
+}
+
+static void TestAdventureTimeLimits(void)
+{
+	CTR_TEST_SECTION("Adventure difficulty time limits");
+	struct GameTracker tracker = {0};
+	sdata->gGT = &tracker;
+	tracker.gameMode1 = ADVENTURE_MODE;
+	const int expected[] = {1000, 1200, 900, 800, 700};
+	for (int i = 0; i < ADV_DIFFICULTY_COUNT; i++)
+	{
+		sdata->advDifficulty = (enum AdventureDifficulty)i;
+		CTR_TEST_CHECK_EQ(GAMEPROG_AdventureTimeLimit(1000), expected[i], "each difficulty scales the event time");
+	}
+	sdata->advDifficulty = ADV_DIFFICULTY_EASY;
+	tracker.gameMode1 = BATTLE_MODE;
+	CTR_TEST_CHECK_EQ(GAMEPROG_AdventureTimeLimit(1000), 1000, "non-Adventure event times remain unchanged");
+	tracker.gameMode1 = ADVENTURE_MODE | RELIC_RACE;
+	data.RelicTime[0] = 1000;
+	CTR_TEST_CHECK_EQ(GAMEPROG_RelicTargetTime(0, 0), 1200, "solo relic targets use the chosen difficulty");
+	s_coop = true;
+	CTR_TEST_CHECK_EQ(GAMEPROG_RelicTargetTime(0, 0), 838, "co-op and difficulty multipliers compose after the existing float rounding");
+	CTR_TEST_CHECK_EQ(GAMEPROG_RelicTargetTime(0, 0), 838, "reading the target repeatedly does not rescale it");
+	sdata->advDifficulty = ADV_DIFFICULTY_NORMAL;
+	CTR_TEST_CHECK_EQ(GAMEPROG_RelicTargetTime(0, 0), 699, "Normal retains the original co-op target");
+	s_coop = false;
 }
 
 static void TestNewAfterChaosCreation(void)
@@ -286,6 +314,7 @@ static void TestResidentCreationRestore(void)
 
 int main(void)
 {
+	TestAdventureTimeLimits();
 	TestDifficultyChoices();
 	TestNewAfterChaosCreation();
 	TestNewAfterLoadedChaosSettings();
