@@ -114,6 +114,7 @@ static bool MM_NewLoad_InChain(void)
 static void MM_NewLoad_Begin(struct RectMenu *parent)
 {
 	sdata->newLoad = (struct NewLoadState){0};
+	sdata->advDifficulty = ADV_DIFFICULTY_NORMAL;
 	// Every new file starts Regular with fresh defaults, even when the prompt is disabled.
 	GAMEPROG_ResetChaosSettings(&sdata->chaosSettings);
 	struct RectMenu *screen = MM_NewLoad_StepAway(NEWLOAD_STEP_CHAOS, 1);

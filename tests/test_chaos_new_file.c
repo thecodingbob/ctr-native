@@ -84,6 +84,7 @@ static void TestNewAfterChaosCreation(void)
 			CTR_TEST_CHECK_EQ(s_setupEntries, 1, "the preceding creation reached Chaos setup");
 
 			sdata->chaosSettings.durationSeconds = 45;
+ 			sdata->advDifficulty = ADV_DIFFICULTY_HARD;
 			sdata->chaosSettings.triggerIntervalSeconds = 90;
 			sdata->chaosSettings.trigger = CHAOS_TRIGGER_PICKUP;
 			ChaosEffect_Toggle(sdata->chaosSettings.effects, &sdata->chaosSettings.enabledCount, CHAOS_EFFECT_FLY_ME_TO_THE_MOON);
@@ -94,6 +95,7 @@ static void TestNewAfterChaosCreation(void)
 			// Clearing only armed here would leave the previous file's custom settings.
 			MM_NewLoad_Begin(&MM_MENU_ADVENTURE);
 			CheckFreshSettings();
+			CTR_TEST_CHECK_EQ(sdata->advDifficulty, ADV_DIFFICULTY_NORMAL, "a new file resets the previous difficulty to Normal");
 			CTR_TEST_CHECK(MM_NewLoad_InChain() == (expanded != 0), "New follows the expanded creation steps when enabled");
 	}
 }

@@ -1,5 +1,6 @@
 #include <common.h>
 #include <chaos_save.h>
+#include <adventure_difficulty_save.h>
 
 // Defined with the profile load and save helpers further down.
 static void SelectProfile_ApplyAdvMultiplayerCharacter(void);
@@ -831,6 +832,7 @@ static void SelectProfile_LoadAdvProfile(int slot)
 	sdata->advProgress = memcard->advProgress[slot];
 	SelectProfile_LoadAdvMultiplayer(slot);
 	SelectProfile_LoadChaosSettings(slot);
+	sdata->advDifficulty = AdvDifficultySave_Decode(SelectProfile_MemcardData()->extension.difficulty[slot]);
 	data.characterIDs[0] = sdata->advProgress.characterID;
 	SelectProfile_ApplyAdvMultiplayerCharacter();
 	memmove(gGT->prevNameEntered, sdata->advProgress.name, sizeof(gGT->prevNameEntered));
@@ -845,6 +847,7 @@ static void SelectProfile_SaveAdvProfile(int slot)
 	memcard->advProgress[slot] = sdata->advProgress;
 	SelectProfile_SaveAdvMultiplayer(slot);
 	SelectProfile_SaveChaosSettings(slot);
+	SelectProfile_MemcardData()->extension.difficulty[slot] = AdvDifficultySave_Encode(sdata->advDifficulty);
 	MEMCARD_SetIcon(0);
 	RefreshCard_StartMemcardAction(3);
 	*(s16 *)&sdata->unk_memcardRelated_8008d928[0] = 1;
@@ -1265,6 +1268,7 @@ static int SelectProfile_HandleSelection(struct RectMenu *menu, int rowCount)
 		GAMEPROG_NewProfile_InsideAdv(&SelectProfile_MemcardProfile()->advProgress[menu->rowSelected]);
 		SelectProfile_ClearAdvMultiplayer(menu->rowSelected);
 		SelectProfile_ClearChaosSettings(menu->rowSelected);
+		SelectProfile_MemcardData()->extension.difficulty[menu->rowSelected] = ADV_DIFFICULTY_NORMAL;
 		MEMCARD_SetIcon(0);
 		RefreshCard_StartMemcardAction(3);
 		*(s16 *)&sdata->unk_memcardRelated_8008d928[0] = 1;

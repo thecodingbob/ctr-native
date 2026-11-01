@@ -626,6 +626,17 @@ struct AdvMultiplayerSettings
 	s16 characterID2;
 };
 
+// Zero is Normal so empty and older card extensions preserve retail behavior.
+enum AdventureDifficulty
+{
+	ADV_DIFFICULTY_NORMAL,
+	ADV_DIFFICULTY_EASY,
+	ADV_DIFFICULTY_HARD,
+	ADV_DIFFICULTY_SUPER_HARD,
+	ADV_DIFFICULTY_ULTRA_HARD,
+	ADV_DIFFICULTY_COUNT,
+};
+
 // What makes an effect activate.
 enum ChaosTrigger
 {
@@ -673,12 +684,13 @@ struct ChaosSettingsSaved
 	u16 format;
 };
 
-// Four co-op entries followed by four independently tagged Chaos entries.
-// Zeroed entries have no Chaos settings and load as Regular.
+// Per-slot co-op, Chaos and difficulty settings in the retail padding.
+// Zeroed entries load as solo, Regular and Normal.
 struct MemcardExtension
 {
 	struct AdvMultiplayerSettings adventure[MEMCARD_ADV_PROFILE_COUNT];
 	struct ChaosSettingsSaved chaos[MEMCARD_ADV_PROFILE_COUNT];
+	u8 difficulty[MEMCARD_ADV_PROFILE_COUNT];
 };
 
 // The whole SLOTS file payload: the retail profile followed by this port's
@@ -715,9 +727,9 @@ CTR_STATIC_ASSERT(OFFSETOF(struct ChaosSettingsSaved, format) == 0x16);
 CTR_STATIC_ASSERT(sizeof(struct ChaosSettingsSaved) == 0x18);
 CTR_STATIC_ASSERT(OFFSETOF(struct MemcardExtension, chaos) == 0x10);
 CTR_STATIC_ASSERT(CTR_OFFSET_OF_ARRAY(struct MemcardExtension, chaos, 1) == 0x28);
-CTR_STATIC_ASSERT(sizeof(struct MemcardExtension) == 0x70);
+CTR_STATIC_ASSERT(sizeof(struct MemcardExtension) == 0x74);
 CTR_STATIC_ASSERT(OFFSETOF(struct MemcardData, extension) == sizeof(struct MemcardProfile));
-CTR_STATIC_ASSERT(sizeof(struct MemcardData) == 0x1670);
+CTR_STATIC_ASSERT(sizeof(struct MemcardData) == 0x1674);
 CTR_STATIC_ASSERT(sizeof(struct MemcardData) <= (MEMCARD_FILE_DATA_SIZE - MEMCARD_FILE_CHECKSUM_SIZE));
 CTR_STATIC_ASSERT(sizeof(struct GhostProfile) == 0x34);
 CTR_STATIC_ASSERT(OFFSETOF(struct GameOptions, rwd) == 0x6);
