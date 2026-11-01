@@ -5,9 +5,8 @@ and every round produces a single shared result.
 
 ## Starting a 2P file
 
-Set `multiplayer_adventure = true` in `config.ini`, or flip it in the in-game Options
-Config menu. It is tied to the extended character selector: turning one on turns the
-other on, and turning `extended_character_select` off turns co-op back off.
+Enable **Expanded Options** under **Adventure** in Options Config, or set
+`expanded_options = true` in the `[Adventure]` section of `config.ini`.
 
 Pick **New Adventure** as usual. The setup screen now has a player count row — **1
 Player** for a normal solo Adventure, or **2 Players** for co-op, which only unlocks

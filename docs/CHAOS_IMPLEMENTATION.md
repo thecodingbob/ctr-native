@@ -177,7 +177,7 @@ new format and migration; `namespace_Memcard.h` assertions pin the layout.
 ## Profile and menu integration
 
 - Every New resets the live settings to Regular with all implemented effects
-  selected. `chaos_mode` controls only the creation prompt; loaded files use
+  selected. `expanded_options` controls the creation prompt; loaded files use
   `chaosSettings.armed`. Settings are immutable once the file is created.
 - Creation retains choices when navigating Back, including across the character
   selection overlay. Confirm requires a selected effect; this does not reinterpret

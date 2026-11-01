@@ -929,7 +929,7 @@ void MM_Characters_MenuProc(struct RectMenu *unused)
 			{
 				MM_Characters_HideDrivers();
 
-				if (g_config.extendedAdventureCharacterSelect &&
+				if (g_config.expandedAdventureOptions &&
 				    ((GAME_TRACKER->gameMode1 & ADVENTURE_MODE) != 0))
 				{
 					GAME_ADV_PROGRESS.characterID = GAME_CHARACTER_IDS[0];

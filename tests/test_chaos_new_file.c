@@ -70,17 +70,16 @@ static void CheckFreshSettings(void)
 
 static void TestNewAfterChaosCreation(void)
 {
-	CTR_TEST_SECTION("New resets a previous Chaos creation with either optional step enabled or disabled");
-	for (int prompt = 0; prompt <= 1; prompt++)
+	CTR_TEST_SECTION("New resets a previous Chaos creation with expanded options enabled or disabled");
+	for (int expanded = 0; expanded <= 1; expanded++)
 	{
-		for (int players = 0; players <= 1; players++)
-		{
 			ResetFixture();
-			g_config.chaosMode = true;
+			g_config.expandedAdventureOptions = true;
 			MM_NewLoad_Begin(&MM_MENU_ADVENTURE);
 			MM_MENU_CHAOS_PROMPT.funcState = RECTMENU_FUNC_STATE_INPUT;
 			MM_MENU_CHAOS_PROMPT.rowSelected = 0;
 			MM_MenuProc_Chaos(&MM_MENU_CHAOS_PROMPT);
+			MM_NewLoad_Advance(&MM_MENU_PLAYERS_1P2P);
 			CTR_TEST_CHECK(sdata->chaosSettings.armed, "the preceding creation really selected Chaos");
 			CTR_TEST_CHECK_EQ(s_setupEntries, 1, "the preceding creation reached Chaos setup");
 
@@ -89,15 +88,13 @@ static void TestNewAfterChaosCreation(void)
 			sdata->chaosSettings.trigger = CHAOS_TRIGGER_PICKUP;
 			ChaosEffect_Toggle(sdata->chaosSettings.effects, &sdata->chaosSettings.enabledCount, CHAOS_EFFECT_FLY_ME_TO_THE_MOON);
 
-			g_config.chaosMode = prompt != 0;
-			g_config.multiplayerAdventure = players != 0;
+			g_config.expandedAdventureOptions = expanded != 0;
 			s_setupEntries = 0;
 			sdata->ptrDesiredMenu = NULL;
 			// Clearing only armed here would leave the previous file's custom settings.
 			MM_NewLoad_Begin(&MM_MENU_ADVENTURE);
 			CheckFreshSettings();
-			CTR_TEST_CHECK(MM_NewLoad_InChain() == (prompt || players), "New follows only the enabled creation steps");
-		}
+			CTR_TEST_CHECK(MM_NewLoad_InChain() == (expanded != 0), "New follows the expanded creation steps when enabled");
 	}
 }
 
@@ -121,20 +118,18 @@ static void TestNewAfterLoadedChaosSettings(void)
 	CTR_TEST_CHECK_EQ(MM_DESIRED_MENU_INDEX, MM_EXIT_ROUTE_ADV_NEW, "New continues through the normal creation route");
 }
 
-static void ReachCharacterSelect(bool prompt, bool chaos, bool players, int playerCount, bool extended)
+static void ReachCharacterSelect(bool expanded, bool chaos, int playerCount)
 {
 	ResetFixture();
-	g_config.chaosMode = prompt;
-	g_config.multiplayerAdventure = players;
-	g_config.extendedAdventureCharacterSelect = extended;
+	g_config.expandedAdventureOptions = expanded;
 	MM_NewLoad_Begin(&MM_MENU_ADVENTURE);
-	if (prompt)
+	if (expanded)
 	{
 		MM_MENU_CHAOS_PROMPT.funcState = RECTMENU_FUNC_STATE_INPUT;
 		MM_MENU_CHAOS_PROMPT.rowSelected = chaos ? 0 : 1;
 		MM_MenuProc_Chaos(&MM_MENU_CHAOS_PROMPT);
 	}
-	if (players)
+	if (expanded)
 	{
 		MM_MENU_PLAYERS_1P2P.rowSelected = playerCount - 1;
 		MM_NewLoad_Advance(&MM_MENU_PLAYERS_1P2P);
@@ -154,7 +149,7 @@ static void TestCharacterSelectBackPreservesChoices(void)
 	{
 		for (int players = 1; players <= 2; players++)
 		{
-			ReachCharacterSelect(true, chaos != 0, true, players, true);
+			ReachCharacterSelect(true, chaos != 0, players);
 			memset(&D230, 0, sizeof(D230));
 			MM_NewLoad_OnCharacterSelectExit(false);
 			CTR_TEST_CHECK_EQ(s_titleReturns, 1, "Back starts the title return transition once");
@@ -179,31 +174,10 @@ static void TestCharacterSelectBackPreservesChoices(void)
 	}
 }
 
-static void TestCharacterSelectBackWithOptionalSteps(void)
-{
-	CTR_TEST_SECTION("Back returns to the last enabled step");
-	ReachCharacterSelect(false, false, true, 2, true);
-	MM_NewLoad_OnCharacterSelectExit(false);
-	CTR_TEST_CHECK(MM_MENU_ADVENTURE.ptrNextBox_InHierarchy == &MM_MENU_PLAYERS_1P2P, "a disabled prompt is not reconstructed");
-	CTR_TEST_CHECK_EQ(MM_MENU_PLAYERS_1P2P.rowSelected, 1, "2P survives a return with no Mode step");
-	MM_NewLoad_Retreat(&MM_MENU_PLAYERS_1P2P);
-
-	ReachCharacterSelect(true, false, false, 1, true);
-	MM_NewLoad_OnCharacterSelectExit(false);
-	CTR_TEST_CHECK(MM_MENU_ADVENTURE.ptrNextBox_InHierarchy == &MM_MENU_CHAOS_PROMPT, "Mode is the last choice when Players is disabled");
-	CTR_TEST_CHECK_EQ(MM_MENU_CHAOS_PROMPT.rowSelected, 1, "Regular remains selected without a Players step");
-	MM_NewLoad_Retreat(&MM_MENU_CHAOS_PROMPT);
-
-	ReachCharacterSelect(false, false, false, 1, true);
-	MM_NewLoad_OnCharacterSelectExit(false);
-	CTR_TEST_CHECK(!MM_NewLoad_InChain(), "no chain is invented when both steps are disabled");
-	CTR_TEST_CHECK_EQ(s_titleReturns, 1, "an ordinary Back still returns to the title");
-}
-
 static void TestCharacterSelectForwardConsumesReturn(void)
 {
 	CTR_TEST_SECTION("finishing creation cannot redirect a later character-select Back");
-	ReachCharacterSelect(true, true, true, 2, true);
+	ReachCharacterSelect(true, true, 2);
 	MM_NewLoad_OnCharacterSelectExit(true);
 	CTR_TEST_CHECK_EQ(s_titleReturns, 0, "proceeding does not start a title return");
 	MM_NewLoad_OnCharacterSelectExit(false);
@@ -211,7 +185,7 @@ static void TestCharacterSelectForwardConsumesReturn(void)
 	CTR_TEST_CHECK(MM_MENU_ADVENTURE.ptrNextBox_InHierarchy == NULL, "a later mode does not gain an Adventure submenu");
 	CTR_TEST_CHECK_EQ(s_titleReturns, 1, "a later Back follows the ordinary title return");
 
-	ReachCharacterSelect(true, false, true, 2, false);
+	ReachCharacterSelect(false, false, 1);
 	MM_NewLoad_OnCharacterSelectExit(false);
 	CTR_TEST_CHECK(!MM_NewLoad_InChain(), "the garage route leaves no extended-character-select return context");
 }
@@ -221,9 +195,7 @@ static void TestResidentCreationRestore(void)
 	CTR_TEST_SECTION("restoring SDATA and D230 restores the setup handover and return context");
 	ResetFixture();
 	CTR_TEST_CHECK(!MM_NewLoad_InChain(), "zero-initialized resident state has no active creation");
-	g_config.chaosMode = true;
-	g_config.multiplayerAdventure = true;
-	g_config.extendedAdventureCharacterSelect = true;
+	g_config.expandedAdventureOptions = true;
 	MM_NewLoad_Begin(&MM_MENU_ADVENTURE);
 	MM_MENU_CHAOS_PROMPT.funcState = RECTMENU_FUNC_STATE_INPUT;
 	MM_MenuProc_Chaos(&MM_MENU_CHAOS_PROMPT);
@@ -265,7 +237,6 @@ int main(void)
 	TestNewAfterChaosCreation();
 	TestNewAfterLoadedChaosSettings();
 	TestCharacterSelectBackPreservesChoices();
-	TestCharacterSelectBackWithOptionalSteps();
 	TestCharacterSelectForwardConsumesReturn();
 	TestResidentCreationRestore();
 	return CtrTest_Summary();

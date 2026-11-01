@@ -18,9 +18,7 @@ typedef struct {
     int botSelectionMode;         // BOT_SELECTION_PREDETERMINED (default), RANDOM_UNLOCKED, or RANDOM_ALL
     bool skipHints;             // false = off (default), true = skip all mask hints in adventure mode
     int bossCutscenes;          // BOSS_CUTSCENES_UNSKIPPABLE (default), SKIPPABLE, or SKIP
-    bool extendedAdventureCharacterSelect; // false = garage, true = extended selector for new Adventure
-    bool multiplayerAdventure;  // false = off (default), true = enable multiplayer Adventure setup
-    bool chaosMode;              // false = off (default), true = ask whether to arm Chaos mode when creating an Adventure file
+    bool expandedAdventureOptions; // expose the additional new-Adventure choices
     bool extraDifficultyLevels; // offer Super Hard and Ultra Hard in Arcade
     int speedMultiplier;        // percent, 10%..200%, 100 = 1.0x (default)
     int gravityMultiplier;      // percent, 10%..300%, 100 = 1.0x (default)

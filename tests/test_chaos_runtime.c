@@ -27,7 +27,7 @@ static void TestIntervalCadence(void)
 	Chaos_Reset();
 	MainGameStart_Initialize(&s_tracker, true);
 	CTR_TEST_CHECK(s_teleported && sdata->chaosRuntime.raceInitialized, "the actual race-start callback initializes Chaos after teleporting");
-	CTR_TEST_CHECK(!g_config.chaosMode, "the creation prompt is disabled in this fixture");
+	CTR_TEST_CHECK(!g_config.expandedAdventureOptions, "the creation prompt is disabled in this fixture");
 	Tick(5000);
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.numActive, 0, "the countdown cannot activate an effect");
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.intervalRemainingMS, 5000, "the countdown does not consume trigger time");

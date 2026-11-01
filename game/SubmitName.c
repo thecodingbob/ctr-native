@@ -465,7 +465,7 @@ void SubmitName_MenuProc(struct RectMenu *menu)
 		// if hit CANCEL
 		if (selection < 0)
 		{
-			if (g_config.extendedAdventureCharacterSelect)
+			if (g_config.expandedAdventureOptions)
 			{
 				// The garage was skipped, so return to the replacement selector.
 				sdata->ptrDesiredMenu = &D230.menuCharacterSelect;

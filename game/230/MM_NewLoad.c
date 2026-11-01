@@ -40,9 +40,9 @@ static struct RectMenu *MM_NewLoad_Screen(int step)
 	switch (step)
 	{
 	case NEWLOAD_STEP_CHAOS:
-		return g_config.chaosMode ? &MM_MENU_CHAOS_PROMPT : NULL;
+		return g_config.expandedAdventureOptions ? &MM_MENU_CHAOS_PROMPT : NULL;
 	case NEWLOAD_STEP_PLAYERS:
-		return g_config.multiplayerAdventure ? &MM_MENU_PLAYERS_1P2P : NULL;
+		return g_config.expandedAdventureOptions ? &MM_MENU_PLAYERS_1P2P : NULL;
 	default:
 		return NULL;
 	}
@@ -94,7 +94,7 @@ static void MM_NewLoad_Exit(void)
 		return;
 	}
 	// The garage does not use the character-select return path.
-	sdata->newLoad.previousMenu = (g_config.extendedAdventureCharacterSelect && sdata->newLoad.step != NEWLOAD_STEP_NONE)
+	sdata->newLoad.previousMenu = (g_config.expandedAdventureOptions && sdata->newLoad.step != NEWLOAD_STEP_NONE)
 	                                  ? MM_NewLoad_Screen(sdata->newLoad.step) : NULL;
 	MM_NewLoad_Unwind();
 	if (sdata->ptrActiveMenu != &MM_MENU_MAIN)

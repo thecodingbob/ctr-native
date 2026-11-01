@@ -128,14 +128,10 @@ HANDLE_EXITING:
 	        MM_Title_CameraReset();
 	        MM_Title_KillThread();
 
-		if (g_config.extendedAdventureCharacterSelect)
+		if (g_config.expandedAdventureOptions)
 		{
 		  // The normal Adventure path loads the garage. Keep the main-menu level
 		  // active instead so its full character roster can be selected first.
-		  if (!g_config.multiplayerAdventure)
-		  {
-		    GAME_TRACKER->numPlyrNextGame = 1;
-		  }
 		  sdata->ptrDesiredMenu = &D230.menuCharacterSelect;
 		  MM_Characters_RestoreIDs();
 		}
