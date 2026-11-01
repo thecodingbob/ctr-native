@@ -62,6 +62,11 @@ void MainFrame_RenderFrame(struct GameTracker *gGT, struct GamepadSystem *gGamep
 		}
 	}
 
+	if ((gGT->gameMode1 & MAIN_MENU) != 0)
+	{
+		MM_Title_DrawBranding();
+	}
+
 	RainLogic(gGT);
 	DropRain_MakeSound(gGT);
 	MenuHighlight();

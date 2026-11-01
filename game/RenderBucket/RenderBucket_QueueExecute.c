@@ -2495,10 +2495,13 @@ static struct RenderBucketUncompressResult RenderBucket_UncompressAnimationFrame
 
 static struct RenderBucketUncompressResult RenderBucket_DispatchUncompressAnimationFrame(struct RenderBucketDrawContext *ctx, u32 command, u16 stackIndex)
 {
+	struct RenderBucketUncompressResult result;
+
 	switch (ctx->idpp->unkF0)
 	{
 	case RB_RETAIL_UNCOMPRESS_NEXTFRAME:
-		return RenderBucket_UncompressAnimationFrame_NextFrame(ctx, command, stackIndex);
+		result = RenderBucket_UncompressAnimationFrame_NextFrame(ctx, command, stackIndex);
+		break;
 
 	case RB_RETAIL_UNCOMPRESS_SPLIT:
 		return RenderBucket_UncompressAnimationFrame_Split(ctx, command, stackIndex);
@@ -2507,8 +2510,18 @@ static struct RenderBucketUncompressResult RenderBucket_DispatchUncompressAnimat
 		return RenderBucket_UncompressAnimationFrame_ReflectNextFrame(ctx, command, stackIndex);
 
 	default:
-		return RenderBucket_UncompressAnimationFrame(ctx, command, stackIndex);
+		result = RenderBucket_UncompressAnimationFrame(ctx, command, stackIndex);
+		break;
 	}
+
+	// Inspired by CTR Archipelago's per-vertex title ring recolouring.
+	if ((GAME_TRACKER->gameMode1 & MAIN_MENU) != 0 &&
+	    (ctx->inst->model->id == STATIC_RINGTOP || ctx->inst->model->id == STATIC_RINGBOTTOM))
+	{
+		u32 color = (u32)result.color;
+		result.color = (color & 0xff00ff00u) | ((color & 0x000000ffu) << 16) | ((color & 0x00ff0000u) >> 16);
+	}
+	return result;
 }
 
 static u32 *RenderBucket_GetNormalOTEntry(int activeRange, int depthMac0)
