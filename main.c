@@ -1,6 +1,10 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define SDL_MAIN_HANDLED
 
+#ifndef CTR_NATIVE_EXPANDED_VERSION
+#define CTR_NATIVE_EXPANDED_VERSION "0.0.0-dev"
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -96,10 +100,6 @@
 #else
 #define CC "Unknown"
 #endif
-#endif
-
-#ifndef CTR_NATIVE_EXPANDED_VERSION
-#define CTR_NATIVE_EXPANDED_VERSION "0.0.0-dev"
 #endif
 
 #ifndef CTR_NATIVE_EXPANDED_BUILD_ID

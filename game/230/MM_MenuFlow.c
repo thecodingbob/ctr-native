@@ -89,6 +89,13 @@ void MM_MenuProc_Main(struct RectMenu *menu)
 		{
 			DecalFont_DrawLineOT(GAME_LANGUAGE_STRINGS[LNG_TM], MM_TITLE_TM_X, MM_TITLE_TM_Y, FONT_SMALL, ORANGE,
 			                     &GAME_TRACKER->backBuffer->otMem.uiOT[MM_TITLE_TM_OT_INDEX]);
+			// The 3D title's horizontal displacement from screen center follows
+			// the same widescreen projection factor as the ring.
+			s16 ringCenterX = SCREEN_WIDTH / 2 + (MM_TITLE_RING_CENTER_X_4_3 - SCREEN_WIDTH / 2) * Widescreen_GetFactor() / 1000;
+			DecalFont_DrawLineOT("EXPANDED", ringCenterX, MM_TITLE_EXPANDED_Y, FONT_BIG, JUSTIFY_CENTER | ORANGE,
+			                     &GAME_TRACKER->backBuffer->otMem.uiOT[MM_TITLE_TM_OT_INDEX]);
+			DecalFont_DrawLineScaledOT("v" CTR_NATIVE_EXPANDED_VERSION, MM_TITLE_VERSION_X, MM_TITLE_VERSION_Y, FONT_SMALL, WHITE, FP(0.75),
+			                           &GAME_TRACKER->backBuffer->otMem.uiOT[MM_TITLE_TM_OT_INDEX]);
 		}
 
 		if ((MM_MENU_MAIN.state & DRAW_NEXT_MENU_IN_HIERARCHY) == 0)
