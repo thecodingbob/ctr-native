@@ -559,6 +559,7 @@ void MEMPACK_PopToState(s32 id);
 
 void RECTMENU_DrawQuip(char *comment, s16 startX, int startY, u32 sizeX, s16 fontType, int textFlag, s16 boxFlag);
 void RECTMENU_DrawInnerRect(RECT *r, int x, u32 *ot);
+void RECTMENU_DrawInnerRectWithGaps(RECT *r, int type, u32 *ot, int topGap, int bottomGap);
 void RECTMENU_DrawSelf(struct RectMenu *menu, int param_2, s16 param_3, s16 width);
 void RECTMENU_DrawPolyGT4(struct Icon *icon, s32 posX, s32 posY, struct PrimMem *primMem, u32 *ot, Color color0, Color color1, Color color2, Color color3,
                           s32 transparency, s32 scale);

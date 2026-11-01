@@ -222,7 +222,7 @@ void RECTMENU_DrawQuip(char *comment, s16 startX, int startY, u32 sizeX, s16 fon
 }
 
 
-void RECTMENU_DrawInnerRect(RECT *r, int type, u32 *ot)
+void RECTMENU_DrawInnerRectWithGaps(RECT *r, int type, u32 *ot, int topGap, int bottomGap)
 {
 	u32 *colorDataNormal;
 	Color *colorDataSpecial;
@@ -238,7 +238,32 @@ void RECTMENU_DrawInnerRect(RECT *r, int type, u32 *ot)
 
 	if ((type & 2) == 0)
 	{
-		RECTMENU_DrawOuterRect_HighLevel(r, (Color *)colorDataNormal, (int)(s16)(type | 0x20), ot);
+		if (topGap == 0 && bottomGap == 0)
+		{
+			RECTMENU_DrawOuterRect_HighLevel(r, (Color *)colorDataNormal, (int)(s16)(type | 0x20), ot);
+		}
+		else
+		{
+			const int gaps[2] = {topGap, bottomGap};
+			for (int edge = 0; edge < 2; edge++)
+			{
+				int gap = gaps[edge];
+				if (gap > r->w - 6)
+				{
+					gap = r->w - 6;
+				}
+				int sideWidth = (r->w - gap) / 2;
+				RECT line = {r->x, r->y + (edge ? r->h - 2 : 0), sideWidth, 2};
+				RECTMENU_DrawOuterRect_Edge(&line, (Color *)colorDataNormal, type | 0x20, ot);
+				line.x = r->x + sideWidth + gap;
+				line.w = r->w - sideWidth - gap;
+				RECTMENU_DrawOuterRect_Edge(&line, (Color *)colorDataNormal, type | 0x20, ot);
+			}
+			RECT side = {r->x, r->y + 2, 3, r->h - 4};
+			RECTMENU_DrawOuterRect_Edge(&side, (Color *)colorDataNormal, type | 0x20, ot);
+			side.x = r->x + r->w - 3;
+			RECTMENU_DrawOuterRect_Edge(&side, (Color *)colorDataNormal, type | 0x20, ot);
+		}
 	}
 
 	adjustedRect.x = r->x;
@@ -290,6 +315,11 @@ void RECTMENU_DrawInnerRect(RECT *r, int type, u32 *ot)
 	}
 
 	return;
+}
+
+void RECTMENU_DrawInnerRect(RECT *r, int type, u32 *ot)
+{
+	RECTMENU_DrawInnerRectWithGaps(r, type, ot, 0, 0);
 }
 
 

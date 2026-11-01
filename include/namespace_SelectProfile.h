@@ -36,15 +36,6 @@ enum SelectProfileConstants
 	SELECT_PROFILE_ADV_ICON_X = 10,
 	SELECT_PROFILE_ADV_ICON_Y = 6,
 	SELECT_PROFILE_ADV_ICON_RACERS = 2,
-
-        // The Chaos marker is stacked one letter per line down the row's right edge, in
-	// the 0xdc-wide row's last few columns, which run past the row icons at 0xc3
-	// and so carry nothing else. Going vertical is what keeps the top band free,
-	// so the counters, the icons and the racer avatars all stay at the retail
-	// layout and a Chaos row differs only by this strip.
-	SELECT_PROFILE_CHAOS_MARK_X = 0xcb,
-	SELECT_PROFILE_CHAOS_MARK_Y = 2,
-	SELECT_PROFILE_CHAOS_MARK_STEP = 0xc,
 	SELECT_PROFILE_ADV_SAVE_BYTES = 0x1680,
 	SELECT_PROFILE_GHOST_SAVE_BYTES = 0x3e00,
 	SELECT_PROFILE_GHOST_SLOT_COUNT = 7,
