@@ -136,6 +136,7 @@ void MM_ConfigMenu_Open(struct RectMenu *returnMenu, enum ConfigMenuContext cont
 	s_configSession.returnMenu = returnMenu;
 	s_configSession.context = context;
 	s_configSession.returnRow = returnMenu->rowSelected;
+	FullScreenMenu_SetShadedFrame(context == CONFIG_MENU_MAIN);
 	s_currentSection = -1;
 	s_configScroll.offset = 0;
 	g_configMenu.rowSelected = 0;

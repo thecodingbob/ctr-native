@@ -10,6 +10,15 @@
 // Any menu that is a full-screen box: an opaque frame, a title, and a scrolling list of
 // label and value pairs.
 
+// The box the menu sits in: the title screen's menus cast a drop shadow, the pause
+// menu's are flat. Screens opened from either follow the menu they came from so they
+// look like a sibling of the rows beside them.
+enum
+{
+	FULLSCREEN_MENU_DRAW_STYLE_SHADED = 0,
+	FULLSCREEN_MENU_DRAW_STYLE_FLAT = 4,
+};
+
 // Row geometry.
 #define FULLSCREEN_MENU_TITLE_X     0x100
 // The title screen's menus sit on the right half; section lists opened from there keep
@@ -37,6 +46,14 @@ static int FullScreenMenu_VisibleRows(int numRows);
 static int FullScreenMenu_Height(int numRows);
 static int FullScreenMenu_TitleY(int numRows);
 
+// Matches the box of the menu that opened the screen; flat until a caller says otherwise.
+static int s_frameDrawStyle = FULLSCREEN_MENU_DRAW_STYLE_FLAT;
+
+static void FullScreenMenu_SetShadedFrame(bool shaded)
+{
+	s_frameDrawStyle = shaded ? FULLSCREEN_MENU_DRAW_STYLE_SHADED : FULLSCREEN_MENU_DRAW_STYLE_FLAT;
+}
+
 // Background, separator and the highlighted row. Shared so that every screen of this kind
 // sits in the same box, whichever menu it belongs to.
 //
@@ -48,7 +65,7 @@ static void FullScreenMenu_DrawFrame(int numRows)
 	struct RectMenu frame = {
 		.stringIndexTitle = LNG_OPTIONS,
 		.state = USE_SMALL_FONT | BIG_TEXT_IN_TITLE,
-		.drawStyle = 4,
+		.drawStyle = s_frameDrawStyle,
 	};
 	RECT bounds = {FULLSCREEN_MENU_CONTENT_X - 6, FullScreenMenu_TitleY(numRows) - 4,
 	               FULLSCREEN_MENU_CONTENT_W + 12, FullScreenMenu_Height(numRows)};
@@ -494,7 +511,7 @@ static void FullScreenMenu_DrawSectionScreen(const char *title, const char *cons
 		}
 	}
 
-	struct RectMenu frame = {.stringIndexTitle = LNG_OPTIONS, .drawStyle = 4};
+	struct RectMenu frame = {.stringIndexTitle = LNG_OPTIONS, .drawStyle = s_frameDrawStyle};
 	RECT bounds = {columnX - width / 2 - 6, titleY - 6, width + 12, height + 8};
 	RECTMENU_DrawFullRect(&frame, &bounds);
 }

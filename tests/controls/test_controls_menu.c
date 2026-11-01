@@ -263,6 +263,7 @@ int main(void)
 	(void)FullScreenMenu_DrawScreen;
 	(void)FullScreenMenu_DrawSectionScreen;
 	(void)FullScreenMenu_NavScroll;
+	(void)FullScreenMenu_SetShadedFrame;
 	sdata->gGT = &s_tracker;
 	sdata->gGamepads = &sdata->gamepadSystem;
 	s_tracker.backBuffer = &s_buffer;

@@ -24,6 +24,7 @@ static RECT s_sliderMarker;
 static s16 s_sliderTriangle[6];
 static int s_sliderBoxCount;
 static s16 s_centerX;
+static int s_frameDrawStyle;
 static int s_volumes[GAME_OPTIONS_VOLUME_COUNT];
 static int s_stereo;
 static int s_previewRow;
@@ -131,7 +132,11 @@ void CTR_Box_DrawClearBox(const RECT *rect, const Color *color, s32 transparency
 {
 	(void)rect; (void)color; (void)transparency; (void)ot; (void)prims;
 }
-void RECTMENU_DrawFullRect(struct RectMenu *menu, RECT *rect) { (void)menu; (void)rect; }
+void RECTMENU_DrawFullRect(struct RectMenu *menu, RECT *rect)
+{
+	s_frameDrawStyle = menu->drawStyle;
+	(void)rect;
+}
 
 void CTR_Box_DrawSolidBox(RECT *rect, const Color *color, u32 *ot, struct PrimMem *prims)
 {
@@ -181,6 +186,9 @@ static void TestSession(enum ConfigMenuContext context, int mode)
 	CTR_TEST_CHECK(s_tracker.gameMode1 == mode, "opening preserves the caller's game and pause flags");
 	const int expectedColumn = (context == CONFIG_MENU_MAIN) ? FULLSCREEN_MENU_MAIN_X : FULLSCREEN_MENU_TITLE_X;
 	CTR_TEST_CHECK(s_centerX == expectedColumn, "the section list follows the calling menu's column");
+	const int expectedStyle = (context == CONFIG_MENU_MAIN) ? FULLSCREEN_MENU_DRAW_STYLE_SHADED
+	                                                       : FULLSCREEN_MENU_DRAW_STYLE_FLAT;
+	CTR_TEST_CHECK(s_frameDrawStyle == expectedStyle, "the box matches the calling menu's shading");
 
 	SetInput(BTN_CROSS, 0);
 	int generalSection = -1;

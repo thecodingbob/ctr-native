@@ -148,6 +148,7 @@ static void Chaos_OnEnter(struct RectMenu *returnMenu)
 		.page = CHAOS_PAGE_SETTINGS,
 		.returnMenu = returnMenu,
 	};
+	FullScreenMenu_SetShadedFrame(returnMenu == NULL);
 	Chaos_BuildSettingRows();
 }
 
