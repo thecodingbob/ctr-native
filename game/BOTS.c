@@ -223,7 +223,7 @@ void BOTS_Adv_AdjustDifficulty(void)
 	{
 		currDifficulty = (u16)gGT->arcadeDifficulty;
 
-		if ((gameMode2 & CHEAT_SUPERHARD) != 0)
+		if ((gameMode2 & CHEAT_SUPERHARD) != 0 && currDifficulty < BOTS_DIFFICULTY_SUPERHARD)
 		{
 			currDifficulty = BOTS_DIFFICULTY_SUPERHARD;
 		}

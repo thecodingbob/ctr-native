@@ -565,6 +565,25 @@ void MM_ToggleRows_Difficulty(void)
 		// save new value
 		difficultyRow->stringIndex = lngIndex;
 	}
+
+	// Extra cup levels share Hard's unlock requirement and completion rewards.
+	struct MenuRow *rows = difficultyMenu->rows;
+	rows[2].rowOnPressDown = g_config.extraDifficultyLevels ? 3 : 2;
+	if (g_config.extraDifficultyLevels)
+	{
+		// Five large rows overflow the title menu; keep its title consistent
+		// with the other boxes while using compact rows.
+		difficultyMenu->state |= USE_SMALL_FONT | BIG_TEXT_IN_TITLE;
+		s16 locked = rows[2].stringIndex & MENU_ROW_LOCKED;
+		rows[3] = (struct MenuRow){LNG_PORT_SUPER_HARD | locked, 2, 4, 3, 3};
+		rows[4] = (struct MenuRow){LNG_PORT_ULTRA_HARD | locked, 3, 4, 4, 4};
+		rows[5] = (struct MenuRow){.stringIndex = RECTMENU_STRING_NONE};
+	}
+	else
+	{
+		difficultyMenu->state &= ~(USE_SMALL_FONT | BIG_TEXT_IN_TITLE);
+		rows[3] = (struct MenuRow){.stringIndex = RECTMENU_STRING_NONE};
+	}
 }
 void MM_MenuProc_Difficulty(struct RectMenu *menu)
 {
@@ -587,13 +606,22 @@ void MM_MenuProc_Difficulty(struct RectMenu *menu)
 	}
 
 	// if you are on a valid row
-	if (row >= MM_DIFFICULTY_COUNT)
+	if (row >= (g_config.extraDifficultyLevels ? MM_EXTRA_DIFFICULTY_COUNT : MM_DIFFICULTY_COUNT))
 	{
 		return;
 	}
 
 	// set difficulty to value, from array of fixed difficulty values
-	GAME_TRACKER->arcadeDifficulty = MM_CUP_DIFFICULTY_SPEED[row];
+	if (row < MM_DIFFICULTY_COUNT)
+	{
+		GAME_TRACKER->arcadeDifficulty = MM_CUP_DIFFICULTY_SPEED[row];
+	}
+	else
+	{
+		// Ultra Hard's coefficient follows CTR Archipelago's AI difficulty preset.
+		static const int extraDifficulty[] = {0x140, 0x280};
+		GAME_TRACKER->arcadeDifficulty = extraDifficulty[row - MM_DIFFICULTY_COUNT];
+	}
 
 	MM_TITLE_MENU_STATE = TITLE_MENU_STATE_EXITING;
 	MM_DESIRED_MENU_INDEX = MM_EXIT_ROUTE_CHARACTER_SELECT;

@@ -67,6 +67,7 @@ NativeConfig g_config = {
   .extendedAdventureCharacterSelect = false,
   .multiplayerAdventure = false,
   .chaosMode = false,
+  .extraDifficultyLevels = false,
 
   .speedMultiplier = 100,
   .gravityMultiplier = 100,
@@ -211,6 +212,13 @@ const ConfigEntry g_configEntries[] = {
         .label = "Auto-End Races",
         .type = CFG_BOOL,
         .valuePtr = &g_config.autoEndRaceWhenOthersFinish
+    },
+    {
+        .section = "General",
+        .key = "extra_difficulty_levels",
+        .label = "Extra Difficulty Levels",
+        .type = CFG_BOOL,
+        .valuePtr = &g_config.extraDifficultyLevels
     },
     {
         .section = "Adventure",
