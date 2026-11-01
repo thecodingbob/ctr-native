@@ -4198,20 +4198,6 @@ struct Data
                           {0x10, 0x55} // Slide Col
                       }}},
 
-            .menuRacingWheelConfig =
-                {
-                    .stringIndexTitle = RECTMENU_STRING_NONE,
-                    .posX_curr = 0x100,
-                    .posY_curr = 0x6c,
-                    .unk1 = 0,
-                    .state = ALL_PLAYERS_USE_MENU | RECTMENU_STATE_SMALL_CALLBACK_CENTERED,
-                    .rows = 0,
-                    .funcPtr = MainFreeze_MenuPtrOptions,
-                    .drawStyle = 4,
-
-                    // the rest initializes as zeros
-                },
-
             .rowsQuit =
                 {
                     {0xD2, 0, 1, 0, 0}, // YES

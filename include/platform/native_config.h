@@ -106,6 +106,7 @@ typedef enum { CFG_BOOL, CFG_INT, CFG_ENUM, CFG_ACTION } ConfigType;
 
 #define CONFIG_SECTION_DEVELOPER_HACKS "Developer Hacks"
 #define CONFIG_SECTION_CONTROLS      "Controls"
+#define CONFIG_SECTION_AUDIO         "Audio"
 
 typedef struct {
     const char *section;
@@ -116,6 +117,7 @@ typedef struct {
     int min, max, step;         // slider bounds, ignored for CFG_BOOL/CFG_ENUM
     const ConfigEnumValue *enumValues;  // value-name pairs for CFG_ENUM
     int numEnumValues;                  // number of entries in enumValues
+    bool availableDuringPause; // false = visible but read-only while a session is paused
 } ConfigEntry;
 
 // CFG_ACTION has no g_config backing and no file representation: it exists only to

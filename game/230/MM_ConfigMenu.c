@@ -39,6 +39,7 @@ void MM_MenuProc_Controls(struct RectMenu *menu);
 // True while the device picker is up, so this file leaves the back button to it
 // instead of backing out of the whole section.
 b32 MM_Controls_IsPickerOpen(void);
+void MM_Controls_ResetNavigation(void);
 
 // Union of the button presses this screen accepts: player 1's device and the selected
 // player's own. Used for the back button, which this file handles on its behalf.
@@ -92,32 +93,77 @@ static int s_currentSection = -1; // -1 = section selector, 0+ = submenu
 // First visible row in the section list.
 static struct FullScreenMenu_Scroll s_configScroll = {0};
 
-// True when the section at this index is one of the screens that draws and edits
-// its own rows instead of going through g_configEntries values.
-static bool Config_IsCustomSection(int section)
+static bool Config_IsSection(int section, const char *name)
 {
 	if ((section < 0) || (section >= s_numSections))
 	{
 		return false;
 	}
 
-	return strcmp(g_configEntries[s_sectionToEntry[section]].section, CONFIG_SECTION_CONTROLS) == 0;
+	return strcmp(g_configEntries[s_sectionToEntry[section]].section, name) == 0;
 }
 
-struct RectMenu g_configMenu = {
+static struct RectMenu g_configMenu = {
 	.stringIndexTitle = -1,
 	.state = EXECUTE_FUNCPTR | DISABLE_INPUT_ALLOW_FUNCPTRS,
 	.funcPtr = MM_MenuProc_Config,
 };
 
-static void Config_UpdateSlider(const struct GamepadBuffer *pad, const int rowSelected,
-                              const int localRow, int *value, const int min, const int max, const int step)
+static struct
 {
-	if (rowSelected != localRow)
-	{
-		return;
-	}
+	struct RectMenu *returnMenu;
+	enum ConfigMenuContext context;
+	s16 returnRow;
+} s_configSession;
 
+static void Config_ClearInput(void)
+{
+	RECTMENU_ClearInput();
+	// Config and Controls read taps directly. Keep held state intact: GAMEPAD
+	// uses it as the previous frame when deriving the next frame's taps.
+	for (int i = 0; i < PLATFORM_INPUT_PAD_COUNT; i++)
+	{
+		sdata->gGamepads->gamepad[i].buttonsTapped = 0;
+	}
+}
+
+void MM_ConfigMenu_Open(struct RectMenu *returnMenu, enum ConfigMenuContext context)
+{
+	if (Config_IsSection(s_currentSection, CONFIG_SECTION_AUDIO))
+	{
+		MM_AudioConfig_Leave();
+	}
+	s_configSession.returnMenu = returnMenu;
+	s_configSession.context = context;
+	s_configSession.returnRow = returnMenu->rowSelected;
+	FullScreenMenu_SetShadedFrame(context == CONFIG_MENU_MAIN);
+	s_currentSection = -1;
+	s_configScroll.offset = 0;
+	g_configMenu.rowSelected = 0;
+	BuildSectionMap();
+	MM_Controls_ResetNavigation();
+	Config_ClearInput();
+	sdata->ptrDesiredMenu = &g_configMenu;
+}
+
+static void Config_Close(void)
+{
+	MM_Controls_ResetNavigation();
+	NativeConfig_Save();
+	NativeControls_Save();
+	Config_ClearInput();
+	s_configSession.returnMenu->rowSelected = s_configSession.returnRow;
+	sdata->ptrDesiredMenu = s_configSession.returnMenu;
+}
+
+b32 MM_ConfigMenu_IsActive(void)
+{
+	return sdata->ptrActiveMenu == &g_configMenu;
+}
+
+static void Config_UpdateSlider(const struct GamepadBuffer *pad, int *value,
+                                const int min, const int max, const int step)
+{
 	for (int direction = -1; direction <= 1; direction += 2)
 	{
 		if (FullScreenMenu_OptionStepDue(pad->buttonsHeldCurrFrame, direction))
@@ -127,29 +173,35 @@ static void Config_UpdateSlider(const struct GamepadBuffer *pad, const int rowSe
 	}
 }
 
+static bool Config_CanEdit(const ConfigEntry *entry)
+{
+	return s_configSession.context == CONFIG_MENU_MAIN || entry->availableDuringPause;
+}
+
 static void Config_DrawValue(const ConfigEntry *e, int y, uint32_t *ot)
 {
+	const int color = Config_CanEdit(e) ? WHITE : GRAY;
 	if (e->type == CFG_BOOL)
 	{
-		FullScreenMenu_DrawOnOff(*(bool *)e->valuePtr, y, ot);
+		FullScreenMenu_DrawOnOffColored(*(bool *)e->valuePtr, y, color, ot);
 	}
 	else if (e->type == CFG_ENUM)
 	{
 		int val = *(int *)e->valuePtr;
-		const char *name = "?";
+		const char *text = "?";
 		for (int j = 0; j < e->numEnumValues; j++)
 		{
 			if (e->enumValues[j].value == val)
 			{
-				name = e->enumValues[j].name;
+				text = e->enumValues[j].name;
 				break;
 			}
 		}
-		FullScreenMenu_DrawValueText(name, y, ot);
+		FullScreenMenu_DrawValueTextColored(text, y, color, ot);
 	}
 	else
 	{
-		FullScreenMenu_DrawPercent(*(int *)e->valuePtr, y, ot);
+		FullScreenMenu_DrawPercentColored(*(int *)e->valuePtr, y, color, ot);
 	}
 }
 
@@ -159,13 +211,6 @@ static void Config_DrawRow(const void *context, int row, int y, bool selected, u
 	(void)selected;
 	FullScreenMenu_DrawRowLabel(entries[row].label, y, ot);
 	Config_DrawValue(&entries[row], y, ot);
-}
-
-static void Config_DrawSectionRow(const void *context, int row, int y, bool selected, uint32_t *ot)
-{
-	(void)context;
-	(void)selected;
-	FullScreenMenu_DrawRowLabel(g_configEntries[s_sectionToEntry[row]].section, y, ot);
 }
 
 static void MM_MenuProc_Config(struct RectMenu *menu)
@@ -181,7 +226,7 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 
 	// Inside the Controls section the back button belongs to player 1's device and the
 	// selected player's own, so read it through the same union that screen uses.
-	const bool inControls = Config_IsCustomSection(s_currentSection);
+	const bool inControls = Config_IsSection(s_currentSection, CONFIG_SECTION_CONTROLS);
 	const u32 backTapped = inControls ? MM_Controls_MenuTapped() : (u32)pad->buttonsTapped;
 
 	// The device picker consumes back itself, so it must close before this file acts,
@@ -196,23 +241,32 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 
 		if (s_currentSection >= 0)
 		{
+			if (Config_IsSection(s_currentSection, CONFIG_SECTION_AUDIO))
+			{
+				MM_AudioConfig_Leave();
+			}
 			menu->rowSelected = s_currentSection;
 			s_currentSection = -1;
+			s_configScroll.offset = 0;
+			Config_ClearInput();
 		}
 		else
 		{
-			NativeConfig_Save();
-			NativeControls_Save();
-			sdata->ptrDesiredMenu = &D230.menuMainMenu;
+			Config_Close();
 		}
 	}
 
 	if (s_currentSection >= 0)
 	{
-		if (Config_IsCustomSection(s_currentSection))
+		if (Config_IsSection(s_currentSection, CONFIG_SECTION_CONTROLS))
 		{
 			// Draws and edits everything itself, including its own input.
 			MM_MenuProc_Controls(menu);
+			return;
+		}
+		if (Config_IsSection(s_currentSection, CONFIG_SECTION_AUDIO))
+		{
+			MM_MenuProc_Audio(menu);
 			return;
 		}
 
@@ -222,39 +276,40 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 
 		FullScreenMenu_NavScroll(pad, &s_configScroll, &menu->rowSelected, numRows);
 
-		if ((pad->buttonsTapped & (BTN_CROSS | BTN_CIRCLE)) != 0)
+		const ConfigEntry *e = &g_configEntries[firstEntry + menu->rowSelected];
+		if (Config_CanEdit(e))
 		{
-			OtherFX_Play(1, 1);
-			const ConfigEntry *e = &g_configEntries[firstEntry + menu->rowSelected];
-			if (e->type == CFG_BOOL)
+			if ((pad->buttonsTapped & (BTN_CROSS | BTN_CIRCLE)) != 0)
 			{
-				*(bool *)e->valuePtr ^= 1;
-				NativeConfig_ApplyDependencies(e);
-				// Rebuild section map if visibility changed (e.g. Developer Hacks toggle)
-				BuildSectionMap();
-				// Turning the gate off hides the section we are standing in, so the
-				// cached index no longer names a section. Fall back to the section
-				// list instead of reading past the entry table.
-				if (s_currentSection >= s_numSections)
+				OtherFX_Play(1, 1);
+				if (e->type == CFG_BOOL)
 				{
-					s_currentSection = -1;
-					return;
+					*(bool *)e->valuePtr ^= 1;
+					NativeConfig_ApplyDependencies(e);
+					// Rebuild section map if visibility changed (e.g. Developer Hacks toggle)
+					BuildSectionMap();
+					// Turning the gate off hides the section we are standing in, so the
+					// cached index no longer names a section. Fall back to the section
+					// list instead of reading past the entry table.
+					if (s_currentSection >= s_numSections)
+					{
+						s_currentSection = -1;
+						menu->rowSelected = (s16)FullScreenMenu_ClampRow(sec, s_numSections);
+						s_configScroll.offset = 0;
+						Config_ClearInput();
+						return;
+					}
+				}
+				else if (e->type == CFG_ENUM)
+				{
+					int *val = (int *)e->valuePtr;
+					*val = (*val + 1) % e->numEnumValues;
 				}
 			}
-			else if (e->type == CFG_ENUM)
-			{
-				int *val = (int *)e->valuePtr;
-				*val = (*val + 1) % e->numEnumValues;
-			}
-		}
 
-		// slider update for int entries
-		for (int j = 0; j < numRows; j++)
-		{
-			const ConfigEntry *e = &g_configEntries[firstEntry + j];
 			if (e->type == CFG_INT)
 			{
-				Config_UpdateSlider(pad, menu->rowSelected, j, (int *)e->valuePtr, e->min, e->max, e->step);
+				Config_UpdateSlider(pad, (int *)e->valuePtr, e->min, e->max, e->step);
 			}
 		}
 
@@ -280,7 +335,17 @@ static void MM_MenuProc_Config(struct RectMenu *menu)
 			s_configScroll.offset = 0;
 		}
 
-		FullScreenMenu_DrawScreen(sdata->lngStrings[LNG_OPTIONS], 0, &s_configScroll,
-		                          s_numSections, menu->rowSelected, Config_DrawSectionRow, NULL, gGT, ot);
+		const char *sections[CONFIG_MAX_SECTIONS];
+		for (int section = 0; section < s_numSections; section++)
+		{
+			sections[section] = g_configEntries[s_sectionToEntry[section]].section;
+		}
+		// Keep the section list under the menu that opened it: the title screen's menus
+		// sit on the right, while the pause menu is centred.
+		const int columnX = (s_configSession.context == CONFIG_MENU_MAIN)
+		                        ? FULLSCREEN_MENU_MAIN_X
+		                        : FULLSCREEN_MENU_TITLE_X;
+		FullScreenMenu_DrawSectionScreen(sdata->lngStrings[LNG_OPTIONS], sections, &s_configScroll,
+		                                s_numSections, menu->rowSelected, columnX, gGT, ot);
 	}
 }

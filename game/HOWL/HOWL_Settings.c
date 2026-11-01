@@ -357,16 +357,23 @@ void OptionsMenu_TestSound(s32 newRow, b32 newBoolPlay)
 	if (HOWL_SLIDER_PLAYING && HOWL_SLIDER_ROW == HOWL_VOLUME_TYPE_VOICE)
 	{
 		struct GameTracker *gGT = GAME_TRACKER;
+		// The main menu has no followed racer. Preview player 1's character there.
+		int driverID = 0;
+		if ((gGT->gameMode1 & MAIN_MENU) == 0 && gGT->cameraDC[0].driverToFollow != NULL)
+		{
+			driverID = gGT->cameraDC[0].driverToFollow->driverID;
+		}
+		const u16 characterID = (u16)GAME_CHARACTER_IDS[driverID];
 		u32 frames = gGT->frameTimer_MainFrame_ResetDB;
 		if (frames == (frames / 25) * 25)
 		{
 			if (frames == (frames / 50) * 50)
 			{
-				HOWL_SLIDER_SOUND = OtherFX_Play((u16)((u16)GAME_CHARACTER_IDS[gGT->cameraDC[0].driverToFollow->driverID] + 0x1c), 0);
+				HOWL_SLIDER_SOUND = OtherFX_Play((u16)(characterID + 0x1c), 0);
 			}
 			else
 			{
-				HOWL_SLIDER_SOUND = OtherFX_Play((u16)((u16)GAME_CHARACTER_IDS[gGT->cameraDC[0].driverToFollow->driverID] + 0x2c), 0);
+				HOWL_SLIDER_SOUND = OtherFX_Play((u16)(characterID + 0x2c), 0);
 			}
 		}
 	}

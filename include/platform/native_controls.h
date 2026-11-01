@@ -130,6 +130,13 @@ const char *NativeControls_GetDeviceName(int device);
 // module; valid until the device set changes.
 void *NativeControls_GetGamepadHandle(int device);
 
+// False for missing devices, keyboards, and gamepads without rumble support.
+bool NativeControls_CanVibrate(int device);
+
+// Vibration belongs to the player, defaults to on, and is persisted in controls.ini.
+bool NativeControls_GetPlayerVibration(int player);
+void NativeControls_SetPlayerVibration(int player, bool enabled);
+
 // Binding value in the platform encoding: an SDL_Scancode for the keyboard, or a
 // button/axis with NATIVE_CONTROLS_BINDING_FLAG_* flags for a gamepad.
 s32 NativeControls_GetBinding(int device, int binding);

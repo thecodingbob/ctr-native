@@ -121,6 +121,12 @@ void RECTMENU_DrawOuterRect_Edge(RECT *rect, const Color *color, u32 flags, u32 
 	(void)ot;
 }
 
+void RECTMENU_DrawFullRect(struct RectMenu *menu, RECT *rect)
+{
+	(void)menu;
+	RECTMENU_DrawInnerRect(rect, 4, NULL);
+}
+
 void CTR_Box_DrawClearBox(const RECT *rect, const Color *color, s32 transparency, u32 *ot, struct PrimMem *prims)
 {
 	(void)rect;

@@ -3,7 +3,6 @@
 
 extern struct MenuRow s_rowsMainMenuBasicConfig[];
 extern struct MenuRow s_rowsMainMenuWithSBConfig[];
-extern struct RectMenu g_configMenu;
 
 #include "MM_NewLoad.c"
 
@@ -289,7 +288,7 @@ void MM_MenuProc_Main(struct RectMenu *menu)
 		return;
 
 	case LNG_OPTIONS:
-		sdata->ptrDesiredMenu = &g_configMenu;
+		MM_ConfigMenu_Open(mainMenu, CONFIG_MENU_MAIN);
 		return;
 
 	case LNG_QUIT:

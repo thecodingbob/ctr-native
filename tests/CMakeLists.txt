@@ -57,6 +57,10 @@ function(ctr_add_test_suite NAME)
 endfunction()
 
 # Header-only, so it needs none of the platform unit.
+ctr_add_test_suite(test_config_menu
+    SOURCES test_config_menu.c
+)
+
 ctr_add_test_suite(test_render_scale
     SOURCES test_render_scale.c
 )
@@ -142,6 +146,10 @@ ctr_add_test_suite(test_pgxp
 ctr_add_test_suite(test_native_controls
     SOURCES controls/test_native_controls.c
     LIBRARIES SDL3::SDL3
+)
+
+ctr_add_test_suite(test_controls_menu
+    SOURCES controls/test_controls_menu.c
 )
 
 # test_memtrack.c #includes platform/native_memtrack.c so it can read the

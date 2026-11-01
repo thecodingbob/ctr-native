@@ -120,18 +120,27 @@ NativeConfig g_config = {
 const ConfigEntry g_configEntries[] = {
 
     {
+        .section = CONFIG_SECTION_AUDIO,
+        .key = "audio",
+        .label = "Audio",
+        .type = CFG_ACTION,
+        .availableDuringPause = true,
+    },
+    {
         // No value backing: this row only exists so the options menu offers a
         // "Controls" section. MM_MenuProc_Config hands that section to
         // MM_MenuProc_Controls, which owns the screen, and the loader and saver
         // both skip CFG_ACTION entries.
         .section = CONFIG_SECTION_CONTROLS,
         .key = "controls",
+        .availableDuringPause = true,
         .label = "Controls",
         .type = CFG_ACTION,
     },
     {
         .section = "General",
         .key = "skip_intro",
+        .availableDuringPause = true,
         .label = "Skip Intros",
         .type = CFG_BOOL,
         .valuePtr = &g_config.skipIntro
@@ -139,6 +148,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "General",
         .key = "skip_podium_ceremonies",
+        .availableDuringPause = true,
         .label = "Skip Podium Ceremonies",
         .type = CFG_BOOL,
         .valuePtr = &g_config.skipPodiumCeremonies
@@ -146,6 +156,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "General",
         .key = "show_reserves_meter",
+        .availableDuringPause = true,
         .label = "Show Reserves Meter",
         .type = CFG_BOOL,
         .valuePtr = &g_config.showReservesMeter
@@ -153,6 +164,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "General",
         .key = "allow_oxide_station_multiplayer",
+    	.availableDuringPause = true,
         .label = "Oxide Station Multiplayer",
         .type = CFG_BOOL,
         .valuePtr = &g_config.allowOxideStationMultiplayer
@@ -160,6 +172,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "General",
         .key = "allow_race_tracks_in_battle",
+    	.availableDuringPause = true,
         .label = "Race Tracks in Battle",
         .type = CFG_BOOL,
         .valuePtr = &g_config.allowRaceTracksInBattle
@@ -167,6 +180,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "General",
         .key = "extended_multiplayer",
+    	.availableDuringPause = true,
         .label = "Extended Multiplayer",
         .type = CFG_BOOL,
         .valuePtr = &g_config.extendedMultiplayer
@@ -174,6 +188,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "General",
         .key = "bot_selection_mode",
+    	.availableDuringPause = true,
         .label = "Bot Selection Mode",
         .type = CFG_ENUM,
         .valuePtr = &g_config.botSelectionMode,
@@ -183,6 +198,7 @@ const ConfigEntry g_configEntries[] = {
       {
         .section = "General",
         .key = "mask_mode",
+      	.availableDuringPause = true,
         .label = "Mask Mode",
         .type = CFG_ENUM,
         .valuePtr = &g_config.maskMode,
@@ -199,6 +215,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Adventure",
         .key = "skip_hints",
+        .availableDuringPause = true,
         .label = "Skip Mask Hints",
         .type = CFG_BOOL,
         .valuePtr = &g_config.skipHints
@@ -206,6 +223,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Adventure",
         .key = "boss_cutscenes",
+        .availableDuringPause = true,
         .label = "Boss Cutscenes",
         .type = CFG_ENUM,
         .valuePtr = &g_config.bossCutscenes,
@@ -215,6 +233,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Adventure",
         .key = "extended_character_select",
+    	.availableDuringPause = true,
         .label = "Extended Character Select",
         .type = CFG_BOOL,
         .valuePtr = &g_config.extendedAdventureCharacterSelect
@@ -222,6 +241,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Adventure",
         .key = "multiplayer_adventure",
+    	.availableDuringPause = true,
         .label = "Multiplayer Adventure",
         .type = CFG_BOOL,
         .valuePtr = &g_config.multiplayerAdventure
@@ -229,6 +249,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Adventure",
         .key = "save_anywhere",
+    	.availableDuringPause = true,
         .label = "Save Anywhere",
         .type = CFG_BOOL,
         .valuePtr = &g_config.saveAnywhere
@@ -250,6 +271,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Adventure",
         .key = "chaos_mode",
+    	.availableDuringPause = true,
         .label = "Chaos Mode",
         .type = CFG_BOOL,
         .valuePtr = &g_config.chaosMode
@@ -415,6 +437,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Unlocks",
         .key = "unlock_all_characters",
+    	.availableDuringPause = true,
         .label = "Unlock All Characters",
         .type = CFG_BOOL,
         .valuePtr = &g_config.unlockAllCharacters
@@ -422,6 +445,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Unlocks",
         .key = "unlock_nitros_oxide",
+    	.availableDuringPause = true,
         .label = "Unlock Nitros Oxide",
         .type = CFG_BOOL,
         .valuePtr = &g_config.unlockNitrosOxide
@@ -429,6 +453,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Graphics",
         .key = "increase_draw_distance",
+        .availableDuringPause = true,
         .label = "Increase Draw Distance",
         .type = CFG_BOOL,
         .valuePtr = &g_config.increaseDrawDistance
@@ -436,6 +461,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Graphics",
         .key = "disable_split_screen_lod",
+    	.availableDuringPause = true,
         .label = "High Quality Multiplayer",
         .type = CFG_BOOL,
         .valuePtr = &g_config.disableSplitScreenLod
@@ -443,6 +469,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Graphics",
         .key = "dithering",
+        .availableDuringPause = true,
         .label = "Dithering",
         .type = CFG_BOOL,
         .valuePtr = &g_config.dithering
@@ -450,6 +477,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Graphics",
         .key = "fullscreen",
+        .availableDuringPause = true,
         .label = "Fullscreen",
         .type = CFG_BOOL,
         .valuePtr = &g_config.fullscreen
@@ -457,6 +485,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Graphics",
         .key = "vsync",
+        .availableDuringPause = true,
         .label = "VSync",
         .type = CFG_BOOL,
         .valuePtr = &g_config.vsync
@@ -464,6 +493,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Graphics",
         .key = "aspect_ratio",
+        .availableDuringPause = true,
         .label = "Aspect Ratio",
         .type = CFG_ENUM,
         .valuePtr = &g_config.aspectRatio,
@@ -473,6 +503,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Graphics",
         .key = "render_scale",
+        .availableDuringPause = true,
         .label = "Render Scale",
         .type = CFG_ENUM,
         .valuePtr = &g_config.renderScale,
@@ -482,6 +513,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Graphics",
         .key = "smooth_scaling",
+        .availableDuringPause = true,
         .label = "Smooth Scaling",
         .type = CFG_BOOL,
         .valuePtr = &g_config.smoothScaling
@@ -489,6 +521,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Graphics",
         .key = "fxaa",
+        .availableDuringPause = true,
         .label = "FXAA Antialiasing",
         .type = CFG_BOOL,
         .valuePtr = &g_config.fxaa
@@ -496,6 +529,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Graphics",
         .key = "texture_filtering",
+        .availableDuringPause = true,
         .label = "Texture Filtering",
         .type = CFG_BOOL,
         .valuePtr = &g_config.textureFiltering
@@ -503,6 +537,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = "Graphics",
         .key = "pgxp",
+        .availableDuringPause = true,
         .label = "Sub-Pixel Precision",
         .type = CFG_ENUM,
         .valuePtr = &g_config.pgxpMode,
@@ -512,6 +547,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = CONFIG_SECTION_DEVELOPER_HACKS,
         .key = "developer_hacks_enabled",
+        .availableDuringPause = true,
         .label = "Enable Developer Hacks",
         .type = CFG_BOOL,
         .valuePtr = &g_config.developerHacksEnabled,
@@ -519,6 +555,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = CONFIG_SECTION_DEVELOPER_HACKS,
         .key = "omni_controller",
+        .availableDuringPause = true,
         .label = "Omni Controller",
         .type = CFG_BOOL,
         .valuePtr = &g_config.omniController,
@@ -526,6 +563,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = CONFIG_SECTION_DEVELOPER_HACKS,
         .key = "one_lap_races",
+        .availableDuringPause = true,
         .label = "One Lap Races",
         .type = CFG_BOOL,
         .valuePtr = &g_config.oneLapRaces,
@@ -533,6 +571,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = CONFIG_SECTION_DEVELOPER_HACKS,
         .key = "tow_player_2",
+        .availableDuringPause = true,
         .label = "Tow Player 2",
         .type = CFG_BOOL,
         .valuePtr = &g_config.towPlayer2,
@@ -540,6 +579,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = CONFIG_SECTION_DEVELOPER_HACKS,
         .key = "quick_race",
+        .availableDuringPause = true,
         .label = "Quick Race With R3",
         .type = CFG_BOOL,
         .valuePtr = &g_config.quickRace,
@@ -547,6 +587,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = CONFIG_SECTION_DEVELOPER_HACKS,
         .key = "chaos_quick_race",
+        .availableDuringPause = true,
         .label = "Chaos Test With Start",
         .type = CFG_BOOL,
         .valuePtr = &g_config.chaosQuickRace,
@@ -554,6 +595,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = CONFIG_SECTION_DEVELOPER_HACKS,
         .key = "skip_start_countdown",
+        .availableDuringPause = true,
         .label = "Skip Start Countdown",
         .type = CFG_BOOL,
         .valuePtr = &g_config.skipStartCountdown,
@@ -561,6 +603,7 @@ const ConfigEntry g_configEntries[] = {
     {
         .section = CONFIG_SECTION_DEVELOPER_HACKS,
         .key = "end_race_with_l3",
+        .availableDuringPause = true,
         .label = "End Race With L3",
         .type = CFG_BOOL,
         .valuePtr = &g_config.endRaceWithL3,

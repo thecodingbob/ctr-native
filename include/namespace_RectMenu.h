@@ -1,6 +1,12 @@
 #ifndef CTR_NATIVE_NAMESPACE_RECTMENU_H
 #define CTR_NATIVE_NAMESPACE_RECTMENU_H
 
+enum ConfigMenuContext
+{
+	CONFIG_MENU_MAIN,
+	CONFIG_MENU_PAUSE,
+};
+
 enum MenuFlags
 {
 	// menu's X position will be used to center it horizontally

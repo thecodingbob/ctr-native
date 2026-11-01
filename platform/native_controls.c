@@ -20,6 +20,7 @@
 #define NATIVE_CONTROLS_GUID_LENGTH  33
 
 #define NATIVE_CONTROLS_SECTION_ASSIGNMENT "Assignment"
+#define NATIVE_CONTROLS_SECTION_VIBRATION  "Vibration"
 #define NATIVE_CONTROLS_SECTION_PREFIX    "device "
 
 #define NATIVE_CONTROLS_KEY_NAME     "name"
@@ -82,6 +83,7 @@ struct NativeControlsPlayer
 {
 	int kind;
 	char deviceKey[NATIVE_CONTROLS_KEY_LENGTH];
+	bool vibrationEnabled;
 };
 
 global_variable struct NativeControlsProfile s_profiles[NATIVE_CONTROLS_MAX_PROFILES];
@@ -448,23 +450,34 @@ internal char *NativeControls_Trim(char *text)
 	return text;
 }
 
-internal void NativeControls_ApplyAssignmentKey(char *key, char *value)
+internal int NativeControls_PlayerForKey(const char *key)
 {
 	static const char prefix[] = "player";
 
 	const size_t prefixLength = sizeof(prefix) - 1;
 	if (strncmp(key, prefix, prefixLength) != 0)
 	{
-		return;
+		return -1;
 	}
 
 	// One-based in the file, zero-based in the table.
-	const int player = atoi(key + prefixLength) - 1;
+	char *end = NULL;
+	const char *number = key + prefixLength;
+	const long player = strtol(number, &end, 10);
+	if (end == number || *end != '\0' || player < 1 || player > PLATFORM_INPUT_PAD_COUNT)
+	{
+		return -1;
+	}
+	return (int)player - 1;
+}
+
+internal void NativeControls_ApplyAssignmentKey(char *key, char *value)
+{
+	const int player = NativeControls_PlayerForKey(key);
 	if (!NativeControls_IsValidPlayer(player))
 	{
 		return;
 	}
-
 	struct NativeControlsPlayer *pref = &s_playerPref[player];
 
 	if (NativeControls_StrEqual(value, NATIVE_CONTROLS_VALUE_DISABLED))
@@ -485,6 +498,23 @@ internal void NativeControls_ApplyAssignmentKey(char *key, char *value)
 
 	pref->kind = NATIVE_CONTROLS_PREF_PINNED;
 	snprintf(pref->deviceKey, sizeof(pref->deviceKey), "%s", value);
+}
+
+internal void NativeControls_ApplyVibrationKey(const char *key, const char *value)
+{
+	const int player = NativeControls_PlayerForKey(key);
+	if (!NativeControls_IsValidPlayer(player))
+	{
+		return;
+	}
+	if (NativeControls_StrEqual(value, "true") || NativeControls_StrEqual(value, "1"))
+	{
+		s_playerPref[player].vibrationEnabled = true;
+	}
+	else if (NativeControls_StrEqual(value, "false") || NativeControls_StrEqual(value, "0"))
+	{
+		s_playerPref[player].vibrationEnabled = false;
+	}
 }
 
 // Applies one key from a device section. A key or value this build does not
@@ -587,6 +617,7 @@ internal void NativeControls_Load(void)
 	// -1 means the assignment table, which no profile owns.
 	int profile = -1;
 	bool inAssignment = false;
+	bool inVibration = false;
 	char section[96] = "";
 	char line[512];
 
@@ -610,7 +641,8 @@ internal void NativeControls_Load(void)
 			*end = '\0';
 			snprintf(section, sizeof(section), "%s", cursor + 1);
 			inAssignment = NativeControls_StrEqual(section, NATIVE_CONTROLS_SECTION_ASSIGNMENT);
-			profile = inAssignment ? -1 : NativeControls_ProfileForSection(section);
+			inVibration = NativeControls_StrEqual(section, NATIVE_CONTROLS_SECTION_VIBRATION);
+			profile = inAssignment || inVibration ? -1 : NativeControls_ProfileForSection(section);
 			continue;
 		}
 
@@ -632,6 +664,10 @@ internal void NativeControls_Load(void)
 		if (inAssignment)
 		{
 			NativeControls_ApplyAssignmentKey(key, value);
+		}
+		else if (inVibration)
+		{
+			NativeControls_ApplyVibrationKey(key, value);
 		}
 		else if (profile >= 0)
 		{
@@ -681,6 +717,12 @@ void NativeControls_Save(void)
 		}
 
 		fprintf(file, "player%d = %s\n", player + 1, value);
+	}
+
+	fprintf(file, "\n[%s]\n", NATIVE_CONTROLS_SECTION_VIBRATION);
+	for (int player = 0; player < PLATFORM_INPUT_PAD_COUNT; player++)
+	{
+		fprintf(file, "player%d = %s\n", player + 1, s_playerPref[player].vibrationEnabled ? "true" : "false");
 	}
 
 	char value[64];
@@ -1022,6 +1064,7 @@ void NativeControls_Init(void)
 	{
 		s_playerPref[player].kind = NATIVE_CONTROLS_PREF_AUTO;
 		s_playerPref[player].deviceKey[0] = '\0';
+		s_playerPref[player].vibrationEnabled = true;
 		s_playerDevice[player] = NATIVE_CONTROLS_NO_DEVICE;
 	}
 
@@ -1182,6 +1225,28 @@ void *NativeControls_GetGamepadHandle(int device)
 	}
 
 	return s_devices[device].gamepad;
+}
+
+bool NativeControls_CanVibrate(int device)
+{
+	SDL_Gamepad *gamepad = NativeControls_GetGamepadHandle(device);
+	return gamepad != NULL && SDL_GetBooleanProperty(SDL_GetGamepadProperties(gamepad),
+	                                                SDL_PROP_GAMEPAD_CAP_RUMBLE_BOOLEAN, false);
+}
+
+bool NativeControls_GetPlayerVibration(int player)
+{
+	return NativeControls_IsValidPlayer(player) && s_playerPref[player].vibrationEnabled;
+}
+
+void NativeControls_SetPlayerVibration(int player, bool enabled)
+{
+	if (!NativeControls_IsValidPlayer(player) || s_playerPref[player].vibrationEnabled == enabled)
+	{
+		return;
+	}
+	s_playerPref[player].vibrationEnabled = enabled;
+	NativeControls_Save();
 }
 
 s32 NativeControls_GetBinding(int device, int binding)

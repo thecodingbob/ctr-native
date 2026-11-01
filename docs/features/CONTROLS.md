@@ -2,12 +2,15 @@
 
 The **Controls** screen decides which device each of the four
 players uses, and lets you rebind every button and stick direction on it.
-Changes apply immediately and are remembered between sessions.
+Bindings, device assignments, deadzones and vibration apply immediately and are
+remembered in `controls.ini`.
 
 ## Opening the screen
 
-Options → **Config** → **Controls**. The title reads `CONTROLS P1` through
+Options → **Controls**. The title reads `CONTROLS P1` through
 `CONTROLS P4`, so you always know whose controls you are looking at.
+The same screen is available through **Options** in pause menus. Returning to
+the pause menu keeps the game paused until you resume it.
 
 ![The Controls screen for player 1: L1 and R1 hints flank the CONTROLS P1 title, a DEVICE row
 shows the assigned controller, one row per button lists its current binding, and Restore Defaults
@@ -91,7 +94,7 @@ for them — which is enough to give them a device back.
 
 ## `controls.ini`
 
-Your bindings and player assignment are kept in `controls.ini`, next to
+Your bindings, deadzones, player assignment and vibration are kept in `controls.ini`, next to
 `config.ini`, and rewritten after every change. Values are readable names rather
 than numbers, so the file can be edited by hand:
 

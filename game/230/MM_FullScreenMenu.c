@@ -10,20 +10,49 @@
 // Any menu that is a full-screen box: an opaque frame, a title, and a scrolling list of
 // label and value pairs.
 
+// The box the menu sits in: the title screen's menus cast a drop shadow, the pause
+// menu's are flat. Screens opened from either follow the menu they came from so they
+// look like a sibling of the rows beside them.
+enum
+{
+	FULLSCREEN_MENU_DRAW_STYLE_SHADED = 0,
+	FULLSCREEN_MENU_DRAW_STYLE_FLAT = 4,
+};
+
 // Row geometry.
 #define FULLSCREEN_MENU_TITLE_X     0x100
+// The title screen's menus sit on the right half; section lists opened from there keep
+// the same column instead of jumping to the screen centre.
+#define FULLSCREEN_MENU_MAIN_X      0x180
 #define FULLSCREEN_MENU_TITLE_Y     0x18
+#define FULLSCREEN_MENU_CENTER_Y    0x6C
 #define FULLSCREEN_MENU_ROW_START_Y 0x3C
 #define FULLSCREEN_MENU_ROW_SPACING 0x0E
-#define FULLSCREEN_MENU_LABEL_X     0x38
-#define FULLSCREEN_MENU_VALUE_X     0x1DC
+#define FULLSCREEN_MENU_CONTENT_X   0x20
+#define FULLSCREEN_MENU_CONTENT_W   0x1C0
+#define FULLSCREEN_MENU_ROW_PADDING 8
+#define FULLSCREEN_MENU_LABEL_X     (FULLSCREEN_MENU_CONTENT_X + FULLSCREEN_MENU_ROW_PADDING)
+#define FULLSCREEN_MENU_VALUE_X     (FULLSCREEN_MENU_CONTENT_X + FULLSCREEN_MENU_CONTENT_W - FULLSCREEN_MENU_ROW_PADDING)
 
 // Vertically centres FONT_SMALL hints alongside a FONT_BIG title.
 #define FULLSCREEN_MENU_TITLE_BASELINE_NUDGE_Y \
 	((data.font_charPixHeight[FONT_BIG] - data.font_charPixHeight[FONT_SMALL]) / 2)
 
 // Rows visible at once; the rest are reached by scrolling.
-#define FULLSCREEN_MENU_MAX_VISIBLE_ROWS 10
+#define FULLSCREEN_MENU_MAX_VISIBLE_ROWS 11
+
+// Centred layout for section lists and settings lists, sized to the content row count.
+static int FullScreenMenu_VisibleRows(int numRows);
+static int FullScreenMenu_Height(int numRows);
+static int FullScreenMenu_TitleY(int numRows);
+
+// Matches the box of the menu that opened the screen; flat until a caller says otherwise.
+static int s_frameDrawStyle = FULLSCREEN_MENU_DRAW_STYLE_FLAT;
+
+static void FullScreenMenu_SetShadedFrame(bool shaded)
+{
+	s_frameDrawStyle = shaded ? FULLSCREEN_MENU_DRAW_STYLE_SHADED : FULLSCREEN_MENU_DRAW_STYLE_FLAT;
+}
 
 // Background, separator and the highlighted row. Shared so that every screen of this kind
 // sits in the same box, whichever menu it belongs to.
@@ -31,30 +60,29 @@
 // Note the OT draws back to front: a primitive added later sits behind the ones already
 // in the list, which is why the frame can be drawn after every row and still leave the
 // text visible.
-static void FullScreenMenu_DrawFrame(uint32_t *ot)
+static void FullScreenMenu_DrawFrame(int numRows)
 {
-	{
-		RECT sep = {0x20, 0x2C, 0x1C0, 2};
-		Color sepColor;
-		ColorCode_SetPacked(&sepColor, sdata->battleSetup_Color_UI_1);
-		RECTMENU_DrawOuterRect_Edge(&sep, &sepColor, 0x20, ot);
-	}
-
-	RECT bg = {0x10, 4, 0x1E0, 0xCE};
-	RECTMENU_DrawInnerRect(&bg, 4, ot);
+	struct RectMenu frame = {
+		.stringIndexTitle = LNG_OPTIONS,
+		.state = USE_SMALL_FONT | BIG_TEXT_IN_TITLE,
+		.drawStyle = s_frameDrawStyle,
+	};
+	RECT bounds = {FULLSCREEN_MENU_CONTENT_X - 6, FullScreenMenu_TitleY(numRows) - 4,
+	               FULLSCREEN_MENU_CONTENT_W + 12, FullScreenMenu_Height(numRows)};
+	RECTMENU_DrawFullRect(&frame, &bounds);
 }
 
 static void FullScreenMenu_DrawRowHighlight(struct GameTracker *gGT, uint32_t *ot, int y)
 {
-	RECT sel = {0x30, y - 2, 0x1B0, 0x0C};
+	RECT sel = {FULLSCREEN_MENU_CONTENT_X, y - 2, FULLSCREEN_MENU_CONTENT_W, 0x0C};
 	CTR_Box_DrawClearBox(&sel, &sdata->menuRowHighlight_Normal, TRANS_50_DECAL, ot, &gGT->backBuffer->primMem);
 }
 
 // The screen's title, centred above the rows. Every screen draws one, so the font, the
 // colour and the column are written once here rather than per screen.
-static void FullScreenMenu_DrawTitle(const char *title, int nudgeY, uint32_t *ot)
+static void FullScreenMenu_DrawTitle(const char *title, int numRows, int nudgeY, uint32_t *ot)
 {
-	DecalFont_DrawLineOT((char *)title, FULLSCREEN_MENU_TITLE_X, FULLSCREEN_MENU_TITLE_Y + nudgeY, FONT_BIG, JUSTIFY_CENTER | ORANGE, ot);
+	DecalFont_DrawLineOT((char *)title, FULLSCREEN_MENU_TITLE_X, FullScreenMenu_TitleY(numRows) + nudgeY, FONT_BIG, JUSTIFY_CENTER | ORANGE, ot);
 }
 
 // A row's label, in the left column. Shared so a row looks the same whichever screen it is
@@ -74,29 +102,49 @@ static void FullScreenMenu_DrawRowLabel(const char *label, int y, uint32_t *ot)
 // between rows, and that is what these four are for.
 
 // A piece of text: an option's name, or what a row that has no number of its own shows.
+static void FullScreenMenu_DrawValueTextColored(const char *text, int y, int color, uint32_t *ot)
+{
+	DecalFont_DrawLineOT((char *)text, FULLSCREEN_MENU_VALUE_X, y, FONT_SMALL, JUSTIFY_RIGHT | color, ot);
+}
+
 static void FullScreenMenu_DrawValueText(const char *text, int y, uint32_t *ot)
 {
-	DecalFont_DrawLineOT((char *)text, FULLSCREEN_MENU_VALUE_X, y, FONT_SMALL, JUSTIFY_RIGHT | WHITE, ot);
+	FullScreenMenu_DrawValueTextColored(text, y, WHITE, ot);
+}
+
+static void FullScreenMenu_DrawOnOffColored(bool on, int y, int color, uint32_t *ot)
+{
+	FullScreenMenu_DrawValueTextColored(on ? "ON" : "OFF", y, color, ot);
 }
 
 static void FullScreenMenu_DrawOnOff(bool on, int y, uint32_t *ot)
 {
-	FullScreenMenu_DrawValueText(on ? "ON" : "OFF", y, ot);
+	FullScreenMenu_DrawOnOffColored(on, y, WHITE, ot);
 }
 
 // A number with a unit after it, for a setting that is not a percentage: seconds, frames,
 // megabytes. The unit is what tells two settings apart when both are plain numbers.
-static void FullScreenMenu_DrawValueWithSuffix(int value, const char *suffix, int y, uint32_t *ot)
+static void FullScreenMenu_DrawValueWithSuffixColored(int value, const char *suffix, int y, int color, uint32_t *ot)
 {
 	char text[16];
 
 	snprintf(text, sizeof(text), "%d%s", value, suffix);
-	FullScreenMenu_DrawValueText(text, y, ot);
+	FullScreenMenu_DrawValueTextColored(text, y, color, ot);
+}
+
+static void FullScreenMenu_DrawValueWithSuffix(int value, const char *suffix, int y, uint32_t *ot)
+{
+	FullScreenMenu_DrawValueWithSuffixColored(value, suffix, y, WHITE, ot);
+}
+
+static inline void FullScreenMenu_DrawPercentColored(int percent, int y, int color, uint32_t *ot)
+{
+	FullScreenMenu_DrawValueWithSuffixColored(percent, "%", y, color, ot);
 }
 
 static inline void FullScreenMenu_DrawPercent(int percent, int y, uint32_t *ot)
 {
-	FullScreenMenu_DrawValueWithSuffix(percent, "%", y, ot);
+	FullScreenMenu_DrawPercentColored(percent, y, WHITE, ot);
 }
 
 // One name out of a list, drawn where its value goes. A value outside the list falls back
@@ -220,10 +268,28 @@ static int FullScreenMenu_VisibleEnd(const struct FullScreenMenu_Scroll *scroll,
 	return end;
 }
 
-// Y of the row at visible index `i`, counted from the top of the list.
-static int FullScreenMenu_RowY(int i)
+static int FullScreenMenu_VisibleRows(int numRows)
 {
-	return FULLSCREEN_MENU_ROW_START_Y + i * FULLSCREEN_MENU_ROW_SPACING;
+	return numRows < FULLSCREEN_MENU_MAX_VISIBLE_ROWS ? numRows : FULLSCREEN_MENU_MAX_VISIBLE_ROWS;
+}
+
+static int FullScreenMenu_Height(int numRows)
+{
+	return data.font_charPixHeight[FONT_BIG] + 9 +
+	       FullScreenMenu_VisibleRows(numRows) * FULLSCREEN_MENU_ROW_SPACING + 8;
+}
+
+// Title centred vertically inside the content-sized frame. Row Ys start right below it.
+static int FullScreenMenu_TitleY(int numRows)
+{
+	return FULLSCREEN_MENU_CENTER_Y - FullScreenMenu_Height(numRows) / 2 + 4;
+}
+
+// Y of the row at visible index `i`, counted from the top of the list.
+static int FullScreenMenu_RowY(int i, int numRows)
+{
+	return FullScreenMenu_TitleY(numRows) + data.font_charPixHeight[FONT_BIG] + 9 +
+	       i * FULLSCREEN_MENU_ROW_SPACING;
 }
 
 // Moves the selection by one row, wrapping at either end, and follows it with the scroll
@@ -379,7 +445,7 @@ static void FullScreenMenu_DrawRows(const struct FullScreenMenu_Scroll *scroll, 
 
 	for (int i = scroll->offset; i < visibleEnd; i++)
 	{
-		const int y = FullScreenMenu_RowY(i - scroll->offset);
+		const int y = FullScreenMenu_RowY(i - scroll->offset, numRows);
 
 		drawRow(context, i, y, i == selected, ot);
 
@@ -394,9 +460,60 @@ static void FullScreenMenu_DrawScreen(const char *title, int nudgeY, const struc
                                      int numRows, int selected, FullScreenMenu_DrawRow drawRow, const void *context,
                                      struct GameTracker *gGT, uint32_t *ot)
 {
-	FullScreenMenu_DrawTitle(title, nudgeY, ot);
+	FullScreenMenu_DrawTitle(title, numRows, nudgeY, ot);
 	FullScreenMenu_DrawRows(scroll, numRows, selected, drawRow, context, gGT, ot);
-	FullScreenMenu_DrawFrame(ot);
+	FullScreenMenu_DrawFrame(numRows);
+}
+
+// Section lists use the pause menu's large centred rows and content-sized frame. The
+// caller supplies the column: the title screen keeps its right-hand menus aligned.
+static void FullScreenMenu_DrawSectionScreen(const char *title, const char *const *labels,
+                                            const struct FullScreenMenu_Scroll *scroll,
+                                            int numRows, int selected, int columnX,
+                                            struct GameTracker *gGT, uint32_t *ot)
+{
+	const int rowHeight = data.font_charPixHeight[FONT_BIG] + 3;
+	const int visibleEnd = FullScreenMenu_VisibleEnd(scroll, numRows);
+	const int visibleRows = visibleEnd - scroll->offset;
+	const int height = (visibleRows + 1) * rowHeight + 6;
+	const int titleY = FULLSCREEN_MENU_CENTER_Y - height / 2 + 2;
+	int width = DecalFont_GetLineWidth((char *)title, FONT_BIG);
+	for (int row = 0; row < numRows; row++)
+	{
+		const int labelWidth = DecalFont_GetLineWidth((char *)labels[row], FONT_BIG);
+		if (labelWidth > width)
+		{
+			width = labelWidth;
+		}
+	}
+	width += 2 * FULLSCREEN_MENU_ROW_PADDING;
+	if (width > FULLSCREEN_MENU_CONTENT_W)
+	{
+		width = FULLSCREEN_MENU_CONTENT_W;
+	}
+	// Keep the frame on screen when the column sits far enough to the right that a wide
+	// label would cross the edge.
+	const int maxWidth = 2 * (SCREEN_WIDTH - 6 - columnX);
+	if (width > maxWidth)
+	{
+		width = maxWidth;
+	}
+
+	DecalFont_DrawLineOT((char *)title, columnX, titleY, FONT_BIG, JUSTIFY_CENTER | ORANGE, ot);
+	for (int row = scroll->offset; row < visibleEnd; row++)
+	{
+		const int y = titleY + rowHeight + 6 + (row - scroll->offset) * rowHeight;
+		DecalFont_DrawLineOT((char *)labels[row], columnX, y, FONT_BIG, JUSTIFY_CENTER | ORANGE, ot);
+		if (row == selected)
+		{
+			RECT highlight = {columnX - width / 2, y - 1, width, rowHeight - 3};
+			CTR_Box_DrawClearBox(&highlight, &sdata->menuRowHighlight_Normal, TRANS_50_DECAL, ot, &gGT->backBuffer->primMem);
+		}
+	}
+
+	struct RectMenu frame = {.stringIndexTitle = LNG_OPTIONS, .drawStyle = s_frameDrawStyle};
+	RECT bounds = {columnX - width / 2 - 6, titleY - 6, width + 12, height + 8};
+	RECTMENU_DrawFullRect(&frame, &bounds);
 }
 
 #endif // CTR_NATIVE_MM_FULLSCREEN_MENU_C
