@@ -367,6 +367,68 @@ enum
 // and a single crate pool, so the multiplayer penalty takes 30% off every target.
 static const float GAMEPROG_RELIC_2P_TIME_FACTOR = 0.7f;
 
+int GAMEPROG_AdventureLossIndex(int losses)
+{
+	enum { EASY_LOSS_BONUS = 2 };
+	if ((GAME_TRACKER->gameMode1 & ADVENTURE_MODE) != 0 &&
+	    sdata->advDifficulty == ADV_DIFFICULTY_EASY && losses > 0)
+	{
+		return losses + EASY_LOSS_BONUS;
+	}
+	return losses;
+}
+
+int GAMEPROG_AdventureBotDifficulty(int difficulty)
+{
+	enum
+	{
+		EASY_SCALE_NUMERATOR = 3,
+		EASY_SCALE_DENOMINATOR = 4,
+		EASY_MAX = 120,
+		HARD_VALUE = 240,
+		SUPER_HARD_VALUE = 320,
+		ULTRA_HARD_VALUE = 640,
+		FIXED_BOSS_BONUS = 20,
+	};
+	u32 mode = GAME_TRACKER->gameMode1;
+	if ((mode & ADVENTURE_MODE) == 0 || (mode & ARCADE_MODE) != 0)
+	{
+		return difficulty;
+	}
+	int result = difficulty;
+	switch (sdata->advDifficulty)
+	{
+	case ADV_DIFFICULTY_EASY:
+		result = difficulty * EASY_SCALE_NUMERATOR / EASY_SCALE_DENOMINATOR;
+		if (result > EASY_MAX)
+		{
+			result = EASY_MAX;
+		}
+		break;
+	case ADV_DIFFICULTY_HARD: result = HARD_VALUE; break;
+	case ADV_DIFFICULTY_SUPER_HARD: result = SUPER_HARD_VALUE; break;
+	case ADV_DIFFICULTY_ULTRA_HARD: result = ULTRA_HARD_VALUE; break;
+	case ADV_DIFFICULTY_NORMAL:
+	case ADV_DIFFICULTY_COUNT:
+	default: return difficulty;
+	}
+	if ((mode & ADVENTURE_BOSS) != 0 && sdata->advDifficulty >= ADV_DIFFICULTY_HARD)
+	{
+		result += FIXED_BOSS_BONUS;
+	}
+	return result;
+}
+
+int GAMEPROG_AdventureBossLosses(int losses)
+{
+	if ((GAME_TRACKER->gameMode1 & ADVENTURE_MODE) != 0 &&
+	    sdata->advDifficulty >= ADV_DIFFICULTY_HARD && sdata->advDifficulty < ADV_DIFFICULTY_COUNT)
+	{
+		return 0;
+	}
+	return losses;
+}
+
 int GAMEPROG_AdventureTimeLimit(int time)
 {
 	if ((GAME_TRACKER->gameMode1 & ADVENTURE_MODE) == 0)

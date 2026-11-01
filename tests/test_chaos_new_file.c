@@ -138,6 +138,36 @@ static void TestAdventureTimeLimits(void)
 	s_coop = false;
 }
 
+static void TestAdventureBotDifficulty(void)
+{
+	CTR_TEST_SECTION("Adventure bot difficulty");
+	struct GameTracker tracker = {0};
+	sdata->gGT = &tracker;
+	tracker.gameMode1 = ADVENTURE_MODE;
+	sdata->advDifficulty = ADV_DIFFICULTY_NORMAL;
+	CTR_TEST_CHECK_EQ(GAMEPROG_AdventureBotDifficulty(200), 200, "Medium preserves the adaptive difficulty");
+	CTR_TEST_CHECK_EQ(GAMEPROG_AdventureBossLosses(5), 5, "Medium retains boss loss assistance");
+	sdata->advDifficulty = ADV_DIFFICULTY_EASY;
+	CTR_TEST_CHECK_EQ(GAMEPROG_AdventureBotDifficulty(100), 75, "Easy lowers the bot coefficient");
+	CTR_TEST_CHECK_EQ(GAMEPROG_AdventureBotDifficulty(300), 120, "Easy caps incremental difficulty");
+	CTR_TEST_CHECK_EQ(GAMEPROG_AdventureLossIndex(0), 0, "Easy does not count a loss before the first attempt");
+	CTR_TEST_CHECK_EQ(GAMEPROG_AdventureLossIndex(1), 3, "Easy gives more assistance after a loss");
+	const int fixed[] = {240, 320, 640};
+	for (int i = 0; i < 3; i++)
+	{
+		sdata->advDifficulty = (enum AdventureDifficulty)(ADV_DIFFICULTY_HARD + i);
+		CTR_TEST_CHECK_EQ(GAMEPROG_AdventureBotDifficulty(10), fixed[i], "fixed difficulties ignore the adaptive value");
+		CTR_TEST_CHECK_EQ(GAMEPROG_AdventureBotDifficulty(200), fixed[i], "fixed difficulty remains the same after progress or losses");
+		CTR_TEST_CHECK_EQ(GAMEPROG_AdventureBossLosses(5), 0, "fixed difficulty disables boss loss assistance");
+		tracker.gameMode1 |= ADVENTURE_BOSS;
+		CTR_TEST_CHECK_EQ(GAMEPROG_AdventureBotDifficulty(10), fixed[i] + 20, "bosses get the fixed difficulty bonus");
+		tracker.gameMode1 &= ~ADVENTURE_BOSS;
+	}
+	tracker.gameMode1 = ARCADE_MODE;
+	CTR_TEST_CHECK_EQ(GAMEPROG_AdventureBotDifficulty(100), 100, "Arcade does not use the saved Adventure setting");
+	CTR_TEST_CHECK_EQ(GAMEPROG_AdventureBossLosses(5), 5, "other modes retain their loss behavior");
+}
+
 static void TestNewAfterChaosCreation(void)
 {
 	CTR_TEST_SECTION("New resets a previous Chaos creation with expanded options enabled or disabled");
@@ -314,6 +344,7 @@ static void TestResidentCreationRestore(void)
 
 int main(void)
 {
+	TestAdventureBotDifficulty();
 	TestAdventureTimeLimits();
 	TestDifficultyChoices();
 	TestNewAfterChaosCreation();

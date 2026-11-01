@@ -1652,7 +1652,7 @@ void VehPhysGeneral_SetHeldItem(struct Driver *driver)
 	// In Boss race
 	if (GAME_TRACKER->gameMode1 & ADVENTURE_BOSS)
 	{
-		s8 bossFails = GAME_ADV_PROGRESS.timesLostBossRace[GAME_TRACKER->bossID];
+		int bossFails = GAMEPROG_AdventureBossLosses(GAME_ADV_PROGRESS.timesLostBossRace[GAME_TRACKER->bossID]);
 
 		if (bossFails < ITEMSET_BOSS_LOSSES_REPLACE_MASK_CLOCK_WARPBALL)
 		{

@@ -127,6 +127,9 @@ void GAMEPROG_ResetAdvMultiplayer(struct AdvMultiplayerSettings *settings);
 void GAMEPROG_ResetChaosSettings(struct ChaosSettings *settings);
 int GAMEPROG_RelicTargetTime(int levelID, int tier);
 int GAMEPROG_AdventureTimeLimit(int time);
+int GAMEPROG_AdventureBossLosses(int losses);
+int GAMEPROG_AdventureBotDifficulty(int difficulty);
+int GAMEPROG_AdventureLossIndex(int losses);
 void GAMEPROG_SaveCupProgress(void);
 void GAMEPROG_SyncGameAndCard(struct GameProgress *memcardProg, struct GameProgress *currentProg);
 

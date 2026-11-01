@@ -230,7 +230,7 @@ music as feedback. Audio settings use the game's normal memory-card save system.
 | `extended_multiplayer`                | `true` / `false`                                             | `false`   | Allow 3P/4P Arcade races, and fill 2P/3P/4P races with 8 racers                                  |
 | `bot_selection_mode`                  | `Vanilla` / `R. unlocked` / `R. all`                         | `Vanilla` | Choose the normal Arcade and Adventure bot roster; boss races and the Purple Gem Cup remain fixed |
 | `auto_end_race_when_others_finish`    | `true` / `false`                                             | `false`   | End the race once every other racer has arrived                                                  |
-| `extra_difficulty_levels`             | `true` / `false`                                             | `false`   | Offer Super Hard and Ultra Hard in Arcade                                                       |
+| `extra_difficulty_levels`             | `true` / `false`                                             | `false`   | Offer Super Hard and Ultra Hard in Arcade and Adventure setup                                    |
 **Known limitation:** when race tracks are enabled in Battle mode, the turbo/invisibility
 weapon icons and battle points/lives icons will be missing on those tracks.
 
@@ -240,7 +240,7 @@ weapon icons and battle points/lives icons will be missing on those tracks.
 |-----------------------------|--------------------------------------|---------------|---------------------------------------------------------------------------------------------------|
 | `boss_cutscenes`            | `Unskippable` / `Skippable` / `Skip` | `Unskippable` | Control boss introduction and key-award cutscenes                                                 |
 | `skip_hints`                | `true` / `false`                     | `false`       | Skip mask hints in adventure mode                                                                 |
-| `expanded_options`          | `true` / `false`                     | `false`       | Offer extended character selection, [2P co-op](docs/features/2P_ADVENTURE.md), and [Chaos](docs/features/CHAOS.md) when creating an Adventure |
+| `expanded_options`          | `true` / `false`                     | `false`       | Offer difficulty selection, extended character selection, [2P co-op](docs/features/2P_ADVENTURE.md), and [Chaos](docs/features/CHAOS.md) when creating an Adventure |
 | `save_anywhere`             | `true` / `false`                     | `false`       | Allows to save/load anywhere in the adventure mode hubs by pressing select or the equivalent key  |
 | `unlock_all_gates`          | `true` / `false`                     | `false`       | Opens all adventure wood gates bypassing the key requirements                                     |
 | `unlock_all_portals`        | `true` / `false`                     | `false`       | Unlock all warp pads and boss garages                                                             |

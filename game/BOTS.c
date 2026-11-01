@@ -87,6 +87,7 @@ static b32 BOTS_IsAdventureBossOxide(const struct Driver *botDriver)
 
 int BOTS_Adv_NumTimesLostEvent(int numLost)
 {
+	numLost = GAMEPROG_AdventureLossIndex(numLost);
 	// if you lost more than 10 times
 	// the difficulty will not get lower.
 	if ((u16)numLost > BOTS_ADV_MAX_LOSS_DIFFICULTY_INDEX)
@@ -296,9 +297,15 @@ void BOTS_Adv_AdjustDifficulty(void)
 		currDifficulty = maxDifficulty - lostModifier;
 	}
 
+	currDifficulty = GAMEPROG_AdventureBotDifficulty(currDifficulty);
+
 	if ((s16)currDifficulty < 0)
 	{
 		currDifficulty = 0;
+	}
+	if ((gameMode1 & ADVENTURE_CUP) != 0 && sdata->advDifficulty != ADV_DIFFICULTY_NORMAL)
+	{
+		cupDifficulty = (s16)(currDifficulty + BOTS_DIFFICULTY_CUP_OFFSET);
 	}
 
 	BOTS_Adv_LerpDifficulty(sdata->arcade_difficultyParams, (s16)currDifficulty);
