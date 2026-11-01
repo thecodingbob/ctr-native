@@ -867,6 +867,7 @@ void MM_MenuProc_Difficulty(struct RectMenu *menu);
 void MM_MenuProc_SingleCup(struct RectMenu *menu);
 void MM_MenuProc_NewLoad(struct RectMenu *menu);
 void MM_MenuProc_Chaos(struct RectMenu *menu);
+void MM_MenuProc_AdvDifficulty(struct RectMenu *menu);
 
 // Cascading menu navigation, the only place a menu box is linked to another or
 // The new-file chain: the screens between the Adventure new/load menu and a new

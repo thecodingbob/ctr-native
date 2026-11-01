@@ -473,6 +473,10 @@ UNINITIALIZED:
 
 void MM_ToggleRows_Difficulty(void)
 {
+	if (sdata->newLoad.step != NEWLOAD_STEP_NONE)
+	{
+		return;
+	}
 	struct RectMenu *difficultyMenu;
 	s16 *firstUnlockBits;
 	struct GameProgress *progress;
@@ -587,6 +591,11 @@ void MM_ToggleRows_Difficulty(void)
 }
 void MM_MenuProc_Difficulty(struct RectMenu *menu)
 {
+	if (sdata->newLoad.step == NEWLOAD_STEP_DIFFICULTY)
+	{
+		MM_MenuProc_AdvDifficulty(menu);
+		return;
+	}
 	register struct RectMenu *menuOwner CTR_PSX_REGISTER("$4") = menu;
 	struct RectMenu *selectedMenu;
 	s16 row;

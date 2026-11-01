@@ -68,6 +68,48 @@ static void CheckFreshSettings(void)
 	CTR_TEST_CHECK_EQ(s_setupEntries, 0, "New does not inherit a previous file's Chaos setup handover");
 }
 
+// The Arcade menu builder belongs to MM_MenuFlow; this fixture exercises the
+// new-file flow with its prepared row count rather than the whole title overlay.
+void MM_ToggleRows_Difficulty(void)
+{
+	D230.menuDifficulty.rows = D230.rowsDifficulty;
+	D230.rowsDifficulty[0].stringIndex = LNG_EASY;
+	D230.rowsDifficulty[1].stringIndex = LNG_MEDIUM;
+	D230.rowsDifficulty[2].stringIndex = LNG_HARD;
+	D230.rowsDifficulty[g_config.extraDifficultyLevels ? 5 : 3].stringIndex = RECTMENU_STRING_NONE;
+}
+
+static void TestDifficultyChoices(void)
+{
+	CTR_TEST_SECTION("Adventure difficulty selection");
+	const enum AdventureDifficulty choices[] = {
+	    ADV_DIFFICULTY_EASY, ADV_DIFFICULTY_NORMAL, ADV_DIFFICULTY_HARD,
+	    ADV_DIFFICULTY_SUPER_HARD, ADV_DIFFICULTY_ULTRA_HARD,
+	};
+	for (int extra = 0; extra <= 1; extra++)
+	{
+		for (int row = 0; row < (extra ? 5 : 3); row++)
+		{
+			ResetFixture();
+			g_config.expandedAdventureOptions = true;
+			g_config.extraDifficultyLevels = extra != 0;
+			MM_NewLoad_Begin(&MM_MENU_ADVENTURE);
+			CTR_TEST_CHECK_EQ(D230.menuDifficulty.rowSelected, 1, "Medium is selected for a new file");
+			CTR_TEST_CHECK_EQ(D230.rowsDifficulty[1].stringIndex, LNG_MEDIUM, "the Arcade Medium row is reused");
+			CTR_TEST_CHECK((D230.menuDifficulty.state & (USE_SMALL_FONT | BIG_TEXT_IN_TITLE)) ==
+			                   (USE_SMALL_FONT | BIG_TEXT_IN_TITLE),
+			               "difficulty choices are compact with a large title");
+			CTR_TEST_CHECK_EQ(D230.rowsDifficulty[extra ? 5 : 3].stringIndex, RECTMENU_STRING_NONE,
+			                  "only the enabled difficulty rows are displayed");
+			D230.menuDifficulty.rowSelected = row;
+			MM_MenuProc_AdvDifficulty(&D230.menuDifficulty);
+			CTR_TEST_CHECK_EQ(sdata->advDifficulty, choices[row], "the selected level is recorded");
+			CTR_TEST_CHECK((D230.menuDifficulty.state & USE_SMALL_FONT) == 0, "the difficulty recap uses the large font");
+			CTR_TEST_CHECK_EQ(sdata->newLoad.step, NEWLOAD_STEP_CHAOS, "selection advances to Mode");
+		}
+	}
+}
+
 static void TestNewAfterChaosCreation(void)
 {
 	CTR_TEST_SECTION("New resets a previous Chaos creation with expanded options enabled or disabled");
@@ -76,6 +118,7 @@ static void TestNewAfterChaosCreation(void)
 			ResetFixture();
 			g_config.expandedAdventureOptions = true;
 			MM_NewLoad_Begin(&MM_MENU_ADVENTURE);
+			MM_MenuProc_AdvDifficulty(&D230.menuDifficulty);
 			MM_MENU_CHAOS_PROMPT.funcState = RECTMENU_FUNC_STATE_INPUT;
 			MM_MENU_CHAOS_PROMPT.rowSelected = 0;
 			MM_MenuProc_Chaos(&MM_MENU_CHAOS_PROMPT);
@@ -127,6 +170,7 @@ static void ReachCharacterSelect(bool expanded, bool chaos, int playerCount)
 	MM_NewLoad_Begin(&MM_MENU_ADVENTURE);
 	if (expanded)
 	{
+		MM_MenuProc_AdvDifficulty(&D230.menuDifficulty);
 		MM_MENU_CHAOS_PROMPT.funcState = RECTMENU_FUNC_STATE_INPUT;
 		MM_MENU_CHAOS_PROMPT.rowSelected = chaos ? 0 : 1;
 		MM_MenuProc_Chaos(&MM_MENU_CHAOS_PROMPT);
@@ -157,8 +201,9 @@ static void TestCharacterSelectBackPreservesChoices(void)
 			CTR_TEST_CHECK_EQ(s_titleReturns, 1, "Back starts the title return transition once");
 			CTR_TEST_CHECK_EQ(MM_MENU_CHAOS_PROMPT.rowSelected, chaos ? 0 : 1, "the collapsed Mode row keeps the chosen mode");
 			CTR_TEST_CHECK_EQ(MM_MENU_PLAYERS_1P2P.rowSelected, players - 1, "Players keeps the chosen player count");
-			CTR_TEST_CHECK(MM_MENU_ADVENTURE.ptrNextBox_InHierarchy == &MM_MENU_CHAOS_PROMPT,
-			               "the restored chain includes Mode before Players");
+			CTR_TEST_CHECK(MM_MENU_ADVENTURE.ptrNextBox_InHierarchy == &D230.menuDifficulty &&
+			                   D230.menuDifficulty.ptrNextBox_InHierarchy == &MM_MENU_CHAOS_PROMPT,
+			               "the restored chain includes Difficulty and Mode before Players");
 			CTR_TEST_CHECK(MM_MENU_CHAOS_PROMPT.ptrNextBox_InHierarchy == &MM_MENU_PLAYERS_1P2P,
 			               "Players is attached below the chosen mode");
 			CTR_TEST_CHECK(MM_MENU_PLAYERS_1P2P.ptrPrevBox_InHierarchy == &MM_MENU_CHAOS_PROMPT,
@@ -170,7 +215,10 @@ static void TestCharacterSelectBackPreservesChoices(void)
 			CTR_TEST_CHECK_EQ(MM_MENU_CHAOS_PROMPT.rowSelected, chaos ? 0 : 1, "retreat to Mode keeps its previous selection");
 			CTR_TEST_CHECK(MM_MENU_CHAOS_PROMPT.ptrNextBox_InHierarchy == NULL, "retreat removes the Players link");
 			MM_NewLoad_Retreat(&MM_MENU_CHAOS_PROMPT);
-			CTR_TEST_CHECK(!MM_NewLoad_InChain(), "retreat past Mode finishes the chain");
+			CTR_TEST_CHECK((D230.menuDifficulty.state & USE_SMALL_FONT) != 0, "returning to Difficulty restores compact rows");
+			CTR_TEST_CHECK_EQ(D230.menuDifficulty.rowSelected, 1, "retreat restores Normal difficulty");
+			MM_NewLoad_Retreat(&D230.menuDifficulty);
+			CTR_TEST_CHECK(!MM_NewLoad_InChain(), "retreat past Difficulty finishes the chain");
 			CTR_TEST_CHECK(MM_MENU_ADVENTURE.ptrNextBox_InHierarchy == NULL, "no stale child remains on New/Load");
 		}
 	}
@@ -199,6 +247,7 @@ static void TestResidentCreationRestore(void)
 	CTR_TEST_CHECK(!MM_NewLoad_InChain(), "zero-initialized resident state has no active creation");
 	g_config.expandedAdventureOptions = true;
 	MM_NewLoad_Begin(&MM_MENU_ADVENTURE);
+	MM_MenuProc_AdvDifficulty(&D230.menuDifficulty);
 	MM_MENU_CHAOS_PROMPT.funcState = RECTMENU_FUNC_STATE_INPUT;
 	MM_MenuProc_Chaos(&MM_MENU_CHAOS_PROMPT);
 	MM_MENU_PLAYERS_1P2P.rowSelected = 1;
@@ -231,11 +280,13 @@ static void TestResidentCreationRestore(void)
 	CTR_TEST_CHECK_EQ(MM_MENU_PLAYERS_1P2P.rowSelected, 1, "the restored return keeps 2P selected");
 	MM_NewLoad_Retreat(&MM_MENU_PLAYERS_1P2P);
 	MM_NewLoad_Retreat(&MM_MENU_CHAOS_PROMPT);
+	MM_NewLoad_Retreat(&D230.menuDifficulty);
 	CTR_TEST_CHECK(!MM_NewLoad_InChain(), "Back can unwind the restored chain completely");
 }
 
 int main(void)
 {
+	TestDifficultyChoices();
 	TestNewAfterChaosCreation();
 	TestNewAfterLoadedChaosSettings();
 	TestCharacterSelectBackPreservesChoices();
