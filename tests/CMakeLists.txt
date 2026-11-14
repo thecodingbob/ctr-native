@@ -259,6 +259,10 @@ ctr_add_test_suite(test_chaos_save
 ctr_add_test_suite(test_pgxp
     SOURCES test_pgxp.c
 )
+ctr_add_test_suite(test_pgxp_gte SOURCES test_pgxp_gte.c)
+if(UNIX)
+    target_link_libraries(test_pgxp_gte PRIVATE m)
+endif()
 
 ctr_add_test_suite(test_native_controls
     SOURCES controls/test_native_controls.c
