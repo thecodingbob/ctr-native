@@ -1,48 +1,93 @@
 # Chaos mode
 
-Chaos adds temporary gameplay effects to Adventure: reversed steering, giant
-karts, explosive crates and more. You choose which effects can appear and what
-triggers them when creating the Adventure file.
+Chaos adds temporary gameplay effects to Adventure, Arcade, VS and Battle:
+reversed steering, giant karts, explosive crates and more. You choose which
+effects can appear and what triggers them.
 
 It works in solo Adventure and [2P co-op Adventure](2P_ADVENTURE.md).
 The hub is unaffected; Chaos runs in Adventure events,
 including trophy, boss, CTR, relic, crystal and gem-cup challenges.
 
+## Arcade, VS and Battle
+
+Enable **Chaos** under **General** in **Options Config**, or set `chaos_mode = true`
+in the `[General]` section of `config.ini` (default: `false`). Then select
+**Arcade**, **VS** or **Battle** from the main menu. Choose the player count, then choose **Chaos**.
+Confirm the rules, then continue through the difficulty (Arcade), character and track selection. 
+With the option disabled, the mode prompt is skipped and new session races are Regular. The same option controls
+the Chaos prompt when creating a new Adventure.
+
+Chaos supports up to four human players where the underlying mode allows them.
+Effects requiring racing bots are excluded when the event has no bot grid;
+track-path teleports are excluded from Battle and crystal challenges.
+The setup lists only compatible effects.
+
+### Shared or per player
+
+**Distribution** defaults to **Shared**: one activation affects all eligible humans.
+**Per player** gives each player its own effects.
+Duration, trigger, interval and enabled effects remain common settings. 
+Independent selections can coincide.
+The distribution choice is shown only with multiple human players.
+
+- **Interval:** one common cadence, with a separate selection for each player.
+- **Random:** each player has an independent clock and selection.
+- **Pickup:** only the player collecting the pickup receives the effect.
+- **External:** only available with shared distribution at the moment.
+Bot effects still act on the whole bot grid, regardless of who receives them.
+Only one may run at a time. On completion (or instant execution), a shared
+30-second cooldown blocks all bot effects and a 60-second cooldown blocks the
+same effect. Unavailable effects are rerolled when another choice is possible.
+
+### Choosing the players
+
+In multiplayer, open **Players** in the Chaos rules to
+turn Chaos ON or OFF for each human player. Everyone starts ON; at least one
+player must remain ON to confirm. The selection works with both distributions:
+
+- **Shared:** ordinary effects apply only to the selected players.
+- **Per player:** only selected players receive draws; excluded players do not
+  advance a Random clock or trigger effects through Pickup.
+- Excluded players cannot trigger Pickup in Shared either.
+- Bot/world effects remain global. 
+
 ## Starting a Chaos file
 
-1. Enable **Expanded Options** under **Adventure** in the in-game **Options Config**
-   menu, or set `expanded_options = true` in the `[Adventure]` section of `config.ini`.
+1. Enable **Chaos** under **General** in the in-game **Options Config** menu,
+   or set `chaos_mode = true` in the `[General]` section of `config.ini`.
 2. Start a **New Adventure** and choose **Chaos** at the mode prompt. Choose
    **Regular** to create an ordinary Adventure instead.
 3. Configure Chaos, select **Confirm**, then continue to character selection.
 
 ![New Adventure mode selection showing Chaos and Regular](images/chaos-mode-choice.jpg)
 
-The global option only enables this creation prompt. Your choice and Chaos rules
+The **Chaos** option only gates this creation prompt. Your choice and Chaos rules
 are stored in the Adventure save slot. Loading a Chaos file does not show setup
-again, and turning the global option off does not disable Chaos in that file.
+again, and turning the Chaos option off does not disable Chaos in that file.
 Existing Regular files stay Regular.
 
 ## Choosing the rules
 
 | Setting | Meaning |
 | --- | --- |
-| **Duration** | How long timed effects last: 5–60 seconds, in 5-second steps. Default: 30 seconds. Instant effects apply once. |
+| **Duration** | How long timed effects last: 5–60 seconds, in 5-second steps. Default: 10 seconds. Instant effects apply once. |
 | **Trigger** | What causes the next activation; see below. Default: Random. |
-| **Interval** | Gap used by Random, Interval and External: 5–120 seconds, in 5-second steps. Default: 35 seconds. Hidden for Pickup. |
+| **Interval** | Gap used by Random, Interval and External: 5–120 seconds, in 5-second steps. Default: 10 seconds. Hidden for Pickup. |
+| **Distribution** | Shared or Per player; shown with multiple human players. |
+| **Players** | Choose which human players receive Chaos effects; shown with multiple human players. |
 | **Effects** | Open the list and turn individual effects ON or OFF. All are selected initially. |
-| **Confirm** | Accept these rules. At least one effect must be selected. |
+| **Confirm** | Accept these rules. At least one compatible effect and one player must be selected. |
 
 ![Chaos setup with Duration, Trigger, Interval, Effects and Confirm](images/chaos-setup.jpg)
 
 Use Up/Down to navigate, Left/Right to adjust numeric values, and Cross/Circle to
-cycle the trigger, open Effects or toggle an effect. Triangle returns from the
+cycle the trigger or distribution, open Effects or toggle an effect. Triangle returns from the
 effect list to setup. These refer to the game's mapped controller buttons.
 
 ![Chaos effect selection with individual ON and OFF toggles](images/chaos-effect-selection.jpg)
 
-**Rules are fixed once the file is created.** To play with another trigger,
-duration, interval or selection, create another Adventure file.
+**Adventure rules are fixed once the file is created.** To play with another trigger,
+duration, interval, distribution or player/effect selection, create another Adventure file.
 
 ## Triggers
 
@@ -68,13 +113,13 @@ Activate one randomly selected enabled effect when a human:
 
 ### External
 
-An external application chooses the effect by placing its name in a local file.
+Available with Shared distribution only. An external application chooses the effect by placing its name in a local file.
 The game waits one full Interval from GO, then reads the next request. Each
 successful activation starts a fresh interval. With no request, no effect starts.
 
 Requests wait through pauses and Za Warudo's time stop, and can carry over to the
-next race, which starts a new interval from GO. The selected effect uses your saved
-Duration and must be enabled in the file. Setup and a manual submission example are in the
+next race, which starts a new interval from GO. The selected effect uses your chosen
+Duration and must be enabled in the current rules. Setup and a manual submission example are in the
 [external provider guide](CHAOS_EXTERNAL_PROVIDER.md).
 
 ## Effects
@@ -144,7 +189,7 @@ Duration 30 seconds with Interval 10 seconds allows several effects at once.
 
 ## During a race
 
-A sound and on-screen banner announce each activation. After a few seconds, its
+With Shared distribution, a sound and on-screen banner announce each activation. After a few seconds, its
 name moves into the smaller list on the right. Instant effects show only the
 initial banner and never dock, even when their gameplay result persists.
 

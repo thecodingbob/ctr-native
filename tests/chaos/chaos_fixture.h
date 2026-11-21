@@ -45,6 +45,20 @@ static int s_deferredNitroBlasts;
 static int s_deferredPotionShatters;
 static struct Thread *s_lastMineDriver;
 static int s_frozenObstacleCollisions;
+static u8 s_chaosOwnerMemory[1024];
+static s32 s_chaosOwnerMemoryUsed;
+
+void *MEMPACK_AllocMem(s32 size, const char *name)
+{
+	(void)name;
+	if (size <= 0 || size > (s32)sizeof(s_chaosOwnerMemory) - s_chaosOwnerMemoryUsed)
+	{
+		CtrTest_Bail("isolated Chaos allocation must fit the owner-table fixture");
+	}
+	void *memory = s_chaosOwnerMemory + s_chaosOwnerMemoryUsed;
+	s_chaosOwnerMemoryUsed += size;
+	return memory;
+}
 
 void RB_GenericMine_ThTick(struct Thread *thread) { (void)thread; }
 void RB_MovingExplosive_ThTick(struct Thread *thread) { (void)thread; }
@@ -643,7 +657,7 @@ int OtherFX_Play(u32 soundID, int flags)
 	}
 	if (soundID == 0x3c)
 	{
-		CTR_TEST_CHECK(sdata->chaosRuntime.humanAudioContext, "the time-stop cue remains audible while world sounds pause");
+		CTR_TEST_CHECK_EQ(sdata->chaosRuntime.audioOwner, CHAOS_AUDIO_UI, "the time-stop cue remains audible while world sounds pause");
 		s_timeStopCrateSounds++;
 		return 0;
 	}
@@ -678,7 +692,7 @@ int OtherFX_Play_LowLevel(u32 soundID, u8 antiSpam, u32 flags)
 {
 	if (soundID == 0x40)
 	{
-		CTR_TEST_CHECK(sdata->chaosRuntime.humanAudioContext, "time-stop ticks remain audible while world audio is suspended");
+		CTR_TEST_CHECK_EQ(sdata->chaosRuntime.audioOwner, CHAOS_AUDIO_UI, "time-stop ticks remain audible while world audio is suspended");
 		if (s_timeStopTickSounds == 0)
 		{
 			LIST_AddBack(&sdata->channelTaken, &s_timeStopTickChannel.link.item);
@@ -821,6 +835,7 @@ struct Particle *Particle_Init(u32 flags, struct IconGroup *icons, struct Partic
 
 static void SetupRace(int trigger)
 {
+	s_chaosOwnerMemoryUsed = 0;
 	s_timeStopCrateSounds = 0;
 	s_timeStopTickSounds = 0;
 	s_timeStopTickFlags = 0;
