@@ -3,6 +3,7 @@
 // The AI roster and the extended-multiplayer grid follow the shared race-field
 // rules, so the loader and the driver spawner cannot disagree on the field size.
 #include <race_field.h>
+#include "LOAD_Roster.h"
 
 #if defined(CTR_INTERNAL)
 #include <platform/native_checkpoint.h>
@@ -224,12 +225,9 @@ static void LOAD_SelectRandomBots(void)
 	{
 		s16 characterID = shuffledCharacterIDs[shuffledIndex];
 
-		if (LOAD_IsCharacterUsedByPlayer(characterID))
-		{
-			continue;
-		}
-
-		if (g_config.botSelectionMode == BOT_SELECTION_RANDOM_UNLOCKED && !MM_Characters_IsCharacterUnlocked(characterID))
+		if (!LOAD_RosterCharacterAvailable(characterID, data.characterIDs, LOAD_HumanDriverSlotCount(),
+		                                   g_config.botSelectionMode == BOT_SELECTION_RANDOM_UNLOCKED,
+		                                   MM_Characters_IsCharacterUnlocked))
 		{
 			continue;
 		}

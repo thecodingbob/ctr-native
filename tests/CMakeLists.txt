@@ -211,6 +211,7 @@ ctr_add_test_suite(test_render_scale
 ctr_add_test_suite(test_race_field
     SOURCES test_race_field.c
 )
+ctr_add_test_suite(test_load_roster SOURCES test_load_roster.c)
 
 # The Chaos catalogue and race gate, both header-only, for the same reason.
 ctr_add_test_suite(test_chaos_effect
