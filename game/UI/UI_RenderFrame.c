@@ -497,7 +497,8 @@ void UI_RenderFrame_Racing()
 				}
 
 				// Use the 2D rank icon only when the high-quality model is unavailable.
-				if (numPlyr > 2 && playerStruct->instBigNum == NULL)
+				if (numPlyr > 2 && playerStruct->instBigNum == NULL &&
+				    (unsigned int)playerStruct->driverRank < RACE_FIELD_FULL_GRID_RACERS)
 				{
 					// Get Color Data
 					ptrColor = data.ptrColor[sVar17];

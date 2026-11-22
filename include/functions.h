@@ -1268,6 +1268,7 @@ void Channel_DestroySelf(struct ChannelStats *stats);
 void UI_DrawLimitClock(s16 posX, s16 posY, s16 fontType);
 void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames);
 void UI_DrawPosSuffix(s16 posX, s16 posY, struct Driver *d, s16 flags);
+void UI_DrawExpandedPosition(s16 suffixX, s16 suffixY, struct Driver *driver, s16 font, s16 flags);
 int UI_PosSuffixOffset(s16 posX, struct Driver *d);
 int UI_PosSuffixNumberX(s16 suffixX, s16 numberX, struct Driver *d);
 void UI_DrawRaceClock(s16 labelPosX, s16 labelPosY, u32 flags, struct Driver *driver);

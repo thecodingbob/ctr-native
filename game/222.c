@@ -132,7 +132,7 @@ void AA_EndEvent_DrawMenu(void)
 	}
 	CTR_PSX_RELOAD(GAME_FRAMES_SINCE_RACE_ENDED);
 
-	if (driver->instBigNum->scale.x != AA_BIG_NUM_TARGET_SCALE)
+	if (driver->instBigNum != NULL && driver->instBigNum->scale.x != AA_BIG_NUM_TARGET_SCALE)
 	{
 		driver->instFruitDisp->scale.x = 0;
 		driver->instFruitDisp->scale.y = 0;
@@ -804,7 +804,7 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames)
 	}
 
 	// === Draw BigNum ===
-	if (compactResults)
+	if (compactResults && driver->instBigNum != NULL && (unsigned int)driver->driverRank < RACE_FIELD_FULL_GRID_RACERS)
 	{
 		s16 bigNumDepth = driver->driverRank + AA_BIG_NUM_Z_BASE;
 
@@ -817,7 +817,7 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames)
 	}
 
 	// If race ended more than 10 seconds ago.
-	else if (AA_TIME_DISPLAY_LATE_FRAME - timeOffsetFrames < driver->framesSinceRaceEnded_forThisDriver)
+	else if (!compactResults && AA_TIME_DISPLAY_LATE_FRAME - timeOffsetFrames < driver->framesSinceRaceEnded_forThisDriver)
 	{
 		UI_Lerp2D_Linear(CTR_VECTOR_DATA(&pos), -0xae, bigNumY,
 		                 UI_ConvertX_2(-100, hudArray[driverId * AA_HUD_ELEMENTS_PER_DRIVER + AA_TIME_DISPLAY_BIG_NUM_SLOT].z), bigNumY,
@@ -825,7 +825,7 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames)
 	}
 
 	// If not
-	else
+	else if (!compactResults)
 	{
 		struct UiElement2D *bigNumHud;
 
@@ -837,7 +837,7 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames)
 
 	hud = (struct UiElement2D *)((u32)(driverId * AA_HUD_ELEMENTS_PER_DRIVER * sizeof(*hudArray)) + (u32)hudArray);
 
-	if (!compactResults)
+	if (!compactResults && driver->instBigNum != NULL)
 	{
 		driver->instBigNum->matrix.t[0] = pos.x;
 		driver->instBigNum->matrix.t[1] = pos.y;
@@ -866,7 +866,14 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames)
 
 	if (compactResults)
 	{
-		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[data.stringIndexSuffix[driver->driverRank]], rankX, rankY, FONT_SMALL, ORANGE);
+		if ((unsigned int)driver->driverRank >= RACE_FIELD_FULL_GRID_RACERS)
+		{
+			UI_DrawExpandedPosition(rankX, rankY, driver, FONT_SMALL, ORANGE);
+		}
+		else
+		{
+			DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[data.stringIndexSuffix[driver->driverRank]], rankX, rankY, FONT_SMALL, ORANGE);
+		}
 	}
 	else
 	{
