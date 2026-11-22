@@ -4127,6 +4127,8 @@ struct sData
 	// Standalone bot request destinations, owned by the current level's MEMPACK bookmark.
 	struct LoadBotModelSlot *standaloneBotModels;
 	int standaloneBotModelCount;
+	// Furthest driver slot admitted by the current level's model request batch.
+	int loadedRaceFieldSize;
 
 	// after dataLibFiller is 8009AE58,
 	// where psyq allocates globals

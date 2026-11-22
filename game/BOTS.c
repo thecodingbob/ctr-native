@@ -182,6 +182,10 @@ internal void BOTS_Adv_CopySpawnOrder(s32 first, s32 second)
 {
 	*(s32 *)&sdata->kartSpawnOrderArray[0] = first;
 	*(s32 *)&sdata->kartSpawnOrderArray[4] = second;
+	for (int i = RACE_FIELD_FULL_GRID_RACERS; i < RACE_FIELD_CONFIG_MAX_RACERS; i++)
+	{
+		sdata->kartSpawnOrderArray[i] = -1;
+	}
 }
 
 internal s32 BOTS_GetTrackDistanceToFinish(struct GameTracker *gGT)
@@ -363,7 +367,9 @@ void BOTS_Adv_AdjustDifficulty(int racerCount)
 	// racers at the back and a retry carries over the previous race's positions,
 	// the same way a lone racer's Adventure does. The tables keyed on the event
 	// still apply below, exactly as they do for a lone racer.
-	if (((gameMode2 & CUP_ANY_KIND) == 0) || (gGT->cup.trackIndex == 0))
+	const b32 cupRace = (gameMode2 & CUP_ANY_KIND) != 0 || (gameMode1 & ADVENTURE_CUP) != 0;
+	const b32 carriesGrid = sdata->loadedRaceFieldSize > 0 ? cupRace : (gameMode2 & CUP_ANY_KIND) != 0;
+	if (!carriesGrid || gGT->cup.trackIndex == 0)
 	{
 		if (!MainGameEnd_IsCoopRace(gGT))
 		{
@@ -397,6 +403,11 @@ void BOTS_Adv_AdjustDifficulty(int racerCount)
 		{
 			BOTS_Adv_CopySpawnOrder(data.kartSpawnOrder.arcade_1, data.kartSpawnOrder.arcade_2);
 		}
+	}
+
+	if (sdata->loadedRaceFieldSize > 0)
+	{
+		RaceField_CompactSpawnOrder(sdata->kartSpawnOrderArray, racerCount);
 	}
 
 	// Extra slots repeat the LEV formation, so they also repeat its path
@@ -435,7 +446,7 @@ void BOTS_Adv_AdjustDifficulty(int racerCount)
 		}
 	}
 
-	if ((((gameMode1 & ADVENTURE_CUP) == 0) && ((gameMode2 & CUP_ANY_KIND) == 0)) || (gGT->cup.trackIndex == 0))
+	if (!cupRace || gGT->cup.trackIndex == 0)
 	{
 		u8 accelOrder[BOTS_RETAIL_GRID_SIZE];
 		u32 accel = (RngDeadCoed(&sdata->advRng) >> BOTS_RNG_BYTE_SHIFT) & BOTS_RNG_ACCEL_MASK;
@@ -450,19 +461,21 @@ void BOTS_Adv_AdjustDifficulty(int racerCount)
 			rearAccel = (rearAccel - 1) & BOTS_RNG_ACCEL_MASK;
 		}
 
-		for (int i = 0; i < setupCount; i++)
+		const int accelCount = sdata->loadedRaceFieldSize > setupCount ? sdata->loadedRaceFieldSize : setupCount;
+		for (int i = 0; i < accelCount; i++)
 		{
-			sdata->accelerateOrder[i] = accelOrder[(u8)sdata->kartSpawnOrderArray[i] % len(accelOrder)];
+			const u8 slot = i < racerCount || sdata->loadedRaceFieldSize == 0 ? (u8)sdata->kartSpawnOrderArray[i] : i;
+			sdata->accelerateOrder[i] = accelOrder[slot % len(accelOrder)];
 		}
 	}
 
-	if ((((gameMode1 & ADVENTURE_CUP) != 0) || ((gameMode2 & CUP_ANY_KIND) != 0)) && (gGT->cup.trackIndex > 0))
+	if (cupRace && gGT->cup.trackIndex > 0 && racerCount > gGT->numPlyrCurrGame)
 	{
 		s16 bestPoints = -1;
 		s16 bestDriverIndex = 0;
 		s16 topAccelIndex = 0;
 
-		for (int i = 0; i < setupCount; i++)
+		for (int i = 0; i < racerCount; i++)
 		{
 			if ((gGT->numPlyrCurrGame <= i) && (bestPoints < gGT->cup.points[i]))
 			{
@@ -3020,8 +3033,9 @@ void BOTS_GotoStartingLine(struct Driver *d)
 	// time until full acceleration from start
 	int accelDuration = sdata->AI_AccelFrameCount;
 
-	// get acceleration order from spawn order
-	u8 accel = sdata->accelerateOrder[spawnPos];
+	// Extended fields use the per-driver assignment, like the running AI.
+	// Keep the retail starting-line lookup for unexpanded fields.
+	u8 accel = sdata->accelerateOrder[sdata->loadedRaceFieldSize > BOTS_RETAIL_GRID_SIZE ? d->driverID : spawnPos];
 
 	d->rotCurr.z = 0;
 	d->rotPrev.z = 0;

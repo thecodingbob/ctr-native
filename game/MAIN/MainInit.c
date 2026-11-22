@@ -376,7 +376,19 @@ void MainInit_Drivers(struct GameTracker *gGT)
 {
 	u8 numPlyrCurrGame = gGT->numPlyrCurrGame;
 	int gameMode = gGT->gameMode1;
-	const int numDrivers = RaceField_RacerCount(gameMode, gGT->cup.cupID, numPlyrCurrGame, g_config.extendedMultiplayer);
+	int numDrivers = RaceField_RacerCount(gameMode, gGT->cup.cupID, numPlyrCurrGame, g_config.extendedMultiplayer);
+	if (sdata->loadedRaceFieldSize >= numPlyrCurrGame && sdata->loadedRaceFieldSize > 0)
+	{
+		numDrivers = VehStartGrid_ValidateSize(gGT, sdata->loadedRaceFieldSize);
+		for (int i = numPlyrCurrGame; i < numDrivers; i++)
+		{
+			if (VehBirth_GetModelByName(GAME_CHARACTER_METADATA[data.characterIDs[i]].name_Debug) == NULL)
+			{
+				numDrivers = i;
+				break;
+			}
+		}
+	}
 
 	memset(gGT->drivers, 0, sizeof(gGT->drivers));
 	memset(gGT->driversInRaceOrder, 0, sizeof(gGT->driversInRaceOrder));
@@ -403,11 +415,7 @@ void MainInit_Drivers(struct GameTracker *gGT)
 		gGT->drivers[i] = VehBirth_Player(i);
 	}
 
-	// spawn all AIs
-	// Only a race that LOAD filled the whole grid for can run eight racers,
-	// which is what the extended multiplayer option does in Arcade and in
-	// Adventure. Every other race keeps the retail lineup, so filling the extra
-	// slots would spawn racers on character IDs nobody assigned.
+	// Spawn only the bots admitted by the model batch and the starting grid.
 	for (int i = numPlyrCurrGame; i < numDrivers; i++)
 	{
 		// spawn an AI at this character index

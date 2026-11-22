@@ -9,9 +9,8 @@
 // hub's warp pad, which lays out a starting grid this long before the race has
 // loaded.
 //
-// Every function here is pure: the mode, the cup and the option values arrive as
-// arguments, because the hub has to ask about the round it is about to load while
-// its own flags still describe the hub.
+// The field rules take mode, cup and option values as arguments so the hub can
+// predict the round it is about to load using that round's flags.
 //
 
 // Racers on a starting grid, players included.
@@ -129,14 +128,19 @@ static inline int RaceField_BotCount(int gameMode1, s32 cupID, int playerCount, 
 	return RaceField_RacerCount(gameMode1, cupID, playerCount, extendedMultiplayer) - playerCount;
 }
 
-// availableBots counts eligible characters not already selected by a player.
 // Managed rosters and retail 3P/4P races keep their existing rules.
+static inline b32 RaceField_UsesConfiguredGrid(int gameMode1, s32 cupID, int playerCount, b32 extendedMultiplayer)
+{
+	return (gameMode1 & (ARCADE_MODE | ADVENTURE_MODE)) != 0 && !RaceField_HasManagedAIRoster(gameMode1, cupID) &&
+	       (playerCount < 3 || extendedMultiplayer);
+}
+
+// availableBots counts eligible characters not already selected by a player.
 static inline int RaceField_ConfiguredRacerCount(int gameMode1, s32 cupID, int playerCount, b32 extendedMultiplayer,
                                                 int configuredRacers, int availableBots)
 {
 	int retailRacers = RaceField_RacerCount(gameMode1, cupID, playerCount, extendedMultiplayer);
-	if ((gameMode1 & (ARCADE_MODE | ADVENTURE_MODE)) == 0 || RaceField_HasManagedAIRoster(gameMode1, cupID) ||
-	    (playerCount >= 3 && !extendedMultiplayer))
+	if (!RaceField_UsesConfiguredGrid(gameMode1, cupID, playerCount, extendedMultiplayer))
 	{
 		return retailRacers;
 	}
@@ -166,6 +170,45 @@ static inline int RaceField_ConfiguredRacerCount(int gameMode1, s32 cupID, int p
 		configuredRacers = playerCount + availableBots;
 	}
 	return configuredRacers;
+}
+
+// Compact surviving racers in their original grid order. Missing or duplicate
+// ranks (for example, bots returning after a shorter cup round) start last.
+static inline void RaceField_CompactSpawnOrder(char *order, int racerCount)
+{
+	int driverAtRank[RACE_FIELD_CONFIG_MAX_RACERS];
+	for (int i = 0; i < RACE_FIELD_CONFIG_MAX_RACERS; i++)
+	{
+		driverAtRank[i] = -1;
+	}
+	for (int i = 0; i < racerCount; i++)
+	{
+		const unsigned int rank = (unsigned char)order[i];
+		order[i] = -1;
+		if (rank < RACE_FIELD_CONFIG_MAX_RACERS && driverAtRank[rank] < 0)
+		{
+			driverAtRank[rank] = i;
+		}
+	}
+	int rank = 0;
+	for (int i = 0; i < RACE_FIELD_CONFIG_MAX_RACERS; i++)
+	{
+		if (driverAtRank[i] >= 0)
+		{
+			order[driverAtRank[i]] = rank++;
+		}
+	}
+	for (int i = 0; i < racerCount; i++)
+	{
+		if ((unsigned char)order[i] == (unsigned char)-1)
+		{
+			order[i] = rank++;
+		}
+	}
+	for (int i = racerCount; i < RACE_FIELD_CONFIG_MAX_RACERS; i++)
+	{
+		order[i] = -1;
+	}
 }
 
 #endif

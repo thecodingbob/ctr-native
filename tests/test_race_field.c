@@ -353,6 +353,36 @@ static void TestConfiguredGridModeMatrix(void)
 	}
 }
 
+static void TestCompactSpawnOrder(void)
+{
+	CTR_TEST_SECTION("grid compaction preserves relative order across a smaller round");
+	char grid[RACE_FIELD_CONFIG_MAX_RACERS] = {15, 14, 0, 4, 1, 8};
+	RaceField_CompactSpawnOrder(grid, 6);
+	const char reduced[] = {5, 4, 0, 2, 1, 3};
+	for (int i = 0; i < (int)len(reduced); i++)
+	{
+		CTR_TEST_CHECK_EQ(grid[i], reduced[i], "surviving drivers keep their order and both humans still start at the back");
+	}
+	CTR_TEST_CHECK_EQ((unsigned char)grid[6], 255, "an inactive driver cannot reuse an old rank");
+	RaceField_CompactSpawnOrder(grid, 9);
+	for (int i = 6; i < 9; i++)
+	{
+		CTR_TEST_CHECK_EQ(grid[i], i, "bots returning in a later round take the open positions");
+	}
+	grid[0] = grid[1];
+	RaceField_CompactSpawnOrder(grid, 9);
+	CTR_TEST_CHECK_EQ(grid[1], 8, "duplicate ranks do not place two karts in the same slot");
+	for (int i = 0; i < RACE_FIELD_CONFIG_MAX_RACERS; i++)
+	{
+		grid[i] = RACE_FIELD_CONFIG_MAX_RACERS - 1 - i;
+	}
+	RaceField_CompactSpawnOrder(grid, RACE_FIELD_CONFIG_MAX_RACERS);
+	for (int i = 0; i < RACE_FIELD_CONFIG_MAX_RACERS; i++)
+	{
+		CTR_TEST_CHECK_EQ(grid[i], RACE_FIELD_CONFIG_MAX_RACERS - 1 - i, "a valid expanded grid is unchanged");
+	}
+}
+
 int main(void)
 {
 	TestNormalRaceGrid();
@@ -366,6 +396,7 @@ int main(void)
 	TestAModeBitAloneIsNotARace();
 	TestConfiguredGrid();
 	TestConfiguredGridModeMatrix();
+	TestCompactSpawnOrder();
 
 	return CtrTest_Summary();
 }

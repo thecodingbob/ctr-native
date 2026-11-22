@@ -520,18 +520,30 @@ void AH_WarpPad_ThTick(struct Thread *t)
 		destinationMode |= CRYSTAL_CHALLENGE;
 	}
 
-	racerCount = RaceField_RacerCount(destinationMode, destinationCupID, firstBotSlot, g_config.extendedMultiplayer);
+	racerCount = LOAD_PredictRaceFieldSize(destinationMode, destinationCupID, firstBotSlot);
 	botCount = racerCount - firstBotSlot;
 
-	// If Speed Champion is on the track (Crash-Pura)
-	// and is not the same characterID as this driver
-	if ((champID < AH_WP_RACER_SLOT_COUNT) && (champID != GAME_CHARACTER_IDS[driver->driverID]))
+	// Only Vanilla can identify the speed champion before the loader picks bots.
+	int champDriver = -1;
+	if (g_config.botSelectionMode == BOT_SELECTION_PREDETERMINED && champID < AH_WP_RACER_SLOT_COUNT &&
+	    !RaceField_IsPurpleGemCupRace(destinationMode, destinationCupID))
+	{
+		for (i = firstBotSlot; i < racerCount && i < RACE_FIELD_FULL_GRID_RACERS; i++)
+		{
+			if (GAME_CHARACTER_IDS[i] == champID)
+			{
+				champDriver = i;
+				break;
+			}
+		}
+	}
+	if (champDriver >= 0)
 	{
 		champGridSlot = 0;
 		// set everyone to spawn in order, starting after the human drivers
 		for (i = firstBotSlot; i < racerCount; i++)
 		{
-			if (AH_WarpPad_Champion(warppadObj->levelID) == GAME_CHARACTER_IDS[i])
+			if (i == champDriver)
 			{
 				// The last bot takes over the grid slot the champion vacated, which
 				// is not the champion's driver slot once the humans sit at the back.

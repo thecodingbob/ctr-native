@@ -76,7 +76,8 @@ static void TestStandaloneBotModels(void)
 	{
 		LOAD_AppendQueue(NULL, LT_GETADDR, i, NULL, QueueCallback);
 	}
-	LOAD_QueueExtraCharacterModels(NULL, ids, len(ids), BI_RACERMODELHI);
+	CTR_TEST_CHECK_EQ(LOAD_QueueExtraCharacterModels(NULL, ids, len(ids), BI_RACERMODELHI), len(ids),
+	                  "the caller can admit all requested bots when the batch fits");
 	CTR_TEST_CHECK_EQ(s_botAllocationSize, sizeof(*s_botModelArena) * len(ids), "metadata allocation tracks the number of requested files");
 	CTR_TEST_CHECK_EQ(sdata->standaloneBotModelCount, len(ids), "every bot fits after pending requests and one human model");
 	for (int i = 0; i < (int)len(ids); i++)
@@ -109,7 +110,8 @@ static void TestStandaloneBotModels(void)
 	               "the next level cannot see the old allocation");
 
 	sdata->queueLength = LOAD_QUEUE_SLOT_COUNT - 2;
-	LOAD_QueueExtraCharacterModels(NULL, ids, len(ids), BI_RACERMODELHI);
+	CTR_TEST_CHECK_EQ(LOAD_QueueExtraCharacterModels(NULL, ids, len(ids), BI_RACERMODELHI), 1,
+	                  "the caller is told how many requests survived queue pressure");
 	CTR_TEST_CHECK_EQ(s_botAllocationSize, sizeof(*s_botModelArena), "a crowded queue allocates only the slot it can use");
 	CTR_TEST_CHECK_EQ(sdata->queueLength, LOAD_QUEUE_SLOT_COUNT - 1, "the pack retains its place even when bot requests have to be capped");
 }

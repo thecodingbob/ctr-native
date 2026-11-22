@@ -7,7 +7,7 @@ static void LOAD_ResetExtraCharacterModels(void)
 }
 
 // Called once per driver batch, after the human requests and before the final pack.
-static void LOAD_QueueExtraCharacterModels(struct BigHeader *bigfile, const s16 *characterIDs, int characterCount, int modelFileIndex)
+static int LOAD_QueueExtraCharacterModels(struct BigHeader *bigfile, const s16 *characterIDs, int characterCount, int modelFileIndex)
 {
 	const int available = LOAD_QUEUE_SLOT_COUNT - sdata->queueLength - LOAD_QUEUE_RACER_PACK_BUDGET;
 	if (characterCount > available)
@@ -16,7 +16,7 @@ static void LOAD_QueueExtraCharacterModels(struct BigHeader *bigfile, const s16 
 	}
 	if (characterCount <= 0)
 	{
-		return;
+		return 0;
 	}
 
 	struct LoadBotModelSlot *slots = MEMPACK_AllocMem(characterCount * sizeof(*slots), "standalone bot models");
@@ -29,6 +29,7 @@ static void LOAD_QueueExtraCharacterModels(struct BigHeader *bigfile, const s16 
 		LOAD_AppendQueue(bigfile, LT_GETADDR, modelFileIndex + characterIDs[i], &slots[i].asset.fileBase,
 		                 LOAD_QUEUE_CALLBACK_SET_POINTER);
 	}
+	return characterCount;
 }
 
 struct Model *LOAD_GetExtraCharacterModelByName(char *searchName)

@@ -340,6 +340,7 @@ void LOAD_AppendQueue(struct BigHeader *bigfile, int type, int fileIndex, void *
 int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(struct LoadQueueSlot *));
 struct Model *LOAD_GetExtraCharacterModelByName(char *searchName);
 void LOAD_FinalizeExtraCharacterModels(void);
+int LOAD_PredictRaceFieldSize(int gameMode1, s32 cupID, int playerCount);
 b32 MM_Characters_IsCharacterUnlocked(s16 characterID);
 void LOAD_Hub_Main(struct BigHeader *bigfilePtr);
 void LOAD_Hub_ReadFile(struct BigHeader *bigfile, int levID, int packID);
