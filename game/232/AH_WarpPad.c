@@ -249,7 +249,7 @@ void AH_WarpPad_ThTick(struct Thread *t)
 	s32 firstBotSlot;
 	s32 botCount;
 
-	u8 randKartSpawn[AH_WP_RACER_SLOT_COUNT];
+	u8 randKartSpawn[RACE_FIELD_CONFIG_MAX_RACERS];
 	rewardScale = 0x100;
 	warppadObj = t->object;
 	visInstSrc = GAME_TRACKER->cameraDC[0].visInstSrc;
@@ -601,8 +601,7 @@ void AH_WarpPad_ThTick(struct Thread *t)
 				GAME_ADD_CONFIG_0 |= ADVENTURE_CUP;
 				cupGT->cup.trackIndex = 0;
 				cupGT->cup.cupID = cupID;
-				for (i = 7; i >= 0; i--)
-					cupGT->cup.points[i] = 0;
+				memset(cupGT->cup.points, 0, sizeof(cupGT->cup.points));
 				{
 					u32 trackOffset;
 					s32 cupOffset;

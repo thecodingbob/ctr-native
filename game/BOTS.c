@@ -22,7 +22,7 @@ enum
 	BOTS_ADV_RACE_CHEAT_LOSS_BASE = 100,
 	BOTS_ADV_RACE_CHEAT_TROPHY_SCALE = 0xc,
 	BOTS_NAV_PATH_COUNT = 3,
-	BOTS_MAX_KARTS = 8,
+	BOTS_RETAIL_GRID_SIZE = RACE_FIELD_FULL_GRID_RACERS,
 	BOTS_BATTLE_DRIVER_COUNT = 4,
 	BOTS_GRID_ROW_KART_COUNT = 4,
 	BOTS_GRID_REAR_ROW_OFFSET = 4,
@@ -216,7 +216,7 @@ static struct Difficulty *BOTS_CustomTrackDifficulty(void)
 	return &difficulty;
 }
 
-void BOTS_Adv_AdjustDifficulty(void)
+void BOTS_Adv_AdjustDifficulty(int racerCount)
 {
 	struct GameTracker *gGT = sdata->gGT;
 	u32 gameMode1 = gGT->gameMode1;
@@ -399,7 +399,9 @@ void BOTS_Adv_AdjustDifficulty(void)
 		}
 	}
 
-	u8 pathOrder[8];
+	// Extra slots repeat the LEV formation, so they also repeat its path
+	// assignments and the retail range of acceleration penalties.
+	u8 pathOrder[BOTS_RETAIL_GRID_SIZE];
 	pathOrder[0] = 0;
 	pathOrder[4] = 0;
 	pathOrder[3] = 2;
@@ -413,9 +415,10 @@ void BOTS_Adv_AdjustDifficulty(void)
 	pathOrder[2] = secondPath + 1;
 	pathOrder[6] = (secondPath ^ 1) + 1;
 
-	for (s16 i = 0; i < BOTS_MAX_KARTS; i++)
+	const int setupCount = racerCount > BOTS_RETAIL_GRID_SIZE ? racerCount : BOTS_RETAIL_GRID_SIZE;
+	for (int i = 0; i < setupCount; i++)
 	{
-		sdata->driver_pathIndexIDs[i] = pathOrder[(u8)sdata->kartSpawnOrderArray[i]];
+		sdata->driver_pathIndexIDs[i] = pathOrder[(u8)sdata->kartSpawnOrderArray[i] % len(pathOrder)];
 	}
 
 	if ((gameMode1 & ADVENTURE_BOSS) != 0)
@@ -434,7 +437,7 @@ void BOTS_Adv_AdjustDifficulty(void)
 
 	if ((((gameMode1 & ADVENTURE_CUP) == 0) && ((gameMode2 & CUP_ANY_KIND) == 0)) || (gGT->cup.trackIndex == 0))
 	{
-		u8 accelOrder[8];
+		u8 accelOrder[BOTS_RETAIL_GRID_SIZE];
 		u32 accel = (RngDeadCoed(&sdata->advRng) >> BOTS_RNG_BYTE_SHIFT) & BOTS_RNG_ACCEL_MASK;
 		u32 rearAccel = (RngDeadCoed(&sdata->advRng) >> BOTS_RNG_BYTE_SHIFT) & BOTS_RNG_ACCEL_MASK;
 
@@ -447,9 +450,9 @@ void BOTS_Adv_AdjustDifficulty(void)
 			rearAccel = (rearAccel - 1) & BOTS_RNG_ACCEL_MASK;
 		}
 
-		for (s16 i = 0; i < BOTS_MAX_KARTS; i++)
+		for (int i = 0; i < setupCount; i++)
 		{
-			sdata->accelerateOrder[i] = accelOrder[(u8)sdata->kartSpawnOrderArray[i]];
+			sdata->accelerateOrder[i] = accelOrder[(u8)sdata->kartSpawnOrderArray[i] % len(accelOrder)];
 		}
 	}
 
@@ -459,7 +462,7 @@ void BOTS_Adv_AdjustDifficulty(void)
 		s16 bestDriverIndex = 0;
 		s16 topAccelIndex = 0;
 
-		for (s16 i = 0; i < BOTS_MAX_KARTS; i++)
+		for (int i = 0; i < setupCount; i++)
 		{
 			if ((gGT->numPlyrCurrGame <= i) && (bestPoints < gGT->cup.points[i]))
 			{
@@ -467,7 +470,7 @@ void BOTS_Adv_AdjustDifficulty(void)
 				bestDriverIndex = i;
 			}
 
-			if (sdata->accelerateOrder[i] == 0)
+			if (i < BOTS_RETAIL_GRID_SIZE && sdata->accelerateOrder[i] == 0)
 			{
 				topAccelIndex = i;
 			}

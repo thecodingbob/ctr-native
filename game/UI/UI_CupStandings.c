@@ -626,10 +626,8 @@ void UI_CupStandings_InputAndDraw(void)
 						// Set final ranking of each player
 						d->driverRank = (s16)i;
 					}
-
-					// set driver's cup score to zero
-					gGT->cup.points[i] = 0;
 				}
+				memset(gGT->cup.points, 0, sizeof(gGT->cup.points));
 
 				Podium_InitModels(gGT);
 

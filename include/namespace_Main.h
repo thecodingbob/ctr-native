@@ -748,7 +748,7 @@ struct GameTracker
 		int trackIndex; // 0-3
 
 		// 1e60
-		int points[8];
+		int points[RACE_FIELD_CONFIG_MAX_RACERS];
 
 	} cup;
 

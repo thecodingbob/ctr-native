@@ -2122,7 +2122,7 @@ struct Data
 	// characterIDs of all racers
 	// in order of cup rank
 	// 1st, 2nd, 3rd, etc.
-	int cupPositionPerPlayer[8];
+	int cupPositionPerPlayer[RACE_FIELD_CONFIG_MAX_RACERS];
 
 	// 0x80086d64
 	// 9, 6, 3, 1, 0, 0, 0, 0
@@ -2135,7 +2135,7 @@ struct Data
 	struct MetaDataCHAR MetaDataCharacters[0x10];
 
 	// 0x80086e84
-	s16 characterIDs[8];
+	s16 characterIDs[RACE_FIELD_CONFIG_MAX_RACERS];
 
 	// 0x80086e94
 	// bakedGteMath[BAKED_GTE_MATRIX_NONE] is blank,
@@ -2279,7 +2279,8 @@ struct Data
 CTR_STATIC_ASSERT(offsetof(struct Data, podiumModel_firstPlace) == offsetof(struct Data, driverModelExtras) + sizeof(((struct Data *)0)->driverModelExtras));
 CTR_STATIC_ASSERT(offsetof(struct Data, currSlot) == offsetof(struct Data, driverModelExtras) + 11 * sizeof(void *));
 CTR_STATIC_ASSERT(sizeof(((struct Data *)0)->characterIDs_2P_AIs) == 0x1c);
-CTR_STATIC_ASSERT(offsetof(struct Data, bakedGteMath) == 0x7554);
+CTR_STATIC_ASSERT(offsetof(struct Data, bakedGteMath) == 0x7554 +
+                  (RACE_FIELD_CONFIG_MAX_RACERS - RACE_FIELD_FULL_GRID_RACERS) * (sizeof(int) + sizeof(s16)));
 CTR_STATIC_ASSERT(sizeof(((struct Data *)0)->bakedGteMath) == BAKED_GTE_MATRIX_COUNT * 8);
 
 // 0x8008CF6C
@@ -2296,7 +2297,7 @@ struct sData
 
 	// 0x8008CF78
 	// path index for each AI
-	char driver_pathIndexIDs[8];
+	char driver_pathIndexIDs[RACE_FIELD_CONFIG_MAX_RACERS];
 
 	// 0x8008CF80
 	// both these are multiplied by accelerateOrder,
@@ -2984,7 +2985,7 @@ struct sData
 	// 8008d680
 	// if these are all zero, all AIs
 	// will reach top speed after race starts at same time
-	u8 accelerateOrder[8];
+	u8 accelerateOrder[RACE_FIELD_CONFIG_MAX_RACERS];
 
 	// 8008d688
 	struct NavFrame *nav_ptrFirstPoint;
@@ -3005,10 +3006,7 @@ struct sData
 	int aiCollisionDelayFrameCount;
 
 	// 8008d69c
-	char kartSpawnOrderArray[0x8];
-
-	// 8008d6a4
-	char unk_paddingAfterKartSpawn[0x8];
+	char kartSpawnOrderArray[RACE_FIELD_CONFIG_MAX_RACERS];
 
 	// 8008d6ac
 	// stream audio, or stream data
@@ -4163,9 +4161,9 @@ CTR_STATIC_ASSERT(sizeof(struct MetaDataCHAR) == 0x10);
 CTR_STATIC_ASSERT(offsetof(struct MetaDataCHAR, iconID) == 0x8);
 CTR_STATIC_ASSERT(sizeof(((struct MetaDataCHAR *)0)->iconID) == 0x2);
 CTR_STATIC_ASSERT(offsetof(struct MetaDataCHAR, engineID) == 0xc);
-CTR_STATIC_ASSERT(offsetof(struct sData, numIconsEOR) == 0x604);
+CTR_STATIC_ASSERT(offsetof(struct sData, numIconsEOR) == 0x604 + RACE_FIELD_CONFIG_MAX_RACERS - RACE_FIELD_FULL_GRID_RACERS);
 CTR_STATIC_ASSERT(sizeof(((struct sData *)0)->numIconsEOR) == 0x2);
-CTR_STATIC_ASSERT(offsetof(struct sData, s_additionInt) == 0x608);
+CTR_STATIC_ASSERT(offsetof(struct sData, s_additionInt) == 0x608 + RACE_FIELD_CONFIG_MAX_RACERS - RACE_FIELD_FULL_GRID_RACERS);
 
 // OVR1
 // 8009f6fc - 800a0cb8
@@ -4216,11 +4214,15 @@ CTR_STATIC_ASSERT(sizeof(struct MetaDataMODEL) == 0xC);
 CTR_STATIC_ASSERT(OFFSETOF_DATA(rowsQuit) == 0x800841BC);
 CTR_STATIC_ASSERT(OFFSETOF_DATA(menuQuit) == 0x800841D0);
 CTR_STATIC_ASSERT(OFFSETOF_DATA(playerIconAdvMap) == 0x80086418);
-CTR_STATIC_ASSERT(OFFSETOF_SDATA(AkuAkuHintState) == 0x8008D874);
-CTR_STATIC_ASSERT(OFFSETOF_SDATA(lngStrings) == 0x8008D878);
-CTR_STATIC_ASSERT(OFFSETOF_SDATA(botCrashNavRot) == 0x8008D9EC);
-CTR_STATIC_ASSERT(OFFSETOF_SDATA(vehicleCollisionImpactStrength) == 0x8008D9F4);
-CTR_STATIC_ASSERT(OFFSETOF_SDATA(talkMaskXASamplePeak) == 0x8008D9F8);
-CTR_STATIC_ASSERT(OFFSETOF_SDATA(talkMaskMaxMouthFrame) == 0x8008D9FC);
+CTR_STATIC_ASSERT(OFFSETOF_DATA(driverModelExtras) == 0x80083A10);
+
+// Path and acceleration storage grow by one byte each per extra racer.
+enum { SDATA_RACE_FIELD_EXPANSION_BYTES = 2 * (RACE_FIELD_CONFIG_MAX_RACERS - RACE_FIELD_FULL_GRID_RACERS) };
+CTR_STATIC_ASSERT(OFFSETOF_SDATA(AkuAkuHintState) == 0x8008D874 + SDATA_RACE_FIELD_EXPANSION_BYTES);
+CTR_STATIC_ASSERT(OFFSETOF_SDATA(lngStrings) == 0x8008D878 + SDATA_RACE_FIELD_EXPANSION_BYTES);
+CTR_STATIC_ASSERT(OFFSETOF_SDATA(botCrashNavRot) == 0x8008D9EC + SDATA_RACE_FIELD_EXPANSION_BYTES);
+CTR_STATIC_ASSERT(OFFSETOF_SDATA(vehicleCollisionImpactStrength) == 0x8008D9F4 + SDATA_RACE_FIELD_EXPANSION_BYTES);
+CTR_STATIC_ASSERT(OFFSETOF_SDATA(talkMaskXASamplePeak) == 0x8008D9F8 + SDATA_RACE_FIELD_EXPANSION_BYTES);
+CTR_STATIC_ASSERT(OFFSETOF_SDATA(talkMaskMaxMouthFrame) == 0x8008D9FC + SDATA_RACE_FIELD_EXPANSION_BYTES);
 
 #endif

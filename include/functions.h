@@ -17,7 +17,7 @@ u8 CAM_Path_Move(int frameIndex, s16 *position, s16 *rotation, s16 *pathFlagsOut
 int CAM_MapRange_PosPoints(SVec3 *pos1, SVec3 *pos2, SVec3 *currPos);
 void CAM_SetDesiredPosRot(struct CameraDC *cDC, const SVec3 *pos, const SVec3 *rot);
 
-void BOTS_Adv_AdjustDifficulty(void);
+void BOTS_Adv_AdjustDifficulty(int racerCount);
 void BOTS_UpdateGlobals(void);
 void BOTS_GotoStartingLine(struct Driver *d);
 

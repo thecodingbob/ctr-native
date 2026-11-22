@@ -375,8 +375,8 @@ void MainInit_JitPoolsNew(struct GameTracker *gGT)
 void MainInit_Drivers(struct GameTracker *gGT)
 {
 	u8 numPlyrCurrGame = gGT->numPlyrCurrGame;
-	u8 numDrivers;
 	int gameMode = gGT->gameMode1;
+	const int numDrivers = RaceField_RacerCount(gameMode, gGT->cup.cupID, numPlyrCurrGame, g_config.extendedMultiplayer);
 
 	memset(gGT->drivers, 0, sizeof(gGT->drivers));
 	memset(gGT->driversInRaceOrder, 0, sizeof(gGT->driversInRaceOrder));
@@ -385,7 +385,7 @@ void MainInit_Drivers(struct GameTracker *gGT)
 
 	if ((gameMode & (GAME_CUTSCENE | ADVENTURE_ARENA | MAIN_MENU)) == 0)
 	{
-		BOTS_Adv_AdjustDifficulty();
+		BOTS_Adv_AdjustDifficulty(numDrivers);
 	}
 
 	GhostReplay_Init1();
@@ -408,8 +408,6 @@ void MainInit_Drivers(struct GameTracker *gGT)
 	// which is what the extended multiplayer option does in Arcade and in
 	// Adventure. Every other race keeps the retail lineup, so filling the extra
 	// slots would spawn racers on character IDs nobody assigned.
-	numDrivers = RaceField_RacerCount(gameMode, gGT->cup.cupID, numPlyrCurrGame, g_config.extendedMultiplayer);
-
 	for (int i = numPlyrCurrGame; i < numDrivers; i++)
 	{
 		// spawn an AI at this character index
