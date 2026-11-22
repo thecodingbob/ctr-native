@@ -1,4 +1,6 @@
 #include <common.h>
+
+CTR_STATIC_ASSERT(RACE_FIELD_CONFIG_MAX_RACERS <= 8 * sizeof(((struct TrackerWeapon *)0)->driversHit));
 #include <ctr_gte_transfer.h>
 
 #define RB_WARPBALL_FADE_Y R231.warpballFadeY
@@ -130,7 +132,7 @@ struct Driver *RB_Warpball_GetDriverTarget(struct TrackerWeapon *tw, struct Inst
 		distanceAlongTrack += 0x200;
 		distanceAlongTrack %= trackDistance;
 
-		for (i = 0; i < 8; i++)
+		for (i = 0; i < (int)len(GAME_TRACKER->drivers); i++)
 		{
 			struct Driver *driver = GAME_TRACKER->drivers[i];
 			if (driver != NULL && !(tw->driversHit & (1u << i)) && !(driver->actionsFlagSet & ACTION_RACE_FINISHED) && driver->kartState != KS_MASK_GRABBED)
@@ -151,7 +153,7 @@ struct Driver *RB_Warpball_GetDriverTarget(struct TrackerWeapon *tw, struct Inst
 	else
 	{
 		s16 rank;
-		for (rank = 0; rank < 8; rank++)
+		for (rank = 0; rank < (int)len(GAME_TRACKER->driversInRaceOrder); rank++)
 		{
 			struct Driver *driver = GAME_TRACKER->driversInRaceOrder[rank];
 			if (driver != NULL && driver != tw->driverParent && !(driver->actionsFlagSet & ACTION_RACE_FINISHED))
@@ -710,7 +712,7 @@ void RB_Warpball_ThTick(struct Thread *t)
 
 			{
 				s16 rank;
-				for (rank = hitDriver->driverRank; rank < 8; rank++)
+				for (rank = hitDriver->driverRank; rank < (int)len(GAME_TRACKER->driversInRaceOrder); rank++)
 				{
 					struct Driver *rankDriver = GAME_TRACKER->driversInRaceOrder[rank];
 

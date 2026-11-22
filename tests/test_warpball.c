@@ -273,8 +273,27 @@ static void TestArenaWarpball(void)
 	CTR_TEST_CHECK(thread.funcThTick == RB_Warpball_FadeAway, "a fixed-target orb fades when its target finishes rather than retargeting");
 }
 
+static void TestExpandedTargetSelection(void)
+{
+	CTR_TEST_SECTION("a normal orb can target a racer beyond eighth");
+	memset(&s_tracker, 0, sizeof(s_tracker));
+	sdata->gGT = &s_tracker;
+	struct Driver source = {0};
+	struct Driver finished = {.actionsFlagSet = ACTION_RACE_FINISHED};
+	struct Driver last = {.driverID = RACE_FIELD_CONFIG_MAX_RACERS - 1};
+	struct TrackerWeapon orb = {.driverParent = &source};
+	struct Instance instance = {0};
+	s_tracker.driversInRaceOrder[0] = &finished;
+	s_tracker.driversInRaceOrder[RACE_FIELD_FULL_GRID_RACERS] = &source;
+	s_tracker.driversInRaceOrder[RACE_FIELD_CONFIG_MAX_RACERS - 1] = &last;
+	CTR_TEST_CHECK(RB_Warpball_GetDriverTarget(&orb, &instance) == &last, "the last slot remains eligible when all earlier slots are ineligible");
+	last.actionsFlagSet |= ACTION_RACE_FINISHED;
+	CTR_TEST_CHECK(RB_Warpball_GetDriverTarget(&orb, &instance) == NULL, "a finished racer in the last slot is still skipped");
+}
+
 int main(void)
 {
 	TestArenaWarpball();
+	TestExpandedTargetSelection();
 	return CtrTest_Summary();
 }

@@ -2336,7 +2336,7 @@ UpdateTireColorTimer:
 
 						struct Instance *plantInst = plant->inst;
 
-						if (botDriver->botData.aiPhysics.rotXZ < 0xb40)
+						if (botDriver->driverID < gGT->numPlyrCurrGame && botDriver->botData.aiPhysics.rotXZ < 0xb40)
 						{
 							SVECTOR v;
 							v.vx = 0xfa;

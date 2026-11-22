@@ -34,7 +34,7 @@ struct Instance *RB_Hazard_CollideWithDrivers(struct Instance *weaponInst, s16 p
 
 	{
 		int i;
-		for (i = 0; i < 8; i++)
+		for (i = 0; i < (int)len(GAME_TRACKER->drivers); i++)
 		{
 			struct Instance *driverInst;
 			struct Driver *driver = GAME_TRACKER->drivers[i];

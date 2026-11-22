@@ -2501,6 +2501,38 @@ static void TestPersonalQueuedVoices(void)
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.xaOwner, CHAOS_AUDIO_PLAYER_2, "the selected mask warning retains the immune controller for mixer filtering");
 }
 
+static void TestExpandedHazardCollision(void)
+{
+	CTR_TEST_SECTION("hazards check contact through the last racer slot");
+	struct BodySwapWorld world;
+	SetupBodySwap(&world, 1, RACE_FIELD_CONFIG_MAX_RACERS - 1);
+	const int last = RACE_FIELD_CONFIG_MAX_RACERS - 1;
+	for (int i = 0; i < last; i++)
+	{
+		world.instances[i].matrix.t[0] = 0x100;
+	}
+	world.instances[last].matrix.t[0] = 0;
+	struct Model model = {.id = DYNAMIC_ROCKET};
+	struct Thread weapon = {.flags = TRACKING, .modelIndex = DYNAMIC_ROCKET};
+	struct Instance instance = {.thread = &weapon, .model = &model};
+	weapon.inst = &instance;
+	CTR_TEST_CHECK(RB_Hazard_CollideWithDrivers(&instance, 0, 0x2400, NULL) == &world.instances[last],
+	               "a direct projectile hit on the sixteenth racer is detected");
+	CTR_TEST_CHECK(RB_Hazard_CollideWithDrivers(&instance, 1, 0x2400, &world.instances[last]) == NULL,
+	               "the same slot is skipped during its own projectile's safety window");
+
+	struct Driver *attacker = &world.drivers[last];
+	struct Driver *victim = &world.drivers[0];
+	attacker->BattleHUD.startX = 123;
+	s_expectedDamageAttacker = attacker;
+	int applied = VehPickState_NewState(victim, VEH_PICK_DAMAGE_BLAST, attacker, VEH_PICK_REASON_MISSILE);
+	s_expectedDamageAttacker = NULL;
+	CTR_TEST_CHECK_EQ(applied, 1, "a projectile from the sixteenth racer can damage a human");
+	CTR_TEST_CHECK_EQ(attacker->BattleHUD.startX, 123, "a bot attack does not project onto a nonexistent viewport");
+	CTR_TEST_CHECK_EQ(attacker->numTimesAttacking, 1, "the bot's aggregate attack counter is still updated");
+	CTR_TEST_CHECK_EQ(attacker->numTimesAttackingPlayer[0], 1, "the human victim is still recorded in the retail per-opponent table");
+}
+
 static void TestPersonalTimeStopContacts(void)
 {
 	CTR_TEST_SECTION("frozen weapons ignore frozen humans but retain collisions with the immune recipient");
@@ -4750,6 +4782,7 @@ int main(void)
 	TestPersonalQueuedVoices();
 	TestParticleOwnerTable();
 	TestPersonalTimeStopContacts();
+	TestExpandedHazardCollision();
 	TestTimeStopPotionContacts();
 	TestWobbleSteering();
 	TestNoReserves();

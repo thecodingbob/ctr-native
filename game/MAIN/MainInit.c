@@ -566,7 +566,7 @@ void MainInit_FinalizeInit(struct GameTracker *gGT)
 
 	gGT->unk1cac[4] = 2;
 
-	for (i = 0; i < 8; i++)
+	for (i = 0; i < (int)len(gGT->drivers); i++)
 	{
 		// get pointer to player structure of each driver
 		d = gGT->drivers[i];

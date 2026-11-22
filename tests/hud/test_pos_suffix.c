@@ -4,11 +4,16 @@
 struct sData sdata_static;
 struct Data data;
 static struct GameTracker s_tracker;
-static char *s_suffixStrings[] = {"th", "o", "&"};
+static char *s_suffixStrings[LNG_TH + 1] = {"th", "o", "&", [LNG_TH] = "th"};
 static struct UiElement2D s_hud[UI_HUD_SLOT_COUNT * 4];
 static s16 s_suffixX;
 static s16 s_suffixY;
 static int s_aspectFactor = 1000;
+static int s_digitCount;
+static struct Icon *s_lastDigit;
+static u16 s_digitRotation;
+static int s_digitX;
+static char s_firstFallback;
 
 #include <game/UI/UI_Convert.c>
 #include <game/UI/UI_PosSuffix.c>
@@ -26,11 +31,23 @@ int Widescreen_ScaleWidth(int width)
 
 void DecalFont_DrawLine(char *str, s16 posX, s16 posY, s16 fontType, s16 flags)
 {
-	(void)str;
 	(void)fontType;
-	(void)flags;
+	if ((flags & JUSTIFY_CENTER) != 0)
+	{
+		s_firstFallback = str[0];
+	}
 	s_suffixX = posX;
 	s_suffixY = posY;
+}
+
+void DecalHUD_Arrow2D(struct Icon *icon, s32 x, s32 y, struct PrimMem *primMem, u32 *ot, Color c0, Color c1, Color c2, Color c3,
+                     u8 transparency, s16 scale, u16 rotation)
+{
+	(void)y; (void)primMem; (void)ot; (void)c0; (void)c1; (void)c2; (void)c3; (void)transparency; (void)scale;
+	s_digitCount++;
+	s_lastDigit = icon;
+	s_digitRotation = rotation;
+	s_digitX = x;
 }
 
 int main(void)
@@ -161,5 +178,27 @@ int main(void)
 		                  "the ordinal indicator uses its scaled visible width at the mirrored margin");
 	}
 
+	CTR_TEST_SECTION("expanded positions reuse the retail six and have room for two digits");
+	static struct DB buffer;
+	static struct Icon one, six;
+	static u32 colors[4];
+	s_tracker.backBuffer = &buffer;
+	s_tracker.ptrIcons[UI_POS_SUFFIX_FIRST_DIGIT_ICON] = &one;
+	s_tracker.ptrIcons[UI_POS_SUFFIX_FIRST_DIGIT_ICON + 5] = &six;
+	data.ptrColor[0] = colors;
+	s_tracker.gameMode1 = 0;
+	driver.driverRank = 8;
+	UI_DrawPosSuffix(rightX, y, &driver, 0);
+	CTR_TEST_CHECK(s_lastDigit == &six && s_digitRotation == ANG_PI, "ninth draws the retail six rotated by half a turn");
+	CTR_TEST_CHECK((bigNum.flags & HIDE_MODEL) != 0, "the retail model is not drawn over the fallback");
+	driver.driverRank = 9;
+	s_digitCount = 0;
+	UI_DrawPosSuffix(leftX, y, &driver, 0);
+	CTR_TEST_CHECK(s_digitCount == 1 && s_lastDigit == &one && s_firstFallback == '0', "tenth draws both one and zero");
+	CTR_TEST_CHECK_EQ(s_digitX, s_suffixX - 24, "the tens digit leaves room before the suffix");
+	driver.driverRank = 15;
+	s_digitCount = 0;
+	UI_DrawPosSuffix(leftX, y, &driver, 0);
+	CTR_TEST_CHECK(s_digitCount == 2 && s_lastDigit == &six && s_digitRotation == 0, "sixteenth draws two upright retail digits");
 	return CtrTest_Summary();
 }

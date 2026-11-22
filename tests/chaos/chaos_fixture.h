@@ -632,11 +632,15 @@ void OtherFX_Play_Echo(u32 soundID, int flags, int echoFlag)
 	CTR_TEST_CHECK_EQ(soundID, VEH_PICK_SOUND_SQUISH, "squish damage uses the retail audio");
 	s_squishSounds++;
 }
+static const struct Driver *s_expectedDamageAttacker;
+
 void RB_Player_KillPlayer(struct Driver *attacker, struct Driver *victim)
 {
-	(void)attacker;
 	(void)victim;
-	CtrTest_Bail("Clock Curse must not attribute damage to an attacker");
+	if (s_expectedDamageAttacker == NULL || attacker != s_expectedDamageAttacker)
+	{
+		CtrTest_Bail("unexpected attacker in race damage");
+	}
 }
 void CTC2(u32 value, s32 reg)
 {

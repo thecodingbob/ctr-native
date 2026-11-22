@@ -313,7 +313,7 @@ void Audio_Update1(void)
 		Audio_SetMaskSong(0);
 
 		// human driver in the lead
-		for (i = 0; i < 8; i++)
+		for (i = 0; i < (int)len(gGT->driversInRaceOrder); i++)
 		{
 			d = gGT->driversInRaceOrder[i];
 
@@ -349,7 +349,7 @@ void Audio_Update1(void)
 		Audio_SetMaskSong(0);
 
 		// human driver in the lead
-		for (i = 0; i < 8; i++)
+		for (i = 0; i < (int)len(gGT->driversInRaceOrder); i++)
 		{
 			d = gGT->driversInRaceOrder[i];
 
@@ -418,7 +418,7 @@ void Audio_Update1(void)
 		Audio_SetMaskSong(20);
 
 		// human driver in the lead
-		for (i = 0; i < 8; i++)
+		for (i = 0; i < (int)len(gGT->driversInRaceOrder); i++)
 		{
 			d = gGT->driversInRaceOrder[i];
 
@@ -453,7 +453,7 @@ void Audio_Update1(void)
 		raceOrderIndex = -1;
 
 		// human driver in the lead
-		for (i = 0; i < 8; i++)
+		for (i = 0; i < (int)len(gGT->driversInRaceOrder); i++)
 		{
 			d = gGT->driversInRaceOrder[i];
 
