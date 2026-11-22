@@ -1,6 +1,7 @@
 #include <common.h>
 #include <level_info.h>
 #include <track_text.h>
+#include "UI_CupPoints.h"
 
 enum
 {
@@ -34,7 +35,6 @@ enum
 	UI_CUP_STANDINGS_PURPLE_GEM_RETAIL_DRIVERS = 5,
 	// Lineup that gets the shared three-over-three rows, in any cup.
 	UI_CUP_STANDINGS_SIX_DRIVER_COUNT = 6,
-	UI_CUP_STANDINGS_MAX_VISIBLE_AWARD_DRIVERS = 4,
 	UI_CUP_STANDINGS_ICON_SLOT_X = 0x60,
 	UI_CUP_STANDINGS_ICON_SLOT_W = 0x5a,
 	UI_CUP_STANDINGS_ICON_TOP_ROW_Y = 0x42,
@@ -442,19 +442,7 @@ void UI_CupStandings_InputAndDraw(void)
 		// where you see just amount of points added
 		if ((sdata->menuReadyToPass & UI_CUP_STANDINGS_PAGE_TRACK_POINTS) == 0)
 		{
-			int awardedPoints = 0;
-
-			if (i < UI_CUP_STANDINGS_MAX_VISIBLE_AWARD_DRIVERS)
-			{
-				if (gGT->numBotsNextGame == 0)
-				{
-					awardedPoints = gGT->numPlyrCurrGame - (i + 1);
-				}
-				else
-				{
-					awardedPoints = points[i];
-				}
-			}
+			int awardedPoints = UI_CupPoints_ForPosition(points, gGT->numPlyrCurrGame, gGT->numBotsNextGame, i);
 
 			*(int *)&text[0] = '+' + (('0' + awardedPoints) << 8);
 		}
@@ -551,11 +539,6 @@ void UI_CupStandings_InputAndDraw(void)
 		// If this is the first frame of Track Standings
 		if (wasTrackPointsPage == 0)
 		{
-			if (numDrivers > UI_CUP_STANDINGS_MAX_VISIBLE_AWARD_DRIVERS)
-			{
-				numDrivers = UI_CUP_STANDINGS_MAX_VISIBLE_AWARD_DRIVERS;
-			}
-
 			for (i = 0; i < numDrivers; i++)
 			{
 				// the amount of points this player has in the cup
@@ -563,7 +546,7 @@ void UI_CupStandings_InputAndDraw(void)
 
 				    // Incremented by
 				    // The amount of points that should be awarded to each position
-				    (gGT->numBotsNextGame == 0) ? (gGT->numPlyrCurrGame - (i + 1)) : points[i];
+				    UI_CupPoints_ForPosition(points, gGT->numPlyrCurrGame, gGT->numBotsNextGame, i);
 			}
 
 			// update cup rank of all drivers
