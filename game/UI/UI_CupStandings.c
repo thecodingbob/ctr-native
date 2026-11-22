@@ -2,6 +2,7 @@
 #include <level_info.h>
 #include <track_text.h>
 #include "UI_CupPoints.h"
+#include "UI_ResultGrid.h"
 
 enum
 {
@@ -48,10 +49,10 @@ enum
 	UI_CUP_STANDINGS_PLACE_TEXT_Y_OFFSET = -1,
 	UI_CUP_STANDINGS_POINTS_TEXT_X_OFFSET = 0x2d,
 	UI_CUP_STANDINGS_POINTS_TEXT_Y_OFFSET = 6,
+	UI_CUP_STANDINGS_EXPANDED_POINTS_Y_OFFSET = 10,
 	UI_CUP_STANDINGS_ICON_SCALE = 0x1000,
 	UI_CUP_STANDINGS_ICON_NEUTRAL_CHANNEL = 0x80,
 	UI_CUP_STANDINGS_TRACKS_PER_CUP = 4,
-	UI_CUP_STANDINGS_DRIVER_SLOTS = 8,
 	UI_CUP_STANDINGS_ARCADE_DIFFICULTY_DIVISOR = 0x50,
 	UI_CUP_STANDINGS_MAX_ARCADE_DIFFICULTY = 2,
 	UI_CUP_STANDINGS_MAX_CUP_LOSSES = 10,
@@ -321,12 +322,19 @@ void UI_CupStandings_InputAndDraw(void)
 	int *points = &data.cupPointsPerPosition[0];
 
 	vsCupIconOffsetX = 0;
-	for (i = 0; i < sdata->numIconsEOR; i++)
+	const bool expandedGrid = numDrivers > RACE_FIELD_FULL_GRID_RACERS;
+	for (i = 0; i < sdata->numIconsEOR && i < numDrivers; i++)
 	{
 		s16 iconTargetY;
 		iconColumnOffset = (s16)i;
+		if (expandedGrid)
+		{
+			int row;
+			iconTargetX = UI_ResultGrid_X(rectX, rectW, numDrivers, i, &row);
+			iconTargetY = row ? UI_CUP_STANDINGS_ICON_BOTTOM_ROW_Y : UI_CUP_STANDINGS_ICON_TOP_ROW_Y;
+		}
 		// If you are in Purple Gem Cup with retail's five-racer lineup
-		if (!customCup && (gGT->cup.cupID == CUP_ID_PURPLE_GEM) && (numDrivers == UI_CUP_STANDINGS_PURPLE_GEM_RETAIL_DRIVERS))
+		else if (!customCup && (gGT->cup.cupID == CUP_ID_PURPLE_GEM) && (numDrivers == UI_CUP_STANDINGS_PURPLE_GEM_RETAIL_DRIVERS))
 		{
 			iconTargetY = UI_CUP_STANDINGS_ICON_PURPLE_GEM_ROW_Y;
 			iconTargetX = rectX;
@@ -458,7 +466,9 @@ void UI_CupStandings_InputAndDraw(void)
 		vsCupIconOffsetX = vsCupIconOffsetX + UI_CUP_STANDINGS_ICON_SLOT_W;
 
 		// draw string for number of points
-		DecalFont_DrawLine(text, drawPos.x + UI_CUP_STANDINGS_POINTS_TEXT_X_OFFSET, drawPos.y + UI_CUP_STANDINGS_POINTS_TEXT_Y_OFFSET, FONT_BIG, PERIWINKLE);
+		DecalFont_DrawLine(text, drawPos.x + (expandedGrid ? UI_CUP_STANDINGS_PLACE_TEXT_X_OFFSET : UI_CUP_STANDINGS_POINTS_TEXT_X_OFFSET),
+		                   drawPos.y + (expandedGrid ? UI_CUP_STANDINGS_EXPANDED_POINTS_Y_OFFSET : UI_CUP_STANDINGS_POINTS_TEXT_Y_OFFSET),
+		                   expandedGrid ? FONT_SMALL : FONT_BIG, PERIWINKLE);
 	}
 
 	// If this is the first screen of cup standings,
@@ -615,7 +625,7 @@ void UI_CupStandings_InputAndDraw(void)
 
 				// Array with the final ranking of each player
 				int *ranks = &data.cupPositionPerPlayer[0];
-				for (i = 0; i < UI_CUP_STANDINGS_DRIVER_SLOTS; i++)
+				for (i = 0; i < numDrivers; i++)
 				{
 					struct Driver *d;
 					d = gGT->drivers[ranks[i]];
