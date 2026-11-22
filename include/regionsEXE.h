@@ -4129,6 +4129,8 @@ struct sData
 	int standaloneBotModelCount;
 	// Furthest driver slot admitted by the current level's model request batch.
 	int loadedRaceFieldSize;
+	// A warp pad requested the first load of this Adventure event.
+	bool seedAdventureGrid;
 
 	// after dataLibFiller is 8009AE58,
 	// where psyq allocates globals

@@ -4,6 +4,8 @@
 #include <shared/ctr_test.h>
 #include <common.h>
 #include <race_field.h>
+#include <game/MixRNG/RngDeadCoed.c>
+#include <game/BOTS_AdventureGrid.h>
 
 // regionsEXE.h defines sdata as a pointer into this, so the linker wants the
 // storage even though nothing here reads it.
@@ -383,6 +385,38 @@ static void TestCompactSpawnOrder(void)
 	}
 }
 
+static void TestInitialAdventureGrid(void)
+{
+	CTR_TEST_SECTION("Adventure seeds the grid from the admitted roster, not the requested size");
+	char grid[RACE_FIELD_CONFIG_MAX_RACERS];
+	struct RngDeadCoedState rng = {.state0 = 0x30215400, .state1 = 0x493583fe};
+	for (int racers = 2; racers <= RACE_FIELD_CONFIG_MAX_RACERS; racers++)
+	{
+		memset(grid, -1, sizeof(grid));
+		BOTS_SeedAdventureGrid(grid, 2, racers, -1, &rng);
+		CTR_TEST_CHECK(grid[0] == racers - 1 && grid[1] == racers - 2,
+		               "both humans start at the back even when the playable grid is smaller");
+		bool occupied[RACE_FIELD_CONFIG_MAX_RACERS] = {0};
+		for (int i = 2; i < racers; i++)
+		{
+			const unsigned int slot = (unsigned char)grid[i];
+			CTR_TEST_CHECK(slot < (unsigned int)(racers - 2) && !occupied[slot], "bots have distinct places ahead of the humans");
+			if (slot < len(occupied))
+			{
+				occupied[slot] = true;
+			}
+		}
+		CTR_TEST_CHECK(racers == RACE_FIELD_CONFIG_MAX_RACERS || grid[racers] == (char)-1,
+		               "a rejected driver is not assigned a starting slot");
+	}
+	BOTS_SeedAdventureGrid(grid, 2, 6, 3, &rng);
+	const char championGrid[] = {5, 4, 1, 0, 3, 2};
+	CTR_TEST_CHECK(memcmp(grid, championGrid, sizeof(championGrid)) == 0, "the champion takes pole and the last bot fills the gap");
+	BOTS_SeedAdventureGrid(grid, 2, 6, 5, &rng);
+	CTR_TEST_CHECK(grid[2] == 1 && grid[3] == 2 && grid[4] == 3 && grid[5] == 0,
+	               "the champion can take pole even as the last eligible bot");
+}
+
 int main(void)
 {
 	TestNormalRaceGrid();
@@ -397,6 +431,7 @@ int main(void)
 	TestConfiguredGrid();
 	TestConfiguredGridModeMatrix();
 	TestCompactSpawnOrder();
+	TestInitialAdventureGrid();
 
 	return CtrTest_Summary();
 }

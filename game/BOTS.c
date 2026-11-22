@@ -1,5 +1,6 @@
 #include <common.h>
 #include "BOTS.h"
+#include "BOTS_AdventureGrid.h"
 #include <platform/custom-tracks/native_track_library.h>
 
 enum
@@ -188,6 +189,27 @@ internal void BOTS_Adv_CopySpawnOrder(s32 first, s32 second)
 	}
 }
 
+static int BOTS_AdventureChampionDriver(const struct GameTracker *gGT, int racerCount)
+{
+	if (g_config.botSelectionMode != BOT_SELECTION_PREDETERMINED || (gGT->gameMode1 & ADVENTURE_CUP) != 0 ||
+	    (u32)gGT->levelID >= len(data.metaDataLEV))
+	{
+		return -1;
+	}
+	const int champion = data.metaDataLEV[gGT->levelID].characterID_Champion;
+	if ((u32)champion < RACE_FIELD_FULL_GRID_RACERS)
+	{
+		for (int i = gGT->numPlyrCurrGame; i < racerCount; i++)
+		{
+			if (data.characterIDs[i] == champion)
+			{
+				return i;
+			}
+		}
+	}
+	return -1;
+}
+
 internal s32 BOTS_GetTrackDistanceToFinish(struct GameTracker *gGT)
 {
 	// NOTE(aalhendi): Menu-storage/wrong-warp can leave stale bot threads in
@@ -363,10 +385,7 @@ void BOTS_Adv_AdjustDifficulty(int racerCount)
 
 	gGT->numBotsNextGame = 0;
 
-	// Adventure co-op has no versus grid of its own: the warp pad puts both human
-	// racers at the back and a retry carries over the previous race's positions,
-	// the same way a lone racer's Adventure does. The tables keyed on the event
-	// still apply below, exactly as they do for a lone racer.
+	// Adventure co-op uses the Adventure grid, not the versus tables.
 	const b32 cupRace = (gameMode2 & CUP_ANY_KIND) != 0 || (gameMode1 & ADVENTURE_CUP) != 0;
 	const b32 carriesGrid = sdata->loadedRaceFieldSize > 0 ? cupRace : (gameMode2 & CUP_ANY_KIND) != 0;
 	if (!carriesGrid || gGT->cup.trackIndex == 0)
@@ -405,8 +424,15 @@ void BOTS_Adv_AdjustDifficulty(int racerCount)
 		}
 	}
 
+	const bool firstAdventureGrid = sdata->seedAdventureGrid;
+	sdata->seedAdventureGrid = false;
 	if (sdata->loadedRaceFieldSize > 0)
 	{
+		if (firstAdventureGrid && (gameMode1 & ADVENTURE_MODE) != 0)
+		{
+			BOTS_SeedAdventureGrid(sdata->kartSpawnOrderArray, gGT->numPlyrCurrGame, racerCount,
+			                       BOTS_AdventureChampionDriver(gGT, racerCount), &sdata->advRng);
+		}
 		RaceField_CompactSpawnOrder(sdata->kartSpawnOrderArray, racerCount);
 	}
 

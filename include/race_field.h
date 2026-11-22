@@ -3,14 +3,11 @@
 
 // How many racers a race fields, and how many of them are bots.
 //
-// Three places have to agree on this:
-// MainInit_Drivers, which spawns one driver per racer counted here; LOAD's
-// random-bot selector, which fills exactly those AI slots; and the Adventure
-// hub's warp pad, which lays out a starting grid this long before the race has
-// loaded.
+// The loader selects a roster, MainInit_Drivers limits it to the playable
+// starting grid, and the spawn order uses that final count.
 //
-// The field rules take mode, cup and option values as arguments so the hub can
-// predict the round it is about to load using that round's flags.
+// The field rules take mode, cup and option values as arguments so the setup
+// menu can query a prospective round using that round's flags.
 //
 
 // Racers on a starting grid, players included.
