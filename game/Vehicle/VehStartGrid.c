@@ -130,7 +130,13 @@ int VehStartGrid_ValidateSize(const struct GameTracker *tracker, int requested)
 	VehSpawn_InitGroundProbe(tracker, sps);
 	SVec3 centers[RACE_FIELD_CONFIG_MAX_RACERS];
 	const int diameter = 2 * THREAD_DRIVER_HIT_RADIUS;
-	for (int i = 0; i < requested; i++)
+	// The retail slots only serve as horizontal spacing references: the spawn
+	// probe is vertical, so their authored X/Z are enough.
+	for (int i = 0; i < retail; i++)
+	{
+		centers[i] = tracker->level1->DriverSpawn[i].pos;
+	}
+	for (int i = retail; i < requested; i++)
 	{
 		SVec3 bottom, rot;
 		if (!VehStartGrid_GetTransform(tracker->level1, i, &bottom, &rot))
@@ -140,10 +146,6 @@ int VehStartGrid_ValidateSize(const struct GameTracker *tracker, int requested)
 		bottom.y = (s16)CTR_MipsAddLo(bottom.y, VEH_SPAWN_DRIVER_BOTTOM_Y_OFFSET);
 		VehSpawn_ProbeGround(&bottom, sps);
 		centers[i] = sps->Union.QuadBlockColl.hitPos;
-		if (i < retail)
-		{
-			continue;
-		}
 		if (!VehStartGrid_IsSafeGround(sps) || !VehStartGrid_HasFootprint(&bottom, &centers[i], sps))
 		{
 			return i;

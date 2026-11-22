@@ -457,8 +457,7 @@ bool Chaos_ActivateForPlayer(ChaosEffectId effect, s32 durationMS, int player)
 	if (!Chaos_IsRunning(gGT) || durationMS <= 0 || player < 0 || player >= Chaos_PlayerPoolCount() ||
 	    !Chaos_HasEnabledPlayer() ||
 	    !ChaosEffect_IsEnabled(sdata->chaosSettings.effects, effect) ||
-	    !ChaosEvent_EffectFitsSelection(effect, gGT->gameMode1, gGT->cup.cupID,
-	                                   gGT->numPlyrCurrGame, g_config.extendedMultiplayer,
+	    !ChaosEvent_EffectFitsSelection(effect, gGT->gameMode1, gGT->numPlyrCurrGame, gGT->numBotsNextGame,
 	                                   Chaos_UsesPersonalPools(), sdata->chaosSettings.disabledPlayers))
 	{
 		return false;
@@ -472,7 +471,7 @@ bool Chaos_ActivateForPlayer(ChaosEffectId effect, s32 durationMS, int player)
 	{
 		return false;
 	}
-	int bodySwapCandidates[LOAD_CHARACTER_ID_COUNT];
+	int bodySwapCandidates[RACE_FIELD_CONFIG_MAX_RACERS];
 	int bodySwapCount = 0;
 	if (personal && effect == CHAOS_EFFECT_BODY_SWAP)
 	{

@@ -41,7 +41,8 @@ void DecalMP_01(struct GameTracker *gGT)
 	{
 		struct PushBuffer *pb = &gGT->pushBuffer[cameraID];
 
-		for (int driverID = 0; driverID < 8; driverID++)
+		// MainFrame_RenderFrame calls this only when all required entries fit.
+		for (int driverID = 0; driverID < (int)len(gGT->drivers); driverID++)
 		{
 			struct Driver *driver = gGT->drivers[driverID];
 			if (driver == NULL)
@@ -86,7 +87,7 @@ void DecalMP_01(struct GameTracker *gGT)
 
 void DecalMP_02(struct GameTracker *gGT)
 {
-	for (int index = 0; index < 12; index++)
+	for (int index = 0; index < (int)len(gGT->DecalMP); index++)
 	{
 		struct DecalMPEntry *entry = DecalMP_GetEntry(gGT, index);
 		if (entry->inst == NULL)
@@ -148,7 +149,7 @@ void DecalMP_03(struct GameTracker *gGT)
 	int maxTexX = (gGT->numPlyrCurrGame > 2) ? 0x2c0 : 0x380;
 	int texX = 0x1a0;
 
-	for (int index = 0; index < 12; index++)
+	for (int index = 0; index < (int)len(gGT->DecalMP); index++)
 	{
 		texX += 0x60;
 		if (maxTexX < texX)

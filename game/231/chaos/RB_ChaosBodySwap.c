@@ -170,7 +170,7 @@ void Chaos_BeginBodySwaps(void)
 	Chaos_ReturnBodySwaps();
 	for (int player = 0; player < tracker->numPlyrCurrGame; player++)
 	{
-		int candidates[LOAD_CHARACTER_ID_COUNT];
+		int candidates[RACE_FIELD_CONFIG_MAX_RACERS];
 		const int count = Chaos_CollectBodySwapPartners(player, candidates);
 		if (count == 0)
 		{

@@ -232,7 +232,8 @@ static bool Chaos_EffectIsAvailable(ChaosEffectId effect)
 	const int mode = (tracker->gameMode1 & ADVENTURE_MODE) != 0
 	                     ? ADVENTURE_MODE : tracker->gameMode1 & ~MAIN_MENU;
 	const bool personal = Chaos_SettingsArePersonal();
-	return ChaosEvent_EffectFitsSelection(effect, mode, tracker->cup.cupID, players, g_config.extendedMultiplayer,
+	const int bots = LOAD_PredictRaceFieldSize(mode, tracker->cup.cupID, players) - players;
+	return ChaosEvent_EffectFitsSelection(effect, mode, players, bots,
 	                                     personal, sdata->chaosSettings.disabledPlayers);
 }
 

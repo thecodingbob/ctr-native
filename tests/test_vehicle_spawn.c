@@ -13,6 +13,7 @@ u8 *gCTRNativeScratchpadBase;
 static bool s_testCollisionSearch;
 static bool s_collisionMiss;
 static int s_probeMaxX = INT16_MAX;
+static int s_probeCount;
 static struct QuadBlock s_probeGround = {.quadFlags = QUADBLOCK_FLAG_GROUND};
 static u32 s_searchFlags;
 
@@ -32,6 +33,7 @@ void COLL_SearchBSP_CallbackQUADBLK(const SVec3 *top, const SVec3 *bottom, struc
 		CtrTest_Bail("appearance initialization must not search level geometry");
 	}
 	s_searchFlags = sps->Union.QuadBlockColl.searchFlags;
+	s_probeCount++;
 	if (s_collisionMiss || bottom->x > s_probeMaxX)
 	{
 		sps->Union.QuadBlockColl.hitPos = *top;
@@ -298,9 +300,11 @@ static void TestGridPreflight(void)
 
 	// Probing while disabled would bail, so the retail request also checks that
 	// the normal path does not pay the cost of preflight.
-	CTR_TEST_CHECK_EQ(VehStartGrid_ValidateSize(&tracker, 6), 6, "retail grid sizes need no probing");
+	CTR_TEST_CHECK_EQ(VehStartGrid_ValidateSize(&tracker, 8), 8, "the full retail grid needs no probing");
 	s_testCollisionSearch = true;
+	s_probeCount = 0;
 	CTR_TEST_CHECK_EQ(VehStartGrid_ValidateSize(&tracker, 16), 16, "a wide flat grid accepts all extra slots");
+	CTR_TEST_CHECK_EQ(s_probeCount, 8 * 5, "preflight probes the center and four edges only for the eight extra slots");
 	CTR_TEST_CHECK_EQ(s_searchFlags, 0, "preflight uses the same low-detail collision as split-screen birth");
 	CTR_TEST_CHECK_EQ(VehStartGrid_ValidateSize(&tracker, 40), 16, "preflight cannot return more than the supported slots");
 	s_probeMaxX = 1199;
@@ -316,6 +320,10 @@ static void TestGridPreflight(void)
 		level.DriverSpawn[i].pos.z = 90;
 	}
 	CTR_TEST_CHECK_EQ(VehStartGrid_ValidateSize(&tracker, 16), 9, "additional karts cannot start inside each other's collision radii");
+	// Keep the same average translation but move one retail position near slot 9.
+	level.DriverSpawn[6].pos.x = 790;
+	level.DriverSpawn[7].pos.x = 410;
+	CTR_TEST_CHECK_EQ(VehStartGrid_ValidateSize(&tracker, 16), 8, "an extra kart still cannot overlap an unprobed retail slot");
 	level.ptr_mesh_info = NULL;
 	CTR_TEST_CHECK_EQ(VehStartGrid_ValidateSize(&tracker, 16), 8, "missing collision geometry permits no expansion");
 	s_testCollisionSearch = false;

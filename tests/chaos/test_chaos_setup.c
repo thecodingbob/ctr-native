@@ -24,6 +24,11 @@ static int s_testLevel;
 static int s_sessionFinishes;
 static int s_sessionReturns;
 
+int LOAD_PredictRaceFieldSize(int gameMode1, s32 cupID, int players)
+{
+	return RaceField_RacerCount(gameMode1, cupID, players, g_config.extendedMultiplayer);
+}
+
 void MM_ChaosSession_FinishSetup(bool confirm)
 {
 	if (confirm)
