@@ -12,16 +12,11 @@
 
 enum
 {
-	LOAD_EXTRA_CHARACTER_MODEL_CAPACITY = LOAD_CHARACTER_ID_COUNT,
 	LOAD_DEFAULT_CHARACTER_COUNT = 8,
 	// Pura is the eighth base racer, so the 1P arcade MPK only carries her when
 	// the player picks her; see LOAD_RacerNeedsStandaloneModel.
 	LOAD_UNCOVERED_BASE_RACER_ID = 7,
 };
-
-static DriverModelExtraSlot s_extraCharacterModels[LOAD_EXTRA_CHARACTER_MODEL_CAPACITY];
-static s16 s_extraCharacterModelIDs[LOAD_EXTRA_CHARACTER_MODEL_CAPACITY];
-static int s_extraCharacterModelCount;
 
 // The Purple Gem Cup fields the bosses of four of its tracks instead of a normal AI
 // lineup, in this order.
@@ -158,17 +153,6 @@ static b32 LOAD_ShouldPreserveRandomBotRoster(void)
 	return cupRace && gGT->cup.trackIndex > 0;
 }
 
-static void LOAD_ResetExtraCharacterModels(void)
-{
-	for (int i = 0; i < LOAD_EXTRA_CHARACTER_MODEL_CAPACITY; i++)
-	{
-		s_extraCharacterModels[i].fileBase = NULL;
-		s_extraCharacterModelIDs[i] = -1;
-	}
-
-	s_extraCharacterModelCount = 0;
-}
-
 // The 1P arcade MPK carries eight driver models: the player plus a fixed
 // seven-racer AI set drawn from the base roster. When the player is a base racer
 // that set is the other seven base racers, so the pack covers all eight. When
@@ -182,30 +166,6 @@ static b32 LOAD_RacerNeedsStandaloneModel(s16 characterID)
 	}
 
 	return (characterID == LOAD_UNCOVERED_BASE_RACER_ID) && (data.characterIDs[0] >= LOAD_DEFAULT_CHARACTER_COUNT);
-}
-
-static void LOAD_QueueExtraCharacterModels(struct BigHeader *bigfile, const s16 *characterIDs, int characterCount, int modelFileIndex)
-{
-	for (int characterIndex = 0; characterIndex < characterCount; characterIndex++)
-	{
-		if (s_extraCharacterModelCount >= LOAD_EXTRA_CHARACTER_MODEL_CAPACITY)
-		{
-			break;
-		}
-
-		// LOAD_AppendQueue drops anything past LOAD_QUEUE_SLOT_COUNT, and a
-		// dropped request never hands back a model pointer. Stop here instead,
-		// otherwise the racer is queued as loaded but stays empty.
-		if (sdata->queueLength >= LOAD_QUEUE_SLOT_COUNT)
-		{
-			break;
-		}
-
-		int modelIndex = s_extraCharacterModelCount++;
-		s_extraCharacterModelIDs[modelIndex] = characterIDs[characterIndex];
-		LOAD_AppendQueue(bigfile, LT_GETADDR, modelFileIndex + characterIDs[characterIndex], &s_extraCharacterModels[modelIndex].fileBase,
-		                 LOAD_QUEUE_CALLBACK_SET_POINTER);
-	}
 }
 
 static void LOAD_SelectRandomBots(void)
@@ -241,7 +201,7 @@ static void LOAD_SelectRandomBots(void)
 static void LOAD_QueueRandomBotModels(struct BigHeader *bigfile)
 {
 	b32 extendedMultiplayerGrid = LOAD_UsesExtendedMultiplayerGrid();
-	s16 standaloneCharacterIDs[LOAD_EXTRA_CHARACTER_MODEL_CAPACITY];
+	s16 standaloneCharacterIDs[RACE_FIELD_CONFIG_MAX_RACERS];
 	int botCount = LOAD_GetRandomBotCount();
 	int standaloneCharacterCount = 0;
 	int modelFileIndex = sdata->gGT->numPlyrCurrGame == 2 && !extendedMultiplayerGrid ? BI_RACERMODELMED : BI_RACERMODELHI;
@@ -262,30 +222,6 @@ static void LOAD_QueueRandomBotModels(struct BigHeader *bigfile)
 	}
 
 	LOAD_QueueExtraCharacterModels(bigfile, standaloneCharacterIDs, standaloneCharacterCount, modelFileIndex);
-}
-
-struct Model *LOAD_GetExtraCharacterModelByName(char *searchName)
-{
-	for (int i = 0; i < s_extraCharacterModelCount; i++)
-	{
-		if (strcmp(GAME_CHARACTER_METADATA[s_extraCharacterModelIDs[i]].name_Debug, searchName) == 0)
-		{
-			return s_extraCharacterModels[i].model;
-		}
-	}
-
-	return NULL;
-}
-
-void LOAD_FinalizeExtraCharacterModels(void)
-{
-	for (int i = 0; i < s_extraCharacterModelCount; i++)
-	{
-		if (s_extraCharacterModels[i].fileBase != NULL)
-		{
-			s_extraCharacterModels[i].model = (struct Model *)((u8 *)s_extraCharacterModels[i].fileBase + LOAD_MODEL_FILE_HEADER_BYTES);
-		}
-	}
 }
 
 void LOAD_RunPtrMap(char *origin, int *patchArr, int numPtrs)
@@ -376,7 +312,7 @@ void LOAD_Robots1P(int characterID)
 static void LOAD_QueueExtendedBotModels(struct BigHeader *bigfile)
 {
 	struct GameTracker *gGT = sdata->gGT;
-	s16 standaloneCharacterIDs[LOAD_EXTRA_CHARACTER_MODEL_CAPACITY];
+	s16 standaloneCharacterIDs[RACE_FIELD_CONFIG_MAX_RACERS];
 	int standaloneCharacterCount = 0;
 
 	for (int driverID = gGT->numPlyrCurrGame; driverID < LOAD_CHARACTER_ID_COUNT; driverID++)
@@ -407,24 +343,14 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 
 	randomBotRace = LOAD_IsRandomBotRace();
 	LOAD_ResetExtraCharacterModels();
-	if (randomBotRace)
+	if (randomBotRace && !LOAD_ShouldPreserveRandomBotRoster())
 	{
-		if (!LOAD_ShouldPreserveRandomBotRoster())
-		{
-			LOAD_SelectRandomBots();
-		}
-
-		LOAD_QueueRandomBotModels(bigfile);
+		LOAD_SelectRandomBots();
 	}
 
-	if (extendedMultiplayerGrid && gGT->numPlyrCurrGame > 1)
+	if (extendedMultiplayerGrid && gGT->numPlyrCurrGame > 1 && !randomBotRace)
 	{
-		// The 1P arcade pack contains the full racer roster for AI opponents.
-		if (!randomBotRace)
-		{
-			LOAD_Robots1P(data.characterIDs[0]);
-			LOAD_QueueExtendedBotModels(bigfile);
-		}
+		LOAD_Robots1P(data.characterIDs[0]);
 	}
 
 	int lastFileIndexMPK;
@@ -603,6 +529,7 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 		{
 			// This pack supplies the shared 2P arcade assets; bot models above
 			// are loaded individually and do not need its predefined roster.
+			LOAD_QueueRandomBotModels(bigfile);
 			LOAD_AppendQueue(bigfile, LT_GETADDR, BI_2PARCADEPACK, NULL, callback);
 		}
 		else
@@ -613,6 +540,14 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 	}
 
 QueueLastPack:
+	if (randomBotRace)
+	{
+		LOAD_QueueRandomBotModels(bigfile);
+	}
+	else if (extendedMultiplayerGrid && gGT->numPlyrCurrGame > 1)
+	{
+		LOAD_QueueExtendedBotModels(bigfile);
+	}
 	LOAD_AppendQueue(bigfile, LT_GETADDR, lastFileIndexMPK, NULL, callback);
 	return sdata->ptrMPK;
 }

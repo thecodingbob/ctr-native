@@ -98,6 +98,7 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 			sdata->levelID = MainInit_StringToLevID(gGT->levelName);
 
 			// erase all memory loaded after first boot
+			LOAD_ResetExtraCharacterModels();
 			MEMPACK_PopToState(sdata->bookmarkID);
 		}
 

@@ -16,7 +16,7 @@
 // and retail globals are defined, so they can snapshot the same process-local
 // regions the game mutates.
 #define NATIVE_CHECKPOINT_MAGIC              NATIVE_CHECKPOINT_FOURCC('C', 'T', 'R', 'C')
-#define NATIVE_CHECKPOINT_VERSION            6u
+#define NATIVE_CHECKPOINT_VERSION            7u
 #define NATIVE_CHECKPOINT_ADDRESS_RANGE_CAP  19u
 #define NATIVE_CHECKPOINT_POINTER_SLOT_CAP   65536u
 #define NATIVE_CHECKPOINT_CREDITS_STRING_CAP 4096u
@@ -1439,8 +1439,29 @@ internal void NativeCheckpoint_RelocateHowlLists(const struct NativeCheckpointHe
 	}
 }
 
+internal void NativeCheckpoint_RelocateBotModels(const struct NativeCheckpointHeader *oldHeader, const struct NativeCheckpointHeader *liveHeader)
+{
+	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.standaloneBotModels);
+	struct LoadBotModelSlot *slots = sdata_static.standaloneBotModels;
+	const unsigned int count = sdata_static.standaloneBotModelCount;
+	u32 offset = 0;
+	const struct NativeCheckpointAddressRange *range = NativeCheckpoint_FindAddressOwner(liveHeader, (u32)(uintptr_t)slots, &offset);
+	if (count == 0 || count > RACE_FIELD_CONFIG_MAX_RACERS || range == NULL || range->kind != NATIVE_CHECKPOINT_REGION_MPAK ||
+	    count > (range->size - offset) / sizeof(*slots))
+	{
+		sdata_static.standaloneBotModels = NULL;
+		sdata_static.standaloneBotModelCount = 0;
+		return;
+	}
+	for (unsigned int i = 0; i < count; i++)
+	{
+		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &slots[i].asset.fileBase);
+	}
+}
+
 internal void NativeCheckpoint_RelocateSDataPointers(const struct NativeCheckpointHeader *oldHeader, const struct NativeCheckpointHeader *liveHeader)
 {
+	NativeCheckpoint_RelocateBotModels(oldHeader, liveHeader);
 	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.chaosParticleOwners);
 	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.chaosThreadOwners);
 	for (u32 i = 0; i < len(sdata_static.chaosRuntime.restart); i++)

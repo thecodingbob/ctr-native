@@ -91,6 +91,7 @@
 #include "LOAD/LOAD_ModelPtrs.c"
 #include "LOAD/LOAD_File.c"
 #include "LOAD/LOAD_Howl.c"
+#include "LOAD/LOAD_BotModels.c"
 #include "LOAD/LOAD_Assets.c"
 #include "LOAD/LOAD_Queue.c"
 #include "LOAD/LOAD_Hub.c"

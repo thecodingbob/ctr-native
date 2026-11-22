@@ -85,6 +85,12 @@ CTR_STATIC_ASSERT(sizeof(DriverModelExtraSlot) == sizeof(void *));
 CTR_STATIC_ASSERT(offsetof(DriverModelExtraSlot, fileBase) == 0x0);
 CTR_STATIC_ASSERT(offsetof(DriverModelExtraSlot, model) == 0x0);
 
+struct LoadBotModelSlot
+{
+	DriverModelExtraSlot asset;
+	s16 characterID;
+};
+
 enum
 {
 	SCRUB_FLAG_APPLY_IMPACT = 0x1,
@@ -4117,6 +4123,10 @@ struct sData
 	struct ChaosMenuState chaosMenu;
 	struct MenuRow chaosPauseRows[CHAOS_PAUSE_ROW_CAPACITY];
 	struct CustomCupRaceState customCupRace;
+
+	// Standalone bot request destinations, owned by the current level's MEMPACK bookmark.
+	struct LoadBotModelSlot *standaloneBotModels;
+	int standaloneBotModelCount;
 
 	// after dataLibFiller is 8009AE58,
 	// where psyq allocates globals
