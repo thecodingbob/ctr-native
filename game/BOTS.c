@@ -492,7 +492,7 @@ void BOTS_UpdateGlobals(void)
 	sdata->bestRobotRank = NULL;
 	struct Driver *worstRobotDriver = NULL;
 
-	for (int i = BOTS_MAX_KARTS - 1; i >= 0; i--)
+	for (int i = (int)len(gGT->driversInRaceOrder) - 1; i >= 0; i--)
 	{
 		struct Driver *d = gGT->driversInRaceOrder[i];
 

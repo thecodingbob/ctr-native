@@ -1,5 +1,6 @@
 #include <common.h>
 
+#include "VehStartGrid.c"
 #include "VehBirth.c"
 #include "VehCalc.c"
 #include "VehAfterColl.c"

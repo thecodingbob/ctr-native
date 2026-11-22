@@ -146,7 +146,7 @@ int Chaos_CollectBodySwapPartners(int player, int *candidates)
 		return 0;
 	}
 	int count = 0;
-	for (int slot = 0; slot < (int)len(GAME_TRACKER->drivers); slot++)
+	for (int slot = 0; slot < (int)len(runtime->bodySwapPartner); slot++)
 	{
 		if (slot != player && runtime->bodySwapPartner[slot] == 0 && Chaos_CanSwapBody(slot))
 		{

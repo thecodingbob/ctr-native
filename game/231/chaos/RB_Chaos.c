@@ -220,7 +220,7 @@ void Chaos_ReturnBodySwapsNearFinish(struct GameTracker *tracker, int nearDistan
 		return;
 	}
 	bool returned = false;
-	for (int slot = 0; slot < (int)len(tracker->drivers); slot++)
+	for (int slot = 0; slot < (int)len(sdata->chaosRuntime.bodySwapPartner); slot++)
 	{
 		struct Driver *driver = tracker->drivers[slot];
 		if (sdata->chaosRuntime.bodySwapPartner[slot] != 0 && driver != NULL &&

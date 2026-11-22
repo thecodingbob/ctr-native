@@ -378,10 +378,8 @@ void MainInit_Drivers(struct GameTracker *gGT)
 	u8 numDrivers;
 	int gameMode = gGT->gameMode1;
 
-	for (int i = 0; i < 8; i++)
-	{
-		gGT->drivers[i] = NULL;
-	}
+	memset(gGT->drivers, 0, sizeof(gGT->drivers));
+	memset(gGT->driversInRaceOrder, 0, sizeof(gGT->driversInRaceOrder));
 
 	gGT->numBotsNextGame = 0;
 
