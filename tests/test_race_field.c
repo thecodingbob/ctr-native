@@ -272,6 +272,87 @@ static void TestAModeBitAloneIsNotARace(void)
 	}
 }
 
+static void TestConfiguredGrid(void)
+{
+	CTR_TEST_SECTION("configured grids: capacity, multiplayer and managed rosters");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(ARCADE_MODE, LOAD_CUP_ID_NONE, 1, false, 16, 15), 16,
+	                  "a solo race can request sixteen distinct racers");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(ARCADE_MODE, LOAD_CUP_ID_NONE, 1, false, 16, 7), 8,
+	                  "the eligible roster limits the field");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(ARCADE_MODE, LOAD_CUP_ID_NONE, 2, false, 16, 15), 6,
+	                  "retail two-player races cap the field at six");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(ARCADE_MODE, LOAD_CUP_ID_NONE, 2, true, 16, 15), 16,
+	                  "extended multiplayer permits the configured field");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(ARCADE_MODE, LOAD_CUP_ID_NONE, 4, false, 16, 15), 4,
+	                  "retail four-player races gain no bots");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(ARCADE_MODE, LOAD_CUP_ID_NONE, 4, true, 2, 15), 4,
+	                  "the setting never removes a human player");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(ARCADE_MODE, LOAD_CUP_ID_NONE, 1, true, 0, 15), 2,
+	                  "the configured minimum is two racers");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(ARCADE_MODE, LOAD_CUP_ID_NONE, 1, true, 100, 100), 16,
+	                  "the configured maximum is sixteen racers");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(ARCADE_MODE, LOAD_CUP_ID_NONE, 2, true, 16, -1), 2,
+	                  "an unavailable roster never removes human players");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(RACE_BOSS, LOAD_CUP_ID_NONE, 1, true, 16, 15), 2,
+	                  "boss races keep their managed roster");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(RACE_GEM_CUP, CUP_ID_PURPLE_GEM, 1, true, 16, 15), 5,
+	                  "the purple gem cup keeps its four bosses");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(TIME_TRIAL, LOAD_CUP_ID_NONE, 1, true, 16, 15), 1,
+	                  "time trials never gain opponents");
+}
+
+static void TestConfiguredGridModeMatrix(void)
+{
+	static const int normalModes[] = {ARCADE_MODE, ADVENTURE_MODE, RACE_GEM_CUP};
+	static const int managedModes[] = {
+	    ARCADE_MODE | TIME_TRIAL, RACE_RELIC, RACE_CRYSTAL, RACE_HUB,
+	    ARCADE_MODE | BATTLE_MODE, MAIN_MENU, GAME_CUTSCENE, RACE_BOSS,
+	};
+
+	CTR_TEST_SECTION("configured grids: default and managed mode matrix");
+	for (int players = 1; players <= 4; players++)
+	{
+		for (int extended = 0; extended <= 1; extended++)
+		{
+			for (size_t mode = 0; mode < sizeof(normalModes) / sizeof(normalModes[0]); mode++)
+			{
+				int flags = normalModes[mode];
+				CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(flags, LOAD_CUP_ID_NONE, players, extended, 8, 16),
+				                  RaceField_RacerCount(flags, LOAD_CUP_ID_NONE, players, extended),
+				                  "the default field matches retail when enough characters are available");
+			}
+			for (size_t mode = 0; mode < sizeof(managedModes) / sizeof(managedModes[0]); mode++)
+			{
+				int flags = managedModes[mode];
+				CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(flags, LOAD_CUP_ID_NONE, players, extended, 16, 0),
+				                  RaceField_RacerCount(flags, LOAD_CUP_ID_NONE, players, extended),
+				                  "a managed mode ignores the configured field and bot availability");
+			}
+			CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(RACE_GEM_CUP, CUP_ID_PURPLE_GEM, players, extended, 16, 0),
+			                  RaceField_RacerCount(RACE_GEM_CUP, CUP_ID_PURPLE_GEM, players, extended),
+			                  "the purple gem cup retains its managed field");
+		}
+	}
+
+	CTR_TEST_SECTION("configured grids: all supported field sizes and player counts");
+	for (int players = 1; players <= 4; players++)
+	{
+		for (int configured = 2; configured <= 16; configured++)
+		{
+			for (int available = 0; available <= 15; available++)
+			{
+				int expected = configured < players ? players : configured;
+				if (expected > players + available)
+				{
+					expected = players + available;
+				}
+				CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(ARCADE_MODE, LOAD_CUP_ID_NONE, players, true, configured, available),
+				                  expected, "the extended grid respects the setting, humans and available characters");
+			}
+		}
+	}
+}
+
 int main(void)
 {
 	TestNormalRaceGrid();
@@ -283,6 +364,8 @@ int main(void)
 	TestRetailConstantsAreUnchanged();
 	TestExtendedOptionScope();
 	TestAModeBitAloneIsNotARace();
+	TestConfiguredGrid();
+	TestConfiguredGridModeMatrix();
 
 	return CtrTest_Summary();
 }

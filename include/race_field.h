@@ -23,6 +23,8 @@ enum
 	RACE_FIELD_PAIR_GRID_RACERS = 6,
 	// The boss of a boss race, and the only bot it fields.
 	RACE_FIELD_BOSS_RACERS = 1,
+	RACE_FIELD_CONFIG_MIN_RACERS = 2,
+	RACE_FIELD_CONFIG_MAX_RACERS = 16,
 };
 
 // Modes MainInit_Drivers never spawns a bot for: nothing races against a clock,
@@ -125,6 +127,45 @@ static inline int RaceField_RacerCount(int gameMode1, s32 cupID, int playerCount
 static inline int RaceField_BotCount(int gameMode1, s32 cupID, int playerCount, b32 extendedMultiplayer)
 {
 	return RaceField_RacerCount(gameMode1, cupID, playerCount, extendedMultiplayer) - playerCount;
+}
+
+// availableBots counts eligible characters not already selected by a player.
+// Managed rosters and retail 3P/4P races keep their existing rules.
+static inline int RaceField_ConfiguredRacerCount(int gameMode1, s32 cupID, int playerCount, b32 extendedMultiplayer,
+                                                int configuredRacers, int availableBots)
+{
+	int retailRacers = RaceField_RacerCount(gameMode1, cupID, playerCount, extendedMultiplayer);
+	if ((gameMode1 & (ARCADE_MODE | ADVENTURE_MODE)) == 0 || RaceField_HasManagedAIRoster(gameMode1, cupID) ||
+	    (playerCount >= 3 && !extendedMultiplayer))
+	{
+		return retailRacers;
+	}
+
+	if (configuredRacers < RACE_FIELD_CONFIG_MIN_RACERS)
+	{
+		configuredRacers = RACE_FIELD_CONFIG_MIN_RACERS;
+	}
+	if (configuredRacers > RACE_FIELD_CONFIG_MAX_RACERS)
+	{
+		configuredRacers = RACE_FIELD_CONFIG_MAX_RACERS;
+	}
+	if (playerCount > 1 && !extendedMultiplayer && configuredRacers > RACE_FIELD_PAIR_GRID_RACERS)
+	{
+		configuredRacers = RACE_FIELD_PAIR_GRID_RACERS;
+	}
+	if (configuredRacers < playerCount)
+	{
+		configuredRacers = playerCount;
+	}
+	if (availableBots < 0)
+	{
+		availableBots = 0;
+	}
+	if (configuredRacers - playerCount > availableBots)
+	{
+		configuredRacers = playerCount + availableBots;
+	}
+	return configuredRacers;
 }
 
 #endif
