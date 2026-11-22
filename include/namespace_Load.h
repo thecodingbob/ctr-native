@@ -161,7 +161,12 @@ enum LoadHubConstants
 
 enum LoadQueueConstants
 {
-	LOAD_QUEUE_SLOT_COUNT = 8,
+	// Budget 16 standalone racer models, their shared pack, and one existing
+	// batch of up to seven requests (the podium load).
+	LOAD_QUEUE_RACER_MODEL_BUDGET = 16,
+	LOAD_QUEUE_RACER_PACK_BUDGET = 1,
+	LOAD_QUEUE_EXISTING_BATCH_BUDGET = 7,
+	LOAD_QUEUE_SLOT_COUNT = LOAD_QUEUE_RACER_MODEL_BUDGET + LOAD_QUEUE_RACER_PACK_BUDGET + LOAD_QUEUE_EXISTING_BATCH_BUDGET,
 	LOAD_QUEUE_FIRST_PENDING_SLOT = 1,
 	LOAD_QUEUE_VRAM_CALLBACK_DELAY_FRAMES = 3,
 };
