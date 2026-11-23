@@ -803,13 +803,15 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames)
 	}
 
 	// === Draw BigNum ===
-	if (compactResults && driver->instBigNum != NULL && (unsigned int)driver->driverRank <= RACE_FIELD_FULL_GRID_RACERS)
+	if (compactResults && driver->instBigNum != NULL)
 	{
-		s16 bigNumDepth = driver->driverRank + AA_BIG_NUM_Z_BASE;
-
-		driver->instBigNum->matrix.t[0] = UI_ConvertX_2(rankX - AA_COMPACT_RESULT_BIG_NUM_X_OFFSET, bigNumDepth);
-		driver->instBigNum->matrix.t[1] = UI_ConvertY_2(rankY + AA_COMPACT_RESULT_BIG_NUM_Y_OFFSET, bigNumDepth);
-		driver->instBigNum->matrix.t[2] = bigNumDepth;
+		if ((unsigned int)driver->driverRank <= RACE_FIELD_FULL_GRID_RACERS)
+		{
+			s16 bigNumDepth = driver->driverRank + AA_BIG_NUM_Z_BASE;
+			driver->instBigNum->matrix.t[0] = UI_ConvertX_2(rankX - AA_COMPACT_RESULT_BIG_NUM_X_OFFSET, bigNumDepth);
+			driver->instBigNum->matrix.t[1] = UI_ConvertY_2(rankY + AA_COMPACT_RESULT_BIG_NUM_Y_OFFSET, bigNumDepth);
+			driver->instBigNum->matrix.t[2] = bigNumDepth;
+		}
 		driver->instBigNum->scale.x = AA_COMPACT_RESULT_BIG_NUM_SCALE;
 		driver->instBigNum->scale.y = AA_COMPACT_RESULT_BIG_NUM_SCALE;
 		driver->instBigNum->scale.z = AA_COMPACT_RESULT_BIG_NUM_SCALE;

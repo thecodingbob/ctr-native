@@ -13,6 +13,9 @@ enum
 	UI_POS_SUFFIX_SIX_MODEL_RANK = 5,
 	UI_POS_SUFFIX_DIGIT_WIDTH = 16,
 	UI_POS_SUFFIX_DIGIT_Y_OFFSET = 5,
+	// BigNum's widest digits need this advance at unit model and HUD scale.
+	UI_POS_SUFFIX_MODEL_DIGIT_ADVANCE = 40,
+	UI_POS_SUFFIX_MODEL_SUFFIX_GAP = 3,
 };
 
 static int UI_PosSuffixStringIndex(int rank)
@@ -69,7 +72,7 @@ static void UI_PosSuffixDrawDigit(int digit, int x, int y, s16 flags)
 	}
 	if (icon == NULL)
 	{
-		// Use the existing font until a matching zero icon is available.
+		// Zero has no retail rank model or icon.
 		char text[] = {(char)('0' + digit), '\0'};
 		DecalFont_DrawLine(text, x, y - UI_POS_SUFFIX_DIGIT_Y_OFFSET, FONT_BIG, flags | JUSTIFY_CENTER);
 		return;
@@ -81,8 +84,16 @@ static void UI_PosSuffixDrawDigit(int digit, int x, int y, s16 flags)
 	                 0, FP(0.75), digit == 9 ? ANG_PI : 0);
 }
 
+static void UI_PosSuffixPlaceModel(struct Instance *model, int rank, int x, int y)
+{
+	const int depth = UI_POS_SUFFIX_BIG_NUM_Z_BASE + rank;
+	model->matrix.t[0] = UI_ConvertX_2(x, depth);
+	model->matrix.t[1] = UI_ConvertY_2(y, depth);
+	model->matrix.t[2] = depth;
+}
+
 static void UI_DrawExpandedPositionAt(s16 suffixX, s16 suffixY, struct Driver *driver, s16 font, s16 flags,
-                                      const struct UiElement2D *soloNumber)
+                                      const struct UiElement2D *soloNumber, bool rightAligned)
 {
 	const int position = driver->driverRank + 1;
 	if (position <= RACE_FIELD_FULL_GRID_RACERS || position > RACE_FIELD_CONFIG_MAX_RACERS)
@@ -90,37 +101,62 @@ static void UI_DrawExpandedPositionAt(s16 suffixX, s16 suffixY, struct Driver *d
 		return;
 	}
 	struct Instance *model = driver->instBigNum;
+	struct Thread *child = model != NULL && model->thread != NULL ? model->thread->childThread : NULL;
+	struct Instance *tens = child != NULL ? child->inst : NULL;
+	const int modelX = soloNumber != NULL ? soloNumber->x : suffixX - Widescreen_ScaleWidth(UI_POS_SUFFIX_3P4P_BIG_NUM_X_OFFSET);
+	const int modelY = soloNumber != NULL ? soloNumber->y : suffixY + UI_POS_SUFFIX_3P4P_BIG_NUM_Y_OFFSET;
 	// The 1P pack provides the 3D rank model but not the 2D rank icons.
 	if (position == 9 && model != NULL && UI_PosSuffixDigitIcon(6) == NULL)
 	{
-		const int depth = UI_POS_SUFFIX_BIG_NUM_Z_BASE + UI_POS_SUFFIX_SIX_MODEL_RANK;
 		UI_PosSuffixOrientModel(model, true);
-		const int x = soloNumber != NULL ? soloNumber->x : suffixX - Widescreen_ScaleWidth(UI_POS_SUFFIX_3P4P_BIG_NUM_X_OFFSET);
-		const int y = soloNumber != NULL ? soloNumber->y : suffixY + UI_POS_SUFFIX_3P4P_BIG_NUM_Y_OFFSET;
-		model->matrix.t[0] = UI_ConvertX_2(x, depth);
-		model->matrix.t[1] = UI_ConvertY_2(y, depth);
-		model->matrix.t[2] = depth;
-		DecalFont_DrawLine(sdata->lngStrings[LNG_TH], suffixX, suffixY, font, flags);
-		return;
+		UI_PosSuffixPlaceModel(model, UI_POS_SUFFIX_SIX_MODEL_RANK, modelX, modelY);
 	}
-	if (model != NULL)
+	else if (position >= 10 && tens != NULL && (model->flags & HIDE_MODEL) == 0)
 	{
-		model->flags |= HIDE_MODEL;
+		UI_PosSuffixOrientModel(model, false);
+		const int step = Widescreen_ScaleWidth(FP_Mult(FP_Mult(UI_POS_SUFFIX_MODEL_DIGIT_ADVANCE, model->scale.x), model->matrix.m[0][0]));
+		// Grow away from the viewport edge: keep the leading digit on the
+		// left side, or keep the suffix fixed on the right side.
+		const int suffixOffset = suffixX - modelX;
+		const int suffixClearance = step / 2 + Widescreen_ScaleWidth(UI_POS_SUFFIX_MODEL_SUFFIX_GAP);
+		const int gap = suffixOffset > suffixClearance ? suffixOffset : suffixClearance;
+		const int unitsX = rightAligned ? suffixX - gap : modelX + step;
+		suffixX = unitsX + gap;
+		tens->matrix = model->matrix;
+		tens->scale = model->scale;
+		UI_PosSuffixPlaceModel(tens, 0, unitsX - step, modelY);
+		tens->flags &= ~HIDE_MODEL;
+		if (position == 10)
+		{
+			model->flags |= HIDE_MODEL;
+			UI_PosSuffixDrawDigit(0, unitsX, modelY, flags);
+		}
+		else
+		{
+			UI_PosSuffixPlaceModel(model, position % 10 - 1, unitsX, modelY);
+		}
 	}
-	const int digitWidth = Widescreen_ScaleWidth(UI_POS_SUFFIX_DIGIT_WIDTH);
-	const int x = suffixX - digitWidth / 2;
-	const int y = soloNumber != NULL ? soloNumber->y : suffixY + UI_POS_SUFFIX_DIGIT_Y_OFFSET;
-	if (position >= 10)
+	else
 	{
-		UI_PosSuffixDrawDigit(position / 10, x - digitWidth, y, flags);
+		if (model != NULL)
+		{
+			model->flags |= HIDE_MODEL;
+		}
+		const int step = Widescreen_ScaleWidth(UI_POS_SUFFIX_DIGIT_WIDTH);
+		const int x = suffixX - step / 2;
+		const int y = soloNumber != NULL ? soloNumber->y : suffixY + UI_POS_SUFFIX_DIGIT_Y_OFFSET;
+		if (position >= 10)
+		{
+			UI_PosSuffixDrawDigit(position / 10, x - step, y, flags);
+		}
+		UI_PosSuffixDrawDigit(position % 10, x, y, flags);
 	}
-	UI_PosSuffixDrawDigit(position % 10, x, y, flags);
 	DecalFont_DrawLine(sdata->lngStrings[LNG_TH], suffixX, suffixY, font, flags);
 }
 
 void UI_DrawExpandedPosition(s16 suffixX, s16 suffixY, struct Driver *driver, s16 font, s16 flags)
 {
-	UI_DrawExpandedPositionAt(suffixX, suffixY, driver, font, flags, NULL);
+	UI_DrawExpandedPositionAt(suffixX, suffixY, driver, font, flags, NULL, false);
 }
 
 static int UI_PosSuffixRank(struct Driver *d)
@@ -181,7 +217,8 @@ void UI_DrawPosSuffix(s16 posX, s16 posY, struct Driver *d, s16 flags)
 	posX += UI_PosSuffixOffset(posX, d);
 	if ((gGT->gameMode1 & BATTLE_MODE) == 0 && (unsigned int)currRank >= RACE_FIELD_FULL_GRID_RACERS)
 	{
-		UI_DrawExpandedPositionAt(posX, posY, d, FONT_BIG, flags, soloNumber);
+		const bool rightAligned = gGT->numPlyrCurrGame >= UI_POS_SUFFIX_SPLIT_PLAYER_COUNT && (d->driverID & 1) != 0;
+		UI_DrawExpandedPositionAt(posX, posY, d, FONT_BIG, flags, soloNumber, rightAligned);
 		return;
 	}
 

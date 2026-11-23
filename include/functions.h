@@ -309,6 +309,7 @@ void INSTANCE_Birth(struct Instance *inst, struct Model *model, const char *name
 struct Instance *INSTANCE_Birth2D(struct Model *model, const char *name, struct Thread *th);
 struct Instance *INSTANCE_Birth3D(struct Model *model, const char *name, struct Thread *th);
 struct Instance *INSTANCE_BirthWithThread(s32 modelID, const char *name, s32 poolType, s32 bucket, void *funcThTick, s32 objSize, struct Thread *parent);
+struct Instance *INSTANCE_Birth2DWithThread(s32 modelID, const char *name, s32 poolType, s32 bucket, void *funcThTick, s32 objSize, struct Thread *parent);
 struct Instance *INSTANCE_BirthWithThread_Stack(const struct InstanceBirthParams *params);
 void INSTANCE_Death(struct Instance *inst);
 s32 INSTANCE_GetNumAnimFrames(struct Instance *pInstance, s32 animIndex);

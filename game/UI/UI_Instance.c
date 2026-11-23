@@ -51,6 +51,20 @@ static b32 UI_INSTANCE_IsSharedHudModel(int modelID)
 	       (modelID == STATIC_TIME_CRATE_01);
 }
 
+static void UI_INSTANCE_BirthRankTens(struct Instance *ones)
+{
+	struct Thread *parent = ones->thread;
+	struct Instance *tens = INSTANCE_Birth2DWithThread(STATIC_BIG1, parent->name, SMALL, HUD, NULL, 0, parent);
+	if (tens == NULL)
+	{
+		return;
+	}
+	tens->thread->funcThDestroy = PROC_DestroyInstance;
+	tens->flags |= HIDE_MODEL;
+	tens->depthBiasNormal = ones->depthBiasNormal;
+	tens->depthBiasSecondary = ones->depthBiasSecondary;
+}
+
 struct Instance *UI_INSTANCE_BirthWithThread(int modelID, int tickFunc, int hudSlot, int rotateToHud, int pushBuffer, int threadName)
 {
 	struct GameTracker *gGT = sdata->gGT;
@@ -261,6 +275,10 @@ struct Instance *UI_INSTANCE_BirthWithThread(int modelID, int tickFunc, int hudS
 		ui3D->rot.y = 0;
 		ui3D->rot.z = 0;
 		ui3D->scale = ((createdModelID == STATIC_BIG1) && (gGT->numPlyrCurrGame > 2)) ? UI_INSTANCE_3P4P_BIG_NUM_SCALE : UI_INSTANCE_SCALE;
+		if (createdModelID == STATIC_BIG1 && gGT->numPlyrCurrGame + gGT->numBotsNextGame >= 10)
+		{
+			UI_INSTANCE_BirthRankTens(inst);
+		}
 
 		// next thread
 		driverThread = driverThread->siblingThread;

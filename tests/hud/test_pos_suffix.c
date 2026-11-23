@@ -241,6 +241,60 @@ int main(void)
 	UI_DrawExpandedPosition(leftX, y, &driver, FONT_SMALL, 0);
 	CTR_TEST_CHECK_EQ(bigNum.matrix.t[1], UI_ConvertY_2(y + UI_POS_SUFFIX_3P4P_BIG_NUM_Y_OFFSET, 0x105),
 	                  "the finish card still positions the model relative to its own suffix");
+
+	CTR_TEST_SECTION("two-digit positions share the original rank model");
+	struct Instance tens = {.flags = HIDE_MODEL};
+	struct Thread child = {.inst = &tens};
+	struct Thread parent = {.childThread = &child};
+	bigNum.thread = &parent;
+	bigNum.scale.x = 0x1400;
+	bigNum.flags = 0;
+	driver.actionsFlagSet = 0;
+	s_firstFallback = 0;
+	s_digitCount = 0;
+	for (int position = 11; position <= 16; position++)
+	{
+		driver.driverRank = position - 1;
+		UI_DrawPosSuffix(soloSuffixX, soloSuffixY, &driver, 0);
+		CTR_TEST_CHECK_EQ(tens.matrix.t[2], 0x100, "the tens digit always selects the retail one");
+		CTR_TEST_CHECK_EQ(bigNum.matrix.t[2], 0x100 + position - 11, "the units digit selects the matching retail digit");
+		CTR_TEST_CHECK_EQ(bigNum.matrix.t[1], UI_ConvertY_2(soloNumberY, bigNum.matrix.t[2]), "units keep the original solo height");
+		CTR_TEST_CHECK_EQ(tens.matrix.t[1], UI_ConvertY_2(soloNumberY, tens.matrix.t[2]), "both digits share the same height");
+		CTR_TEST_CHECK_EQ(tens.matrix.t[0], UI_ConvertX_2(50, 0x100), "the leading digit keeps the safe solo anchor in 4:3");
+		CTR_TEST_CHECK_EQ(bigNum.matrix.t[0], UI_ConvertX_2(125, bigNum.matrix.t[2]), "units are a full model advance to the right in 4:3");
+		CTR_TEST_CHECK(tens.scale.x == bigNum.scale.x && (tens.flags & HIDE_MODEL) == 0, "both model digits are drawn at the same scale");
+	}
+	CTR_TEST_CHECK(s_firstFallback == 0 && s_digitCount == 0, "11 through 16 do not draw any font digits or icons when the models are available");
+	driver.driverRank = 9;
+	UI_DrawPosSuffix(soloSuffixX, soloSuffixY, &driver, 0);
+	CTR_TEST_CHECK((bigNum.flags & HIDE_MODEL) != 0 && (tens.flags & HIDE_MODEL) == 0 && s_firstFallback == '0',
+	               "tenth pairs the retail one with the temporary zero glyph");
+	// The HUD thread refreshes visibility before drawing a new frame.
+	bigNum.flags = 0;
+	tens.flags |= HIDE_MODEL;
+	driver.driverRank = 8;
+	UI_DrawPosSuffix(soloSuffixX, soloSuffixY, &driver, 0);
+	CTR_TEST_CHECK((tens.flags & HIDE_MODEL) != 0 && bigNum.matrix.m[0][0] < 0,
+	               "returning to ninth hides the tens model and rotates the six again");
+	driver.driverRank = 15;
+	s_aspectFactor = 750;
+	UI_DrawPosSuffix(soloSuffixX, soloSuffixY, &driver, 0);
+	CTR_TEST_CHECK_EQ(tens.matrix.t[0], UI_ConvertX_2(50, 0x100), "the leading digit stays at the solo anchor in widescreen");
+	CTR_TEST_CHECK_EQ(bigNum.matrix.t[0], UI_ConvertX_2(106, 0x105), "solo widescreen scales the advance rather than crowding the digits");
+	CTR_TEST_CHECK(s_suffixX > 106 + 56 / 2, "the suffix clears the units digit");
+	s_tracker.numPlyrCurrGame = 4;
+	bigNum.scale.x = 0xe00;
+	bigNum.matrix.m[0][0] = FP(0.75);
+	UI_DrawPosSuffix(leftX, y, &driver, 0);
+	CTR_TEST_CHECK_EQ(tens.matrix.t[0], UI_ConvertX_2(26, 0x100), "the left split-screen indicator grows inward");
+	CTR_TEST_CHECK_EQ(bigNum.matrix.t[0], UI_ConvertX_2(55, 0x105), "split-screen scales the advance to the smaller models");
+	CTR_TEST_CHECK(tens.matrix.m[0][0] > 0 && bigNum.matrix.m[0][0] > 0,
+	               "returning to a two-digit rank leaves both models upright");
+	driver.driverID = 1;
+	const int rightSuffix = rightX + UI_PosSuffixOffset(rightX, &driver);
+	UI_DrawPosSuffix(rightX, y, &driver, 0);
+	CTR_TEST_CHECK_EQ(s_suffixX, rightSuffix, "the right split-screen indicator keeps the suffix inside the viewport");
+	CTR_TEST_CHECK_EQ(tens.matrix.t[0], UI_ConvertX_2(rightSuffix - 16 - 29, 0x100), "the right split-screen indicator grows to the left");
 	CTR_TEST_CHECK_EQ(UI_PosSuffix_ReverseWarmRamp(0x000000ff), 0x0000ffff, "the rotated model turns its upper red into yellow");
 	CTR_TEST_CHECK_EQ(UI_PosSuffix_ReverseWarmRamp(0x0000ffff), 0x000000ff, "the rotated model turns its lower yellow into red");
 	CTR_TEST_CHECK_EQ(UI_PosSuffix_ReverseWarmRamp(0x30000000), 0x30000000, "the black outline and packet flags remain unchanged");

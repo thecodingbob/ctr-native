@@ -325,10 +325,12 @@ void MainInit_JitPoolsNew(struct GameTracker *gGT)
 	MEMPACK_PushState();
 
 	const int extraRacers = RaceField_ExtraPoolSlots(sdata->loadedRaceFieldSize);
-	JitPool_Init(&gGT->JitPools.thread, ((renderBucketSize * 3) >> 7) + extraRacers, sizeof(struct Thread), rdata.s_ThreadPool);
+	// A two-digit position can use one additional HUD instance per viewport.
+	const int extraRankDigits = sdata->loadedRaceFieldSize >= 10 ? gGT->numPlyrCurrGame : 0;
+	JitPool_Init(&gGT->JitPools.thread, ((renderBucketSize * 3) >> 7) + extraRacers + extraRankDigits, sizeof(struct Thread), rdata.s_ThreadPool);
 	Chaos_InitThreadOwners();
 	// Each extra kart can use an instance for itself and another for its wake.
-	int instanceCount = (renderBucketSize >> 5) + 2 * extraRacers;
+	int instanceCount = (renderBucketSize >> 5) + 2 * extraRacers + extraRankDigits;
 	if (gGT->level1 != NULL && NativeTrackRegistry_Get(NativeTrackLibrary_Current(), gGT->levelID) != NULL)
 	{
 		/* Retain the retail dynamic budget in addition to placed track objects. */
@@ -338,7 +340,7 @@ void MainInit_JitPoolsNew(struct GameTracker *gGT)
 	}
 	JitPool_Init(&gGT->JitPools.instance, instanceCount, sizeof(struct Instance) + (sizeof(struct InstDrawPerPlayer) * gGT->numPlyrCurrGame),
 	             rdata.s_InstancePool);
-	JitPool_Init(&gGT->JitPools.smallStack, (poolScale * 0x19) >> 10, THREAD_SMALL_STACK_SIZE, rdata.s_SmallStackPool);
+	JitPool_Init(&gGT->JitPools.smallStack, ((poolScale * 0x19) >> 10) + extraRankDigits, THREAD_SMALL_STACK_SIZE, rdata.s_SmallStackPool);
 	JitPool_Init(&gGT->JitPools.mediumStack, poolScale >> 7, THREAD_MEDIUM_STACK_SIZE, rdata.s_MediumStackPool);
 
 	int numDriver = poolScale >> 9;
