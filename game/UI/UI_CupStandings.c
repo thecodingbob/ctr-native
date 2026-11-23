@@ -49,7 +49,7 @@ enum
 	UI_CUP_STANDINGS_PLACE_TEXT_Y_OFFSET = -1,
 	UI_CUP_STANDINGS_POINTS_TEXT_X_OFFSET = 0x2d,
 	UI_CUP_STANDINGS_POINTS_TEXT_Y_OFFSET = 6,
-	UI_CUP_STANDINGS_EXPANDED_POINTS_Y_OFFSET = 10,
+	UI_CUP_STANDINGS_EXPANDED_POINTS_GAP = 3,
 	UI_CUP_STANDINGS_ICON_SCALE = 0x1000,
 	UI_CUP_STANDINGS_ICON_NEUTRAL_CHANNEL = 0x80,
 	UI_CUP_STANDINGS_TRACKS_PER_CUP = 4,
@@ -439,7 +439,8 @@ void UI_CupStandings_InputAndDraw(void)
 		}
 
 		// Draw character icon
-		UI_DrawDriverIcon(gGT->ptrIcons[data.MetaDataCharacters[data.characterIDs[d->driverID]].iconID],
+		struct Icon *icon = gGT->ptrIcons[data.MetaDataCharacters[data.characterIDs[d->driverID]].iconID];
+		UI_DrawDriverIcon(icon,
 
 		                  drawPos.x, drawPos.y, &gGT->backBuffer->primMem,
 
@@ -465,10 +466,20 @@ void UI_CupStandings_InputAndDraw(void)
 
 		vsCupIconOffsetX = vsCupIconOffsetX + UI_CUP_STANDINGS_ICON_SLOT_W;
 
-		// draw string for number of points
-		DecalFont_DrawLine(text, drawPos.x + (expandedGrid ? UI_CUP_STANDINGS_PLACE_TEXT_X_OFFSET : UI_CUP_STANDINGS_POINTS_TEXT_X_OFFSET),
-		                   drawPos.y + (expandedGrid ? UI_CUP_STANDINGS_EXPANDED_POINTS_Y_OFFSET : UI_CUP_STANDINGS_POINTS_TEXT_Y_OFFSET),
-		                   expandedGrid ? FONT_SMALL : FONT_BIG, PERIWINKLE);
+		if (expandedGrid)
+		{
+			// The 60-pixel cells leave little room beside the portrait. Center the
+			// points below it; widescreen compression preserves the icon's center.
+			int width = icon ? FP_Mult(icon->texLayout.u1 - icon->texLayout.u0, UI_CUP_STANDINGS_ICON_SCALE) : 0;
+			int height = icon ? FP_Mult(icon->texLayout.v2 - icon->texLayout.v0, UI_CUP_STANDINGS_ICON_SCALE) : 0;
+			DecalFont_DrawLine(text, drawPos.x + width / 2, drawPos.y + height + UI_CUP_STANDINGS_EXPANDED_POINTS_GAP,
+			                   FONT_SMALL, JUSTIFY_CENTER | PERIWINKLE);
+		}
+		else
+		{
+			DecalFont_DrawLine(text, drawPos.x + UI_CUP_STANDINGS_POINTS_TEXT_X_OFFSET, drawPos.y + UI_CUP_STANDINGS_POINTS_TEXT_Y_OFFSET,
+			                   FONT_BIG, PERIWINKLE);
+		}
 	}
 
 	// If this is the first screen of cup standings,
