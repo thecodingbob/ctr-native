@@ -123,9 +123,10 @@ int LOAD_PredictRaceFieldSize(int gameMode1, s32 cupID, int playerCount)
 	const int available = LOAD_RosterAvailableBotCount(GAME_CHARACTER_COUNT, data.characterIDs, playerCount,
 	                                                  g_config.botSelectionMode == BOT_SELECTION_RANDOM_UNLOCKED,
 	                                                  MM_Characters_IsCharacterUnlocked);
-	// Keep the runtime at the default until expanded grids and presentation are ready.
+	const char *field = getenv("CTR_TEST_RACE_FIELD");
+	const int requested = field != NULL ? atoi(field) : RACE_FIELD_FULL_GRID_RACERS;
 	return RaceField_ConfiguredRacerCount(gameMode1, cupID, playerCount, g_config.extendedMultiplayer,
-	                                     RACE_FIELD_FULL_GRID_RACERS, available);
+	                                     requested, available);
 }
 
 static b32 LOAD_ShouldPreserveRandomBotRoster(void)

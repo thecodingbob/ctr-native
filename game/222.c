@@ -25,8 +25,6 @@ enum ArcadeAdventureEndMenuConstants
 	AA_RESULT_MAX_FRAMES = CTR_SECONDS_TO_FRAMES(30),
 	AA_DRIVER_ICON_STAGGER_FRAMES = 10,
 	AA_DRIVER_ICON_SPACING = 56,
-	AA_DRIVER_ICON_FIRST_ROW_Y = 0x60,
-	AA_DRIVER_ICON_ROW_HEIGHT = 38,
 	AA_DRIVER_ICON_RANK_X = 0x20,
 	AA_DRIVER_ICON_EXIT_FRAME = CTR_SECONDS_TO_FRAMES(10),
 	AA_DRIVER_ICON_SCALE = 0x1000,
@@ -467,7 +465,8 @@ void AA_EndEvent_DrawMenu(void)
 				s32 iconID;
 
 				int row = 0;
-				if (loopTotalRacers > RACE_FIELD_FULL_GRID_RACERS)
+				const bool expanded = loopTotalRacers > RACE_FIELD_FULL_GRID_RACERS;
+				if (expanded)
 				{
 					driverIconTargetX = UI_ResultGrid_X(pushBuffer->rect.x, pushBuffer->rect.w, loopTotalRacers, i, &row);
 				}
@@ -476,7 +475,7 @@ void AA_EndEvent_DrawMenu(void)
 					driverIconTargetX = pushBuffer->rect.x + (pushBuffer->rect.w - (loopTotalRacers * 44 + lastRacerIndex * 12)) / 2 +
 					                    i * AA_DRIVER_ICON_SPACING;
 				}
-				const int iconY = AA_DRIVER_ICON_FIRST_ROW_Y + row * AA_DRIVER_ICON_ROW_HEIGHT;
+				const int iconY = UI_ResultGrid_SoloY(expanded, row);
 
 				driverIconCurrentFrame = GAME_FRAMES_SINCE_RACE_ENDED;
 				if (AA_DRIVER_ICON_EXIT_FRAME - timeOffsetFrames < driverIconCurrentFrame)
@@ -511,7 +510,7 @@ void AA_EndEvent_DrawMenu(void)
 				    // pointer to OT mem
 				    GAME_TRACKER->pushBuffer_UI.ptrOT,
 
-				    1, AA_DRIVER_ICON_SCALE, iconColor);
+				    1, expanded ? UI_RESULT_GRID_SOLO_ICON_SCALE : AA_DRIVER_ICON_SCALE, iconColor);
 				i++;
 			} while (i < gameNumIconsEOR && i < loopTotalRacers);
 		}
@@ -804,7 +803,7 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames)
 	}
 
 	// === Draw BigNum ===
-	if (compactResults && driver->instBigNum != NULL && (unsigned int)driver->driverRank < RACE_FIELD_FULL_GRID_RACERS)
+	if (compactResults && driver->instBigNum != NULL && (unsigned int)driver->driverRank <= RACE_FIELD_FULL_GRID_RACERS)
 	{
 		s16 bigNumDepth = driver->driverRank + AA_BIG_NUM_Z_BASE;
 

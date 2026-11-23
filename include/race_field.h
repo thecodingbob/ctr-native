@@ -169,6 +169,32 @@ static inline int RaceField_ConfiguredRacerCount(int gameMode1, s32 cupID, int p
 	return configuredRacers;
 }
 
+// Map expanded standings onto the eight retail item ranks. Keep first alone
+// in the leader's tier and spread everyone else over retail positions 2–8.
+static inline int RaceField_ExpandedItemRank(int rank, int racers)
+{
+	if (rank <= 0 || racers <= RACE_FIELD_FULL_GRID_RACERS)
+	{
+		return rank;
+	}
+	if (rank >= racers - 1)
+	{
+		return RACE_FIELD_FULL_GRID_RACERS - 1;
+	}
+	return 1 + (rank - 1) * (RACE_FIELD_FULL_GRID_RACERS - 2) / (racers - 2);
+}
+
+// The level allocates pools before geometry/model preflight. Reserve for the
+// queued upper bound without shrinking the retail budget for shorter fields.
+static inline int RaceField_ExtraPoolSlots(int loadedRacers)
+{
+	if (loadedRacers > RACE_FIELD_CONFIG_MAX_RACERS)
+	{
+		loadedRacers = RACE_FIELD_CONFIG_MAX_RACERS;
+	}
+	return loadedRacers > RACE_FIELD_FULL_GRID_RACERS ? loadedRacers - RACE_FIELD_FULL_GRID_RACERS : 0;
+}
+
 // Compact surviving racers in their original grid order. Missing or duplicate
 // ranks (for example, bots returning after a shorter cup round) start last.
 static inline void RaceField_CompactSpawnOrder(char *order, int racerCount)

@@ -13,6 +13,7 @@ static int s_digitCount;
 static struct Icon *s_lastDigit;
 static u16 s_digitRotation;
 static int s_digitX;
+static int s_digitY;
 static char s_firstFallback;
 
 #include <game/UI/UI_Convert.c>
@@ -43,11 +44,12 @@ void DecalFont_DrawLine(char *str, s16 posX, s16 posY, s16 fontType, s16 flags)
 void DecalHUD_Arrow2D(struct Icon *icon, s32 x, s32 y, struct PrimMem *primMem, u32 *ot, Color c0, Color c1, Color c2, Color c3,
                      u8 transparency, s16 scale, u16 rotation)
 {
-	(void)y; (void)primMem; (void)ot; (void)c0; (void)c1; (void)c2; (void)c3; (void)transparency; (void)scale;
+	(void)primMem; (void)ot; (void)c0; (void)c1; (void)c2; (void)c3; (void)transparency; (void)scale;
 	s_digitCount++;
 	s_lastDigit = icon;
 	s_digitRotation = rotation;
 	s_digitX = x;
+	s_digitY = y;
 }
 
 int main(void)
@@ -57,6 +59,8 @@ int main(void)
 	data.stringIndexSuffix[0] = 0;
 	data.stringIndexSuffix[1] = 1;
 	data.stringIndexSuffix[2] = 2;
+	data.hudStructPtr[0] = data.hud_1P_P1;
+	data.hud_1P_P1[UI_HUD_SLOT_BIG1] = (struct UiElement2D){50, 191, 256, 5120};
 	data.hudStructPtr[2] = s_hud;
 	data.hudStructPtr[3] = s_hud;
 	s_hud[UI_HUD_SLOT_BIG1].x = 10;
@@ -104,7 +108,8 @@ int main(void)
 				CTR_TEST_CHECK_EQ(s_suffixX, posX, "1P/2P and left-side suffixes keep their layout X");
 				if (players < 3)
 				{
-					CTR_TEST_CHECK_EQ(bigNum.matrix.t[0], 0x7fff, "1P/2P do not move the rank number");
+					const int expectedX = players == 1 ? UI_ConvertX_2(50, depth) : 0x7fff;
+					CTR_TEST_CHECK_EQ(bigNum.matrix.t[0], expectedX, "1P uses its number anchor and 2P keeps the existing placement");
 				}
 				else
 				{
@@ -200,5 +205,44 @@ int main(void)
 	s_digitCount = 0;
 	UI_DrawPosSuffix(leftX, y, &driver, 0);
 	CTR_TEST_CHECK(s_digitCount == 2 && s_lastDigit == &six && s_digitRotation == 0, "sixteenth draws two upright retail digits");
+
+	CTR_TEST_SECTION("one-player packs can draw ninth with the retail model alone");
+	s_tracker.numPlyrCurrGame = 1;
+	driver.driverID = 0;
+	const int soloSuffixX = 70;
+	const int soloSuffixY = 171;
+	const int soloNumberY = data.hud_1P_P1[UI_HUD_SLOT_BIG1].y;
+	s_tracker.ptrIcons[UI_POS_SUFFIX_FIRST_DIGIT_ICON + 5] = NULL;
+	bigNum.flags = 0;
+	bigNum.matrix.m[0][0] = bigNum.matrix.m[1][1] = bigNum.matrix.m[2][2] = FP(1.0);
+	driver.driverRank = 7;
+	UI_DrawPosSuffix(soloSuffixX, soloSuffixY, &driver, 0);
+	CTR_TEST_CHECK_EQ(bigNum.matrix.t[1], UI_ConvertY_2(soloNumberY, 0x107), "eighth stays on the retail number anchor");
+	driver.driverRank = 8;
+	s_digitCount = 0;
+	s_firstFallback = 0;
+	UI_DrawPosSuffix(soloSuffixX, soloSuffixY, &driver, 0);
+	UI_DrawPosSuffix(soloSuffixX, soloSuffixY, &driver, 0);
+	CTR_TEST_CHECK_EQ(bigNum.matrix.t[2], 0x105, "the model uses the sixth-place geometry even in ninth");
+	CTR_TEST_CHECK_EQ(bigNum.matrix.t[1], UI_ConvertY_2(soloNumberY, 0x105), "ninth stays on the number anchor instead of jumping toward the suffix");
+	CTR_TEST_CHECK_EQ(s_suffixY, soloSuffixY, "ninth does not move the suffix either");
+	CTR_TEST_CHECK(bigNum.matrix.m[0][0] == -FP(1.0) && bigNum.matrix.m[1][1] == -FP(1.0) && bigNum.matrix.m[2][2] == FP(1.0),
+	               "repeated draws keep the model rotated by half a turn in the screen plane");
+	CTR_TEST_CHECK(s_digitCount == 0 && s_firstFallback == 0 && (bigNum.flags & HIDE_MODEL) == 0,
+	               "the model renders without a duplicate or font fallback");
+	driver.driverRank = 5;
+	UI_DrawPosSuffix(soloSuffixX, soloSuffixY, &driver, 0);
+	CTR_TEST_CHECK(bigNum.matrix.m[0][0] == FP(1.0) && bigNum.matrix.m[1][1] == FP(1.0), "the ordinary sixth-place model is upright again");
+	driver.driverRank = 9;
+	UI_DrawPosSuffix(soloSuffixX, soloSuffixY, &driver, 0);
+	CTR_TEST_CHECK_EQ(s_digitY, soloNumberY, "tenth uses the same vertical anchor as the solo model");
+	driver.driverRank = 8;
+	driver.actionsFlagSet = ACTION_RACE_FINISHED;
+	UI_DrawExpandedPosition(leftX, y, &driver, FONT_SMALL, 0);
+	CTR_TEST_CHECK_EQ(bigNum.matrix.t[1], UI_ConvertY_2(y + UI_POS_SUFFIX_3P4P_BIG_NUM_Y_OFFSET, 0x105),
+	                  "the finish card still positions the model relative to its own suffix");
+	CTR_TEST_CHECK_EQ(UI_PosSuffix_ReverseWarmRamp(0x000000ff), 0x0000ffff, "the rotated model turns its upper red into yellow");
+	CTR_TEST_CHECK_EQ(UI_PosSuffix_ReverseWarmRamp(0x0000ffff), 0x000000ff, "the rotated model turns its lower yellow into red");
+	CTR_TEST_CHECK_EQ(UI_PosSuffix_ReverseWarmRamp(0x30000000), 0x30000000, "the black outline and packet flags remain unchanged");
 	return CtrTest_Summary();
 }

@@ -417,8 +417,40 @@ static void TestInitialAdventureGrid(void)
 	               "the champion can take pole even as the last eligible bot");
 }
 
+static void TestExtraPoolSlots(void)
+{
+	CTR_TEST_SECTION("keep retail pool capacities and reserve for the loaded upper bound");
+	CTR_TEST_CHECK_EQ(RaceField_ExtraPoolSlots(0), 0, "modes without a configured field keep their retail pools");
+	CTR_TEST_CHECK_EQ(RaceField_ExtraPoolSlots(6), 0, "a short field does not shrink the pools");
+	CTR_TEST_CHECK_EQ(RaceField_ExtraPoolSlots(8), 0, "eight racers fit the retail pools");
+	CTR_TEST_CHECK_EQ(RaceField_ExtraPoolSlots(9), 1, "the ninth racer needs an extra slot");
+	CTR_TEST_CHECK_EQ(RaceField_ExtraPoolSlots(12), 4, "the pools reserve for the loaded field, not the eventual geometry limit");
+	CTR_TEST_CHECK_EQ(RaceField_ExtraPoolSlots(16), 8, "the full field doubles the driver slots from eight to sixteen");
+	CTR_TEST_CHECK_EQ(RaceField_ExtraPoolSlots(255), 8, "the pool reserve is bounded by maximum supported field size");
+}
+
+static void TestExpandedItemRanks(void)
+{
+	CTR_TEST_SECTION("expanded races preserve position-based item tiers");
+	for (int racers = 9; racers <= RACE_FIELD_CONFIG_MAX_RACERS; racers++)
+	{
+		CTR_TEST_CHECK_EQ(RaceField_ExpandedItemRank(0, racers), 0, "first always uses the retail leader's item set");
+		CTR_TEST_CHECK_EQ(RaceField_ExpandedItemRank(1, racers), 1, "the runner-up does not share the leader's item set");
+		CTR_TEST_CHECK_EQ(RaceField_ExpandedItemRank(racers - 1, racers), 7, "last uses the last retail tier");
+		int previous = 0;
+		for (int rank = 1; rank < racers; rank++)
+		{
+			int mapped = RaceField_ExpandedItemRank(rank, racers);
+			CTR_TEST_CHECK(mapped >= previous && mapped > 0 && mapped < 8, "trailing ranks map monotonically within the retail table");
+			previous = mapped;
+		}
+	}
+}
+
 int main(void)
 {
+	TestExpandedItemRanks();
+	TestExtraPoolSlots();
 	TestNormalRaceGrid();
 	TestBotCountFollowsTheGrid();
 	TestHighPlayerCountsNeedTheOption();

@@ -1496,9 +1496,15 @@ void VehPhysGeneral_SetHeldItem(struct Driver *driver)
 		{
 			switch (mode)
 			{
-			// 1P Arcade
-			case 8:
-				onePlayerRank = driver->driverRank;
+			// 1P Arcade and expanded races
+			case 9: case 10: case 11: case 12:
+			case 13: case 14: case 15: case RACE_FIELD_CONFIG_MAX_RACERS:
+			case RACE_FIELD_FULL_GRID_RACERS:
+				onePlayerRank = RaceField_ExpandedItemRank(driver->driverRank, mode);
+				if (mode > RACE_FIELD_FULL_GRID_RACERS && onePlayerRank < 0)
+				{
+					break;
+				}
 
 				// if in 2nd place, get itemSet2
 				if (onePlayerRank == 1)

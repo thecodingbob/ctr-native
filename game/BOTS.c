@@ -3129,6 +3129,10 @@ struct Driver *BOTS_Driver_Init(int driverID)
 	    0,                 //"robotcar",	// debug name
 	    0                  // thread relative
 	);
+	if (t == NULL)
+	{
+		return NULL;
+	}
 
 	struct Driver *d = t->object;
 	memset(d, 0x0, DRIVER_NTSC_RETAIL_SIZE);

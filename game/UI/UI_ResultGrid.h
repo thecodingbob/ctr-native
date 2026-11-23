@@ -1,7 +1,19 @@
 #ifndef UI_RESULT_GRID_H
 #define UI_RESULT_GRID_H
 
-enum { UI_RESULT_GRID_CELL_WIDTH = 60 };
+enum
+{
+	UI_RESULT_GRID_CELL_WIDTH = 60,
+	UI_RESULT_GRID_SOLO_RETAIL_Y = 96,
+	UI_RESULT_GRID_SOLO_FIRST_ROW_Y = 88,
+	UI_RESULT_GRID_SOLO_ROW_HEIGHT = 28,
+	UI_RESULT_GRID_SOLO_ICON_SCALE = 0xc00,
+};
+
+static inline int UI_ResultGrid_SoloY(int expanded, int row)
+{
+	return expanded ? UI_RESULT_GRID_SOLO_FIRST_ROW_Y + row * UI_RESULT_GRID_SOLO_ROW_HEIGHT : UI_RESULT_GRID_SOLO_RETAIL_Y;
+}
 
 // Expanded fields use two balanced rows, each centered independently. Use the
 // final field size, not the number of icons already revealed by the animation.

@@ -324,9 +324,11 @@ void MainInit_JitPoolsNew(struct GameTracker *gGT)
 
 	MEMPACK_PushState();
 
-	JitPool_Init(&gGT->JitPools.thread, (renderBucketSize * 3) >> 7, sizeof(struct Thread), rdata.s_ThreadPool);
+	const int extraRacers = RaceField_ExtraPoolSlots(sdata->loadedRaceFieldSize);
+	JitPool_Init(&gGT->JitPools.thread, ((renderBucketSize * 3) >> 7) + extraRacers, sizeof(struct Thread), rdata.s_ThreadPool);
 	Chaos_InitThreadOwners();
-	int instanceCount = renderBucketSize >> 5;
+	// Each extra kart can use an instance for itself and another for its wake.
+	int instanceCount = (renderBucketSize >> 5) + 2 * extraRacers;
 	if (gGT->level1 != NULL && NativeTrackRegistry_Get(NativeTrackLibrary_Current(), gGT->levelID) != NULL)
 	{
 		/* Retain the retail dynamic budget in addition to placed track objects. */
@@ -344,7 +346,7 @@ void MainInit_JitPoolsNew(struct GameTracker *gGT)
 	{
 		numDriver = 4;
 	}
-	JitPool_Init(&gGT->JitPools.largeStack, numDriver, THREAD_LARGE_STACK_SIZE, rdata.s_LargeStackPool);
+	JitPool_Init(&gGT->JitPools.largeStack, numDriver + extraRacers, THREAD_LARGE_STACK_SIZE, rdata.s_LargeStackPool);
 
 	int numParticle = poolScale >> 5;
 	JitPool_Init(&gGT->JitPools.particle, numParticle, sizeof(struct Particle), rdata.s_ParticlePool);
@@ -418,8 +420,12 @@ void MainInit_Drivers(struct GameTracker *gGT)
 	// Spawn only the bots admitted by the model batch and the starting grid.
 	for (int i = numPlyrCurrGame; i < numDrivers; i++)
 	{
-		// spawn an AI at this character index
-		BOTS_Driver_Init(i);
+		if (BOTS_Driver_Init(i) == NULL && sdata->loadedRaceFieldSize != 0)
+		{
+			// Keep the admitted prefix contiguous if a bot still cannot spawn.
+			RaceField_CompactSpawnOrder(sdata->kartSpawnOrderArray, i);
+			break;
+		}
 	}
 
 	// If number of AIs is not zero
@@ -508,6 +514,10 @@ void MainInit_FinalizeInit(struct GameTracker *gGT)
 	}
 
 	MainInit_JitPoolsReset(gGT);
+	// Tracker animation and cached distances do not belong to the next race.
+	memset(data.trackerTimer, 0, sizeof(data.trackerTimer));
+	memset(data.trackerDist, 0, sizeof(data.trackerDist));
+	memset(data.trackerType, 0, sizeof(data.trackerType));
 
 	int customLaps;
 	if (CustomCupRace_IsCustomCup(&sdata->customCupRace, gGT) &&

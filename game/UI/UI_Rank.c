@@ -87,6 +87,27 @@ void UI_DrawRankedDrivers(void)
 
 	if (numPlyr == 1)
 	{
+		if (numPlyr + gGT->numBotsNextGame > UI_RANK_DRIVER_COUNT)
+		{
+			// Read the live standings, not the eight-slot retail animation table.
+			for (int rank = 0; rank < UI_RANK_VISIBLE_ARCADE_COUNT; rank++)
+			{
+				struct Driver *driver = gGT->driversInRaceOrder[rank];
+				if (driver == NULL)
+				{
+					continue;
+				}
+				const int rowOffset = rank * UI_RANK_TEXT_SLOT_HEIGHT;
+				char text[] = {(char)('1' + rank), '\0'};
+				DecalFont_DrawLine(text, UI_RANK_TEXT_X, UI_RANK_TEXT_START_Y + rowOffset, FONT_SMALL,
+				                   (driver->actionsFlagSet & ACTION_RACE_FINISHED) != 0 ? RED : WHITE);
+				const int id = driver->driverID;
+				UI_DrawDriverIcon(gGT->ptrIcons[data.MetaDataCharacters[data.characterIDs[id]].iconID], UI_RANK_ICON_X,
+				                  UI_RANK_ICON_BASE_Y + rowOffset, &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT, 1,
+				                  UI_RANK_ICON_SCALE, UI_Rank_GetDamageColor(id));
+			}
+			return;
+		}
 		// Number of racers that have finished race
 		s16 numRacersFinished = 0;
 
@@ -232,14 +253,14 @@ void UI_DrawRankedDrivers(void)
 	// if this is multiplayer
 	else
 	{
-		s16 *trackIconX = &data.rankIconsTransitionTimer[0];
 		int totalNumDrivers = numPlyr + gGT->numBotsNextGame;
 
 		for (driverIndex = 0; driverIndex < totalNumDrivers; driverIndex++)
 		{
 			damageColor = UI_Rank_GetDamageColor(driverIndex);
 
-			u16 currentTrackX = *trackIconX;
+			// The resident table is followed by the missile warning timers.
+			s16 *trackIconX = driverIndex < UI_RANK_DRIVER_COUNT ? &data.rankIconsTransitionTimer[driverIndex] : NULL;
 			u16 targetTrackX;
 
 			if (
@@ -272,6 +293,7 @@ void UI_DrawRankedDrivers(void)
 			}
 
 			// posX
+			u16 currentTrackX = trackIconX != NULL ? *trackIconX : targetTrackX;
 			int targetTrackXInt = targetTrackX;
 			int delta = targetTrackXInt - (s16)currentTrackX;
 
@@ -330,8 +352,10 @@ void UI_DrawRankedDrivers(void)
 
 			                     TRANS_50_DECAL, UI_RANK_TRACK_ICON_SCALE);
 
-			*trackIconX = nextTrackX;
-			trackIconX = trackIconX + 1;
+			if (trackIconX != NULL)
+			{
+				*trackIconX = nextTrackX;
+			}
 		}
 
 		for (struct Thread *warpballThread = gGT->threadBuckets[TRACKING].thread; warpballThread != 0; warpballThread = warpballThread->siblingThread)
