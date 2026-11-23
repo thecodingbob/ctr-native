@@ -9,6 +9,10 @@ static inline bool ChaosEvent_EffectFits(ChaosEffectId effect, int gameMode1, in
 	{
 		return false;
 	}
+	if (effect == CHAOS_EFFECT_IDENTITY_CRISIS)
+	{
+		return players + bots < RACE_FIELD_CONFIG_MAX_RACERS;
+	}
 	if (effect == CHAOS_EFFECT_BODY_SWAP && players < 2)
 	{
 		return personal && bots > 0;
