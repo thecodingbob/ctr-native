@@ -64,11 +64,11 @@ int main(void)
 	CTR_TEST_CHECK_EQ(UI_CupPoints_ForPosition(retail, 1, 15, -1), 0, "a negative position awards no points");
 	CTR_TEST_CHECK_EQ(UI_CupPoints_ForPosition(retail, 1, 15, 16), 0, "a position beyond the field awards no points");
 	CheckExpandedResultGrid();
-	CTR_TEST_SECTION("solo result rows leave room above the retry menu");
+	CTR_TEST_SECTION("solo result rows retain their intended alignment");
 	CTR_TEST_CHECK_EQ(UI_ResultGrid_SoloY(0, 0), 96, "the retail single row does not move");
 	const int iconHeight = 32 * UI_RESULT_GRID_SOLO_ICON_SCALE / 0x1000;
-	CTR_TEST_CHECK(UI_ResultGrid_SoloY(1, 0) >= 84, "the first row starts below the race time panel");
+	CTR_TEST_CHECK_EQ(UI_ResultGrid_SoloY(1, 0), 93, "the expanded top row keeps its aligned position");
 	CTR_TEST_CHECK(UI_ResultGrid_SoloY(1, 0) + iconHeight < UI_ResultGrid_SoloY(1, 1), "the two compact rows have vertical clearance");
-	CTR_TEST_CHECK(UI_ResultGrid_SoloY(1, 1) + iconHeight <= 142, "the bottom row clears the retry menu");
+	CTR_TEST_CHECK_EQ(UI_ResultGrid_SoloY(1, 1), 121, "the expanded bottom row keeps its aligned position");
 	return CtrTest_Summary();
 }
