@@ -739,8 +739,6 @@ void UI_RaceEnd_MenuProc(struct RectMenu *);
 void UI_RaceEnd_SetMenuLayout(struct RectMenu *menu, SVec2 *promptPos);
 
 // VEH
-bool VehStartGrid_GetTransform(const struct Level *level, unsigned int index, SVec3 *pos, SVec3 *rot);
-int VehStartGrid_ValidateSize(const struct GameTracker *tracker, int requested);
 void VehBirth_TeleportSelf(struct Driver *d, u32 spawnFlag, int spawnPosY);
 void VehBirth_TeleportAll(struct GameTracker *gGT, u32 spawnFlags);
 struct Model *VehBirth_GetModelByName(char *searchName);

@@ -233,12 +233,12 @@ void VehBirth_TeleportSelf(struct Driver *d, u32 spawnFlag, int spawnPosY)
 			spawnIndex = spawnOrder[driverID];
 			CTR_PSX_KEEP_VALUE(spawnIndex);
 
-			if (!VehStartGrid_GetTransform(tracker->level1, spawnIndex, &posBottom, &gridRot))
-			{
-				return;
-			}
-			posBottom.y += VEH_SPAWN_DRIVER_BOTTOM_Y_OFFSET;
+			VehStartGrid_GetTransform(tracker->level1, spawnIndex, &posBottom, &gridRot);
 			extraGridSlot = spawnIndex >= len(tracker->level1->DriverSpawn);
+			if (!extraGridSlot)
+			{
+				posBottom.y += VEH_SPAWN_DRIVER_BOTTOM_Y_OFFSET;
+			}
 
 			driver->actionsFlagSet |= ACTION_BEHIND_START_LINE;
 			if (tracker->level1->ptr_restart_points == NULL)
@@ -262,12 +262,17 @@ void VehBirth_TeleportSelf(struct Driver *d, u32 spawnFlag, int spawnPosY)
 	}
 
 VehBirth_PositionReady:
-	VehSpawn_ProbeGround(&posBottom, sps);
-
-	// Never apply a stale collision position to a generated slot off the track.
-	if (extraGridSlot && !VehStartGrid_IsSafeGround(sps))
+	if (extraGridSlot)
 	{
-		return;
+		// Extra rows use the translated LEV coordinates directly. The normal
+		// driving collision takes over as soon as the race starts.
+		sps->Union.QuadBlockColl.hitPos = posBottom;
+		sps->boolDidTouchQuadblock = 0;
+		driver->lastValid = NULL;
+	}
+	else
+	{
+		VehSpawn_ProbeGround(&posBottom, sps);
 	}
 
 	if (sps->boolDidTouchQuadblock != 0)

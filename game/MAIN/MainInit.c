@@ -383,7 +383,7 @@ void MainInit_Drivers(struct GameTracker *gGT)
 	int numDrivers = RaceField_RacerCount(gameMode, gGT->cup.cupID, numPlyrCurrGame, g_config.extendedMultiplayer);
 	if (sdata->loadedRaceFieldSize >= numPlyrCurrGame && sdata->loadedRaceFieldSize > 0)
 	{
-		numDrivers = VehStartGrid_ValidateSize(gGT, sdata->loadedRaceFieldSize);
+		numDrivers = sdata->loadedRaceFieldSize;
 		for (int i = numPlyrCurrGame; i < numDrivers; i++)
 		{
 			if (VehBirth_GetModelByName(GAME_CHARACTER_METADATA[data.characterIDs[i]].name_Debug) == NULL)
@@ -419,7 +419,7 @@ void MainInit_Drivers(struct GameTracker *gGT)
 		gGT->drivers[i] = VehBirth_Player(i);
 	}
 
-	// Spawn only the bots admitted by the model batch and the starting grid.
+	// Spawn the bots admitted by the model batch.
 	for (int i = numPlyrCurrGame; i < numDrivers; i++)
 	{
 		if (BOTS_Driver_Init(i) == NULL && sdata->loadedRaceFieldSize != 0)

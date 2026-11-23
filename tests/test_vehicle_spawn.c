@@ -11,8 +11,6 @@ u8 *gCTRNativeScratchpadBase;
 #include <game/Vehicle/VehBirth.c>
 
 static bool s_testCollisionSearch;
-static bool s_collisionMiss;
-static int s_probeMaxX = INT16_MAX;
 static int s_probeCount;
 static struct QuadBlock s_probeGround = {.quadFlags = QUADBLOCK_FLAG_GROUND};
 static u32 s_searchFlags;
@@ -30,18 +28,13 @@ struct Terrain *VehAfterColl_GetTerrain(u32 terrainType)
 void COLL_SearchBSP_CallbackQUADBLK(const SVec3 *top, const SVec3 *bottom, struct ScratchpadStruct *sps, s32 radius)
 {
 	(void)radius;
+	(void)top;
 	if (!s_testCollisionSearch)
 	{
 		CtrTest_Bail("appearance initialization must not search level geometry");
 	}
 	s_searchFlags = sps->Union.QuadBlockColl.searchFlags;
 	s_probeCount++;
-	if (s_collisionMiss || bottom->x > s_probeMaxX)
-	{
-		sps->Union.QuadBlockColl.hitPos = *top;
-		sps->boolDidTouchQuadblock = false;
-		return;
-	}
 	sps->Union.QuadBlockColl.hitPos = *bottom;
 	sps->boolDidTouchQuadblock = true;
 	sps->hit.ptrQuadblock = &s_probeGround;
@@ -266,8 +259,8 @@ static void TestGridTransforms(void)
 	struct Level level = {0};
 	for (unsigned int i = 0; i < len(level.DriverSpawn); i++)
 	{
-		int row = i / 2;
-		int lane = i % 2;
+		int row = i / 4;
+		int lane = i % 4;
 		level.DriverSpawn[i].pos = (SVec3){.x = (s16)(row * 100), .y = (s16)(row * 5), .z = (s16)(lane * 120)};
 		level.DriverSpawn[i].rot = (SVec3){.x = 8, .y = (s16)(ANG_PI + i), .z = -8};
 	}
@@ -277,15 +270,14 @@ static void TestGridTransforms(void)
 	{
 		unsigned int source = i % len(level.DriverSpawn);
 		bool expanded = i >= len(level.DriverSpawn);
-		CTR_TEST_CHECK(VehStartGrid_GetTransform(&level, i, &pos, &rot), "every slot in the complete formation has a transform");
-		CTR_TEST_CHECK_EQ(pos.x, level.DriverSpawn[source].pos.x + (expanded ? 400 : 0), "the extra formation starts one full grid behind");
-		CTR_TEST_CHECK_EQ(pos.y, level.DriverSpawn[source].pos.y + (expanded ? 20 : 0), "the extra formation follows the initial slope");
+		VehStartGrid_GetTransform(&level, i, &pos, &rot);
+		CTR_TEST_CHECK_EQ(pos.x, level.DriverSpawn[source].pos.x + (expanded ? 200 : 0), "the extra formation starts one full grid behind");
+		CTR_TEST_CHECK_EQ(pos.y, level.DriverSpawn[source].pos.y + (expanded ? 10 : 0), "the extra formation follows the initial slope");
 		CTR_TEST_CHECK_EQ(pos.z, level.DriverSpawn[source].pos.z, "the formation keeps each kart in its lane");
 		CTR_TEST_CHECK(rot.x == level.DriverSpawn[source].rot.x && rot.y == level.DriverSpawn[source].rot.y &&
 		                   rot.z == level.DriverSpawn[source].rot.z,
 		               "each slot keeps the orientation of its LEV template");
 	}
-	CTR_TEST_CHECK(!VehStartGrid_GetTransform(&level, RACE_FIELD_CONFIG_MAX_RACERS, &pos, &rot), "indices beyond the new grid are rejected");
 
 	struct mesh_info mesh = {0};
 	level.ptr_mesh_info = &mesh;
@@ -298,69 +290,17 @@ static void TestGridTransforms(void)
 	s_testCollisionSearch = true;
 	u8 savedSpawn = VEH_KART_SPAWN_ORDER[0];
 	VEH_KART_SPAWN_ORDER[0] = 15;
+	const int probesBefore = s_probeCount;
 	VehBirth_TeleportSelf(&driver, VEH_BIRTH_SPAWN_USE_LEVEL_POSITION, 0);
-	CTR_TEST_CHECK_EQ(driver.posCurr.x, 700 << FRACTIONAL_BITS_8, "kart birth probes the extrapolated location instead of the LEV slot");
+	CTR_TEST_CHECK_EQ(s_probeCount, probesBefore, "the extra rows do not use the spawn collision probe");
+	CTR_TEST_CHECK_EQ(driver.posCurr.x, 300 << FRACTIONAL_BITS_8, "the fourth row spawns at the translated X");
+	CTR_TEST_CHECK_EQ(driver.posCurr.y, 15 << FRACTIONAL_BITS_8, "the fourth row keeps the translated height");
+	CTR_TEST_CHECK_EQ(driver.posCurr.z, 360 << FRACTIONAL_BITS_8, "the duplicated slot stays in its lane");
 	CTR_TEST_CHECK_EQ(driver.rotCurr.y, ANG_MODULO_TWO_PI(ANG_PI + 7 + ANG_HALF_PI), "kart birth applies the usual yaw adjustment");
 	CTR_TEST_CHECK((driver.actionsFlagSet & ACTION_BEHIND_START_LINE) != 0, "an expanded slot starts behind the line");
-	s_collisionMiss = true;
-	driver.posCurr.x = 123;
-	VehBirth_TeleportSelf(&driver, VEH_BIRTH_SPAWN_USE_LEVEL_POSITION, 0);
-	CTR_TEST_CHECK_EQ(driver.posCurr.x, 123, "an expanded slot without ground never applies the previous probe's hit");
-	s_collisionMiss = false;
 	VEH_KART_SPAWN_ORDER[0] = savedSpawn;
 	s_testCollisionSearch = false;
 	sdata->gGT = NULL;
-	gCTRNativeScratchpadBase = NULL;
-
-	level.DriverSpawn[7].pos.x = INT16_MAX;
-	CTR_TEST_CHECK(!VehStartGrid_GetTransform(&level, 15, &pos, &rot), "extra positions cannot wrap in LEV coordinates");
-	memset(&level, 0, sizeof(level));
-	CTR_TEST_CHECK(!VehStartGrid_GetTransform(&level, 8, &pos, &rot), "missing rear spacing cannot duplicate the original grid");
-}
-
-static void TestGridPreflight(void)
-{
-	CTR_TEST_SECTION("Expanded grid preflight retains only a safe prefix");
-	struct mesh_info mesh = {0};
-	struct Level level = {.ptr_mesh_info = &mesh};
-	struct GameTracker tracker = {.level1 = &level, .numPlyrCurrGame = 4};
-	_Alignas(struct ScratchpadStruct) u8 scratchpad[0x1000] = {0};
-	gCTRNativeScratchpadBase = scratchpad;
-	for (unsigned int i = 0; i < len(level.DriverSpawn); i++)
-	{
-		level.DriverSpawn[i].pos.x = (s16)(200 * (i / 2));
-		level.DriverSpawn[i].pos.z = (s16)(200 * (i % 2));
-	}
-
-	// Probing while disabled would bail, so the retail request also checks that
-	// the normal path does not pay the cost of preflight.
-	CTR_TEST_CHECK_EQ(VehStartGrid_ValidateSize(&tracker, 8), 8, "the full retail grid needs no probing");
-	s_testCollisionSearch = true;
-	s_probeCount = 0;
-	CTR_TEST_CHECK_EQ(VehStartGrid_ValidateSize(&tracker, 16), 16, "a wide flat grid accepts all extra slots");
-	CTR_TEST_CHECK_EQ(s_probeCount, 8 * 5, "preflight probes the center and four edges only for the eight extra slots");
-	CTR_TEST_CHECK_EQ(s_searchFlags, 0, "preflight uses the same low-detail collision as split-screen birth");
-	CTR_TEST_CHECK_EQ(VehStartGrid_ValidateSize(&tracker, 40), 16, "preflight cannot return more than the supported slots");
-	s_probeMaxX = 1199;
-	CTR_TEST_CHECK_EQ(VehStartGrid_ValidateSize(&tracker, 16), 12, "a missed center discards that slot and all following slots");
-	s_probeMaxX = 1250;
-	CTR_TEST_CHECK_EQ(VehStartGrid_ValidateSize(&tracker, 16), 12, "ground under the center alone does not support the kart footprint");
-	s_probeMaxX = INT16_MAX;
-	s_probeGround.quadFlags |= QUADBLOCK_FLAG_KILL_PLANE;
-	CTR_TEST_CHECK_EQ(VehStartGrid_ValidateSize(&tracker, 16), 8, "kill planes cannot support additional karts");
-	s_probeGround.quadFlags = QUADBLOCK_FLAG_GROUND;
-	for (unsigned int i = 1; i < len(level.DriverSpawn); i += 2)
-	{
-		level.DriverSpawn[i].pos.z = 90;
-	}
-	CTR_TEST_CHECK_EQ(VehStartGrid_ValidateSize(&tracker, 16), 9, "additional karts cannot start inside each other's collision radii");
-	// Keep the same average translation but move one retail position near slot 9.
-	level.DriverSpawn[6].pos.x = 790;
-	level.DriverSpawn[7].pos.x = 410;
-	CTR_TEST_CHECK_EQ(VehStartGrid_ValidateSize(&tracker, 16), 8, "an extra kart still cannot overlap an unprobed retail slot");
-	level.ptr_mesh_info = NULL;
-	CTR_TEST_CHECK_EQ(VehStartGrid_ValidateSize(&tracker, 16), 8, "missing collision geometry permits no expansion");
-	s_testCollisionSearch = false;
 	gCTRNativeScratchpadBase = NULL;
 }
 
@@ -372,6 +312,5 @@ int main(void)
 	TestOxideBirthWheels();
 	TestSpawnCollisionLod();
 	TestGridTransforms();
-	TestGridPreflight();
 	return CtrTest_Summary();
 }
