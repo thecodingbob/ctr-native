@@ -5,6 +5,7 @@ enum
 {
 	VEH_SPAWN_DRIVER_BOTTOM_Y_OFFSET = 0x80,
 	VEH_SPAWN_COLL_PROBE_TOP_Y_OFFSET = 0x100,
+	VEH_GRID_GROUND_SEARCH_DEPTH = 0x400,
 };
 
 CTR_STATIC_ASSERT(RACE_FIELD_CONFIG_MAX_RACERS == 2 * len(((struct Level *)0)->DriverSpawn));
@@ -49,4 +50,30 @@ static void VehSpawn_ProbeGround(const SVec3 *bottom, struct ScratchpadStruct *s
 	SVec3 top = *bottom;
 	top.y = (s16)CTR_MipsSubLo((u16)bottom->y, VEH_SPAWN_COLL_PROBE_TOP_Y_OFFSET);
 	COLL_SearchBSP_CallbackQUADBLK(&top, bottom, sps, 0);
+}
+
+static void VehStartGrid_ResolveHeight(const SVec3 *position, struct ScratchpadStruct *sps)
+{
+	SVec3 top = *position;
+	SVec3 bottom = *position;
+	// World Y increases upwards. The collision routine traces from bottom
+	// toward top, so extend the lower endpoint, not the starting height.
+	const int topY = position->y - VEH_GRID_GROUND_SEARCH_DEPTH;
+	const int bottomY = position->y + VEH_SPAWN_DRIVER_BOTTOM_Y_OFFSET;
+	top.y = (s16)(topY < INT16_MIN ? INT16_MIN : topY);
+	bottom.y = (s16)(bottomY > INT16_MAX ? INT16_MAX : bottomY);
+	sps->Union.QuadBlockColl.quadFlagsWanted = QUADBLOCK_FLAG_GROUND;
+	sps->Union.QuadBlockColl.quadFlagsIgnored = QUADBLOCK_FLAG_KILL_PLANE | QUADBLOCK_FLAG_NO_COLLISION_RESPONSE;
+	COLL_SearchBSP_CallbackQUADBLK(&top, &bottom, sps, 0);
+	if (sps->boolDidTouchQuadblock && sps->hit.plane.normal.y > 0)
+	{
+		// Apply only the height correction; the horizontal grid is fixed.
+		sps->Union.QuadBlockColl.hitPos.x = position->x;
+		sps->Union.QuadBlockColl.hitPos.z = position->z;
+		return;
+	}
+
+	// A missed probe never rejects a kart or changes its grid slot.
+	sps->Union.QuadBlockColl.hitPos = *position;
+	sps->boolDidTouchQuadblock = 0;
 }

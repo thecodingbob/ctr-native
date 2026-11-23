@@ -11,6 +11,7 @@ u8 *gCTRNativeScratchpadBase;
 #include <game/Vehicle/VehBirth.c>
 
 static bool s_testCollisionSearch;
+static const s16 *s_spawnGroundY;
 static int s_probeCount;
 static struct QuadBlock s_probeGround = {.quadFlags = QUADBLOCK_FLAG_GROUND};
 static u32 s_searchFlags;
@@ -28,7 +29,6 @@ struct Terrain *VehAfterColl_GetTerrain(u32 terrainType)
 void COLL_SearchBSP_CallbackQUADBLK(const SVec3 *top, const SVec3 *bottom, struct ScratchpadStruct *sps, s32 radius)
 {
 	(void)radius;
-	(void)top;
 	if (!s_testCollisionSearch)
 	{
 		CtrTest_Bail("appearance initialization must not search level geometry");
@@ -36,6 +36,16 @@ void COLL_SearchBSP_CallbackQUADBLK(const SVec3 *top, const SVec3 *bottom, struc
 	s_searchFlags = sps->Union.QuadBlockColl.searchFlags;
 	s_probeCount++;
 	sps->Union.QuadBlockColl.hitPos = *bottom;
+	if (s_spawnGroundY != NULL)
+	{
+		sps->Union.QuadBlockColl.hitPos = *top;
+		if (*s_spawnGroundY < top->y || *s_spawnGroundY > bottom->y)
+		{
+			sps->boolDidTouchQuadblock = 0;
+			return;
+		}
+		sps->Union.QuadBlockColl.hitPos.y = *s_spawnGroundY;
+	}
 	sps->boolDidTouchQuadblock = true;
 	sps->hit.ptrQuadblock = &s_probeGround;
 	sps->hit.plane.normal.y = FP_ONE;
@@ -290,14 +300,21 @@ static void TestGridTransforms(void)
 	s_testCollisionSearch = true;
 	u8 savedSpawn = VEH_KART_SPAWN_ORDER[0];
 	VEH_KART_SPAWN_ORDER[0] = 15;
+	s16 groundY = -250;
+	s_spawnGroundY = &groundY;
 	const int probesBefore = s_probeCount;
 	VehBirth_TeleportSelf(&driver, VEH_BIRTH_SPAWN_USE_LEVEL_POSITION, 0);
-	CTR_TEST_CHECK_EQ(s_probeCount, probesBefore, "the extra rows do not use the spawn collision probe");
+	CTR_TEST_CHECK_EQ(s_probeCount, probesBefore + 1, "an extra slot uses one height probe");
 	CTR_TEST_CHECK_EQ(driver.posCurr.x, 300 << FRACTIONAL_BITS_8, "the fourth row spawns at the translated X");
-	CTR_TEST_CHECK_EQ(driver.posCurr.y, 15 << FRACTIONAL_BITS_8, "the fourth row keeps the translated height");
+	CTR_TEST_CHECK_EQ(driver.posCurr.y, -250 * (1 << FRACTIONAL_BITS_8), "the fourth row starts on ground below the retail probe range");
 	CTR_TEST_CHECK_EQ(driver.posCurr.z, 360 << FRACTIONAL_BITS_8, "the duplicated slot stays in its lane");
 	CTR_TEST_CHECK_EQ(driver.rotCurr.y, ANG_MODULO_TWO_PI(ANG_PI + 7 + ANG_HALF_PI), "kart birth applies the usual yaw adjustment");
 	CTR_TEST_CHECK((driver.actionsFlagSet & ACTION_BEHIND_START_LINE) != 0, "an expanded slot starts behind the line");
+	groundY = INT16_MAX;
+	VehBirth_TeleportSelf(&driver, VEH_BIRTH_SPAWN_USE_LEVEL_POSITION, 0);
+	CTR_TEST_CHECK_EQ(driver.posCurr.y, 15 << FRACTIONAL_BITS_8, "a missed height probe keeps the translated height");
+	CTR_TEST_CHECK(driver.lastValid == NULL, "a missed height probe does not keep an old ground hit");
+	s_spawnGroundY = NULL;
 	VEH_KART_SPAWN_ORDER[0] = savedSpawn;
 	s_testCollisionSearch = false;
 	sdata->gGT = NULL;

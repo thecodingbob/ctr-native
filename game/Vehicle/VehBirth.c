@@ -264,11 +264,8 @@ void VehBirth_TeleportSelf(struct Driver *d, u32 spawnFlag, int spawnPosY)
 VehBirth_PositionReady:
 	if (extraGridSlot)
 	{
-		// Extra rows use the translated LEV coordinates directly. The normal
-		// driving collision takes over as soon as the race starts.
-		sps->Union.QuadBlockColl.hitPos = posBottom;
-		sps->boolDidTouchQuadblock = 0;
 		driver->lastValid = NULL;
+		VehStartGrid_ResolveHeight(&posBottom, sps);
 	}
 	else
 	{
