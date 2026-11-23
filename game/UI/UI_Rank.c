@@ -108,33 +108,25 @@ void UI_DrawRankedDrivers(void)
 			}
 			return;
 		}
-		// Number of racers that have finished race
-		s16 numRacersFinished = 0;
-
-		// incremented when looping through player structures
+		int numRacers = 0;
+		int numRacersFinished = 0;
 
 		for (driverIndex = 0; driverIndex < UI_RANK_DRIVER_COUNT; driverIndex++)
 		{
+			struct Driver *driver = gGT->drivers[driverIndex];
+			if (driver == NULL)
+			{
+				continue;
+			}
+			numRacers++;
+
 			if (data.rankIconsTransitionTimer[driverIndex] == 0)
 			{
-				// player structure + 0x482 is your rank in the race
-				// 0 = 1st place, 1 = 2nd place, 2 = 3rd place, etc
-				// NOTE(aalhendi): Boss races only allocate P1 plus the boss.
-				// Retail reads driverRank before its later null check; if the
-				// slot is empty, PS1 low RAM is still readable, but native
-				// must skip it before dereferencing a null driver pointer.
-				if (gGT->drivers[driverIndex] != NULL)
-				{
-					data.rankIconsDesired[driverIndex] = gGT->drivers[driverIndex]->driverRank;
-				}
+				data.rankIconsDesired[driverIndex] = driver->driverRank;
 			}
 
-			// if player structure pointer is not nullptr
-			if ((gGT->drivers[driverIndex] != 0) &&
-
-			    ((gGT->drivers[driverIndex]->actionsFlagSet & ACTION_RACE_FINISHED) != 0))
+			if ((driver->actionsFlagSet & ACTION_RACE_FINISHED) != 0)
 			{
-				// count how many racers have finished
 				numRacersFinished++;
 			}
 		}
@@ -146,6 +138,10 @@ void UI_DrawRankedDrivers(void)
 		{
 			// Show 2 racers
 			visibleRankCount = UI_RANK_VISIBLE_BOSS_COUNT;
+		}
+		if (numRacers < visibleRankCount)
+		{
+			visibleRankCount = numRacers;
 		}
 
 		// height to draw rank (this bitshifts later)
