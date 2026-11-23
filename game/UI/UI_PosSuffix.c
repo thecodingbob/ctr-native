@@ -101,12 +101,18 @@ static void UI_DrawExpandedPositionAt(s16 suffixX, s16 suffixY, struct Driver *d
 		return;
 	}
 	struct Instance *model = driver->instBigNum;
+	struct GameTracker *gGT = sdata->gGT;
 	struct Thread *child = model != NULL && model->thread != NULL ? model->thread->childThread : NULL;
 	struct Instance *tens = child != NULL ? child->inst : NULL;
 	const int modelX = soloNumber != NULL ? soloNumber->x : suffixX - Widescreen_ScaleWidth(UI_POS_SUFFIX_3P4P_BIG_NUM_X_OFFSET);
 	const int modelY = soloNumber != NULL ? soloNumber->y : suffixY + UI_POS_SUFFIX_3P4P_BIG_NUM_Y_OFFSET;
-	// The 1P pack provides the 3D rank model but not the 2D rank icons.
-	if (position == 9 && model != NULL && UI_PosSuffixDigitIcon(6) == NULL)
+	if (position == 9 && model != NULL && gGT->modelPtr[STATIC_BIG9] != NULL)
+	{
+		model->model = gGT->modelPtr[STATIC_BIG9];
+		UI_PosSuffixOrientModel(model, false);
+		UI_PosSuffixPlaceModel(model, 0, modelX, modelY);
+	}
+	else if (position == 9 && model != NULL && UI_PosSuffixDigitIcon(6) == NULL)
 	{
 		UI_PosSuffixOrientModel(model, true);
 		UI_PosSuffixPlaceModel(model, UI_POS_SUFFIX_SIX_MODEL_RANK, modelX, modelY);
@@ -128,11 +134,23 @@ static void UI_DrawExpandedPositionAt(s16 suffixX, s16 suffixY, struct Driver *d
 		tens->flags &= ~HIDE_MODEL;
 		if (position == 10)
 		{
-			model->flags |= HIDE_MODEL;
-			UI_PosSuffixDrawDigit(0, unitsX, modelY, flags);
+			if (gGT->modelPtr[STATIC_BIG0] != NULL)
+			{
+				model->model = gGT->modelPtr[STATIC_BIG0];
+				UI_PosSuffixPlaceModel(model, 0, unitsX, modelY);
+			}
+			else
+			{
+				model->flags |= HIDE_MODEL;
+				UI_PosSuffixDrawDigit(0, unitsX, modelY, flags);
+			}
 		}
 		else
 		{
+			if (gGT->modelPtr[STATIC_BIG1] != NULL)
+			{
+				model->model = gGT->modelPtr[STATIC_BIG1];
+			}
 			UI_PosSuffixPlaceModel(model, position % 10 - 1, unitsX, modelY);
 		}
 	}

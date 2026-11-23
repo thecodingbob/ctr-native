@@ -194,6 +194,7 @@ void UI_ThTick_big1(struct Thread *bucket)
 {
 	struct UiElement3D *obj = bucket->object;
 	struct Instance *inst = bucket->inst;
+	inst->model = sdata->gGT->modelPtr[STATIC_BIG1];
 	// The draw path reveals the second digit only for a two-digit rank.
 	if (bucket->childThread != NULL)
 	{

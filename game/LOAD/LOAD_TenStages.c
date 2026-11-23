@@ -1,5 +1,6 @@
 #include <common.h>
 #include <platform/custom-tracks/native_track_library.h>
+#include <platform/native_cd.h>
 
 void (*mainMenuInit[])() = {MM_JumpTo_Title_FirstTime, MM_JumpTo_Characters, MM_JumpTo_TrackSelect, MM_JumpTo_BattleSetup, CS_Garage_Init, MM_JumpTo_Scrapbook};
 
@@ -10,6 +11,82 @@ enum
 {
 	LOAD_NATIVE_NDBOX_INTRO_SONG_SYNC_TIME = 0x11c0,
 };
+
+// Both missing HUD digits are consecutive in the NTSC-U Gem Stone Valley LEV.
+// Read just their sectors, not the hub geometry or its VRAM.
+static void LOAD_RankDigits(struct GameTracker *gGT, struct BigHeader *bigfile)
+{
+	enum
+	{
+		DIGITS_LEV_START = 0x5e000,
+		DIGITS_SECTORS = 2,
+		// LEV pointers are relative to the payload after the four-byte file header.
+		DIGITS_PAYLOAD_OFFSET = DIGITS_LEV_START - sizeof(u32),
+	};
+	static const struct
+	{
+		const char *name;
+		int id;
+		int offset;
+	} digits[] = {{"big0", STATIC_BIG0, 0x89c}, {"big9", STATIC_BIG9, 0x634}};
+	static const int pointerOffsets[] = {
+	    offsetof(struct Model, headers),
+	    sizeof(struct Model) + offsetof(struct ModelHeader, ptrCommandList),
+	    sizeof(struct Model) + offsetof(struct ModelHeader, ptrFrameData),
+	    sizeof(struct Model) + offsetof(struct ModelHeader, ptrTexLayout),
+	    sizeof(struct Model) + offsetof(struct ModelHeader, ptrColors),
+	};
+	u32 sectors[DIGITS_SECTORS * LOAD_CD_DATA_SECTOR_SIZE / sizeof(u32)];
+	const int index = LOAD_GetBigfileIndex(GEM_STONE_VALLEY, LOAD_LEVEL_LOD_1P, LVI_LEV);
+	if (bigfile == NULL || index >= bigfile->numEntry)
+	{
+		return;
+	}
+	const struct BigEntry *entry = BIG_GETENTRY(bigfile) + index;
+	CdlLOC base;
+	CdIntToPos(bigfile->cdpos, &base);
+	if (entry->offset < 0 || entry->size < DIGITS_LEV_START + (int)sizeof(sectors) ||
+	    !NativeCD_ReadSectorsAt(&base, (u32)entry->offset + DIGITS_LEV_START / LOAD_CD_DATA_SECTOR_SIZE, DIGITS_SECTORS, sectors))
+	{
+		return;
+	}
+	int pointers[len(digits)][len(pointerOffsets)];
+	char *raw = (char *)sectors;
+	for (int i = 0; i < (int)len(digits); i++)
+	{
+		struct Model *model = (struct Model *)(raw + digits[i].offset);
+		const int headerOffset = digits[i].offset + sizeof(*model);
+		struct ModelHeader *header = (struct ModelHeader *)(raw + headerOffset);
+		if (model->id != digits[i].id || model->numHeaders != 1 || (u32)model->headers != DIGITS_PAYLOAD_OFFSET + (u32)headerOffset ||
+		    strncmp(model->name, digits[i].name, sizeof(model->name)) != 0 || header->numAnimations != 0 ||
+		    header->unk3 != 0 || header->ptrAnimations != NULL || header->animtex != NULL)
+		{
+			return;
+		}
+		for (int p = 0; p < (int)len(pointers[i]); p++)
+		{
+			pointers[i][p] = digits[i].offset + pointerOffsets[p];
+			u32 *value = &sectors[pointers[i][p] / sizeof(u32)];
+			const u32 offset = *value - DIGITS_PAYLOAD_OFFSET;
+			if (offset < (u32)headerOffset || offset >= sizeof(sectors) || offset % sizeof(u32) != 0)
+			{
+				return;
+			}
+			*value = offset;
+		}
+	}
+	char *models = MEMPACK_AllocMem(sizeof(sectors), NULL);
+	if (models == NULL)
+	{
+		return;
+	}
+	memcpy(models, sectors, sizeof(sectors));
+	for (int i = 0; i < (int)len(digits); i++)
+	{
+		LOAD_RunPtrMap(models, pointers[i], len(pointers[i]));
+		gGT->modelPtr[digits[i].id] = (struct Model *)(models + digits[i].offset);
+	}
+}
 
 static void LOAD_NativeAudio_SetStateAfterBankReload(u32 state)
 {
@@ -526,6 +603,10 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 		if (lev != 0)
 		{
 			LibraryOfModels_Store(gGT, lev->numModels, lev->ptrModelsPtrArray);
+			if (sdata->loadedRaceFieldSize > RACE_FIELD_FULL_GRID_RACERS)
+			{
+				LOAD_RankDigits(gGT, bigfile);
+			}
 
 			gGT->ptrCircle = (u32)DecalGlobal_FindInLEV(lev, rdata.s_circle);
 			gGT->ptrClod = (u32)DecalGlobal_FindInLEV(lev, rdata.s_clod);

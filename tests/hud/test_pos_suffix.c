@@ -261,7 +261,7 @@ int main(void)
 		CTR_TEST_CHECK_EQ(bigNum.matrix.t[1], UI_ConvertY_2(soloNumberY, bigNum.matrix.t[2]), "units keep the original solo height");
 		CTR_TEST_CHECK_EQ(tens.matrix.t[1], UI_ConvertY_2(soloNumberY, tens.matrix.t[2]), "both digits share the same height");
 		CTR_TEST_CHECK_EQ(tens.matrix.t[0], UI_ConvertX_2(50, 0x100), "the leading digit keeps the safe solo anchor in 4:3");
-		CTR_TEST_CHECK_EQ(bigNum.matrix.t[0], UI_ConvertX_2(125, bigNum.matrix.t[2]), "units are a full model advance to the right in 4:3");
+		CTR_TEST_CHECK_EQ(bigNum.matrix.t[0], UI_ConvertX_2(100, bigNum.matrix.t[2]), "units are a full model advance to the right in 4:3");
 		CTR_TEST_CHECK(tens.scale.x == bigNum.scale.x && (tens.flags & HIDE_MODEL) == 0, "both model digits are drawn at the same scale");
 	}
 	CTR_TEST_CHECK(s_firstFallback == 0 && s_digitCount == 0, "11 through 16 do not draw any font digits or icons when the models are available");
@@ -280,21 +280,42 @@ int main(void)
 	s_aspectFactor = 750;
 	UI_DrawPosSuffix(soloSuffixX, soloSuffixY, &driver, 0);
 	CTR_TEST_CHECK_EQ(tens.matrix.t[0], UI_ConvertX_2(50, 0x100), "the leading digit stays at the solo anchor in widescreen");
-	CTR_TEST_CHECK_EQ(bigNum.matrix.t[0], UI_ConvertX_2(106, 0x105), "solo widescreen scales the advance rather than crowding the digits");
-	CTR_TEST_CHECK(s_suffixX > 106 + 56 / 2, "the suffix clears the units digit");
+	CTR_TEST_CHECK_EQ(bigNum.matrix.t[0], UI_ConvertX_2(87, 0x105), "solo widescreen scales the advance rather than crowding the digits");
+	CTR_TEST_CHECK(s_suffixX > 87 + 37 / 2, "the suffix clears the units digit");
 	s_tracker.numPlyrCurrGame = 4;
 	bigNum.scale.x = 0xe00;
 	bigNum.matrix.m[0][0] = FP(0.75);
 	UI_DrawPosSuffix(leftX, y, &driver, 0);
 	CTR_TEST_CHECK_EQ(tens.matrix.t[0], UI_ConvertX_2(26, 0x100), "the left split-screen indicator grows inward");
-	CTR_TEST_CHECK_EQ(bigNum.matrix.t[0], UI_ConvertX_2(55, 0x105), "split-screen scales the advance to the smaller models");
+	CTR_TEST_CHECK_EQ(bigNum.matrix.t[0], UI_ConvertX_2(45, 0x105), "split-screen scales the advance to the smaller models");
 	CTR_TEST_CHECK(tens.matrix.m[0][0] > 0 && bigNum.matrix.m[0][0] > 0,
 	               "returning to a two-digit rank leaves both models upright");
 	driver.driverID = 1;
 	const int rightSuffix = rightX + UI_PosSuffixOffset(rightX, &driver);
 	UI_DrawPosSuffix(rightX, y, &driver, 0);
 	CTR_TEST_CHECK_EQ(s_suffixX, rightSuffix, "the right split-screen indicator keeps the suffix inside the viewport");
-	CTR_TEST_CHECK_EQ(tens.matrix.t[0], UI_ConvertX_2(rightSuffix - 16 - 29, 0x100), "the right split-screen indicator grows to the left");
+	CTR_TEST_CHECK_EQ(tens.matrix.t[0], UI_ConvertX_2(rightSuffix - 12 - 19, 0x100), "the right split-screen indicator grows to the left");
+
+	CTR_TEST_SECTION("the original hub meshes replace the temporary zero and rotated six");
+	static struct Model retailDigits, zero, nine;
+	s_tracker.modelPtr[STATIC_BIG0] = &zero;
+	s_tracker.modelPtr[STATIC_BIG1] = &retailDigits;
+	s_tracker.modelPtr[STATIC_BIG9] = &nine;
+	tens.model = &retailDigits;
+	s_firstFallback = 0;
+	driver.driverRank = 9;
+	UI_DrawPosSuffix(rightX, y, &driver, 0);
+	CTR_TEST_CHECK(bigNum.model == &zero && tens.model == &retailDigits && s_firstFallback == 0,
+	               "tenth uses the original one and zero without a font glyph");
+	CTR_TEST_CHECK((bigNum.flags & HIDE_MODEL) == 0 && bigNum.matrix.t[2] == 0x100,
+	               "the standalone zero is visible and uses its first mesh");
+	driver.driverRank = 8;
+	UI_DrawPosSuffix(rightX, y, &driver, 0);
+	CTR_TEST_CHECK(bigNum.model == &nine && bigNum.matrix.m[0][0] > 0 && bigNum.matrix.t[2] == 0x100,
+	               "ninth uses the original nine without rotating the six");
+	driver.driverRank = 15;
+	UI_DrawPosSuffix(rightX, y, &driver, 0);
+	CTR_TEST_CHECK(bigNum.model == &retailDigits && bigNum.matrix.t[2] == 0x105, "sixteenth returns to the shared 1-8 model");
 	CTR_TEST_CHECK_EQ(UI_PosSuffix_ReverseWarmRamp(0x000000ff), 0x0000ffff, "the rotated model turns its upper red into yellow");
 	CTR_TEST_CHECK_EQ(UI_PosSuffix_ReverseWarmRamp(0x0000ffff), 0x000000ff, "the rotated model turns its lower yellow into red");
 	CTR_TEST_CHECK_EQ(UI_PosSuffix_ReverseWarmRamp(0x30000000), 0x30000000, "the black outline and packet flags remain unchanged");

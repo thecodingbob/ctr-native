@@ -53,6 +53,12 @@ static void TestPositionalRead(bool disc)
 	CTR_TEST_CHECK_EQ(s_callbacks, 1, "the active read callback is preserved");
 	CTR_TEST_CHECK(!NativeCD_ReadFileSectorsAt(&file, 3, 1, output), "out-of-file reads are rejected");
 	CTR_TEST_CHECK(!NativeCD_ReadFileSectorsAt(&file, ~0u, 2, output), "sector bounds cannot wrap around");
+	CdlLOC base;
+	CdIntToPos(CdPosToInt(&file.pos) + 1, &base);
+	CTR_TEST_CHECK(NativeCD_ReadSectorsAt(&base, 1, 1, output), "an opened position can read relative to a subfile base");
+	CTR_TEST_CHECK(memcmp(output, s_data + 4096, 2048) == 0, "the base sector and relative offset select the right data");
+	CTR_TEST_CHECK(!NativeCD_ReadSectorsAt(&base, 2, 1, output), "bounds account for the base sector");
+	CTR_TEST_CHECK(!NativeCD_ReadSectorsAt(&base, ~0u, 1, output), "relative reads cannot wrap into the start of a file");
 	CTR_TEST_CHECK(NativeCD_ReadFileSectorsAt(&file, 0, 1, output), "positional reads also work after stream advancement");
 	CdRead(1, output, CdlModeSpeed);
 	CTR_TEST_CHECK(memcmp(output, s_data + 2048, 2048) == 0, "positional reads preserve an advanced stream cursor");
