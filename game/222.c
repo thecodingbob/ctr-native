@@ -1,5 +1,6 @@
 #include <common.h>
 #include <extended_lap_times.h>
+#include "UI/UI_ResultGrid.h"
 
 enum ArcadeAdventureEndMenuConstants
 {
@@ -24,6 +25,7 @@ enum ArcadeAdventureEndMenuConstants
 	AA_RESULT_MAX_FRAMES = CTR_SECONDS_TO_FRAMES(30),
 	AA_DRIVER_ICON_STAGGER_FRAMES = 10,
 	AA_DRIVER_ICON_SPACING = 56,
+	AA_DRIVER_ICON_RANK_X = 0x20,
 	AA_DRIVER_ICON_EXIT_FRAME = CTR_SECONDS_TO_FRAMES(10),
 	AA_DRIVER_ICON_SCALE = 0x1000,
 	AA_DRIVER_ICON_GRAY_CHANNEL = 0x80,
@@ -60,9 +62,6 @@ enum ArcadeAdventureEndMenuConstants
 
 };
 
-// NOTE(aalhendi): Retail stores this writable one-character string before the
-// overlay code.
-global_variable s32 s_driverRankString222 CTR_PSX_MATCH_SECTION(".rodata") = 0x20;
 extern struct RectMenu menuArcadeRaceEnd;
 extern struct RectMenu menuArcadeRaceEnd2P;
 
@@ -91,7 +90,6 @@ void AA_EndEvent_DrawMenu(void)
 	register struct Instance *hudWork CTR_PSX_REGISTER("$4");
 	register struct Instance *hudToken CTR_PSX_REGISTER("$5");
 	register struct UiElement3D *letter CTR_PSX_REGISTER("$5");
-	register char *driverRankString;
 	SVec2 pos;
 	s16 timeOffsetFrames;
 	s16 driverIconFrame;
@@ -123,7 +121,6 @@ void AA_EndEvent_DrawMenu(void)
 	// on the Wumpa model at the right edge, which would push the award over there.
 	hudArray = gameHudStructs[0];
 	pushBuffer = &GAME_TRACKER->pushBuffer[0];
-	driverRankString = (char *)&s_driverRankString222;
 
 	UI_RaceEnd_SetMenuLayout(&gameMenuRetryExit, &promptPos);
 
@@ -133,7 +130,7 @@ void AA_EndEvent_DrawMenu(void)
 	}
 	CTR_PSX_RELOAD(GAME_FRAMES_SINCE_RACE_ENDED);
 
-	if (driver->instBigNum->scale.x != AA_BIG_NUM_TARGET_SCALE)
+	if (driver->instBigNum != NULL && driver->instBigNum->scale.x != AA_BIG_NUM_TARGET_SCALE)
 	{
 		driver->instFruitDisp->scale.x = 0;
 		driver->instFruitDisp->scale.y = 0;
@@ -413,7 +410,6 @@ void AA_EndEvent_DrawMenu(void)
 		register s32 lastRacerIndex CTR_PSX_REGISTER("$20");
 		s32 driverIconLerpFrame;
 
-		CTR_PSX_KEEP_VALUE(driverRankString);
 		iconGameTracker = GAME_TRACKER;
 		CTR_PSX_CLOBBER("$6");
 
@@ -443,7 +439,7 @@ void AA_EndEvent_DrawMenu(void)
 		}
 
 		i = 0;
-		if (gameNumIconsEOR > 0)
+		if (gameNumIconsEOR > 0 && totalRacers > 0)
 		{
 			register u32 characterMetadataPage CTR_PSX_REGISTER("$2");
 
@@ -461,15 +457,25 @@ void AA_EndEvent_DrawMenu(void)
 			do
 			{
 				register s16 *characterIDs CTR_PSX_REGISTER("$3");
-				register char *rankText CTR_PSX_REGISTER("$4");
+				char rankText[12];
 				u32 iconColor;
 				s32 characterID;
 				s32 driverIconCurrentFrame;
 				s32 driverIconTargetX;
 				s32 iconID;
 
-				driverIconTargetX =
-				    (u16)pushBuffer->rect.x + (pushBuffer->rect.w - (loopTotalRacers * 44 + lastRacerIndex * 12)) / 2 + (i * AA_DRIVER_ICON_SPACING);
+				int row = 0;
+				const bool expanded = loopTotalRacers > RACE_FIELD_FULL_GRID_RACERS;
+				if (expanded)
+				{
+					driverIconTargetX = UI_ResultGrid_X(pushBuffer->rect.x, pushBuffer->rect.w, loopTotalRacers, i, &row);
+				}
+				else
+				{
+					driverIconTargetX = pushBuffer->rect.x + (pushBuffer->rect.w - (loopTotalRacers * 44 + lastRacerIndex * 12)) / 2 +
+					                    i * AA_DRIVER_ICON_SPACING;
+				}
+				const int iconY = UI_ResultGrid_SoloY(expanded, row);
 
 				driverIconCurrentFrame = GAME_FRAMES_SINCE_RACE_ENDED;
 				if (AA_DRIVER_ICON_EXIT_FRAME - timeOffsetFrames < driverIconCurrentFrame)
@@ -477,19 +483,15 @@ void AA_EndEvent_DrawMenu(void)
 					s32 driverIconExitFrame;
 
 					driverIconExitFrame = driverIconCurrentFrame - AA_DRIVER_ICON_EXIT_FRAME;
-					UI_Lerp2D_Linear(CTR_VECTOR_DATA(&pos), driverIconTargetX, 0x60, -100, 0x60, driverIconExitFrame + timeOffsetFrames,
+					UI_Lerp2D_Linear(CTR_VECTOR_DATA(&pos), driverIconTargetX, iconY, -100, iconY, driverIconExitFrame + timeOffsetFrames,
 					                 AA_DRIVER_ICON_STAGGER_FRAMES);
 				}
 				else
 				{
-					UI_Lerp2D_Linear(CTR_VECTOR_DATA(&pos), 0x218, 0x60, driverIconTargetX, 0x60, driverIconLerpFrame, AA_DRIVER_ICON_STAGGER_FRAMES);
+					UI_Lerp2D_Linear(CTR_VECTOR_DATA(&pos), 0x218, iconY, driverIconTargetX, iconY, driverIconLerpFrame, AA_DRIVER_ICON_STAGGER_FRAMES);
 				}
-				rankText = driverRankString;
-
-				driverRankString[0] = (char)i + '1';
-
-				// print a single character, a number 1-8,
-				DecalFont_DrawLine(rankText, pos.x + 0x20, 0x5f, FONT_SMALL, WHITE);
+				snprintf(rankText, sizeof(rankText), "%d", (int)i + 1);
+				DecalFont_DrawLine(rankText, pos.x + AA_DRIVER_ICON_RANK_X, iconY - 1, FONT_SMALL, WHITE);
 				driverIconLerpFrame -= AA_DRIVER_ICON_STAGGER_FRAMES;
 
 				iconColor = MakeColorPacked(AA_DRIVER_ICON_GRAY_CHANNEL, AA_DRIVER_ICON_GRAY_CHANNEL, AA_DRIVER_ICON_GRAY_CHANNEL);
@@ -503,14 +505,14 @@ void AA_EndEvent_DrawMenu(void)
 
 				    GAME_TRACKER->ptrIcons[iconID],
 
-				    pos.x, 0x60, &GAME_TRACKER->backBuffer->primMem,
+				    pos.x, iconY, &GAME_TRACKER->backBuffer->primMem,
 
 				    // pointer to OT mem
 				    GAME_TRACKER->pushBuffer_UI.ptrOT,
 
-				    1, AA_DRIVER_ICON_SCALE, iconColor);
+				    1, expanded ? UI_RESULT_GRID_SOLO_ICON_SCALE : AA_DRIVER_ICON_SCALE, iconColor);
 				i++;
-			} while (i < gameNumIconsEOR);
+			} while (i < gameNumIconsEOR && i < loopTotalRacers);
 		}
 	}
 
@@ -801,20 +803,22 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames)
 	}
 
 	// === Draw BigNum ===
-	if (compactResults)
+	if (compactResults && driver->instBigNum != NULL)
 	{
-		s16 bigNumDepth = driver->driverRank + AA_BIG_NUM_Z_BASE;
-
-		driver->instBigNum->matrix.t[0] = UI_ConvertX_2(rankX - AA_COMPACT_RESULT_BIG_NUM_X_OFFSET, bigNumDepth);
-		driver->instBigNum->matrix.t[1] = UI_ConvertY_2(rankY + AA_COMPACT_RESULT_BIG_NUM_Y_OFFSET, bigNumDepth);
-		driver->instBigNum->matrix.t[2] = bigNumDepth;
+		if ((unsigned int)driver->driverRank <= RACE_FIELD_FULL_GRID_RACERS)
+		{
+			s16 bigNumDepth = driver->driverRank + AA_BIG_NUM_Z_BASE;
+			driver->instBigNum->matrix.t[0] = UI_ConvertX_2(rankX - AA_COMPACT_RESULT_BIG_NUM_X_OFFSET, bigNumDepth);
+			driver->instBigNum->matrix.t[1] = UI_ConvertY_2(rankY + AA_COMPACT_RESULT_BIG_NUM_Y_OFFSET, bigNumDepth);
+			driver->instBigNum->matrix.t[2] = bigNumDepth;
+		}
 		driver->instBigNum->scale.x = AA_COMPACT_RESULT_BIG_NUM_SCALE;
 		driver->instBigNum->scale.y = AA_COMPACT_RESULT_BIG_NUM_SCALE;
 		driver->instBigNum->scale.z = AA_COMPACT_RESULT_BIG_NUM_SCALE;
 	}
 
 	// If race ended more than 10 seconds ago.
-	else if (AA_TIME_DISPLAY_LATE_FRAME - timeOffsetFrames < driver->framesSinceRaceEnded_forThisDriver)
+	else if (!compactResults && AA_TIME_DISPLAY_LATE_FRAME - timeOffsetFrames < driver->framesSinceRaceEnded_forThisDriver)
 	{
 		UI_Lerp2D_Linear(CTR_VECTOR_DATA(&pos), -0xae, bigNumY,
 		                 UI_ConvertX_2(-100, hudArray[driverId * AA_HUD_ELEMENTS_PER_DRIVER + AA_TIME_DISPLAY_BIG_NUM_SLOT].z), bigNumY,
@@ -822,7 +826,7 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames)
 	}
 
 	// If not
-	else
+	else if (!compactResults)
 	{
 		struct UiElement2D *bigNumHud;
 
@@ -834,7 +838,7 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames)
 
 	hud = (struct UiElement2D *)((u32)(driverId * AA_HUD_ELEMENTS_PER_DRIVER * sizeof(*hudArray)) + (u32)hudArray);
 
-	if (!compactResults)
+	if (!compactResults && driver->instBigNum != NULL)
 	{
 		driver->instBigNum->matrix.t[0] = pos.x;
 		driver->instBigNum->matrix.t[1] = pos.y;
@@ -863,7 +867,14 @@ void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames)
 
 	if (compactResults)
 	{
-		DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[data.stringIndexSuffix[driver->driverRank]], rankX, rankY, FONT_SMALL, ORANGE);
+		if ((unsigned int)driver->driverRank >= RACE_FIELD_FULL_GRID_RACERS)
+		{
+			UI_DrawExpandedPosition(rankX, rankY, driver, FONT_SMALL, ORANGE);
+		}
+		else
+		{
+			DecalFont_DrawLine(GAME_LANGUAGE_STRINGS[data.stringIndexSuffix[driver->driverRank]], rankX, rankY, FONT_SMALL, ORANGE);
+		}
 	}
 	else
 	{

@@ -1014,7 +1014,7 @@ static void TestEditing(enum ConfigMenuContext context)
 		else
 		{
 			*(int *)entry->valuePtr = entry->min + entry->step;
-			snprintf(expectedBuffer, sizeof(expectedBuffer), "%d%%", EntryValue(entry));
+			snprintf(expectedBuffer, sizeof(expectedBuffer), strcmp(entry->key, "race_kart_count") == 0 ? "%d" : "%d%%", EntryValue(entry));
 			expectedText = expectedBuffer;
 		}
 		const int before = EntryValue(entry);

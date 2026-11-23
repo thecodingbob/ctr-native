@@ -43,7 +43,7 @@ enum
 
 enum
 {
-	MISSILE_TARGET_DRIVER_COUNT = 8,
+	MISSILE_TARGET_DRIVER_COUNT = RACE_FIELD_CONFIG_MAX_RACERS,
 	MISSILE_TARGET_DISTANCE_SENTINEL = 0x7fffffff,
 	MISSILE_TARGET_POS_SHIFT = 8,
 	MISSILE_TARGET_GTE_RTPS_OVERFLOW = 0x40000,
@@ -98,7 +98,7 @@ enum
 	CLOCK_HURT_DURATION_JUICED = 0x2d00,
 	CLOCK_FLASH_FRAMES = 4,
 	CLOCK_SELF_SEND_FRAMES = 0x1e,
-	CLOCK_DRIVER_COUNT = 8,
+	CLOCK_DRIVER_COUNT = RACE_FIELD_CONFIG_MAX_RACERS,
 	CLOCK_HURT_REASON = 1,
 	WARPBALL_MODEL = DYNAMIC_WARPBALL,
 	WARPBALL_MATRIX_IDENTITY_SCALE = FP(1.0),
@@ -380,13 +380,14 @@ struct Driver *VehPickupItem_MissileGetTargetDriver(struct Driver *driver)
 
 	target = NULL;
 	closestDistance = MISSILE_TARGET_DISTANCE_SENTINEL;
+	struct GameTracker *gGT = GAME_TRACKER;
+	// Extra bots project from the kart, with the full-screen rectangle as bounds.
+	const struct PushBuffer *viewport = driver->driverID < len(gGT->pushBuffer) ? &gGT->pushBuffer[driver->driverID] : &gGT->pushBuffer_UI;
 
 	if (driver->instSelf->thread->modelIndex == DYNAMIC_PLAYER)
 	{
-		struct PushBuffer *pushBuffer = &GAME_TRACKER->pushBuffer[driver->driverID];
-
-		CTR_GteSetRotMatrix(&pushBuffer->matrix_ViewProj);
-		CTR_GteSetTransMatrix(&pushBuffer->matrix_ViewProj);
+		CTR_GteSetRotMatrix(&viewport->matrix_ViewProj);
+		CTR_GteSetTransMatrix(&viewport->matrix_ViewProj);
 	}
 	else
 	{
@@ -467,7 +468,7 @@ struct Driver *VehPickupItem_MissileGetTargetDriver(struct Driver *driver)
 		{
 			continue;
 		}
-		if (screenX >= GAME_TRACKER->pushBuffer[driver->driverID].rect.w - MISSILE_TARGET_SCREEN_RIGHT_MARGIN)
+		if (screenX >= viewport->rect.w - MISSILE_TARGET_SCREEN_RIGHT_MARGIN)
 		{
 			continue;
 		}
@@ -477,7 +478,7 @@ struct Driver *VehPickupItem_MissileGetTargetDriver(struct Driver *driver)
 		{
 			continue;
 		}
-		if (screenY >= GAME_TRACKER->pushBuffer[driver->driverID].rect.h - MISSILE_TARGET_SCREEN_BOTTOM_MARGIN)
+		if (screenY >= viewport->rect.h - MISSILE_TARGET_SCREEN_BOTTOM_MARGIN)
 		{
 			continue;
 		}

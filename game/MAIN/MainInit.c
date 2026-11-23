@@ -324,9 +324,13 @@ void MainInit_JitPoolsNew(struct GameTracker *gGT)
 
 	MEMPACK_PushState();
 
-	JitPool_Init(&gGT->JitPools.thread, (renderBucketSize * 3) >> 7, sizeof(struct Thread), rdata.s_ThreadPool);
+	const int extraRacers = RaceField_ExtraPoolSlots(sdata->loadedRaceFieldSize);
+	// A two-digit position can use one additional HUD instance per viewport.
+	const int extraRankDigits = sdata->loadedRaceFieldSize >= 10 ? gGT->numPlyrCurrGame : 0;
+	JitPool_Init(&gGT->JitPools.thread, ((renderBucketSize * 3) >> 7) + extraRacers + extraRankDigits, sizeof(struct Thread), rdata.s_ThreadPool);
 	Chaos_InitThreadOwners();
-	int instanceCount = renderBucketSize >> 5;
+	// Each extra kart can use an instance for itself and another for its wake.
+	int instanceCount = (renderBucketSize >> 5) + 2 * extraRacers + extraRankDigits;
 	if (gGT->level1 != NULL && NativeTrackRegistry_Get(NativeTrackLibrary_Current(), gGT->levelID) != NULL)
 	{
 		/* Retain the retail dynamic budget in addition to placed track objects. */
@@ -336,7 +340,7 @@ void MainInit_JitPoolsNew(struct GameTracker *gGT)
 	}
 	JitPool_Init(&gGT->JitPools.instance, instanceCount, sizeof(struct Instance) + (sizeof(struct InstDrawPerPlayer) * gGT->numPlyrCurrGame),
 	             rdata.s_InstancePool);
-	JitPool_Init(&gGT->JitPools.smallStack, (poolScale * 0x19) >> 10, THREAD_SMALL_STACK_SIZE, rdata.s_SmallStackPool);
+	JitPool_Init(&gGT->JitPools.smallStack, ((poolScale * 0x19) >> 10) + extraRankDigits, THREAD_SMALL_STACK_SIZE, rdata.s_SmallStackPool);
 	JitPool_Init(&gGT->JitPools.mediumStack, poolScale >> 7, THREAD_MEDIUM_STACK_SIZE, rdata.s_MediumStackPool);
 
 	int numDriver = poolScale >> 9;
@@ -344,7 +348,7 @@ void MainInit_JitPoolsNew(struct GameTracker *gGT)
 	{
 		numDriver = 4;
 	}
-	JitPool_Init(&gGT->JitPools.largeStack, numDriver, THREAD_LARGE_STACK_SIZE, rdata.s_LargeStackPool);
+	JitPool_Init(&gGT->JitPools.largeStack, numDriver + extraRacers, THREAD_LARGE_STACK_SIZE, rdata.s_LargeStackPool);
 
 	int numParticle = poolScale >> 5;
 	JitPool_Init(&gGT->JitPools.particle, numParticle, sizeof(struct Particle), rdata.s_ParticlePool);
@@ -375,19 +379,29 @@ void MainInit_JitPoolsNew(struct GameTracker *gGT)
 void MainInit_Drivers(struct GameTracker *gGT)
 {
 	u8 numPlyrCurrGame = gGT->numPlyrCurrGame;
-	u8 numDrivers;
 	int gameMode = gGT->gameMode1;
-
-	for (int i = 0; i < 8; i++)
+	int numDrivers = RaceField_RacerCount(gameMode, gGT->cup.cupID, numPlyrCurrGame, g_config.extendedMultiplayer);
+	if (sdata->loadedRaceFieldSize >= numPlyrCurrGame && sdata->loadedRaceFieldSize > 0)
 	{
-		gGT->drivers[i] = NULL;
+		numDrivers = sdata->loadedRaceFieldSize;
+		for (int i = numPlyrCurrGame; i < numDrivers; i++)
+		{
+			if (VehBirth_GetModelByName(GAME_CHARACTER_METADATA[data.characterIDs[i]].name_Debug) == NULL)
+			{
+				numDrivers = i;
+				break;
+			}
+		}
 	}
+
+	memset(gGT->drivers, 0, sizeof(gGT->drivers));
+	memset(gGT->driversInRaceOrder, 0, sizeof(gGT->driversInRaceOrder));
 
 	gGT->numBotsNextGame = 0;
 
 	if ((gameMode & (GAME_CUTSCENE | ADVENTURE_ARENA | MAIN_MENU)) == 0)
 	{
-		BOTS_Adv_AdjustDifficulty();
+		BOTS_Adv_AdjustDifficulty(numDrivers);
 	}
 
 	GhostReplay_Init1();
@@ -405,17 +419,15 @@ void MainInit_Drivers(struct GameTracker *gGT)
 		gGT->drivers[i] = VehBirth_Player(i);
 	}
 
-	// spawn all AIs
-	// Only a race that LOAD filled the whole grid for can run eight racers,
-	// which is what the extended multiplayer option does in Arcade and in
-	// Adventure. Every other race keeps the retail lineup, so filling the extra
-	// slots would spawn racers on character IDs nobody assigned.
-	numDrivers = RaceField_RacerCount(gameMode, gGT->cup.cupID, numPlyrCurrGame, g_config.extendedMultiplayer);
-
+	// Spawn the bots admitted by the model batch.
 	for (int i = numPlyrCurrGame; i < numDrivers; i++)
 	{
-		// spawn an AI at this character index
-		BOTS_Driver_Init(i);
+		if (BOTS_Driver_Init(i) == NULL && sdata->loadedRaceFieldSize != 0)
+		{
+			// Keep the admitted prefix contiguous if a bot still cannot spawn.
+			RaceField_CompactSpawnOrder(sdata->kartSpawnOrderArray, i);
+			break;
+		}
 	}
 
 	// If number of AIs is not zero
@@ -504,6 +516,10 @@ void MainInit_FinalizeInit(struct GameTracker *gGT)
 	}
 
 	MainInit_JitPoolsReset(gGT);
+	// Tracker animation and cached distances do not belong to the next race.
+	memset(data.trackerTimer, 0, sizeof(data.trackerTimer));
+	memset(data.trackerDist, 0, sizeof(data.trackerDist));
+	memset(data.trackerType, 0, sizeof(data.trackerType));
 
 	int customLaps;
 	if (CustomCupRace_IsCustomCup(&sdata->customCupRace, gGT) &&
@@ -562,7 +578,7 @@ void MainInit_FinalizeInit(struct GameTracker *gGT)
 
 	gGT->unk1cac[4] = 2;
 
-	for (i = 0; i < 8; i++)
+	for (i = 0; i < (int)len(gGT->drivers); i++)
 	{
 		// get pointer to player structure of each driver
 		d = gGT->drivers[i];

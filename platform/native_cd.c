@@ -25,6 +25,7 @@ enum NativeCDFileSource
 struct NativeCDOpenFile
 {
 	int source;
+	u32 size;
 	FILE *hostFile;
 	struct NativeDiscImageFile discFile;
 };
@@ -108,6 +109,7 @@ internal s32 NativeCD_OpenFile(const char *filename, s32 *outSize)
 		fileIndex = s_nativeCdFileCount++;
 		memset(&s_nativeCdFiles[fileIndex], 0, sizeof(s_nativeCdFiles[fileIndex]));
 		s_nativeCdFiles[fileIndex].source = NATIVE_CD_FILE_DISC;
+		s_nativeCdFiles[fileIndex].size = discFile.size;
 		s_nativeCdFiles[fileIndex].discFile = discFile;
 		*outSize = (s32)discFile.size;
 		return fileIndex;
@@ -135,6 +137,7 @@ internal s32 NativeCD_OpenFile(const char *filename, s32 *outSize)
 	fileIndex = s_nativeCdFileCount++;
 	memset(&s_nativeCdFiles[fileIndex], 0, sizeof(s_nativeCdFiles[fileIndex]));
 	s_nativeCdFiles[fileIndex].source = NATIVE_CD_FILE_HOST;
+	s_nativeCdFiles[fileIndex].size = (u32)fileSize;
 	s_nativeCdFiles[fileIndex].hostFile = file;
 	*outSize = (s32)fileSize;
 	return fileIndex;
@@ -247,22 +250,27 @@ internal void NativeCD_SetLastCom(int com)
 	s_cdLastCom = com;
 }
 
-int NativeCD_ReadFileSectorsAt(const CdlFILE *file, unsigned int sector, unsigned int count, void *destination)
+int NativeCD_ReadSectorsAt(const CdlLOC *base, unsigned int offset, unsigned int count, void *destination)
 {
-	if (file == NULL || destination == NULL || count == 0 ||
-	    (u64)sector * NATIVE_CD_SECTOR_SIZE + (u64)count * NATIVE_CD_SECTOR_SIZE > (u32)file->size)
+	if (base == NULL || destination == NULL || count == 0)
 	{
 		return 0;
 	}
-	const s32 index = (NativeCD_PosToInt(&file->pos) >> 24) & 0xff;
+	const u32 position = (u32)NativeCD_PosToInt(base);
+	const s32 index = position >> 24;
 	if (index >= s_nativeCdFileCount)
 	{
 		return 0;
 	}
 	struct NativeCDOpenFile *source = &s_nativeCdFiles[index];
+	const u64 sector = (position & 0xffffffu) + (u64)offset;
+	if ((sector + count) * NATIVE_CD_SECTOR_SIZE > source->size)
+	{
+		return 0;
+	}
 	if (source->source == NATIVE_CD_FILE_DISC)
 	{
-		return NativeDiscImage_ReadDataSectors(&source->discFile, sector, count, destination);
+		return NativeDiscImage_ReadDataSectors(&source->discFile, (u32)sector, count, destination);
 	}
 	if (source->source != NATIVE_CD_FILE_HOST)
 	{
@@ -281,6 +289,15 @@ int NativeCD_ReadFileSectorsAt(const CdlFILE *file, unsigned int sector, unsigne
 		result = 0;
 	}
 	return result;
+}
+
+int NativeCD_ReadFileSectorsAt(const CdlFILE *file, unsigned int sector, unsigned int count, void *destination)
+{
+	if (file == NULL || ((u64)sector + count) * NATIVE_CD_SECTOR_SIZE > (u32)file->size)
+	{
+		return 0;
+	}
+	return NativeCD_ReadSectorsAt(&file->pos, sector, count, destination);
 }
 
 int NativeCD_Init(void)

@@ -50,15 +50,18 @@ static void Chaos_SwapBodies(int first, int second)
 	a->instBigNum = b->instBigNum;
 	b->instBigNum = bigNum;
 	// Rank icon animation, unlike the viewport number, follows the kart.
-	s16 rankIcon = data.rankIconsCurr[first];
-	data.rankIconsCurr[first] = data.rankIconsCurr[second];
-	data.rankIconsCurr[second] = rankIcon;
-	rankIcon = data.rankIconsDesired[first];
-	data.rankIconsDesired[first] = data.rankIconsDesired[second];
-	data.rankIconsDesired[second] = rankIcon;
-	rankIcon = data.rankIconsTransitionTimer[first];
-	data.rankIconsTransitionTimer[first] = data.rankIconsTransitionTimer[second];
-	data.rankIconsTransitionTimer[second] = rankIcon;
+	if ((unsigned int)first < len(data.rankIconsCurr) && (unsigned int)second < len(data.rankIconsCurr))
+	{
+		s16 rankIcon = data.rankIconsCurr[first];
+		data.rankIconsCurr[first] = data.rankIconsCurr[second];
+		data.rankIconsCurr[second] = rankIcon;
+		rankIcon = data.rankIconsDesired[first];
+		data.rankIconsDesired[first] = data.rankIconsDesired[second];
+		data.rankIconsDesired[second] = rankIcon;
+		rankIcon = data.rankIconsTransitionTimer[first];
+		data.rankIconsTransitionTimer[first] = data.rankIconsTransitionTimer[second];
+		data.rankIconsTransitionTimer[second] = rankIcon;
+	}
 	if (aHuman)
 	{
 		tracker->humanPlayerPositions[first] = b->driverRank;
@@ -146,7 +149,7 @@ int Chaos_CollectBodySwapPartners(int player, int *candidates)
 		return 0;
 	}
 	int count = 0;
-	for (int slot = 0; slot < (int)len(GAME_TRACKER->drivers); slot++)
+	for (int slot = 0; slot < (int)len(runtime->bodySwapPartner); slot++)
 	{
 		if (slot != player && runtime->bodySwapPartner[slot] == 0 && Chaos_CanSwapBody(slot))
 		{
@@ -170,7 +173,7 @@ void Chaos_BeginBodySwaps(void)
 	Chaos_ReturnBodySwaps();
 	for (int player = 0; player < tracker->numPlyrCurrGame; player++)
 	{
-		int candidates[LOAD_CHARACTER_ID_COUNT];
+		int candidates[RACE_FIELD_CONFIG_MAX_RACERS];
 		const int count = Chaos_CollectBodySwapPartners(player, candidates);
 		if (count == 0)
 		{

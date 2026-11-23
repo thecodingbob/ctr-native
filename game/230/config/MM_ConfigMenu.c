@@ -271,9 +271,9 @@ static void Config_DrawValue(const ConfigEntry *e, int y, uint32_t *ot)
 		}
 		FullScreenMenu_DrawValueTextColored(text, y, color, ot);
 	}
-	else
+	else if (e->type == CFG_INT)
 	{
-		FullScreenMenu_DrawPercentColored(*(int *)e->valuePtr, y, color, ot);
+		FullScreenMenu_DrawValueWithSuffixColored(*(int *)e->valuePtr, e->intSuffix != NULL ? e->intSuffix : "%", y, color, ot);
 	}
 }
 

@@ -4,6 +4,8 @@
 #include <shared/ctr_test.h>
 #include <common.h>
 #include <race_field.h>
+#include <game/MixRNG/RngDeadCoed.c>
+#include <game/BOTS_AdventureGrid.h>
 
 // regionsEXE.h defines sdata as a pointer into this, so the linker wants the
 // storage even though nothing here reads it.
@@ -272,8 +274,183 @@ static void TestAModeBitAloneIsNotARace(void)
 	}
 }
 
+static void TestConfiguredGrid(void)
+{
+	CTR_TEST_SECTION("configured grids: capacity, multiplayer and managed rosters");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(ARCADE_MODE, LOAD_CUP_ID_NONE, 1, false, 16, 15), 16,
+	                  "a solo race can request sixteen distinct racers");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(ARCADE_MODE, LOAD_CUP_ID_NONE, 1, false, 16, 7), 8,
+	                  "the eligible roster limits the field");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(ARCADE_MODE, LOAD_CUP_ID_NONE, 2, false, 16, 15), 6,
+	                  "retail two-player races cap the field at six");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(ARCADE_MODE, LOAD_CUP_ID_NONE, 2, true, 16, 15), 16,
+	                  "extended multiplayer permits the configured field");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(ARCADE_MODE, LOAD_CUP_ID_NONE, 4, false, 16, 15), 4,
+	                  "retail four-player races gain no bots");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(ARCADE_MODE, LOAD_CUP_ID_NONE, 4, true, 2, 15), 4,
+	                  "the setting never removes a human player");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(ARCADE_MODE, LOAD_CUP_ID_NONE, 1, true, 0, 15), 2,
+	                  "the configured minimum is two racers");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(ARCADE_MODE, LOAD_CUP_ID_NONE, 1, true, 100, 100), 16,
+	                  "the configured maximum is sixteen racers");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(ARCADE_MODE, LOAD_CUP_ID_NONE, 2, true, 16, -1), 2,
+	                  "an unavailable roster never removes human players");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(RACE_BOSS, LOAD_CUP_ID_NONE, 1, true, 16, 15), 2,
+	                  "boss races keep their managed roster");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(RACE_GEM_CUP, CUP_ID_PURPLE_GEM, 1, true, 16, 15), 5,
+	                  "the purple gem cup keeps its four bosses");
+	CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(TIME_TRIAL, LOAD_CUP_ID_NONE, 1, true, 16, 15), 1,
+	                  "time trials never gain opponents");
+}
+
+static void TestConfiguredGridModeMatrix(void)
+{
+	static const int normalModes[] = {ARCADE_MODE, ADVENTURE_MODE, RACE_GEM_CUP};
+	static const int managedModes[] = {
+	    ARCADE_MODE | TIME_TRIAL, RACE_RELIC, RACE_CRYSTAL, RACE_HUB,
+	    ARCADE_MODE | BATTLE_MODE, MAIN_MENU, GAME_CUTSCENE, RACE_BOSS,
+	};
+
+	CTR_TEST_SECTION("configured grids: default and managed mode matrix");
+	for (int players = 1; players <= 4; players++)
+	{
+		for (int extended = 0; extended <= 1; extended++)
+		{
+			for (size_t mode = 0; mode < sizeof(normalModes) / sizeof(normalModes[0]); mode++)
+			{
+				int flags = normalModes[mode];
+				CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(flags, LOAD_CUP_ID_NONE, players, extended, 8, 16),
+				                  RaceField_RacerCount(flags, LOAD_CUP_ID_NONE, players, extended),
+				                  "the default field matches retail when enough characters are available");
+			}
+			for (size_t mode = 0; mode < sizeof(managedModes) / sizeof(managedModes[0]); mode++)
+			{
+				int flags = managedModes[mode];
+				CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(flags, LOAD_CUP_ID_NONE, players, extended, 16, 0),
+				                  RaceField_RacerCount(flags, LOAD_CUP_ID_NONE, players, extended),
+				                  "a managed mode ignores the configured field and bot availability");
+			}
+			CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(RACE_GEM_CUP, CUP_ID_PURPLE_GEM, players, extended, 16, 0),
+			                  RaceField_RacerCount(RACE_GEM_CUP, CUP_ID_PURPLE_GEM, players, extended),
+			                  "the purple gem cup retains its managed field");
+		}
+	}
+
+	CTR_TEST_SECTION("configured grids: all supported field sizes and player counts");
+	for (int players = 1; players <= 4; players++)
+	{
+		for (int configured = 2; configured <= 16; configured++)
+		{
+			for (int available = 0; available <= 15; available++)
+			{
+				int expected = configured < players ? players : configured;
+				if (expected > players + available)
+				{
+					expected = players + available;
+				}
+				CTR_TEST_CHECK_EQ(RaceField_ConfiguredRacerCount(ARCADE_MODE, LOAD_CUP_ID_NONE, players, true, configured, available),
+				                  expected, "the extended grid respects the setting, humans and available characters");
+			}
+		}
+	}
+}
+
+static void TestCompactSpawnOrder(void)
+{
+	CTR_TEST_SECTION("grid compaction preserves relative order across a smaller round");
+	char grid[RACE_FIELD_CONFIG_MAX_RACERS] = {15, 14, 0, 4, 1, 8};
+	RaceField_CompactSpawnOrder(grid, 6);
+	const char reduced[] = {5, 4, 0, 2, 1, 3};
+	for (int i = 0; i < (int)len(reduced); i++)
+	{
+		CTR_TEST_CHECK_EQ(grid[i], reduced[i], "surviving drivers keep their order and both humans still start at the back");
+	}
+	CTR_TEST_CHECK_EQ((unsigned char)grid[6], 255, "an inactive driver cannot reuse an old rank");
+	RaceField_CompactSpawnOrder(grid, 9);
+	for (int i = 6; i < 9; i++)
+	{
+		CTR_TEST_CHECK_EQ(grid[i], i, "bots returning in a later round take the open positions");
+	}
+	grid[0] = grid[1];
+	RaceField_CompactSpawnOrder(grid, 9);
+	CTR_TEST_CHECK_EQ(grid[1], 8, "duplicate ranks do not place two karts in the same slot");
+	for (int i = 0; i < RACE_FIELD_CONFIG_MAX_RACERS; i++)
+	{
+		grid[i] = RACE_FIELD_CONFIG_MAX_RACERS - 1 - i;
+	}
+	RaceField_CompactSpawnOrder(grid, RACE_FIELD_CONFIG_MAX_RACERS);
+	for (int i = 0; i < RACE_FIELD_CONFIG_MAX_RACERS; i++)
+	{
+		CTR_TEST_CHECK_EQ(grid[i], RACE_FIELD_CONFIG_MAX_RACERS - 1 - i, "a valid expanded grid is unchanged");
+	}
+}
+
+static void TestInitialAdventureGrid(void)
+{
+	CTR_TEST_SECTION("Adventure seeds the grid from the admitted roster, not the requested size");
+	char grid[RACE_FIELD_CONFIG_MAX_RACERS];
+	struct RngDeadCoedState rng = {.state0 = 0x30215400, .state1 = 0x493583fe};
+	for (int racers = 2; racers <= RACE_FIELD_CONFIG_MAX_RACERS; racers++)
+	{
+		memset(grid, -1, sizeof(grid));
+		BOTS_SeedAdventureGrid(grid, 2, racers, -1, &rng);
+		CTR_TEST_CHECK(grid[0] == racers - 1 && grid[1] == racers - 2,
+		               "both humans start at the back even when the playable grid is smaller");
+		bool occupied[RACE_FIELD_CONFIG_MAX_RACERS] = {0};
+		for (int i = 2; i < racers; i++)
+		{
+			const unsigned int slot = (unsigned char)grid[i];
+			CTR_TEST_CHECK(slot < (unsigned int)(racers - 2) && !occupied[slot], "bots have distinct places ahead of the humans");
+			if (slot < len(occupied))
+			{
+				occupied[slot] = true;
+			}
+		}
+		CTR_TEST_CHECK(racers == RACE_FIELD_CONFIG_MAX_RACERS || grid[racers] == (char)-1,
+		               "a rejected driver is not assigned a starting slot");
+	}
+	BOTS_SeedAdventureGrid(grid, 2, 6, 3, &rng);
+	const char championGrid[] = {5, 4, 1, 0, 3, 2};
+	CTR_TEST_CHECK(memcmp(grid, championGrid, sizeof(championGrid)) == 0, "the champion takes pole and the last bot fills the gap");
+	BOTS_SeedAdventureGrid(grid, 2, 6, 5, &rng);
+	CTR_TEST_CHECK(grid[2] == 1 && grid[3] == 2 && grid[4] == 3 && grid[5] == 0,
+	               "the champion can take pole even as the last eligible bot");
+}
+
+static void TestExtraPoolSlots(void)
+{
+	CTR_TEST_SECTION("keep retail pool capacities and reserve for the loaded upper bound");
+	CTR_TEST_CHECK_EQ(RaceField_ExtraPoolSlots(0), 0, "modes without a configured field keep their retail pools");
+	CTR_TEST_CHECK_EQ(RaceField_ExtraPoolSlots(6), 0, "a short field does not shrink the pools");
+	CTR_TEST_CHECK_EQ(RaceField_ExtraPoolSlots(8), 0, "eight racers fit the retail pools");
+	CTR_TEST_CHECK_EQ(RaceField_ExtraPoolSlots(9), 1, "the ninth racer needs an extra slot");
+	CTR_TEST_CHECK_EQ(RaceField_ExtraPoolSlots(12), 4, "the pools reserve for the loaded field, not the eventual geometry limit");
+	CTR_TEST_CHECK_EQ(RaceField_ExtraPoolSlots(16), 8, "the full field doubles the driver slots from eight to sixteen");
+	CTR_TEST_CHECK_EQ(RaceField_ExtraPoolSlots(255), 8, "the pool reserve is bounded by maximum supported field size");
+}
+
+static void TestExpandedItemRanks(void)
+{
+	CTR_TEST_SECTION("expanded races preserve position-based item tiers");
+	for (int racers = 9; racers <= RACE_FIELD_CONFIG_MAX_RACERS; racers++)
+	{
+		CTR_TEST_CHECK_EQ(RaceField_ExpandedItemRank(0, racers), 0, "first always uses the retail leader's item set");
+		CTR_TEST_CHECK_EQ(RaceField_ExpandedItemRank(1, racers), 1, "the runner-up does not share the leader's item set");
+		CTR_TEST_CHECK_EQ(RaceField_ExpandedItemRank(racers - 1, racers), 7, "last uses the last retail tier");
+		int previous = 0;
+		for (int rank = 1; rank < racers; rank++)
+		{
+			int mapped = RaceField_ExpandedItemRank(rank, racers);
+			CTR_TEST_CHECK(mapped >= previous && mapped > 0 && mapped < 8, "trailing ranks map monotonically within the retail table");
+			previous = mapped;
+		}
+	}
+}
+
 int main(void)
 {
+	TestExpandedItemRanks();
+	TestExtraPoolSlots();
 	TestNormalRaceGrid();
 	TestBotCountFollowsTheGrid();
 	TestHighPlayerCountsNeedTheOption();
@@ -283,6 +460,10 @@ int main(void)
 	TestRetailConstantsAreUnchanged();
 	TestExtendedOptionScope();
 	TestAModeBitAloneIsNotARace();
+	TestConfiguredGrid();
+	TestConfiguredGridModeMatrix();
+	TestCompactSpawnOrder();
+	TestInitialAdventureGrid();
 
 	return CtrTest_Summary();
 }

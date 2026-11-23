@@ -750,7 +750,7 @@ void MainGameEnd_Initialize(void)
 	{
 		Chaos_Reset();
 		player = gGT->drivers[0];
-		for (int i = 0; i < 8; i++)
+		for (int i = 0; i < (int)len(gGT->drivers); i++)
 		{
 			struct Driver *driver = gGT->drivers[i];
 

@@ -3,8 +3,6 @@
 enum
 {
 	VEH_BIRTH_ADV_RETURN_LEVEL_COUNT = 0x14,
-	VEH_BIRTH_DRIVER_BOTTOM_Y_OFFSET = 0x80,
-	VEH_BIRTH_COLL_PROBE_TOP_Y_OFFSET = 0x100,
 	VEH_BIRTH_DOOR_FORWARD_OFFSET = 800,
 	VEH_BIRTH_DOOR_SIDE_OFFSET = 0x200,
 	VEH_BIRTH_DOOR_Y_OFFSET = 0x17a,
@@ -16,16 +14,19 @@ enum
 	VEH_BIRTH_CHEAT_ITEM_MASK = HELD_ITEM_MASK,
 	VEH_BIRTH_CHEAT_ITEM_COUNT = 9,
 	VEH_BIRTH_CHEAT_DURATION = 0x2d00,
-	VEH_BIRTH_PLAYER_THREAD_FLAGS = SIZE_RELATIVE_POOL_BUCKET(DRIVER_NTSC_RETAIL_SIZE, NONE, LARGE, PLAYER),
+	VEH_BIRTH_PLAYER_THREAD_FLAGS = SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Driver), NONE, LARGE, PLAYER),
 };
+
+CTR_STATIC_ASSERT(sizeof(struct Driver) < THREAD_LARGE_STACK_SIZE - sizeof(struct Item));
 
 typedef u32 VehBirthInstDefNameWord CTR_MAY_ALIAS;
 
 void VehBirth_TeleportSelf(struct Driver *d, u32 spawnFlag, int spawnPosY)
 {
-	SVec3 posTop;
 	SVec3 posBottom;
 	SVec3 warppadPos;
+	SVec3 gridRot = {0};
+	bool extraGridSlot = false;
 	struct Driver *driver = d;
 	s16 *warppadRot = NULL;
 	int spawnOutsideBoss = 0;
@@ -46,14 +47,7 @@ void VehBirth_TeleportSelf(struct Driver *d, u32 spawnFlag, int spawnPosY)
 	}
 
 	sps = CTR_SCRATCHPAD_PTR(struct ScratchpadStruct, 0x108);
-	sps->Union.QuadBlockColl.quadFlagsWanted = QUADBLOCK_FLAG_GROUND | QUADBLOCK_FLAG_COLLISION_SURFACE;
-	sps->Union.QuadBlockColl.quadFlagsIgnored = 0;
-	sps->Union.QuadBlockColl.searchFlags = 0;
-	if (initialTracker->numPlyrCurrGame < 3 || sdata->highDetailSplitScreenLevel)
-	{
-		sps->Union.QuadBlockColl.searchFlags = COLL_SEARCH_HIGH_LOD;
-	}
-	sps->ptr_mesh_info = initialTracker->level1->ptr_mesh_info;
+	VehSpawn_InitGroundProbe(initialTracker, sps);
 
 	initialTracker->gameMode2 &= ~VEH_FREEZE_DOOR;
 
@@ -177,7 +171,7 @@ void VehBirth_TeleportSelf(struct Driver *d, u32 spawnFlag, int spawnPosY)
 			if (shouldSpawnOutside)
 			{
 				posBottom.x = GAME_TRACKER->level1->ptrSpawnType2_PosRot[1].coords.posRot[1].pos.x;
-				posBottom.y = GAME_TRACKER->level1->ptrSpawnType2_PosRot[1].coords.posRot[1].pos.y + VEH_BIRTH_DRIVER_BOTTOM_Y_OFFSET;
+				posBottom.y = GAME_TRACKER->level1->ptrSpawnType2_PosRot[1].coords.posRot[1].pos.y + VEH_SPAWN_DRIVER_BOTTOM_Y_OFFSET;
 				posBottom.z = GAME_TRACKER->level1->ptrSpawnType2_PosRot[1].coords.posRot[1].pos.z;
 				goto VehBirth_PositionReady;
 			}
@@ -187,7 +181,7 @@ void VehBirth_TeleportSelf(struct Driver *d, u32 spawnFlag, int spawnPosY)
 				if (GAME_TRACKER->podiumRewardID != NOFUNC)
 				{
 					posBottom.x = GAME_TRACKER->level1->ptrSpawnType2_PosRot[1].coords.posRot[0].pos.x;
-					posBottom.y = GAME_TRACKER->level1->ptrSpawnType2_PosRot[1].coords.posRot[0].pos.y + VEH_BIRTH_DRIVER_BOTTOM_Y_OFFSET;
+					posBottom.y = GAME_TRACKER->level1->ptrSpawnType2_PosRot[1].coords.posRot[0].pos.y + VEH_SPAWN_DRIVER_BOTTOM_Y_OFFSET;
 					posBottom.z = GAME_TRACKER->level1->ptrSpawnType2_PosRot[1].coords.posRot[0].pos.z;
 					goto VehBirth_PositionReady;
 				}
@@ -220,7 +214,7 @@ void VehBirth_TeleportSelf(struct Driver *d, u32 spawnFlag, int spawnPosY)
 
 					warppadRot = AH_WarpPad_GetSpawnPosRot(CTR_VECTOR_DATA(&(warppadPos)));
 					posBottom.x = warppadPos.x;
-					posBottom.y = warppadPos.y + VEH_BIRTH_DRIVER_BOTTOM_Y_OFFSET;
+					posBottom.y = warppadPos.y + VEH_SPAWN_DRIVER_BOTTOM_Y_OFFSET;
 					posBottom.z = warppadPos.z;
 					goto VehBirth_PositionReady;
 				}
@@ -239,6 +233,13 @@ void VehBirth_TeleportSelf(struct Driver *d, u32 spawnFlag, int spawnPosY)
 			spawnIndex = spawnOrder[driverID];
 			CTR_PSX_KEEP_VALUE(spawnIndex);
 
+			VehStartGrid_GetTransform(tracker->level1, spawnIndex, &posBottom, &gridRot);
+			extraGridSlot = spawnIndex >= len(tracker->level1->DriverSpawn);
+			if (!extraGridSlot)
+			{
+				posBottom.y += VEH_SPAWN_DRIVER_BOTTOM_Y_OFFSET;
+			}
+
 			driver->actionsFlagSet |= ACTION_BEHIND_START_LINE;
 			if (tracker->level1->ptr_restart_points == NULL)
 			{
@@ -250,25 +251,26 @@ void VehBirth_TeleportSelf(struct Driver *d, u32 spawnFlag, int spawnPosY)
 			{
 				driver->distanceToFinish_checkpoint = tracker->level1->ptr_restart_points[0].distToFinish << 3;
 			}
-			posBottom.x = tracker->level1->DriverSpawn[spawnIndex].pos.x;
-			posBottom.y = tracker->level1->DriverSpawn[spawnIndex].pos.y + VEH_BIRTH_DRIVER_BOTTOM_Y_OFFSET;
-			posBottom.z = tracker->level1->DriverSpawn[spawnIndex].pos.z;
 		}
 		}
 	}
 	else
 	{
 		posBottom.x = (s16)CTR_MipsSra(driver->posCurr.x, FRACTIONAL_BITS_8);
-		posBottom.y = (s16)CTR_MipsAddLo(CTR_MipsSra(driver->posCurr.y, FRACTIONAL_BITS_8), VEH_BIRTH_DRIVER_BOTTOM_Y_OFFSET);
+		posBottom.y = (s16)CTR_MipsAddLo(CTR_MipsSra(driver->posCurr.y, FRACTIONAL_BITS_8), VEH_SPAWN_DRIVER_BOTTOM_Y_OFFSET);
 		posBottom.z = (s16)CTR_MipsSra(driver->posCurr.z, FRACTIONAL_BITS_8);
 	}
 
 VehBirth_PositionReady:
-	posTop.x = posBottom.x;
-	posTop.y = (s16)CTR_MipsSubLo((u16)posBottom.y, VEH_BIRTH_COLL_PROBE_TOP_Y_OFFSET);
-	posTop.z = posBottom.z;
-
-	COLL_SearchBSP_CallbackQUADBLK(&posTop, &posBottom, sps, 0);
+	if (extraGridSlot)
+	{
+		driver->lastValid = NULL;
+		VehStartGrid_ResolveHeight(&posBottom, sps);
+	}
+	else
+	{
+		VehSpawn_ProbeGround(&posBottom, sps);
+	}
 
 	if (sps->boolDidTouchQuadblock != 0)
 	{
@@ -390,12 +392,9 @@ VehBirth_PositionReady:
 			}
 
 			{
-				u8 spawnIndex = VEH_KART_SPAWN_ORDER[driver->driverID];
-
-				driver->rotCurr.x = GAME_TRACKER->level1->DriverSpawn[spawnIndex].rot.x;
-				driver->rotCurr.y = GAME_TRACKER->level1->DriverSpawn[spawnIndex].rot.y;
-				driver->rotCurr.z = GAME_TRACKER->level1->DriverSpawn[spawnIndex].rot.z;
-				driver->rotCurr.y = ANG_MODULO_TWO_PI(driver->rotCurr.y + ANG_HALF_PI);
+				driver->rotCurr.x = gridRot.x;
+				driver->rotCurr.y = ANG_MODULO_TWO_PI(gridRot.y + ANG_HALF_PI);
+				driver->rotCurr.z = gridRot.z;
 			}
 		}
 	}
@@ -694,6 +693,9 @@ void VehBirth_NonGhost(struct Thread *t, int index)
 	t->driverCollisionReserved_0x40 = 0;
 
 	d = t->object;
+	// The recycled pool payload includes native fields beyond the retail prefix.
+	memset(d, 0, sizeof(*d));
+	d->maskIsAku = -1;
 	characterMetadata = GAME_CHARACTER_METADATA;
 
 	if ((GAME_TRACKER->gameMode1 & MAIN_MENU) != 0)
@@ -770,10 +772,6 @@ struct Driver *VehBirth_Player(int index)
 
 	t = PROC_BirthWithObject(VEH_BIRTH_PLAYER_THREAD_FLAGS, 0, VEH_PLAYER_THREAD_NAME, 0);
 	d = t->object;
-	memset(d, 0, DRIVER_NTSC_RETAIL_SIZE);
-
-	d->maskIsAku = -1;
-	d->boolHadMaskBeforeOOB = 0;
 
 	VehBirth_NonGhost(t, index);
 

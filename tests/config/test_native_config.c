@@ -422,11 +422,32 @@ static void TestAdventureOptionsWithoutLegacyMigration(void)
 	g_config = initial;
 }
 
+static void TestRaceKartCount(void)
+{
+	CTR_TEST_SECTION("race kart count default and persistence");
+	const NativeConfig initial = g_config;
+	CTR_TEST_CHECK_EQ(g_config.raceKartCount, 8, "the default requests the retail field");
+	char path[512];
+	NativePath_Join(path, sizeof(path), NativeStr8_FromCString(s_testBaseDir), NATIVE_STR8_LIT("config.ini"));
+	const int values[] = {2, 12, 16};
+	for (int i = 0; i < (int)len(values); i++)
+	{
+		g_config.raceKartCount = values[i];
+		NativeConfig_Save();
+		g_config.raceKartCount = initial.raceKartCount;
+		CTR_TEST_CHECK(NativeConfig_Load() == CONFIG_LOAD_OK && g_config.raceKartCount == values[i],
+		               "a valid kart count survives saving and loading");
+	}
+	remove(path);
+	g_config = initial;
+}
+
 static void TestShippedPresets(void)
 {
 	CTR_TEST_SECTION("shipped presets");
 	const NativeConfig initial = g_config;
 	g_config.skipIntro = true;
+	g_config.raceKartCount = 8;
 	CTR_TEST_CHECK(NativeConfig_ApplyPresetFile(CTR_PRESET_SOURCE_DIR "/expanded.ini") == CONFIG_LOAD_OK,
 	               "shipped Expanded preset is valid");
 	CTR_TEST_CHECK(g_config.fxaa && g_config.expandedArcade && g_config.unlockNitrosOxide &&
@@ -435,6 +456,7 @@ static void TestShippedPresets(void)
 	               "Expanded preset applies the agreed options");
 	CTR_TEST_CHECK(g_config.skipIntro, "shipped preset preserves options it does not list");
 	CTR_TEST_CHECK(g_config.chaosMode, "Expanded enables the shared Chaos prompt");
+	CTR_TEST_CHECK_EQ(g_config.raceKartCount, 16, "Expanded requests the full field");
 	CTR_TEST_CHECK(NativeConfig_ApplyPresetFile(CTR_PRESET_SOURCE_DIR "/vanilla.ini") == CONFIG_LOAD_OK,
 	               "shipped Vanilla preset is valid");
 	CTR_TEST_CHECK(!g_config.fxaa && !g_config.expandedArcade && !g_config.unlockNitrosOxide &&
@@ -442,6 +464,7 @@ static void TestShippedPresets(void)
 	               g_config.bossCutscenes == BOSS_CUTSCENES_UNSKIPPABLE && g_config.loadingScreen == LOADING_SCREEN_VANILLA,
 	               "Vanilla preset restores the corresponding options");
 	CTR_TEST_CHECK(!g_config.chaosMode, "switching to Vanilla disables the shared Chaos prompt");
+	CTR_TEST_CHECK_EQ(g_config.raceKartCount, 8, "Vanilla restores the default field");
 	g_config = initial;
 }
 
@@ -466,6 +489,7 @@ int main(void)
 	CtrTestScratch_Open(s_testBaseDir, sizeof(s_testBaseDir), "config-tests", NULL);
 	CTR_TEST_SECTION("native_config tests");
 	TestChaosModeOption();
+	TestRaceKartCount();
 	TestDeveloperDefaultsAreImmutable();
 	TestProfileStartup();
 	TestConfigPresetPrecedence();

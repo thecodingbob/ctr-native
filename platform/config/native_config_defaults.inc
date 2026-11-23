@@ -10,6 +10,7 @@
 .allowOxideStationMultiplayer = false,
 .allowRaceTracksInBattle = false,
 .extendedMultiplayer = false,
+.raceKartCount = RACE_FIELD_CONFIG_DEFAULT_RACERS,
 .botSelectionMode = BOT_SELECTION_PREDETERMINED,
 .skipHints = false,
 .bossCutscenes = BOSS_CUTSCENES_UNSKIPPABLE,

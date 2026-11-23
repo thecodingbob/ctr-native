@@ -282,6 +282,9 @@ CTR_STATIC_ASSERT(OFFSETOF(struct GameTrackerConfetti, numParticles_max) == 0x4)
 CTR_STATIC_ASSERT(OFFSETOF(struct GameTrackerConfetti, vanishRate) == 0x6);
 CTR_STATIC_ASSERT(OFFSETOF(struct GameTrackerConfetti, velY) == 0x8);
 
+// Race field rules use the mode definitions above; the tracker uses their capacity.
+#include <race_field.h>
+
 struct GameTracker
 {
 	// 0x0
@@ -745,7 +748,7 @@ struct GameTracker
 		int trackIndex; // 0-3
 
 		// 1e60
-		int points[8];
+		int points[RACE_FIELD_CONFIG_MAX_RACERS];
 
 	} cup;
 
@@ -1274,10 +1277,10 @@ struct GameTracker
 	// 0xe2 - NUM_TYPES
 
 	// +24EC  8009900C
-	struct Driver *drivers[8];
+	struct Driver *drivers[RACE_FIELD_CONFIG_MAX_RACERS];
 
 	// +250C  8009902C
-	struct Driver *driversInRaceOrder[8];
+	struct Driver *driversInRaceOrder[RACE_FIELD_CONFIG_MAX_RACERS];
 
 	// 252c
 	// this stuct is passed to FUN_8006c684 and updates every frame (this is func with 0xdeadc0ed)

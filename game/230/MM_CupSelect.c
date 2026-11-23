@@ -33,7 +33,6 @@ void MM_CupSelect_MenuProc(struct RectMenu *menu)
 	// retail schedule while CTR_PSX_* keeps the native path semantic.
 	register struct RectMenu *menuState CTR_PSX_REGISTER("$23") = menu;
 	register s16 cupIndex CTR_PSX_REGISTER("$18");
-	s16 driverIndex;
 	RECT cupBox;
 
 	if (menuState->funcState == RECTMENU_FUNC_STATE_INPUT)
@@ -96,12 +95,7 @@ void MM_CupSelect_MenuProc(struct RectMenu *menu)
 				// set track index to zero, to go to first track
 				GAME_TRACKER->cup.trackIndex = 0;
 
-				// loop through 8 drivers
-				for (driverIndex = 0; driverIndex < MM_CUP_SELECT_DRIVER_SLOT_COUNT; driverIndex++)
-				{
-					// set all points for all 8 drivers to zero
-					GAME_TRACKER->cup.points[driverIndex] = 0;
-				}
+				memset(GAME_TRACKER->cup.points, 0, sizeof(GAME_TRACKER->cup.points));
 
 				// set current level
 				GAME_TRACKER->currLEV = MM_ARCADE_CUPS[GAME_TRACKER->cup.cupID].CupTrack[GAME_TRACKER->cup.trackIndex].trackID;

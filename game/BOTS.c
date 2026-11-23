@@ -1,5 +1,6 @@
 #include <common.h>
 #include "BOTS.h"
+#include "BOTS_AdventureGrid.h"
 #include <platform/custom-tracks/native_track_library.h>
 
 enum
@@ -22,7 +23,7 @@ enum
 	BOTS_ADV_RACE_CHEAT_LOSS_BASE = 100,
 	BOTS_ADV_RACE_CHEAT_TROPHY_SCALE = 0xc,
 	BOTS_NAV_PATH_COUNT = 3,
-	BOTS_MAX_KARTS = 8,
+	BOTS_RETAIL_GRID_SIZE = RACE_FIELD_FULL_GRID_RACERS,
 	BOTS_BATTLE_DRIVER_COUNT = 4,
 	BOTS_GRID_ROW_KART_COUNT = 4,
 	BOTS_GRID_REAR_ROW_OFFSET = 4,
@@ -182,6 +183,31 @@ internal void BOTS_Adv_CopySpawnOrder(s32 first, s32 second)
 {
 	*(s32 *)&sdata->kartSpawnOrderArray[0] = first;
 	*(s32 *)&sdata->kartSpawnOrderArray[4] = second;
+	for (int i = RACE_FIELD_FULL_GRID_RACERS; i < RACE_FIELD_CONFIG_MAX_RACERS; i++)
+	{
+		sdata->kartSpawnOrderArray[i] = -1;
+	}
+}
+
+static int BOTS_AdventureChampionDriver(const struct GameTracker *gGT, int racerCount)
+{
+	if (g_config.botSelectionMode != BOT_SELECTION_PREDETERMINED || (gGT->gameMode1 & ADVENTURE_CUP) != 0 ||
+	    (u32)gGT->levelID >= len(data.metaDataLEV))
+	{
+		return -1;
+	}
+	const int champion = data.metaDataLEV[gGT->levelID].characterID_Champion;
+	if ((u32)champion < RACE_FIELD_FULL_GRID_RACERS)
+	{
+		for (int i = gGT->numPlyrCurrGame; i < racerCount; i++)
+		{
+			if (data.characterIDs[i] == champion)
+			{
+				return i;
+			}
+		}
+	}
+	return -1;
 }
 
 internal s32 BOTS_GetTrackDistanceToFinish(struct GameTracker *gGT)
@@ -216,7 +242,7 @@ static struct Difficulty *BOTS_CustomTrackDifficulty(void)
 	return &difficulty;
 }
 
-void BOTS_Adv_AdjustDifficulty(void)
+void BOTS_Adv_AdjustDifficulty(int racerCount)
 {
 	struct GameTracker *gGT = sdata->gGT;
 	u32 gameMode1 = gGT->gameMode1;
@@ -359,11 +385,10 @@ void BOTS_Adv_AdjustDifficulty(void)
 
 	gGT->numBotsNextGame = 0;
 
-	// Adventure co-op has no versus grid of its own: the warp pad puts both human
-	// racers at the back and a retry carries over the previous race's positions,
-	// the same way a lone racer's Adventure does. The tables keyed on the event
-	// still apply below, exactly as they do for a lone racer.
-	if (((gameMode2 & CUP_ANY_KIND) == 0) || (gGT->cup.trackIndex == 0))
+	// Adventure co-op uses the Adventure grid, not the versus tables.
+	const b32 cupRace = (gameMode2 & CUP_ANY_KIND) != 0 || (gameMode1 & ADVENTURE_CUP) != 0;
+	const b32 carriesGrid = sdata->loadedRaceFieldSize > 0 ? cupRace : (gameMode2 & CUP_ANY_KIND) != 0;
+	if (!carriesGrid || gGT->cup.trackIndex == 0)
 	{
 		if (!MainGameEnd_IsCoopRace(gGT))
 		{
@@ -399,7 +424,21 @@ void BOTS_Adv_AdjustDifficulty(void)
 		}
 	}
 
-	u8 pathOrder[8];
+	const bool firstAdventureGrid = sdata->seedAdventureGrid;
+	sdata->seedAdventureGrid = false;
+	if (sdata->loadedRaceFieldSize > 0)
+	{
+		if (firstAdventureGrid && (gameMode1 & ADVENTURE_MODE) != 0)
+		{
+			BOTS_SeedAdventureGrid(sdata->kartSpawnOrderArray, gGT->numPlyrCurrGame, racerCount,
+			                       BOTS_AdventureChampionDriver(gGT, racerCount), &sdata->advRng);
+		}
+		RaceField_CompactSpawnOrder(sdata->kartSpawnOrderArray, racerCount);
+	}
+
+	// Extra slots repeat the LEV formation, so they also repeat its path
+	// assignments and the retail range of acceleration penalties.
+	u8 pathOrder[BOTS_RETAIL_GRID_SIZE];
 	pathOrder[0] = 0;
 	pathOrder[4] = 0;
 	pathOrder[3] = 2;
@@ -413,9 +452,10 @@ void BOTS_Adv_AdjustDifficulty(void)
 	pathOrder[2] = secondPath + 1;
 	pathOrder[6] = (secondPath ^ 1) + 1;
 
-	for (s16 i = 0; i < BOTS_MAX_KARTS; i++)
+	const int setupCount = racerCount > BOTS_RETAIL_GRID_SIZE ? racerCount : BOTS_RETAIL_GRID_SIZE;
+	for (int i = 0; i < setupCount; i++)
 	{
-		sdata->driver_pathIndexIDs[i] = pathOrder[(u8)sdata->kartSpawnOrderArray[i]];
+		sdata->driver_pathIndexIDs[i] = pathOrder[(u8)sdata->kartSpawnOrderArray[i] % len(pathOrder)];
 	}
 
 	if ((gameMode1 & ADVENTURE_BOSS) != 0)
@@ -432,9 +472,9 @@ void BOTS_Adv_AdjustDifficulty(void)
 		}
 	}
 
-	if ((((gameMode1 & ADVENTURE_CUP) == 0) && ((gameMode2 & CUP_ANY_KIND) == 0)) || (gGT->cup.trackIndex == 0))
+	if (!cupRace || gGT->cup.trackIndex == 0)
 	{
-		u8 accelOrder[8];
+		u8 accelOrder[BOTS_RETAIL_GRID_SIZE];
 		u32 accel = (RngDeadCoed(&sdata->advRng) >> BOTS_RNG_BYTE_SHIFT) & BOTS_RNG_ACCEL_MASK;
 		u32 rearAccel = (RngDeadCoed(&sdata->advRng) >> BOTS_RNG_BYTE_SHIFT) & BOTS_RNG_ACCEL_MASK;
 
@@ -447,19 +487,21 @@ void BOTS_Adv_AdjustDifficulty(void)
 			rearAccel = (rearAccel - 1) & BOTS_RNG_ACCEL_MASK;
 		}
 
-		for (s16 i = 0; i < BOTS_MAX_KARTS; i++)
+		const int accelCount = sdata->loadedRaceFieldSize > setupCount ? sdata->loadedRaceFieldSize : setupCount;
+		for (int i = 0; i < accelCount; i++)
 		{
-			sdata->accelerateOrder[i] = accelOrder[(u8)sdata->kartSpawnOrderArray[i]];
+			const u8 slot = i < racerCount || sdata->loadedRaceFieldSize == 0 ? (u8)sdata->kartSpawnOrderArray[i] : i;
+			sdata->accelerateOrder[i] = accelOrder[slot % len(accelOrder)];
 		}
 	}
 
-	if ((((gameMode1 & ADVENTURE_CUP) != 0) || ((gameMode2 & CUP_ANY_KIND) != 0)) && (gGT->cup.trackIndex > 0))
+	if (cupRace && gGT->cup.trackIndex > 0 && racerCount > gGT->numPlyrCurrGame)
 	{
 		s16 bestPoints = -1;
 		s16 bestDriverIndex = 0;
 		s16 topAccelIndex = 0;
 
-		for (s16 i = 0; i < BOTS_MAX_KARTS; i++)
+		for (int i = 0; i < racerCount; i++)
 		{
 			if ((gGT->numPlyrCurrGame <= i) && (bestPoints < gGT->cup.points[i]))
 			{
@@ -467,7 +509,7 @@ void BOTS_Adv_AdjustDifficulty(void)
 				bestDriverIndex = i;
 			}
 
-			if (sdata->accelerateOrder[i] == 0)
+			if (i < BOTS_RETAIL_GRID_SIZE && sdata->accelerateOrder[i] == 0)
 			{
 				topAccelIndex = i;
 			}
@@ -492,7 +534,7 @@ void BOTS_UpdateGlobals(void)
 	sdata->bestRobotRank = NULL;
 	struct Driver *worstRobotDriver = NULL;
 
-	for (int i = BOTS_MAX_KARTS - 1; i >= 0; i--)
+	for (int i = (int)len(gGT->driversInRaceOrder) - 1; i >= 0; i--)
 	{
 		struct Driver *d = gGT->driversInRaceOrder[i];
 
@@ -2294,7 +2336,7 @@ UpdateTireColorTimer:
 
 						struct Instance *plantInst = plant->inst;
 
-						if (botDriver->botData.aiPhysics.rotXZ < 0xb40)
+						if (botDriver->driverID < gGT->numPlyrCurrGame && botDriver->botData.aiPhysics.rotXZ < 0xb40)
 						{
 							SVECTOR v;
 							v.vx = 0xfa;
@@ -3017,8 +3059,9 @@ void BOTS_GotoStartingLine(struct Driver *d)
 	// time until full acceleration from start
 	int accelDuration = sdata->AI_AccelFrameCount;
 
-	// get acceleration order from spawn order
-	u8 accel = sdata->accelerateOrder[spawnPos];
+	// Extended fields use the per-driver assignment, like the running AI.
+	// Keep the retail starting-line lookup for unexpanded fields.
+	u8 accel = sdata->accelerateOrder[sdata->loadedRaceFieldSize > BOTS_RETAIL_GRID_SIZE ? d->driverID : spawnPos];
 
 	d->rotCurr.z = 0;
 	d->rotPrev.z = 0;
@@ -3080,15 +3123,18 @@ struct Driver *BOTS_Driver_Init(int driverID)
 	// path data found
 	struct Thread *t = PROC_BirthWithObject(
 	    // creation flags
-	    SIZE_RELATIVE_POOL_BUCKET(DRIVER_NTSC_RETAIL_SIZE, NONE, LARGE, ROBOT),
+	    SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Driver), NONE, LARGE, ROBOT),
 
 	    BOTS_ThTick_Drive, // behavior
 	    0,                 //"robotcar",	// debug name
 	    0                  // thread relative
 	);
+	if (t == NULL)
+	{
+		return NULL;
+	}
 
 	struct Driver *d = t->object;
-	memset(d, 0x0, DRIVER_NTSC_RETAIL_SIZE);
 	VehBirth_NonGhost(t, driverID);
 	sdata->gGT->drivers[driverID] = d;
 	t->modelIndex = DYNAMIC_ROBOT_CAR;

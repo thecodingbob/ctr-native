@@ -7,5 +7,7 @@
 int NativeCD_Init(void);
 // Positional read preserving the Cd* cursor and callbacks.
 int NativeCD_ReadFileSectorsAt(const CdlFILE *file, unsigned int sector, unsigned int count, void *destination);
+// Read relative to an opened CD position without changing the active stream.
+int NativeCD_ReadSectorsAt(const CdlLOC *base, unsigned int offset, unsigned int count, void *destination);
 
 #endif

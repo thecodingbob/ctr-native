@@ -1,17 +1,15 @@
 #ifndef RACE_FIELD_H
 #define RACE_FIELD_H
 
+#include <race_field_limits.h>
+
 // How many racers a race fields, and how many of them are bots.
 //
-// Three places have to agree on this:
-// MainInit_Drivers, which spawns one driver per racer counted here; LOAD's
-// random-bot selector, which fills exactly those AI slots; and the Adventure
-// hub's warp pad, which lays out a starting grid this long before the race has
-// loaded.
+// The loader selects a roster, MainInit_Drivers limits it to the playable
+// starting grid, and the spawn order uses that final count.
 //
-// Every function here is pure: the mode, the cup and the option values arrive as
-// arguments, because the hub has to ask about the round it is about to load while
-// its own flags still describe the hub.
+// The field rules take mode, cup and option values as arguments so the setup
+// menu can query a prospective round using that round's flags.
 //
 
 // Racers on a starting grid, players included.
@@ -125,6 +123,115 @@ static inline int RaceField_RacerCount(int gameMode1, s32 cupID, int playerCount
 static inline int RaceField_BotCount(int gameMode1, s32 cupID, int playerCount, b32 extendedMultiplayer)
 {
 	return RaceField_RacerCount(gameMode1, cupID, playerCount, extendedMultiplayer) - playerCount;
+}
+
+// Managed rosters and retail 3P/4P races keep their existing rules.
+static inline b32 RaceField_UsesConfiguredGrid(int gameMode1, s32 cupID, int playerCount, b32 extendedMultiplayer)
+{
+	return (gameMode1 & (ARCADE_MODE | ADVENTURE_MODE)) != 0 && !RaceField_HasManagedAIRoster(gameMode1, cupID) &&
+	       (playerCount < 3 || extendedMultiplayer);
+}
+
+// availableBots counts eligible characters not already selected by a player.
+static inline int RaceField_ConfiguredRacerCount(int gameMode1, s32 cupID, int playerCount, b32 extendedMultiplayer,
+                                                int configuredRacers, int availableBots)
+{
+	int retailRacers = RaceField_RacerCount(gameMode1, cupID, playerCount, extendedMultiplayer);
+	if (!RaceField_UsesConfiguredGrid(gameMode1, cupID, playerCount, extendedMultiplayer))
+	{
+		return retailRacers;
+	}
+
+	if (configuredRacers < RACE_FIELD_CONFIG_MIN_RACERS)
+	{
+		configuredRacers = RACE_FIELD_CONFIG_MIN_RACERS;
+	}
+	if (configuredRacers > RACE_FIELD_CONFIG_MAX_RACERS)
+	{
+		configuredRacers = RACE_FIELD_CONFIG_MAX_RACERS;
+	}
+	if (playerCount > 1 && !extendedMultiplayer && configuredRacers > RACE_FIELD_PAIR_GRID_RACERS)
+	{
+		configuredRacers = RACE_FIELD_PAIR_GRID_RACERS;
+	}
+	if (configuredRacers < playerCount)
+	{
+		configuredRacers = playerCount;
+	}
+	if (availableBots < 0)
+	{
+		availableBots = 0;
+	}
+	if (configuredRacers - playerCount > availableBots)
+	{
+		configuredRacers = playerCount + availableBots;
+	}
+	return configuredRacers;
+}
+
+// Map expanded standings onto the eight retail item ranks. Keep first alone
+// in the leader's tier and spread everyone else over retail positions 2–8.
+static inline int RaceField_ExpandedItemRank(int rank, int racers)
+{
+	if (rank <= 0 || racers <= RACE_FIELD_FULL_GRID_RACERS)
+	{
+		return rank;
+	}
+	if (rank >= racers - 1)
+	{
+		return RACE_FIELD_FULL_GRID_RACERS - 1;
+	}
+	return 1 + (rank - 1) * (RACE_FIELD_FULL_GRID_RACERS - 2) / (racers - 2);
+}
+
+// The level allocates pools before geometry/model preflight. Reserve for the
+// queued upper bound without shrinking the retail budget for shorter fields.
+static inline int RaceField_ExtraPoolSlots(int loadedRacers)
+{
+	if (loadedRacers > RACE_FIELD_CONFIG_MAX_RACERS)
+	{
+		loadedRacers = RACE_FIELD_CONFIG_MAX_RACERS;
+	}
+	return loadedRacers > RACE_FIELD_FULL_GRID_RACERS ? loadedRacers - RACE_FIELD_FULL_GRID_RACERS : 0;
+}
+
+// Compact surviving racers in their original grid order. Missing or duplicate
+// ranks (for example, bots returning after a shorter cup round) start last.
+static inline void RaceField_CompactSpawnOrder(char *order, int racerCount)
+{
+	int driverAtRank[RACE_FIELD_CONFIG_MAX_RACERS];
+	for (int i = 0; i < RACE_FIELD_CONFIG_MAX_RACERS; i++)
+	{
+		driverAtRank[i] = -1;
+	}
+	for (int i = 0; i < racerCount; i++)
+	{
+		const unsigned int rank = (unsigned char)order[i];
+		order[i] = -1;
+		if (rank < RACE_FIELD_CONFIG_MAX_RACERS && driverAtRank[rank] < 0)
+		{
+			driverAtRank[rank] = i;
+		}
+	}
+	int rank = 0;
+	for (int i = 0; i < RACE_FIELD_CONFIG_MAX_RACERS; i++)
+	{
+		if (driverAtRank[i] >= 0)
+		{
+			order[driverAtRank[i]] = rank++;
+		}
+	}
+	for (int i = 0; i < racerCount; i++)
+	{
+		if ((unsigned char)order[i] == (unsigned char)-1)
+		{
+			order[i] = rank++;
+		}
+	}
+	for (int i = racerCount; i < RACE_FIELD_CONFIG_MAX_RACERS; i++)
+	{
+		order[i] = -1;
+	}
 }
 
 #endif

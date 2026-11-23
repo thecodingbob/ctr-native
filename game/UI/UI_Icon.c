@@ -275,6 +275,10 @@ void UI_TrackerBG(struct Icon *targetIcon, s16 centerX, s16 centerY, struct Prim
 
 void UI_DrawDriverIcon(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, u32 *ot, char transparency, s16 scale, u32 color)
 {
+	if (icon == NULL)
+	{
+		return;
+	}
 	PolyFT4 *p = primMem->cursor;
 	const PrimCode primCode = {.kind.poly = {.renderCode = RenderCode_Polygon, .quad = 1, .textured = 1}};
 	ColorCode_SetPacked(&p->colorCode, color);
@@ -313,7 +317,10 @@ void UI_DrawDriverIcon(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *pr
 		p->colorCode.code.kind.poly.semiTransparency = 1;
 	}
 
-	u8 bottomV = (u8)((icon->texLayout.v0 + bottomY) - posY);
+	// Screen height is scaled; texture height is not. Only trim UVs when
+	// the bottom of the quad is actually clipped.
+	const int visibleHeight = bottomY - topY;
+	u8 bottomV = scaledHeight > 0 ? icon->texLayout.v0 + visibleHeight * height / scaledHeight : icon->texLayout.v0;
 	p->v[0].texCoords.u = icon->texLayout.u0;
 	p->v[0].texCoords.v = icon->texLayout.v0;
 	p->v[1].texCoords.u = icon->texLayout.u1;

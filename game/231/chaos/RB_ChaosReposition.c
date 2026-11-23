@@ -383,8 +383,8 @@ void Chaos_SkipBotTime(void)
 	{
 		return;
 	}
-	struct ChaosBotSkip skips[LOAD_CHARACTER_ID_COUNT] = {0};
-	for (int slot = tracker->numPlyrCurrGame; slot < (int)len(tracker->drivers); slot++)
+	struct ChaosBotSkip skips[RACE_FIELD_CONFIG_MAX_RACERS] = {0};
+	for (int slot = tracker->numPlyrCurrGame; slot < (int)len(skips); slot++)
 	{
 		Chaos_PrepareBotSkip(&skips[slot], tracker->drivers[slot], length);
 	}

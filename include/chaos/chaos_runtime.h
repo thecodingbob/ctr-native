@@ -2,6 +2,7 @@
 #define CTR_NATIVE_CHAOS_RUNTIME_H
 
 #include <chaos/chaos_effect.h>
+#include <race_field.h>
 
 enum ChaosRuntimeConstants
 {
@@ -114,14 +115,14 @@ struct ChaosRuntime
 	bool raceInitialized;
 	bool touchingTurboPad[CHAOS_MAX_HUMAN_PLAYERS];
 	struct ChaosControlShuffle controls[CHAOS_MAX_HUMAN_PLAYERS];
-	u8 engineClass[LOAD_CHARACTER_ID_COUNT];
-	bool engineClassChanged[LOAD_CHARACTER_ID_COUNT];
+	u8 engineClass[RACE_FIELD_CONFIG_MAX_RACERS];
+	bool engineClassChanged[RACE_FIELD_CONFIG_MAX_RACERS];
 	struct ChaosRestart restart[CHAOS_MAX_HUMAN_PLAYERS];
-	struct ChaosIdentity identity[LOAD_CHARACTER_ID_COUNT];
+	struct ChaosIdentity identity[RACE_FIELD_CONFIG_MAX_RACERS];
 	// Partner slot plus one; zero means this controller owns its original kart.
-	u8 bodySwapPartner[LOAD_CHARACTER_ID_COUNT];
+	u8 bodySwapPartner[RACE_FIELD_CONFIG_MAX_RACERS];
 	bool cameraBlendPending[CHAOS_MAX_HUMAN_PLAYERS];
-	u8 teleportForwardCrossings[LOAD_CHARACTER_ID_COUNT];
+	u8 teleportForwardCrossings[RACE_FIELD_CONFIG_MAX_RACERS];
 	enum ChaosAudioOwner audioOwner;
 	enum ChaosAudioOwner xaOwner;
 	int numDeferredImpacts;

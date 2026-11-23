@@ -3,7 +3,6 @@
 
 enum PlayLevelConstants
 {
-	PLAYLEVEL_DRIVER_COUNT = 8,
 	PLAYLEVEL_FINISHLINE_NEAR_DISTANCE = 1200,
 	PLAYLEVEL_FINISHLINE_FAR_DISTANCE = 32000,
 	PLAYLEVEL_REVERSE_DISTANCE_MAX = 1000,
@@ -200,6 +199,7 @@ void PlayLevel_UpdateLapStats(void)
 	struct GameTracker *gGT = sdata->gGT;
 
 	finishedHumanCount = 0;
+	const int driverCapacity = len(gGT->drivers);
 	Chaos_ReturnBodySwapsNearFinish(gGT, PLAYLEVEL_FINISHLINE_NEAR_DISTANCE);
 	currRank = 0;
 	coopRace = MainGameEnd_IsCoopRace(gGT);
@@ -209,7 +209,7 @@ void PlayLevel_UpdateLapStats(void)
 	farthestHuman = NULL;
 
 	// find farthest-ahead human
-	for (int raceOrderIndex = 0; raceOrderIndex < PLAYLEVEL_DRIVER_COUNT; raceOrderIndex++)
+	for (int raceOrderIndex = 0; raceOrderIndex < driverCapacity; raceOrderIndex++)
 	{
 		currDriver = gGT->driversInRaceOrder[raceOrderIndex];
 
@@ -220,7 +220,7 @@ void PlayLevel_UpdateLapStats(void)
 		}
 	}
 
-	for (driverIndex = 0; driverIndex < PLAYLEVEL_DRIVER_COUNT; driverIndex++)
+	for (driverIndex = 0; driverIndex < driverCapacity; driverIndex++)
 	{
 		gGT->driversInRaceOrder[driverIndex] = NULL;
 
@@ -327,7 +327,7 @@ void PlayLevel_UpdateLapStats(void)
 	}
 
 	// sort all drivers that have NOT finished race
-	for (; currRank < PLAYLEVEL_DRIVER_COUNT; currRank++)
+	for (; currRank < driverCapacity; currRank++)
 	{
 		// set "min" distance to max
 		minDistance = PLAYLEVEL_DISTANCE_SENTINEL;
@@ -340,7 +340,7 @@ void PlayLevel_UpdateLapStats(void)
 
 		// look for "next" farthest driver,
 		// out of all unsorted drivers remaining
-		for (driverIndex = 0; driverIndex < PLAYLEVEL_DRIVER_COUNT; driverIndex++)
+		for (driverIndex = 0; driverIndex < driverCapacity; driverIndex++)
 		{
 			// get current driver
 			currDriver = gGT->drivers[driverIndex];
@@ -403,12 +403,19 @@ void PlayLevel_UpdateLapStats(void)
 				// set every driver position rank,
 				// to the order that they spawn on the starting line
 				gGT->drivers[bestDriverIndex]->driverRank = sdata->kartSpawnOrderArray[bestDriverIndex];
-				gGT->humanPlayerPositions[bestDriverIndex] = sdata->kartSpawnOrderArray[bestDriverIndex];
+				if (bestDriverIndex < gGT->numPlyrCurrGame)
+				{
+					gGT->humanPlayerPositions[bestDriverIndex] = sdata->kartSpawnOrderArray[bestDriverIndex];
+				}
 			}
+		}
+		else
+		{
+			break;
 		}
 	}
 
-	for (driverIndex = 0; driverIndex < PLAYLEVEL_DRIVER_COUNT; driverIndex++)
+	for (driverIndex = 0; driverIndex < driverCapacity; driverIndex++)
 	{
 		// get pointer to each player structure
 		currDriver = gGT->drivers[driverIndex];
@@ -419,7 +426,7 @@ void PlayLevel_UpdateLapStats(void)
 		}
 
 		// should be impossible to be -1 here
-		if (currDriver->driverRank > PLAYLEVEL_UNSORTED_RANK)
+		if (currDriver->driverRank > PLAYLEVEL_UNSORTED_RANK && currDriver->driverRank < driverCapacity)
 		{
 			gGT->driversInRaceOrder[currDriver->driverRank] = currDriver;
 		}
@@ -503,7 +510,7 @@ void PlayLevel_UpdateLapStats(void)
 	if (shouldEndRace)
 	{
 		// End race for all drivers
-		for (currRank = 0; currRank < PLAYLEVEL_DRIVER_COUNT; currRank++)
+		for (currRank = 0; currRank < driverCapacity; currRank++)
 		{
 			// Get address of each player structure
 			currDriver = gGT->drivers[currRank];

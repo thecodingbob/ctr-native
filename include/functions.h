@@ -17,7 +17,7 @@ u8 CAM_Path_Move(int frameIndex, s16 *position, s16 *rotation, s16 *pathFlagsOut
 int CAM_MapRange_PosPoints(SVec3 *pos1, SVec3 *pos2, SVec3 *currPos);
 void CAM_SetDesiredPosRot(struct CameraDC *cDC, const SVec3 *pos, const SVec3 *rot);
 
-void BOTS_Adv_AdjustDifficulty(void);
+void BOTS_Adv_AdjustDifficulty(int racerCount);
 void BOTS_UpdateGlobals(void);
 void BOTS_GotoStartingLine(struct Driver *d);
 
@@ -309,6 +309,7 @@ void INSTANCE_Birth(struct Instance *inst, struct Model *model, const char *name
 struct Instance *INSTANCE_Birth2D(struct Model *model, const char *name, struct Thread *th);
 struct Instance *INSTANCE_Birth3D(struct Model *model, const char *name, struct Thread *th);
 struct Instance *INSTANCE_BirthWithThread(s32 modelID, const char *name, s32 poolType, s32 bucket, void *funcThTick, s32 objSize, struct Thread *parent);
+struct Instance *INSTANCE_Birth2DWithThread(s32 modelID, const char *name, s32 poolType, s32 bucket, void *funcThTick, s32 objSize, struct Thread *parent);
 struct Instance *INSTANCE_BirthWithThread_Stack(const struct InstanceBirthParams *params);
 void INSTANCE_Death(struct Instance *inst);
 s32 INSTANCE_GetNumAnimFrames(struct Instance *pInstance, s32 animIndex);
@@ -340,6 +341,7 @@ void LOAD_AppendQueue(struct BigHeader *bigfile, int type, int fileIndex, void *
 int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(struct LoadQueueSlot *));
 struct Model *LOAD_GetExtraCharacterModelByName(char *searchName);
 void LOAD_FinalizeExtraCharacterModels(void);
+int LOAD_PredictRaceFieldSize(int gameMode1, s32 cupID, int playerCount);
 b32 MM_Characters_IsCharacterUnlocked(s16 characterID);
 void LOAD_Hub_Main(struct BigHeader *bigfilePtr);
 void LOAD_Hub_ReadFile(struct BigHeader *bigfile, int levID, int packID);
@@ -714,6 +716,7 @@ void UI_VsQuipDrawAll(void);
 void UI_VsWaitForPressX(void);
 void UI_RaceStart_IntroText1P(void);
 void UI_DrawRankedDrivers(void);
+u32 UI_PosSuffix_ReverseWarmRamp(u32 color);
 void UI_DrawDriverIcon(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, u32 *ot, char transparency, s16 scale, u32 color);
 void UI_RenderFrame_AdvHub(void);
 void UI_RenderFrame_Racing(void);
@@ -1265,6 +1268,7 @@ void Channel_DestroySelf(struct ChannelStats *stats);
 void UI_DrawLimitClock(s16 posX, s16 posY, s16 fontType);
 void AA_EndEvent_DisplayTime(s16 driverId, s16 timeOffsetFrames);
 void UI_DrawPosSuffix(s16 posX, s16 posY, struct Driver *d, s16 flags);
+void UI_DrawExpandedPosition(s16 suffixX, s16 suffixY, struct Driver *driver, s16 font, s16 flags);
 int UI_PosSuffixOffset(s16 posX, struct Driver *d);
 int UI_PosSuffixNumberX(s16 suffixX, s16 numberX, struct Driver *d);
 void UI_DrawRaceClock(s16 labelPosX, s16 labelPosY, u32 flags, struct Driver *driver);

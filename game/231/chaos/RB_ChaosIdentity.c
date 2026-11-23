@@ -103,7 +103,7 @@ void Chaos_UpdateTransformations(struct GameTracker *gGT)
 void Chaos_ChangeIdentity(struct Driver *driver)
 {
 	bool present[GAME_CHARACTER_COUNT] = {0};
-	for (int i = 0; i < (int)len(GAME_TRACKER->drivers); i++)
+	for (int i = 0; i < (int)len(GAME_CHARACTER_IDS); i++)
 	{
 		if (GAME_TRACKER->drivers[i] != NULL)
 		{

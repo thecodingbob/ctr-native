@@ -720,9 +720,9 @@ static void TestIdentityCrisis(void)
 
 struct BodySwapWorld
 {
-	struct Driver drivers[LOAD_CHARACTER_ID_COUNT];
-	struct Instance instances[LOAD_CHARACTER_ID_COUNT];
-	struct Thread threads[LOAD_CHARACTER_ID_COUNT];
+	struct Driver drivers[RACE_FIELD_CONFIG_MAX_RACERS];
+	struct Instance instances[RACE_FIELD_CONFIG_MAX_RACERS];
+	struct Thread threads[RACE_FIELD_CONFIG_MAX_RACERS];
 };
 
 static void SetupBodySwap(struct BodySwapWorld *world, int humans, int bots)
@@ -731,6 +731,7 @@ static void SetupBodySwap(struct BodySwapWorld *world, int humans, int bots)
 	memset(world, 0, sizeof(*world));
 	memset(s_tracker.drivers, 0, sizeof(s_tracker.drivers));
 	s_tracker.numPlyrCurrGame = humans;
+	s_tracker.numBotsNextGame = bots;
 	s_tracker.numLaps = 3;
 	sdata->chaosSettings.effects[CHAOS_EFFECT_BODY_SWAP] = true;
 	sdata->chaosSettings.effects[CHAOS_EFFECT_TRY_SOMETHING_NEW] = true;
@@ -957,9 +958,9 @@ static void TestBodySwap(void)
 	               "race teardown restores original ownership before clearing class and identity state");
 
 	CTR_TEST_SECTION("Body Swap forms disjoint pairs involving humans and skips unavailable controllers");
-	SetupBodySwap(&world, 4, 4);
+	SetupBodySwap(&world, 4, RACE_FIELD_CONFIG_MAX_RACERS - 4);
 	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
-	for (int slot = 0; slot < LOAD_CHARACTER_ID_COUNT; slot++)
+	for (int slot = 0; slot < RACE_FIELD_CONFIG_MAX_RACERS; slot++)
 	{
 		const int partner = sdata->chaosRuntime.bodySwapPartner[slot] - 1;
 		if (partner >= 0)
@@ -971,6 +972,17 @@ static void TestBodySwap(void)
 		CTR_TEST_CHECK_EQ(s_tracker.drivers[slot]->driverID, slot, "every live kart ID agrees with its controller slot");
 	}
 	Chaos_Reset();
+	SetupBodySwap(&world, 4, RACE_FIELD_CONFIG_MAX_RACERS - 4);
+	const int lastSlot = RACE_FIELD_CONFIG_MAX_RACERS - 1;
+	for (int slot = 1; slot < lastSlot; slot++)
+	{
+		world.drivers[slot].actionsFlagSet |= ACTION_RACE_FINISHED;
+	}
+	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000), "Body Swap can activate with only the sixteenth kart as a partner");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.bodySwapPartner[0], lastSlot + 1, "the last grid slot is eligible for possession");
+	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[lastSlot], "the sixteenth body is handed to the human controller");
+	Chaos_Reset();
+	CTR_TEST_CHECK(s_tracker.drivers[lastSlot] == &world.drivers[lastSlot], "reset restores ownership of the last grid slot");
 	SetupBodySwap(&world, 1, 0);
 	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
 	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[0] && sdata->chaosRuntime.bodySwapPartner[0] == 0,
@@ -1142,10 +1154,10 @@ static void TestPersonalBodySwapEligibility(void)
 	CTR_TEST_SECTION("Body Swap supports personal solo Arcade and rejects unavailable partners without wasting pickups");
 	struct BodySwapWorld world;
 	SetupPersonalBodySwap(&world, 1, 1);
-	CTR_TEST_CHECK(ChaosEvent_EffectFits(CHAOS_EFFECT_BODY_SWAP, ARCADE_MODE, 0, 1, false, true), "personal solo Arcade allows Body Swap with a bot partner");
-	CTR_TEST_CHECK(!ChaosEvent_EffectFits(CHAOS_EFFECT_BODY_SWAP, ARCADE_MODE, 0, 1, false, false), "shared solo Arcade retains its existing Body Swap filter");
-	CTR_TEST_CHECK(ChaosEvent_EffectFits(CHAOS_EFFECT_BODY_SWAP, ADVENTURE_MODE, 0, 1, false, true), "personal Adventure uses the same bot-partner compatibility as Arcade");
-	CTR_TEST_CHECK(!ChaosEvent_EffectFits(CHAOS_EFFECT_BODY_SWAP, BATTLE_MODE, 0, 1, false, true), "solo events without bots cannot offer a partner");
+	CTR_TEST_CHECK(ChaosEvent_EffectFits(CHAOS_EFFECT_BODY_SWAP, ARCADE_MODE, 1, 15, true), "personal solo Arcade allows Body Swap with a bot partner");
+	CTR_TEST_CHECK(!ChaosEvent_EffectFits(CHAOS_EFFECT_BODY_SWAP, ARCADE_MODE, 1, 7, false), "shared solo Arcade retains its existing Body Swap filter");
+	CTR_TEST_CHECK(ChaosEvent_EffectFits(CHAOS_EFFECT_BODY_SWAP, ADVENTURE_MODE, 1, 1, true), "personal Adventure uses the same bot-partner compatibility as Arcade");
+	CTR_TEST_CHECK(!ChaosEvent_EffectFits(CHAOS_EFFECT_BODY_SWAP, ARCADE_MODE, 1, 0, true), "even Arcade cannot offer a partner if the actual field has no bots");
 	CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_BODY_SWAP, 1000, 0), "a solo recipient can possess a bot");
 	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[1] && (world.drivers[1].actionsFlagSet & ACTION_BOT) == 0, "the borrowed kart becomes the recipient's human-controlled body");
 	Tick(1000);
@@ -2487,6 +2499,38 @@ static void TestPersonalQueuedVoices(void)
 	Chaos_ActivateForPlayer(CHAOS_EFFECT_ZA_WARUDO, 1000, 1);
 	CTR_TEST_CHECK(Chaos_PlayWrongWayVoice() && s_voiceDriver == &world.drivers[1], "the first frozen Senile Mask owner cannot prevent the immune owner's warning");
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.xaOwner, CHAOS_AUDIO_PLAYER_2, "the selected mask warning retains the immune controller for mixer filtering");
+}
+
+static void TestExpandedHazardCollision(void)
+{
+	CTR_TEST_SECTION("hazards check contact through the last racer slot");
+	struct BodySwapWorld world;
+	SetupBodySwap(&world, 1, RACE_FIELD_CONFIG_MAX_RACERS - 1);
+	const int last = RACE_FIELD_CONFIG_MAX_RACERS - 1;
+	for (int i = 0; i < last; i++)
+	{
+		world.instances[i].matrix.t[0] = 0x100;
+	}
+	world.instances[last].matrix.t[0] = 0;
+	struct Model model = {.id = DYNAMIC_ROCKET};
+	struct Thread weapon = {.flags = TRACKING, .modelIndex = DYNAMIC_ROCKET};
+	struct Instance instance = {.thread = &weapon, .model = &model};
+	weapon.inst = &instance;
+	CTR_TEST_CHECK(RB_Hazard_CollideWithDrivers(&instance, 0, 0x2400, NULL) == &world.instances[last],
+	               "a direct projectile hit on the sixteenth racer is detected");
+	CTR_TEST_CHECK(RB_Hazard_CollideWithDrivers(&instance, 1, 0x2400, &world.instances[last]) == NULL,
+	               "the same slot is skipped during its own projectile's safety window");
+
+	struct Driver *attacker = &world.drivers[last];
+	struct Driver *victim = &world.drivers[0];
+	attacker->BattleHUD.startX = 123;
+	s_expectedDamageAttacker = attacker;
+	int applied = VehPickState_NewState(victim, VEH_PICK_DAMAGE_BLAST, attacker, VEH_PICK_REASON_MISSILE);
+	s_expectedDamageAttacker = NULL;
+	CTR_TEST_CHECK_EQ(applied, 1, "a projectile from the sixteenth racer can damage a human");
+	CTR_TEST_CHECK_EQ(attacker->BattleHUD.startX, 123, "a bot attack does not project onto a nonexistent viewport");
+	CTR_TEST_CHECK_EQ(attacker->numTimesAttacking, 1, "the bot's aggregate attack counter is still updated");
+	CTR_TEST_CHECK_EQ(attacker->numTimesAttackingPlayer[0], 1, "the human victim is still recorded in the retail per-opponent table");
 }
 
 static void TestPersonalTimeStopContacts(void)
@@ -4063,6 +4107,7 @@ static void TestYouveGotMail(void)
 	struct Driver firstBot = {.driverID = 2, .actionsFlagSet = ACTION_BOT};
 	struct Driver lastBot = {.driverID = 7, .actionsFlagSet = ACTION_BOT};
 	struct Driver finishedBot = {.driverID = 6, .actionsFlagSet = ACTION_BOT | ACTION_RACE_FINISHED};
+	s_tracker.numBotsNextGame = 3;
 	s_tracker.driversInRaceOrder[0] = &firstBot;
 	s_tracker.driversInRaceOrder[1] = s_tracker.drivers[1];
 	s_tracker.driversInRaceOrder[2] = s_tracker.drivers[0];
@@ -4096,13 +4141,14 @@ static void TestArenaChampions(void)
 	sdata->chaosSettings.effects[CHAOS_EFFECT_ARENA_CHAMPIONS] = true;
 	sdata->chaosSettings.enabledCount++;
 	Chaos_PublishEffects();
-	CTR_TEST_CHECK(strstr(s_externalCatalogue, "arena-champions\n") != NULL, "Arena Champions is published even in a botless race");
-	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_ARENA_CHAMPIONS, 1000), "Arena Champions activates without a bot-availability requirement");
+	CTR_TEST_CHECK(strstr(s_externalCatalogue, "arena-champions\n") == NULL, "Arena Champions is not published in a botless race");
+	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_ARENA_CHAMPIONS, 1000), "Arena Champions cannot activate in a botless race");
 	Chaos_BeginRace(&s_tracker);
 	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT};
 	struct Driver secondBot = {.driverID = 7, .actionsFlagSet = ACTION_BOT};
 	s_tracker.drivers[2] = &bot;
 	s_tracker.drivers[7] = &secondBot;
+	s_tracker.numBotsNextGame = 2;
 	struct Driver *human = s_tracker.drivers[0];
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&bot, 9000), 9000, "inactive Arena Champions preserves retail bot motion");
 	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_ARENA_CHAMPIONS, 1000), "Arena Champions activates as a timed effect when bots are present");
@@ -4153,13 +4199,14 @@ static void TestArenaChumps(void)
 	sdata->chaosSettings.effects[CHAOS_EFFECT_ARENA_CHUMPS] = true;
 	sdata->chaosSettings.enabledCount++;
 	Chaos_PublishEffects();
-	CTR_TEST_CHECK(strstr(s_externalCatalogue, "arena-chumps\n") != NULL, "Arena Chumps is published even in a botless race");
-	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_ARENA_CHUMPS, 1000), "Arena Chumps activates without a bot-availability requirement");
+	CTR_TEST_CHECK(strstr(s_externalCatalogue, "arena-chumps\n") == NULL, "Arena Chumps is not published in a botless race");
+	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_ARENA_CHUMPS, 1000), "Arena Chumps cannot activate in a botless race");
 	Chaos_BeginRace(&s_tracker);
 	struct Driver bot = {.driverID = 2, .actionsFlagSet = ACTION_BOT};
 	struct Driver secondBot = {.driverID = 7, .actionsFlagSet = ACTION_BOT};
 	s_tracker.drivers[2] = &bot;
 	s_tracker.drivers[7] = &secondBot;
+	s_tracker.numBotsNextGame = 2;
 	struct Driver *human = s_tracker.drivers[0];
 	CTR_TEST_CHECK_EQ(Chaos_SpeedForDriver(&bot, 9000), 9000, "inactive Arena Chumps preserves retail bot motion");
 	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_ARENA_CHUMPS, 1000), "Arena Chumps activates as a timed effect when bots are present");
@@ -4735,6 +4782,7 @@ int main(void)
 	TestPersonalQueuedVoices();
 	TestParticleOwnerTable();
 	TestPersonalTimeStopContacts();
+	TestExpandedHazardCollision();
 	TestTimeStopPotionContacts();
 	TestWobbleSteering();
 	TestNoReserves();

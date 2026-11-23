@@ -159,6 +159,7 @@ static void TestParticipantCatalogue(void)
 	Chaos_PublishEffects();
 	CTR_TEST_CHECK(s_externalCatalogue[0] == 0, "no participating players produces an empty provider catalogue");
 	s_tracker.gameMode1 = ADVENTURE_MODE;
+	s_tracker.numBotsNextGame = 1;
 	Chaos_PublishEffects();
 	CTR_TEST_CHECK(s_externalCatalogue[0] == 0, "Adventure publication respects the same participant exclusions");
 	sdata->chaosSettings.disabledPlayers[1] = false;
@@ -430,6 +431,7 @@ static void TestGlobalEffectsAcrossPools(void)
 	SetupPersonalWorld(ARCADE_MODE, 4);
 	g_config.extendedMultiplayer = true;
 	struct Driver bot = {.driverID = 4, .actionsFlagSet = ACTION_BOT};
+	s_tracker.numBotsNextGame = 1;
 	s_tracker.drivers[4] = &bot;
 	CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_ARENA_CHAMPIONS, 1000, 2), "player three can trigger a bot effect");
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.players[2].numActive, 1, "the bot effect occupies the triggering player's pool");
@@ -733,7 +735,7 @@ static void TestBotCooldowns(void)
 {
 	CTR_TEST_SECTION("bot cooldowns are shared across pools and begin at effect completion");
 	SetupPersonalWorld(ARCADE_MODE, 4);
-	g_config.extendedMultiplayer = true;
+	s_tracker.numBotsNextGame = 1;
 	CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_ARENA_CHAMPIONS, 1000, 2), "a later pool may start the first bot effect");
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.botCooldownMS, 0, "a running effect has not started its completion cooldown");
 	CTR_TEST_CHECK(!Chaos_ActivateForPlayer(CHAOS_EFFECT_KING_CRIMSON, 1000, 0), "another bot effect cannot overlap the running one");
@@ -855,7 +857,7 @@ static void TestBotTriggerContention(void)
 {
 	CTR_TEST_SECTION("automatic personal triggers cannot duplicate bot effects in the same frame");
 	SetupPersonalWorld(ARCADE_MODE, 4);
-	g_config.extendedMultiplayer = true;
+	s_tracker.numBotsNextGame = 12;
 	SelectPersonalEffect(CHAOS_EFFECT_ARENA_CHAMPIONS);
 	sdata->chaosSettings.trigger = CHAOS_TRIGGER_INTERVAL;
 	Chaos_BeginRace(&s_tracker);

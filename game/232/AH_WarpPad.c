@@ -1,9 +1,5 @@
 #include <common.h>
 
-// The warp pad lays out a starting grid before the race has loaded, so it asks
-// the same rule the level will count its racers with.
-#include <race_field.h>
-
 // NOTE(aalhendi): WarpPad level IDs come from "warppad#NN" instance names
 // and use retail adventure numbering, not the native LevelID enum.
 enum AdventureWarpPadID
@@ -20,9 +16,6 @@ enum
 {
 	AH_WP_GEM_CUP_COUNT = 5,
 	AH_WP_BATTLE_TRACK_ID_SPAN = 7,
-	AH_WP_RACER_SLOT_COUNT = RACE_FIELD_FULL_GRID_RACERS,
-	AH_WP_SPEED_CHAMPION_GRID_SLOT = 0,
-	AH_WP_FIRST_BOT_GRID_SLOT = 1,
 	AH_WP_REWARD_INSTANCE_COUNT = 3,
 	AH_WP_WISP_COUNT = 2,
 	AH_WP_WARP_LOAD_FRAMES = 61,
@@ -188,12 +181,10 @@ void AH_WarpPad_SpinRewards(struct Instance *prizeInst, struct WarpPad *warppadO
 	prizeInst->matrix.t[2] = position.z + (trig * 0xA0 >> 0xc);
 }
 
-// NOTE(aalhendi): Synthetic cup IDs probe beyond metaDataLEV. Read through
-// the enclosing data image without indexing past the native array.
-static inline s16 AH_WarpPad_Champion(s32 levelID)
+static void AH_WarpPad_RequestRace(s16 levelID)
 {
-	return (s16)CTR_ReadU16AlignedLE((const u8 *)&data + offsetof(struct Data, metaDataLEV) + levelID * sizeof(struct MetaDataLEV) +
-	                                 offsetof(struct MetaDataLEV, characterID_Champion));
+	sdata->seedAdventureGrid = true;
+	MainRaceTrack_RequestLoad(levelID);
 }
 
 // Slide Col + Turbo Track, which open a relic race rather than a normal round.
@@ -231,25 +222,10 @@ void AH_WarpPad_ThTick(struct Thread *t)
 	s16 wispRiseRate;
 	s32 rng1;
 	s32 resetQuotient;
-	s16 rng2;
 
 	s16 rewardScale;
 	s32 rewardScale2;
 
-	s32 champID;
-	s32 champGridSlot;
-
-	s32 destination;
-	s32 destinationCupID;
-	int destinationMode;
-	s32 racerCount;
-
-	// The human drivers always take the grid slots at the back, so the bots are
-	// the ones that share the front of the grid.
-	s32 firstBotSlot;
-	s32 botCount;
-
-	u8 randKartSpawn[AH_WP_RACER_SLOT_COUNT];
 	rewardScale = 0x100;
 	warppadObj = t->object;
 	visInstSrc = GAME_TRACKER->cameraDC[0].visInstSrc;
@@ -490,102 +466,13 @@ void AH_WarpPad_ThTick(struct Thread *t)
 		goto WarpPad_AnimateOpen;
 	}
 
-	// NOTE(aalhendi): This setup repeats every close/warping frame before the
-	// transition/load gate.
-	LOAD_Robots1P(GAME_CHARACTER_IDS[0]);
-
-	// Track speed champion.
-	champID = AH_WarpPad_Champion(warppadObj->levelID);
-
-	// The grid must be as long as the field this pad warps to, or the humans at the
-	// back land on slots no racer reaches. The hub runs with Adventure-arena
-	// flags, so the round is described by the pad's destination instead.
-	destination = warppadObj->levelID;
-	firstBotSlot = sdata->advMultiplayer.numPlayers;
-
-	destinationMode = ADVENTURE_MODE;
-	destinationCupID = LOAD_CUP_ID_NONE;
-
-	if (destination >= AH_WP_ID_FIRST_GEM_CUP)
-	{
-		destinationCupID = destination - AH_WP_ID_FIRST_GEM_CUP;
-		destinationMode |= ADVENTURE_CUP;
-	}
-	else if (AH_WarpPad_IsRelicOnlyTrack(destination))
-	{
-		destinationMode |= RELIC_RACE;
-	}
-	else if (AH_WarpPad_IsBattleTrack(destination))
-	{
-		destinationMode |= CRYSTAL_CHALLENGE;
-	}
-
-	racerCount = RaceField_RacerCount(destinationMode, destinationCupID, firstBotSlot, g_config.extendedMultiplayer);
-	botCount = racerCount - firstBotSlot;
-
-	// If Speed Champion is on the track (Crash-Pura)
-	// and is not the same characterID as this driver
-	if ((champID < AH_WP_RACER_SLOT_COUNT) && (champID != GAME_CHARACTER_IDS[driver->driverID]))
-	{
-		champGridSlot = 0;
-		// set everyone to spawn in order, starting after the human drivers
-		for (i = firstBotSlot; i < racerCount; i++)
-		{
-			if (AH_WarpPad_Champion(warppadObj->levelID) == GAME_CHARACTER_IDS[i])
-			{
-				// The last bot takes over the grid slot the champion vacated, which
-				// is not the champion's driver slot once the humans sit at the back.
-				champGridSlot = AH_WP_FIRST_BOT_GRID_SLOT + (i - firstBotSlot);
-				AH_KART_SPAWN_ORDER[i] = AH_WP_SPEED_CHAMPION_GRID_SLOT;
-			}
-
-			else if (i == racerCount - 1)
-			{
-				AH_KART_SPAWN_ORDER[racerCount - 1] = champGridSlot;
-			}
-
-			else
-			{
-				AH_KART_SPAWN_ORDER[i] = AH_WP_FIRST_BOT_GRID_SLOT + (i - firstBotSlot);
-			}
-		}
-	}
-
-	// Speed Champion is invalid
-	else
-	{
-		for (i = firstBotSlot; i < racerCount; i++)
-		{
-			randKartSpawn[i] = i;
-		}
-
-		for (i = 0; i < botCount; i++)
-		{
-			rng1 = RngDeadCoed(&AH_ADVENTURE_RNG);
-
-			rng2 = (rng1 & 0xfff) % (botCount - i) + firstBotSlot;
-			AH_KART_SPAWN_ORDER[(s32)randKartSpawn[rng2]] = (u8)i;
-
-			while (rng2 < racerCount - 1)
-			{
-				randKartSpawn[rng2] = randKartSpawn[rng2 + 1];
-				rng2++;
-			}
-		}
-	}
-
-	// spawn the human drivers in the back, P1 last
-	for (i = 0; i < firstBotSlot; i++)
-	{
-		AH_KART_SPAWN_ORDER[i] = racerCount - 1 - i;
-	}
-
 	// if flag is on-screen, loading has already been finalized
 	if (RaceFlag_IsTransitioning())
 	{
 		goto WarpPad_AnimateOpen;
 	}
 
+	const s32 destination = warppadObj->levelID;
 
 	{
 		if (destination >= AH_WP_ID_FIRST_GEM_CUP)
@@ -601,8 +488,7 @@ void AH_WarpPad_ThTick(struct Thread *t)
 				GAME_ADD_CONFIG_0 |= ADVENTURE_CUP;
 				cupGT->cup.trackIndex = 0;
 				cupGT->cup.cupID = cupID;
-				for (i = 7; i >= 0; i--)
-					cupGT->cup.points[i] = 0;
+				memset(cupGT->cup.points, 0, sizeof(cupGT->cup.points));
 				{
 					u32 trackOffset;
 					s32 cupOffset;
@@ -617,7 +503,7 @@ void AH_WarpPad_ThTick(struct Thread *t)
 					cupOffset *= 16;
 					trackOffset += cupOffset;
 					trackOffset = (u32)trackOffset + (u32)cupTracks;
-					MainRaceTrack_RequestLoad((s16)CTR_ReadU16AlignedLE((const void *)trackOffset));
+					AH_WarpPad_RequestRace((s16)CTR_ReadU16AlignedLE((const void *)trackOffset));
 				}
 			}
 			goto WarpPad_AnimateOpen;
@@ -734,7 +620,7 @@ void AH_WarpPad_ThTick(struct Thread *t)
 		// Rem Adventure Arena
 		GAME_REMOVE_CONFIG_0 |= ADVENTURE_ARENA;
 
-		MainRaceTrack_RequestLoad(warppadObj->levelID);
+		AH_WarpPad_RequestRace(warppadObj->levelID);
 	WarpPad_TrophyAnimateOnly:
 
 		if (warppadObj->framesWarping < AH_WP_TROPHY_PORTAL_HOLD_FRAMES)
@@ -770,7 +656,7 @@ void AH_WarpPad_ThTick(struct Thread *t)
 		// Rem Adventure Arena
 		GAME_REMOVE_CONFIG_0 |= ADVENTURE_ARENA;
 
-		MainRaceTrack_RequestLoad(warppadObj->levelID);
+		AH_WarpPad_RequestRace(warppadObj->levelID);
 		goto WarpPad_AnimateOpen;
 	}
 WarpPad_AnimateOpen:

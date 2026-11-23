@@ -9,6 +9,10 @@ struct Thread *RB_GetThread_ClosestTracker(struct Driver *d)
 
 	for (; currThread != NULL; currThread = currThread->siblingThread)
 	{
+		if ((currThread->flags & THREAD_FLAG_DEAD) != 0 || currThread->inst == NULL)
+		{
+			continue;
+		}
 		struct TrackerWeapon *tw = currThread->object;
 		struct Instance *currInst = currThread->inst;
 

@@ -87,33 +87,46 @@ void UI_DrawRankedDrivers(void)
 
 	if (numPlyr == 1)
 	{
-		// Number of racers that have finished race
-		s16 numRacersFinished = 0;
-
-		// incremented when looping through player structures
+		if (numPlyr + gGT->numBotsNextGame > UI_RANK_DRIVER_COUNT)
+		{
+			// Read the live standings, not the eight-slot retail animation table.
+			for (int rank = 0; rank < UI_RANK_VISIBLE_ARCADE_COUNT; rank++)
+			{
+				struct Driver *driver = gGT->driversInRaceOrder[rank];
+				if (driver == NULL)
+				{
+					continue;
+				}
+				const int rowOffset = rank * UI_RANK_TEXT_SLOT_HEIGHT;
+				char text[] = {(char)('1' + rank), '\0'};
+				DecalFont_DrawLine(text, UI_RANK_TEXT_X, UI_RANK_TEXT_START_Y + rowOffset, FONT_SMALL,
+				                   (driver->actionsFlagSet & ACTION_RACE_FINISHED) != 0 ? RED : WHITE);
+				const int id = driver->driverID;
+				UI_DrawDriverIcon(gGT->ptrIcons[data.MetaDataCharacters[data.characterIDs[id]].iconID], UI_RANK_ICON_X,
+				                  UI_RANK_ICON_BASE_Y + rowOffset, &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT, 1,
+				                  UI_RANK_ICON_SCALE, UI_Rank_GetDamageColor(id));
+			}
+			return;
+		}
+		int numRacers = 0;
+		int numRacersFinished = 0;
 
 		for (driverIndex = 0; driverIndex < UI_RANK_DRIVER_COUNT; driverIndex++)
 		{
+			struct Driver *driver = gGT->drivers[driverIndex];
+			if (driver == NULL)
+			{
+				continue;
+			}
+			numRacers++;
+
 			if (data.rankIconsTransitionTimer[driverIndex] == 0)
 			{
-				// player structure + 0x482 is your rank in the race
-				// 0 = 1st place, 1 = 2nd place, 2 = 3rd place, etc
-				// NOTE(aalhendi): Boss races only allocate P1 plus the boss.
-				// Retail reads driverRank before its later null check; if the
-				// slot is empty, PS1 low RAM is still readable, but native
-				// must skip it before dereferencing a null driver pointer.
-				if (gGT->drivers[driverIndex] != NULL)
-				{
-					data.rankIconsDesired[driverIndex] = gGT->drivers[driverIndex]->driverRank;
-				}
+				data.rankIconsDesired[driverIndex] = driver->driverRank;
 			}
 
-			// if player structure pointer is not nullptr
-			if ((gGT->drivers[driverIndex] != 0) &&
-
-			    ((gGT->drivers[driverIndex]->actionsFlagSet & ACTION_RACE_FINISHED) != 0))
+			if ((driver->actionsFlagSet & ACTION_RACE_FINISHED) != 0)
 			{
-				// count how many racers have finished
 				numRacersFinished++;
 			}
 		}
@@ -125,6 +138,10 @@ void UI_DrawRankedDrivers(void)
 		{
 			// Show 2 racers
 			visibleRankCount = UI_RANK_VISIBLE_BOSS_COUNT;
+		}
+		if (numRacers < visibleRankCount)
+		{
+			visibleRankCount = numRacers;
 		}
 
 		// height to draw rank (this bitshifts later)
@@ -232,14 +249,14 @@ void UI_DrawRankedDrivers(void)
 	// if this is multiplayer
 	else
 	{
-		s16 *trackIconX = &data.rankIconsTransitionTimer[0];
 		int totalNumDrivers = numPlyr + gGT->numBotsNextGame;
 
 		for (driverIndex = 0; driverIndex < totalNumDrivers; driverIndex++)
 		{
 			damageColor = UI_Rank_GetDamageColor(driverIndex);
 
-			u16 currentTrackX = *trackIconX;
+			// The resident table is followed by the missile warning timers.
+			s16 *trackIconX = driverIndex < UI_RANK_DRIVER_COUNT ? &data.rankIconsTransitionTimer[driverIndex] : NULL;
 			u16 targetTrackX;
 
 			if (
@@ -272,6 +289,7 @@ void UI_DrawRankedDrivers(void)
 			}
 
 			// posX
+			u16 currentTrackX = trackIconX != NULL ? *trackIconX : targetTrackX;
 			int targetTrackXInt = targetTrackX;
 			int delta = targetTrackXInt - (s16)currentTrackX;
 
@@ -330,8 +348,10 @@ void UI_DrawRankedDrivers(void)
 
 			                     TRANS_50_DECAL, UI_RANK_TRACK_ICON_SCALE);
 
-			*trackIconX = nextTrackX;
-			trackIconX = trackIconX + 1;
+			if (trackIconX != NULL)
+			{
+				*trackIconX = nextTrackX;
+			}
 		}
 
 		for (struct Thread *warpballThread = gGT->threadBuckets[TRACKING].thread; warpballThread != 0; warpballThread = warpballThread->siblingThread)

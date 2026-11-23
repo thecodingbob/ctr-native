@@ -1,6 +1,8 @@
 #include <common.h>
 #include <level_info.h>
 #include <track_text.h>
+#include "UI_CupPoints.h"
+#include "UI_ResultGrid.h"
 
 enum
 {
@@ -34,7 +36,6 @@ enum
 	UI_CUP_STANDINGS_PURPLE_GEM_RETAIL_DRIVERS = 5,
 	// Lineup that gets the shared three-over-three rows, in any cup.
 	UI_CUP_STANDINGS_SIX_DRIVER_COUNT = 6,
-	UI_CUP_STANDINGS_MAX_VISIBLE_AWARD_DRIVERS = 4,
 	UI_CUP_STANDINGS_ICON_SLOT_X = 0x60,
 	UI_CUP_STANDINGS_ICON_SLOT_W = 0x5a,
 	UI_CUP_STANDINGS_ICON_TOP_ROW_Y = 0x42,
@@ -48,10 +49,10 @@ enum
 	UI_CUP_STANDINGS_PLACE_TEXT_Y_OFFSET = -1,
 	UI_CUP_STANDINGS_POINTS_TEXT_X_OFFSET = 0x2d,
 	UI_CUP_STANDINGS_POINTS_TEXT_Y_OFFSET = 6,
+	UI_CUP_STANDINGS_EXPANDED_POINTS_GAP = 3,
 	UI_CUP_STANDINGS_ICON_SCALE = 0x1000,
 	UI_CUP_STANDINGS_ICON_NEUTRAL_CHANNEL = 0x80,
 	UI_CUP_STANDINGS_TRACKS_PER_CUP = 4,
-	UI_CUP_STANDINGS_DRIVER_SLOTS = 8,
 	UI_CUP_STANDINGS_ARCADE_DIFFICULTY_DIVISOR = 0x50,
 	UI_CUP_STANDINGS_MAX_ARCADE_DIFFICULTY = 2,
 	UI_CUP_STANDINGS_MAX_CUP_LOSSES = 10,
@@ -321,12 +322,19 @@ void UI_CupStandings_InputAndDraw(void)
 	int *points = &data.cupPointsPerPosition[0];
 
 	vsCupIconOffsetX = 0;
-	for (i = 0; i < sdata->numIconsEOR; i++)
+	const bool expandedGrid = numDrivers > RACE_FIELD_FULL_GRID_RACERS;
+	for (i = 0; i < sdata->numIconsEOR && i < numDrivers; i++)
 	{
 		s16 iconTargetY;
 		iconColumnOffset = (s16)i;
+		if (expandedGrid)
+		{
+			int row;
+			iconTargetX = UI_ResultGrid_X(rectX, rectW, numDrivers, i, &row);
+			iconTargetY = row ? UI_CUP_STANDINGS_ICON_BOTTOM_ROW_Y : UI_CUP_STANDINGS_ICON_TOP_ROW_Y;
+		}
 		// If you are in Purple Gem Cup with retail's five-racer lineup
-		if (!customCup && (gGT->cup.cupID == CUP_ID_PURPLE_GEM) && (numDrivers == UI_CUP_STANDINGS_PURPLE_GEM_RETAIL_DRIVERS))
+		else if (!customCup && (gGT->cup.cupID == CUP_ID_PURPLE_GEM) && (numDrivers == UI_CUP_STANDINGS_PURPLE_GEM_RETAIL_DRIVERS))
 		{
 			iconTargetY = UI_CUP_STANDINGS_ICON_PURPLE_GEM_ROW_Y;
 			iconTargetX = rectX;
@@ -431,7 +439,8 @@ void UI_CupStandings_InputAndDraw(void)
 		}
 
 		// Draw character icon
-		UI_DrawDriverIcon(gGT->ptrIcons[data.MetaDataCharacters[data.characterIDs[d->driverID]].iconID],
+		struct Icon *icon = gGT->ptrIcons[data.MetaDataCharacters[data.characterIDs[d->driverID]].iconID];
+		UI_DrawDriverIcon(icon,
 
 		                  drawPos.x, drawPos.y, &gGT->backBuffer->primMem,
 
@@ -442,19 +451,7 @@ void UI_CupStandings_InputAndDraw(void)
 		// where you see just amount of points added
 		if ((sdata->menuReadyToPass & UI_CUP_STANDINGS_PAGE_TRACK_POINTS) == 0)
 		{
-			int awardedPoints = 0;
-
-			if (i < UI_CUP_STANDINGS_MAX_VISIBLE_AWARD_DRIVERS)
-			{
-				if (gGT->numBotsNextGame == 0)
-				{
-					awardedPoints = gGT->numPlyrCurrGame - (i + 1);
-				}
-				else
-				{
-					awardedPoints = points[i];
-				}
-			}
+			int awardedPoints = UI_CupPoints_ForPosition(points, gGT->numPlyrCurrGame, gGT->numBotsNextGame, i);
 
 			*(int *)&text[0] = '+' + (('0' + awardedPoints) << 8);
 		}
@@ -469,8 +466,20 @@ void UI_CupStandings_InputAndDraw(void)
 
 		vsCupIconOffsetX = vsCupIconOffsetX + UI_CUP_STANDINGS_ICON_SLOT_W;
 
-		// draw string for number of points
-		DecalFont_DrawLine(text, drawPos.x + UI_CUP_STANDINGS_POINTS_TEXT_X_OFFSET, drawPos.y + UI_CUP_STANDINGS_POINTS_TEXT_Y_OFFSET, FONT_BIG, PERIWINKLE);
+		if (expandedGrid)
+		{
+			// The 60-pixel cells leave little room beside the portrait. Center the
+			// points below it; widescreen compression preserves the icon's center.
+			int width = icon ? FP_Mult(icon->texLayout.u1 - icon->texLayout.u0, UI_CUP_STANDINGS_ICON_SCALE) : 0;
+			int height = icon ? FP_Mult(icon->texLayout.v2 - icon->texLayout.v0, UI_CUP_STANDINGS_ICON_SCALE) : 0;
+			DecalFont_DrawLine(text, drawPos.x + width / 2, drawPos.y + height + UI_CUP_STANDINGS_EXPANDED_POINTS_GAP,
+			                   FONT_SMALL, JUSTIFY_CENTER | PERIWINKLE);
+		}
+		else
+		{
+			DecalFont_DrawLine(text, drawPos.x + UI_CUP_STANDINGS_POINTS_TEXT_X_OFFSET, drawPos.y + UI_CUP_STANDINGS_POINTS_TEXT_Y_OFFSET,
+			                   FONT_BIG, PERIWINKLE);
+		}
 	}
 
 	// If this is the first screen of cup standings,
@@ -551,11 +560,6 @@ void UI_CupStandings_InputAndDraw(void)
 		// If this is the first frame of Track Standings
 		if (wasTrackPointsPage == 0)
 		{
-			if (numDrivers > UI_CUP_STANDINGS_MAX_VISIBLE_AWARD_DRIVERS)
-			{
-				numDrivers = UI_CUP_STANDINGS_MAX_VISIBLE_AWARD_DRIVERS;
-			}
-
 			for (i = 0; i < numDrivers; i++)
 			{
 				// the amount of points this player has in the cup
@@ -563,7 +567,7 @@ void UI_CupStandings_InputAndDraw(void)
 
 				    // Incremented by
 				    // The amount of points that should be awarded to each position
-				    (gGT->numBotsNextGame == 0) ? (gGT->numPlyrCurrGame - (i + 1)) : points[i];
+				    UI_CupPoints_ForPosition(points, gGT->numPlyrCurrGame, gGT->numBotsNextGame, i);
 			}
 
 			// update cup rank of all drivers
@@ -632,7 +636,7 @@ void UI_CupStandings_InputAndDraw(void)
 
 				// Array with the final ranking of each player
 				int *ranks = &data.cupPositionPerPlayer[0];
-				for (i = 0; i < UI_CUP_STANDINGS_DRIVER_SLOTS; i++)
+				for (i = 0; i < numDrivers; i++)
 				{
 					struct Driver *d;
 					d = gGT->drivers[ranks[i]];
@@ -643,10 +647,8 @@ void UI_CupStandings_InputAndDraw(void)
 						// Set final ranking of each player
 						d->driverRank = (s16)i;
 					}
-
-					// set driver's cup score to zero
-					gGT->cup.points[i] = 0;
 				}
+				memset(gGT->cup.points, 0, sizeof(gGT->cup.points));
 
 				Podium_InitModels(gGT);
 

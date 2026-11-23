@@ -194,6 +194,12 @@ void UI_ThTick_big1(struct Thread *bucket)
 {
 	struct UiElement3D *obj = bucket->object;
 	struct Instance *inst = bucket->inst;
+	inst->model = sdata->gGT->modelPtr[STATIC_BIG1];
+	// The draw path reveals the second digit only for a two-digit rank.
+	if (bucket->childThread != NULL)
+	{
+		bucket->childThread->inst->flags |= HIDE_MODEL;
+	}
 
 	s16 scale = obj->scale;
 	CTR_WriteU32LE(&inst->matrix.m[0][0], scale);

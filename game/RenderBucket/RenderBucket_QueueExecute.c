@@ -2794,9 +2794,13 @@ static void RenderBucket_LoadPrimColors(struct RenderBucketDrawContext *ctx, con
 {
 	s16 alpha = ctx->idpp->alphaScale;
 
-	MTC2(ctx->tempColor[1], 20);
-	MTC2(ctx->tempColor[2], 21);
-	MTC2(ctx->tempColor[3], 22);
+	const struct Instance *inst = ctx->inst;
+	const bool rotatedRank = (inst->flags & SCREENSPACE_INSTANCE) != 0 && inst->model->id == STATIC_BIG1 && inst->matrix.m[0][0] < 0;
+	for (int i = 1; i <= 3; i++)
+	{
+		const u32 color = (u32)ctx->tempColor[i];
+		MTC2(rotatedRank ? UI_PosSuffix_ReverseWarmRamp(color) : color, 19 + i);
+	}
 	MTC2(alpha, 8);
 
 	if ((alpha != 0) && (RenderBucket_OTEntryPassesDpctGate(otEntry) != 0))

@@ -50,9 +50,8 @@ static void TestSessionModes(void)
 				               "the effect targets every human including players three and four");
 			}
 			CTR_TEST_CHECK(!ChaosEvent_EffectFits(CHAOS_EFFECT_ARENA_CHAMPIONS, s_tracker.gameMode1,
-			                                     s_tracker.cup.cupID, players, g_config.extendedMultiplayer, false) ||
-			               modes[mode] == ARCADE_MODE,
-			               "bot-only effects are excluded from VS, Battle, relic and crystal events");
+			                                     players, s_tracker.numBotsNextGame, false),
+			               "bot-only effects are excluded whenever the event has no spawned bots");
 			sdata->chaosSettings.trigger = CHAOS_TRIGGER_PICKUP;
 			Tick(1);
 			Chaos_OnTurboPadContact(&humans[players - 1], true);
@@ -1056,20 +1055,26 @@ static void TestCataloguePublicationLifecycle(void)
 
 static void TestBotEffectEventScope(void)
 {
-	CTR_TEST_SECTION("bot effects are filtered by event type, never by live bot availability");
+	CTR_TEST_SECTION("bot effects require a spawned bot, even in a mode that normally has bots");
 	SetupRace(CHAOS_TRIGGER_EXTERNAL);
 	sdata->chaosSettings.effects[CHAOS_EFFECT_ARENA_CHAMPIONS] = true;
 	sdata->chaosSettings.enabledCount++;
 	sdata->chaosSettings.effects[CHAOS_EFFECT_YOUVE_GOT_MAIL] = true;
 	sdata->chaosSettings.enabledCount++;
 	Chaos_PublishEffects();
-	CTR_TEST_CHECK(strstr(s_externalCatalogue, "arena-champions\n") != NULL, "race publication includes Arena Champions without inspecting the field");
-	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_ARENA_CHAMPIONS, 1000), "normal races accept Arena Champions even without registered bots");
-	CTR_TEST_CHECK(strstr(s_externalCatalogue, "youve-got-mail\n") != NULL, "race publication includes You've Got Mail without inspecting the field");
-	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_YOUVE_GOT_MAIL, 1000), "normal races accept You've Got Mail even without registered bots");
+	CTR_TEST_CHECK(strstr(s_externalCatalogue, "arena-champions\n") == NULL, "a botless Adventure race omits Arena Champions");
+	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_ARENA_CHAMPIONS, 1000), "a botless Adventure race rejects Arena Champions");
+	CTR_TEST_CHECK(strstr(s_externalCatalogue, "youve-got-mail\n") == NULL, "a botless Adventure race omits You've Got Mail");
+	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_YOUVE_GOT_MAIL, 1000), "a botless Adventure race rejects You've Got Mail");
 	struct Driver finishedBot = {.driverID = 2, .actionsFlagSet = ACTION_BOT | ACTION_RACE_FINISHED};
 	s_tracker.drivers[2] = &finishedBot;
+	s_tracker.numBotsNextGame = 1;
+	Chaos_PublishEffects();
+	CTR_TEST_CHECK(strstr(s_externalCatalogue, "arena-champions\n") != NULL && strstr(s_externalCatalogue, "youve-got-mail\n") != NULL,
+	               "bot effects are published when the field has a bot");
 	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_ARENA_CHAMPIONS, 1000), "finished bots do not prevent activating Arena Champions");
+	s_tracker.numBotsNextGame = 0;
+	s_tracker.drivers[2] = NULL;
 	const int botlessEvents[] = {RELIC_RACE, CRYSTAL_CHALLENGE, BATTLE_MODE};
 	for (int i = 0; i < (int)len(botlessEvents); i++)
 	{
@@ -1086,7 +1091,6 @@ static void TestBotEffectEventScope(void)
 		Tick(1);
 		CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_ARENA_CHAMPIONS), "interval selection excludes bot effects in botless event types");
 	}
-	s_tracker.drivers[2] = NULL;
 	Chaos_Reset();
 }
 

@@ -301,18 +301,20 @@ DamageApplied:
 
 	if ((attackDriver != NULL) && ((GAME_TRACKER->gameMode1 & END_OF_RACE) == 0))
 	{
-		worldPosition.x = (s16)attackDriver->instSelf->matrix.t[0];
-		worldPosition.y = (s16)attackDriver->instSelf->matrix.t[1];
-		worldPosition.z = (s16)attackDriver->instSelf->matrix.t[2];
-		VehGteSetRotTransMatrix(&GAME_TRACKER->pushBuffer[attackDriver->driverID].matrix_ViewProj);
-		CTR_GteLoadPositionV0(&worldPosition);
-		gte_rtps();
-		screenPosition = CTR_VECTOR_DATA(&posScreen);
-		CTR_GteStorePositionXY(screenPosition);
-
-		// screenPosXY
-		attackDriver->BattleHUD.startX = screenPosition[0] + GAME_TRACKER->pushBuffer[attackDriver->driverID].rect.x;
-		attackDriver->BattleHUD.startY = screenPosition[1] + GAME_TRACKER->pushBuffer[attackDriver->driverID].rect.y - VEH_PICK_BATTLE_HUD_OFFSET_Y;
+		if (attackDriver->driverID < GAME_TRACKER->numPlyrCurrGame)
+		{
+			struct PushBuffer *viewport = &GAME_TRACKER->pushBuffer[attackDriver->driverID];
+			worldPosition.x = (s16)attackDriver->instSelf->matrix.t[0];
+			worldPosition.y = (s16)attackDriver->instSelf->matrix.t[1];
+			worldPosition.z = (s16)attackDriver->instSelf->matrix.t[2];
+			VehGteSetRotTransMatrix(&viewport->matrix_ViewProj);
+			CTR_GteLoadPositionV0(&worldPosition);
+			gte_rtps();
+			screenPosition = CTR_VECTOR_DATA(&posScreen);
+			CTR_GteStorePositionXY(screenPosition);
+			attackDriver->BattleHUD.startX = screenPosition[0] + viewport->rect.x;
+			attackDriver->BattleHUD.startY = screenPosition[1] + viewport->rect.y - VEH_PICK_BATTLE_HUD_OFFSET_Y;
+		}
 
 		battleResultPass = 0;
 		if ((GAME_TRACKER->gameMode1 & LIFE_LIMIT) != 0)
@@ -359,8 +361,15 @@ DamageApplied:
 
 		CTR_PSX_KEEP_VALUE(one);
 		attackDriver->BattleHUD.cooldown = VEH_PICK_BATTLE_HUD_COOLDOWN;
-		victimDriver->numTimesAttackedByPlayer[attackDriver->driverID]++;
-		attackDriver->numTimesAttackingPlayer[victimDriver->driverID]++;
+		// The per-opponent quip tables are retail-sized. Keep the aggregate below.
+		if (attackDriver->driverID < len(victimDriver->numTimesAttackedByPlayer))
+		{
+			victimDriver->numTimesAttackedByPlayer[attackDriver->driverID]++;
+		}
+		if (victimDriver->driverID < len(attackDriver->numTimesAttackingPlayer))
+		{
+			attackDriver->numTimesAttackingPlayer[victimDriver->driverID]++;
+		}
 
 		if (attackDriver != victimDriver)
 		{

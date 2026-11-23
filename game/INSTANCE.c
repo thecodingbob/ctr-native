@@ -125,7 +125,8 @@ static void INSTANCE_RollbackThreadBirth(struct Thread *t, struct Thread *relati
 	LIST_AddFront(&gGT->JitPools.thread.free, (struct Item *)t);
 }
 
-struct Instance *INSTANCE_BirthWithThread(s32 modelID, const char *name, s32 poolType, s32 bucket, void *funcThTick, s32 objSize, struct Thread *parent)
+static struct Instance *INSTANCE_BirthWithThreadInternal(s32 modelID, const char *name, s32 poolType, s32 bucket,
+                                                         void *funcThTick, s32 objSize, struct Thread *parent, bool hud)
 {
 	struct Model *lookupModel;
 	struct Model *model;
@@ -171,7 +172,7 @@ struct Instance *INSTANCE_BirthWithThread(s32 modelID, const char *name, s32 poo
 	}
 
 	t->modelIndex = modelID;
-	inst = INSTANCE_Birth3D(model, name, t);
+	inst = hud ? INSTANCE_Birth2D(model, NULL, t) : INSTANCE_Birth3D(model, name, t);
 
 	if (inst == NULL)
 	{
@@ -182,6 +183,16 @@ struct Instance *INSTANCE_BirthWithThread(s32 modelID, const char *name, s32 poo
 	t->inst = inst;
 
 	return inst;
+}
+
+struct Instance *INSTANCE_BirthWithThread(s32 modelID, const char *name, s32 poolType, s32 bucket, void *funcThTick, s32 objSize, struct Thread *parent)
+{
+	return INSTANCE_BirthWithThreadInternal(modelID, name, poolType, bucket, funcThTick, objSize, parent, false);
+}
+
+struct Instance *INSTANCE_Birth2DWithThread(s32 modelID, const char *name, s32 poolType, s32 bucket, void *funcThTick, s32 objSize, struct Thread *parent)
+{
+	return INSTANCE_BirthWithThreadInternal(modelID, name, poolType, bucket, funcThTick, objSize, parent, true);
 }
 
 

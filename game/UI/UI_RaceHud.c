@@ -24,6 +24,7 @@ enum
 	UI_TRACKER_TIMER_HIT_TARGET_FRAMES = 12,
 	UI_TRACKER_TIMER_NEW_TARGET_FRAMES = 8,
 	UI_TRACKER_DISTANCE_DISPLAY_DIVISOR = 0x32,
+	UI_TRACKER_DISTANCE_DRAW_MAX = 48,
 	UI_TRACKER_BEEP_RATE_NEAR = 5,
 	UI_TRACKER_BEEP_RATE_MID = 10,
 	UI_TRACKER_BEEP_RATE_FAR = 30,
@@ -246,13 +247,14 @@ void UI_TrackerSelf(struct Driver *d)
 	driverID = d->driverID;
 
 	timer = data.trackerTimer[driverID];
+	struct Thread *trackerTh = RB_GetThread_ClosestTracker(d);
 
 	if (
 	    // timer loop ended
 	    (timer == 0) &&
 
 	    // no more missile chasing player
-	    (d->thTrackingMe == 0))
+	    (d->thTrackingMe == NULL) && trackerTh == NULL)
 	{
 		// clear type of object tracking the player
 		data.trackerType[driverID] = UI_TRACKER_TYPE_MISSILE;
@@ -262,20 +264,22 @@ void UI_TrackerSelf(struct Driver *d)
 	warpballDist = 0;
 
 	// If no missile or warpball is chasing this driver
-	if (d->thTrackingMe == 0)
+	int lastAnimFrame;
+	if (trackerTh == NULL)
 	{
 		trackerAnim = &data.trackerAnim2[0];
+		lastAnimFrame = len(data.trackerAnim2) / 2 - 1;
 	}
 	// if a missile or warpball is chasing this driver
 	else
 	{
 		trackerAnim = &data.trackerAnim1[0];
+		lastAnimFrame = len(data.trackerAnim1) / 2 - 1;
 	}
 
-	x = trackerAnim[timer * 2 + 0];
-	y = trackerAnim[timer * 2 + 1];
-
-	struct Thread *trackerTh = RB_GetThread_ClosestTracker(d);
+	const int animFrame = timer < 0 ? 0 : timer > lastAnimFrame ? lastAnimFrame : timer;
+	x = trackerAnim[animFrame * 2 + 0];
+	y = trackerAnim[animFrame * 2 + 1];
 
 	if (
 	    // timer loop ended
@@ -284,12 +288,6 @@ void UI_TrackerSelf(struct Driver *d)
 	    // no missiles chasing player
 	    (trackerTh == NULL))
 	{
-		// warpball is repathing after target was mask-grabbed
-		if ((((struct TrackerWeapon *)d->thTrackingMe->object)->flags & TRACKER_FLAG_WARPBALL_MASK_REPATH) != 0)
-		{
-			goto UpdateTrackerState;
-		}
-
 		// reset timer loop
 		resetTimer = UI_TRACKER_TIMER_HIT_TARGET_FRAMES;
 	}
@@ -361,7 +359,7 @@ UpdateTrackerState:
 		missileDist = VehCalc_FastSqrt(tw->distanceToTarget, 0);
 
 		missileDist = missileDist / UI_TRACKER_DISTANCE_DISPLAY_DIVISOR;
-		trackerDistance = (s16)missileDist;
+		trackerDistance = missileDist > UI_TRACKER_DISTANCE_DRAW_MAX ? UI_TRACKER_DISTANCE_DRAW_MAX + 1 : (s16)missileDist;
 		data.trackerDist[driverID] = trackerDistance;
 
 		beepRate = UI_TRACKER_BEEP_RATE_NEAR;
@@ -416,6 +414,10 @@ UpdateTrackerState:
 	}
 
 	// driver screenspace x and y
+	if (trackerDistance < 0 || trackerDistance > UI_TRACKER_DISTANCE_DRAW_MAX)
+	{
+		return;
+	}
 	screenPosX = screenPos.x;
 	screenPosY = screenPos.y;
 

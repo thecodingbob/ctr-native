@@ -19,8 +19,8 @@ static ChaosEffectId Chaos_PickEventEffect(void)
 	int enabledCount = settings->enabledCount;
 	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
 	{
-		if (effects[i] && !ChaosEvent_EffectFitsSelection((ChaosEffectId)i, gGT->gameMode1, gGT->cup.cupID,
-		                                                gGT->numPlyrCurrGame, g_config.extendedMultiplayer,
+		if (effects[i] && !ChaosEvent_EffectFitsSelection((ChaosEffectId)i, gGT->gameMode1,
+		                                                gGT->numPlyrCurrGame, gGT->numBotsNextGame,
 		                                                Chaos_UsesPersonalPools(), settings->disabledPlayers))
 		{
 			effects[i] = false;

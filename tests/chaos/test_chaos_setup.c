@@ -24,6 +24,11 @@ static int s_testLevel;
 static int s_sessionFinishes;
 static int s_sessionReturns;
 
+int LOAD_PredictRaceFieldSize(int gameMode1, s32 cupID, int players)
+{
+	return RaceField_RacerCount(gameMode1, cupID, players, g_config.extendedMultiplayer);
+}
+
 void MM_ChaosSession_FinishSetup(bool confirm)
 {
 	if (confirm)
@@ -548,7 +553,7 @@ static void TestFilteredActiveEffects(void)
 static void CheckTestRaceGrid(void)
 {
 	u32 occupied = 0;
-	const int count = (int)len(sdata->kartSpawnOrderArray);
+	const int count = RACE_FIELD_FULL_GRID_RACERS;
 	for (int i = 0; i < count; i++)
 	{
 		const u8 slot = (u8)sdata->kartSpawnOrderArray[i];
@@ -1007,6 +1012,10 @@ static void TestChaosRaceShortcut(void)
 	Frame(BTN_START, 0);
 	CTR_TEST_CHECK_EQ(s_testLevel, CRASH_COVE, "a subsequent shortcut launch requests the test track again");
 	CheckTestRaceGrid();
+	for (int i = RACE_FIELD_FULL_GRID_RACERS; i < (int)len(sdata->kartSpawnOrderArray); i++)
+	{
+		CTR_TEST_CHECK_EQ(sdata->kartSpawnOrderArray[i], 0, "the retail shortcut does not write unused expanded-grid slots");
+	}
 	CTR_TEST_CHECK_EQ(s_tracker.podiumRewardID, NOFUNC, "every shortcut launch clears pending podium rewards");
 	CTR_TEST_CHECK_EQ(sdata->chaosSettings.enabledCount, 1, "a subsequent launch still enables exactly one effect");
 	CTR_TEST_CHECK(sdata->chaosSettings.effects[CHAOS_EFFECT_BIG_KART_ENERGY] &&
