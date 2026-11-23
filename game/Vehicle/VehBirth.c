@@ -14,8 +14,10 @@ enum
 	VEH_BIRTH_CHEAT_ITEM_MASK = HELD_ITEM_MASK,
 	VEH_BIRTH_CHEAT_ITEM_COUNT = 9,
 	VEH_BIRTH_CHEAT_DURATION = 0x2d00,
-	VEH_BIRTH_PLAYER_THREAD_FLAGS = SIZE_RELATIVE_POOL_BUCKET(DRIVER_NTSC_RETAIL_SIZE, NONE, LARGE, PLAYER),
+	VEH_BIRTH_PLAYER_THREAD_FLAGS = SIZE_RELATIVE_POOL_BUCKET(sizeof(struct Driver), NONE, LARGE, PLAYER),
 };
+
+CTR_STATIC_ASSERT(sizeof(struct Driver) < THREAD_LARGE_STACK_SIZE - sizeof(struct Item));
 
 typedef u32 VehBirthInstDefNameWord CTR_MAY_ALIAS;
 
@@ -689,6 +691,9 @@ void VehBirth_NonGhost(struct Thread *t, int index)
 	t->driverCollisionReserved_0x40 = 0;
 
 	d = t->object;
+	// The recycled pool payload includes native fields beyond the retail prefix.
+	memset(d, 0, sizeof(*d));
+	d->maskIsAku = -1;
 	characterMetadata = GAME_CHARACTER_METADATA;
 
 	if ((GAME_TRACKER->gameMode1 & MAIN_MENU) != 0)
@@ -765,10 +770,6 @@ struct Driver *VehBirth_Player(int index)
 
 	t = PROC_BirthWithObject(VEH_BIRTH_PLAYER_THREAD_FLAGS, 0, VEH_PLAYER_THREAD_NAME, 0);
 	d = t->object;
-	memset(d, 0, DRIVER_NTSC_RETAIL_SIZE);
-
-	d->maskIsAku = -1;
-	d->boolHadMaskBeforeOOB = 0;
 
 	VehBirth_NonGhost(t, index);
 

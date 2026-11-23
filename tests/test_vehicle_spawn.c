@@ -16,6 +16,8 @@ static int s_probeMaxX = INT16_MAX;
 static int s_probeCount;
 static struct QuadBlock s_probeGround = {.quadFlags = QUADBLOCK_FLAG_GROUND};
 static u32 s_searchFlags;
+static struct Thread *s_birthThread;
+static struct Instance s_birthInstance;
 
 // Allocation, terrain and motion are doubled.
 struct Terrain *VehAfterColl_GetTerrain(u32 terrainType)
@@ -116,12 +118,21 @@ b32 EngineAudio_InitOnce(u32 soundID, u32 flags)
 struct Instance *INSTANCE_Birth3D(struct Model *model, const char *name, struct Thread *thread)
 {
 	(void)model; (void)name; (void)thread;
+	if (s_birthThread != NULL)
+	{
+		return &s_birthInstance;
+	}
 	CtrTest_Bail("appearance initialization must not allocate model instances");
 	return NULL;
 }
 struct Thread *PROC_BirthWithObject(ThreadFlags flags, void *tick, const char *name, struct Thread *relative)
 {
 	(void)flags; (void)tick; (void)name; (void)relative;
+	if (s_birthThread != NULL)
+	{
+		CTR_TEST_CHECK_EQ((u32)flags >> 16, sizeof(struct Driver), "birth reserves the full native driver payload");
+		return s_birthThread;
+	}
 	CtrTest_Bail("appearance initialization must not allocate threads");
 	return NULL;
 }
@@ -130,6 +141,32 @@ struct Model *LOAD_GetExtraCharacterModelByName(char *name)
 	(void)name;
 	CtrTest_Bail("appearance initialization must not load character assets");
 	return NULL;
+}
+
+static void TestPreviewBirthClearsClock(void)
+{
+	CTR_TEST_SECTION("Menu previews do not inherit Clock timers from recycled driver memory");
+	struct GameTracker tracker = {.gameMode1 = MAIN_MENU, .numPlyrCurrGame = 4, .levelID = MAIN_MENU_LEVEL};
+	struct IconGroup tires = {0};
+	struct Model model = {0};
+	struct Driver driver;
+	struct Thread thread = {.object = &driver};
+	const struct MetaDataCHAR original = data.MetaDataCharacters[0];
+	sdata->gGT = &tracker;
+	tracker.iconGroup[0] = &tires;
+	data.driverModelExtras[0].model = &model;
+	data.MetaDataCharacters[0].name_Debug = model.name;
+	s_birthThread = &thread;
+	memset(&driver, 0xa5, sizeof(driver));
+	driver.clockReceive = 1429527521; // Stale value captured from preview slot 3 in the failing quick state.
+	CTR_TEST_CHECK(VehBirth_Player(3) == &driver, "preview reuses the supplied pool slot");
+	CTR_TEST_CHECK_EQ(driver.clockReceive, 0, "the native Clock timer is cleared along with the retail timers");
+	CTR_TEST_CHECK(driver.clockSend == 0 && driver.clockFlash == 0, "a newborn preview cannot emit Clock feedback from stale state");
+	CTR_TEST_CHECK_EQ(driver.maskIsAku, -1, "birth preserves the unset mask sentinel");
+	s_birthThread = NULL;
+	data.driverModelExtras[0].model = NULL;
+	data.MetaDataCharacters[0] = original;
+	sdata->gGT = NULL;
 }
 
 static void TestSpawnScale(void)
@@ -145,11 +182,8 @@ static void TestSpawnScale(void)
 	for (unsigned int i = 0; i < len(modes); i++)
 	{
 		tracker.gameMode1 = modes[i];
-		// Birth clears only the retail prefix; the native tail may contain pool data.
 		memset(&driver, 0xa5, sizeof(driver));
 		driver.kartScale = 0.5f;
-		memset(&driver, 0, DRIVER_NTSC_RETAIL_SIZE);
-		CTR_TEST_CHECK_EQ(driver.kartScale, 0.5f, "retail initialization leaves a nonzero native-tail scale");
 		VehBirth_TireSprites(&thread);
 		CTR_TEST_CHECK_EQ(driver.kartScale, 1, "spawn replaces stale pool scale with normal scale");
 		CTR_TEST_CHECK_EQ(driver.wheelSize, 0xccc, "spawn retains the retail wheel size");
@@ -333,6 +367,7 @@ static void TestGridPreflight(void)
 int main(void)
 {
 	TestSpawnScale();
+	TestPreviewBirthClearsClock();
 	TestCharacterWheels();
 	TestOxideBirthWheels();
 	TestSpawnCollisionLod();
