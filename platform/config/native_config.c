@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <platform/config/native_config.h>
+#include <race_field_limits.h>
 #include "native_config_internal.h"
 #include <platform/native_assets.h>
 #include <platform/native_path.h>
@@ -194,6 +195,17 @@ const ConfigEntry g_configEntries[] = {
         .lngKey = LNG_EXPANDED_CONFIG_EXTENDED_MULTIPLAYER,
         .type = CFG_BOOL,
         .valuePtr = &g_config.extendedMultiplayer
+    },
+    {
+        .section = "General",
+        .key = "race_kart_count",
+        .lngKey = LNG_EXPANDED_CONFIG_RACE_KART_COUNT,
+        .type = CFG_INT,
+        .valuePtr = &g_config.raceKartCount,
+        .min = RACE_FIELD_CONFIG_MIN_RACERS,
+        .max = RACE_FIELD_CONFIG_MAX_RACERS,
+        .step = 1,
+        .intSuffix = ""
     },
     {
         .section = "General",

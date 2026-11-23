@@ -1,6 +1,8 @@
 #ifndef RACE_FIELD_H
 #define RACE_FIELD_H
 
+#include <race_field_limits.h>
+
 // How many racers a race fields, and how many of them are bots.
 //
 // The loader selects a roster, MainInit_Drivers limits it to the playable
@@ -19,8 +21,6 @@ enum
 	RACE_FIELD_PAIR_GRID_RACERS = 6,
 	// The boss of a boss race, and the only bot it fields.
 	RACE_FIELD_BOSS_RACERS = 1,
-	RACE_FIELD_CONFIG_MIN_RACERS = 2,
-	RACE_FIELD_CONFIG_MAX_RACERS = 16,
 };
 
 // Modes MainInit_Drivers never spawns a bot for: nothing races against a clock,

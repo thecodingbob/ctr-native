@@ -149,9 +149,10 @@ static void TextLength_CheckConfigPairs(const char *path, const struct NativeTex
 		else if (entry->type == CFG_INT)
 		{
 			char value[32];
-			snprintf(value, sizeof(value), "%d%%", entry->min);
+			const char *suffix = entry->intSuffix != NULL ? entry->intSuffix : "%";
+			snprintf(value, sizeof(value), "%d%s", entry->min, suffix);
 			TextLength_CheckPair(path, nameKey, name, "minimum", value);
-			snprintf(value, sizeof(value), "%d%%", entry->max);
+			snprintf(value, sizeof(value), "%d%s", entry->max, suffix);
 			TextLength_CheckPair(path, nameKey, name, "maximum", value);
 		}
 	}

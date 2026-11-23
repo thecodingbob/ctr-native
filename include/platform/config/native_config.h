@@ -20,7 +20,8 @@ typedef struct {
     bool showReservesMeter;     // true = show the in-game reserves meter (default = false)
     bool allowOxideStationMultiplayer; // false = retail 1P-only restriction, true = allow multiplayer
     bool allowRaceTracksInBattle; // false = battle arenas only, true = select race tracks in battle mode
-    bool extendedMultiplayer; // false = retail rosters, true = allow 3P/4P Arcade races and fill 2P/3P/4P Arcade and Adventure races with 8 racers
+    bool extendedMultiplayer; // allow 3P/4P Arcade races and the configured field in multiplayer
+    int raceKartCount;          // total requested karts, including players
     int botSelectionMode;         // BOT_SELECTION_PREDETERMINED (default), RANDOM_UNLOCKED, or RANDOM_ALL
     bool skipHints;             // false = off (default), true = skip all mask hints in adventure mode
     int bossCutscenes;          // BOSS_CUTSCENES_UNSKIPPABLE (default), SKIPPABLE, or SKIP
@@ -147,6 +148,7 @@ typedef struct {
     const ConfigEnumValue *enumValues;  // value-name pairs for CFG_ENUM
     int numEnumValues;                  // number of entries in enumValues
     bool availableDuringPause; // false = visible but read-only while a session is paused
+    const char *intSuffix; // CFG_INT display suffix; NULL uses "%"
 } ConfigEntry;
 
 // CFG_ACTION and CFG_SUBSECTION have no g_config backing or file representation.
