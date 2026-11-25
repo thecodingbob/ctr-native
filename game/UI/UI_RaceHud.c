@@ -24,7 +24,6 @@ enum
 	UI_TRACKER_TIMER_HIT_TARGET_FRAMES = 12,
 	UI_TRACKER_TIMER_NEW_TARGET_FRAMES = 8,
 	UI_TRACKER_DISTANCE_DISPLAY_DIVISOR = 0x32,
-	UI_TRACKER_DISTANCE_DRAW_MAX = 48,
 	UI_TRACKER_BEEP_RATE_NEAR = 5,
 	UI_TRACKER_BEEP_RATE_MID = 10,
 	UI_TRACKER_BEEP_RATE_FAR = 30,
@@ -359,7 +358,7 @@ UpdateTrackerState:
 		missileDist = VehCalc_FastSqrt(tw->distanceToTarget, 0);
 
 		missileDist = missileDist / UI_TRACKER_DISTANCE_DISPLAY_DIVISOR;
-		trackerDistance = missileDist > UI_TRACKER_DISTANCE_DRAW_MAX ? UI_TRACKER_DISTANCE_DRAW_MAX + 1 : (s16)missileDist;
+		trackerDistance = (s16)missileDist;
 		data.trackerDist[driverID] = trackerDistance;
 
 		beepRate = UI_TRACKER_BEEP_RATE_NEAR;
@@ -414,10 +413,6 @@ UpdateTrackerState:
 	}
 
 	// driver screenspace x and y
-	if (trackerDistance < 0 || trackerDistance > UI_TRACKER_DISTANCE_DRAW_MAX)
-	{
-		return;
-	}
 	screenPosX = screenPos.x;
 	screenPosY = screenPos.y;
 
