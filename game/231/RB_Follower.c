@@ -2,10 +2,7 @@
 
 void RB_Follower_ProcessBucket(struct Thread *t)
 {
-	s32 i;
-	s32 driverID;
-	struct Follower *fObj;
-	struct Instance *inst;
+	const int players = GAME_TRACKER->numPlyrCurrGame;
 
 	for (/**/; t != 0; t = t->siblingThread)
 	{
@@ -15,12 +12,12 @@ void RB_Follower_ProcessBucket(struct Thread *t)
 			continue;
 		}
 
-		fObj = t->object;
-		inst = t->inst;
-		driverID = fObj->driver->driverID;
+		const struct Follower *fObj = t->object;
+		struct Instance *inst = t->inst;
+		const int driverID = fObj->driver->driverID;
 
 		// make Follower invisible to all other players
-		for (i = 0; i < GAME_TRACKER->numPlyrNextGame; i++)
+		for (int i = 0; i < players; i++)
 		{
 			if (driverID != i)
 			{
@@ -28,8 +25,12 @@ void RB_Follower_ProcessBucket(struct Thread *t)
 			}
 		}
 
-		// make Mine invisible to this player
-		fObj->mineTh->inst->idpp[driverID].instFlags &= ~DRAW_SUCCESSFUL;
+		// Body Swap can put the owner in a bot slot while the afterimage is alive.
+		// That kart no longer has a viewport; leave the real mine visible.
+		if (driverID < players && fObj->mineTh->timesDestroyed == fObj->backupTimesDestroyed && fObj->mineTh->inst != NULL)
+		{
+			fObj->mineTh->inst->idpp[driverID].instFlags &= ~DRAW_SUCCESSFUL;
+		}
 	}
 }
 

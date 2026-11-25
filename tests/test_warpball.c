@@ -110,7 +110,10 @@ struct Instance *INSTANCE_BirthWithThread(s32 model, const char *name, s32 pool,
 {
 	(void)name; (void)pool; (void)bucket; (void)size; (void)parent;
 	CTR_TEST_CHECK_EQ(model, WARPBALL_MODEL, "orb launch allocates the warpball model");
-	s_spawnedOrb->thread->funcThTick = tick;
+	if (s_spawnedOrb != NULL)
+	{
+		s_spawnedOrb->thread->funcThTick = tick;
+	}
 	return s_spawnedOrb;
 }
 void GAMEPAD_ShockFreq(struct Driver *driver, int frames, int value) { (void)driver; (void)frames; (void)value; }
@@ -271,6 +274,13 @@ static void TestArenaWarpball(void)
 	target->actionsFlagSet |= ACTION_RACE_FINISHED;
 	RB_Warpball_ThTick(&thread);
 	CTR_TEST_CHECK(thread.funcThTick == RB_Warpball_FadeAway, "a fixed-target orb fades when its target finishes rather than retargeting");
+
+	CTR_TEST_SECTION("a failed targeted launch does not publish an orb");
+	s_spawnedOrb = NULL;
+	s_tracker.threadBuckets[TRACKING].thread = NULL;
+	s_tracker.gameMode1 = 0;
+	VehPickupItem_ShootWarpball(source, target);
+	CTR_TEST_CHECK((s_tracker.gameMode1 & WARPBALL_HELD) == 0, "an exhausted instance or thread pool leaves the warpball slot free");
 }
 
 static void TestExpandedTargetSelection(void)

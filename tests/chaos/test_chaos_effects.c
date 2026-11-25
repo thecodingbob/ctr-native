@@ -82,6 +82,7 @@ void BOTS_Driver_Convert(struct Driver *driver) { driver->actionsFlagSet |= ACTI
 #include <game/PlayLevel.c>
 #undef VehLap_UpdateProgress
 #include <game/Vehicle/VehPhysProc_Input.c>
+#include <game/231/RB_Follower.c>
 #include <chaos/chaos_jump_fixture.h>
 
 static u32 PreparedDriver(struct Driver *driver, const struct GamepadBuffer *pad, int *steering, u32 actions)
@@ -1000,6 +1001,45 @@ static void TestBodySwap(void)
 	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
 	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[1] && s_tracker.drivers[1] == &world.drivers[0],
 	               "scripted states, start holds and pending transformations do not gate controller exchange");
+}
+
+static void TestBodySwapMineFollower(void)
+{
+	CTR_TEST_SECTION("mine afterimages never use a swapped-out player's bot slot as a viewport");
+	struct BodySwapWorld world;
+	SetupBodySwap(&world, 4, RACE_FIELD_CONFIG_MAX_RACERS - 4);
+	// Keep sentinel records after the four live viewports so the old write is observable.
+	struct
+	{
+		struct Instance inst;
+		struct InstDrawPerPlayer views[RACE_FIELD_CONFIG_MAX_RACERS];
+	} mine = {0}, afterimage = {0};
+	struct Thread mineThread = {.inst = &mine.inst};
+	struct Follower follower = {.driver = &world.drivers[0], .mineTh = &mineThread};
+	struct Thread thread = {.object = &follower, .inst = &afterimage.inst};
+	mine.views[0].instFlags = DRAW_SUCCESSFUL;
+	afterimage.views[0].instFlags = DRAW_SUCCESSFUL;
+	afterimage.views[1].instFlags = DRAW_SUCCESSFUL;
+	RB_Follower_ProcessBucket(&thread);
+	CTR_TEST_CHECK((mine.views[0].instFlags & DRAW_SUCCESSFUL) == 0 &&
+	               (afterimage.views[0].instFlags & DRAW_SUCCESSFUL) != 0 &&
+	               (afterimage.views[1].instFlags & DRAW_SUCCESSFUL) == 0,
+	               "a human sees their afterimage instead of the real mine; other viewports do not");
+
+	const int botSlot = RACE_FIELD_CONFIG_MAX_RACERS - 1;
+	Chaos_BeginBodySwapPair(0, botSlot);
+	mine.views[0].instFlags = DRAW_SUCCESSFUL;
+	mine.views[botSlot].instFlags = DRAW_SUCCESSFUL;
+	afterimage.views[0].instFlags = DRAW_SUCCESSFUL;
+	RB_Follower_ProcessBucket(&thread);
+	CTR_TEST_CHECK((afterimage.views[0].instFlags & DRAW_SUCCESSFUL) == 0 && (mine.views[0].instFlags & DRAW_SUCCESSFUL) != 0,
+	               "a mine whose owner became a bot stays visible without an afterimage");
+	CTR_TEST_CHECK((mine.views[botSlot].instFlags & DRAW_SUCCESSFUL) != 0, "the bot slot never writes outside the viewport array");
+
+	Chaos_ReturnBodySwap(0);
+	mineThread.timesDestroyed++;
+	RB_Follower_ProcessBucket(&thread);
+	CTR_TEST_CHECK((mine.views[0].instFlags & DRAW_SUCCESSFUL) != 0, "an old afterimage cannot hide the object that reused its mine thread");
 }
 
 static void SetupPersonalBodySwap(struct BodySwapWorld *world, int humans, int bots)
@@ -4763,6 +4803,7 @@ int main(void)
 	TestTrySomethingNew();
 	TestIdentityCrisis();
 	TestBodySwap();
+	TestBodySwapMineFollower();
 	TestPersonalBodySwapPairs();
 	TestParticipantSpecialEffects();
 	TestAdventureParticipantEffects();

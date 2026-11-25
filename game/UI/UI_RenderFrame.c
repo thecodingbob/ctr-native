@@ -41,7 +41,6 @@ void UI_RenderFrame_Racing()
 	POLY_G4 *TurboCounterBar;
 	s16 sVar17;
 	struct Driver *playerStruct;
-	struct UiElement2D *hudStructPtr;
 	struct UIMap *levPtrMap;
 	char cVar22;
 	SVec2 wumpaModelPos;
@@ -65,9 +64,6 @@ void UI_RenderFrame_Racing()
 
 	int numPlyr = gGT->numPlyrCurrGame;
 	int gameMode1 = gGT->gameMode1;
-
-	// Get pointer to array of HUD structs
-	hudStructPtr = (struct UiElement2D *)data.hudStructPtr[numPlyr - 1];
 
 	levPtrMap = 0;
 
@@ -147,6 +143,8 @@ void UI_RenderFrame_Racing()
 		{
 			// pointer to player structure
 			playerStruct = (struct Driver *)playerThread->object;
+			// Body Swap can reorder the player bucket without moving the viewports.
+			const struct UiElement2D *hudStructPtr = data.hudStructPtr[numPlyr - 1] + playerStruct->driverID * UI_HUD_SLOT_COUNT;
 			// if player has not driven backwards very far,
 			if ((playerStruct->distanceDrivenBackwards < 0x1f5)
 
@@ -573,9 +571,6 @@ void UI_RenderFrame_Racing()
 			// go to next player
 			// thread = thread->sibling
 			playerThread = playerThread->siblingThread;
-
-			hudStructPtr += UI_HUD_SLOT_COUNT;
-
 		} while (playerThread != 0);
 	}
 

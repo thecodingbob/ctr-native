@@ -897,6 +897,10 @@ static void VehPickupItem_ShootTargeted(struct Driver *d, s32 weaponID, s32 flag
 		GAMEPAD_ShockForce1(d, WEAPON_GAMEPAD_RUMBLE_FRAMES, WEAPON_GAMEPAD_RUMBLE_FORCE);
 
 		weaponInst = INSTANCE_BirthWithThread(WARPBALL_MODEL, rdata.s_warpball, MEDIUM, TRACKING, RB_Warpball_ThTick, sizeof(struct TrackerWeapon), 0);
+		if (weaponInst == NULL)
+		{
+			break;
+		}
 
 		weaponInst->matrix.t[0] = CTR_MipsSra(d->posCurr.x, WARPBALL_POS_SHIFT);
 		weaponInst->matrix.t[1] = CTR_MipsSra(d->posCurr.y, WARPBALL_POS_SHIFT);
