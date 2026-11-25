@@ -8,26 +8,27 @@ struct rData rdata;
 struct Data data;
 struct GameTracker tracker;
 NativeConfig g_config;
-static int savedCalls;
-static int savedLap;
-static int savedDriver;
+static int lapRows;
+static char firstLapText[9];
+static char lastLapText[9];
 static unsigned int relicTargetsDrawn;
 static int textCalls;
 static s16 timeTextX;
 static s16 targetTextX;
 static int relicTier = -1;
-
-void UI_SaveLapTime(int lap, int time, s16 driverID)
-{
-	(void)time;
-	savedCalls++;
-	savedLap = lap;
-	savedDriver = driverID;
-}
+static char *language[LNG_RETAIL_STRING_COUNT];
 
 void DecalFont_DrawLine(char *str, s16 x, s16 y, s16 font, s16 flags)
 {
-	(void)str; (void)y; (void)font; (void)flags;
+	(void)y; (void)font; (void)flags;
+	if (str != NULL && strlen(str) == 8 && str[0] == ' ' && str[2] == ':' && str[5] == ':' && textCalls > 1)
+	{
+		if (lapRows++ == 0)
+		{
+			memcpy(firstLapText, str, sizeof(firstLapText));
+		}
+		memcpy(lastLapText, str, sizeof(lastLapText));
+	}
 	if (textCalls++ == 1)
 	{
 		timeTextX = x;
@@ -58,32 +59,38 @@ int main(void)
 {
 	struct Driver driver = {0};
 	sdata->gGT = &tracker;
-	tracker.gameMode1 = ARCADE_MODE;
+	sdata->lngStrings = language;
+	tracker.gameMode1 = TIME_TRIAL;
 	tracker.numLaps = 7;
 	driver.driverID = 2;
 	driver.lapIndex = 6;
+	tracker.elapsedEventTime = 62000;
+	driver.lapTime = tracker.elapsedEventTime - 9600;
+	driver.lapHistory.completed[0] = 28800;
+	memcpy(rdata.s_timeString_empty, " 0:00:00", 9);
+	memcpy(sdata->s_int, "%d", 3);
 
 	CTR_TEST_SECTION("Live and finished seven-lap race clocks");
 	UI_DrawRaceClock(0, 0, UI_RACE_CLOCK_SHOW_CURRENT_TIME, &driver);
-	CTR_TEST_CHECK(savedCalls > 0 && savedLap == 6 && savedDriver == 2,
-	               "the running clock updates the current player's seventh lap");
+	CTR_TEST_CHECK(lapRows == 7 && strcmp(lastLapText, " 0:10:00") == 0 && driver.lapHistory.completed[6] == 0,
+	               "the live seventh lap displays the current split without storing it as completed");
 
 	for (int player = 0; player < 4; player++)
 	{
-		savedCalls = 0;
+		lapRows = 0;
 		driver.driverID = player;
 		driver.lapIndex = 7;
+		driver.lapHistory.completed[6] = 11520;
 		UI_DrawRaceClock(0, 0, UI_RACE_CLOCK_SHOW_RESULTS, &driver);
-		// Without the finished-lap guard, slot 7 overwrites the next player or
-		// runs past the fourth player's timing storage.
-		CTR_TEST_CHECK(savedCalls == 0,
-		               "finished results never write an eighth lap");
+		CTR_TEST_CHECK(lapRows == 7 && strcmp(firstLapText, " 0:30:00") == 0 && strcmp(lastLapText, " 0:12:00") == 0,
+		               "finished results show only the kart's seven completed times, regardless of controller slot");
 	}
 
 	tracker.numLaps = 3;
 	driver.lapIndex = 3;
+	lapRows = 0;
 	UI_DrawRaceClock(0, 0, UI_RACE_CLOCK_SHOW_RESULTS, &driver);
-	CTR_TEST_CHECK(savedCalls == 0, "ordinary finished races also leave recorded laps unchanged");
+	CTR_TEST_CHECK_EQ(lapRows, 3, "ordinary finished races show only their three lap rows");
 
 	CTR_TEST_SECTION("Relic race targets");
 	const u32 relicModes[] = {ADVENTURE_MODE | RELIC_RACE, ARCADE_MODE | RELIC_RACE};

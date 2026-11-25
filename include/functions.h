@@ -725,7 +725,6 @@ void UI_CupStandings_FinalizeCupRanks(void);
 void UI_CupStandings_UpdateCupRanks(void);
 void UI_CupStandings_InputAndDraw(void);
 
-void UI_SaveLapTime(int numLaps, int lapTime, s16 driverID);
 
 void UI_Map_GetIconPos(struct UIMap *map, int *posX, int *posY);
 void UI_Map_DrawMap(struct Icon *mapTop, struct Icon *mapBottom, s32 posX, s32 posY, struct PrimMem *primMem, u32 *otMem, u32 colorID);

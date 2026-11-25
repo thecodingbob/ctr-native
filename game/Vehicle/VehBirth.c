@@ -483,6 +483,7 @@ VehBirth_RotationReady:
 	driver->lapIndex = 0;
 	driver->numWumpas = 0;
 	driver->lapTime = 0;
+	memset(&driver->lapHistory, 0, sizeof(driver->lapHistory));
 	driver->distanceToFinish_curr = 0;
 
 	driver->actionsFlagSet &= ~(ACTION_RACE_FINISHED | ACTION_BOT);

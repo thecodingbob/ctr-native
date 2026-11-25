@@ -45,10 +45,13 @@ static void Chaos_SwapBodies(int first, int second)
 	tracker->drivers[second] = a;
 	a->driverID = second;
 	b->driverID = first;
-	// The rank number belongs to the viewport, not the physical kart.
+	// These HUD models belong to the viewport, not the physical kart.
 	struct Instance *bigNum = a->instBigNum;
 	a->instBigNum = b->instBigNum;
 	b->instBigNum = bigNum;
+	struct Instance *fruit = a->instFruitDisp;
+	a->instFruitDisp = b->instFruitDisp;
+	b->instFruitDisp = fruit;
 	// Rank icon animation, unlike the viewport number, follows the kart.
 	if ((unsigned int)first < len(data.rankIconsCurr) && (unsigned int)second < len(data.rankIconsCurr))
 	{

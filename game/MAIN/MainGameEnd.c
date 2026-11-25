@@ -45,21 +45,20 @@ void MainGameEnd_SoloRaceGetReward(int subtractTimeCrateBonus)
 
 	if (gGT->numLaps > EXTENDED_LAP_HISTORY_CAPACITY)
 	{
-		int *best = ExtendedLapTimes_PlayerSlots(driver->driverID);
-		if (best != NULL && driver->lapIndex > 0 && best[0] < gGT->bestLapTime)
+		if (driver->lapIndex > 0 && driver->lapHistory.best.time < gGT->bestLapTime)
 		{
-			gGT->bestLapTime = best[0];
-			gGT->lapIndexNewBest = best[1];
+			gGT->bestLapTime = driver->lapHistory.best.time;
+			gGT->lapIndexNewBest = driver->lapHistory.best.index;
 			gGT->gameModeEnd |= 0x8c000000;
 		}
 	}
 	else
 	{
-		for (s16 i = 0; i < gGT->numLaps; i++)
+		for (s16 i = 0; i < gGT->numLaps && i < driver->lapIndex; i++)
 		{
-			if (gGT->lapTime[i] < gGT->bestLapTime)
+			if (driver->lapHistory.completed[i] < gGT->bestLapTime)
 			{
-				gGT->bestLapTime = gGT->lapTime[i];
+				gGT->bestLapTime = driver->lapHistory.completed[i];
 				gGT->lapIndexNewBest = i;
 				gGT->gameModeEnd |= 0x8c000000;
 			}

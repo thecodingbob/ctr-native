@@ -2,14 +2,6 @@
 
 enum
 {
-	UI_LAP_TIME_LAPS_PER_PLAYER = 7,
-	UI_LAP_TIME_TICKS_PER_SECOND = 0x3c0,
-	UI_LAP_TIME_TICKS_PER_TEN_SECONDS = 0x2580,
-	UI_LAP_TIME_TICKS_PER_MINUTE = 0xe100,
-	UI_LAP_TIME_MAX_MINUTES = 9,
-	UI_LAP_TIME_SECONDS_TENS_MOD = 6,
-	UI_LAP_TIME_DECIMAL_BASE = 10,
-	UI_LAP_TIME_CENTISECOND_SCALE = 100,
 
 	UI_REWARD_WUMPA_SHINE_CENTER = 0x80,
 	UI_REWARD_WUMPA_SHINE_SHIFT = 4,
@@ -39,29 +31,6 @@ static struct Driver *UI_Reward_FindFruitDriver(struct GameTracker *gGT, struct 
 	}
 
 	return NULL;
-}
-
-void UI_SaveLapTime(int numLaps, int lapTime, s16 driverID)
-{
-	int playerLapIndex = ((int)driverID * UI_LAP_TIME_LAPS_PER_PLAYER) + numLaps;
-	int numMinutes = lapTime / UI_LAP_TIME_TICKS_PER_MINUTE;
-
-	sdata->LapTimes.p1_Min1s[playerLapIndex] = numMinutes;
-
-	if (UI_LAP_TIME_MAX_MINUTES < numMinutes)
-	{
-		sdata->LapTimes.p1_Min1s[playerLapIndex] = UI_LAP_TIME_MAX_MINUTES;
-		sdata->LapTimes.p1_Sec10s[playerLapIndex] = UI_LAP_TIME_SECONDS_TENS_MOD - 1;
-		sdata->LapTimes.p1_Sec1s[playerLapIndex] = UI_LAP_TIME_DECIMAL_BASE - 1;
-		sdata->LapTimes.p1_Ms10s[playerLapIndex] = UI_LAP_TIME_DECIMAL_BASE - 1;
-		sdata->LapTimes.p1_Ms1s[playerLapIndex] = UI_LAP_TIME_DECIMAL_BASE - 1;
-		return;
-	}
-
-	sdata->LapTimes.p1_Sec10s[playerLapIndex] = (lapTime / UI_LAP_TIME_TICKS_PER_TEN_SECONDS) % UI_LAP_TIME_SECONDS_TENS_MOD;
-	sdata->LapTimes.p1_Sec1s[playerLapIndex] = (lapTime / UI_LAP_TIME_TICKS_PER_SECOND) % UI_LAP_TIME_DECIMAL_BASE;
-	sdata->LapTimes.p1_Ms10s[playerLapIndex] = (CTR_MipsMulLo(lapTime, UI_LAP_TIME_DECIMAL_BASE) / UI_LAP_TIME_TICKS_PER_SECOND) % UI_LAP_TIME_DECIMAL_BASE;
-	sdata->LapTimes.p1_Ms1s[playerLapIndex] = (CTR_MipsMulLo(lapTime, UI_LAP_TIME_CENTISECOND_SCALE) / UI_LAP_TIME_TICKS_PER_SECOND) % UI_LAP_TIME_DECIMAL_BASE;
 }
 
 void UI_ThTick_CountPickup(struct Thread *bucket)

@@ -62,18 +62,12 @@ int SquareRoot0_stub(int value)
 
 // Existing results-only checks isolate projection; the geometry checks enable it.
 static bool s_projectLapProgress;
-static int s_teleportSavedLaps;
 static void TestLapProgress(struct Driver *driver)
 {
 	if (s_projectLapProgress)
 	{
 		VehLap_UpdateProgress(driver);
 	}
-}
-void UI_SaveLapTime(int numLaps, int lapTime, s16 driverID)
-{
-	(void)numLaps; (void)lapTime; (void)driverID;
-	s_teleportSavedLaps++;
 }
 b32 MainGameEnd_IsCoopRace(struct GameTracker *tracker) { (void)tracker; return false; }
 b32 MainGameEnd_AdventureRaceWon(struct GameTracker *tracker) { (void)tracker; return false; }
@@ -783,6 +777,9 @@ static void TestBodySwap(void)
 	borrowed->botData.ai_quadblock_checkpointIndex = 27;
 	borrowed->collisionFlags = DRIVER_COLL_FLAG_MASK_GRAB_REQUEST;
 	borrowed->stepFlagSet = COLL_STEP_FLAG_KILL_PLANE;
+	borrowed->actionsFlagSet |= ACTION_JUMP_BUTTON_HELD | ACTION_TURBO_INPUT_LATCH | ACTION_ACCEL_PREVENTION;
+	borrowed->jump_CooldownMS = 100;
+	borrowed->turbo_outsideTimer = 400;
 	borrowed->xSpeed = 300;
 	borrowed->ySpeed = -400;
 	borrowed->zSpeed = 1200;
@@ -817,6 +814,14 @@ static void TestBodySwap(void)
 	               "the first human collision acquires the current surface without retaining a stale spawn quad");
 	CTR_TEST_CHECK(borrowed->collisionFlags == 0 && borrowed->stepFlagSet == 0,
 	               "stale collision/rescue flags cannot trigger a fresh rescue on takeover");
+	CTR_TEST_CHECK((borrowed->actionsFlagSet & (ACTION_JUMP_BUTTON_HELD | ACTION_TURBO_INPUT_LATCH | ACTION_ACCEL_PREVENTION)) == 0 &&
+	               borrowed->jump_CooldownMS == 0 && borrowed->turbo_outsideTimer == 0 && borrowed->reserves == 102,
+	               "takeover drops stale jump and pad latches without losing banked reserves");
+	VehPhysProc_JumpInput(borrowed, 0, BTN_L1, 0, borrowed->actionsFlagSet);
+	CTR_TEST_CHECK(borrowed->jump_TenBuffer > 0 && borrowed->buttonUsedToStartDrift == BTN_L1,
+	               "a shoulder already held across the swap can start a hop and then a drift");
+	VehFire_Increment(borrowed, 300, TURBO_PAD | FREEZE_RESERVES_ON_TURBO_PAD, 128);
+	CTR_TEST_CHECK_EQ(borrowed->turbo_outsideTimer, 300, "the first pad can apply a new boost after the handoff");
 	CTR_TEST_CHECK(memcmp(&borrowed->posCurr, &position, sizeof(position)) == 0 &&
 	               memcmp(&borrowed->posPrev, &position, sizeof(position)) == 0,
 	               "taking control does not reposition the kart or sweep collisions from a stale previous position");
@@ -911,6 +916,12 @@ static void TestBodySwap(void)
 	world.drivers[0].instBigNum = &rankNumbers[0];
 	world.drivers[0].driverRank = 2;
 	world.drivers[2].driverRank = 6;
+	struct Instance fruit = {0};
+	world.drivers[0].instFruitDisp = &fruit;
+	world.drivers[2].lapIndex = 0;
+	s_tracker.gameMode1 |= ARCADE_MODE;
+	s_tracker.elapsedEventTime = 30000;
+	PlayLevel_CrossFinishLine(&world.drivers[2], false, false);
 	Chaos_Activate(CHAOS_EFFECT_SMALL_KART_ENERGY, 5000);
 	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
 	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[2] &&
@@ -920,6 +931,10 @@ static void TestBodySwap(void)
 	CTR_TEST_CHECK(s_tracker.drivers[0]->instBigNum == &rankNumbers[0] && s_tracker.drivers[0]->driverRank == 6 &&
 	               world.drivers[0].instBigNum == NULL,
 	               "a borrowed bot updates the player's existing rank number instead of leaving it on the bot");
+	CTR_TEST_CHECK(s_tracker.drivers[0]->instFruitDisp == &fruit && world.drivers[0].instFruitDisp == NULL,
+	               "the viewport's Wumpa model remains available after a human takes over a bot");
+	CTR_TEST_CHECK_EQ(s_tracker.drivers[0]->lapHistory.completed[0], 30000,
+	                  "the possessed kart brings its first-lap time even though a bot completed it");
 	CTR_TEST_CHECK(s_tracker.threadBuckets[PLAYER].thread == &world.threads[2] &&
 	               s_tracker.threadBuckets[ROBOT].thread == &world.threads[0], "the correct physics pipeline owns each thread");
 	CTR_TEST_CHECK(world.threads[2].modelIndex == DYNAMIC_PLAYER && world.threads[2].funcThTick == NULL &&
@@ -929,6 +944,8 @@ static void TestBodySwap(void)
 	               "the navigation list replaces the former bot with the unattended original kart");
 	CTR_TEST_CHECK(world.drivers[2].kartScale == 0.5f && world.drivers[0].kartScale == 1.0f,
 	               "the human size modifier follows the player rather than the old kart");
+	s_tracker.elapsedEventTime = 31500;
+	PlayLevel_CrossFinishLine(&world.drivers[0], false, false);
 	const struct ChaosRuntime saved = sdata->chaosRuntime;
 	s_tracker.gameMode1 |= PAUSE_1;
 	Tick(5000);
@@ -941,6 +958,10 @@ static void TestBodySwap(void)
 	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[0] && s_tracker.drivers[2] == &world.drivers[2] &&
 	               s_tracker.threadBuckets[PLAYER].thread == &world.threads[0] && sdata->navBotList[0].first == &world.drivers[2].botData.item,
 	               "expiry restores both role pipelines and the original navigation-list owner");
+	CTR_TEST_CHECK(s_tracker.drivers[0]->instFruitDisp == &fruit && world.drivers[2].instFruitDisp == NULL,
+	               "the Wumpa model returns with the viewport when the swap expires");
+	CTR_TEST_CHECK_EQ(s_tracker.drivers[0]->lapHistory.completed[0], 31500,
+	                  "the player's original kart keeps the lap the bot completed during the swap");
 	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
 	s_tracker.drivers[0]->kartState = KS_MASK_GRABBED;
 	Tick(1000);
@@ -1340,7 +1361,6 @@ static void SetupTeleport(struct TeleportWorld *world, int humans, int bots)
 	s_teleportGround = (struct QuadBlock){.checkpointIndex = 1, .quadFlags = QUADBLOCK_FLAG_GROUND};
 	s_teleportGroundMissing = false;
 	s_teleportProbes = 0;
-	s_teleportSavedLaps = 0;
 	s_teleportRaceEnds = 0;
 	s_allowRaceEnd = true;
 	s_projectLapProgress = false;
@@ -1660,10 +1680,10 @@ static void TestTeleport(void)
 	Chaos_Activate(CHAOS_EFFECT_YARDRAT_TRAINING, 1000);
 	PlayLevel_UpdateLapStats();
 	CTR_TEST_CHECK(world.racers.drivers[0].lapIndex == 1 && world.racers.drivers[0].lapTime == 10000 &&
-	               s_teleportSavedLaps == 1 && s_teleportRaceEnds == 0,
+	               world.racers.drivers[0].lapHistory.completed[0] == 9000 && s_teleportRaceEnds == 0,
 	               "a skipped finish crossing records the lap through the retail results path");
 	PlayLevel_UpdateLapStats();
-	CTR_TEST_CHECK(world.racers.drivers[0].lapIndex == 1 && s_teleportSavedLaps == 1,
+	CTR_TEST_CHECK(world.racers.drivers[0].lapIndex == 1 && world.racers.drivers[0].lapHistory.completed[1] == 0,
 	               "the next frame does not count the same teleport as another lap");
 	SetupTeleport(&world, 1, 0);
 	s_tracker.gameMode1 |= ARCADE_MODE;

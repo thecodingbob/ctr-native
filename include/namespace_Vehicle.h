@@ -2,6 +2,7 @@
 #define CTR_NATIVE_NAMESPACE_VEHICLE_H
 
 #include <ctr_math.h>
+#include <extended_lap_times.h>
 
 struct Thread;
 struct Driver;
@@ -1982,6 +1983,8 @@ struct Driver
 	bool boolHadMaskBeforeOOB; // set by OOB rescue: 1 if player had mask before going OOB
 	s32 clockReceive;
 	float kartScale; // 1.0f = retail; 0.0f falls back to 1.0f.
+	// Lap progress and its history follow the physical kart through Body Swap.
+	union ExtendedLapHistory lapHistory;
 };
 
 enum

@@ -6,7 +6,20 @@ void VehPhysProc_TakeControl(struct Driver *driver)
 	struct Thread *thread = driver->instSelf->thread;
 	const int damage = driver->botData.aiDamageState;
 	const bool damaged = (driver->botData.botFlags & BOT_FLAG_DAMAGE_ACTIVE) != 0;
-	driver->actionsFlagSet &= ~ACTION_BOT;
+	// The new controller starts with its own input, not the bot's drift latch
+	// or the controls left on this kart before it became AI-driven.
+	const u32 oldControls = ACTION_JUMP_BUTTON_HELD | ACTION_TURBO_INPUT_LATCH |
+	                        ACTION_ACCEL_PREVENTION | ACTION_BRAKE_WITH_ACCEL |
+	                        ACTION_REVERSING_ENGINE | ACTION_REVERSE_STEER_LEFT | ACTION_REVERSE_STEER_RIGHT;
+	driver->actionsFlagSet &= ~(ACTION_BOT | oldControls);
+	driver->actionsFlagSetPrevFrame &= ~(ACTION_BOT | oldControls);
+	driver->buttonUsedToStartDrift = 0;
+	driver->jump_TenBuffer = 0;
+	driver->jump_CooldownMS = 0;
+	driver->jump_ForcedMS = 0;
+	// Preserve banked reserves, but let the next human pad contact establish
+	// its own minimum instead of comparing against a previous controller's pad.
+	driver->turbo_outsideTimer = 0;
 	thread->modelIndex = DYNAMIC_PLAYER;
 	memset(driver->funcPtrs, 0, sizeof(driver->funcPtrs));
 

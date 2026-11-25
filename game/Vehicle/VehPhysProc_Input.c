@@ -26,6 +26,9 @@ static u32 VehPhysProc_JumpInput(struct Driver *driver, u32 tapped, u32 held, in
 	{
 		if ((actions & ACTION_JUMP_BUTTON_HELD) == 0)
 		{
+			const u32 heldShoulder = held & VEH_PHYS_PROC_JUMP_BUTTON_MASK;
+			driver->buttonUsedToStartDrift = heldShoulder == VEH_PHYS_PROC_JUMP_BUTTON_MASK
+			                                ? VEH_PHYS_PROC_DEFAULT_DRIFT_BUTTON : heldShoulder;
 			driver->jump_TenBuffer = VEH_PHYS_PROC_JUMP_BUFFER_FRAMES;
 		}
 		return actions | ACTION_JUMP_BUTTON_HELD;

@@ -9,7 +9,6 @@ enum
 	UI_RACE_CLOCK_TICKS_PER_TEN_SECONDS = 0x2580,
 	UI_RACE_CLOCK_TICKS_PER_MINUTE = 0xe100,
 	UI_RACE_CLOCK_TICKS_PER_TEN_MINUTES = 0x8ca00,
-	UI_RACE_CLOCK_LAP_TIME_SLOTS_PER_PLAYER = 7,
 	UI_RACE_CLOCK_DECIMAL_BASE = 10,
 	UI_RACE_CLOCK_CENTISECOND_SCALE = 100,
 	UI_RACE_CLOCK_SECONDS_TENS_MOD = 6,
@@ -288,25 +287,15 @@ void UI_DrawRaceClock(s16 labelPosX, s16 labelPosY, u32 flags, struct Driver *dr
 		{
 			if ((numLaps <= (int)lapIndex) && (numLaps < gGT->numLaps))
 			{
-				if ((int)lapIndex < gGT->numLaps)
-				{
-					UI_SaveLapTime(lapIndex, gGT->elapsedEventTime - driver->lapTime, (u32)driver->driverID);
-				}
-
-				// custom code for optimization using this unrelated variable
-				iVar5 = (u32)driver->driverID * UI_RACE_CLOCK_LAP_TIME_SLOTS_PER_PLAYER + numLaps;
-
-				// set slot for the tens place of a minute to nothing
-				rdata.s_timeString_empty[0] = ' ';
-
-				// Convert each number from the binary version of the number to the ascii version of the number by adding ascii value of '0'
-				// This is dynamically programmed to handle time for more than one player, see UI_SaveLapTime
-
-				rdata.s_timeString_empty[1] = sdata->LapTimes.p1_Min1s[iVar5] + '0';
-				rdata.s_timeString_empty[3] = sdata->LapTimes.p1_Sec10s[iVar5] + '0';
-				rdata.s_timeString_empty[4] = sdata->LapTimes.p1_Sec1s[iVar5] + '0';
-				rdata.s_timeString_empty[6] = sdata->LapTimes.p1_Ms10s[iVar5] + '0';
-				rdata.s_timeString_empty[7] = sdata->LapTimes.p1_Ms1s[iVar5] + '0';
+				int lapTime = numLaps == (int)lapIndex ? gGT->elapsedEventTime - driver->lapTime : driver->lapHistory.completed[numLaps];
+				lapTime = lapTime < 0 ? 0 : lapTime;
+				lapTime = lapTime >= UI_RACE_CLOCK_TICKS_PER_TEN_MINUTES ? UI_RACE_CLOCK_TICKS_PER_TEN_MINUTES - 1 : lapTime;
+				char lapTimeString[] = " 0:00:00";
+				lapTimeString[1] += lapTime / UI_RACE_CLOCK_TICKS_PER_MINUTE;
+				lapTimeString[3] += lapTime / UI_RACE_CLOCK_TICKS_PER_TEN_SECONDS % UI_RACE_CLOCK_SECONDS_TENS_MOD;
+				lapTimeString[4] += lapTime / UI_RACE_CLOCK_TICKS_PER_SECOND % UI_RACE_CLOCK_DECIMAL_BASE;
+				lapTimeString[6] += lapTime * UI_RACE_CLOCK_DECIMAL_BASE / UI_RACE_CLOCK_TICKS_PER_SECOND % UI_RACE_CLOCK_DECIMAL_BASE;
+				lapTimeString[7] += lapTime * UI_RACE_CLOCK_CENTISECOND_SCALE / UI_RACE_CLOCK_TICKS_PER_SECOND % UI_RACE_CLOCK_DECIMAL_BASE;
 
 				// default
 				lapOrRelicColor = PERIWINKLE;
@@ -379,7 +368,7 @@ void UI_DrawRaceClock(s16 labelPosX, s16 labelPosY, u32 flags, struct Driver *dr
 				}
 
 				// draw string for total amount of time in race
-				DecalFont_DrawLine(rdata.s_timeString_empty, iVar5, iVar7, lapFontType, stringColor);
+				DecalFont_DrawLine(lapTimeString, iVar5, iVar7, lapFontType, stringColor);
 			}
 		LAB_8004f84c:
 			// lap counter
