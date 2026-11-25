@@ -990,6 +990,10 @@ void DrawSplit(const GPUDrawSplit *split)
 
 	NativeRenderer_SetStencilMode(split->drawPrimMode); // draw with mask 0x16
 
+	NativeRenderer_SetupClipMode(&split->drawenv.clip, &split->dispenv, drawOnScreen);
+	// Resizing the offscreen target invalidates the sampler binding. Select
+	// the target before the texture used to draw its background and models.
+	NativeRenderer_SetOffscreenState(&split->drawenv.clip, !drawOnScreen);
 	NativeRenderer_SetTexture(split->textureId, split->texFormat, split->allowAnisotropic);
 
 	if (split->texFormat == TF_32_BIT_RGBA)
@@ -1000,8 +1004,6 @@ void DrawSplit(const GPUDrawSplit *split)
 	NativeRenderer_SetPSXDrawMaskSet(split->psxDrawMaskSet);
 	NativeRenderer_SetPSXTextureOutputSTP(split->psxTextureOutputSTP);
 
-	NativeRenderer_SetupClipMode(&split->drawenv.clip, &split->dispenv, drawOnScreen);
-	NativeRenderer_SetOffscreenState(&split->drawenv.clip, !drawOnScreen);
 	NativeRenderer_SetProjection(&split->drawenv.clip, &split->dispenv, !drawOnScreen);
 
 	if (split->psxTexturedSemiTrans)

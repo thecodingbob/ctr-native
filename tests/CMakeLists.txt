@@ -75,6 +75,7 @@ ctr_add_test_suite(test_slide_meter SOURCES hud/test_slide_meter.c)
 ctr_add_test_suite(test_pos_suffix SOURCES hud/test_pos_suffix.c)
 ctr_add_test_suite(test_race_rank_hud SOURCES hud/test_race_rank_hud.c)
 ctr_add_test_suite(test_draw_env SOURCES graphics/test_draw_env.c)
+ctr_add_test_suite(test_gpu_split SOURCES graphics/test_gpu_split.c LIBRARIES SDL3::SDL3)
 ctr_add_test_suite(test_cup_points SOURCES hud/test_cup_points.c)
 
 ctr_add_test_suite(test_disc_images
