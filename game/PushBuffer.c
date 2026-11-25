@@ -153,8 +153,8 @@ void PushBuffer_SetPsyqGeom(struct PushBuffer *pb)
 }
 
 
-void PushBuffer_SetDrawEnv_DecalMP(void *ot, struct DB *backBuffer, RECT *viewport, s16 offsetX, s16 offsetY, u8 dtd, u8 dfe, u8 isbg, u8 tpageUpper,
-                                   u8 tpageLower)
+// Upstream CTR-tools/ctr-native cd1a02c13: these arguments are RGB, dtd, isbg.
+void PushBuffer_SetDrawEnv_DecalMP(void *ot, struct DB *backBuffer, RECT *viewport, s16 offsetX, s16 offsetY, u8 r0, u8 g0, u8 b0, s32 dtd, s32 isbg)
 {
 	void *p;
 	DRAWENV newDrawEnv;
@@ -183,16 +183,16 @@ void PushBuffer_SetDrawEnv_DecalMP(void *ot, struct DB *backBuffer, RECT *viewpo
 
 	newDrawEnv.ofs[1] = offsetY;
 
-	// tpage
-	newDrawEnv.tpage = (u16)((tpageUpper << 8) | tpageLower);
+	newDrawEnv.r0 = r0;
+	newDrawEnv.g0 = g0;
+	newDrawEnv.b0 = b0;
 
 	// dtd (dithering)
 	newDrawEnv.dtd = dtd;
 
-	// dfe (blocked or permitted)
-	newDrawEnv.dfe = dfe;
-
-	// isbg (always 0)
+	// The native renderer uses dfe to select the render target. Decals must
+	// stay offscreen rather than inherit the main framebuffer's dfe=1.
+	newDrawEnv.dfe = 0;
 	newDrawEnv.isbg = isbg;
 
 	p = backBuffer->primMem.cursor;
