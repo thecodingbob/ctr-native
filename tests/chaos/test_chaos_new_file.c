@@ -313,14 +313,14 @@ static void CheckFreshSettings(void)
 	CTR_TEST_CHECK_EQ(settings->durationSeconds, 10, "duration defaults to ten seconds");
 	CTR_TEST_CHECK_EQ(settings->triggerIntervalSeconds, 10, "interval defaults to ten seconds");
 	CTR_TEST_CHECK_EQ(settings->trigger, CHAOS_TRIGGER_RANDOM, "trigger starts at its default");
-	CTR_TEST_CHECK_EQ(settings->enabledCount, CHAOS_EFFECT_COUNT, "all default effects are counted");
+	CTR_TEST_CHECK_EQ(settings->enabledCount, CHAOS_EFFECT_COUNT - 1, "all available default effects are counted");
 	for (int player = 0; player < CHAOS_MAX_HUMAN_PLAYERS; player++)
 	{
 		CTR_TEST_CHECK(!settings->disabledPlayers[player], "a new Adventure re-enables every player");
 	}
 	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
 	{
-		CTR_TEST_CHECK(settings->effects[i], "every effect starts selected");
+		CTR_TEST_CHECK_EQ(settings->effects[i], i != CHAOS_EFFECT_RETIRED_BODY_SWAP, "every available effect starts selected");
 	}
 	CTR_TEST_CHECK_EQ(settings->enabledCount, ChaosEffect_CountEnabled(settings->effects), "the cached count matches the effect array");
 	CTR_TEST_CHECK_EQ(s_setupEntries, 0, "New does not inherit a previous file's Chaos setup handover");

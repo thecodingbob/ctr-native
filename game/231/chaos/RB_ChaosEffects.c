@@ -1,7 +1,6 @@
 #include <common.h>
 #include <game/Vehicle/VehPhysForce.h>
 #include "RB_ChaosAudio.h"
-#include "RB_ChaosBodySwap.h"
 #include "RB_ChaosControls.h"
 #include "RB_ChaosEffects.h"
 #include "RB_ChaosIdentity.h"
@@ -113,30 +112,6 @@ int Chaos_EngineClassForDriver(const struct Driver *driver, int engineClass)
 	return engineClass;
 }
 
-void Chaos_RefreshBodySwapModifiers(void)
-{
-	for (int player = 0; player < GAME_TRACKER->numPlyrCurrGame; player++)
-	{
-		struct Driver *driver = GAME_TRACKER->drivers[player];
-		if (driver == NULL || (driver->actionsFlagSet & ACTION_RACE_FINISHED) != 0)
-		{
-			continue;
-		}
-		if (Chaos_IsActiveForDriver(CHAOS_EFFECT_BIG_KART_ENERGY, driver))
-		{
-			Chaos_SetKartScale(CHAOS_GIANT_SCALE, driver);
-		}
-		else if (Chaos_IsActiveForDriver(CHAOS_EFFECT_SMALL_KART_ENERGY, driver))
-		{
-			Chaos_SetKartScale(s_chaosSmallScale, driver);
-		}
-		if (Chaos_IsActiveForDriver(CHAOS_EFFECT_THIS_IS_FIRE, driver))
-		{
-			Chaos_UpgradeTurbo(driver);
-		}
-	}
-}
-
 static void Chaos_LaunchDriver(struct Driver *driver)
 {
 	Vec3 velocity;
@@ -174,14 +149,6 @@ void Chaos_ApplyOneOff(const struct ChaosActivation *chaosActivation, int player
 		Chaos_ResolveDeferredImpacts();
 		Chaos_SkipBotTime();
 		Chaos_PlayTimeEffectSound(SOUND_CLOCK);
-		return;
-	}
-	if (effect == CHAOS_EFFECT_BODY_SWAP)
-	{
-		if (!Chaos_UsesPersonalPools())
-		{
-			Chaos_BeginBodySwaps();
-		}
 		return;
 	}
 	if (effect == CHAOS_EFFECT_YOUVE_GOT_MAIL)

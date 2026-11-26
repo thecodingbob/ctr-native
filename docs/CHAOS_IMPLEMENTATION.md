@@ -24,15 +24,14 @@ Asset-free regression suites mirror these responsibilities:
 Both use `tests/chaos/chaos_fixture.h` for the shared world, real module include
 chain and integration doubles. `tests/test_warpball.c` independently covers orb
 launch and teardown without loading the Chaos runtime. Visual/audio presentation,
-AI movement after handover or time skip, and combined 2P/rescue/retry/quick-state
+AI movement after time skip and combined 2P/rescue/retry/quick-state
 behavior also need in-game coverage; the asset-free suites use integration doubles
 at those boundaries.
 
 `RB_Chaos.c` owns activation, gameplay hooks and per-driver dispatch,
 sharing `Chaos_TargetsDriver` for recipient checks. `RB_ChaosEffects.c` owns
 effect operations, effect-specific state updates and queries, start-light drawing,
-and Senile Mask warnings/voice. Body Swap pair selection and finish-line eligibility
-stay in the runtime; returning the selected pairs is an effect operation.
+and Senile Mask warnings/voice.
 `RB_ChaosRuntime.h` declares the pool queries shared by effects and audio, including
 the time-stop query that retains immunity during pause. `RB_ChaosAudio.h` declares
 engine changes and time-effect cues for the other Chaos modules. Spatial audio
@@ -52,8 +51,8 @@ units, including Arena Champions' motion multiplier. `Chaos_GetTrackLength` shar
 checkpoint-data validation with Yardrat Training; `Chaos_FindTrackDestination` shares its
 route traversal and interpolation, including selected checkpoint branches.
 Track-path lookup needs no mesh; only Yardrat Training's ground-placement operation
-requires one. `BOTS_FindClosestNavFrame` is shared with bot handover;
-`BOTS_SetRotation` rebuilds the destination navigation estimate. Bot position,
+requires one. `BOTS_FindClosestNavFrame` and `BOTS_SetRotation` rebuild the
+destination navigation estimate. Bot position,
 backup, render translation and checkpoint projection are synchronized without
 running world physics or consuming damage/item/Chaos durations. Stationary bots
 and unavailable destinations are left in place.
@@ -202,10 +201,15 @@ Older builds do not recognize V2 Chaos rules. Neither version changes the retail
 profile, other extension fields or slot offsets.
 
 Effect ID `n` maps to bit `n % 8` of byte `n / 8`, least-significant bit first.
-Append IDs; never renumber or reuse them. Slugs are stable external identifiers.
+Never renumber existing IDs; slugs are stable external identifiers.
 The live settings use `bool effects[CHAOS_EFFECT_COUNT]` and derived
 `enabledCount`; encoding zeroes unused bits. Unknown bits are ignored on decode
 and cleared on rewrite, so new effects start disabled in existing saves.
+ID 35, formerly Body Swap, is an unassigned placeholder: it is excluded from
+menus, selection and the provider catalogue. Its old saved bit is ignored on
+decode and cleared on rewrite. It may be reused for a future effect, but an old
+save that has not been rewritten can still contain that bit; account for this
+when assigning the slot if the new effect must default to disabled.
 
 `armed` distinguishes Chaos from Regular even with an empty selection. Missing
 or unsupported format tags decode to unarmed, empty settings. Normal save/load
@@ -229,7 +233,7 @@ new format and migration; `namespace_Memcard.h` assertions pin the layout.
   main-menu prompt and resumes the retail menu chain without an extra recap box.
   The prompt follows event type and player count; Arcade then resumes difficulty,
   while VS/Battle exit to character selection. Setup and runtime share
-   `ChaosEvent_EffectFitsSelection`; filtered rows map back to stable effect IDs without
+  `ChaosEvent_EffectFits`; filtered rows map back to stable effect IDs without
   erasing hidden preferences. Confirm requires a compatible enabled effect.
   Live rules survive retries, cups and mode selection, but are replaced when
   loading or creating an Adventure and reset at application restart.
@@ -258,9 +262,7 @@ Human-scoped activation targets, one-off operations and Pickup sources respect
 the selection in both distributions. Personal Random skips excluded clocks;
 Interval retains the common pool-zero clock even if player 1 is excluded. Shared
 pool zero is never mistaken for player 1's personal eligibility. Bot/world scope
-and time-stop immunity remain unchanged. Body Swap excludes disabled humans from
-both ends of a pair; setup, selection and External publication filter the effect
-when the prospective grid has no eligible partner. Personal HUD still shows
+and time-stop immunity remain unchanged. Personal HUD still shows
 global effects in excluded viewports. These settings are captured with resident
 SDATA; as with other layout changes, cross-build checkpoint compatibility is not promised.
 
@@ -274,12 +276,11 @@ until one succeeds or the finite candidate list is exhausted. Shared selection
 is unchanged. Personal bot effects remain in their source pool but act globally;
 running bot effects block all other bot effects. Completion/instant execution
 starts resident global 30-second and same-effect 60-second cooldowns.
-Body Swap owns one nonoverlapping pair per source pool, with independent deadlines.
 Za Warudo suspends all other pool clocks and bot cooldowns through its expiry frame,
 discarding time-stop overshoot rather than advancing suspended clocks.
 
-Personal HUD collection combines the local pool with global bot/time-stop entries
-and the viewport's Body Swap pair. Compact rows show effect names without controller prefixes and fit
+Personal HUD collection combines the local pool with global bot/time-stop entries.
+Compact rows show effect names without controller prefixes and fit
 the actual viewport rectangle, reserving restart-light rows. Shared banners and
 docked lists retain their existing layout. Asset-free presentation tests record
 draw submissions, not pixels; in-game visual validation is still required.
@@ -471,7 +472,7 @@ Class changes also stop the previous engine loop and start the selected class's
 loop. `Chaos_EngineClassForDriver` keeps engine updates, audio initialization and
 warp teardown on that same class, without overriding ghosts that share a player
 ID. Reset restores character constants and the human engine loop before clearing
-the override, including class changes left on a bot-controlled kart by Body Swap.
+the override.
 
 Identity Crisis (ID 34, `identity-crisis`) changes human identities once until
 race end. Eligible races with the effect enabled reuse resident character models
@@ -492,41 +493,6 @@ for smoke coverage. Reset restores original identities before resetting engine
 audio; ordinary birth restores class constants. No asset reads occur on activation.
 Activation plays the retail invisibility sound once, shared by all recipients.
 
-Body Swap (ID 35, `body-swap`) is available only with at least two human players.
-It stores symmetric controller-slot partners in
-`ChaosRuntime`. Operations exchange `GameTracker.drivers`, driver IDs and character
-IDs rather than copying/recreating karts, preserving weapon ownership and physical
-race state. Effective class overrides and Identity Crisis baselines move with the
-kart; their arrays cover all eight slots. Input shuffles and timed driving modifiers
-remain player-owned. Size and existing USF overrides refresh on the newly controlled
-humans, and former human karts return to normal size under AI control.
-
-Human/bot swaps move the existing root threads between PLAYER/ROBOT buckets.
-`VehPhysProc_TakeControl` installs human physics without reapplying impact penalties;
-`BOTS_Driver_Resume` shares the retail conversion core without recording race results
-or moving battle racers to their starting point. It reconnects navigation near the
-current position and preserves reserves, damage timers and motion. The ordinary
-end-of-race converter retains its existing behavior. Navigation-list membership,
-thread model IDs and tick callbacks follow the new controller. Camera targets and
-engine loops update per human, using the existing one-shot camera recovery blend.
-
-Activation skips finished drivers. Ownership and camera switch immediately regardless
-of kart state; expiry/reactivation also returns pairs without waiting for rescues or
-start holds. Bot takeover seeds the human anti-cut baseline from live progress,
-discards spawn-only surface references and converts world motion to human polar
-speed. An existing bot rescue retains its mask/descent callback under human ownership,
-then installs human driving on landing; return to AI reuses an existing rescue mask.
-Human takeover clears AI-only wrapped yaw lag and its human recovery velocity.
-Camera retargeting invalidates the previous body's damage/rescue/height smoothing
-and requests direction reinitialization before the one-shot blend; zoom stays player-owned.
-Reset returns all pairs before class and identity teardown.
-`PlayLevel_UpdateLapStats` returns a pair on either kart's
-last-lap near-finish segment, before evaluating lap completion, using the retail
-near-line distance. Crystal/battle events have no such segment. Partner slots and
-class/identity ownership are checkpoint state. Asset-free tests cover ownership,
-pairing, lifecycle and the real human takeover's progress/motion transfer; driving
-callbacks and AI conversion are doubled.
-
 Yardrat Training (ID 36, `yardrat-training`) is instant and human-only, excluded from battle and
 crystal challenges. It advances one tenth of the lap's retail progress distance,
 interpolating checkpoint positions along the selected route. It reuses
@@ -539,12 +505,11 @@ No ground means no movement. A successful placement refreshes surfaces, terrain,
 checkpoint/anti-cut state, previous position and orientation, preserving speed,
 reserves and held items. Existing rescues/start holds are released; ordinary
 damage callbacks remain installed. Motion is realigned to the destination yaw,
-and the shared camera handover requests one recovery blend.
+and camera repositioning requests one recovery blend.
 
 `ChaosRuntime.teleportForwardCrossings` queues skipped finish crossings for
 `PlayLevel_UpdateLapStats`, preserving retail lap times, start-line debt, final-lap
-announcements and results. Crossings are consumed once and follow the physical
-kart through Body Swap; a pending final crossing returns its pair before results.
+announcements and results. Crossings are consumed once for the affected kart.
 Exact-line destinations use the subsequent physical crossing. Runtime checkpoints
 capture pending crossings and the shared `cameraBlendPending` array.
 Tests run the real route selection, repositioning and lap/results flow with world

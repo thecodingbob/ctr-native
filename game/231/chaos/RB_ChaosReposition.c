@@ -1,6 +1,5 @@
 #include <common.h>
 #include <game/Vehicle/VehPhysForce.h>
-#include "RB_ChaosBodySwap.h"
 #include "RB_ChaosReposition.h"
 #include "RB_ChaosRestart.h"
 
@@ -23,6 +22,17 @@ struct ChaosTrackDestination
 	int checkpoint;
 	int distanceToFinish;
 };
+
+static void Chaos_FollowBody(int player, struct Driver *driver)
+{
+	struct CameraDC *camera = &GAME_TRACKER->cameraDC[player];
+	camera->driverToFollow = driver;
+	camera->flags &= ~CAMERA_FLAG_MASK_GRAB;
+	camera->flags |= CAMERA_FLAG_DIRECTION_CHANGED | CAMERA_FLAG_RESET_RAIN_POS;
+	memset(&camera->BlastedLerp, 0, sizeof(camera->BlastedLerp));
+	camera->heightSmoothing = (struct CameraHeightSmoothing){0};
+	sdata->chaosRuntime.cameraBlendPending[player] = true;
+}
 
 static void Chaos_ReleaseRepositionHold(struct Driver *driver)
 {

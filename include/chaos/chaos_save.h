@@ -27,7 +27,8 @@ static inline void ChaosSave_Decode(const struct ChaosSettingsSaved *saved, stru
 	settings->armed = ChaosSave_IsArmed(saved);
 	for (int id = 0; id < CHAOS_EFFECT_COUNT; id++)
 	{
-		settings->effects[id] = (saved->effectBits[id / 8] & (1u << (id % 8))) != 0;
+		settings->effects[id] = ChaosEffect_Def((ChaosEffectId)id) != NULL &&
+		    (saved->effectBits[id / 8] & (1u << (id % 8))) != 0;
 	}
 	settings->enabledCount = (u8)ChaosEffect_CountEnabled(settings->effects);
 	if (saved->format == CHAOS_SAVE_FORMAT_V2)
@@ -52,7 +53,7 @@ static inline void ChaosSave_Encode(const struct ChaosSettings *settings, struct
 	saved->format = CHAOS_SAVE_FORMAT_V1;
 	for (int id = 0; id < CHAOS_EFFECT_COUNT; id++)
 	{
-		if (settings->effects[id])
+		if (ChaosEffect_IsEnabled(settings->effects, (ChaosEffectId)id))
 		{
 			saved->effectBits[id / 8] |= (u8)(1u << (id % 8));
 		}

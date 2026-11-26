@@ -17,9 +17,8 @@ void Chaos_PublishEffects(void)
 	                             gGT->overlayIndex_Threads, true) && Chaos_HasEnabledPlayer();
 	for (int i = 0; settings->armed && eligibleRace && i < CHAOS_EFFECT_COUNT; i++)
 	{
-		if (settings->effects[i] && ChaosEvent_EffectFitsSelection((ChaosEffectId)i, gGT->gameMode1,
-		                                                        gGT->numPlyrCurrGame, gGT->numBotsNextGame,
-		                                                        Chaos_UsesPersonalPools(), settings->disabledPlayers))
+		if (settings->effects[i] && ChaosEvent_EffectFits((ChaosEffectId)i, gGT->gameMode1,
+		                                               gGT->numPlyrCurrGame, gGT->numBotsNextGame))
 		{
 			const char *slug = ChaosEffect_Def((ChaosEffectId)i)->slug;
 			const size_t length = strlen(slug);

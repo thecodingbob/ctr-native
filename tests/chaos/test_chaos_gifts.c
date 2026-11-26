@@ -8,9 +8,9 @@ static void EnableGiftEffects(void)
 	s_shieldGrants = 0;
 	for (int id = 0; id < CHAOS_EFFECT_COUNT; id++)
 	{
-		sdata->chaosSettings.effects[id] = true;
+		sdata->chaosSettings.effects[id] = ChaosEffect_Def((ChaosEffectId)id) != NULL;
 	}
-	sdata->chaosSettings.enabledCount = CHAOS_EFFECT_COUNT;
+	sdata->chaosSettings.enabledCount = ChaosEffect_CountEnabled(sdata->chaosSettings.effects);
 }
 
 static void TestInstantGifts(void)

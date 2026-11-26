@@ -56,6 +56,11 @@ static void TestEveryEffectIsAddressable(void)
 	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
 	{
 		const ChaosEffectDef *def = ChaosEffect_Def((ChaosEffectId)i);
+		if (i == CHAOS_EFFECT_RETIRED_BODY_SWAP)
+		{
+			CTR_TEST_CHECK(def == NULL && ChaosEffect_FromIndex(i) == CHAOS_EFFECT_NONE, "the retired index has no definition");
+			continue;
+		}
 
 		CTR_TEST_CHECK(def != NULL, "an effect index resolves to a definition");
 		CTR_TEST_CHECK_EQ(ChaosEffect_FromIndex(i), i, "an index round-trips");
@@ -70,6 +75,9 @@ static void TestEveryEffectIsAddressable(void)
 	CTR_TEST_CHECK(ChaosEffect_FromSlug("no-such-effect") == CHAOS_EFFECT_NONE, "an unknown slug is no effect");
 	CTR_TEST_CHECK(ChaosEffect_FromSlug(NULL) == CHAOS_EFFECT_NONE, "a null slug is no effect");
 	CTR_TEST_CHECK(ChaosEffect_Def(CHAOS_EFFECT_NONE) == NULL, "no effect has no definition");
+	CTR_TEST_CHECK_EQ(CHAOS_EFFECT_RETIRED_BODY_SWAP, 35, "the retired save bit keeps its position");
+	CTR_TEST_CHECK_EQ(CHAOS_EFFECT_YARDRAT_TRAINING, 36, "subsequent effect IDs remain stable");
+	CTR_TEST_CHECK(ChaosEffect_FromSlug("body-swap") == CHAOS_EFFECT_NONE, "the retired slug cannot resolve");
 }
 
 static void TestSlugsAreUnique(void)
@@ -78,8 +86,16 @@ static void TestSlugsAreUnique(void)
 
 	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
 	{
+		if (ChaosEffect_Def((ChaosEffectId)i) == NULL)
+		{
+			continue;
+		}
 		for (int j = i + 1; j < CHAOS_EFFECT_COUNT; j++)
 		{
+			if (ChaosEffect_Def((ChaosEffectId)j) == NULL)
+			{
+				continue;
+			}
 			CTR_TEST_CHECK(strcmp(g_chaosEffectDefs[i].slug, g_chaosEffectDefs[j].slug) != 0,
 						   "a provider naming this slug reaches exactly one effect");
 		}
@@ -107,7 +123,7 @@ static void TestEnablingOneEffectLeavesTheRest(void)
 			// The mutation this catches is an off-by-one in the index, which
 			// would enable a neighbour and leave the target itself off.
 			CTR_TEST_CHECK_EQ(settings.effects[i], i == target, "only the toggled entry changed");
-			CTR_TEST_CHECK(ChaosEffect_IsEnabled(settings.effects, (ChaosEffectId)i) == (i == target),
+			CTR_TEST_CHECK(ChaosEffect_IsEnabled(settings.effects, (ChaosEffectId)i) == (i == target && i != CHAOS_EFFECT_RETIRED_BODY_SWAP),
 						   "the effect reports the state of its own entry");
 		}
 	}
@@ -187,6 +203,10 @@ static void TestPickFindsTheOnlyEnabledEffect(void)
 	// the number of enabled effects, which strands the high ids.
 	for (int only = 0; only < CHAOS_EFFECT_COUNT; only++)
 	{
+		if (ChaosEffect_Def((ChaosEffectId)only) == NULL)
+		{
+			continue;
+		}
 		struct ChaosSettings settings;
 		SetOnlyEnabled(&settings, (ChaosEffectId)only);
 
@@ -256,10 +276,15 @@ static void TestPickReachesEveryEffect(void)
 		}
 	}
 
-	const int expected = CHAOS_TEST_PICK_SAMPLES / CHAOS_EFFECT_COUNT;
+	const int expected = CHAOS_TEST_PICK_SAMPLES / settings.enabledCount;
 
 	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
 	{
+		if (ChaosEffect_Def((ChaosEffectId)i) == NULL)
+		{
+			CTR_TEST_CHECK_EQ(hits[i], 0, "retired slots are never selected");
+			continue;
+		}
 		CTR_TEST_CHECK(hits[i] > 0, "every enabled effect is reachable");
 		// A modulus over the array length instead of the enabled count would
 		// skew the low ids, so bound the spread rather than just checking > 0.
@@ -291,7 +316,7 @@ static void TestCachedCountMatchesTheArray(void)
 		CTR_TEST_CHECK_EQ(nowOn, ChaosEffect_IsEnabled(settings.effects, (ChaosEffectId)i),
 						  "toggling reports the state it just wrote");
 	}
-	CTR_TEST_CHECK_EQ(settings.enabledCount, CHAOS_EFFECT_COUNT, "everything on counts every effect");
+	CTR_TEST_CHECK_EQ(settings.enabledCount, CHAOS_EFFECT_COUNT - 1, "everything on counts every available effect");
 
 	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
 	{
@@ -354,7 +379,11 @@ static void TestToggleRejectsBadIds(void)
 				   "no effect toggles to off");
 	CTR_TEST_CHECK(!ChaosEffect_Toggle(settings.effects, &settings.enabledCount, (ChaosEffectId)CHAOS_EFFECT_COUNT),
 				   "an id past the end toggles to off");
-	CTR_TEST_CHECK_EQ(settings.enabledCount, CHAOS_EFFECT_COUNT, "and the count is left alone");
+	settings.effects[CHAOS_EFFECT_RETIRED_BODY_SWAP] = true;
+	CTR_TEST_CHECK(!ChaosEffect_IsEnabled(settings.effects, CHAOS_EFFECT_RETIRED_BODY_SWAP), "an old bit cannot enable the retired slot");
+	CTR_TEST_CHECK(!ChaosEffect_Toggle(settings.effects, &settings.enabledCount, CHAOS_EFFECT_RETIRED_BODY_SWAP), "the retired slot cannot be toggled");
+	CTR_TEST_CHECK_EQ(ChaosEffect_CountEnabled(settings.effects), CHAOS_EFFECT_COUNT - 1, "the old bit does not affect the count");
+	CTR_TEST_CHECK_EQ(settings.enabledCount, CHAOS_EFFECT_COUNT - 1, "and the count is left alone");
 }
 
 static void TestPickRefusesABadCount(void)
@@ -380,6 +409,10 @@ static void TestPickSkipsDisabledEffects(void)
 
 	for (int off = 0; off < CHAOS_EFFECT_COUNT; off++)
 	{
+		if (ChaosEffect_Def((ChaosEffectId)off) == NULL)
+		{
+			continue;
+		}
 		struct ChaosSettings settings;
 		SetAllEnabled(&settings);
 		settings.effects[off] = false;
@@ -397,7 +430,7 @@ static void TestPickSkipsDisabledEffects(void)
 			}
 		}
 		CTR_TEST_CHECK(clean, "the one disabled effect is never returned");
-		CTR_TEST_CHECK_EQ(ChaosEffect_CountEnabled(settings.effects), CHAOS_EFFECT_COUNT - 1,
+		CTR_TEST_CHECK_EQ(ChaosEffect_CountEnabled(settings.effects), CHAOS_EFFECT_COUNT - 2,
 						  "and it is one fewer effect to choose from");
 	}
 }
@@ -418,7 +451,7 @@ static void TestAnyEffectMayFollowAnother(void)
 	for (int previous = 0; previous < CHAOS_EFFECT_COUNT; previous++)
 	{
 		CTR_TEST_CHECK(ChaosEffect_Pick(settings.effects, settings.enabledCount, &rngState) >= 0, "a pick is possible after any activation");
-		CTR_TEST_CHECK_EQ(ChaosEffect_CountEnabled(settings.effects), CHAOS_EFFECT_COUNT,
+		CTR_TEST_CHECK_EQ(ChaosEffect_CountEnabled(settings.effects), CHAOS_EFFECT_COUNT - 1,
 						  "an activation does not shrink the pool");
 	}
 }

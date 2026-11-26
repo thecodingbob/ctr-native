@@ -16,12 +16,11 @@ static ChaosEffectId Chaos_PickEventEffect(void)
 	const struct GameTracker *gGT = sdata->gGT;
 	bool effects[CHAOS_EFFECT_COUNT];
 	memcpy(effects, settings->effects, sizeof(effects));
-	int enabledCount = settings->enabledCount;
+	int enabledCount = ChaosEffect_CountEnabled(effects);
 	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
 	{
-		if (effects[i] && !ChaosEvent_EffectFitsSelection((ChaosEffectId)i, gGT->gameMode1,
-		                                                gGT->numPlyrCurrGame, gGT->numBotsNextGame,
-		                                                Chaos_UsesPersonalPools(), settings->disabledPlayers))
+		if (ChaosEffect_IsEnabled(effects, (ChaosEffectId)i) && !ChaosEvent_EffectFits((ChaosEffectId)i, gGT->gameMode1,
+		                                                                                  gGT->numPlyrCurrGame, gGT->numBotsNextGame))
 		{
 			effects[i] = false;
 			enabledCount--;

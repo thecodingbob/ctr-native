@@ -231,10 +231,8 @@ static bool Chaos_EffectIsAvailable(ChaosEffectId effect)
 	// An Adventure file spans every event type, not just the current hub/race.
 	const int mode = (tracker->gameMode1 & ADVENTURE_MODE) != 0
 	                     ? ADVENTURE_MODE : tracker->gameMode1 & ~MAIN_MENU;
-	const bool personal = Chaos_SettingsArePersonal();
 	const int bots = LOAD_PredictRaceFieldSize(mode, tracker->cup.cupID, players) - players;
-	return ChaosEvent_EffectFitsSelection(effect, mode, players, bots,
-	                                     personal, sdata->chaosSettings.disabledPlayers);
+	return ChaosEvent_EffectFits(effect, mode, players, bots);
 }
 
 static bool Chaos_CanConfirm(void)
