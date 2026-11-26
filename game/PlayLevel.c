@@ -200,7 +200,6 @@ void PlayLevel_UpdateLapStats(void)
 
 	finishedHumanCount = 0;
 	const int driverCapacity = len(gGT->drivers);
-	Chaos_ReturnBodySwapsNearFinish(gGT, PLAYLEVEL_FINISHLINE_NEAR_DISTANCE);
 	currRank = 0;
 	coopRace = MainGameEnd_IsCoopRace(gGT);
 

@@ -50,7 +50,7 @@ static void TestSessionModes(void)
 				               "the effect targets every human including players three and four");
 			}
 			CTR_TEST_CHECK(!ChaosEvent_EffectFits(CHAOS_EFFECT_ARENA_CHAMPIONS, s_tracker.gameMode1,
-			                                     players, s_tracker.numBotsNextGame, false),
+			                                     players, s_tracker.numBotsNextGame),
 			               "bot-only effects are excluded whenever the event has no spawned bots");
 			sdata->chaosSettings.trigger = CHAOS_TRIGGER_PICKUP;
 			Tick(1);

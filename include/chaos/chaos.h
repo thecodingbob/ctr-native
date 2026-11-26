@@ -7,7 +7,6 @@ bool Chaos_IsRunning(const struct GameTracker *gGT);
 bool Chaos_UsesPersonalPools(void);
 bool Chaos_IsPlayerEnabled(int player);
 void Chaos_BeginRace(struct GameTracker *gGT);
-void Chaos_ReturnBodySwapsNearFinish(struct GameTracker *gGT, int nearDistance);
 bool Chaos_ConsumeTeleportLapCrossing(const struct Driver *driver);
 bool Chaos_IsTimeStopped(void);
 bool Chaos_UsesTimePalette(void);

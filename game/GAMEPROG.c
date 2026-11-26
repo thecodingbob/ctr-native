@@ -520,11 +520,12 @@ void GAMEPROG_ResetChaosSettings(struct ChaosSettings *settings)
 	settings->distribution = CHAOS_DISTRIBUTION_SHARED;
 	memset(settings->disabledPlayers, 0, sizeof(settings->disabledPlayers));
 	settings->armed = false;
-	settings->enabledCount = CHAOS_EFFECT_COUNT;
+	settings->enabledCount = 0;
 
 	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
 	{
-		settings->effects[i] = true;
+		settings->effects[i] = ChaosEffect_Def((ChaosEffectId)i) != NULL;
+		settings->enabledCount += settings->effects[i];
 	}
 }
 

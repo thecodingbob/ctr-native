@@ -57,14 +57,14 @@ typedef enum {
 	CHAOS_EFFECT_FRESH_START = 32,
 	CHAOS_EFFECT_SENILE_MASK = 33,
 	CHAOS_EFFECT_IDENTITY_CRISIS = 34,
-	CHAOS_EFFECT_BODY_SWAP = 35,
+	CHAOS_EFFECT_RETIRED_BODY_SWAP = 35, // Placeholder; may be assigned to a future effect.
 	CHAOS_EFFECT_YARDRAT_TRAINING = 36,
 	CHAOS_EFFECT_DEFECTIVE_TELEPORT = 37,
 	CHAOS_EFFECT_ZA_WARUDO = 38,
 	CHAOS_EFFECT_KING_CRIMSON = 39,
 	CHAOS_EFFECT_ARENA_CHUMPS = 40,
 	
-	// IDs are saved bit positions: append new IDs, never renumber or reuse one.
+	// IDs are saved bit positions: never renumber existing effects.
 	// Growth within the saved bitset capacity does not change its layout.
 	CHAOS_EFFECT_COUNT,
 } ChaosEffectId;
@@ -126,7 +126,6 @@ static const ChaosEffectDef g_chaosEffectDefs[CHAOS_EFFECT_COUNT] =
 	[CHAOS_EFFECT_FRESH_START] = { "fresh-start", "Fresh Start", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_SENILE_MASK] = { "senile-mask", "Senile Mask", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_IDENTITY_CRISIS] = { "identity-crisis", "Identity Crisis", CHAOS_SCOPE_HUMANS },
-	[CHAOS_EFFECT_BODY_SWAP] = { "body-swap", "Body Swap", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_YARDRAT_TRAINING] = { "yardrat-training", "Yardrat Training", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_DEFECTIVE_TELEPORT] = { "defective-teleport", "Defective Teleport", CHAOS_SCOPE_HUMANS },
 	[CHAOS_EFFECT_ZA_WARUDO] = { "za-warudo", "Za Warudo", CHAOS_SCOPE_ALL },
@@ -146,7 +145,7 @@ static inline bool ChaosEffect_IsInstant(ChaosEffectId id)
 
 static inline const ChaosEffectDef *ChaosEffect_Def(ChaosEffectId id)
 {
-	if ((id < 0) || (id >= CHAOS_EFFECT_COUNT))
+	if ((id < 0) || (id >= CHAOS_EFFECT_COUNT) || g_chaosEffectDefs[id].slug == NULL)
 	{
 		return NULL;
 	}
@@ -155,7 +154,7 @@ static inline const ChaosEffectDef *ChaosEffect_Def(ChaosEffectId id)
 
 static inline ChaosEffectId ChaosEffect_FromIndex(int index)
 {
-	if ((index < 0) || (index >= CHAOS_EFFECT_COUNT))
+	if (ChaosEffect_Def((ChaosEffectId)index) == NULL)
 	{
 		return CHAOS_EFFECT_NONE;
 	}
@@ -171,7 +170,7 @@ static inline ChaosEffectId ChaosEffect_FromSlug(const char *slug)
 
 	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
 	{
-		if (strcmp(g_chaosEffectDefs[i].slug, slug) == 0)
+		if (g_chaosEffectDefs[i].slug != NULL && strcmp(g_chaosEffectDefs[i].slug, slug) == 0)
 		{
 			return (ChaosEffectId)i;
 		}
@@ -183,7 +182,7 @@ static inline ChaosEffectId ChaosEffect_FromSlug(const char *slug)
 // array gets settings->effects[id] and nothing else.
 static inline b32 ChaosEffect_IsEnabled(const bool *enabledEffects, ChaosEffectId id)
 {
-	if ((id < 0) || (id >= CHAOS_EFFECT_COUNT))
+	if (ChaosEffect_Def(id) == NULL)
 	{
 		return false;
 	}
@@ -201,7 +200,7 @@ static inline int ChaosEffect_CountEnabled(const bool *enabledEffects)
 
 	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
 	{
-		if (enabledEffects[i])
+		if (ChaosEffect_IsEnabled(enabledEffects, (ChaosEffectId)i))
 		{
 			count++;
 		}
@@ -228,7 +227,7 @@ static inline u32 ChaosEffect_NextRandom(u32 *state)
 // the two cannot drift apart. Returns the new state of the entry.
 static inline bool ChaosEffect_Toggle(bool *enabledEffects, u8 *enabledCount, ChaosEffectId id)
 {
-	if ((id < 0) || (id >= CHAOS_EFFECT_COUNT))
+	if (ChaosEffect_Def(id) == NULL)
 	{
 		return false;
 	}
@@ -254,7 +253,7 @@ static inline ChaosEffectId ChaosEffect_Pick(const bool *enabledEffects, int ena
 
 	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
 	{
-		if (!enabledEffects[i])
+		if (!ChaosEffect_IsEnabled(enabledEffects, (ChaosEffectId)i))
 		{
 			continue;
 		}

@@ -1154,10 +1154,6 @@ static void TestPersonalBodySwapEligibility(void)
 	CTR_TEST_SECTION("Body Swap supports personal solo Arcade and rejects unavailable partners without wasting pickups");
 	struct BodySwapWorld world;
 	SetupPersonalBodySwap(&world, 1, 1);
-	CTR_TEST_CHECK(ChaosEvent_EffectFits(CHAOS_EFFECT_BODY_SWAP, ARCADE_MODE, 1, 15, true), "personal solo Arcade allows Body Swap with a bot partner");
-	CTR_TEST_CHECK(!ChaosEvent_EffectFits(CHAOS_EFFECT_BODY_SWAP, ARCADE_MODE, 1, 7, false), "shared solo Arcade retains its existing Body Swap filter");
-	CTR_TEST_CHECK(ChaosEvent_EffectFits(CHAOS_EFFECT_BODY_SWAP, ADVENTURE_MODE, 1, 1, true), "personal Adventure uses the same bot-partner compatibility as Arcade");
-	CTR_TEST_CHECK(!ChaosEvent_EffectFits(CHAOS_EFFECT_BODY_SWAP, ARCADE_MODE, 1, 0, true), "even Arcade cannot offer a partner if the actual field has no bots");
 	CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_BODY_SWAP, 1000, 0), "a solo recipient can possess a bot");
 	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[1] && (world.drivers[1].actionsFlagSet & ACTION_BOT) == 0, "the borrowed kart becomes the recipient's human-controlled body");
 	Tick(1000);
