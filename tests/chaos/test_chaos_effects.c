@@ -247,7 +247,8 @@ static void TestMyPlanetNeedsMe(void)
 	CTR_TEST_SECTION("My Planet Needs Me launches once, including in midair, without a timed slot");
 	SetupRace(CHAOS_TRIGGER_EXTERNAL);
 	memset(sdata->chaosSettings.effects, true, sizeof(sdata->chaosSettings.effects));
-	sdata->chaosSettings.enabledCount = CHAOS_EFFECT_COUNT;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_RETIRED_BODY_SWAP] = false;
+	sdata->chaosSettings.enabledCount = ChaosEffect_CountEnabled(sdata->chaosSettings.effects);
 	data.trigApprox[0] = (struct TrigTable){.sin = 0, .cos = FP(1.0)};
 	struct Driver human = {
 		.driverID = 0, .speed = 3000, .const_JumpForce = 4596, .const_Gravity = 1000,
@@ -718,14 +719,14 @@ static void TestIdentityCrisis(void)
 	                  "race teardown restores the original character engine after mixed class changes");
 }
 
-struct BodySwapWorld
+struct RacerWorld
 {
 	struct Driver drivers[RACE_FIELD_CONFIG_MAX_RACERS];
 	struct Instance instances[RACE_FIELD_CONFIG_MAX_RACERS];
 	struct Thread threads[RACE_FIELD_CONFIG_MAX_RACERS];
 };
 
-static void SetupBodySwap(struct BodySwapWorld *world, int humans, int bots)
+static void SetupRacers(struct RacerWorld *world, int humans, int bots)
 {
 	SetupRace(CHAOS_TRIGGER_EXTERNAL);
 	memset(world, 0, sizeof(*world));
@@ -733,10 +734,9 @@ static void SetupBodySwap(struct BodySwapWorld *world, int humans, int bots)
 	s_tracker.numPlyrCurrGame = humans;
 	s_tracker.numBotsNextGame = bots;
 	s_tracker.numLaps = 3;
-	sdata->chaosSettings.effects[CHAOS_EFFECT_BODY_SWAP] = true;
 	sdata->chaosSettings.effects[CHAOS_EFFECT_TRY_SOMETHING_NEW] = true;
 	sdata->chaosSettings.effects[CHAOS_EFFECT_SMALL_KART_ENERGY] = true;
-	sdata->chaosSettings.enabledCount += 3;
+	sdata->chaosSettings.enabledCount += 2;
 	for (int i = 0; i < humans + bots; i++)
 	{
 		const bool human = i < humans;
@@ -765,246 +765,9 @@ static void SetupBodySwap(struct BodySwapWorld *world, int humans, int bots)
 	}
 }
 
-static void TestBodySwap(void)
+static void SetupPersonalRacers(struct RacerWorld *world, int humans, int bots)
 {
-	CTR_TEST_SECTION("bot takeover replaces spawn-only anti-cut references and carries actual world motion into human physics");
-	struct BodySwapWorld handover;
-	SetupBodySwap(&handover, 2, 1);
-	handover.drivers[1].actionsFlagSet |= ACTION_RACE_FINISHED;
-	struct Driver *borrowed = &handover.drivers[2];
-	struct QuadBlock spawnQuad = {0};
-	borrowed->lastValid = &spawnQuad;
-	borrowed->underDriver = &spawnQuad;
-	borrowed->currBlockTouching = &spawnQuad;
-	borrowed->distanceToFinish_checkpoint = 80000;
-	borrowed->distanceToFinish_curr = 12000;
-	borrowed->checkpoint.currentIndex = 0;
-	borrowed->botData.ai_quadblock_checkpointIndex = 27;
-	borrowed->collisionFlags = DRIVER_COLL_FLAG_MASK_GRAB_REQUEST;
-	borrowed->stepFlagSet = COLL_STEP_FLAG_KILL_PLANE;
-	borrowed->xSpeed = 300;
-	borrowed->ySpeed = -400;
-	borrowed->zSpeed = 1200;
-	borrowed->rotCurr.w = -0xf80;
-	borrowed->rotPrev.w = 8;
-	s_tracker.cameraDC[0].flags = CAMERA_FLAG_MASK_GRAB;
-	s_tracker.cameraDC[0].BlastedLerp.boolLerpPending = true;
-	s_tracker.cameraDC[0].BlastedLerp.framesRemaining = 7;
-	s_tracker.cameraDC[0].BlastedLerp.desiredPos.x = 2000;
-	s_tracker.cameraDC[0].heightSmoothing.currentOffset = 500;
-	s_tracker.cameraDC[0].heightSmoothing.framesRemaining = 6;
-	s_tracker.cameraDC[0].nearOrFar = 1;
-	const Vec3 position = borrowed->posCurr;
-	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
-	CTR_TEST_CHECK(s_tracker.drivers[0] == borrowed && borrowed->distanceToFinish_checkpoint == 12000 &&
-	               borrowed->checkpoint.currentIndex == 27,
-	               "the human anti-cut baseline starts at the bot's live progression rather than its spawn checkpoint");
-	CTR_TEST_CHECK(borrowed->rotCurr.w == 0 && borrowed->rotPrev.w == 0,
-	               "AI wrapped camera lag does not become a nearly full-turn human recovery offset");
-	CTR_TEST_CHECK((s_tracker.cameraDC[0].flags & CAMERA_FLAG_MASK_GRAB) == 0 &&
-	               (s_tracker.cameraDC[0].flags & CAMERA_FLAG_DIRECTION_CHANGED) != 0 &&
-	               s_tracker.cameraDC[0].BlastedLerp.framesRemaining == 0 &&
-	               !s_tracker.cameraDC[0].BlastedLerp.boolLerpPending &&
-	               s_tracker.cameraDC[0].heightSmoothing.currentOffset == 0 &&
-	               s_tracker.cameraDC[0].heightSmoothing.framesRemaining == 0,
-	               "camera handover drops the previous kart's damage, rescue and height-recovery state");
-	CTR_TEST_CHECK_EQ(s_tracker.cameraDC[0].nearOrFar, 1, "camera handover retains the player's zoom preference");
-	CTR_TEST_CHECK(Chaos_ConsumeCameraBlend(&s_tracker.cameraDC[0]) &&
-	               !Chaos_ConsumeCameraBlend(&s_tracker.cameraDC[0]),
-	               "the camera blends to the possessed kart once without requiring a Fresh Start countdown");
-	CTR_TEST_CHECK(borrowed->lastValid == NULL && borrowed->underDriver == NULL && borrowed->currBlockTouching == NULL,
-	               "the first human collision acquires the current surface without retaining a stale spawn quad");
-	CTR_TEST_CHECK(borrowed->collisionFlags == 0 && borrowed->stepFlagSet == 0,
-	               "stale collision/rescue flags cannot trigger a fresh rescue on takeover");
-	CTR_TEST_CHECK(memcmp(&borrowed->posCurr, &position, sizeof(position)) == 0 &&
-	               memcmp(&borrowed->posPrev, &position, sizeof(position)) == 0,
-	               "taking control does not reposition the kart or sweep collisions from a stale previous position");
-	Vec3 motion;
-	VehPhysForce_ConvertSpeedToVec(borrowed, &motion);
-	CTR_TEST_CHECK(abs(motion.x - 300) < 10 && abs(motion.y + 400) < 10 && abs(motion.z - 1200) < 10,
-	               "real polar conversion preserves the bot's horizontal and vertical motion");
-
-	CTR_TEST_SECTION("ownership changes during an existing rescue without replacing its mask or waiting for landing");
-	SetupBodySwap(&handover, 2, 1);
-	handover.drivers[1].actionsFlagSet |= ACTION_RACE_FINISHED;
-	struct MaskHeadWeapon rescueMask = {0};
-	borrowed = &handover.drivers[2];
-	borrowed->kartState = KS_MASK_GRABBED;
-	borrowed->botData.maskObj = &rescueMask;
-	handover.threads[2].funcThTick = BOTS_ThTick_RevEngine;
-	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
-	CTR_TEST_CHECK(s_tracker.drivers[0] == borrowed && borrowed->driverID == 0 &&
-	               (borrowed->actionsFlagSet & ACTION_BOT) == 0 && s_tracker.cameraDC[0].driverToFollow == borrowed,
-	               "input ownership and camera transfer immediately to the kart already under rescue");
-	CTR_TEST_CHECK(borrowed->kartState == KS_MASK_GRABBED && borrowed->botData.maskObj == &rescueMask &&
-	               handover.threads[2].funcThTick == BOTS_ThTick_RevEngine,
-	               "the existing rescue mask and descent continue without another rescue activation");
-	Tick(1000);
-	CTR_TEST_CHECK(s_tracker.drivers[0] == &handover.drivers[0] && sdata->chaosRuntime.bodySwapPartner[0] == 0,
-	               "expiry does not wait for the possessed kart's rescue to finish");
-
-	CTR_TEST_SECTION("Body Swap exchanges controller ownership while complete kart state and class stay on the kart");
-	struct BodySwapWorld world;
-	SetupBodySwap(&world, 2, 0);
-	struct Instance rankNumbers[2] = {0};
-	world.drivers[0].instBigNum = &rankNumbers[0];
-	world.drivers[1].instBigNum = &rankNumbers[1];
-	world.drivers[0].driverRank = 1;
-	world.drivers[1].driverRank = 5;
-	data.rankIconsCurr[0] = 1;
-	data.rankIconsCurr[1] = 4;
-	data.rankIconsDesired[0] = 2;
-	data.rankIconsDesired[1] = 5;
-	data.rankIconsTransitionTimer[0] = 3;
-	data.rankIconsTransitionTimer[1] = 7;
-	world.drivers[0].rotCurr.w = 120;
-	world.drivers[1].rotCurr.w = -160;
-	s_tracker.cameraDC[0].BlastedLerp.boolLerpPending = true;
-	s_tracker.cameraDC[1].BlastedLerp.framesRemaining = 4;
-	sdata->chaosRuntime.engineClass[0] = SPEED;
-	sdata->chaosRuntime.engineClassChanged[0] = true;
-	world.drivers[1].kartState = KS_SPINNING;
-	world.drivers[1].heldItemID = HELD_ITEM_MISSILE_3X;
-	world.drivers[1].checkpoint.currentIndex = 7;
-	Chaos_Activate(CHAOS_EFFECT_SMALL_KART_ENERGY, 5000);
-	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000), "Body Swap occupies a timed effect slot");
-	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[1] && s_tracker.drivers[1] == &world.drivers[0],
-	               "each human controls the other complete driver object");
-	CTR_TEST_CHECK(s_tracker.drivers[0]->instBigNum == &rankNumbers[0] && s_tracker.drivers[0]->driverRank == 5 &&
-	               s_tracker.drivers[1]->instBigNum == &rankNumbers[1] && s_tracker.drivers[1]->driverRank == 1,
-	               "each viewport's rank number displays its newly controlled kart's rank");
-	CTR_TEST_CHECK(data.rankIconsCurr[0] == 4 && data.rankIconsDesired[0] == 5 && data.rankIconsTransitionTimer[0] == 7 &&
-	               data.rankIconsCurr[1] == 1 && data.rankIconsDesired[1] == 2 && data.rankIconsTransitionTimer[1] == 3,
-	               "rank icon transitions stay with their physical karts");
-	CTR_TEST_CHECK(s_tracker.humanPlayerPositions[0] == 5 && s_tracker.humanPlayerPositions[1] == 1,
-	               "rank history follows the newly controlled karts without false overtakes");
-	CTR_TEST_CHECK(data.characterIDs[0] == 1 && data.characterIDs[1] == 0 &&
-	               world.drivers[1].driverID == 0 && world.drivers[0].driverID == 1,
-	               "character and input identities agree with controller slots");
-	CTR_TEST_CHECK(s_tracker.drivers[0]->kartState == KS_SPINNING && s_tracker.drivers[0]->heldItemID == HELD_ITEM_MISSILE_3X &&
-	               s_tracker.drivers[0]->checkpoint.currentIndex == 7 && s_tracker.drivers[0]->reserves == 101 &&
-	               s_tracker.drivers[0]->lapIndex == 1 && s_tracker.drivers[0]->posCurr.x == 1000,
-	               "damage, inventory, reserves, position and progression remain on the possessed kart");
-	CTR_TEST_CHECK_EQ(Chaos_EngineClassForDriver(s_tracker.drivers[0], 1), 1, "the player takes the target kart class");
-	CTR_TEST_CHECK_EQ(Chaos_EngineClassForDriver(s_tracker.drivers[1], 0), SPEED, "an existing class override remains with its original kart");
-	CTR_TEST_CHECK(s_tracker.cameraDC[0].driverToFollow == s_tracker.drivers[0] &&
-	               s_tracker.cameraDC[1].driverToFollow == s_tracker.drivers[1], "both cameras follow their newly possessed kart");
-	CTR_TEST_CHECK(!s_tracker.cameraDC[0].BlastedLerp.boolLerpPending &&
-	               s_tracker.cameraDC[1].BlastedLerp.framesRemaining == 0 &&
-	               world.drivers[0].rotCurr.w == 120 && world.drivers[1].rotCurr.w == -160,
-	               "both viewports reset old camera transitions while human kart drift offsets stay intact");
-	Chaos_Activate(CHAOS_EFFECT_TRY_SOMETHING_NEW, 1000);
-	const int borrowedClass = sdata->chaosRuntime.engineClass[0];
-	Tick(1000);
-	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[0] && s_tracker.drivers[1] == &world.drivers[1],
-	               "expiry returns both controllers to their original kart");
-	CTR_TEST_CHECK(s_tracker.drivers[0]->instBigNum == &rankNumbers[0] && s_tracker.drivers[1]->instBigNum == &rankNumbers[1],
-	               "expiry keeps each rank number in its original viewport");
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.engineClass[1], borrowedClass, "a class change during possession stays on the borrowed kart after return");
-	CTR_TEST_CHECK(world.drivers[0].kartScale == 0.5f && world.drivers[1].kartScale == 0.5f,
-	               "timed human size modifiers survive controller return");
-
-	CTR_TEST_SECTION("human and bot possession changes physics buckets without replacing instances or navigation-list members");
-	SetupBodySwap(&world, 2, 1);
-	world.drivers[1].actionsFlagSet |= ACTION_RACE_FINISHED;
-	world.drivers[0].instBigNum = &rankNumbers[0];
-	world.drivers[0].driverRank = 2;
-	world.drivers[2].driverRank = 6;
-	Chaos_Activate(CHAOS_EFFECT_SMALL_KART_ENERGY, 5000);
-	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
-	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[2] &&
-	               (world.drivers[2].actionsFlagSet & ACTION_BOT) == 0 &&
-	               (world.drivers[0].actionsFlagSet & ACTION_BOT) != 0,
-	               "human control and AI control exchange physical karts");
-	CTR_TEST_CHECK(s_tracker.drivers[0]->instBigNum == &rankNumbers[0] && s_tracker.drivers[0]->driverRank == 6 &&
-	               world.drivers[0].instBigNum == NULL,
-	               "a borrowed bot updates the player's existing rank number instead of leaving it on the bot");
-	CTR_TEST_CHECK(s_tracker.threadBuckets[PLAYER].thread == &world.threads[2] &&
-	               s_tracker.threadBuckets[ROBOT].thread == &world.threads[0], "the correct physics pipeline owns each thread");
-	CTR_TEST_CHECK(world.threads[2].modelIndex == DYNAMIC_PLAYER && world.threads[2].funcThTick == NULL &&
-	               world.threads[0].modelIndex == DYNAMIC_ROBOT_CAR && world.threads[0].funcThTick == TestBotTick,
-	               "model identity and execution mode match the new controller");
-	CTR_TEST_CHECK(sdata->navBotList[0].count == 1 && sdata->navBotList[0].first == &world.drivers[0].botData.item,
-	               "the navigation list replaces the former bot with the unattended original kart");
-	CTR_TEST_CHECK(world.drivers[2].kartScale == 0.5f && world.drivers[0].kartScale == 1.0f,
-	               "the human size modifier follows the player rather than the old kart");
-	const struct ChaosRuntime saved = sdata->chaosRuntime;
-	s_tracker.gameMode1 |= PAUSE_1;
-	Tick(5000);
-	CTR_TEST_CHECK(memcmp(&saved, &sdata->chaosRuntime, sizeof(saved)) == 0, "pause freezes possession and its expiry");
-	s_tracker.gameMode1 &= ~PAUSE_1;
-	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 2000);
-	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[2] && sdata->navBotList[0].count == 1,
-	               "reactivation returns the old pair before forming a fresh pair without duplicating navigation membership");
-	Tick(2000);
-	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[0] && s_tracker.drivers[2] == &world.drivers[2] &&
-	               s_tracker.threadBuckets[PLAYER].thread == &world.threads[0] && sdata->navBotList[0].first == &world.drivers[2].botData.item,
-	               "expiry restores both role pipelines and the original navigation-list owner");
-	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
-	s_tracker.drivers[0]->kartState = KS_MASK_GRABBED;
-	Tick(1000);
-	CTR_TEST_CHECK(!Chaos_IsActive(CHAOS_EFFECT_BODY_SWAP) && s_tracker.drivers[0] == &world.drivers[0],
-	               "expiry returns ownership immediately even while a kart is being rescued");
-	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 2000);
-	s_tracker.drivers[0]->lapIndex = 2;
-	s_tracker.drivers[0]->distanceToFinish_curr = 500;
-	Chaos_ReturnBodySwapsNearFinish(&s_tracker, 1200);
-	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[0] && sdata->chaosRuntime.bodySwapPartner[0] == 0 &&
-	               (world.drivers[2].actionsFlagSet & ACTION_RACE_FINISHED) == 0,
-	               "the pair returns on the final finish-line approach before either kart records a finish");
-	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 2000);
-	Chaos_Reset();
-	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[0] && data.characterIDs[0] == 0 && world.drivers[0].driverID == 0,
-	               "race teardown restores original ownership before clearing class and identity state");
-
-	CTR_TEST_SECTION("Body Swap forms disjoint pairs involving humans and skips unavailable controllers");
-	SetupBodySwap(&world, 4, RACE_FIELD_CONFIG_MAX_RACERS - 4);
-	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
-	for (int slot = 0; slot < RACE_FIELD_CONFIG_MAX_RACERS; slot++)
-	{
-		const int partner = sdata->chaosRuntime.bodySwapPartner[slot] - 1;
-		if (partner >= 0)
-		{
-			CTR_TEST_CHECK(partner != slot && sdata->chaosRuntime.bodySwapPartner[partner] == slot + 1,
-			               "pair membership is symmetric and a controller cannot possess itself");
-			CTR_TEST_CHECK(slot < 4 || partner < 4, "every pair involves a human controller");
-		}
-		CTR_TEST_CHECK_EQ(s_tracker.drivers[slot]->driverID, slot, "every live kart ID agrees with its controller slot");
-	}
-	Chaos_Reset();
-	SetupBodySwap(&world, 4, RACE_FIELD_CONFIG_MAX_RACERS - 4);
-	const int lastSlot = RACE_FIELD_CONFIG_MAX_RACERS - 1;
-	for (int slot = 1; slot < lastSlot; slot++)
-	{
-		world.drivers[slot].actionsFlagSet |= ACTION_RACE_FINISHED;
-	}
-	CTR_TEST_CHECK(Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000), "Body Swap can activate with only the sixteenth kart as a partner");
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.bodySwapPartner[0], lastSlot + 1, "the last grid slot is eligible for possession");
-	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[lastSlot], "the sixteenth body is handed to the human controller");
-	Chaos_Reset();
-	CTR_TEST_CHECK(s_tracker.drivers[lastSlot] == &world.drivers[lastSlot], "reset restores ownership of the last grid slot");
-	SetupBodySwap(&world, 1, 0);
-	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
-	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[0] && sdata->chaosRuntime.bodySwapPartner[0] == 0,
-	               "a solo event without another kart leaves ownership intact");
-	SetupBodySwap(&world, 1, 1);
-	world.drivers[1].actionsFlagSet |= ACTION_RACE_FINISHED;
-	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
-	CTR_TEST_CHECK(sdata->chaosRuntime.bodySwapPartner[0] == 0, "finished targets cannot be possessed");
-	SetupBodySwap(&world, 2, 0);
-	world.drivers[0].kartState = KS_ENGINE_REVVING;
-	world.drivers[1].kartState = KS_WARP_PAD;
-	sdata->chaosRuntime.restart[0].active = true;
-	sdata->chaosRuntime.restart[1].pending = true;
-	sdata->chaosRuntime.identity[1].transformRemainingMS = 100;
-	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
-	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[1] && s_tracker.drivers[1] == &world.drivers[0],
-	               "scripted states, start holds and pending transformations do not gate controller exchange");
-}
-
-static void SetupPersonalBodySwap(struct BodySwapWorld *world, int humans, int bots)
-{
-	SetupBodySwap(world, humans, bots);
+	SetupRacers(world, humans, bots);
 	s_tracker.gameMode1 = ARCADE_MODE;
 	g_config.extendedMultiplayer = true;
 	sdata->chaosSettings.distribution = CHAOS_DISTRIBUTION_PER_PLAYER;
@@ -1013,36 +776,25 @@ static void SetupPersonalBodySwap(struct BodySwapWorld *world, int humans, int b
 
 static void TestParticipantSpecialEffects(void)
 {
-	CTR_TEST_SECTION("Body Swap excludes nonparticipants while bot effects and time stop remain global");
-	struct BodySwapWorld world;
+	CTR_TEST_SECTION("participant exclusions preserve global bot effects and time stop");
+	struct RacerWorld world;
 	for (int distribution = 0; distribution < CHAOS_DISTRIBUTION_COUNT; distribution++)
 	{
-		SetupPersonalBodySwap(&world, 4, 0);
+		SetupPersonalRacers(&world, 4, 0);
 		sdata->chaosSettings.distribution = distribution;
 		sdata->chaosSettings.disabledPlayers[0] = true;
 		sdata->chaosSettings.disabledPlayers[1] = true;
 		const int owner = distribution == CHAOS_DISTRIBUTION_SHARED ? 0 : 2;
 		CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_SMALL_KART_ENERGY, 2000, owner), "size changes activate for participating controllers");
-		CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_BODY_SWAP, 1000, owner), "two selected humans can form a pair in either distribution");
-		CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[0] && s_tracker.drivers[1] == &world.drivers[1], "excluded controllers cannot be borrowed as Body Swap partners");
-		CTR_TEST_CHECK(s_tracker.drivers[2] == &world.drivers[3] && s_tracker.drivers[3] == &world.drivers[2], "only the selected pair swaps controller ownership");
-		CTR_TEST_CHECK(world.drivers[0].kartScale == 1.0f && world.drivers[1].kartScale == 1.0f, "excluded karts keep their scale through a swap");
-		CTR_TEST_CHECK(s_tracker.drivers[2]->kartScale == 0.5f, "size follows the selected controller through Body Swap");
+		CTR_TEST_CHECK(world.drivers[0].kartScale == 1.0f && world.drivers[1].kartScale == 1.0f &&
+		               world.drivers[2].kartScale == 0.5f, "size changes skip excluded players");
 		Tick(2000);
 		for (int player = 0; player < 4; player++)
 		{
 			CTR_TEST_CHECK(s_tracker.drivers[player] == &world.drivers[player] && world.drivers[player].kartScale == 1.0f, "expiry restores selected bodies and scales without moving excluded players");
 		}
 
-		SetupPersonalBodySwap(&world, 2, 0);
-		s_tracker.gameMode1 = BATTLE_MODE;
-		sdata->chaosSettings.distribution = distribution;
-		sdata->chaosSettings.disabledPlayers[0] = true;
-		const int onlyOwner = distribution == CHAOS_DISTRIBUTION_SHARED ? 0 : 1;
-		CTR_TEST_CHECK(!Chaos_ActivateForPlayer(CHAOS_EFFECT_BODY_SWAP, 1000, onlyOwner), "Body Swap cannot use an excluded human when no bots or selected partners exist");
-		CTR_TEST_CHECK_EQ(sdata->chaosRuntime.players[onlyOwner].numActive, 0, "a missing eligible partner does not consume a timed slot");
-
-		SetupPersonalBodySwap(&world, 4, 1);
+		SetupPersonalRacers(&world, 4, 1);
 		sdata->chaosSettings.distribution = distribution;
 		sdata->chaosSettings.disabledPlayers[0] = true;
 		sdata->chaosSettings.disabledPlayers[1] = true;
@@ -1066,11 +818,11 @@ static void TestParticipantSpecialEffects(void)
 
 static void TestAdventureParticipantEffects(void)
 {
-	CTR_TEST_SECTION("Adventure player selection isolates karts while Body Swap and time stop keep their rules");
-	struct BodySwapWorld world;
+	CTR_TEST_SECTION("Adventure player selection isolates karts while time stop remains global");
+	struct RacerWorld world;
 	for (int distribution = 0; distribution < CHAOS_DISTRIBUTION_COUNT; distribution++)
 	{
-		SetupPersonalBodySwap(&world, 2, 1);
+		SetupPersonalRacers(&world, 2, 1);
 		s_tracker.gameMode1 = ADVENTURE_MODE;
 		sdata->chaosSettings.distribution = distribution;
 		sdata->chaosSettings.disabledPlayers[0] = true;
@@ -1078,174 +830,21 @@ static void TestAdventureParticipantEffects(void)
 		const int owner = distribution == CHAOS_DISTRIBUTION_SHARED ? 0 : 1;
 		CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_SMALL_KART_ENERGY, 2000, owner), "Adventure can change only the participating player's kart");
 		CTR_TEST_CHECK(world.drivers[0].kartScale == 1.0f && world.drivers[1].kartScale == 0.5f, "the excluded Adventure player keeps its original scale");
-		CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_BODY_SWAP, 2000, owner), "the selected co-op player can borrow a bot without borrowing the excluded human");
-		CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[0] && s_tracker.drivers[1] == &world.drivers[2], "Adventure Body Swap leaves the excluded controller on its own body");
-		CTR_TEST_CHECK(s_tracker.drivers[1]->kartScale == 0.5f, "the selected Adventure controller retains size effects while possessing a bot");
 		CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_ZA_WARUDO, 1000, owner), "Adventure can activate time stop through either distribution");
 		CTR_TEST_CHECK_EQ(Chaos_ShouldFreezeThread(s_tracker.drivers[0]->instSelf->thread), distribution == CHAOS_DISTRIBUTION_PER_PLAYER, "the excluded human follows the chosen time-stop immunity rule");
-		CTR_TEST_CHECK(!Chaos_ShouldFreezeThread(s_tracker.drivers[1]->instSelf->thread), "the selected Adventure recipient remains immune on the borrowed body");
-		CTR_TEST_CHECK(Chaos_ShouldFreezeThread(s_tracker.drivers[2]->instSelf->thread), "Adventure time stop still freezes the bot occupying the recipient's original body");
+		CTR_TEST_CHECK(!Chaos_ShouldFreezeThread(s_tracker.drivers[1]->instSelf->thread), "the selected Adventure recipient remains immune");
+		CTR_TEST_CHECK(Chaos_ShouldFreezeThread(s_tracker.drivers[2]->instSelf->thread), "Adventure time stop still freezes the bot");
 		Tick(1000);
-		CTR_TEST_CHECK(!Chaos_IsTimeStopped() && sdata->chaosRuntime.bodySwapPartner[1] != 0, "time-stop expiry resumes rather than expires the suspended Adventure pair");
+		CTR_TEST_CHECK(!Chaos_IsTimeStopped(), "time stop expires in Adventure");
 		Tick(2000);
-		CTR_TEST_CHECK(s_tracker.drivers[1] == &world.drivers[1] && world.drivers[1].kartScale == 1.0f, "Adventure expiry returns the selected kart and scale");
+		CTR_TEST_CHECK(s_tracker.drivers[1] == &world.drivers[1] && world.drivers[1].kartScale == 1.0f, "Adventure expiry restores the selected kart scale");
 		CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[0] && !Chaos_IsPlayerEnabled(0), "Adventure cleanup preserves both the excluded kart and the saved selection");
-	}
-}
-
-static void TestPersonalBodySwapPairs(void)
-{
-	CTR_TEST_SECTION("personal Body Swap keeps disjoint pairs with independent owners and deadlines");
-	struct BodySwapWorld world;
-	SetupPersonalBodySwap(&world, 4, 0);
-	CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_BODY_SWAP, 1000, 0), "the recipient creates one personal pair");
-	const int firstPartner = sdata->chaosRuntime.bodySwapPartner[0] - 1;
-	CTR_TEST_CHECK(firstPartner > 0, "the recipient chooses another available controller");
-	CTR_TEST_CHECK(Chaos_IsActiveForDriver(CHAOS_EFFECT_BODY_SWAP, s_tracker.drivers[firstPartner]), "both members can query the Body Swap affecting their controllers");
-	int secondOwner = 1;
-	while (secondOwner == firstPartner)
-	{
-		secondOwner++;
-	}
-	CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_BODY_SWAP, 2000, secondOwner), "an unpaired recipient creates another independent pair");
-	const int secondPartner = sdata->chaosRuntime.bodySwapPartner[secondOwner] - 1;
-	CTR_TEST_CHECK(secondPartner != 0 && secondPartner != firstPartner, "the second pair never borrows either member of the first");
-	const struct ChaosRuntime beforeReject = sdata->chaosRuntime;
-	CTR_TEST_CHECK(!Chaos_ActivateForPlayer(CHAOS_EFFECT_BODY_SWAP, 5000, firstPartner), "an existing partner cannot interrupt or refresh its pair");
-	CTR_TEST_CHECK(!Chaos_ActivateForPlayer(CHAOS_EFFECT_BODY_SWAP, 5000, 0), "an owner cannot interrupt or refresh its pair either");
-	CTR_TEST_CHECK(memcmp(&beforeReject, &sdata->chaosRuntime, sizeof(beforeReject)) == 0, "rejected reactivations leave all pairs and deadlines untouched");
-	Tick(1000);
-	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[0] && s_tracker.drivers[firstPartner] == &world.drivers[firstPartner], "first expiry returns only its two controllers");
-	CTR_TEST_CHECK(s_tracker.drivers[secondOwner] == &world.drivers[secondPartner] && sdata->chaosRuntime.bodySwapPartner[secondOwner] == secondPartner + 1, "the second pair remains swapped after the first expires");
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.players[secondOwner].active[0].remainingMS, 1000, "the second pair retains its own remaining duration");
-	Tick(1000);
-	for (int slot = 0; slot < 4; slot++)
-	{
-		CTR_TEST_CHECK(s_tracker.drivers[slot] == &world.drivers[slot] && sdata->chaosRuntime.bodySwapPartner[slot] == 0, "both independent expiries restore original ownership without residual pairs");
-	}
-
-	CTR_TEST_SECTION("early pair return clears its activation without touching a later pair");
-	SetupPersonalBodySwap(&world, 4, 0);
-	Chaos_ActivateForPlayer(CHAOS_EFFECT_BODY_SWAP, 1000, 0);
-	const int partner = sdata->chaosRuntime.bodySwapPartner[0] - 1;
-	// Exercise finish-line return through the non-owning member, too.
-	s_tracker.drivers[partner]->lapIndex = 2;
-	s_tracker.drivers[partner]->distanceToFinish_curr = 500;
-	Chaos_ReturnBodySwapsNearFinish(&s_tracker, 1200);
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.players[0].numActive, 0, "finish-line return removes the owning activation even when its partner approaches the line");
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.bodySwapPartner[0], 0, "finish-line return clears both memberships");
-	for (int slot = 0; slot < 4; slot++)
-	{
-		world.drivers[slot].lapIndex = 0;
-		world.drivers[slot].distanceToFinish_curr = 10000;
-	}
-	CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_BODY_SWAP, 2000, partner), "the returned partner can immediately own a new pair");
-	Tick(1000);
-	CTR_TEST_CHECK(sdata->chaosRuntime.bodySwapPartner[partner] != 0 && sdata->chaosRuntime.players[partner].numActive == 1, "the old owner's discarded deadline cannot end the new pair");
-	Chaos_Reset();
-	for (int slot = 0; slot < 4; slot++)
-	{
-		CTR_TEST_CHECK(s_tracker.drivers[slot] == &world.drivers[slot], "reset returns every remaining pair before clearing runtime");
-	}
-}
-
-static void TestPersonalBodySwapEligibility(void)
-{
-	CTR_TEST_SECTION("Body Swap supports personal solo Arcade and rejects unavailable partners without wasting pickups");
-	struct BodySwapWorld world;
-	SetupPersonalBodySwap(&world, 1, 1);
-	CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_BODY_SWAP, 1000, 0), "a solo recipient can possess a bot");
-	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[1] && (world.drivers[1].actionsFlagSet & ACTION_BOT) == 0, "the borrowed kart becomes the recipient's human-controlled body");
-	Tick(1000);
-	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.drivers[0] && (world.drivers[1].actionsFlagSet & ACTION_BOT) != 0, "solo expiry restores human and bot roles");
-
-	SetupPersonalBodySwap(&world, 2, 0);
-	world.drivers[1].actionsFlagSet |= ACTION_RACE_FINISHED;
-	const u32 rng = sdata->chaosRng;
-	CTR_TEST_CHECK(!Chaos_ActivateForPlayer(CHAOS_EFFECT_BODY_SWAP, 1000, 0), "finished partners cannot be selected");
-	CTR_TEST_CHECK_EQ(sdata->chaosRng, rng, "no-partner rejection consumes no partner-selection RNG");
-	world.drivers[1].actionsFlagSet = 0;
-	world.instances[1].thread = NULL;
-	CTR_TEST_CHECK(!Chaos_ActivateForPlayer(CHAOS_EFFECT_BODY_SWAP, 1000, 0), "a partner without a live thread cannot be borrowed");
-	memset(sdata->chaosSettings.effects, 0, sizeof(sdata->chaosSettings.effects));
-	sdata->chaosSettings.effects[CHAOS_EFFECT_BODY_SWAP] = true;
-	sdata->chaosSettings.enabledCount = 1;
-	CTR_TEST_CHECK(!Chaos_OnPickup(&world.drivers[0]), "an entirely unavailable Body Swap pool returns without looping");
-	sdata->chaosSettings.effects[CHAOS_EFFECT_FLY_ME_TO_THE_MOON] = true;
-	sdata->chaosSettings.enabledCount = 2;
-	CTR_TEST_CHECK(Chaos_OnPickup(&world.drivers[0]), "an unavailable partner rerolls into an enabled ordinary effect");
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.players[0].active[0].effect, CHAOS_EFFECT_FLY_ME_TO_THE_MOON, "the fallback consumes only the recipient's pool");
-}
-
-static void TestPersonalBodySwapLifecycle(void)
-{
-	CTR_TEST_SECTION("personal pair ownership follows controller effects and survives captured state");
-	struct BodySwapWorld world;
-	SetupPersonalBodySwap(&world, 2, 0);
-	CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_SMALL_KART_ENERGY, 5000, 0), "the first controller has its own small-size modifier");
-	CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_FLY_ME_TO_THE_MOON, 5000, 1), "the other controller has an independent gravity modifier");
-	CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_BODY_SWAP, 1000, 1), "either controller can own a personal pair");
-	CTR_TEST_CHECK(world.drivers[1].kartScale == 0.5f && world.drivers[0].kartScale == 1.0f, "size follows its controller to the borrowed body without leaking to its partner");
-	CTR_TEST_CHECK(Chaos_IsActiveForDriver(CHAOS_EFFECT_FLY_ME_TO_THE_MOON, &world.drivers[0]) &&
-	               !Chaos_IsActiveForDriver(CHAOS_EFFECT_FLY_ME_TO_THE_MOON, &world.drivers[1]), "gravity also follows the recipient rather than the original physical kart");
-	const struct ChaosRuntime beforePause = sdata->chaosRuntime;
-	s_tracker.gameMode1 |= PAUSE_1;
-	Tick(5000);
-	CTR_TEST_CHECK(memcmp(&beforePause, &sdata->chaosRuntime, sizeof(beforePause)) == 0, "pause preserves every personal pair and its separate deadline");
-	s_tracker.gameMode1 &= ~PAUSE_1;
-	static struct sData savedSdata;
-	memcpy(&savedSdata, &sdata_static, sizeof(savedSdata));
-	const struct GameTracker savedTracker = s_tracker;
-	const struct BodySwapWorld savedWorld = world;
-	const struct Data savedData = data;
-	Tick(1000);
-	memcpy(&sdata_static, &savedSdata, sizeof(savedSdata));
-	s_tracker = savedTracker;
-	world = savedWorld;
-	data = savedData;
-	Tick(999);
-	CTR_TEST_CHECK(s_tracker.drivers[1] == &world.drivers[0], "restored possession survives until its captured deadline");
-	Tick(1);
-	CTR_TEST_CHECK(s_tracker.drivers[1] == &world.drivers[1] && world.drivers[0].kartScale == 0.5f && world.drivers[1].kartScale == 1.0f, "restored expiry returns bodies and reapplies each controller's own modifiers");
-
-	CTR_TEST_SECTION("personal Body Swap respects full pools and handles one through four human recipients");
-	SetupPersonalBodySwap(&world, 2, 0);
-	sdata->chaosSettings.effects[CHAOS_EFFECT_MIRROR_MIRROR] = true;
-	sdata->chaosSettings.effects[CHAOS_EFFECT_GROUNDED] = true;
-	Chaos_ActivateForPlayer(CHAOS_EFFECT_SMALL_KART_ENERGY, 5000, 0);
-	Chaos_ActivateForPlayer(CHAOS_EFFECT_FLY_ME_TO_THE_MOON, 5000, 0);
-	Chaos_ActivateForPlayer(CHAOS_EFFECT_MIRROR_MIRROR, 5000, 0);
-	Chaos_ActivateForPlayer(CHAOS_EFFECT_GROUNDED, 5000, 0);
-	const struct ChaosRuntime full = sdata->chaosRuntime;
-	const u32 rng = sdata->chaosRng;
-	CTR_TEST_CHECK(!Chaos_ActivateForPlayer(CHAOS_EFFECT_BODY_SWAP, 1000, 0), "a fifth timed effect cannot create a pair without an activation slot");
-	CTR_TEST_CHECK(memcmp(&full, &sdata->chaosRuntime, sizeof(full)) == 0 && sdata->chaosRng == rng, "capacity rejection changes neither pair ownership nor partner-selection RNG");
-	for (int humans = 1; humans <= 4; humans++)
-	{
-		SetupPersonalBodySwap(&world, humans, 4);
-		for (int player = 0; player < humans; player++)
-		{
-			if (sdata->chaosRuntime.bodySwapPartner[player] == 0)
-			{
-				CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_BODY_SWAP, 100 + player * 100, player), "every unpaired human can form its own pair when partners are available");
-			}
-		}
-		for (int slot = 0; slot < humans + 4; slot++)
-		{
-			const int partner = sdata->chaosRuntime.bodySwapPartner[slot] - 1;
-			CTR_TEST_CHECK(partner < 0 || (partner != slot && sdata->chaosRuntime.bodySwapPartner[partner] == slot + 1), "all concurrent personal pair memberships remain symmetric and disjoint");
-		}
-		Tick(1000);
-		for (int slot = 0; slot < humans + 4; slot++)
-		{
-			CTR_TEST_CHECK(s_tracker.drivers[slot] == &world.drivers[slot] && sdata->chaosRuntime.bodySwapPartner[slot] == 0, "independent expiry restores all human and bot bodies for each player count");
-		}
 	}
 }
 
 struct TeleportWorld
 {
-	struct BodySwapWorld racers;
+	struct RacerWorld racers;
 	struct Level level;
 	struct mesh_info mesh;
 	struct BSP bsp[3];
@@ -1255,7 +854,7 @@ struct TeleportWorld
 static void SetupTeleport(struct TeleportWorld *world, int humans, int bots)
 {
 	memset(world, 0, sizeof(*world));
-	SetupBodySwap(&world->racers, humans, bots);
+	SetupRacers(&world->racers, humans, bots);
 	sdata->chaosSettings.effects[CHAOS_EFFECT_YARDRAT_TRAINING] = true;
 	sdata->chaosSettings.enabledCount++;
 	world->level.ptr_restart_points = world->nodes;
@@ -1573,7 +1172,7 @@ static void TestTeleport(void)
 	Chaos_Activate(CHAOS_EFFECT_YARDRAT_TRAINING, 1000);
 	CTR_TEST_CHECK_EQ(world.racers.drivers[0].posCurr.z, 0, "without a branch selection the main path remains the default");
 
-	CTR_TEST_SECTION("finish crossings are queued for retail lap/results handling and travel with the kart through Body Swap");
+	CTR_TEST_SECTION("finish crossings are queued for retail lap/results handling");
 	SetupTeleport(&world, 2, 1);
 	world.racers.drivers[1].actionsFlagSet |= ACTION_RACE_FINISHED;
 	world.racers.drivers[0].distanceToFinish_curr = 4000;
@@ -1586,25 +1185,11 @@ static void TestTeleport(void)
 	CTR_TEST_CHECK(Chaos_ConsumeTeleportLapCrossing(&world.racers.drivers[0]), "a pending crossing can be consumed before restore");
 	sdata->chaosRuntime = checkpoint;
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.teleportForwardCrossings[0], 1, "resident checkpoint restoration restores the pending crossing");
-	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.teleportForwardCrossings[2], 1, "an unconsumed crossing stays with the physical kart");
 	CTR_TEST_CHECK(Chaos_ConsumeTeleportLapCrossing(&world.racers.drivers[0]) &&
 	               !Chaos_ConsumeTeleportLapCrossing(&world.racers.drivers[0]), "lap processing consumes each crossing exactly once");
+	sdata->chaosRuntime = checkpoint;
 	Chaos_Reset();
-	SetupTeleport(&world, 2, 1);
-	world.racers.drivers[1].actionsFlagSet |= ACTION_RACE_FINISHED;
-	Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000);
-	s_tracker.drivers[0]->lapIndex = 2;
-	s_tracker.drivers[0]->checkpoint.currentIndex = 9;
-	s_tracker.drivers[0]->distanceToFinish_curr = 4000;
-	Chaos_Activate(CHAOS_EFFECT_YARDRAT_TRAINING, 1000);
-	Chaos_ReturnBodySwapsNearFinish(&s_tracker, 1200);
-	CTR_TEST_CHECK(s_tracker.drivers[0] == &world.racers.drivers[0] && sdata->chaosRuntime.bodySwapPartner[0] == 0 &&
-	               sdata->chaosRuntime.teleportForwardCrossings[2] == 1,
-	               "a final-lap teleport returns the pair before the possessed kart records its finish");
-	Chaos_Reset();
-	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.teleportForwardCrossings[0] + sdata->chaosRuntime.teleportForwardCrossings[2], 0,
-	                  "reset discards pending crossings");
+	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.teleportForwardCrossings[0], 0, "reset discards pending crossings");
 
 	CTR_TEST_SECTION("Teleport finish crossings use the real lap statistics, lap times and race completion exactly once");
 	SetupTeleport(&world, 1, 0);
@@ -1928,9 +1513,9 @@ static void TestTimeStopPotionContacts(void)
 	}
 }
 
-static void SeedPersonalTimeStop(struct BodySwapWorld *world, int humans, int owner)
+static void SeedPersonalTimeStop(struct RacerWorld *world, int humans, int owner)
 {
-	SetupPersonalBodySwap(world, humans, 1);
+	SetupPersonalRacers(world, humans, 1);
 	sdata->chaosSettings.effects[CHAOS_EFFECT_ZA_WARUDO] = true;
 	CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_ZA_WARUDO, 1000, owner), "personal time stop activates through the production entry point");
 }
@@ -1956,7 +1541,7 @@ static void SetupThreadOwnerPool(struct Thread *threads, int count)
 static void TestPersonalTimeStopOwnership(void)
 {
 	CTR_TEST_SECTION("personal time-stop immunity follows only the receiving controller and its effects");
-	struct BodySwapWorld world;
+	struct RacerWorld world;
 	for (int humans = 1; humans <= CHAOS_MAX_HUMAN_PLAYERS; humans++)
 	{
 		for (int owner = 0; owner < humans; owner++)
@@ -2014,19 +1599,12 @@ static void TestPersonalTimeStopOwnership(void)
 		}
 	}
 
-	CTR_TEST_SECTION("personal immunity follows the controller through Body Swap");
-	SetupPersonalBodySwap(&world, 2, 0);
-	Chaos_ActivateForPlayer(CHAOS_EFFECT_BODY_SWAP, 5000, 0);
-	sdata->chaosSettings.effects[CHAOS_EFFECT_ZA_WARUDO] = true;
-	CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_ZA_WARUDO, 1000, 1), "the recipient can stop time while borrowing a different kart");
-	CTR_TEST_CHECK(!Chaos_ShouldFreezeThread(&world.threads[0]) && Chaos_ShouldFreezeThread(&world.threads[1]), "the recipient's borrowed kart is immune, not their original physical body");
-	Chaos_Reset();
 }
 
 static void TestThreadOwnerTable(void)
 {
 	CTR_TEST_SECTION("Chaos thread attribution uses pool slots without occupying Thread padding");
-	struct BodySwapWorld world;
+	struct RacerWorld world;
 	SeedPersonalTimeStop(&world, 2, 0);
 	struct Thread threads[192] = {0};
 	const int counts[] = {1, 24, 48, 96, len(threads)};
@@ -2087,7 +1665,7 @@ static void TestThreadOwnerTable(void)
 static void TestParticleOwnerTable(void)
 {
 	CTR_TEST_SECTION("Chaos particle attribution uses actual pool slots without changing particle layout");
-	struct BodySwapWorld world;
+	struct RacerWorld world;
 	SeedPersonalTimeStop(&world, 2, 0);
 	struct Particle particles[192] = {0};
 	const int counts[] = {1, 32, 64, 128, len(particles)};
@@ -2150,7 +1728,7 @@ static void TestParticleOwnerTable(void)
 static void TestPersonalViewportHud(void)
 {
 	CTR_TEST_SECTION("personal HUD keeps full pools in their own viewport and attributes global effects");
-	struct BodySwapWorld world;
+	struct RacerWorld world;
 	static struct DB buffer;
 	u32 uiOT[5];
 	buffer.otMem.uiOT = uiOT;
@@ -2159,7 +1737,7 @@ static void TestPersonalViewportHud(void)
 	{
 		for (int players = 1; players <= CHAOS_MAX_HUMAN_PLAYERS; players++)
 		{
-			SetupPersonalBodySwap(&world, players, 0);
+			SetupPersonalRacers(&world, players, 0);
 			s_tracker.gameMode1 = modes[mode];
 			s_tracker.backBuffer = &buffer;
 			s_tracker.hudFlags = HUD_FLAG_RACE_HUD;
@@ -2261,7 +1839,7 @@ static void TestPersonalViewportHud(void)
 		}
 	}
 
-	SetupPersonalBodySwap(&world, 4, 0);
+	SetupPersonalRacers(&world, 4, 0);
 	s_tracker.backBuffer = &buffer;
 	s_tracker.hudFlags = HUD_FLAG_RACE_HUD;
 	for (int player = 0; player < 4; player++)
@@ -2269,18 +1847,9 @@ static void TestPersonalViewportHud(void)
 		s_tracker.pushBuffer[player].rect = (RECT){(player % 2) * SCREEN_WIDTH / 2,
 		    (player / 2) * SCREEN_HEIGHT / 2, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2};
 	}
-	CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_BODY_SWAP, 10000, 0), "a real personal pair supplies HUD ownership");
-	const int partner = sdata->chaosRuntime.bodySwapPartner[0] - 1;
-	for (int player = 0; player < 4; player++)
-	{
-		const struct ChaosActivation *entries[UI_CHAOS_MAX_PERSONAL_ENTRIES];
-		CTR_TEST_CHECK_EQ(UI_Chaos_CollectPersonalEntries(player, 4, entries), player == 0 || player == partner, "Body Swap appears only for its two participants, without duplicating its activation");
-	}
+	CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_SMALL_KART_ENERGY, 10000, 0), "a personal effect supplies a HUD entry");
 	DrawNotice();
-	CTR_TEST_CHECK_EQ(s_noticeDraws, 2, "one real pair is drawn once in each participant's viewport");
-	const char *pairLabel = LANG_GetString(LNG_EXPANDED_CHAOS_EFFECT_BODY_SWAP);
-	CTR_TEST_CHECK(strcmp(s_drawText[0], pairLabel) == 0 && strcmp(s_drawText[1], pairLabel) == 0,
-	               "both Body Swap participants see the effect name without a pair prefix");
+	CTR_TEST_CHECK(s_noticeDraws > 0, "the active effect is visible before the race ends");
 	s_allHumansFinished = true;
 	DrawNotice();
 	CTR_TEST_CHECK_EQ(s_noticeDraws, 0, "personal HUD hides when all humans finish");
@@ -2293,8 +1862,8 @@ static void TestPersonalViewportHud(void)
 static void TestExcludedPlayerHud(void)
 {
 	CTR_TEST_SECTION("excluded personal viewports retain global effects without showing local effects");
-	struct BodySwapWorld world;
-	SetupPersonalBodySwap(&world, 4, 1);
+	struct RacerWorld world;
+	SetupPersonalRacers(&world, 4, 1);
 	sdata->chaosSettings.disabledPlayers[1] = true;
 	sdata->chaosSettings.disabledPlayers[3] = true;
 	struct ChaosPlayerRuntime *first = &sdata->chaosRuntime.players[0];
@@ -2330,8 +1899,8 @@ static void TestExcludedPlayerHud(void)
 static void TestSpatialAudioContext(void)
 {
 	CTR_TEST_SECTION("spatial audio falls back to the caller without changing ordinary thread attribution");
-	struct BodySwapWorld world;
-	SetupPersonalBodySwap(&world, 2, 1);
+	struct RacerWorld world;
+	SetupPersonalRacers(&world, 2, 1);
 	struct Thread unattributedHuman = {.flags = THREAD_FLAG_HUMAN_EFFECT};
 	const enum ChaosAudioOwner contexts[] = {
 		CHAOS_AUDIO_WORLD, CHAOS_AUDIO_UI, CHAOS_AUDIO_HUMAN,
@@ -2374,7 +1943,7 @@ static void TestSpatialAudioContext(void)
 static void TestPersonalTimeStopAudio(void)
 {
 	CTR_TEST_SECTION("personal time-stop audio follows controllers before, during and after activation");
-	struct BodySwapWorld world;
+	struct RacerWorld world;
 	for (int humans = 1; humans <= CHAOS_MAX_HUMAN_PLAYERS; humans++)
 	{
 		for (int owner = 0; owner < humans; owner++)
@@ -2452,7 +2021,7 @@ static void TestPersonalTimeStopAudio(void)
 static void TestPersonalQueuedVoices(void)
 {
 	CTR_TEST_SECTION("queued XA retains its requesting controller and skips frozen voices without consuming them");
-	struct BodySwapWorld world;
+	struct RacerWorld world;
 	SeedPersonalTimeStop(&world, 2, 1);
 	Voiceline_PoolClear();
 	sdata->boolCanPlayVoicelines = true;
@@ -2487,7 +2056,7 @@ static void TestPersonalQueuedVoices(void)
 	data.voiceData[0].voiceSet[2].num = 0;
 
 	CTR_TEST_SECTION("personal false-mask warnings do not let frozen controllers occupy the XA channel");
-	SetupPersonalBodySwap(&world, 2, 0);
+	SetupPersonalRacers(&world, 2, 0);
 	sdata->chaosSettings.effects[CHAOS_EFFECT_SENILE_MASK] = true;
 	sdata->chaosSettings.effects[CHAOS_EFFECT_ZA_WARUDO] = true;
 	Chaos_ActivateForPlayer(CHAOS_EFFECT_SENILE_MASK, 5000, 0);
@@ -2500,8 +2069,8 @@ static void TestPersonalQueuedVoices(void)
 static void TestExpandedHazardCollision(void)
 {
 	CTR_TEST_SECTION("hazards check contact through the last racer slot");
-	struct BodySwapWorld world;
-	SetupBodySwap(&world, 1, RACE_FIELD_CONFIG_MAX_RACERS - 1);
+	struct RacerWorld world;
+	SetupRacers(&world, 1, RACE_FIELD_CONFIG_MAX_RACERS - 1);
 	const int last = RACE_FIELD_CONFIG_MAX_RACERS - 1;
 	for (int i = 0; i < last; i++)
 	{
@@ -2532,7 +2101,7 @@ static void TestExpandedHazardCollision(void)
 static void TestPersonalTimeStopContacts(void)
 {
 	CTR_TEST_SECTION("frozen weapons ignore frozen humans but retain collisions with the immune recipient");
-	struct BodySwapWorld world;
+	struct RacerWorld world;
 	SeedPersonalTimeStop(&world, 3, 2);
 	struct Model model = {.id = DYNAMIC_ROCKET};
 	struct TrackerWeapon payload = {.instParent = &world.instances[0]};
@@ -4758,12 +4327,8 @@ int main(void)
 	TestWhoBoundThis();
 	TestTrySomethingNew();
 	TestIdentityCrisis();
-	TestBodySwap();
-	TestPersonalBodySwapPairs();
 	TestParticipantSpecialEffects();
 	TestAdventureParticipantEffects();
-	TestPersonalBodySwapEligibility();
-	TestPersonalBodySwapLifecycle();
 	TestTeleport();
 	TestKingCrimson();
 	TestTeleportProgressProjection();

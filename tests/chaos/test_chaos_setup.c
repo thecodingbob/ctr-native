@@ -193,11 +193,11 @@ static void EnterSetup(void)
 	sdata->chaosSettings.durationSeconds = CHAOS_DURATION_DEFAULT_SECONDS;
 	sdata->chaosSettings.triggerIntervalSeconds = CHAOS_TRIGGER_INTERVAL_DEFAULT_SECONDS;
 	sdata->chaosSettings.armed = true;
-	sdata->chaosSettings.enabledCount = CHAOS_EFFECT_COUNT;
 	for (int effect = 0; effect < CHAOS_EFFECT_COUNT; effect++)
 	{
-		sdata->chaosSettings.effects[effect] = true;
+		sdata->chaosSettings.effects[effect] = ChaosEffect_Def((ChaosEffectId)effect) != NULL;
 	}
+	sdata->chaosSettings.enabledCount = ChaosEffect_CountEnabled(sdata->chaosSettings.effects);
 	s_finishes = 0;
 	s_returns = 0;
 	s_sessionFinishes = 0;
@@ -267,7 +267,7 @@ static void TestEffectsCommitAndPageTransitions(void)
 	MM_menuChaosConfig.rowSelected = CHAOS_EFFECT_FLY_ME_TO_THE_MOON;
 	Frame(BTN_CROSS, 0);
 	CTR_TEST_CHECK(!sdata->chaosSettings.effects[CHAOS_EFFECT_FLY_ME_TO_THE_MOON], "Cross updates the stored effect without leaving its page");
-	CTR_TEST_CHECK_EQ(sdata->chaosSettings.enabledCount, CHAOS_EFFECT_COUNT - 1, "the cached count changes with the toggle");
+	CTR_TEST_CHECK_EQ(sdata->chaosSettings.enabledCount, CHAOS_EFFECT_COUNT - 2, "the cached count changes with the toggle");
 	Frame(BTN_TRIANGLE, 0);
 	CTR_TEST_CHECK(s_drawnTitle == LANG_GetString(LNG_EXPANDED_CHAOS_SETUP_TITLE), "Back draws Settings immediately");
 	CTR_TEST_CHECK_EQ(MM_menuChaosConfig.rowSelected, sdata->chaosMenu.effectsRow, "Back selects the Effects action");
@@ -285,7 +285,8 @@ static void TestConfirmRequiresAnEffect(void)
 	EnterSetup();
 	MM_menuChaosConfig.rowSelected = sdata->chaosMenu.effectsRow;
 	Frame(BTN_CROSS, 0);
-	for (int effect = 0; effect < CHAOS_EFFECT_COUNT; effect++)
+	const int rows = Chaos_PageRowCount(&sdata->chaosMenu);
+	for (int effect = 0; effect < rows; effect++)
 	{
 		MM_menuChaosConfig.rowSelected = effect;
 		Frame(BTN_CROSS, 0);
@@ -345,7 +346,8 @@ static void TestResidentRestore(void)
 	Frame(BTN_CROSS, 0); // Pickup hides Interval.
 	MM_menuChaosConfig.rowSelected = sdata->chaosMenu.effectsRow;
 	Frame(BTN_CROSS, 0); // Effects.
-	MM_menuChaosConfig.rowSelected = CHAOS_EFFECT_COUNT - 1;
+	const int lastRow = Chaos_PageRowCount(&sdata->chaosMenu) - 1;
+	MM_menuChaosConfig.rowSelected = lastRow;
 	Frame(BTN_CROSS, 0);
 	static struct sData snapshot;
 	memcpy(&snapshot, &sdata_static, sizeof(snapshot));
@@ -360,7 +362,7 @@ static void TestResidentRestore(void)
 	Frame(0, 0);
 	CTR_TEST_CHECK(s_drawnTitle == LANG_GetString(LNG_EXPANDED_CHAOS_EFFECTS_TITLE),
 	               "an idle frame resumes the saved page rather than the later visit");
-	CTR_TEST_CHECK_EQ(MM_menuChaosConfig.rowSelected, CHAOS_EFFECT_COUNT - 1, "the saved cursor resumes on the last effect");
+	CTR_TEST_CHECK_EQ(MM_menuChaosConfig.rowSelected, lastRow, "the saved cursor resumes on the last effect");
 	CTR_TEST_CHECK_EQ(sdata->chaosMenu.scroll[CHAOS_PAGE_EFFECTS].offset, savedScroll, "the saved scroll position survives the next frame");
 	CTR_TEST_CHECK(!sdata->chaosSettings.effects[CHAOS_EFFECT_COUNT - 1], "the saved toggle survives without a stale value mirror");
 	CTR_TEST_CHECK(MM_menuChaosConfig.funcPtr == MM_MenuProc_ChaosConfig, "the resident menu retains its input callback");
@@ -593,8 +595,9 @@ static void TestCompatibleEffectRows(void)
 				ChaosEffectId lastEffect = CHAOS_EFFECT_NONE;
 				for (int id = 0; id < CHAOS_EFFECT_COUNT; id++)
 				{
-					const bool expected = (id != CHAOS_EFFECT_BODY_SWAP || players > 1) &&
-					    (ChaosEffect_Def((ChaosEffectId)id)->scope != CHAOS_SCOPE_BOTS || bots) &&
+					const ChaosEffectDef *def = ChaosEffect_Def((ChaosEffectId)id);
+					const bool expected = def != NULL &&
+					    (def->scope != CHAOS_SCOPE_BOTS || bots) &&
 					    ((id != CHAOS_EFFECT_YARDRAT_TRAINING && id != CHAOS_EFFECT_DEFECTIVE_TELEPORT) || teleports);
 					CTR_TEST_CHECK(Chaos_EffectIsAvailable((ChaosEffectId)id) == expected,
 					               "availability follows event type and the prospective grid, ignoring title-menu flags");
@@ -611,7 +614,7 @@ static void TestCompatibleEffectRows(void)
 				// Derive the expected ID so appending another effect keeps this a mapping check.
 				CTR_TEST_CHECK(!sdata->chaosSettings.effects[lastEffect],
 				               "toggling a shifted row edits the mapped effect, not the raw row index");
-				CTR_TEST_CHECK_EQ(sdata->chaosSettings.enabledCount, CHAOS_EFFECT_COUNT - 1,
+				CTR_TEST_CHECK_EQ(sdata->chaosSettings.enabledCount, CHAOS_EFFECT_COUNT - 2,
 				                  "hidden preferences remain intact while the cached count tracks the edited effect");
 
 				struct RectMenu pause = {0};
@@ -646,7 +649,7 @@ static void TestIncompatibleSelectionCannotConfirm(void)
 	MM_menuChaosConfig.rowSelected = sdata->chaosMenu.numSettings - 1;
 	Frame(BTN_CROSS, 0);
 	CTR_TEST_CHECK(!Chaos_CanConfirm() && s_sessionFinishes == 0, "a bot-only selection cannot confirm Battle rules");
-	sdata->chaosSettings.effects[CHAOS_EFFECT_BODY_SWAP] = true;
+	sdata->chaosSettings.effects[CHAOS_EFFECT_MIRROR_MIRROR] = true;
 	sdata->chaosSettings.enabledCount++;
 	Frame(BTN_CROSS, 0);
 	CTR_TEST_CHECK_EQ(s_sessionFinishes, 1, "a compatible selected effect enables Confirm");
@@ -654,8 +657,8 @@ static void TestIncompatibleSelectionCannotConfirm(void)
 	s_tracker.numPlyrCurrGame = 1;
 	MM_ChaosConfig_OpenReadOnly(&pause);
 	sdata->chaosMenu.page = CHAOS_PAGE_EFFECTS;
-	CTR_TEST_CHECK_EQ(Chaos_PageRowCount(&sdata->chaosMenu), 0,
-	                  "read-only session rules use current players and hide incompatible enabled effects");
+	CTR_TEST_CHECK_EQ(Chaos_PageRowCount(&sdata->chaosMenu), 1,
+	                  "read-only session rules hide the incompatible bot effect but retain the compatible effect");
 }
 
 static void TestSessionSetup(void)
@@ -780,7 +783,7 @@ static void TestPersonalDistributionSetup(void)
 	s_tracker.numPlyrNextGame = 1;
 	MM_ChaosConfig_OnEnter();
 	CTR_TEST_CHECK_EQ(sdata->chaosMenu.numSettings, 5, "solo Adventure creation omits the multiplayer rows");
-	CTR_TEST_CHECK(!Chaos_SettingsArePersonal() && !Chaos_EffectIsAvailable(CHAOS_EFFECT_BODY_SWAP), "solo Adventure setup returns to shared distribution");
+	CTR_TEST_CHECK(!Chaos_SettingsArePersonal(), "solo Adventure setup returns to shared distribution");
 	sdata->chaosSettings.trigger = CHAOS_TRIGGER_EXTERNAL;
 	CTR_TEST_CHECK(Chaos_CanConfirm(), "solo Adventure External remains valid after the distribution reset");
 	struct RectMenu pause = {0};
@@ -791,8 +794,7 @@ static void TestPersonalDistributionSetup(void)
 	s_tracker.gameMode1 = ARCADE_MODE | MAIN_MENU;
 	MM_ChaosConfig_OpenSession();
 	CTR_TEST_CHECK_EQ(sdata->chaosSettings.distribution, CHAOS_DISTRIBUTION_SHARED, "solo Arcade returns to shared rules without a distribution choice");
-	CTR_TEST_CHECK(!Chaos_EffectIsAvailable(CHAOS_EFFECT_BODY_SWAP), "shared Arcade 1P hides Body Swap without clearing its preference");
-	CTR_TEST_CHECK(sdata->chaosSettings.effects[CHAOS_EFFECT_BODY_SWAP], "a hidden Body Swap remains enabled for later personal races");
+	CTR_TEST_CHECK(!Chaos_EffectIsAvailable(CHAOS_EFFECT_RETIRED_BODY_SWAP), "shared Arcade hides the retired slot");
 	SelectSetting(CHAOS_SETTING_TRIGGER);
 	sdata->chaosSettings.trigger = CHAOS_TRIGGER_INTERVAL;
 	Frame(BTN_CROSS, 0);
@@ -846,7 +848,7 @@ static void TestAdventureHubRules(void)
 			MM_ChaosConfig_OpenReadOnly(&pause);
 			CTR_TEST_CHECK_EQ(Chaos_MenuPlayerCount(), players, "the hub viewer reads the saved Adventure player count");
 			CTR_TEST_CHECK_EQ(Chaos_HasDistributionChoice(), players > 1, "co-op hub rules expose distribution while solo hub rules omit it");
-			CTR_TEST_CHECK_EQ(Chaos_EffectIsAvailable(CHAOS_EFFECT_BODY_SWAP), players > 1, "hub effect filtering uses the saved grid even when player two is excluded");
+			CTR_TEST_CHECK(!Chaos_EffectIsAvailable(CHAOS_EFFECT_RETIRED_BODY_SWAP), "hub hides the retired slot regardless of player count");
 			if (players > 1)
 			{
 				SelectSetting(CHAOS_SETTING_DISTRIBUTION);
@@ -936,7 +938,7 @@ static void TestPlayerSelection(void)
 				CTR_TEST_CHECK(memcmp(exclusions, sdata->chaosSettings.disabledPlayers, sizeof(exclusions)) == 0, "switching distribution preserves the selected participants");
 				if (modes[mode] == BATTLE_MODE || (modes[mode] & CRYSTAL_CHALLENGE) != 0)
 				{
-					CTR_TEST_CHECK(!Chaos_EffectIsAvailable(CHAOS_EFFECT_BODY_SWAP), "one participating human without bots cannot offer Body Swap");
+					CTR_TEST_CHECK(!Chaos_EffectIsAvailable(CHAOS_EFFECT_RETIRED_BODY_SWAP), "retired effects remain unavailable");
 				}
 
 				s_tracker.gameMode1 = modes[mode] | PAUSE_1;

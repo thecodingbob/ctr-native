@@ -22,9 +22,9 @@ static void SetupPersonalWorld(int mode, int players)
 	}
 	for (int effect = 0; effect < CHAOS_EFFECT_COUNT; effect++)
 	{
-		sdata->chaosSettings.effects[effect] = true;
+		sdata->chaosSettings.effects[effect] = ChaosEffect_Def((ChaosEffectId)effect) != NULL;
 	}
-	sdata->chaosSettings.enabledCount = CHAOS_EFFECT_COUNT;
+	sdata->chaosSettings.enabledCount = ChaosEffect_CountEnabled(sdata->chaosSettings.effects);
 }
 
 static void TestSelectedPlayers(void)
@@ -151,10 +151,9 @@ static void TestParticipantCatalogue(void)
 	sdata->chaosSettings.disabledPlayers[0] = true;
 	memset(sdata->chaosSettings.effects, 0, sizeof(sdata->chaosSettings.effects));
 	sdata->chaosSettings.effects[CHAOS_EFFECT_FLY_ME_TO_THE_MOON] = true;
-	sdata->chaosSettings.effects[CHAOS_EFFECT_BODY_SWAP] = true;
-	sdata->chaosSettings.enabledCount = 2;
+	sdata->chaosSettings.enabledCount = 1;
 	Chaos_PublishEffects();
-	CTR_TEST_CHECK(strcmp(s_externalCatalogue, "fly-me-to-the-moon\n") == 0, "Shared publishes human effects with player one excluded but filters Body Swap without a partner");
+	CTR_TEST_CHECK(strcmp(s_externalCatalogue, "fly-me-to-the-moon\n") == 0, "Shared publishes human effects with player one excluded");
 	sdata->chaosSettings.disabledPlayers[1] = true;
 	Chaos_PublishEffects();
 	CTR_TEST_CHECK(s_externalCatalogue[0] == 0, "no participating players produces an empty provider catalogue");
@@ -164,7 +163,7 @@ static void TestParticipantCatalogue(void)
 	CTR_TEST_CHECK(s_externalCatalogue[0] == 0, "Adventure publication respects the same participant exclusions");
 	sdata->chaosSettings.disabledPlayers[1] = false;
 	Chaos_PublishEffects();
-	CTR_TEST_CHECK(strstr(s_externalCatalogue, "body-swap\n") != NULL, "one selected Adventure human can borrow a bot");
+	CTR_TEST_CHECK(strcmp(s_externalCatalogue, "fly-me-to-the-moon\n") == 0, "Adventure publishes effects when a player participates");
 }
 
 static void TestAdventureSavedRules(void)
@@ -372,22 +371,17 @@ static void TestSlotOwnershipAndRestore(void)
 	CTR_TEST_SECTION("personal effects follow controller slots and survive resident snapshots");
 	SetupPersonalWorld(0, 2);
 	CTR_TEST_CHECK(Chaos_ActivateForPlayer(CHAOS_EFFECT_FLY_ME_TO_THE_MOON, 1000, 0), "the first slot receives low gravity");
-	// Body Swap changes driverID and the controller-to-kart mapping in this way.
-	s_humans[0].driverID = 1;
-	s_humans[1].driverID = 0;
-	s_tracker.drivers[0] = &s_humans[1];
-	s_tracker.drivers[1] = &s_humans[0];
-	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&s_humans[1]), 25, "the newly controlled body inherits the slot's effect");
-	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&s_humans[0]), 100, "the old physical body does not retain a controller effect");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&s_humans[0]), 25, "the selected controller receives the effect");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&s_humans[1]), 100, "the other controller remains unaffected");
 	static struct sData snapshot;
 	memcpy(&snapshot, &sdata_static, sizeof(snapshot));
 	Tick(1000);
 	memcpy(&sdata_static, &snapshot, sizeof(snapshot));
-	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&s_humans[1]), 25, "restoring SDATA restores ownership along with duration");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&s_humans[0]), 25, "restoring SDATA restores ownership along with duration");
 	Tick(999);
-	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&s_humans[1]), 25, "restored expiry resumes at its captured time");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&s_humans[0]), 25, "restored expiry resumes at its captured time");
 	Tick(1);
-	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&s_humans[1]), 100, "restored expiry releases only its controller slot");
+	CTR_TEST_CHECK_EQ(Chaos_GravityForDriver(&s_humans[0]), 100, "restored expiry releases its controller slot");
 }
 
 static void TestInvalidOwners(void)
@@ -721,10 +715,9 @@ static void TestPersonalPickupAndReroll(void)
 	SetupPersonalWorld(BATTLE_MODE, 2);
 	SelectPersonalEffect(CHAOS_EFFECT_YARDRAT_TRAINING);
 	CTR_TEST_CHECK(!Chaos_OnPickup(&s_humans[1]), "a completely incompatible pool returns without looping");
-	sdata->chaosSettings.effects[CHAOS_EFFECT_BODY_SWAP] = true;
 	sdata->chaosSettings.effects[CHAOS_EFFECT_ZA_WARUDO] = true;
 	sdata->chaosSettings.effects[CHAOS_EFFECT_RESERVE_INJECTION] = true;
-	sdata->chaosSettings.enabledCount = 4;
+	sdata->chaosSettings.enabledCount = 3;
 	CTR_TEST_CHECK(Chaos_OnPickup(&s_humans[1]), "unavailable special effects and incompatible candidates do not waste a usable pickup");
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.players[1].numInstantNotices, 1, "the fallback gift belongs only to the source player");
 	s_humans[1].actionsFlagSet |= ACTION_RACE_FINISHED;

@@ -144,14 +144,17 @@ static void TestUnusedBitsAndZeroEffects(void)
 	for (int bit = 0; bit < CHAOS_SAVE_EFFECT_CAPACITY; bit++)
 	{
 		const bool enabled = (saved.effectBits[bit / 8] & (1u << (bit % 8))) != 0;
-		CTR_TEST_CHECK(enabled == (bit < CHAOS_EFFECT_COUNT), "only implemented effects can have their saved bits set");
+		CTR_TEST_CHECK(enabled == (bit < CHAOS_EFFECT_COUNT && bit != CHAOS_EFFECT_RETIRED_BODY_SWAP), "only implemented effects can have their saved bits set");
 	}
 
 	// Model a slot with unknown bits set: they cannot leak into today's live
 	// selection, and the next encode must restore the zero-unused-bits contract.
 	memset(saved.effectBits, 0xff, sizeof(saved.effectBits));
 	ChaosSave_Decode(&saved, &live);
-	CTR_TEST_CHECK_EQ(live.enabledCount, CHAOS_EFFECT_COUNT, "unknown bits do not inflate the live effect count");
+	CTR_TEST_CHECK_EQ(live.enabledCount, CHAOS_EFFECT_COUNT - 1, "unknown and retired bits do not inflate the live effect count");
+	CTR_TEST_CHECK(!live.effects[CHAOS_EFFECT_RETIRED_BODY_SWAP], "loading ignores the old Body Swap bit");
+	ChaosSave_Encode(&live, &saved);
+	CTR_TEST_CHECK((saved.effectBits[CHAOS_EFFECT_RETIRED_BODY_SWAP / 8] & (1u << (CHAOS_EFFECT_RETIRED_BODY_SWAP % 8))) == 0, "saving clears the retired bit");
 	memset(live.effects, 0, sizeof(live.effects));
 	ChaosSave_Encode(&live, &saved);
 	for (int i = 0; i < CHAOS_SAVE_EFFECT_BYTES; i++)

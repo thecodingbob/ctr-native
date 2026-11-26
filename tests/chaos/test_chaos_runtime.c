@@ -645,9 +645,9 @@ static void TestActiveEffectList(void)
 
 	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
 	{
-		sdata->chaosSettings.effects[i] = true;
+		sdata->chaosSettings.effects[i] = ChaosEffect_Def((ChaosEffectId)i) != NULL;
 	}
-	sdata->chaosSettings.enabledCount = CHAOS_EFFECT_COUNT;
+	sdata->chaosSettings.enabledCount = ChaosEffect_CountEnabled(sdata->chaosSettings.effects);
 	for (int i = 0; i < CHAOS_EFFECT_COUNT; i++)
 	{
 		if (!ChaosEffect_IsInstant((ChaosEffectId)i))
@@ -688,9 +688,9 @@ static void TestHudVisibilityAndDockLimit(void)
 	sdata->chaosSettings.trigger = CHAOS_TRIGGER_EXTERNAL;
 	for (int effect = 0; effect < CHAOS_EFFECT_COUNT; effect++)
 	{
-		sdata->chaosSettings.effects[effect] = true;
+		sdata->chaosSettings.effects[effect] = ChaosEffect_Def((ChaosEffectId)effect) != NULL;
 	}
-	sdata->chaosSettings.enabledCount = CHAOS_EFFECT_COUNT;
+	sdata->chaosSettings.enabledCount = ChaosEffect_CountEnabled(sdata->chaosSettings.effects);
 	static struct DB buffer;
 	u32 uiOT[5];
 	buffer.otMem.uiOT = uiOT;
@@ -836,9 +836,9 @@ static void TestBannerBaselineWithDockedEffects(void)
 	sdata->chaosSettings.trigger = CHAOS_TRIGGER_EXTERNAL;
 	for (int effect = 0; effect < CHAOS_EFFECT_COUNT; effect++)
 	{
-		sdata->chaosSettings.effects[effect] = true;
+		sdata->chaosSettings.effects[effect] = ChaosEffect_Def((ChaosEffectId)effect) != NULL;
 	}
-	sdata->chaosSettings.enabledCount = CHAOS_EFFECT_COUNT;
+	sdata->chaosSettings.enabledCount = ChaosEffect_CountEnabled(sdata->chaosSettings.effects);
 	static struct DB buffer;
 	u32 uiOT[5];
 	buffer.otMem.uiOT = uiOT;
@@ -1094,23 +1094,22 @@ static void TestBotEffectEventScope(void)
 	Chaos_Reset();
 }
 
-static void TestBodySwapPlayerCount(void)
+static void TestRetiredEffect(void)
 {
-	CTR_TEST_SECTION("Body Swap is available only in multiplayer events");
+	CTR_TEST_SECTION("retired effect is unavailable even with an old enabled bit");
 	SetupRace(CHAOS_TRIGGER_EXTERNAL);
 	memset(sdata->chaosSettings.effects, 0, sizeof(sdata->chaosSettings.effects));
-	sdata->chaosSettings.effects[CHAOS_EFFECT_BODY_SWAP] = true;
-	sdata->chaosSettings.enabledCount = 1;
-	s_tracker.numPlyrCurrGame = 1;
-	Chaos_PublishEffects();
-	CTR_TEST_CHECK(strstr(s_externalCatalogue, "body-swap\n") == NULL, "single-player catalogue excludes Body Swap");
-	CTR_TEST_CHECK(Chaos_PickEventEffect() == CHAOS_EFFECT_NONE, "random selection excludes Body Swap in single-player");
-	CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_BODY_SWAP, 1000), "single-player rejects direct activation");
-	CTR_TEST_CHECK(!Chaos_ActivateExternalEffect("body-swap"), "single-player rejects external commands");
-	s_tracker.numPlyrCurrGame = 2;
-	Chaos_PublishEffects();
-	CTR_TEST_CHECK(strstr(s_externalCatalogue, "body-swap\n") != NULL, "multiplayer catalogue includes Body Swap");
-	CTR_TEST_CHECK(Chaos_PickEventEffect() == CHAOS_EFFECT_BODY_SWAP, "random selection includes Body Swap in multiplayer");
+	sdata->chaosSettings.effects[CHAOS_EFFECT_RETIRED_BODY_SWAP] = true;
+	sdata->chaosSettings.enabledCount = 0;
+	for (int players = 1; players <= 4; players++)
+	{
+		s_tracker.numPlyrCurrGame = players;
+		Chaos_PublishEffects();
+		CTR_TEST_CHECK(strstr(s_externalCatalogue, "body-swap\n") == NULL, "catalogue excludes the retired slug");
+		CTR_TEST_CHECK(Chaos_PickEventEffect() == CHAOS_EFFECT_NONE, "random selection ignores the old bit");
+		CTR_TEST_CHECK(!Chaos_Activate(CHAOS_EFFECT_RETIRED_BODY_SWAP, 1000), "direct activation rejects the retired ID");
+	}
+	CTR_TEST_CHECK(!Chaos_ActivateExternalEffect("body-swap"), "external commands reject the retired slug");
 }
 
 static void TestLocalizedVoiceFallback(void)
@@ -1142,7 +1141,7 @@ int main(void)
 {
 	TestSessionModes();
 	TestFourPlayerHudReservations();
-	TestBodySwapPlayerCount();
+	TestRetiredEffect();
 	TestLocalizedVoiceFallback();
 	TestBotEffectEventScope();
 	TestCataloguePublicationLifecycle();
