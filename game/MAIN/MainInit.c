@@ -270,18 +270,6 @@ void MainInit_PrimMem(struct GameTracker *gGT)
 	MainDB_BindPrimMemRegion(1, gGT->db[1].primMem.start, size);
 }
 
-void MainInit_JitPoolsReset(struct GameTracker *gGT)
-{
-	JitPool_Clear(&gGT->JitPools.thread);
-	JitPool_Clear(&gGT->JitPools.instance);
-	JitPool_Clear(&gGT->JitPools.smallStack);
-	JitPool_Clear(&gGT->JitPools.mediumStack);
-	JitPool_Clear(&gGT->JitPools.largeStack);
-	JitPool_Clear(&gGT->JitPools.particle);
-	JitPool_Clear(&gGT->JitPools.oscillator);
-	JitPool_Clear(&gGT->JitPools.rain);
-}
-
 void MainInit_OTMem(struct GameTracker *gGT)
 {
 	int size = MainDB_GetOTMemSize(gGT->gameMode1, gGT->numPlyrCurrGame);
@@ -293,87 +281,6 @@ void MainInit_OTMem(struct GameTracker *gGT)
 	size = ((gGT->numPlyrCurrGame) << 0xC) | 0x18;
 	gGT->otSwapchainDB[0] = MEMPACK_AllocMem(size, NULL); // "ot1"
 	gGT->otSwapchainDB[1] = MEMPACK_AllocMem(size, NULL); // "ot2"
-}
-
-void MainInit_JitPoolsNew(struct GameTracker *gGT)
-{
-	u32 gameMode = gGT->gameMode1;
-	int poolScale = 0x800;
-	if ((gameMode & ADVENTURE_ARENA) == 0)
-	{
-		poolScale = 0x1000;
-		if ((gameMode & MAIN_MENU) != 0)
-		{
-			poolScale = 0x400;
-		}
-	}
-
-	int renderBucketSize = 0x800;
-	if ((gameMode & ADVENTURE_ARENA) == 0)
-	{
-		renderBucketSize = 0x1000;
-		if ((gameMode & MAIN_MENU) != 0)
-		{
-			renderBucketSize = 0x400;
-			if (gGT->levelID == ADVENTURE_GARAGE)
-			{
-				renderBucketSize = 0x800;
-			}
-		}
-	}
-
-	MEMPACK_PushState();
-
-	const int extraRacers = RaceField_ExtraPoolSlots(sdata->loadedRaceFieldSize);
-	// A two-digit position can use one additional HUD instance per viewport.
-	const int extraRankDigits = sdata->loadedRaceFieldSize >= 10 ? gGT->numPlyrCurrGame : 0;
-	JitPool_Init(&gGT->JitPools.thread, ((renderBucketSize * 3) >> 7) + extraRacers + extraRankDigits, sizeof(struct Thread), rdata.s_ThreadPool);
-	Chaos_InitThreadOwners();
-	// Each extra kart can use an instance for itself and another for its wake.
-	int instanceCount = (renderBucketSize >> 5) + 2 * extraRacers + extraRankDigits;
-	if (gGT->level1 != NULL && NativeTrackRegistry_Get(NativeTrackLibrary_Current(), gGT->levelID) != NULL)
-	{
-		/* Retain the retail dynamic budget in addition to placed track objects. */
-		enum { CUSTOM_TRACK_MAX_INSTANCE_POOL = 1024 };
-		u32 available = CUSTOM_TRACK_MAX_INSTANCE_POOL - instanceCount;
-		instanceCount += (int)(gGT->level1->numInstances < available ? gGT->level1->numInstances : available);
-	}
-	JitPool_Init(&gGT->JitPools.instance, instanceCount, sizeof(struct Instance) + (sizeof(struct InstDrawPerPlayer) * gGT->numPlyrCurrGame),
-	             rdata.s_InstancePool);
-	JitPool_Init(&gGT->JitPools.smallStack, ((poolScale * 0x19) >> 10) + extraRankDigits, THREAD_SMALL_STACK_SIZE, rdata.s_SmallStackPool);
-	JitPool_Init(&gGT->JitPools.mediumStack, poolScale >> 7, THREAD_MEDIUM_STACK_SIZE, rdata.s_MediumStackPool);
-
-	int numDriver = poolScale >> 9;
-	if ((gameMode & MAIN_MENU) != 0)
-	{
-		numDriver = 4;
-	}
-	JitPool_Init(&gGT->JitPools.largeStack, numDriver + extraRacers, THREAD_LARGE_STACK_SIZE, rdata.s_LargeStackPool);
-
-	int numParticle = poolScale >> 5;
-	JitPool_Init(&gGT->JitPools.particle, numParticle, sizeof(struct Particle), rdata.s_ParticlePool);
-	Chaos_InitParticleOwners();
-	JitPool_Init(&gGT->JitPools.oscillator, numParticle, 0x18, rdata.s_OscillatorPool);
-	JitPool_Init(&gGT->JitPools.rain, poolScale >> 9, sizeof(struct RainLocal), rdata.s_RainPool);
-
-	// NOTE(aalhendi): Native reuses static RDATA scratch for existing PC memory headroom.
-	gGT->ptrRenderBucketInstance = (void *)((u32)&rdata.s_STATIC_GNORMALZ[0] + 148);
-
-	for (int i = 0; i < 3; i++)
-	{
-		struct JitPool *pool = (struct JitPool *)((char *)&gGT->JitPools.smallStack + (sizeof(struct JitPool) * i));
-		int *pointer = (int *)pool->free.first;
-		while (pointer != (int *)0x0)
-		{
-			*(int **)(pointer + 2) = pointer + 2;
-			pointer = (int *)*pointer;
-		}
-	}
-
-	for (int i = 0; i < gGT->numPlyrCurrGame; i++)
-	{
-		data.PtrClipBuffer[i] = MEMPACK_AllocMem(MainDB_GetClipSize(gGT->levelID, gGT->numPlyrCurrGame) << 2, NULL);
-	}
 }
 
 void MainInit_Drivers(struct GameTracker *gGT)

@@ -31,6 +31,17 @@ int main(void)
 	Write32(lev + 4 + NATIVE_TRACK_LEV_HEADER_MIN_BYTES, 100);
 	CTR_TEST_CHECK(!NativeTrackValidate_Lev(lev, sizeof(lev)), "a truncated map is rejected");
 
+	CTR_TEST_SECTION("shared DRAM pointer map");
+	unsigned char model[4 + 24 + 8] = {0};
+	Write32(model, 24);
+	Write32(model + 4 + 24, 4);
+	Write32(model + 8 + 24, 20);
+	Write32(model + 4 + 20, 4);
+	CTR_TEST_CHECK(NativeDramValidate_PointerMap(model, sizeof(model), 24), "a model-sized payload can use the shared relocation check");
+	CTR_TEST_CHECK(!NativeDramValidate_PointerMap(model, sizeof(model), 25), "each format can require its own minimum payload");
+	Write32(model + 4 + 20, 24);
+	CTR_TEST_CHECK(!NativeDramValidate_PointerMap(model, sizeof(model), 24), "a model pointer cannot target the relocation table");
+
 	CTR_TEST_SECTION("VRM image bounds");
 	unsigned char vrm[36] = {0};
 	Write32(vrm, 0x20);

@@ -1,4 +1,5 @@
 #include <common.h>
+#include <custom-characters/character_resources.h>
 #include <platform/custom-tracks/native_track_library.h>
 #include <platform/native_cd.h>
 
@@ -176,6 +177,7 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 
 			// erase all memory loaded after first boot
 			LOAD_ResetExtraCharacterModels();
+			LOAD_ResetCharacterModelCache();
 			MEMPACK_PopToState(sdata->bookmarkID);
 		}
 
@@ -630,6 +632,7 @@ int LOAD_TenStages(struct GameTracker *gGT, int loadingStage, struct BigHeader *
 
 		if (((gGT->gameMode1 & (GAME_CUTSCENE | ADVENTURE_ARENA)) == 0) && ((gGT->gameMode2 & CREDITS) == 0))
 		{
+			LOAD_FinalizeCharacterModels();
 			MainInit_JitPoolsNew(gGT);
 			return loadingStage + 1;
 		}

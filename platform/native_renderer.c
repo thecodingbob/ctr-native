@@ -75,6 +75,7 @@ global_variable ShaderID s_previousShader = (ShaderID)-1;
 
 global_variable TextureID s_rgLutTexture = (TextureID)-1;
 global_variable TextureID s_trackMapTexture = (TextureID)-1;
+global_variable TextureID s_characterIconTexture = (TextureID)-1;
 // NOTE(penta3): Single persistent VRAM texture, matching real PS1's single
 // 1MB VRAM. PS1 page-flips two windows *inside* one VRAM; it never keeps two
 // full copies. The old double buffer existed only to orphan the texture on the
@@ -291,6 +292,7 @@ void NativeRenderer_Shutdown(void)
 	NativeRenderer_DestroyTexture(s_whiteTexture);
 	NativeRenderer_DestroyTexture(s_rgLutTexture);
 	NativeRenderer_DestroyTexture(s_trackMapTexture);
+	NativeRenderer_DestroyTexture(s_characterIconTexture);
 	glDeleteProgram(s_packShader);
 	glDeleteProgram(s_presentVramShader);
 	glDeleteVertexArrays(1, &s_vramQuadVAO);
@@ -1186,6 +1188,34 @@ internal void NativeRenderer_GenerateCommonTextures(void)
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, NATIVE_TRACK_MAP_TEXTURE_SIZE, NATIVE_TRACK_MAP_TEXTURE_SIZE,
 	             0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+u32 NativeRenderer_UploadCharacterIcon(const u16 *pixels)
+{
+	if (pixels == NULL) { return 0; }
+	if (s_characterIconTexture == (TextureID)-1)
+	{
+		glGenTextures(1, &s_characterIconTexture);
+	}
+	u8 rgba[44 * 26 * 4];
+	for (int i = 0; i < 44 * 26; i++)
+	{
+		u16 pixel = pixels[i];
+		rgba[i * 4] = (u8)((pixel & 31) * 255 / 31);
+		rgba[i * 4 + 1] = (u8)(((pixel >> 5) & 31) * 255 / 31);
+		rgba[i * 4 + 2] = (u8)(((pixel >> 10) & 31) * 255 / 31);
+		rgba[i * 4 + 3] = pixel == 0 ? 0 : 255;
+	}
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, s_characterIconTexture);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 44, 26, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
+	s_lastBoundTexture = (TextureID)-1;
+	return s_characterIconTexture;
 }
 
 u32 NativeRenderer_UploadTrackMap(const u16 *pixels)

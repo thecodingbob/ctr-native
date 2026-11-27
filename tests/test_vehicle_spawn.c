@@ -1,5 +1,6 @@
 #include <shared/ctr_test.h>
 #include <common.h>
+#include <custom-characters/character_resources.h>
 
 struct sData sdata_static;
 struct Data data;
@@ -139,11 +140,18 @@ struct Thread *PROC_BirthWithObject(ThreadFlags flags, void *tick, const char *n
 	CtrTest_Bail("appearance initialization must not allocate threads");
 	return NULL;
 }
-struct Model *LOAD_GetExtraCharacterModelByName(char *name)
+struct Model *LOAD_GetRetailCharacterModel(const char *name)
 {
-	(void)name;
+	struct Model *model = data.driverModelExtras[0].model;
+	if (model != NULL && strncmp(model->name, name, sizeof(model->name)) == 0) { return model; }
 	CtrTest_Bail("appearance initialization must not load character assets");
 	return NULL;
+}
+
+struct Model *LOAD_GetDriverModel(int driverID, int baseID)
+{
+	(void)driverID;
+	return LOAD_GetRetailCharacterModel(GAME_CHARACTER_METADATA[baseID].name_Debug);
 }
 
 static void TestPreviewBirthClearsClock(void)

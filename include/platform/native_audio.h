@@ -20,6 +20,10 @@ void NativeAudio_SpuSetCommonCDReverb(s32 enabled);
 
 int NativeAudio_PlayXATrack(int categoryID, int xaID, int volumeLeft, int volumeRight);
 int NativeAudio_PlayLocalizedXATrack(int categoryID, int xaID, int volumeLeft, int volumeRight);
+/* Called on the game thread. Return a custom file path, or NULL for normal resolution.
+ * Register at startup; the resolver is application wiring, not checkpoint state. */
+typedef const char *(*NativeAudioXaOverrideResolver)(int categoryID, int xaID);
+void NativeAudio_SetXaOverrideResolver(NativeAudioXaOverrideResolver resolver);
 void NativeAudio_RefreshVoiceLanguage(void);
 int NativeAudio_PlayXAFile(const char *relativePath, int channelFilter, int volumeLeft, int volumeRight);
 int NativeAudio_GetXATrackLength(int categoryID, int xaID);

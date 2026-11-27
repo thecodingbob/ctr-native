@@ -32,6 +32,7 @@ void NativeRenderer_CopyVRAM(u16 *src, int x, int y, int w, int h, int dstX, int
 void NativeRenderer_ReadVRAM(u16 *dst, int x, int y, int dstW, int dstH);
 void NativeRenderer_UpdateVRAM(void);
 u32 NativeRenderer_UploadTrackMap(const u16 *pixels);
+u32 NativeRenderer_UploadCharacterIcon(const u16 *pixels);
 int NativeRenderer_GetVRAMStateSize(void);
 int NativeRenderer_CaptureVRAMState(void *dst, int dstSize);
 int NativeRenderer_RestoreVRAMState(const void *src, int srcSize);

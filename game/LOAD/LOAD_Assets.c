@@ -1,4 +1,5 @@
 #include <common.h>
+#include <custom-characters/character_resources.h>
 
 // The AI roster and the extended-multiplayer grid follow the shared race-field
 // rules, so the loader and the driver spawner cannot disagree on the field size.
@@ -309,6 +310,7 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 	const b32 configuredGrid = RaceField_UsesConfiguredGrid(gameMode1, gGT->cup.cupID, players, g_config.extendedMultiplayer);
 	sdata->loadedRaceFieldSize = 0;
 	LOAD_ResetExtraCharacterModels();
+	LOAD_ResetCharacterModelCache();
 	if (configuredGrid)
 	{
 		sdata->loadedRaceFieldSize = LOAD_PredictRaceFieldSize(gameMode1, gGT->cup.cupID, players);

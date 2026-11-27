@@ -4131,6 +4131,15 @@ struct sData
 	int loadedRaceFieldSize;
 	// A warp pad requested the first load of this Adventure event.
 	bool seedAdventureGrid;
+	char customPlayerIdentity[256];
+	char customPlayerModelPath[1024];
+	struct Model *customPlayerModel;
+	struct Model *customPreviewModel;
+	bool customPreviewAttempted;
+	char customPlayerAudioDirectory[1024];
+	int customPlayerBaseID;
+	char customPlayerModelIdentity[256];
+	char customPreviewIdentity[256];
 
 	// after dataLibFiller is 8009AE58,
 	// where psyq allocates globals

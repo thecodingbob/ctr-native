@@ -339,8 +339,6 @@ void *LIST_GetNextItem(struct Item *I);
 
 void LOAD_AppendQueue(struct BigHeader *bigfile, int type, int fileIndex, void *destinationPtr, void (*callback)(struct LoadQueueSlot *));
 int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(struct LoadQueueSlot *));
-struct Model *LOAD_GetExtraCharacterModelByName(char *searchName);
-void LOAD_FinalizeExtraCharacterModels(void);
 int LOAD_PredictRaceFieldSize(int gameMode1, s32 cupID, int playerCount);
 b32 MM_Characters_IsCharacterUnlocked(s16 characterID);
 void LOAD_Hub_Main(struct BigHeader *bigfilePtr);
@@ -464,6 +462,7 @@ void MainInit_VisMem(struct GameTracker *gGT);
 void MainInit_RainBuffer(struct GameTracker *gGT);
 void MainInit_Drivers(struct GameTracker *gGT);
 void MainInit_JitPoolsNew(struct GameTracker *gGT);
+int MainInit_GetPlayerModelMemoryReserve(struct GameTracker *gGT);
 void MainInit_JitPoolsReset(struct GameTracker *gGT);
 
 void MainInit_PrimMem(struct GameTracker *gGT);
@@ -930,7 +929,6 @@ struct RectMenu *MM_AdvNewLoad_GetMenuPtr(void);
 void MM_Characters_AnimateColors(u8 *colorData, s16 playerID, s16 flag);
 s32 MM_Characters_GetNextDriver(s32 direction, s16 characterID);
 b32 MM_Characters_boolIsInvalid(s16 *globalIconPerPlayer, s16 characterID, s32 player);
-struct Model *MM_Characters_GetModelByName(const char *name);
 void MM_Characters_DrawWindows(b32 boolShowDrivers);
 void MM_Characters_SetMenuLayout(void);
 void MM_Characters_BackupIDs(void);
