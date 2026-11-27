@@ -53,6 +53,10 @@ enum
 	MM_CHARACTER_SELECT_WHEEL_SIZE = 0xccc,
 	MM_CHARACTER_SELECT_CURSOR_LABEL_OFFSET_X = -6,
 	MM_CHARACTER_SELECT_CURSOR_LABEL_OFFSET_Y = -3,
+	MM_CHARACTER_SELECT_CUSTOM_ROWS_TOP = -MM_CHARACTER_SELECT_CURSOR_LABEL_OFFSET_Y,
+	MM_CHARACTER_SELECT_CUSTOM_ROW_STEP =
+	    (MM_CHARACTER_SELECT_SCREEN_H - MM_CHARACTER_SELECT_ICON_RECT_H - MM_CHARACTER_SELECT_CUSTOM_ROWS_TOP) /
+	    (CHARACTER_GRID_ROWS - 1),
 	MM_CHARACTER_SELECT_HIGHLIGHT_OFFSET_X = 3,
 	MM_CHARACTER_SELECT_HIGHLIGHT_OFFSET_Y = 2,
 	MM_CHARACTER_SELECT_HIGHLIGHT_W = 0x2e,
@@ -623,12 +627,17 @@ void MM_Characters_SetMenuLayout(void)
 	D230.nativeCharacterSlotCount = CHARACTER_SELECT_RETAIL_SLOT_COUNT + s_characterSelectCustomCount;
 	struct CharacterGrid *grid = MM_Characters_ActiveGrid();
 	CharacterSelectGrid_FillCustom(grid, s_characterSelectCustomCount);
+	bool uniformCustomRows = s_characterSelectCustomCount > 0 &&
+	                         (layoutIndex == MM_CHARACTER_SELECT_LAYOUT_3P || layoutIndex == MM_CHARACTER_SELECT_LAYOUT_4P);
 	for (int entry = 0; entry < D230.nativeCharacterSlotCount; entry++)
 	{
 		struct CharacterSelectMeta *meta = &D230.characterSelectEntries[entry];
 		struct CharacterGridPosition position = CharacterSelectGrid_Find(grid, entry);
 		meta->posX = grid->columnX[position.column];
-		meta->posY = grid->rowY[position.row];
+		// Fit all six rows with the smallest reduction from retail spacing.
+		meta->posY = uniformCustomRows
+		                 ? MM_CHARACTER_SELECT_CUSTOM_ROWS_TOP + position.row * MM_CHARACTER_SELECT_CUSTOM_ROW_STEP
+		                 : grid->rowY[position.row];
 		const struct NativeCharacterMetadata *custom = MM_Characters_CustomEntry(entry);
 		meta->characterID = custom == NULL ? entry : CustomCharacter_GetBaseID(custom->base);
 		meta->unlockFlags = s_characterUnlockRequirements[meta->characterID];
@@ -1208,7 +1217,7 @@ dontDrawSelectCharacter:
 			// draw string
 			// "1", "2", "3", "4", above the character icon
 			DecalFont_DrawLine(MM_PLAYER_NUMBER_STRINGS[playerIndex], drawRect.x + MM_CHARACTER_SELECT_CURSOR_LABEL_OFFSET_X,
-			                   currentIconTransition->currY + (u32)preInputCharacterMeta->posY - 3, FONT_BIG, WHITE);
+			                   currentIconTransition->currY + preInputCharacterMeta->posY + MM_CHARACTER_SELECT_CURSOR_LABEL_OFFSET_Y, FONT_BIG, WHITE);
 			outlineColor = &playerColor;
 		}
 		else

@@ -31,7 +31,8 @@ tables are removed. A single derived draw-entry array supplies coordinates and
 base IDs to the renderer. The existing transition arrays have extra capacity
 directly, without copying them into a second set of tables.
 
-Retail coordinates, spacing and preview-window sizes are retained. The eight
+Retail coordinates and spacing are retained unless customs are present in 3P/4P;
+preview-window sizes are always retained. The eight
 extra cells follow the user's screenshots:
 
 - 1P/2P: one below Roo, one below Papu, three in a new outer column on each side;
@@ -39,9 +40,12 @@ extra cells follow the user's screenshots:
 - 4P: two to the left of Roo/Joe, two to the right of Papu/Pinstripe, two above
   Penta/Oxide and two below Tropy/Fake Crash (the lower central pair).
 
-Axis coordinates are separate from the cell contents. This preserves every
-retail position while placing the new 3P/4P edge rows at Y=0 and Y=183 to keep
-their icon rectangles on screen. No retail row or preview window is moved.
+Axis coordinates are separate from the cell contents. With customs present,
+3P/4P draw all six rows at Y=3,39,75,111,147,183: a uniform 36-pixel step
+instead of the retail 39, leaving three pixels between 33-pixel icon rectangles.
+This is the largest integer step fitting the 216-pixel screen while reserving
+three pixels above the first row for cursor labels. Without customs, retail
+rows retain their original coordinates. Preview windows are not moved.
 The first custom stays below Papu in 1P/2P and 3P; in 4P it occupies the new cell
 immediately to Papu's right. The menu exposes up to eight scanned characters
 with recognized retail bases, preserving their separate names and identities.
