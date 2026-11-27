@@ -50,7 +50,6 @@
 #include "platform/text/native_text_export.c"
 #include "platform/custom-tracks/native_track_registry.c"
 #include "platform/custom-tracks/native_track_library.c"
-#include "platform/native_external_file.c"
 #include "platform/custom-tracks/native_track_file.c"
 #include "platform/custom-tracks/native_track_validate.c"
 #include "platform/custom-characters/native_character_model.c"

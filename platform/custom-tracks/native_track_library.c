@@ -1,4 +1,5 @@
 #include <platform/custom-tracks/native_track_library.h>
+#include <platform/native_ini.h>
 
 #include <SDL3/SDL.h>
 #include <ctype.h>
@@ -173,20 +174,6 @@ static int NativeTrackLibrary_Join(char *output, size_t size, const char *direct
 	return length >= 0 && (size_t)length < size;
 }
 
-static char *NativeTrackLibrary_Trim(char *text)
-{
-	while (isspace((unsigned char)*text))
-	{
-		text++;
-	}
-	char *end = text + strlen(text);
-	while (end > text && isspace((unsigned char)end[-1]))
-	{
-		*--end = '\0';
-	}
-	return text;
-}
-
 int NativeTrackLibrary_ReadDirectory(struct NativeTrackRegistry *registry, const char *directory, const char *name)
 {
 	char manifest[NATIVE_TRACK_PATH_MAX];
@@ -202,30 +189,20 @@ int NativeTrackLibrary_ReadDirectory(struct NativeTrackRegistry *registry, const
 	char fields[8][NATIVE_TRACK_FIELD_MAX + 7] = {{0}};
 	const char *keys[] = {"id", "title", "author", "music", "relic_sapphire", "relic_gold", "relic_platinum", "trackrom_lod"};
 	unsigned int seen = 0;
-	char line[NATIVE_TRACK_LINE_MAX];
+	char buffer[NATIVE_TRACK_LINE_MAX];
+	struct NativeIniLine line;
+	enum NativeIniReadResult readResult = NATIVE_INI_READ_END;
 	int valid = 1;
-	while (file != NULL && fgets(line, sizeof(line), file) != NULL)
+	while (file != NULL && (readResult = NativeIni_Read(file, buffer, sizeof(buffer), true, &line)) == NATIVE_INI_READ_RECORD)
 	{
-		if (strchr(line, '\n') == NULL && !feof(file))
+		if (line.type != NATIVE_INI_VALUE)
 		{
 			valid = 0;
 			break;
 		}
-		char *key = NativeTrackLibrary_Trim(line);
-		if (*key == '\0' || *key == '#' || *key == ';')
-		{
-			continue;
-		}
-		char *separator = strchr(key, '=');
-		if (separator == NULL)
-		{
-			valid = 0;
-			break;
-		}
-		*separator = '\0';
-		key = NativeTrackLibrary_Trim(key);
+		const char *key = line.key;
 		if (strcmp(key, "high_detail") == 0) { key = "trackrom_lod"; }
-		char *value = NativeTrackLibrary_Trim(separator + 1);
+		const char *value = line.value;
 		size_t index = 0;
 		while (index < SDL_arraysize(keys) && strcmp(key, keys[index]) != 0)
 		{
@@ -254,13 +231,13 @@ int NativeTrackLibrary_ReadDirectory(struct NativeTrackRegistry *registry, const
 			break;
 		}
 	}
-	if (file != NULL && ferror(file))
+	if (readResult != NATIVE_INI_READ_END && readResult != NATIVE_INI_READ_RECORD)
 	{
 		valid = 0;
 	}
 	if (file != NULL)
 	{
-		fclose(file);
+		if (fclose(file) != 0) { valid = 0; }
 	}
 
 	char paths[3][NATIVE_TRACK_PATH_MAX] = {{0}};
@@ -499,19 +476,21 @@ int NativeTrackLibrary_ValidText(const char *text, int allowEmpty)
 	return visible || (allowEmpty && text[0] == '\0');
 }
 
-static int NativeTrackLibrary_WriteFields(const struct NativeTrackMetadata *track, const char *title, const char *author, const char *music)
+struct NativeTrackIniWrite
 {
-	char path[NATIVE_TRACK_PATH_MAX], temporary[NATIVE_TRACK_PATH_MAX];
-	if (!NativeTrackLibrary_TrackPath(track, "track.ini", path, sizeof(path)) ||
-	    strlen(path) + sizeof(".tmp") > sizeof(temporary) ||
-	    !NativeTrackLibrary_ValidText(title, 0) || !NativeTrackLibrary_ValidText(author, 1)) { return 0; }
-	strcpy(temporary, path);
-	strcat(temporary, ".tmp");
-	FILE *file = fopen(temporary, "wb");
-	if (file == NULL) { return 0; }
-	int ok = fprintf(file, "id = %s\ntitle = %s\n", track->identity, title) > 0;
-	if (ok && author[0] != '\0') { ok = fprintf(file, "author = %s\n", author) > 0; }
-	if (ok && music != NULL && music[0] != '\0') { ok = fprintf(file, "music = %s\n", music) > 0; }
+	const struct NativeTrackMetadata *track;
+	const char *title;
+	const char *author;
+	const char *music;
+};
+
+static bool NativeTrackLibrary_WriteIni(FILE *file, const void *context)
+{
+	const struct NativeTrackIniWrite *fields = context;
+	const struct NativeTrackMetadata *track = fields->track;
+	bool ok = NativeIni_WriteValue(file, "id", track->identity) && NativeIni_WriteValue(file, "title", fields->title);
+	if (ok && fields->author[0] != '\0') { ok = NativeIni_WriteValue(file, "author", fields->author); }
+	if (ok && fields->music != NULL && fields->music[0] != '\0') { ok = NativeIni_WriteValue(file, "music", fields->music); }
 	static const char *const relicKeys[] = {"relic_sapphire", "relic_gold", "relic_platinum"};
 	for (int i = 0; ok && i < NATIVE_TRACK_RELIC_COUNT; i++)
 	{
@@ -519,17 +498,26 @@ static int NativeTrackLibrary_WriteFields(const struct NativeTrackMetadata *trac
 		{
 			char time[NATIVE_TRACK_RELIC_TEXT_BYTES];
 			NativeTrackLibrary_FormatRelicTime(track->relicTimes[i], time, sizeof(time));
-			ok = fprintf(file, "%s = %s\n", relicKeys[i], time) > 0;
+			ok = NativeIni_WriteValue(file, relicKeys[i], time);
 		}
 	}
 	if (ok && track->trackRomLodOverride != NATIVE_TRACK_ROM_LOD_AUTO)
 	{
-		ok = fprintf(file, "trackrom_lod = %s\n", track->trackRomLodOverride == NATIVE_TRACK_ROM_LOD_ON ? "on" : "off") > 0;
+		ok = NativeIni_WriteValue(file, "trackrom_lod", track->trackRomLodOverride == NATIVE_TRACK_ROM_LOD_ON ? "on" : "off");
 	}
-	if (fclose(file) != 0) { ok = 0; }
-	if (ok) { ok = SDL_RenamePath(temporary, path); }
-	if (!ok) { SDL_RemovePath(temporary); }
 	return ok;
+}
+
+static int NativeTrackLibrary_WriteFields(const struct NativeTrackMetadata *track, const char *title, const char *author, const char *music)
+{
+	char path[NATIVE_TRACK_PATH_MAX];
+	if (!NativeTrackLibrary_TrackPath(track, "track.ini", path, sizeof(path)) ||
+	    !NativeTrackLibrary_ValidText(title, 0) || !NativeTrackLibrary_ValidText(author, 1))
+	{
+		return 0;
+	}
+	const struct NativeTrackIniWrite fields = {.track = track, .title = title, .author = author, .music = music};
+	return NativeIni_Save(path, NativeTrackLibrary_WriteIni, &fields);
 }
 
 int NativeTrackLibrary_TrackRomLod(const struct NativeTrackMetadata *track)

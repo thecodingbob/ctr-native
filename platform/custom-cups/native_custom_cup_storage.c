@@ -1,5 +1,6 @@
 #include <platform/custom-cups/native_custom_cup_storage.h>
 #include <platform/native_assets.h>
+#include <platform/native_ini.h>
 #include <SDL3/SDL.h>
 #include <errno.h>
 #include <limits.h>
@@ -211,9 +212,24 @@ static void NativeCup_CheckName(void *context, const char *id, enum NativeCustom
 	}
 }
 
+static bool NativeCup_WriteIni(FILE *file, const void *context)
+{
+	const struct CustomCup *cup = context;
+	bool ok = fputs("[cup]\nname=", file) >= 0 && NativeCup_WriteValue(file, cup->name) && fputc('\n', file) != EOF;
+	for (int i = 0; ok && i < cup->trackCount; i++)
+	{
+		if (strlen(cup->tracks[i]) > (NATIVE_CUP_LINE_SIZE - 32) / 3)
+		{
+			return false;
+		}
+		ok = fputs("track=", file) >= 0 && NativeCup_WriteValue(file, cup->tracks[i]) && fprintf(file, "|%d\n", cup->laps[i]) >= 0;
+	}
+	return ok;
+}
+
 enum NativeCustomCupStorageResult NativeCustomCup_Save(char id[NATIVE_CUSTOM_CUP_ID_SIZE], const struct CustomCup *cup)
 {
-	char directory[NATIVE_CUP_PATH_SIZE], path[NATIVE_CUP_PATH_SIZE], temporary[NATIVE_CUP_PATH_SIZE];
+	char directory[NATIVE_CUP_PATH_SIZE], path[NATIVE_CUP_PATH_SIZE];
 	char target[NATIVE_CUSTOM_CUP_ID_SIZE];
 	if (id == NULL || !CustomCup_IsValid(cup)) { return NATIVE_CUSTOM_CUP_INVALID; }
 	if (!NativeCup_Directory(directory, sizeof(directory)) || !SDL_CreateDirectory(directory)) { return NATIVE_CUSTOM_CUP_IO_ERROR; }
@@ -241,21 +257,10 @@ enum NativeCustomCupStorageResult NativeCustomCup_Save(char id[NATIVE_CUSTOM_CUP
 		if (!found) { return NATIVE_CUSTOM_CUP_IO_ERROR; }
 	}
 	if (!NativeCup_Path(path, sizeof(path), target)) { return NATIVE_CUSTOM_CUP_INVALID; }
-	int n = snprintf(temporary, sizeof(temporary), "%s.%llu.tmp", path, (unsigned long long)SDL_GetTicksNS());
-	if (n < 0 || (size_t)n >= sizeof(temporary)) { return NATIVE_CUSTOM_CUP_IO_ERROR; }
-	SDL_PathInfo temporaryInfo;
-	if (SDL_GetPathInfo(temporary, &temporaryInfo)) { return NATIVE_CUSTOM_CUP_IO_ERROR; }
-	FILE *file = fopen(temporary, "wb");
-	if (file == NULL) { return NATIVE_CUSTOM_CUP_IO_ERROR; }
-	bool ok = fputs("[cup]\nname=", file) >= 0 && NativeCup_WriteValue(file, cup->name) && fputc('\n', file) != EOF;
-	for (int i = 0; ok && i < cup->trackCount; i++)
+	if (!NativeIni_Save(path, NativeCup_WriteIni, cup))
 	{
-		if (strlen(cup->tracks[i]) > (NATIVE_CUP_LINE_SIZE - 32) / 3) { ok = false; break; }
-		ok = fputs("track=", file) >= 0 && NativeCup_WriteValue(file, cup->tracks[i]) && fprintf(file, "|%d\n", cup->laps[i]) >= 0;
+		return NATIVE_CUSTOM_CUP_IO_ERROR;
 	}
-	if (fclose(file) != 0) { ok = false; }
-	if (ok) { ok = SDL_RenamePath(temporary, path); }
-	if (!ok) { SDL_RemovePath(temporary); return NATIVE_CUSTOM_CUP_IO_ERROR; }
 	memcpy(id, target, sizeof(target));
 	return NATIVE_CUSTOM_CUP_OK;
 }

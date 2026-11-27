@@ -1,8 +1,20 @@
+#if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 #include <platform/native_external_file.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined(_WIN32)
+#include <io.h>
+#include <sys/stat.h>
+#else
+#include <unistd.h>
+#endif
 
 enum { NATIVE_EXTERNAL_FILE_SECTOR_SIZE = 2048 };
 
@@ -78,4 +90,28 @@ void NativeExternalFile_Close(struct NativeExternalFile *file)
 		fclose(file->stream);
 		free(file);
 	}
+}
+
+FILE *NativeExternalFile_CreateExclusive(const char *path)
+{
+	// Windows' C runtime does not implement fopen's C11 "x" mode.
+#if defined(_WIN32)
+	int descriptor = _open(path, _O_WRONLY | _O_CREAT | _O_EXCL | _O_BINARY, _S_IREAD | _S_IWRITE);
+	FILE *file = descriptor < 0 ? NULL : _fdopen(descriptor, "wb");
+#else
+	int descriptor = open(path, O_WRONLY | O_CREAT | O_EXCL, 0666);
+	FILE *file = descriptor < 0 ? NULL : fdopen(descriptor, "wb");
+#endif
+	if (descriptor >= 0 && file == NULL)
+	{
+		int error = errno;
+#if defined(_WIN32)
+		_close(descriptor);
+#else
+		close(descriptor);
+#endif
+		remove(path);
+		errno = error;
+	}
+	return file;
 }

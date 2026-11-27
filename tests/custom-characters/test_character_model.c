@@ -29,8 +29,10 @@ static void TestCharacterMetadata(const char *directory, const char *modelPath)
 		CtrTest_Bail("could not open the character metadata fixture");
 	}
 	fputs("[character]\nid=fixture\nname=Fixture\nshort_name=FX\nauthor=Tests\nbase=polar\n"
+	      "ignored malformed line\n"
 	      "[assets]\nhi=model.ctr\n[audio]\nshort_00=audio/impact.adpcm\nline_18=audio/last.xa\n"
 	      "short_1=../ignored\nshort_02=../ignored\nline_19=../ignored\n"
+	      "[audio] trailing\nshort_00=../ignored\n[broken\nid=ignored\n"
 	      "[unknown]\nid=ignored\nline_18=../ignored\n", file);
 	if (fclose(file) != 0)
 	{

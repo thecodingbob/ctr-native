@@ -1,4 +1,5 @@
 #include <platform/custom-characters/native_character_library.h>
+#include <platform/native_ini.h>
 #include <SDL3/SDL.h>
 #include <ctype.h>
 #include <stdint.h>
@@ -22,14 +23,6 @@ enum NativeCharacterSection
 	NATIVE_CHARACTER_SECTION_ASSETS,
 	NATIVE_CHARACTER_SECTION_AUDIO,
 };
-
-static char *NativeCharacterLibrary_Trim(char *text)
-{
-	while (isspace((unsigned char)*text)) { text++; }
-	char *end = text + strlen(text);
-	while (end > text && isspace((unsigned char)end[-1])) { *--end = '\0'; }
-	return text;
-}
 
 static int NativeCharacterLibrary_Copy(char *dst, size_t size, const char *value)
 {
@@ -68,17 +61,21 @@ static int NativeCharacterLibrary_AssetPath(char *dst, size_t size, const char *
 	return NativeCharacterLibrary_Join(dst, size, directory, name);
 }
 
-static enum NativeCharacterSection NativeCharacterLibrary_Section(const char *text)
+static enum NativeCharacterSection NativeCharacterLibrary_Section(const struct NativeIniLine *line)
 {
-	if (strcmp(text, "[character]") == 0)
+	if (line->section == NULL || line->trailingSectionText)
+	{
+		return NATIVE_CHARACTER_SECTION_UNKNOWN;
+	}
+	if (strcmp(line->section, "character") == 0)
 	{
 		return NATIVE_CHARACTER_SECTION_CHARACTER;
 	}
-	if (strcmp(text, "[assets]") == 0)
+	if (strcmp(line->section, "assets") == 0)
 	{
 		return NATIVE_CHARACTER_SECTION_ASSETS;
 	}
-	if (strcmp(text, "[audio]") == 0)
+	if (strcmp(line->section, "audio") == 0)
 	{
 		return NATIVE_CHARACTER_SECTION_AUDIO;
 	}
@@ -152,7 +149,9 @@ static int NativeCharacterLibrary_Read(const char *directory, struct NativeChara
 	if (!NativeCharacterLibrary_Join(path, sizeof(path), directory, "character.ini")) { return 0; }
 	FILE *file = fopen(path, "rb");
 	if (file == NULL) { return 0; }
-	char line[512];
+	char buffer[512];
+	struct NativeIniLine line;
+	enum NativeIniReadResult readResult;
 	enum NativeCharacterSection section = NATIVE_CHARACTER_SECTION_UNKNOWN;
 	int valid = 1;
 	memset(metadata, 0, sizeof(*metadata));
@@ -161,21 +160,19 @@ static int NativeCharacterLibrary_Read(const char *directory, struct NativeChara
 		fclose(file);
 		return 0;
 	}
-	while (valid && fgets(line, sizeof(line), file) != NULL)
+	while ((readResult = NativeIni_Read(file, buffer, sizeof(buffer), true, &line)) == NATIVE_INI_READ_RECORD)
 	{
-		if (strchr(line, '\n') == NULL && !feof(file)) { valid = 0; break; }
-		char *text = NativeCharacterLibrary_Trim(line);
-		if (*text == '\0' || *text == ';' || *text == '#') { continue; }
-		if (*text == '[')
+		if (line.type == NATIVE_INI_SECTION)
 		{
-			section = NativeCharacterLibrary_Section(text);
+			section = NativeCharacterLibrary_Section(&line);
 			continue;
 		}
-		char *equals = strchr(text, '=');
-		if (equals == NULL) { continue; }
-		*equals = '\0';
-		char *key = NativeCharacterLibrary_Trim(text);
-		char *value = NativeCharacterLibrary_Trim(equals + 1);
+		if (line.type == NATIVE_INI_MALFORMED)
+		{
+			continue;
+		}
+		const char *key = line.key;
+		const char *value = line.value;
 		switch (section)
 		{
 		case NATIVE_CHARACTER_SECTION_CHARACTER:
@@ -201,9 +198,13 @@ static int NativeCharacterLibrary_Read(const char *directory, struct NativeChara
 		case NATIVE_CHARACTER_SECTION_UNKNOWN:
 			break;
 		}
+		if (!valid)
+		{
+			break;
+		}
 	}
-	if (ferror(file)) { valid = 0; }
-	fclose(file);
+	if (readResult != NATIVE_INI_READ_END && readResult != NATIVE_INI_READ_RECORD) { valid = 0; }
+	if (fclose(file) != 0) { valid = 0; }
 	if (!valid || !metadata->identity[0] || !metadata->name[0] || !metadata->base[0] || !model[0] ||
 	    !NativeCharacterLibrary_AssetPath(metadata->modelHi, sizeof(metadata->modelHi), directory, model))
 	{

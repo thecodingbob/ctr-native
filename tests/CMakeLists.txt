@@ -18,7 +18,7 @@ set_tests_properties(crash_team_racing_expanded_version PROPERTIES PASS_REGULAR_
 function(ctr_add_test_suite NAME)
     cmake_parse_arguments(ARG "" "" "SOURCES;LIBRARIES" ${ARGN})
     add_executable(${NAME} ${ARG_SOURCES})
-    target_link_libraries(${NAME} PRIVATE ctr_test_game_globals)
+    target_link_libraries(${NAME} PRIVATE ctr_test_game_globals ctr_native_io)
 
     set_target_properties(${NAME} PROPERTIES
         C_STANDARD 17
@@ -76,10 +76,9 @@ ctr_add_test_suite(test_character_model
     SOURCES custom-characters/test_character_model.c
             ${CMAKE_SOURCE_DIR}/platform/custom-characters/native_character_model.c
             ${CMAKE_SOURCE_DIR}/platform/custom-characters/native_character_library.c
-            ${CMAKE_SOURCE_DIR}/platform/native_external_file.c
     LIBRARIES SDL3::SDL3
 )
-ctr_add_test_suite(test_character_load SOURCES custom-characters/test_character_load.c ${CMAKE_SOURCE_DIR}/platform/custom-characters/native_character_model.c ${CMAKE_SOURCE_DIR}/platform/native_external_file.c LIBRARIES SDL3::SDL3)
+ctr_add_test_suite(test_character_load SOURCES custom-characters/test_character_load.c ${CMAKE_SOURCE_DIR}/platform/custom-characters/native_character_model.c LIBRARIES SDL3::SDL3)
 ctr_add_test_suite(test_native_text_vertices SOURCES graphics/test_native_text_vertices.c)
 ctr_add_test_suite(test_slide_meter SOURCES hud/test_slide_meter.c)
 ctr_add_test_suite(test_pos_suffix SOURCES hud/test_pos_suffix.c)

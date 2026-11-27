@@ -103,6 +103,21 @@ the derived draw metadata keeps only screen coordinates and retail metadata.
 identity, retail base and model/audio paths. The menu chooses an entry rather
 than editing the resource snapshot itself.
 
+INI syntax is shared through `include/platform/native_ini.h` and
+`platform/native_ini.c`, also used by configuration, profiles, controls and
+custom tracks. The reader skips blank/comment lines and returns section/value
+records borrowing a caller-owned buffer, without imposing schema or recovery
+policy. Character metadata retains its own section/key handling, line bound,
+relative-path validation and fallback rules. `NativeIni_Save` owns the complete
+save pipeline for configuration, profile, controls, camera preferences, track
+metadata and custom cups: exclusive sibling temporary creation, serialization,
+error/flush/close checks, replacement and failure cleanup. Format owners supply
+only a contents callback and their validation; failed saves do not truncate the
+destination. Written files use LF newlines. Camera preferences retain their
+legacy numeric layout; cups retain their escaped format and specialized parser.
+Exclusive file creation is shared with the text exporter through
+`NativeExternalFile_CreateExclusive`, including the Windows runtime adapter.
+
 `LOAD_TenStages` only invokes `LOAD_FinalizeCharacterModels` after level assets
 and before pools. That phase may allocate a custom driver model with the remaining
 initialization budget reserved. Driver spawning only resolves prepared models;

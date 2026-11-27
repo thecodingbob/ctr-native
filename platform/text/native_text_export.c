@@ -3,14 +3,8 @@
 #include <platform/text/native_text_catalog.h>
 #include <platform/text/native_text_runtime.h>
 #include <platform/native_assets.h>
+#include <platform/native_external_file.h>
 #include <errno.h>
-#include <fcntl.h>
-#if defined(_WIN32)
-#include <io.h>
-#include <sys/stat.h>
-#else
-#include <unistd.h>
-#endif
 
 int NativeTextExport_Write(FILE *file, int first, int end, NativeTextExport_GetString getString)
 {
@@ -27,16 +21,7 @@ int NativeTextExport_Write(FILE *file, int first, int end, NativeTextExport_GetS
 
 static enum NativeTextExportResult NativeTextExport_Copy(FILE *source, const char *path)
 {
-	// The Windows C runtime does not support C11's fopen "x" mode.
-#if defined(_WIN32)
-	int descriptor = _open(path, _O_WRONLY | _O_CREAT | _O_EXCL | _O_BINARY, _S_IREAD | _S_IWRITE);
-	FILE *destination = descriptor < 0 ? NULL : _fdopen(descriptor, "wb");
-	if (descriptor >= 0 && destination == NULL) { _close(descriptor); }
-#else
-	int descriptor = open(path, O_WRONLY | O_CREAT | O_EXCL, 0666);
-	FILE *destination = descriptor < 0 ? NULL : fdopen(descriptor, "wb");
-	if (descriptor >= 0 && destination == NULL) { close(descriptor); }
-#endif
+	FILE *destination = NativeExternalFile_CreateExclusive(path);
 	if (destination == NULL)
 	{
 		if (errno != EEXIST) { fprintf(stderr, "[Language] Cannot create export %s (errno %d)\n", path, errno); }

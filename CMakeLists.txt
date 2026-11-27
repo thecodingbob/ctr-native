@@ -101,6 +101,15 @@ add_library(tomlc17 STATIC externals/tomlc17/tomlc17.c)
 set_target_properties(tomlc17 PROPERTIES C_STANDARD 17 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
 target_include_directories(tomlc17 PUBLIC "${CMAKE_SOURCE_DIR}/externals/tomlc17")
 
+add_library(ctr_native_io STATIC platform/native_ini.c platform/native_external_file.c)
+set_target_properties(ctr_native_io PROPERTIES C_STANDARD 17 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+target_include_directories(ctr_native_io PUBLIC "${CMAKE_SOURCE_DIR}/include")
+target_link_libraries(ctr_native_io PUBLIC SDL3::SDL3)
+ctr_native_apply_common_options(ctr_native_io)
+if(CRASH_TEAM_RACING_EXPANDED_MSVC_FRONTEND)
+    target_compile_definitions(ctr_native_io PRIVATE _CRT_SECURE_NO_WARNINGS)
+endif()
+
 # Crash Team Racing Expanded
 add_executable(crash_team_racing_expanded
     main.c
@@ -174,7 +183,7 @@ if(CTR_DIAGNOSTICS)
 endif()
 #TODO(aalhendi): fix warnings
 ctr_native_apply_common_options(crash_team_racing_expanded)
-target_link_libraries(crash_team_racing_expanded SDL3::SDL3 tomlc17)
+target_link_libraries(crash_team_racing_expanded SDL3::SDL3 tomlc17 ctr_native_io)
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/CtrNativeTrackTools.cmake")
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
     target_link_options(crash_team_racing_expanded PRIVATE -static-libgcc)

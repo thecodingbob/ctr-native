@@ -7,6 +7,7 @@
 #include "native_config_internal.h"
 #include <platform/native_assets.h>
 #include <platform/native_path.h>
+#include <platform/native_ini.h>
 #include <platform/text/native_language_disc.h>
 #include <platform/text/native_text_runtime.h>
 #include <text/namespace_Lng.h>
@@ -838,14 +839,9 @@ ConfigLoadResult NativeConfig_Load(void)
     return result;
 }
 
-void NativeConfig_Save(void)
+static bool NativeConfig_WriteIni(FILE *file, const void *context)
 {
-    char path[512];
-    NativePath_Join(path, sizeof(path), NativeStr8_FromCString(NativeAssets_GetBaseDir()), NATIVE_STR8_LIT("config.ini"));
-    FILE *f = fopen(path, "w");
-    if (!f)
-        return;
-
+    (void)context;
     const char *lastSection = NULL;
 
     for (int i = 0; i < g_numConfigEntries; i++)
@@ -854,18 +850,38 @@ void NativeConfig_Save(void)
 
         // Menu-only rows have no config.ini representation.
         if (e->type == CFG_ACTION || e->type == CFG_SUBSECTION)
+        {
             continue;
+        }
 
         if (lastSection == NULL || strcmp(e->section, lastSection) != 0)
         {
-            if (lastSection != NULL)
-                fprintf(f, "\n");
-            fprintf(f, "[%s]\n", e->section);
+            if (lastSection != NULL && fputc('\n', file) == EOF)
+            {
+                return false;
+            }
+            if (!NativeIni_WriteSection(file, e->section))
+            {
+                return false;
+            }
             lastSection = e->section;
         }
 
-        NativeConfig_WriteValue(f, e, e->valuePtr, NativeConfig_LanguageNameOverride);
+        if (!NativeConfig_WriteValue(file, e, e->valuePtr, NativeConfig_LanguageNameOverride))
+        {
+            return false;
+        }
     }
 
-    fclose(f);
+    return true;
+}
+
+void NativeConfig_Save(void)
+{
+    char path[512];
+    if (!NativePath_Join(path, sizeof(path), NativeStr8_FromCString(NativeAssets_GetBaseDir()), NATIVE_STR8_LIT("config.ini")) ||
+        !NativeIni_Save(path, NativeConfig_WriteIni, NULL))
+    {
+        fprintf(stderr, "[Config] Could not save config.ini\n");
+    }
 }
