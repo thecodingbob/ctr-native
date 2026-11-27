@@ -124,7 +124,7 @@ static struct CharacterGrid *MM_Characters_ActiveGrid(void)
 
 static const char *MM_Characters_GetPreviewIdentity(int playerIndex)
 {
-	if (playerIndex != 0 || D230.nativeCharacterPreviewCurrent[playerIndex] < CHARACTER_SELECT_RETAIL_SLOT_COUNT)
+	if (D230.nativeCharacterPreviewCurrent[playerIndex] < CHARACTER_SELECT_RETAIL_SLOT_COUNT)
 	{
 		return NULL;
 	}
@@ -700,6 +700,13 @@ void MM_Characters_PreventOverlap(void)
 			// if two characters are the same
 			if (GAME_CHARACTER_IDS[playerIndex] == GAME_CHARACTER_IDS[previousPlayer])
 			{
+				bool custom = CustomCharacter_IsSelected(playerIndex);
+				bool previousCustom = CustomCharacter_IsSelected(previousPlayer);
+				if (custom != previousCustom || (custom && strcmp(sdata->customCharacters[playerIndex].identity,
+				    sdata->customCharacters[previousPlayer].identity) != 0))
+				{
+					continue;
+				}
 				// look for a new character
 				for (defaultIndex = 0; defaultIndex < MM_CHARACTER_SELECT_DEFAULT_DRIVER_COUNT; defaultIndex++)
 				{
@@ -712,6 +719,7 @@ void MM_Characters_PreventOverlap(void)
 					{
 						// assign free character
 						GAME_CHARACTER_IDS[playerIndex] = (s16)freeCharacter;
+						CustomCharacter_Select(playerIndex, NULL);
 
 						// character is now taken
 						*defaultCharacter = -1;
@@ -739,8 +747,8 @@ void MM_Characters_RestoreIDs(void)
 	s_characterSelectCustomCount = 0;
 	for (size_t index = 0; index < NativeCharacterLibrary_Count() && s_characterSelectCustomCount < CHARACTER_SELECT_EXTRA_SLOT_CAPACITY; index++)
 	{
-		const struct NativeCharacterMetadata *entry = NativeCharacterLibrary_Get(index);
-		if (entry != NULL && CustomCharacter_GetBaseID(entry->base) >= 0)
+		const struct NativeCharacterMetadata *entry = CustomCharacter_GetMenuEntry(index);
+		if (entry != NULL)
 		{
 			s_characterSelectCustomEntries[s_characterSelectCustomCount++] = entry;
 		}
@@ -803,7 +811,7 @@ void MM_Characters_RestoreIDs(void)
 				currID = (s16 *)((u32)(unlockPlayerIndex * sizeof(*currID)) + (u32)characterIDs);
 				unlocked = activeMeta[(s32)*currID].unlockFlags;
 
-				if (unlocked != unlockAlways)
+				if (unlocked != unlockAlways && !CustomCharacter_IsSelected(unlockPlayerIndex))
 				{
 					// NOTE(aalhendi): Keep the shared loop increment available to both
 					// retail branch delay slots without changing native control flow.
@@ -842,13 +850,13 @@ void MM_Characters_RestoreIDs(void)
 		// rotation of each driver, 90 degrees difference
 		MM_CHARACTER_SELECT_ANGLE[playerIndex] = (playerIndex * MM_CHARACTER_SELECT_ANGLE_STEP) + MM_CHARACTER_SELECT_ANGLE_OFFSET;
 		D230.nativeCharacterCursor[playerIndex] = CharacterSelectGrid_Find(MM_Characters_ActiveGrid(), GAME_CHARACTER_IDS[playerIndex]);
-		if (playerIndex == 0 && CustomCharacter_IsSelected())
+		if (CustomCharacter_IsSelected(playerIndex))
 		{
 			for (int index = 0; index < s_characterSelectCustomCount; index++)
 			{
-				if (strcmp(sdata->customPlayerIdentity, s_characterSelectCustomEntries[index]->identity) == 0)
+				if (strcmp(sdata->customCharacters[playerIndex].identity, s_characterSelectCustomEntries[index]->identity) == 0)
 				{
-					D230.nativeCharacterCursor[0] = CharacterSelectGrid_Find(MM_Characters_ActiveGrid(), CHARACTER_SELECT_RETAIL_SLOT_COUNT + index);
+					D230.nativeCharacterCursor[playerIndex] = CharacterSelectGrid_Find(MM_Characters_ActiveGrid(), CHARACTER_SELECT_RETAIL_SLOT_COUNT + index);
 					break;
 				}
 			}
@@ -1339,11 +1347,9 @@ outerPlayerLoopComplete:
 			iconPerPlayerAtIndex = (s16 *)((u8 *)iconPerPlayerAtIndex + iconPerPlayerOffset);
 			characterIDOutput[playerIndex] = characterIDMeta[(int)*iconPerPlayerAtIndex].characterID;
 			D230.nativeCharacterCursor[playerIndex] = CharacterSelectGrid_Find(MM_Characters_ActiveGrid(), *iconPerPlayerAtIndex);
-			if (playerIndex == 0)
-			{
-				const struct NativeCharacterMetadata *custom = MM_Characters_CustomEntry(*iconPerPlayerAtIndex);
-				CustomCharacter_Select(custom);
-			}
+			const struct NativeCharacterMetadata *custom = playerIndex < GAME_TRACKER->numPlyrNextGame
+			                                               ? MM_Characters_CustomEntry(*iconPerPlayerAtIndex) : NULL;
+			CustomCharacter_Select(playerIndex, custom);
 		}
 	}
 

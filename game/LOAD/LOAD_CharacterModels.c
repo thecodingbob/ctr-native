@@ -7,11 +7,8 @@
 
 void LOAD_ResetCharacterModelCache(void)
 {
-	sdata->customPlayerModel = NULL;
-	sdata->customPreviewModel = NULL;
-	sdata->customPreviewAttempted = false;
-	sdata->customPlayerModelIdentity[0] = '\0';
-	sdata->customPreviewIdentity[0] = '\0';
+	memset(sdata->customPlayerModels, 0, sizeof(sdata->customPlayerModels));
+	memset(sdata->customPreviewModels, 0, sizeof(sdata->customPreviewModels));
 }
 
 static struct Model *LOAD_ReadCustomCharacterModel(const char *path, int reservedBytes)
@@ -63,6 +60,7 @@ struct CharacterModelRequest
 {
 	int baseID;
 	const char *identity;
+	const char *modelPath;
 	enum CharacterModelContext context;
 };
 
@@ -121,7 +119,7 @@ static const char *LOAD_GetCustomModelPath(const struct CharacterModelRequest *r
 	if (request->identity == NULL || request->identity[0] == '\0') { return NULL; }
 	if (request->context == CHARACTER_MODEL_DRIVER)
 	{
-		return sdata->customPlayerModelPath[0] != '\0' ? sdata->customPlayerModelPath : NULL;
+		return request->modelPath != NULL && request->modelPath[0] != '\0' ? request->modelPath : NULL;
 	}
 	for (size_t i = 0; i < NativeCharacterLibrary_Count(); i++)
 	{
@@ -138,21 +136,25 @@ static struct Model *LOAD_ResolveCharacterModel(const struct CharacterModelReque
 	if (path != NULL)
 	{
 		bool preview = request->context == CHARACTER_MODEL_PREVIEW;
-		struct Model **cached = preview ? &sdata->customPreviewModel : &sdata->customPlayerModel;
-		char *identity = preview ? sdata->customPreviewIdentity : sdata->customPlayerModelIdentity;
-		if (strcmp(identity, request->identity) != 0)
+		struct CustomCharacterModelCache *caches = preview ? sdata->customPreviewModels : sdata->customPlayerModels;
+		int count = preview ? (int)len(sdata->customPreviewModels) : (int)len(sdata->customPlayerModels);
+		struct CustomCharacterModelCache *cached = NULL;
+		for (int index = 0; index < count; index++)
 		{
-			*cached = NULL;
-			identity[0] = '\0';
-			if (preview) { sdata->customPreviewAttempted = false; }
+			if (strcmp(caches[index].identity, request->identity) == 0)
+			{
+				cached = &caches[index];
+				break;
+			}
+			if (cached == NULL && caches[index].identity[0] == '\0') { cached = &caches[index]; }
 		}
-		if (load && *cached == NULL && (!preview || !sdata->customPreviewAttempted))
+		if (cached != NULL && load && !cached->attempted)
 		{
-			memcpy(identity, request->identity, strlen(request->identity) + 1);
-			if (preview) { sdata->customPreviewAttempted = true; }
-			*cached = LOAD_ReadCustomCharacterModel(path, reservedBytes);
+			memcpy(cached->identity, request->identity, strlen(request->identity) + 1);
+			cached->attempted = true;
+			cached->model = LOAD_ReadCustomCharacterModel(path, reservedBytes);
 		}
-		if (*cached != NULL) { return *cached; }
+		if (cached != NULL && strcmp(cached->identity, request->identity) == 0 && cached->model != NULL) { return cached->model; }
 	}
 	return request->context == CHARACTER_MODEL_PREVIEW ? LOAD_GetRetailPreviewModel(request->baseID) :
 	       LOAD_GetRetailCharacterModel(GAME_CHARACTER_METADATA[request->baseID].name_Debug);
@@ -161,10 +163,12 @@ static struct Model *LOAD_ResolveCharacterModel(const struct CharacterModelReque
 static struct CharacterModelRequest LOAD_DriverModelRequest(int driverID, int baseID)
 {
 	bool menu = (sdata->gGT->gameMode1 & MAIN_MENU) != 0;
-	bool custom = !menu && driverID == 0 && CustomCharacter_IsSelected() && baseID == sdata->customPlayerBaseID;
+	bool custom = !menu && driverID >= 0 && driverID < sdata->gGT->numPlyrCurrGame &&
+	              CustomCharacter_IsSelected(driverID) && baseID == sdata->customCharacters[driverID].baseID;
 	return (struct CharacterModelRequest){
 		.baseID = baseID, .context = CHARACTER_MODEL_DRIVER,
-		.identity = custom ? sdata->customPlayerIdentity : NULL,
+		.identity = custom ? sdata->customCharacters[driverID].identity : NULL,
+		.modelPath = custom ? sdata->customCharacters[driverID].modelPath : NULL,
 	};
 }
 

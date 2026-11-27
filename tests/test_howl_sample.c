@@ -59,11 +59,13 @@ bool Chaos_ShouldFreezeAudioChannel(const struct ChannelStats *channel)
 int NativeCharacterLibrary_ReadVoice(const char *directory, int index, struct NativeCharacterVoiceSample *sample)
 {
 	s_customReads++;
-	if (!s_customAvailable || strcmp(directory, "fixture-voices") != 0 || index != 0)
+	bool secondPlayer = strcmp(directory, "fixture-voices-2") == 0;
+	if (!s_customAvailable || (!secondPlayer && strcmp(directory, "fixture-voices") != 0) || index != 0)
 	{
 		return 0;
 	}
 	*sample = (struct NativeCharacterVoiceSample){.data = malloc(32), .size = 32, .pitch = 1024, .duration = 77, .flags = 4, .volume = 90};
+	if (secondPlayer) { sample->pitch = 1536; }
 	if (sample->data == NULL)
 	{
 		CtrTest_Bail("custom sample allocation failed");
@@ -427,7 +429,9 @@ int main(void)
 	GAME_CHARACTER_METADATA[CRASH_BANDICOOT].name_Debug = "crash";
 	GAME_CHARACTER_IDS[0] = CRASH_BANDICOOT;
 	const struct NativeCharacterMetadata custom = {.identity = "fixture", .base = "crash", .directory = "fixture-voices"};
-	CustomCharacter_Select(&custom);
+	CustomCharacter_Select(0, &custom);
+	s_tracker.numPlyrCurrGame = 1;
+	sdata->customCharacterAudioDriver = 1;
 	CTR_TEST_CHECK(OtherFX_Play(28, 1) != 0 && s_customReads == 1 && s_localizedReads == 0,
 	               "custom playback takes precedence over the selected voice language");
 	CTR_TEST_CHECK_EQ((u32)sdata->channelAttrNew[0].spuStartAddr, s_expectedDestination, "custom playback uses its uploaded SPU address");
@@ -441,5 +445,37 @@ int main(void)
 	s_writtenCount = 0;
 	CTR_TEST_CHECK(OtherFX_Play(28, 1) != 0 && s_customReads == 2 && s_localizedReads == 1,
 	               "a missing custom sample falls back to the selected language after cache teardown");
+
+	CTR_TEST_SECTION("multiplayer sampled voices keep independent caches and speaker context");
+	Reset();
+	s_header.numOtherFX = len(voiceEffects);
+	sdata->howl_metaOtherFX = voiceEffects;
+	s_customAvailable = true;
+	s_tracker.numPlyrCurrGame = 2;
+	GAME_CHARACTER_IDS[0] = GAME_CHARACTER_IDS[1] = CRASH_BANDICOOT;
+	CustomCharacter_Select(0, &custom);
+	struct NativeCharacterMetadata second = custom;
+	strcpy(second.identity, "fixture-2");
+	strcpy(second.directory, "fixture-voices-2");
+	CustomCharacter_Select(1, &second);
+	sdata->customCharacterAudioDriver = 1;
+	OtherFX_Play(28, 1);
+	u32 firstAddress = (u32)sdata->channelAttrNew[0].spuStartAddr;
+	s_writtenCount = 0;
+	s_expectedDestination = CTR_SPU_BYTES_AT((u32)sdata->audioAllocPtr);
+	sdata->customCharacterAudioDriver = 2;
+	CTR_TEST_CHECK(OtherFX_Play(28, 1) != 0 && s_customReads == 2 &&
+	               (u32)sdata->channelAttrNew[0].spuStartAddr != firstAddress && sdata->channelAttrNew[0].pitch == 1536,
+	               "a second human with the same base loads its own sample and metadata");
+	sdata->customCharacterAudioDriver = 1;
+	CTR_TEST_CHECK(OtherFX_Play(28, 1) != 0 && s_customReads == 2 &&
+	               (u32)sdata->channelAttrNew[0].spuStartAddr == firstAddress && sdata->channelAttrNew[0].pitch == 1024,
+	               "alternating speakers reuses both caches without borrowing or reuploading samples");
+	s_tracker.gameMode1 = MAIN_MENU;
+	s_tracker.frameTimer_MainFrame_ResetDB = 0;
+	sdata->customCharacterAudioDriver = 2;
+	OptionsMenu_TestSound(HOWL_VOLUME_TYPE_VOICE, true);
+	CTR_TEST_CHECK(sdata->channelAttrNew[0].pitch == 1024 && sdata->customCharacterAudioDriver == 2,
+	               "the menu voice preview uses player one's sample and restores its caller's speaker context");
 	return CtrTest_Summary();
 }

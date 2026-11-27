@@ -40,8 +40,8 @@ struct BankCachedVoice
 };
 
 static struct BankCachedVoice s_bankLocalizedVoices[LOCAL_VOICE_LANGUAGES][LOCAL_VOICE_COUNT];
-static struct BankCachedVoice s_bankCustomVoices[NATIVE_CHARACTER_SHORT_VOICES];
-static char s_bankCustomVoiceDirectory[NATIVE_CHARACTER_PATH_BYTES];
+static struct BankCachedVoice s_bankCustomVoices[len(sdata->customCharacters)][NATIVE_CHARACTER_SHORT_VOICES];
+static char s_bankCustomVoiceDirectory[len(sdata->customCharacters)][NATIVE_CHARACTER_PATH_BYTES];
 
 static u16 Bank_UploadVoiceSample(const unsigned char *bytes, size_t size)
 {
@@ -73,7 +73,7 @@ void Bank_InvalidateLocalizedVoices(void)
 {
 	memset(s_bankLocalizedVoices, 0, sizeof(s_bankLocalizedVoices));
 	memset(s_bankCustomVoices, 0, sizeof(s_bankCustomVoices));
-	s_bankCustomVoiceDirectory[0] = '\0';
+	memset(s_bankCustomVoiceDirectory, 0, sizeof(s_bankCustomVoiceDirectory));
 }
 
 void Bank_ClearLocalizedVoices(u16 min, u16 size)
@@ -81,7 +81,11 @@ void Bank_ClearLocalizedVoices(u16 min, u16 size)
 	u32 end = (u32)min + size;
 	for (size_t i = 0; i < len(s_bankCustomVoices); i++)
 	{
-		if (s_bankCustomVoices[i].addr >= min && s_bankCustomVoices[i].addr < end) { s_bankCustomVoices[i].addr = 0; }
+		for (size_t voice = 0; voice < len(s_bankCustomVoices[i]); voice++)
+		{
+			struct BankCachedVoice *cached = &s_bankCustomVoices[i][voice];
+			if (cached->addr >= min && cached->addr < end) { cached->addr = 0; }
+		}
 	}
 	for (int language = 0; language < LOCAL_VOICE_LANGUAGES; language++)
 	{
@@ -135,21 +139,23 @@ bool Bank_CustomCharacterVoice(u16 soundID, struct OtherFX *meta, u16 *spuAddr)
 	{
 		return false;
 	}
-	const char *directory = CustomCharacter_GetAudioDirectory();
+	int baseID = soundID - (index == 0 ? LOCAL_VOICE_FIRST : LOCAL_VOICE_FIRST + GAME_CHARACTER_COUNT);
+	int player = CustomCharacter_GetAudioPlayer(baseID);
+	const char *directory = CustomCharacter_GetAudioDirectory(player);
 	if (directory == NULL)
 	{
 		return false;
 	}
-	if (strcmp(s_bankCustomVoiceDirectory, directory) != 0)
+	if (strcmp(s_bankCustomVoiceDirectory[player], directory) != 0)
 	{
-		memset(s_bankCustomVoices, 0, sizeof(s_bankCustomVoices));
-		memcpy(s_bankCustomVoiceDirectory, directory, sizeof(s_bankCustomVoiceDirectory));
+		memset(s_bankCustomVoices[player], 0, sizeof(s_bankCustomVoices[player]));
+		memcpy(s_bankCustomVoiceDirectory[player], directory, sizeof(s_bankCustomVoiceDirectory[player]));
 	}
-	struct BankCachedVoice *cached = &s_bankCustomVoices[index];
+	struct BankCachedVoice *cached = &s_bankCustomVoices[player][index];
 	if (cached->addr == 0)
 	{
 		struct NativeCharacterVoiceSample sample;
-		if (!Bank_CacheCanAllocate() || !NativeCharacterLibrary_ReadVoice(s_bankCustomVoiceDirectory, index, &sample))
+		if (!Bank_CacheCanAllocate() || !NativeCharacterLibrary_ReadVoice(s_bankCustomVoiceDirectory[player], index, &sample))
 		{
 			return false;
 		}

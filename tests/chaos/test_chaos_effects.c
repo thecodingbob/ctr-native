@@ -2035,6 +2035,9 @@ static void TestPersonalQueuedVoices(void)
 	enum ChaosAudioOwner previous = Chaos_SetThreadAudio(&world.threads[0]);
 	Voiceline_RequestPlayOwned(0, 0, 0, &world.drivers[1]);
 	CTR_TEST_CHECK_EQ(sdata->chaosRuntime.audioOwner, CHAOS_AUDIO_PLAYER_1, "requesting another driver's voice restores the enclosing thread's context");
+	CTR_TEST_CHECK(sdata->customCharacterAudioDriver == 0 && sdata->Voiceline2.first != NULL &&
+	               sdata->customCharacterVoiceDrivers[(struct VoicelineItem *)sdata->Voiceline2.first - sdata->voicelinePool] == 2,
+	               "a queued custom voice retains the speaking driver and restores the enclosing audio context");
 	Chaos_SetAudioOwner(previous);
 	previous = Chaos_SetThreadAudio(&world.threads[1]);
 	Voiceline_RequestPlayOwned(1, 0, 0, &world.drivers[0]);
@@ -2052,6 +2055,14 @@ static void TestPersonalQueuedVoices(void)
 	Tick(1000);
 	Voiceline_Update();
 	CTR_TEST_CHECK(sdata->Voiceline2.first == NULL && sdata->chaosRuntime.xaOwner == CHAOS_AUDIO_PLAYER_1, "the other controller's queued request resumes after time stop expires");
+	Voiceline_PoolClear();
+	sdata->boolCanPlayVoicelines = true;
+	s_tracker.frameTimer_MainFrame_ResetDB = 100;
+	Voiceline_RequestPlayOwned(0, 0, 0, &world.drivers[0]);
+	Voiceline_RequestPlayOwned(0, 0, 0, &world.drivers[1]);
+	CTR_TEST_CHECK(sdata->Voiceline2.first != NULL && sdata->Voiceline2.first->next != NULL,
+	               "the same event for two speakers sharing a retail base is not mistaken for one duplicate request");
+	Voiceline_PoolClear();
 	data.voiceData[0].voiceSet[2].ptr = NULL;
 	data.voiceData[0].voiceSet[2].num = 0;
 

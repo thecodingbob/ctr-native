@@ -95,6 +95,7 @@ void Voiceline_PoolClear(void)
 	// put them all on free list
 	LIST_Init(&sdata->Voiceline1, &sdata->voicelinePool[0].item, sizeof(struct VoicelineItem), HOWL_VOICELINE_POOL_CAPACITY);
 	memset(sdata->chaosVoicelines, 0, sizeof(sdata->chaosVoicelines));
+	memset(sdata->customCharacterVoiceDrivers, 0, sizeof(sdata->customCharacterVoiceDrivers));
 
 	Voiceline_ClearTimeStamp();
 }
@@ -250,7 +251,8 @@ queueVoiceline:
 	{
 		struct VoicelineItem *voiceLine = (struct VoicelineItem *)item;
 
-		if ((voiceID == (u32)voiceLine->voiceID) && (characterID == voiceLine->characterID))
+		if ((voiceID == (u32)voiceLine->voiceID) && (characterID == voiceLine->characterID) &&
+		    sdata->customCharacterVoiceDrivers[voiceLine - sdata->voicelinePool] == sdata->customCharacterAudioDriver)
 		{
 			return;
 		}
@@ -279,6 +281,7 @@ queueVoiceline:
 		voiceLine->secondaryCharacterID = characterID2;
 		voiceLine->voiceID = voiceID;
 		voiceLine->startFrame = sdata->gGT->timer;
+		sdata->customCharacterVoiceDrivers[voiceLine - sdata->voicelinePool] = sdata->customCharacterAudioDriver;
 		Chaos_TagVoiceline(voiceLine);
 	}
 }
@@ -286,11 +289,14 @@ queueVoiceline:
 void Voiceline_RequestPlayOwned(u32 voiceID, u32 characterID, u32 characterID2, const struct Driver *speaker)
 {
 	const enum ChaosAudioOwner previous = Chaos_SetDriverAudio(speaker);
+	int previousDriver = sdata->customCharacterAudioDriver;
+	sdata->customCharacterAudioDriver = speaker != NULL ? speaker->driverID + 1 : 0;
 	Voiceline_RequestPlay(voiceID, characterID, characterID2);
+	sdata->customCharacterAudioDriver = previousDriver;
 	Chaos_SetAudioOwner(previous);
 }
 
-void Voiceline_StartPlay(struct Item *voiceLine)
+static void Voiceline_StartPlayForSpeaker(struct Item *voiceLine)
 {
 	struct VoicelineItem *voiceLineItem = (struct VoicelineItem *)voiceLine;
 	u32 voiceID = (u16)voiceLineItem->voiceID;
@@ -349,6 +355,23 @@ void Voiceline_StartPlay(struct Item *voiceLine)
 
 	sdata->voicelineCooldown = (s16)(CDSYS_XAGetTrackLength(CDSYS_XA_TYPE_GAME, xaID) / 5) + 0x1e;
 	Chaos_SetVoicelineXA(voiceLineItem);
+}
+
+void Voiceline_StartPlay(struct Item *voiceLine)
+{
+	struct VoicelineItem *item = (struct VoicelineItem *)voiceLine;
+	int previousDriver = sdata->customCharacterAudioDriver;
+	sdata->customCharacterAudioDriver = 0;
+	for (size_t index = 0; index < len(sdata->voicelinePool); index++)
+	{
+		if (item == &sdata->voicelinePool[index])
+		{
+			sdata->customCharacterAudioDriver = sdata->customCharacterVoiceDrivers[index];
+			break;
+		}
+	}
+	Voiceline_StartPlayForSpeaker(voiceLine);
+	sdata->customCharacterAudioDriver = previousDriver;
 }
 
 void Voiceline_PlayWrongWay(struct Driver *driver)

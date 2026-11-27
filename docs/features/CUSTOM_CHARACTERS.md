@@ -52,7 +52,7 @@ with recognized retail bases, preserving their separate names and identities.
 The local layout fixture contains Miku plus seven numbered copies, under
 `assets/characters/miku-2/` through `miku-8/`. These ignored assets are not shipped.
 Custom icons still share the prototype's first icon texture (identical for these
-copies); independent multiplayer identities remain unimplemented.
+copies).
 
 ## Local fixture
 
@@ -76,15 +76,20 @@ The prototype admits the first eight scanned characters with recognized retail b
 `fake` or `oxide`. The key resolves through the existing character metadata,
 not a separate Polar-specific mapping.
 It keeps that base's retail ID for physics, audio and shared pack loading, and stores
-the custom identity and model reference separately. Only player 1 receives the
-custom model, so the retail base model is not globally replaced. The model is
+the custom identity and resource paths separately for each human player.
+All four players can select different customs sharing the same retail base,
+or a custom alongside its retail base, without globally replacing that base.
+Each player's cursor is restored by identity when returning to selection. The model is
 allocated with the current level in MEMPACK. A failed load uses the retail base
 and writes a warning to the log.
 
-The racing model loads after the track assets, retaining the exact aligned
+Racing models load after the track assets, retaining the exact aligned
 budget for pools, clipping and viewport visibility lists. If the model
 would consume that reserve, the retail base is used instead. The preview loads
-into the already initialized menu and needs no race reserve.
+into the already initialized menu and needs no race reserve. Preview caches hold
+up to eight identities for the level lifetime and are shared across viewports;
+switching between installed customs does not repeatedly allocate their models.
+Race caches likewise share prepared models by identity. Spawn never allocates.
 
 The preview reuses the racing model, not a separately animated menu model.
 Model resolution is owned by `game/LOAD/LOAD_CharacterModels.c`, for both
@@ -158,14 +163,20 @@ same native source resolver, preferring custom clips before localized/retail
 resources. Audio snapshot restore reopens the saved source rather than applying
 the current selection's overrides. HOWL retains SPU caching, using the same
 character policy module for short-voice indices.
+Voice requests carry the speaking driver through immediate playback and the
+queued XA path. Short-voice caches are separate per player. Sound IDs alone
+do not identify a custom speaker: unowned requests and retail/AI speakers retain
+the normal language/retail fallback, even when sharing a custom's base ID.
+The Options voice preview explicitly uses the followed driver (P1 in the menu)
+and restores its caller's speaker context afterwards.
 
 Keep only runtime resources here, with all voices directly in `audio/`.
 Extraction originals and verification images belong outside the runtime library.
 The stable `id` in `character.ini`, not the folder name, identifies the character.
 
 Race HUD names/icons and podium still use the retail base.
-Custom identity/model assignment still follows player 1; removing the mode gate
-does not implement independent multiplayer selections or custom AI. Adventure
+Independent human selections, preview/race models and voices are implemented;
+custom AI remains unimplemented. Adventure
 hub and podium model loading, persistence, a full library manager and automatic
 patch import remain incomplete. Do not use arbitrary untrusted models: current bounds
 checks cover the outer model envelope and relocation table, not every nested

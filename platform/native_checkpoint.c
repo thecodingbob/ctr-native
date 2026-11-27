@@ -1442,8 +1442,14 @@ internal void NativeCheckpoint_RelocateHowlLists(const struct NativeCheckpointHe
 internal void NativeCheckpoint_RelocateBotModels(const struct NativeCheckpointHeader *oldHeader, const struct NativeCheckpointHeader *liveHeader)
 {
 	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.standaloneBotModels);
-	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.customPlayerModel);
-	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.customPreviewModel);
+	for (size_t index = 0; index < len(sdata_static.customPlayerModels); index++)
+	{
+		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.customPlayerModels[index].model);
+	}
+	for (size_t index = 0; index < len(sdata_static.customPreviewModels); index++)
+	{
+		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.customPreviewModels[index].model);
+	}
 	struct LoadBotModelSlot *slots = sdata_static.standaloneBotModels;
 	const unsigned int count = sdata_static.standaloneBotModelCount;
 	u32 offset = 0;

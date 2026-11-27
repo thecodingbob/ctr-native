@@ -16,51 +16,61 @@ static inline int CustomCharacter_GetBaseID(const char *base)
 	return -1;
 }
 
-static inline const struct NativeCharacterMetadata *CustomCharacter_GetMenuEntry(void)
+static inline const struct NativeCharacterMetadata *CustomCharacter_GetMenuEntry(size_t index)
 {
-	const struct NativeCharacterMetadata *entry = NativeCharacterLibrary_Get(0);
+	const struct NativeCharacterMetadata *entry = NativeCharacterLibrary_Get(index);
 	return entry != NULL && CustomCharacter_GetBaseID(entry->base) >= 0 ? entry : NULL;
 }
 
-static inline void CustomCharacter_Select(const struct NativeCharacterMetadata *entry)
+static inline void CustomCharacter_Select(int playerIndex, const struct NativeCharacterMetadata *entry)
 {
+	if (playerIndex < 0 || playerIndex >= (int)len(sdata->customCharacters)) { return; }
+	struct CustomCharacterSelection *selection = &sdata->customCharacters[playerIndex];
 	int baseID = entry != NULL ? CustomCharacter_GetBaseID(entry->base) : -1;
 	if (baseID < 0)
 	{
-		sdata->customPlayerIdentity[0] = '\0';
-		sdata->customPlayerBaseID = -1;
-		sdata->customPlayerModelPath[0] = '\0';
-		sdata->customPlayerAudioDirectory[0] = '\0';
+		memset(selection, 0, sizeof(*selection));
+		selection->baseID = -1;
 		return;
 	}
 
-	memcpy(sdata->customPlayerIdentity, entry->identity, sizeof(sdata->customPlayerIdentity));
-	sdata->customPlayerBaseID = baseID;
-	memcpy(sdata->customPlayerModelPath, entry->modelHi, sizeof(sdata->customPlayerModelPath));
-	memcpy(sdata->customPlayerAudioDirectory, entry->directory, sizeof(sdata->customPlayerAudioDirectory));
+	memcpy(selection->identity, entry->identity, sizeof(selection->identity));
+	selection->baseID = baseID;
+	memcpy(selection->modelPath, entry->modelHi, sizeof(selection->modelPath));
+	memcpy(selection->audioDirectory, entry->directory, sizeof(selection->audioDirectory));
 }
 
-static inline bool CustomCharacter_IsSelected(void)
+static inline bool CustomCharacter_IsSelected(int playerIndex)
 {
-	return sdata->customPlayerIdentity[0] != '\0' && sdata->customPlayerBaseID >= 0 &&
-	       sdata->customPlayerBaseID < GAME_CHARACTER_COUNT && data.characterIDs[0] == sdata->customPlayerBaseID;
+	if (playerIndex < 0 || playerIndex >= (int)len(sdata->customCharacters)) { return false; }
+	const struct CustomCharacterSelection *selection = &sdata->customCharacters[playerIndex];
+	return selection->identity[0] != '\0' && selection->baseID >= 0 &&
+	       selection->baseID < GAME_CHARACTER_COUNT && data.characterIDs[playerIndex] == selection->baseID;
 }
 
-static inline const char *CustomCharacter_GetAudioDirectory(void)
+static inline const char *CustomCharacter_GetAudioDirectory(int playerIndex)
 {
-	if (!CustomCharacter_IsSelected() || sdata->customPlayerAudioDirectory[0] == '\0')
+	if (!CustomCharacter_IsSelected(playerIndex) || sdata->customCharacters[playerIndex].audioDirectory[0] == '\0')
 	{
 		return NULL;
 	}
-	return sdata->customPlayerAudioDirectory;
+	return sdata->customCharacters[playerIndex].audioDirectory;
+}
+
+// A retail sound ID alone cannot distinguish custom players from their base.
+// Only explicitly owned requests may resolve custom voice resources.
+static inline int CustomCharacter_GetAudioPlayer(int baseID)
+{
+	int player = sdata->customCharacterAudioDriver - 1;
+	return CustomCharacter_IsSelected(player) && sdata->customCharacters[player].baseID == baseID ? player : -1;
 }
 
 static inline int CustomCharacter_GetShortVoiceIndex(int soundID)
 {
 	enum { FIRST_VOICE = 28, SECOND_VOICE = 44 };
-	if (!CustomCharacter_IsSelected()) { return -1; }
-	int baseID = sdata->customPlayerBaseID;
-	return soundID == FIRST_VOICE + baseID ? 0 : soundID == SECOND_VOICE + baseID ? 1 : -1;
+	int index = soundID >= SECOND_VOICE ? 1 : 0;
+	int baseID = soundID - (index != 0 ? SECOND_VOICE : FIRST_VOICE);
+	return baseID >= 0 && baseID < GAME_CHARACTER_COUNT && CustomCharacter_GetAudioPlayer(baseID) >= 0 ? index : -1;
 }
 
 static inline const char *CustomCharacter_ResolveXAVoice(int categoryID, int xaID)
@@ -70,23 +80,26 @@ static inline const char *CustomCharacter_ResolveXAVoice(int categoryID, int xaI
 	{
 		return NULL;
 	}
-	const char *directory = CustomCharacter_GetAudioDirectory();
-	if (directory == NULL) { return NULL; }
-	int baseID = sdata->customPlayerBaseID;
-	int localIndex = 0;
-	// Use the voice sets: retail does not order every character's XA IDs alike.
-	for (size_t set = 0; set < len(data.voiceData[baseID].voiceSet); set++)
+	for (int baseID = 0; baseID < GAME_CHARACTER_COUNT; baseID++)
 	{
-		const s16 *ids = data.voiceData[baseID].voiceSet[set].ptr;
-		int count = data.voiceData[baseID].voiceSet[set].num;
-		for (int i = 0; ids != NULL && i < count; i++)
+		int player = CustomCharacter_GetAudioPlayer(baseID);
+		const char *directory = CustomCharacter_GetAudioDirectory(player);
+		if (directory == NULL) { continue; }
+		int localIndex = 0;
+		// Retail does not order every character's XA IDs alike.
+		for (size_t set = 0; set < len(data.voiceData[baseID].voiceSet); set++)
 		{
-			if (ids[i] == xaID)
+			const s16 *ids = data.voiceData[baseID].voiceSet[set].ptr;
+			int count = data.voiceData[baseID].voiceSet[set].num;
+			for (int i = 0; ids != NULL && i < count; i++)
 			{
-				return NativeCharacterLibrary_GetVoicePath(directory, localIndex + i, 1);
+				if (ids[i] == xaID)
+				{
+					return NativeCharacterLibrary_GetVoicePath(directory, localIndex + i, 1);
+				}
 			}
+			localIndex += count;
 		}
-		localIndex += count;
 	}
 	return NULL;
 }

@@ -1,6 +1,7 @@
 #ifndef CTR_NATIVE_REGIONSEXE_H
 #define CTR_NATIVE_REGIONSEXE_H
 #include <custom-cups/custom_cup.h>
+#include <custom-characters/character_types.h>
 
 
 enum
@@ -4131,15 +4132,12 @@ struct sData
 	int loadedRaceFieldSize;
 	// A warp pad requested the first load of this Adventure event.
 	bool seedAdventureGrid;
-	char customPlayerIdentity[256];
-	char customPlayerModelPath[1024];
-	struct Model *customPlayerModel;
-	struct Model *customPreviewModel;
-	bool customPreviewAttempted;
-	char customPlayerAudioDirectory[1024];
-	int customPlayerBaseID;
-	char customPlayerModelIdentity[256];
-	char customPreviewIdentity[256];
+	struct CustomCharacterSelection customCharacters[len(((struct GameTracker *)0)->pushBuffer)];
+	struct CustomCharacterModelCache customPlayerModels[len(((struct GameTracker *)0)->pushBuffer)];
+	struct CustomCharacterModelCache customPreviewModels[CHARACTER_SELECT_EXTRA_SLOT_CAPACITY];
+	// Zero means unowned audio; positive values identify the speaking driver + 1.
+	int customCharacterAudioDriver;
+	int customCharacterVoiceDrivers[HOWL_VOICELINE_POOL_CAPACITY];
 
 	// after dataLibFiller is 8009AE58,
 	// where psyq allocates globals

@@ -13,13 +13,16 @@ static int s_warnings;
 static int s_reserve;
 unsigned char oxideModel[128];
 static struct NativeCharacterMetadata s_character;
+static struct NativeCharacterMetadata s_otherCharacters[CHARACTER_SELECT_EXTRA_SLOT_CAPACITY - 1];
+static size_t s_characterCount = 1;
+static size_t s_bufferUsed;
 static struct Model s_retailModel;
 
-size_t NativeCharacterLibrary_Count(void) { return 1; }
+size_t NativeCharacterLibrary_Count(void) { return s_characterCount; }
 
 const struct NativeCharacterMetadata *NativeCharacterLibrary_Get(size_t index)
 {
-	return index == 0 ? &s_character : NULL;
+	return index >= s_characterCount ? NULL : index == 0 ? &s_character : &s_otherCharacters[index - 1];
 }
 
 struct Model *LOAD_GetExtraCharacterModelByName(char *name)
@@ -34,13 +37,15 @@ void *MEMPACK_AllocMem(s32 size, const char *name)
 {
 	(void)name;
 	int aligned = MEMPACK_ALIGN_SIZE(size);
-	if (aligned > s_freeBytes || aligned > (int)sizeof(s_buffer))
+	if (aligned > s_freeBytes || aligned > (int)(sizeof(s_buffer) - s_bufferUsed))
 	{
 		CtrTest_Bail("the loader called the trapping allocator without enough memory");
 	}
 	s_allocations++;
 	s_freeBytes -= aligned;
-	return s_buffer;
+	void *buffer = (char *)s_buffer + s_bufferUsed;
+	s_bufferUsed += aligned;
+	return buffer;
 }
 
 void LOAD_RunPtrMap(char *origin, int *offsets, int count)
@@ -91,6 +96,62 @@ static void WriteModel(const char *path, bool valid)
 	}
 }
 
+static void TestMultiplayerModels(const char *path, struct GameTracker *tracker)
+{
+	CTR_TEST_SECTION("independent multiplayer models and shared identity caches");
+	LOAD_ResetCharacterModelCache();
+	tracker->numPlyrCurrGame = len(sdata->customCharacters);
+	s_freeBytes = s_reserve + tracker->numPlyrCurrGame * 104;
+	int before = s_allocations;
+	for (int player = 0; player < tracker->numPlyrCurrGame; player++)
+	{
+		struct CustomCharacterSelection *selection = &sdata->customCharacters[player];
+		snprintf(selection->identity, sizeof(selection->identity), "player-%d", player);
+		memcpy(selection->modelPath, path, strlen(path) + 1);
+		selection->baseID = data.characterIDs[player] = PAPU_PAPU;
+	}
+	LOAD_FinalizeCharacterModels();
+	CTR_TEST_CHECK(s_allocations == before + tracker->numPlyrCurrGame && s_freeBytes == s_reserve,
+	               "every human's custom identity is admitted without spending the initialization reserve");
+	for (int player = 0; player < tracker->numPlyrCurrGame; player++)
+	{
+		CTR_TEST_CHECK(LOAD_GetDriverModel(player, PAPU_PAPU) == sdata->customPlayerModels[player].model &&
+		               sdata->customPlayerModels[player].model != NULL &&
+		               (player == 0 || sdata->customPlayerModels[player].model != sdata->customPlayerModels[player - 1].model),
+		               "players sharing a retail base retain their own custom models");
+	}
+	int prepared = s_allocations;
+	sdata->customCharacters[3] = sdata->customCharacters[0];
+	CTR_TEST_CHECK(LOAD_GetDriverModel(3, PAPU_PAPU) == LOAD_GetDriverModel(0, PAPU_PAPU) && s_allocations == prepared,
+	               "a repeated identity reuses its prepared model without spawning allocations");
+	CustomCharacter_Select(1, NULL);
+	CTR_TEST_CHECK(LOAD_GetDriverModel(1, PAPU_PAPU) == &s_retailModel && LOAD_GetDriverModel(4, PAPU_PAPU) == &s_retailModel,
+	               "retail humans and AI sharing a custom base keep the retail model");
+
+	LOAD_ResetCharacterModelCache();
+	s_characterCount = CHARACTER_SELECT_EXTRA_SLOT_CAPACITY;
+	s_freeBytes = (int)s_characterCount * 104;
+	before = s_allocations;
+	for (size_t index = 0; index < s_characterCount; index++)
+	{
+		struct NativeCharacterMetadata *entry = index == 0 ? &s_character : &s_otherCharacters[index - 1];
+		snprintf(entry->identity, sizeof(entry->identity), "preview-%u", (unsigned int)index);
+		memcpy(entry->modelHi, path, strlen(path) + 1);
+		CTR_TEST_CHECK(LOAD_GetCharacterPreviewModel(index % len(tracker->pushBuffer), PAPU_PAPU, entry->identity) != &s_retailModel,
+		               "every viewport can load each custom preview");
+	}
+	CTR_TEST_CHECK(s_allocations == before + (int)s_characterCount && s_freeBytes == 0,
+	               "eight distinct preview identities occupy eight model allocations");
+	prepared = s_allocations;
+	for (size_t index = 0; index < s_characterCount; index++)
+	{
+		const struct NativeCharacterMetadata *entry = NativeCharacterLibrary_Get(index);
+		CTR_TEST_CHECK(LOAD_GetCharacterPreviewModel((index + 1) % len(tracker->pushBuffer), PAPU_PAPU, entry->identity) ==
+		               sdata->customPreviewModels[index].model && s_allocations == prepared,
+		               "switching identities between viewports reuses cached previews without thrashing");
+	}
+}
+
 int main(void)
 {
 	char directory[1024], path[1200];
@@ -120,27 +181,27 @@ int main(void)
 	tracker.gameMode1 = ARCADE_MODE;
 	tracker.numPlyrCurrGame = 1;
 	data.characterIDs[0] = PAPU_PAPU;
-	sdata->customPlayerBaseID = PAPU_PAPU;
+	sdata->customCharacters[0].baseID = PAPU_PAPU;
 	data.MetaDataCharacters[PAPU_PAPU].name_Debug = "papu";
-	strcpy(sdata->customPlayerIdentity, "fixture");
-	if (strlen(path) >= sizeof(sdata->customPlayerModelPath))
+	strcpy(sdata->customCharacters[0].identity, "fixture");
+	if (strlen(path) >= sizeof(sdata->customCharacters[0].modelPath))
 	{
 		CtrTest_Bail("scratch path does not fit in the model path field");
 	}
-	memcpy(sdata->customPlayerModelPath, path, strlen(path) + 1);
+	memcpy(sdata->customCharacters[0].modelPath, path, strlen(path) + 1);
 	s_reserve = 1024;
 	s_freeBytes = s_reserve + 104;
 	LOAD_FinalizeCharacterModels();
-	CTR_TEST_CHECK(sdata->customPlayerModel != NULL && s_freeBytes == s_reserve, "race loading uses the remaining level initialization budget");
+	CTR_TEST_CHECK(sdata->customPlayerModels[0].model != NULL && s_freeBytes == s_reserve, "race loading uses the remaining level initialization budget");
 	int preparedAllocations = s_allocations;
-	CTR_TEST_CHECK(LOAD_GetDriverModel(0, PAPU_PAPU) == sdata->customPlayerModel && s_allocations == preparedAllocations,
+	CTR_TEST_CHECK(LOAD_GetDriverModel(0, PAPU_PAPU) == sdata->customPlayerModels[0].model && s_allocations == preparedAllocations,
 	               "spawning resolves the prepared custom model without allocating");
 	CTR_TEST_CHECK(LOAD_GetDriverModel(1, PAPU_PAPU) == &s_retailModel,
 	               "another driver with the same base keeps the retail model");
 	LOAD_ResetCharacterModelCache();
 	s_freeBytes = s_reserve + 103;
 	LOAD_FinalizeCharacterModels();
-	CTR_TEST_CHECK(sdata->customPlayerModel == NULL && s_freeBytes == s_reserve + 103, "an oversized model leaves the retail fallback and the arena intact");
+	CTR_TEST_CHECK(sdata->customPlayerModels[0].model == NULL && s_freeBytes == s_reserve + 103, "an oversized model leaves the retail fallback and the arena intact");
 	CTR_TEST_CHECK(LOAD_GetDriverModel(0, PAPU_PAPU) == &s_retailModel,
 	               "the same driver resolver falls back after a rejected custom load");
 
@@ -165,16 +226,17 @@ int main(void)
 	CTR_TEST_CHECK(LOAD_GetCharacterPreviewModel(-1, PAPU_PAPU, "fixture") == NULL &&
 	               LOAD_GetCharacterPreviewModel(4, PAPU_PAPU, "fixture") == NULL,
 	               "preview requests reject player indices outside the viewport slots");
-	sdata->customPlayerModel = preview;
-	strcpy(sdata->customPlayerModelIdentity, "fixture");
+	sdata->customPlayerModels[0].model = preview;
+	strcpy(sdata->customPlayerModels[0].identity, "fixture");
 	LOAD_ResetCharacterModelCache();
-	CTR_TEST_CHECK(sdata->customPlayerModel == NULL && sdata->customPreviewModel == NULL &&
-	               !sdata->customPreviewAttempted && sdata->customPlayerModelIdentity[0] == '\0' &&
-	               sdata->customPreviewIdentity[0] == '\0',
+	CTR_TEST_CHECK(sdata->customPlayerModels[0].model == NULL && sdata->customPreviewModels[0].model == NULL &&
+	               !sdata->customPreviewModels[0].attempted && sdata->customPlayerModels[0].identity[0] == '\0' &&
+	               sdata->customPreviewModels[0].identity[0] == '\0',
 	               "the model owner resets both cache contexts and their identities");
-	CTR_TEST_CHECK(strcmp(sdata->customPlayerIdentity, "fixture") == 0 && sdata->customPlayerBaseID == PAPU_PAPU &&
-	               strcmp(sdata->customPlayerModelPath, path) == 0,
+	CTR_TEST_CHECK(strcmp(sdata->customCharacters[0].identity, "fixture") == 0 && sdata->customCharacters[0].baseID == PAPU_PAPU &&
+	               strcmp(sdata->customCharacters[0].modelPath, path) == 0,
 	               "level cache teardown preserves the selected character snapshot");
+	TestMultiplayerModels(path, &tracker);
 
 	WriteModel(path, false);
 	s_freeBytes = 4096;
