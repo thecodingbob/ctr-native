@@ -111,7 +111,7 @@ static void TestCustomCharacterIcons(void)
 {
 	CTR_TEST_SECTION("race portraits follow driver identity rather than the shared retail base");
 	g_config.aspectRatio = 0;
-	s_tracker.numPlyrCurrGame = len(sdata->customCharacters);
+	s_tracker.numPlyrCurrGame = len(s_tracker.pushBuffer);
 	data.MetaDataCharacters[POLAR].name_Debug = "polar";
 	data.MetaDataCharacters[POLAR].iconID = 0;
 	s_tracker.ptrIcons[0] = &s_icon;
@@ -171,6 +171,20 @@ static void TestCustomCharacterIcons(void)
 	LOAD_FinalizeCharacterIcons();
 	CTR_TEST_CHECK_EQ(DecalGlobal_GetIconTexture(LOAD_GetDriverIcon(0)), 101,
 	                  "level loading and checkpoint restore rebuild portraits from the selected snapshot, not mutable library positions");
+	int bot = len(data.characterIDs) - 1;
+	data.characterIDs[bot] = POLAR;
+	sdata->customCharacters[bot] = sdata->customCharacters[1];
+	LOAD_FinalizeCharacterIcons();
+	CTR_TEST_CHECK_EQ(s_iconUploads, 2, "race portraits deduplicate shared identities across human and AI drivers");
+	CTR_TEST_CHECK(LOAD_GetDriverIcon(bot) == LOAD_GetDriverIcon(1) && LOAD_GetDriverIcon(bot) != &s_icon,
+	               "the last expanded-grid AI slot resolves its own custom portrait");
+	ResetDrawing();
+	s_buffer.primMem.guardEnd = (char *)s_glyphs + sizeof(s_glyphs);
+	UI_DrawDriverIcon(LOAD_GetDriverIcon(bot), 100, 40, &s_buffer.primMem, s_originalOT, 1, FP(1), 0x808080);
+	bind = NativeGpuLinks_ToHostPointer(s_originalOT[0]);
+	CTR_TEST_CHECK_EQ(bind->code[0] & 0xffffff, 102, "AI portraits use the same generic host-texture drawing path");
+	CustomCharacter_Select(bot, NULL);
+	CTR_TEST_CHECK(LOAD_GetDriverIcon(bot) == &s_icon, "a retail AI on the same base does not borrow the custom portrait");
 }
 
 static void TestHostIconTextures(void)

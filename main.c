@@ -262,6 +262,7 @@ Platform_Init("Crash Team Racing Expanded", 800, 600);
 		fprintf(stderr, "[Custom Tracks] Asset path is too long.\n");
 	}
 
+	NativeCharacterLibrary_RefreshAssets();
 	const int result = CTR_Main();
 
 	NativeTrackLibrary_Shutdown();

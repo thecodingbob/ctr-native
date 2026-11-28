@@ -651,14 +651,7 @@ void MM_Characters_SetMenuLayout(void)
 }
 void MM_Characters_BackupIDs(void)
 {
-	s16 driverIndex;
-
-	for (driverIndex = 0; driverIndex < MM_CHARACTER_SELECT_DEFAULT_DRIVER_COUNT; driverIndex++)
-	{
-		// make a backup when you leave character selection,
-		// backup is restored when you go back to selection
-		MM_CHARACTER_IDS_BACKUP[driverIndex] = GAME_CHARACTER_IDS[driverIndex];
-	}
+	CustomCharacter_BackupSelections();
 	return;
 }
 void MM_Characters_PreventOverlap(void)
@@ -734,23 +727,10 @@ void MM_Characters_PreventOverlap(void)
 void MM_Characters_RestoreIDs(void)
 {
 	s16 playerIndex;
-	s16 driverIndex;
-	char characterDirectory[NATIVE_CHARACTER_PATH_BYTES];
-	if (NativeAssets_BuildPath("characters", characterDirectory, sizeof(characterDirectory)))
-	{
-		NativeCharacterLibrary_Refresh(characterDirectory);
-	}
+	NativeCharacterLibrary_RefreshAssets();
 	MM_ACTIVE_CHARACTER_SELECT_META = NULL;
 	LOAD_RefreshCharacterIcons();
-	s_characterSelectCustomCount = 0;
-	for (size_t index = 0; index < NativeCharacterLibrary_Count() && s_characterSelectCustomCount < CHARACTER_SELECT_EXTRA_SLOT_CAPACITY; index++)
-	{
-		const struct NativeCharacterMetadata *entry = CustomCharacter_GetMenuEntry(index);
-		if (entry != NULL)
-		{
-			s_characterSelectCustomEntries[s_characterSelectCustomCount++] = entry;
-		}
-	}
+	s_characterSelectCustomCount = CustomCharacter_PrepareAvailableEntries(s_characterSelectCustomEntries, len(s_characterSelectCustomEntries));
 
 	memset(sdata->selectedEngineClass, 0, sizeof(sdata->selectedEngineClass));
 
@@ -759,12 +739,7 @@ void MM_Characters_RestoreIDs(void)
 	MM_CHARACTER_SELECT_TRANSITION_FRAME = MM_CHARACTER_SELECT_TRANSITION_FRAMES;
 	MM_CHARACTER_SELECT_MENU_STATE = ENTERING_MENU;
 
-	// This uses 80086e84, which controls character IDs
-	for (driverIndex = 0; driverIndex < MM_CHARACTER_SELECT_DEFAULT_DRIVER_COUNT; driverIndex++)
-	{
-		// set character ID to the last ID you entered
-		GAME_CHARACTER_IDS[driverIndex] = MM_CHARACTER_IDS_BACKUP[driverIndex];
-	}
+	CustomCharacter_RestoreSelections();
 
 	MM_Characters_SetMenuLayout();
 

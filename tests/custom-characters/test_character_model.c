@@ -4,6 +4,15 @@
 #include <platform/native_external_file.h>
 #include <stdint.h>
 
+static const char *s_characterRoot;
+
+int NativeAssets_BuildPath(const char *relativePath, char *dst, size_t size)
+{
+	if (strcmp(relativePath, "characters") != 0 || s_characterRoot == NULL || strlen(s_characterRoot) >= size) { return 0; }
+	memcpy(dst, s_characterRoot, strlen(s_characterRoot) + 1);
+	return 1;
+}
+
 static void Write32(unsigned char *p, uint32_t value)
 {
 	p[0] = (unsigned char)value;
@@ -38,13 +47,17 @@ static void TestCharacterMetadata(const char *directory, const char *modelPath)
 	{
 		CtrTest_Bail("could not write the character metadata fixture");
 	}
-	CTR_TEST_CHECK(NativeCharacterLibrary_Refresh(directory) && NativeCharacterLibrary_Count() == 1,
+	s_characterRoot = directory;
+	CTR_TEST_CHECK(NativeCharacterLibrary_RefreshAssets() && NativeCharacterLibrary_Count() == 1,
 	               "metadata scanning ignores unknown sections and unsupported audio keys");
 	const struct NativeCharacterMetadata *metadata = NativeCharacterLibrary_Get(0);
 	if (metadata == NULL)
 	{
 		CtrTest_Bail("the character metadata fixture was not admitted");
 	}
+	s_characterRoot = NULL;
+	CTR_TEST_CHECK(!NativeCharacterLibrary_RefreshAssets() && NativeCharacterLibrary_Get(0) == metadata,
+	               "an unavailable asset root preserves the previously prepared library");
 	CTR_TEST_CHECK(strcmp(metadata->identity, "fixture") == 0 && strcmp(metadata->name, "Fixture") == 0 &&
 	               strcmp(metadata->shortName, "FX") == 0 && strcmp(metadata->author, "Tests") == 0 && strcmp(metadata->base, "polar") == 0,
 	               "the character section stores every supported metadata field");

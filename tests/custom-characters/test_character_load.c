@@ -103,10 +103,10 @@ static void TestMultiplayerModels(const char *path, struct GameTracker *tracker)
 {
 	CTR_TEST_SECTION("independent multiplayer models and shared identity caches");
 	LOAD_ResetCharacterModelCache();
-	tracker->numPlyrCurrGame = len(sdata->customCharacters);
-	s_freeBytes = s_reserve + tracker->numPlyrCurrGame * 104;
+	tracker->numPlyrCurrGame = len(tracker->pushBuffer);
+	s_freeBytes = s_reserve + (int)len(sdata->customCharacters) * 104;
 	int before = s_allocations;
-	for (int player = 0; player < tracker->numPlyrCurrGame; player++)
+	for (int player = 0; player < (int)len(sdata->customCharacters); player++)
 	{
 		struct CustomCharacterSelection *selection = &sdata->customCharacters[player];
 		snprintf(selection->identity, sizeof(selection->identity), "player-%d", player);
@@ -115,20 +115,21 @@ static void TestMultiplayerModels(const char *path, struct GameTracker *tracker)
 	}
 	LOAD_FinalizeCharacterModels();
 	CTR_TEST_CHECK(s_iconPreparations > 0, "race loading prepares portraits alongside the selected character resources");
-	CTR_TEST_CHECK(s_allocations == before + tracker->numPlyrCurrGame && s_freeBytes == s_reserve,
-	               "every human's custom identity is admitted without spending the initialization reserve");
-	for (int player = 0; player < tracker->numPlyrCurrGame; player++)
+	CTR_TEST_CHECK(s_allocations == before + (int)len(sdata->customCharacters) && s_freeBytes == s_reserve,
+	               "human and AI custom identities are admitted without spending the initialization reserve");
+	for (int player = 0; player < (int)len(sdata->customCharacters); player++)
 	{
-		CTR_TEST_CHECK(LOAD_GetDriverModel(player, PAPU_PAPU) == sdata->customPlayerModels[player].model &&
-		               sdata->customPlayerModels[player].model != NULL &&
-		               (player == 0 || sdata->customPlayerModels[player].model != sdata->customPlayerModels[player - 1].model),
-		               "players sharing a retail base retain their own custom models");
+		CTR_TEST_CHECK(LOAD_GetDriverModel(player, PAPU_PAPU) == sdata->customDriverModels[player].model &&
+		               sdata->customDriverModels[player].model != NULL &&
+		               (player == 0 || sdata->customDriverModels[player].model != sdata->customDriverModels[player - 1].model),
+		               "human and AI drivers sharing a retail base retain their own custom models");
 	}
 	int prepared = s_allocations;
 	sdata->customCharacters[3] = sdata->customCharacters[0];
 	CTR_TEST_CHECK(LOAD_GetDriverModel(3, PAPU_PAPU) == LOAD_GetDriverModel(0, PAPU_PAPU) && s_allocations == prepared,
 	               "a repeated identity reuses its prepared model without spawning allocations");
 	CustomCharacter_Select(1, NULL);
+	CustomCharacter_Select(4, NULL);
 	CTR_TEST_CHECK(LOAD_GetDriverModel(1, PAPU_PAPU) == &s_retailModel && LOAD_GetDriverModel(4, PAPU_PAPU) == &s_retailModel,
 	               "retail humans and AI sharing a custom base keep the retail model");
 
@@ -196,16 +197,16 @@ int main(void)
 	s_reserve = 1024;
 	s_freeBytes = s_reserve + 104;
 	LOAD_FinalizeCharacterModels();
-	CTR_TEST_CHECK(sdata->customPlayerModels[0].model != NULL && s_freeBytes == s_reserve, "race loading uses the remaining level initialization budget");
+	CTR_TEST_CHECK(sdata->customDriverModels[0].model != NULL && s_freeBytes == s_reserve, "race loading uses the remaining level initialization budget");
 	int preparedAllocations = s_allocations;
-	CTR_TEST_CHECK(LOAD_GetDriverModel(0, PAPU_PAPU) == sdata->customPlayerModels[0].model && s_allocations == preparedAllocations,
+	CTR_TEST_CHECK(LOAD_GetDriverModel(0, PAPU_PAPU) == sdata->customDriverModels[0].model && s_allocations == preparedAllocations,
 	               "spawning resolves the prepared custom model without allocating");
 	CTR_TEST_CHECK(LOAD_GetDriverModel(1, PAPU_PAPU) == &s_retailModel,
 	               "another driver with the same base keeps the retail model");
 	LOAD_ResetCharacterModelCache();
 	s_freeBytes = s_reserve + 103;
 	LOAD_FinalizeCharacterModels();
-	CTR_TEST_CHECK(sdata->customPlayerModels[0].model == NULL && s_freeBytes == s_reserve + 103, "an oversized model leaves the retail fallback and the arena intact");
+	CTR_TEST_CHECK(sdata->customDriverModels[0].model == NULL && s_freeBytes == s_reserve + 103, "an oversized model leaves the retail fallback and the arena intact");
 	CTR_TEST_CHECK(LOAD_GetDriverModel(0, PAPU_PAPU) == &s_retailModel,
 	               "the same driver resolver falls back after a rejected custom load");
 
@@ -230,11 +231,11 @@ int main(void)
 	CTR_TEST_CHECK(LOAD_GetCharacterPreviewModel(-1, PAPU_PAPU, "fixture") == NULL &&
 	               LOAD_GetCharacterPreviewModel(4, PAPU_PAPU, "fixture") == NULL,
 	               "preview requests reject player indices outside the viewport slots");
-	sdata->customPlayerModels[0].model = preview;
-	strcpy(sdata->customPlayerModels[0].identity, "fixture");
+	sdata->customDriverModels[0].model = preview;
+	strcpy(sdata->customDriverModels[0].identity, "fixture");
 	LOAD_ResetCharacterModelCache();
-	CTR_TEST_CHECK(sdata->customPlayerModels[0].model == NULL && sdata->customPreviewModels[0].model == NULL &&
-	               !sdata->customPreviewModels[0].attempted && sdata->customPlayerModels[0].identity[0] == '\0' &&
+	CTR_TEST_CHECK(sdata->customDriverModels[0].model == NULL && sdata->customPreviewModels[0].model == NULL &&
+	               !sdata->customPreviewModels[0].attempted && sdata->customDriverModels[0].identity[0] == '\0' &&
 	               sdata->customPreviewModels[0].identity[0] == '\0',
 	               "the model owner resets both cache contexts and their identities");
 	CTR_TEST_CHECK(strcmp(sdata->customCharacters[0].identity, "fixture") == 0 && sdata->customCharacters[0].baseID == PAPU_PAPU &&

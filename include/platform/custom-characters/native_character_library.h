@@ -32,6 +32,7 @@ struct NativeCharacterVoiceSample
 
 /* Replaces the scan only on success. Results remain valid until the next scan. */
 int NativeCharacterLibrary_Refresh(const char *directory);
+int NativeCharacterLibrary_RefreshAssets(void);
 size_t NativeCharacterLibrary_Count(void);
 const struct NativeCharacterMetadata *NativeCharacterLibrary_Get(size_t index);
 void NativeCharacterLibrary_Shutdown(void);

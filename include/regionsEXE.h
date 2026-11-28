@@ -3965,7 +3965,7 @@ struct sData
 	s16 battleSettings[6];
 
 	// 8009A980
-	s16 characterIDs_backup[8];
+	s16 characterIDs_backup[LOAD_CHARACTER_ID_COUNT];
 
 	// 8009A990
 	u32 buttonTapPerPlayer[4];
@@ -4132,8 +4132,9 @@ struct sData
 	int loadedRaceFieldSize;
 	// A warp pad requested the first load of this Adventure event.
 	bool seedAdventureGrid;
-	struct CustomCharacterSelection customCharacters[len(((struct GameTracker *)0)->pushBuffer)];
-	struct CustomCharacterModelCache customPlayerModels[len(((struct GameTracker *)0)->pushBuffer)];
+	struct CustomCharacterSelection customCharacters[len(((struct Data *)0)->characterIDs)];
+	struct CustomCharacterSelection customCharactersBackup[LOAD_CHARACTER_ID_COUNT];
+	struct CustomCharacterModelCache customDriverModels[len(((struct Data *)0)->characterIDs)];
 	struct CustomCharacterModelCache customPreviewModels[CHARACTER_SELECT_EXTRA_SLOT_CAPACITY];
 	// Zero means unowned audio; positive values identify the speaking driver + 1.
 	int customCharacterAudioDriver;

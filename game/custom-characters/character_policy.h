@@ -22,10 +22,23 @@ static inline const struct NativeCharacterMetadata *CustomCharacter_GetMenuEntry
 	return entry != NULL && CustomCharacter_GetBaseID(entry->base) >= 0 ? entry : NULL;
 }
 
-static inline void CustomCharacter_Select(int playerIndex, const struct NativeCharacterMetadata *entry)
+// Shared active roster for selection, portraits and random opponents. Library
+// activation policy belongs here, not in the consumers of the prepared entries.
+static inline int CustomCharacter_PrepareAvailableEntries(const struct NativeCharacterMetadata **entries, int capacity)
 {
-	if (playerIndex < 0 || playerIndex >= (int)len(sdata->customCharacters)) { return; }
-	struct CustomCharacterSelection *selection = &sdata->customCharacters[playerIndex];
+	int count = 0;
+	for (size_t index = 0; index < NativeCharacterLibrary_Count() && count < capacity && count < CHARACTER_SELECT_EXTRA_SLOT_CAPACITY; index++)
+	{
+		const struct NativeCharacterMetadata *entry = CustomCharacter_GetMenuEntry(index);
+		if (entry != NULL) { entries[count++] = entry; }
+	}
+	return count;
+}
+
+static inline void CustomCharacter_Select(int driverID, const struct NativeCharacterMetadata *entry)
+{
+	if (driverID < 0 || driverID >= (int)len(sdata->customCharacters)) { return; }
+	struct CustomCharacterSelection *selection = &sdata->customCharacters[driverID];
 	int baseID = entry != NULL ? CustomCharacter_GetBaseID(entry->base) : -1;
 	if (baseID < 0)
 	{
@@ -42,29 +55,50 @@ static inline void CustomCharacter_Select(int playerIndex, const struct NativeCh
 	memcpy(selection->audioDirectory, entry->directory, sizeof(selection->audioDirectory));
 }
 
-static inline bool CustomCharacter_IsSelected(int playerIndex)
+static inline bool CustomCharacter_IsSelected(int driverID)
 {
-	if (playerIndex < 0 || playerIndex >= (int)len(sdata->customCharacters)) { return false; }
-	const struct CustomCharacterSelection *selection = &sdata->customCharacters[playerIndex];
+	if (driverID < 0 || driverID >= (int)len(sdata->customCharacters)) { return false; }
+	const struct CustomCharacterSelection *selection = &sdata->customCharacters[driverID];
 	return selection->identity[0] != '\0' && selection->baseID >= 0 &&
-	       selection->baseID < GAME_CHARACTER_COUNT && data.characterIDs[playerIndex] == selection->baseID;
+	       selection->baseID < GAME_CHARACTER_COUNT && data.characterIDs[driverID] == selection->baseID;
 }
 
-static inline const char *CustomCharacter_GetAudioDirectory(int playerIndex)
+static inline void CustomCharacter_ClearDriversFrom(int driverID)
 {
-	if (!CustomCharacter_IsSelected(playerIndex) || sdata->customCharacters[playerIndex].audioDirectory[0] == '\0')
+	for (; driverID < (int)len(sdata->customCharacters); driverID++)
+	{
+		CustomCharacter_Select(driverID, NULL);
+	}
+}
+
+static inline void CustomCharacter_BackupSelections(void)
+{
+	memcpy(sdata->characterIDs_backup, data.characterIDs, sizeof(sdata->characterIDs_backup));
+	memcpy(sdata->customCharactersBackup, sdata->customCharacters, sizeof(sdata->customCharactersBackup));
+}
+
+static inline void CustomCharacter_RestoreSelections(void)
+{
+	memcpy(data.characterIDs, sdata->characterIDs_backup, sizeof(sdata->characterIDs_backup));
+	memcpy(sdata->customCharacters, sdata->customCharactersBackup, sizeof(sdata->customCharactersBackup));
+	CustomCharacter_ClearDriversFrom(len(sdata->customCharactersBackup));
+}
+
+static inline const char *CustomCharacter_GetAudioDirectory(int driverID)
+{
+	if (!CustomCharacter_IsSelected(driverID) || sdata->customCharacters[driverID].audioDirectory[0] == '\0')
 	{
 		return NULL;
 	}
-	return sdata->customCharacters[playerIndex].audioDirectory;
+	return sdata->customCharacters[driverID].audioDirectory;
 }
 
-// A retail sound ID alone cannot distinguish custom players from their base.
+// A retail sound ID alone cannot distinguish custom drivers from their base.
 // Only explicitly owned requests may resolve custom voice resources.
-static inline int CustomCharacter_GetAudioPlayer(int baseID)
+static inline int CustomCharacter_GetAudioDriver(int baseID)
 {
-	int player = sdata->customCharacterAudioDriver - 1;
-	return CustomCharacter_IsSelected(player) && sdata->customCharacters[player].baseID == baseID ? player : -1;
+	int driver = sdata->customCharacterAudioDriver - 1;
+	return CustomCharacter_IsSelected(driver) && sdata->customCharacters[driver].baseID == baseID ? driver : -1;
 }
 
 static inline int CustomCharacter_GetShortVoiceIndex(int soundID)
@@ -72,7 +106,7 @@ static inline int CustomCharacter_GetShortVoiceIndex(int soundID)
 	enum { FIRST_VOICE = 28, SECOND_VOICE = 44 };
 	int index = soundID >= SECOND_VOICE ? 1 : 0;
 	int baseID = soundID - (index != 0 ? SECOND_VOICE : FIRST_VOICE);
-	return baseID >= 0 && baseID < GAME_CHARACTER_COUNT && CustomCharacter_GetAudioPlayer(baseID) >= 0 ? index : -1;
+	return baseID >= 0 && baseID < GAME_CHARACTER_COUNT && CustomCharacter_GetAudioDriver(baseID) >= 0 ? index : -1;
 }
 
 static inline const char *CustomCharacter_ResolveXAVoice(int categoryID, int xaID)
@@ -84,8 +118,8 @@ static inline const char *CustomCharacter_ResolveXAVoice(int categoryID, int xaI
 	}
 	for (int baseID = 0; baseID < GAME_CHARACTER_COUNT; baseID++)
 	{
-		int player = CustomCharacter_GetAudioPlayer(baseID);
-		const char *directory = CustomCharacter_GetAudioDirectory(player);
+		int driver = CustomCharacter_GetAudioDriver(baseID);
+		const char *directory = CustomCharacter_GetAudioDirectory(driver);
 		if (directory == NULL) { continue; }
 		int localIndex = 0;
 		// Retail does not order every character's XA IDs alike.

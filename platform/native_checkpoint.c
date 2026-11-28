@@ -1443,9 +1443,9 @@ internal void NativeCheckpoint_RelocateHowlLists(const struct NativeCheckpointHe
 internal void NativeCheckpoint_RelocateBotModels(const struct NativeCheckpointHeader *oldHeader, const struct NativeCheckpointHeader *liveHeader)
 {
 	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.standaloneBotModels);
-	for (size_t index = 0; index < len(sdata_static.customPlayerModels); index++)
+	for (size_t index = 0; index < len(sdata_static.customDriverModels); index++)
 	{
-		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.customPlayerModels[index].model);
+		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.customDriverModels[index].model);
 	}
 	for (size_t index = 0; index < len(sdata_static.customPreviewModels); index++)
 	{

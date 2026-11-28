@@ -140,22 +140,22 @@ bool Bank_CustomCharacterVoice(u16 soundID, struct OtherFX *meta, u16 *spuAddr)
 		return false;
 	}
 	int baseID = soundID - (index == 0 ? LOCAL_VOICE_FIRST : LOCAL_VOICE_FIRST + GAME_CHARACTER_COUNT);
-	int player = CustomCharacter_GetAudioPlayer(baseID);
-	const char *directory = CustomCharacter_GetAudioDirectory(player);
+	int driver = CustomCharacter_GetAudioDriver(baseID);
+	const char *directory = CustomCharacter_GetAudioDirectory(driver);
 	if (directory == NULL)
 	{
 		return false;
 	}
-	if (strcmp(s_bankCustomVoiceDirectory[player], directory) != 0)
+	if (strcmp(s_bankCustomVoiceDirectory[driver], directory) != 0)
 	{
-		memset(s_bankCustomVoices[player], 0, sizeof(s_bankCustomVoices[player]));
-		memcpy(s_bankCustomVoiceDirectory[player], directory, sizeof(s_bankCustomVoiceDirectory[player]));
+		memset(s_bankCustomVoices[driver], 0, sizeof(s_bankCustomVoices[driver]));
+		memcpy(s_bankCustomVoiceDirectory[driver], directory, sizeof(s_bankCustomVoiceDirectory[driver]));
 	}
-	struct BankCachedVoice *cached = &s_bankCustomVoices[player][index];
+	struct BankCachedVoice *cached = &s_bankCustomVoices[driver][index];
 	if (cached->addr == 0)
 	{
 		struct NativeCharacterVoiceSample sample;
-		if (!Bank_CacheCanAllocate() || !NativeCharacterLibrary_ReadVoice(s_bankCustomVoiceDirectory[player], index, &sample))
+		if (!Bank_CacheCanAllocate() || !NativeCharacterLibrary_ReadVoice(s_bankCustomVoiceDirectory[driver], index, &sample))
 		{
 			return false;
 		}

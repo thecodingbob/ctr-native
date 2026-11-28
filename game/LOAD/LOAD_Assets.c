@@ -34,14 +34,14 @@ static b32 LOAD_IsRandomBotSelectionEnabled(void)
 	return mode == BOT_SELECTION_RANDOM_UNLOCKED || mode == BOT_SELECTION_RANDOM_ALL;
 }
 
-static void LOAD_ShuffleCharacterIDs(s16 *characterIDs)
+static void LOAD_ShuffleRoster(struct LOAD_Roster *roster)
 {
-	for (int i = GAME_CHARACTER_COUNT - 1; i > 0; i--)
+	for (int i = roster->count - 1; i > 0; i--)
 	{
 		int swapIndex = (u32)RngDeadCoed(&sdata->advRng) % (i + 1);
-		s16 characterID = characterIDs[i];
-		characterIDs[i] = characterIDs[swapIndex];
-		characterIDs[swapIndex] = characterID;
+		struct LOAD_RosterEntry entry = roster->entries[i];
+		roster->entries[i] = roster->entries[swapIndex];
+		roster->entries[swapIndex] = entry;
 	}
 }
 
@@ -121,11 +121,11 @@ static b32 LOAD_IsCharacterUsedByPlayer(s16 characterID)
 
 int LOAD_PredictRaceFieldSize(int gameMode1, s32 cupID, int playerCount)
 {
-	const int available = LOAD_RosterAvailableBotCount(GAME_CHARACTER_COUNT, data.characterIDs, playerCount,
-	                                                  g_config.botSelectionMode == BOT_SELECTION_RANDOM_UNLOCKED,
-	                                                  MM_Characters_IsCharacterUnlocked);
+	struct LOAD_Roster roster;
+	LOAD_RosterPrepareAvailable(&roster, playerCount, LOAD_IsRandomBotSelectionEnabled(),
+	                            g_config.botSelectionMode == BOT_SELECTION_RANDOM_UNLOCKED, MM_Characters_IsCharacterUnlocked);
 	return RaceField_ConfiguredRacerCount(gameMode1, cupID, playerCount, g_config.extendedMultiplayer,
-	                                     g_config.raceKartCount, available);
+	                                     g_config.raceKartCount, roster.count);
 }
 
 static b32 LOAD_ShouldPreserveRandomBotRoster(void)
@@ -151,44 +151,32 @@ static b32 LOAD_RacerNeedsStandaloneModel(s16 characterID)
 	return (characterID == LOAD_UNCOVERED_BASE_RACER_ID) && (data.characterIDs[0] >= LOAD_DEFAULT_CHARACTER_COUNT);
 }
 
-static void LOAD_SelectRaceBots(int playerCount, int racerCount, int previousCount)
+static int LOAD_SelectRaceBots(int playerCount, int racerCount, int previousCount)
 {
-	s16 candidates[GAME_CHARACTER_COUNT];
+	struct LOAD_Roster roster;
 	const b32 random = LOAD_IsRandomBotSelectionEnabled();
 	const b32 unlockedOnly = g_config.botSelectionMode == BOT_SELECTION_RANDOM_UNLOCKED;
+	LOAD_RosterPrepareAvailable(&roster, playerCount, random, unlockedOnly, MM_Characters_IsCharacterUnlocked);
 	int next = playerCount;
 	// Keep the eligible prefix in later cup rounds so points remain attached to
 	// the same racers. A restart reuses the loaded models without selecting again.
 	if (random && LOAD_ShouldPreserveRandomBotRoster())
 	{
-		while (next < racerCount && next < previousCount && (u32)data.characterIDs[next] < GAME_CHARACTER_COUNT &&
-		       LOAD_RosterCharacterAvailable(data.characterIDs[next], data.characterIDs, next, unlockedOnly, MM_Characters_IsCharacterUnlocked))
+		while (next < racerCount && next < previousCount && LOAD_RosterRetainDriver(&roster, next))
 		{
 			next++;
 		}
 	}
-	if (next == racerCount)
+	if (random && next < racerCount)
 	{
-		return;
+		LOAD_ShuffleRoster(&roster);
 	}
 
-	for (int characterID = 0; characterID < GAME_CHARACTER_COUNT; characterID++)
+	for (int i = 0; i < roster.count && next < racerCount; i++)
 	{
-		candidates[characterID] = (s16)characterID;
+		LOAD_RosterSelectDriver(&roster.entries[i], next++);
 	}
-
-	if (random)
-	{
-		LOAD_ShuffleCharacterIDs(candidates);
-	}
-
-	for (int i = 0; i < GAME_CHARACTER_COUNT && next < racerCount; i++)
-	{
-		if (LOAD_RosterCharacterAvailable(candidates[i], data.characterIDs, next, unlockedOnly, MM_Characters_IsCharacterUnlocked))
-		{
-			data.characterIDs[next++] = candidates[i];
-		}
-	}
+	return next;
 }
 
 static int LOAD_QueueRaceBotModels(struct BigHeader *bigfile, int playerCount, int racerCount, b32 usesTwoPlayerPack)
@@ -203,6 +191,12 @@ static int LOAD_QueueRaceBotModels(struct BigHeader *bigfile, int playerCount, i
 		s16 characterID = data.characterIDs[i];
 		if (usesTwoPlayerPack || LOAD_RacerNeedsStandaloneModel(characterID))
 		{
+			bool prepared = false;
+			for (int index = 0; index < standaloneCharacterCount; index++)
+			{
+				if (standaloneCharacterIDs[index] == characterID) { prepared = true; break; }
+			}
+			if (prepared) { continue; }
 			standaloneDriverIDs[standaloneCharacterCount] = i;
 			standaloneCharacterIDs[standaloneCharacterCount++] = characterID;
 		}
@@ -295,7 +289,7 @@ void LOAD_Robots1P(int characterID)
 
 static void (*const LOAD_DriverMPK_SetPointer)(struct LoadQueueSlot *) = LOAD_QUEUE_CALLBACK_SET_POINTER;
 
-int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(struct LoadQueueSlot *))
+static int LOAD_QueueDriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(struct LoadQueueSlot *))
 {
 	int i;
 	int gameMode1;
@@ -308,13 +302,13 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 	const int players = gGT->numPlyrCurrGame;
 	const int previousCount = sdata->loadedRaceFieldSize;
 	const b32 configuredGrid = RaceField_UsesConfiguredGrid(gameMode1, gGT->cup.cupID, players, g_config.extendedMultiplayer);
-	sdata->loadedRaceFieldSize = 0;
+	int racerCount = 0;
 	LOAD_ResetExtraCharacterModels();
 	LOAD_ResetCharacterModelCache();
 	if (configuredGrid)
 	{
-		sdata->loadedRaceFieldSize = LOAD_PredictRaceFieldSize(gameMode1, gGT->cup.cupID, players);
-		LOAD_SelectRaceBots(players, sdata->loadedRaceFieldSize, previousCount);
+		racerCount = LOAD_PredictRaceFieldSize(gameMode1, gGT->cup.cupID, players);
+		racerCount = LOAD_SelectRaceBots(players, racerCount, previousCount);
 	}
 
 	int lastFileIndexMPK;
@@ -375,7 +369,7 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 
 		if (!configuredGrid && (players == 2) && (LOAD_SelectRobots2P(data.characterIDs[0], data.characterIDs[1]) < 0))
 		{
-			return sdata->ptrMPK;
+			return racerCount;
 		}
 
 		lastFileIndexMPK = BI_1PARCADEPACK + data.characterIDs[0];
@@ -492,22 +486,29 @@ int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(str
 		if (configuredGrid)
 		{
 			// Use the shared assets without adopting the pack's predefined roster.
-			sdata->loadedRaceFieldSize = LOAD_QueueRaceBotModels(bigfile, players, sdata->loadedRaceFieldSize, true);
+			racerCount = LOAD_QueueRaceBotModels(bigfile, players, racerCount, true);
 			LOAD_AppendQueue(bigfile, LT_GETADDR, BI_2PARCADEPACK, NULL, callback);
 		}
 		else
 		{
 			LOAD_Robots2P(bigfile, data.characterIDs[0], data.characterIDs[1], callback);
 		}
-		return sdata->ptrMPK;
+		return racerCount;
 	}
 
 QueueLastPack:
 	if (configuredGrid)
 	{
-		sdata->loadedRaceFieldSize = LOAD_QueueRaceBotModels(bigfile, players, sdata->loadedRaceFieldSize, false);
+		racerCount = LOAD_QueueRaceBotModels(bigfile, players, racerCount, false);
 	}
 	LOAD_AppendQueue(bigfile, LT_GETADDR, lastFileIndexMPK, NULL, callback);
+	return racerCount;
+}
+
+int LOAD_DriverMPK(struct BigHeader *bigfile, int levelLOD, void (*callback)(struct LoadQueueSlot *))
+{
+	int racerCount = LOAD_QueueDriverMPK(bigfile, levelLOD, callback);
+	LOAD_RosterFinalize(LOAD_HumanDriverSlotCount(), racerCount);
 	return sdata->ptrMPK;
 }
 

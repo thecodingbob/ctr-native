@@ -477,5 +477,23 @@ int main(void)
 	OptionsMenu_TestSound(HOWL_VOLUME_TYPE_VOICE, true);
 	CTR_TEST_CHECK(sdata->channelAttrNew[0].pitch == 1024 && sdata->customCharacterAudioDriver == 2,
 	               "the menu voice preview uses player one's sample and restores its caller's speaker context");
+	CTR_TEST_SECTION("expanded-grid AI voices use independent driver caches");
+	s_tracker.gameMode1 = ARCADE_MODE;
+	int bot = len(GAME_CHARACTER_IDS) - 1;
+	GAME_CHARACTER_IDS[bot] = CRASH_BANDICOOT;
+	CustomCharacter_Select(bot, &second);
+	s_writtenCount = 0;
+	s_expectedDestination = CTR_SPU_BYTES_AT((u32)sdata->audioAllocPtr);
+	sdata->customCharacterAudioDriver = bot + 1;
+	int before = s_customReads;
+	CTR_TEST_CHECK(OtherFX_Play(28, 1) != 0 && s_customReads == before + 1 &&
+	               sdata->channelAttrNew[0].pitch == 1536,
+	               "the last AI driver uploads its own custom short voice");
+	CTR_TEST_CHECK(OtherFX_Play(28, 1) != 0 && s_customReads == before + 1,
+	               "repeated AI voices reuse the driver's cache");
+	sdata->customCharacterAudioDriver = 1;
+	CTR_TEST_CHECK(OtherFX_Play(28, 1) != 0 && s_customReads == before + 1 &&
+	               sdata->channelAttrNew[0].pitch == 1024,
+	               "AI playback leaves the human speaker's sample untouched");
 	return CtrTest_Summary();
 }

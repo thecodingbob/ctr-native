@@ -44,6 +44,56 @@ static void ResetSelection(void)
 	s_libraryReads = 0;
 }
 
+static void TestSelectionBackup(void)
+{
+	CTR_TEST_SECTION("menu backup restores IDs and custom resource snapshots together");
+	ResetSelection();
+	struct CustomCharacterSelection expected[len(s_tracker.pushBuffer)];
+	for (int driver = 0; driver < (int)len(expected); driver++)
+	{
+		data.characterIDs[driver] = PAPU_PAPU;
+		strcpy(s_character.base, "papu");
+		snprintf(s_character.identity, sizeof(s_character.identity), "human-%d", driver);
+		snprintf(s_character.modelHi, sizeof(s_character.modelHi), "model-%d.ctr", driver);
+		snprintf(s_character.iconPixels, sizeof(s_character.iconPixels), "pixels-%d.bin", driver);
+		snprintf(s_character.iconClut, sizeof(s_character.iconClut), "palette-%d.bin", driver);
+		snprintf(s_character.directory, sizeof(s_character.directory), "voices-%d", driver);
+		CustomCharacter_Select(driver, driver == 2 ? NULL : &s_character);
+		expected[driver] = sdata->customCharacters[driver];
+	}
+	CustomCharacter_BackupSelections();
+	strcpy(s_character.identity, "opponent");
+	strcpy(s_character.modelHi, "opponent.ctr");
+	strcpy(s_character.directory, "opponent-voices");
+	for (int driver = 0; driver < (int)len(sdata->customCharacters); driver++)
+	{
+		data.characterIDs[driver] = PAPU_PAPU;
+		CustomCharacter_Select(driver, &s_character);
+	}
+	data.characterIDs[0] = CRASH_BANDICOOT;
+	CustomCharacter_Select(0, NULL);
+	CustomCharacter_RestoreSelections();
+	for (int driver = 0; driver < (int)len(expected); driver++)
+	{
+		CTR_TEST_CHECK(data.characterIDs[driver] == PAPU_PAPU &&
+		               memcmp(&sdata->customCharacters[driver], &expected[driver], sizeof(expected[driver])) == 0,
+		               "returning from a race restores each human's ID, identity and every resource path");
+	}
+	CTR_TEST_CHECK(!CustomCharacter_IsSelected(2) && CustomCharacter_IsSelected(1),
+	               "a backed-up retail selection never inherits an AI custom on the same base");
+	CTR_TEST_CHECK(sdata->customCharacters[len(sdata->customCharacters) - 1].identity[0] == '\0',
+	               "restoring the retail menu roster clears custom snapshots beyond its backed-up slots");
+	CTR_TEST_CHECK(s_libraryReads == 0, "menu restoration does not reconstruct resources from mutable library entries");
+	CustomCharacter_Select(1, NULL);
+	data.characterIDs[1] = POLAR;
+	CustomCharacter_BackupSelections();
+	CustomCharacter_Select(1, &s_character);
+	data.characterIDs[1] = PAPU_PAPU;
+	CustomCharacter_RestoreSelections();
+	CTR_TEST_CHECK(data.characterIDs[1] == POLAR && !CustomCharacter_IsSelected(1),
+	               "a later backup replaces an earlier custom choice with the newly selected retail character");
+}
+
 int main(void)
 {
 	CTR_TEST_SECTION("character availability is independent of mode and player count");
@@ -163,7 +213,7 @@ int main(void)
 
 	CTR_TEST_SECTION("multiplayer selections and speaker ownership are independent");
 	ResetSelection();
-	s_tracker.numPlyrCurrGame = len(sdata->customCharacters);
+	s_tracker.numPlyrCurrGame = len(s_tracker.pushBuffer);
 	strcpy(s_character.base, "papu");
 	for (int player = 0; player < s_tracker.numPlyrCurrGame; player++)
 	{
@@ -182,7 +232,7 @@ int main(void)
 	for (int player = 0; player < s_tracker.numPlyrCurrGame; player++)
 	{
 		sdata->customCharacterAudioDriver = player + 1;
-		CTR_TEST_CHECK(CustomCharacter_GetAudioPlayer(PAPU_PAPU) == player &&
+		CTR_TEST_CHECK(CustomCharacter_GetAudioDriver(PAPU_PAPU) == player &&
 		               CustomCharacter_GetShortVoiceIndex(28 + PAPU_PAPU) == 0 &&
 		               CustomCharacter_ResolveXAVoice(2, 172) == sdata->customCharacters[player].audioDirectory,
 		               "owned short and XA voices resolve the actual speaking player's directory");
@@ -194,11 +244,25 @@ int main(void)
 	sdata->customCharacterAudioDriver = 5;
 	CTR_TEST_CHECK(CustomCharacter_GetShortVoiceIndex(28 + PAPU_PAPU) == -1,
 	               "AI speakers do not inherit human custom voices");
+	data.characterIDs[4] = PAPU_PAPU;
+	strcpy(s_character.identity, "custom-bot");
+	strcpy(s_character.directory, "bot-voices");
+	CustomCharacter_Select(4, &s_character);
+	CTR_TEST_CHECK(CustomCharacter_GetShortVoiceIndex(28 + PAPU_PAPU) == 0 &&
+	               CustomCharacter_ResolveXAVoice(2, 172) == sdata->customCharacters[4].audioDirectory,
+	               "an explicitly selected custom AI resolves its own short and XA voices");
+	int lastDriver = len(sdata->customCharacters) - 1;
+	data.characterIDs[lastDriver] = PAPU_PAPU;
+	CustomCharacter_Select(lastDriver, &s_character);
+	sdata->customCharacterAudioDriver = lastDriver + 1;
+	CTR_TEST_CHECK(CustomCharacter_GetAudioDriver(PAPU_PAPU) == lastDriver,
+	               "custom speaker ownership covers the entire expanded race field");
 	struct CustomCharacterSelection saved = sdata->customCharacters[0];
 	CustomCharacter_Select(-1, NULL);
 	CustomCharacter_Select(len(sdata->customCharacters), NULL);
 	CTR_TEST_CHECK(memcmp(&saved, &sdata->customCharacters[0], sizeof(saved)) == 0 &&
 	               !CustomCharacter_IsSelected(-1) && !CustomCharacter_IsSelected(len(sdata->customCharacters)),
 	               "out-of-range player slots cannot change a real player's selection");
+	TestSelectionBackup();
 	return CtrTest_Summary();
 }

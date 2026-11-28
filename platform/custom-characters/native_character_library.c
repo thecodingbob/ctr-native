@@ -1,6 +1,7 @@
 #include <platform/custom-characters/native_character_library.h>
 #include <platform/native_ini.h>
 #include <SDL3/SDL.h>
+#include <platform/native_assets.h>
 #include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -317,6 +318,12 @@ int NativeCharacterLibrary_Refresh(const char *directory)
 	free(s_nativeCharacterLibrary.items);
 	s_nativeCharacterLibrary = scan;
 	return 1;
+}
+
+int NativeCharacterLibrary_RefreshAssets(void)
+{
+	char directory[NATIVE_CHARACTER_PATH_BYTES];
+	return NativeAssets_BuildPath("characters", directory, sizeof(directory)) && NativeCharacterLibrary_Refresh(directory);
 }
 
 size_t NativeCharacterLibrary_Count(void) { return s_nativeCharacterLibrary.count; }

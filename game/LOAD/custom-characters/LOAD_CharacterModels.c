@@ -7,7 +7,7 @@
 
 void LOAD_ResetCharacterModelCache(void)
 {
-	memset(sdata->customPlayerModels, 0, sizeof(sdata->customPlayerModels));
+	memset(sdata->customDriverModels, 0, sizeof(sdata->customDriverModels));
 	memset(sdata->customPreviewModels, 0, sizeof(sdata->customPreviewModels));
 }
 
@@ -136,8 +136,8 @@ static struct Model *LOAD_ResolveCharacterModel(const struct CharacterModelReque
 	if (path != NULL)
 	{
 		bool preview = request->context == CHARACTER_MODEL_PREVIEW;
-		struct CustomCharacterModelCache *caches = preview ? sdata->customPreviewModels : sdata->customPlayerModels;
-		int count = preview ? (int)len(sdata->customPreviewModels) : (int)len(sdata->customPlayerModels);
+		struct CustomCharacterModelCache *caches = preview ? sdata->customPreviewModels : sdata->customDriverModels;
+		int count = preview ? (int)len(sdata->customPreviewModels) : (int)len(sdata->customDriverModels);
 		struct CustomCharacterModelCache *cached = NULL;
 		for (int index = 0; index < count; index++)
 		{
@@ -163,8 +163,7 @@ static struct Model *LOAD_ResolveCharacterModel(const struct CharacterModelReque
 static struct CharacterModelRequest LOAD_DriverModelRequest(int driverID, int baseID)
 {
 	bool menu = (sdata->gGT->gameMode1 & MAIN_MENU) != 0;
-	bool custom = !menu && driverID >= 0 && driverID < sdata->gGT->numPlyrCurrGame &&
-	              CustomCharacter_IsSelected(driverID) && baseID == sdata->customCharacters[driverID].baseID;
+	bool custom = !menu && CustomCharacter_IsSelected(driverID) && baseID == sdata->customCharacters[driverID].baseID;
 	return (struct CharacterModelRequest){
 		.baseID = baseID, .context = CHARACTER_MODEL_DRIVER,
 		.identity = custom ? sdata->customCharacters[driverID].identity : NULL,
@@ -196,7 +195,7 @@ void LOAD_FinalizeCharacterModels(void)
 	struct GameTracker *gGT = sdata->gGT;
 	if ((gGT->gameMode1 & MAIN_MENU) == 0) { LOAD_FinalizeCharacterIcons(); }
 	int reservedBytes = MainInit_GetPlayerModelMemoryReserve(gGT);
-	for (int driverID = 0; driverID < gGT->numPlyrCurrGame; driverID++)
+	for (int driverID = 0; driverID < (int)len(sdata->customCharacters); driverID++)
 	{
 		struct CharacterModelRequest request = LOAD_DriverModelRequest(driverID, data.characterIDs[driverID]);
 		LOAD_ResolveCharacterModel(&request, true, reservedBytes);

@@ -39,12 +39,12 @@ static void LOAD_PrepareCharacterIcon(size_t slot, const char *identity, const c
 void LOAD_RefreshCharacterIcons(void)
 {
 	LOAD_ResetCharacterIcons();
-	size_t slot = 0;
-	for (size_t index = 0; index < NativeCharacterLibrary_Count() && slot < len(s_characterIcons); index++)
+	const struct NativeCharacterMetadata *entries[CHARACTER_SELECT_EXTRA_SLOT_CAPACITY];
+	int count = CustomCharacter_PrepareAvailableEntries(entries, len(entries));
+	for (int slot = 0; slot < count; slot++)
 	{
-		const struct NativeCharacterMetadata *entry = CustomCharacter_GetMenuEntry(index);
-		if (entry == NULL) { continue; }
-		LOAD_PrepareCharacterIcon(slot++, entry->identity, entry->iconPixels, entry->iconClut);
+		const struct NativeCharacterMetadata *entry = entries[slot];
+		LOAD_PrepareCharacterIcon(slot, entry->identity, entry->iconPixels, entry->iconClut);
 	}
 }
 
@@ -52,7 +52,7 @@ void LOAD_FinalizeCharacterIcons(void)
 {
 	LOAD_ResetCharacterIcons();
 	size_t slot = 0;
-	for (int driver = 0; driver < sdata->gGT->numPlyrCurrGame && driver < (int)len(sdata->customCharacters); driver++)
+	for (int driver = 0; driver < (int)len(sdata->customCharacters); driver++)
 	{
 		if (!CustomCharacter_IsSelected(driver)) { continue; }
 		const struct CustomCharacterSelection *selection = &sdata->customCharacters[driver];
@@ -92,6 +92,6 @@ struct Icon *LOAD_GetCharacterPreviewIcon(int baseID, const char *identity)
 struct Icon *LOAD_GetDriverIcon(int driverID)
 {
 	if (driverID < 0 || driverID >= (int)len(data.characterIDs)) { return NULL; }
-	bool custom = driverID < sdata->gGT->numPlyrCurrGame && CustomCharacter_IsSelected(driverID);
+	bool custom = CustomCharacter_IsSelected(driverID);
 	return LOAD_ResolveCharacterIcon(data.characterIDs[driverID], custom ? sdata->customCharacters[driverID].identity : NULL);
 }

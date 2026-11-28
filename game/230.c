@@ -4,7 +4,6 @@
 #define MM_REQUEST_LEVEL                                  MainRaceTrack_RequestLoad
 #define MM_BIGFILE_HEADER                                 (sdata_static.ptrBigfileCdPos_2)
 #define MM_GAME_UNLOCKS                                   (sdata->gameSave.progress.unlocks)
-#define MM_CHARACTER_IDS_BACKUP                           (sdata->characterIDs_backup)
 #define MM_DEFAULT_CHARACTER_ID_WORDS                     (R230.packedDefaultCharacterIDWords)
 #define MM_TITLE_OBJECT                                   (D230.titleObj)
 #define MM_TITLE_INTRO_FRAME                              (D230.titleIntroFrame)
