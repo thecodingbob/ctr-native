@@ -1,6 +1,7 @@
 #include "platform/native_checkpoint.h"
 
 #include <common.h>
+#include <custom-characters/character_resources.h>
 #include <macros.h>
 
 #include <platform.h>
@@ -2282,6 +2283,17 @@ int NativeCheckpoint_Restore(const void *src, int srcSize)
 		}
 	}
 	LANG_Refresh(g_config.textLanguage);
+	if (sdata->gGT != NULL)
+	{
+		if ((sdata->gGT->gameMode1 & MAIN_MENU) != 0)
+		{
+			LOAD_RefreshCharacterIcons();
+		}
+		else
+		{
+			LOAD_FinalizeCharacterIcons();
+		}
+	}
 
 	return 1;
 }

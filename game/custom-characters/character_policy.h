@@ -37,6 +37,8 @@ static inline void CustomCharacter_Select(int playerIndex, const struct NativeCh
 	memcpy(selection->identity, entry->identity, sizeof(selection->identity));
 	selection->baseID = baseID;
 	memcpy(selection->modelPath, entry->modelHi, sizeof(selection->modelPath));
+	memcpy(selection->iconPixels, entry->iconPixels, sizeof(selection->iconPixels));
+	memcpy(selection->iconClut, entry->iconClut, sizeof(selection->iconClut));
 	memcpy(selection->audioDirectory, entry->directory, sizeof(selection->audioDirectory));
 }
 

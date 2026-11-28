@@ -9,6 +9,8 @@ struct CustomCharacterSelection
 {
 	char identity[256];
 	char modelPath[1024];
+	char iconPixels[1024];
+	char iconClut[1024];
 	char audioDirectory[1024];
 	int baseID;
 };

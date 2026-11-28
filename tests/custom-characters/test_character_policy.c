@@ -136,12 +136,17 @@ int main(void)
 	strcpy(s_character.identity, "selected-character");
 	strcpy(s_character.base, "papu");
 	strcpy(s_character.modelHi, "fixture/models/hi.ctr");
+	strcpy(s_character.iconPixels, "fixture/icon/pixels.bin");
+	strcpy(s_character.iconClut, "fixture/icon/palette.bin");
 	strcpy(s_character.directory, "fixture/character");
 	data.characterIDs[0] = PAPU_PAPU;
 	CustomCharacter_Select(0, &s_character);
 	CTR_TEST_CHECK(CustomCharacter_IsSelected(0) && sdata->customCharacters[0].baseID == PAPU_PAPU &&
 	               strcmp(sdata->customCharacters[0].identity, s_character.identity) == 0,
 	               "selecting an entry stores its identity and retail base together");
+	CTR_TEST_CHECK(strcmp(sdata->customCharacters[0].iconPixels, s_character.iconPixels) == 0 &&
+	               strcmp(sdata->customCharacters[0].iconClut, s_character.iconClut) == 0,
+	               "selection snapshots its icon and palette paths independently of future library refreshes");
 	CTR_TEST_CHECK(strcmp(sdata->customCharacters[0].modelPath, s_character.modelHi) == 0 &&
 	               strcmp(sdata->customCharacters[0].audioDirectory, s_character.directory) == 0,
 	               "selection stores the model and audio resource paths together");

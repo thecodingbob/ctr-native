@@ -51,8 +51,18 @@ immediately to Papu's right. The menu exposes up to eight scanned characters
 with recognized retail bases, preserving their separate names and identities.
 The local layout fixture contains Miku plus seven numbered copies, under
 `assets/characters/miku-2/` through `miku-8/`. These ignored assets are not shipped.
-Custom icons still share the prototype's first icon texture (identical for these
-copies).
+`game/LOAD/custom-characters/LOAD_CharacterIcons.c` owns icon loading, identity caches and custom/retail
+resolution, alongside the model loader. Menu portraits and driver portraits
+receive ordinary `Icon` descriptors from this owner; their existing drawing
+routines handle host texture binding without interpreting character identity.
+The loader prepares menu icons on opening selection, and race icons from each
+player's selected resource snapshot during level loading. Checkpoint restore
+rebuilds the host resources rather than serializing OpenGL handles. No icon files
+are read or uploaded while drawing. Textures are released before rebuilding the
+cache or at renderer shutdown. Missing or unreadable icons use that character's
+retail base icon, without borrowing another custom's texture.
+Icon dimensions and retail positions are unchanged. The identical local Miku
+copies do not establish visual correctness with different icons.
 
 ## Local fixture
 
@@ -92,7 +102,7 @@ switching between installed customs does not repeatedly allocate their models.
 Race caches likewise share prepared models by identity. Spawn never allocates.
 
 The preview reuses the racing model, not a separately animated menu model.
-Model resolution is owned by `game/LOAD/LOAD_CharacterModels.c`, for both
+Model resolution is owned by `game/LOAD/custom-characters/LOAD_CharacterModels.c`, for both
 resource APIs declared in `include/custom-characters/character_resources.h`:
 `LOAD_GetDriverModel(driverID, baseID)` and
 `LOAD_GetCharacterPreviewModel(driverID, baseID, identity)`. The resolver chooses
@@ -174,7 +184,11 @@ Keep only runtime resources here, with all voices directly in `audio/`.
 Extraction originals and verification images belong outside the runtime library.
 The stable `id` in `character.ini`, not the folder name, identifies the character.
 
-Race HUD names/icons and podium still use the retail base.
+Race standings, multiplayer progress portraits, current-race results and cup/
+versus/battle standings use the driver's resolved icon. Race HUD names and podium
+models still use the retail base. Historical time-trial/relic score entries and
+profile icons retain retail identity until persistent custom identities are
+implemented; a saved retail ID must not be guessed to mean a current custom.
 Independent human selections, preview/race models and voices are implemented;
 custom AI remains unimplemented. Adventure
 hub and podium model loading, persistence, a full library manager and automatic

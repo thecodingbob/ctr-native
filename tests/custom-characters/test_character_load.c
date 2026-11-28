@@ -17,6 +17,9 @@ static struct NativeCharacterMetadata s_otherCharacters[CHARACTER_SELECT_EXTRA_S
 static size_t s_characterCount = 1;
 static size_t s_bufferUsed;
 static struct Model s_retailModel;
+static int s_iconPreparations;
+
+void LOAD_FinalizeCharacterIcons(void) { s_iconPreparations++; }
 
 size_t NativeCharacterLibrary_Count(void) { return s_characterCount; }
 
@@ -70,7 +73,7 @@ void Platform_LogWarn(const char *format, ...)
 	s_warnings++;
 }
 
-#include <game/LOAD/LOAD_CharacterModels.c>
+#include <game/LOAD/custom-characters/LOAD_CharacterModels.c>
 
 static void Write32(unsigned char *bytes, u32 value)
 {
@@ -111,6 +114,7 @@ static void TestMultiplayerModels(const char *path, struct GameTracker *tracker)
 		selection->baseID = data.characterIDs[player] = PAPU_PAPU;
 	}
 	LOAD_FinalizeCharacterModels();
+	CTR_TEST_CHECK(s_iconPreparations > 0, "race loading prepares portraits alongside the selected character resources");
 	CTR_TEST_CHECK(s_allocations == before + tracker->numPlyrCurrGame && s_freeBytes == s_reserve,
 	               "every human's custom identity is admitted without spending the initialization reserve");
 	for (int player = 0; player < tracker->numPlyrCurrGame; player++)

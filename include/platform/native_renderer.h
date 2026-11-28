@@ -33,6 +33,8 @@ void NativeRenderer_ReadVRAM(u16 *dst, int x, int y, int dstW, int dstH);
 void NativeRenderer_UpdateVRAM(void);
 u32 NativeRenderer_UploadTrackMap(const u16 *pixels);
 u32 NativeRenderer_UploadCharacterIcon(const u16 *pixels);
+// Uploaded icon handles remain valid until this reset or renderer shutdown.
+void NativeRenderer_ClearCharacterIcons(void);
 int NativeRenderer_GetVRAMStateSize(void);
 int NativeRenderer_CaptureVRAMState(void *dst, int dstSize);
 int NativeRenderer_RestoreVRAMState(const void *src, int srcSize);

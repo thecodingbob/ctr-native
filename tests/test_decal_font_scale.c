@@ -17,10 +17,40 @@ static u32 s_targetOT[5];
 
 #include <platform/native_gpu_links.c>
 #include <game/widescreen.c>
+#include <game/DecalGlobal.c>
+#include <game/LOAD/custom-characters/LOAD_CharacterIcons.c>
 #include <game/DecalHUD.c>
 #include <game/DecalFont.c>
 #include <game/UI/UI_Icon.c>
 #include <game/DotLights.c>
+
+static struct NativeCharacterMetadata s_characters[3];
+static int s_iconUploads;
+
+size_t NativeCharacterLibrary_Count(void) { return len(s_characters); }
+const struct NativeCharacterMetadata *NativeCharacterLibrary_Get(size_t index)
+{
+	return index < len(s_characters) ? &s_characters[index] : NULL;
+}
+int NativeCharacterLibrary_ReadIconFiles(const char *pixelPath, const char *palettePath, unsigned short *pixels)
+{
+	(void)palettePath;
+	if (strcmp(pixelPath, "icon-2") == 0) { return 0; }
+	pixels[0] = strcmp(pixelPath, "icon-0") == 0 ? 1 : 2;
+	return 1;
+}
+void NativeRenderer_ClearCharacterIcons(void) { s_iconUploads = 0; }
+u32 NativeRenderer_UploadCharacterIcon(const u16 *pixels)
+{
+	s_iconUploads++;
+	return 100 + pixels[0];
+}
+void SetPsyXTexture(DR_PSYX_TEX *p, u32 texture, int width, int height)
+{
+	p->code[0] = 0xb1000000 | texture;
+	p->code[1] = (u32)width | ((u32)height << 16);
+	setlen(p, 2);
+}
 
 int OtherFX_Play(u32 soundID, int flags)
 {
@@ -75,6 +105,106 @@ static void ResetDrawing(void)
 static int GlyphWidth(int index)
 {
 	return s_glyphs[index].x1 - s_glyphs[index].x0;
+}
+
+static void TestCustomCharacterIcons(void)
+{
+	CTR_TEST_SECTION("race portraits follow driver identity rather than the shared retail base");
+	g_config.aspectRatio = 0;
+	s_tracker.numPlyrCurrGame = len(sdata->customCharacters);
+	data.MetaDataCharacters[POLAR].name_Debug = "polar";
+	data.MetaDataCharacters[POLAR].iconID = 0;
+	s_tracker.ptrIcons[0] = &s_icon;
+	for (size_t index = 0; index < len(s_characters); index++)
+	{
+		snprintf(s_characters[index].identity, sizeof(s_characters[index].identity), "custom-%u", (unsigned int)index);
+		strcpy(s_characters[index].base, "polar");
+		snprintf(s_characters[index].iconPixels, sizeof(s_characters[index].iconPixels), "icon-%u", (unsigned int)index);
+	}
+	LOAD_RefreshCharacterIcons();
+	CTR_TEST_CHECK_EQ(s_iconUploads, 2, "each readable icon is uploaded once before drawing");
+	for (int driver = 0; driver < 5; driver++)
+	{
+		data.characterIDs[driver] = POLAR;
+		if (driver < 2) { CustomCharacter_Select(driver, &s_characters[driver]); }
+		if (driver == 3) { CustomCharacter_Select(driver, &s_characters[2]); }
+		ResetDrawing();
+		s_buffer.primMem.guardEnd = (char *)s_glyphs + sizeof(s_glyphs);
+		UI_DrawDriverIcon(LOAD_GetDriverIcon(driver), 100, 40, &s_buffer.primMem, s_originalOT, 1, FP(1), 0x808080);
+		if (driver < 2)
+		{
+			DR_PSYX_TEX *bind = NativeGpuLinks_ToHostPointer(s_originalOT[0]);
+			POLY_FT4 *quad = NativeGpuLinks_ToHostPointer(bind->tag & 0xffffff);
+			DR_PSYX_TEX *reset = NativeGpuLinks_ToHostPointer(quad->tag & 0xffffff);
+			CTR_TEST_CHECK_EQ(bind->code[0] & 0xffffff, 101u + (u32)driver, "each human's portrait binds its own custom texture");
+			CTR_TEST_CHECK(quad->x0 == 100 && quad->y0 == 40 && quad->x1 - quad->x0 == 43 && quad->y2 - quad->y0 == 25,
+			               "custom portraits retain the requested geometry and retail dimensions");
+			CTR_TEST_CHECK_EQ(reset->code[0] & 0xffffff, 0, "the next retail primitive is not left bound to the custom texture");
+		}
+		else
+		{
+			CTR_TEST_CHECK(s_buffer.primMem.cursor == (char *)s_glyphs + sizeof(POLY_FT4),
+			               "retail, missing-icon and AI drivers sharing Polar emit only the retail portrait");
+		}
+	}
+	ResetDrawing();
+	Color color = {.r = 128, .g = 128, .b = 128};
+	DecalHUD_DrawPolyGT4(LOAD_GetDriverIcon(1), 100, 40, &s_buffer.primMem, s_originalOT, color, color, color, color, 1, FP(0.5));
+	DR_PSYX_TEX *bind = NativeGpuLinks_ToHostPointer(s_originalOT[0]);
+	POLY_GT4 *quad = NativeGpuLinks_ToHostPointer(bind->tag & 0xffffff);
+	CTR_TEST_CHECK_EQ(bind->code[0] & 0xffffff, 102, "multiplayer progress portraits also resolve the custom driver");
+	CTR_TEST_CHECK_EQ(quad->x1 - quad->x0, 21, "multiplayer portraits preserve the caller's scale");
+	CTR_TEST_CHECK_EQ(s_iconUploads, 2, "drawing across race and results paths performs no new uploads");
+	ResetDrawing();
+	DecalHUD_DrawPolyFT4(LOAD_GetDriverIcon(0), 100, 40, &s_buffer.primMem, s_originalOT, 1, FP(1));
+	bind = NativeGpuLinks_ToHostPointer(s_originalOT[0]);
+	CTR_TEST_CHECK_EQ(bind->code[0] & 0xffffff, 101, "versus and battle result portraits share the same identity resolver");
+	ResetDrawing();
+	s_buffer.primMem.guardEnd = s_glyphs;
+	UI_DrawDriverIcon(LOAD_GetDriverIcon(0), 100, 40, &s_buffer.primMem, s_originalOT, 1, FP(1), 0x808080);
+	CTR_TEST_CHECK(s_buffer.primMem.cursor == s_glyphs && s_originalOT[0] == NATIVE_GPU_LINK_TERMINATOR,
+	               "an exhausted primitive buffer emits neither a portrait nor partial texture commands");
+	LOAD_RefreshCharacterIcons();
+	CTR_TEST_CHECK_EQ(DecalGlobal_GetIconTexture(LOAD_GetCharacterPreviewIcon(POLAR, "custom-1")), 102,
+	                  "refreshing the menu rebuilds the shared identity lookup for the next race");
+	strcpy(s_characters[0].identity, "changed-library-entry");
+	LOAD_FinalizeCharacterIcons();
+	CTR_TEST_CHECK_EQ(DecalGlobal_GetIconTexture(LOAD_GetDriverIcon(0)), 101,
+	                  "level loading and checkpoint restore rebuild portraits from the selected snapshot, not mutable library positions");
+}
+
+static void TestHostIconTextures(void)
+{
+	CTR_TEST_SECTION("host icon textures are independent of character loading");
+	struct Icon icon = {0};
+	icon.texLayout.u1 = icon.texLayout.u3 = 7;
+	icon.texLayout.v2 = icon.texLayout.v3 = 9;
+	struct DecalIconTexture binding = {0};
+	struct DecalIconTexture unrelated = {0};
+	DecalGlobal_RegisterIconTexture(&binding, &icon, 701);
+	DecalGlobal_RegisterIconTexture(&unrelated, &s_icon, 702);
+	CTR_TEST_CHECK_EQ(DecalGlobal_GetIconTexture(&icon), 701, "an arbitrary icon can use a host texture without a character identity");
+	ResetDrawing();
+	s_buffer.primMem.guardEnd = (char *)s_glyphs + sizeof(s_glyphs);
+	DecalHUD_DrawPolyFT4(&icon, 100, 40, &s_buffer.primMem, s_originalOT, 1, FP(1));
+	DR_PSYX_TEX *bind = NativeGpuLinks_ToHostPointer(s_originalOT[0]);
+	POLY_FT4 *quad = NativeGpuLinks_ToHostPointer(bind->tag & 0xffffff);
+	DR_PSYX_TEX *reset = NativeGpuLinks_ToHostPointer(quad->tag & 0xffffff);
+	CTR_TEST_CHECK_EQ(bind->code[0] & 0xffffff, 701, "the generic decal path binds the registered host texture");
+	CTR_TEST_CHECK_EQ(bind->code[1], 8u | (10u << 16), "host texture dimensions come from the arbitrary icon, not the character format");
+	CTR_TEST_CHECK(quad->x1 - quad->x0 == 7 && quad->y2 - quad->y0 == 9, "generic host icons retain their own dimensions");
+	CTR_TEST_CHECK_EQ(reset->code[0] & 0xffffff, 0, "generic host icons restore normal texture sampling after the draw");
+	LOAD_RefreshCharacterIcons();
+	CTR_TEST_CHECK_EQ(DecalGlobal_GetIconTexture(&icon), 701, "refreshing character resources preserves unrelated host icon bindings");
+	DecalGlobal_RegisterIconTexture(&binding, &icon, 703);
+	CTR_TEST_CHECK_EQ(DecalGlobal_GetIconTexture(&icon), 703, "re-registering a binding replaces its texture without duplicating the registry entry");
+	DecalGlobal_UnregisterIconTexture(&unrelated);
+	CTR_TEST_CHECK_EQ(DecalGlobal_GetIconTexture(&s_icon), 0, "unregistering an icon restores its normal retail sampling");
+	CTR_TEST_CHECK_EQ(DecalGlobal_GetIconTexture(&icon), 703, "removing another binding does not invalidate a retained texture");
+	DecalGlobal_RegisterIconTexture(&binding, &icon, 0);
+	CTR_TEST_CHECK_EQ(DecalGlobal_GetIconTexture(&icon), 0, "registering texture zero removes the host override");
+	DecalGlobal_UnregisterIconTexture(&binding);
+	CTR_TEST_CHECK_EQ(DecalGlobal_GetIconTexture(&icon), 0, "unregistering an already removed binding is harmless");
 }
 
 int main(void)
@@ -384,5 +514,7 @@ int main(void)
 			               "the light group remains centered in its viewport");
 		}
 	}
+	TestCustomCharacterIcons();
+	TestHostIconTextures();
 	return CtrTest_Summary();
 }

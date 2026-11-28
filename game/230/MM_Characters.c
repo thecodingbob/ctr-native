@@ -3,7 +3,6 @@
 #include <widescreen.h>
 #include <platform/custom-characters/native_character_library.h>
 #include <platform/native_assets.h>
-#include <platform/native_renderer.h>
 #include "character_select_grid.h"
 #include <game/custom-characters/character_policy.h>
 
@@ -105,7 +104,6 @@ static int MM_Characters_GridX(int x)
 		(transitionY) += (metadataY);                                                  \
 	} while (0)
 
-static u32 s_characterSelectIconTexture;
 static const struct NativeCharacterMetadata *s_characterSelectCustomEntries[CHARACTER_SELECT_EXTRA_SLOT_CAPACITY];
 static int s_characterSelectCustomCount;
 
@@ -743,7 +741,7 @@ void MM_Characters_RestoreIDs(void)
 		NativeCharacterLibrary_Refresh(characterDirectory);
 	}
 	MM_ACTIVE_CHARACTER_SELECT_META = NULL;
-	s_characterSelectIconTexture = 0;
+	LOAD_RefreshCharacterIcons();
 	s_characterSelectCustomCount = 0;
 	for (size_t index = 0; index < NativeCharacterLibrary_Count() && s_characterSelectCustomCount < CHARACTER_SELECT_EXTRA_SLOT_CAPACITY; index++)
 	{
@@ -751,15 +749,6 @@ void MM_Characters_RestoreIDs(void)
 		if (entry != NULL)
 		{
 			s_characterSelectCustomEntries[s_characterSelectCustomCount++] = entry;
-		}
-	}
-	const struct NativeCharacterMetadata *custom = MM_Characters_CustomEntry(CHARACTER_SELECT_RETAIL_SLOT_COUNT);
-	if (custom != NULL)
-	{
-		u16 customIconPixels[44 * 26];
-		if (NativeCharacterLibrary_ReadIcon(custom, customIconPixels))
-		{
-			s_characterSelectIconTexture = NativeRenderer_UploadCharacterIcon(customIconPixels);
 		}
 	}
 
@@ -1288,41 +1277,16 @@ outerPlayerLoopComplete:
 				iconTransitionByteOffset += iconWork;
 				iconTransition = (struct TransitionMeta *)iconTransitionByteOffset;
 				iconPosX = MM_Characters_GridX(iconTransition->currX + preInputCharacterMeta->posX) + MM_CHARACTER_SELECT_ICON_DECAL_OFFSET_X;
-				struct Icon customIcon = {0};
-				b32 drawCustomIcon = playerIndex >= CHARACTER_SELECT_RETAIL_SLOT_COUNT && s_characterSelectIconTexture != 0;
-				struct PrimMem *iconMemory = &GAME_TRACKER->backBuffer->primMem;
-				if (drawCustomIcon && ((uintptr_t)iconMemory->cursor > (uintptr_t)iconMemory->guardEnd ||
-				    (uintptr_t)iconMemory->guardEnd - (uintptr_t)iconMemory->cursor < 2 * sizeof(DR_PSYX_TEX) + sizeof(POLY_GT4)))
-				{
-					continue;
-				}
-				if (drawCustomIcon)
-				{
-					customIcon.texLayout.u1 = customIcon.texLayout.u3 = 43;
-					customIcon.texLayout.v2 = customIcon.texLayout.v3 = 25;
-					customIcon.texLayout.tpage = 0x100;
-					DR_PSYX_TEX *reset = GAME_TRACKER->backBuffer->primMem.cursor;
-					SetPsyXTexture(reset, 0, 0, 0);
-					AddPrim(GAME_TRACKER->pushBuffer_UI.ptrOT, reset);
-					GAME_TRACKER->backBuffer->primMem.cursor = reset + 1;
-				}
+				const struct NativeCharacterMetadata *custom = MM_Characters_CustomEntry(playerIndex);
 
 				MM_RECTMENU_DRAW_POLY_GT4(
-				    drawCustomIcon ? &customIcon : CTR_PSX_PAGE_LVALUE(struct GameTracker *, iconGameTrackerPage, MM_GAME_TRACKER_PAGE_OFFSET, GAME_TRACKER)
-				        ->ptrIcons[iconCharacterMetadata[iconMetaTail[3]].iconID],
+				    LOAD_GetCharacterPreviewIcon(iconMetaTail[3], custom != NULL ? custom->identity : NULL),
 				    iconPosX, iconTransition->currY + iconMetaTail[0] + MM_CHARACTER_SELECT_ICON_DECAL_OFFSET_Y,
 
 				    &CTR_PSX_PAGE_LVALUE(struct GameTracker *, iconGameTrackerPage, MM_GAME_TRACKER_PAGE_OFFSET, GAME_TRACKER)->backBuffer->primMem,
 				    CTR_PSX_PAGE_LVALUE(struct GameTracker *, iconGameTrackerPage, MM_GAME_TRACKER_PAGE_OFFSET, GAME_TRACKER)->pushBuffer_UI.ptrOT,
 
-				    *iconColor, *iconColor, *iconColor, *iconColor, drawCustomIcon ? 0 : TRANS_50_DECAL, FP(1.0));
-				if (drawCustomIcon)
-				{
-					DR_PSYX_TEX *bind = GAME_TRACKER->backBuffer->primMem.cursor;
-					SetPsyXTexture(bind, s_characterSelectIconTexture, 44, 26);
-					AddPrim(GAME_TRACKER->pushBuffer_UI.ptrOT, bind);
-					GAME_TRACKER->backBuffer->primMem.cursor = bind + 1;
-				}
+				    *iconColor, *iconColor, *iconColor, *iconColor, TRANS_50_DECAL, FP(1.0));
 				MM_CHARACTERS_END_ICON_COLOR_COPY();
 			}
 		}

@@ -20,6 +20,12 @@ void DecalFont_DrawLine(char *text, s16 x, s16 y, s16 font, s16 flags)
 	s_labels++;
 }
 
+struct Icon *LOAD_GetDriverIcon(int driverID)
+{
+	CTR_TEST_CHECK_EQ(driverID, s_portraits, "rank portraits resolve the actual driver's identity");
+	return NULL;
+}
+
 void UI_DrawDriverIcon(struct Icon *icon, s16 x, s16 y, struct PrimMem *prim, u32 *ot, char transparency, s16 scale, u32 color)
 {
 	(void)icon; (void)prim; (void)ot; (void)transparency; (void)color;
@@ -61,6 +67,7 @@ static void CheckField(int racers, u32 mode, int expectedRows)
 	for (int i = 0; i < (int)len(s_drivers); i++)
 	{
 		s_drivers[i].driverRank = i;
+		s_drivers[i].driverID = i;
 		data.rankIconsCurr[i] = i;
 		s_tracker.drivers[i] = i < racers ? &s_drivers[i] : NULL;
 	}

@@ -14,6 +14,7 @@
 #include "platform/native_perf.h"
 #include "platform/native_renderer.h"
 #include "platform/custom-tracks/native_track_map.h"
+#include "platform/custom-characters/native_character_library.h"
 #include "platform/graphics/native_render_scale.h"
 #include "platform/config/native_config.h"
 
@@ -75,7 +76,8 @@ global_variable ShaderID s_previousShader = (ShaderID)-1;
 
 global_variable TextureID s_rgLutTexture = (TextureID)-1;
 global_variable TextureID s_trackMapTexture = (TextureID)-1;
-global_variable TextureID s_characterIconTexture = (TextureID)-1;
+global_variable TextureID *s_characterIconTextures;
+global_variable size_t s_characterIconTextureCount;
 // NOTE(penta3): Single persistent VRAM texture, matching real PS1's single
 // 1MB VRAM. PS1 page-flips two windows *inside* one VRAM; it never keeps two
 // full copies. The old double buffer existed only to orphan the texture on the
@@ -292,7 +294,7 @@ void NativeRenderer_Shutdown(void)
 	NativeRenderer_DestroyTexture(s_whiteTexture);
 	NativeRenderer_DestroyTexture(s_rgLutTexture);
 	NativeRenderer_DestroyTexture(s_trackMapTexture);
-	NativeRenderer_DestroyTexture(s_characterIconTexture);
+	NativeRenderer_ClearCharacterIcons();
 	glDeleteProgram(s_packShader);
 	glDeleteProgram(s_presentVramShader);
 	glDeleteVertexArrays(1, &s_vramQuadVAO);
@@ -1190,15 +1192,35 @@ internal void NativeRenderer_GenerateCommonTextures(void)
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+void NativeRenderer_ClearCharacterIcons(void)
+{
+	for (size_t index = 0; index < s_characterIconTextureCount; index++)
+	{
+		NativeRenderer_DestroyTexture(s_characterIconTextures[index]);
+	}
+	SDL_free(s_characterIconTextures);
+	s_characterIconTextures = NULL;
+	s_characterIconTextureCount = 0;
+	s_lastBoundTexture = (TextureID)-1;
+}
+
 u32 NativeRenderer_UploadCharacterIcon(const u16 *pixels)
 {
 	if (pixels == NULL) { return 0; }
-	if (s_characterIconTexture == (TextureID)-1)
+	TextureID *textures = SDL_realloc(s_characterIconTextures, (s_characterIconTextureCount + 1) * sizeof(*textures));
+	if (textures == NULL) { return 0; }
+	s_characterIconTextures = textures;
+	TextureID texture = 0;
+	glGenTextures(1, &texture);
+	// DR_PSYX_TEX stores the host texture handle in 24 bits.
+	if (texture == 0 || texture > 0xffffff)
 	{
-		glGenTextures(1, &s_characterIconTexture);
+		NativeRenderer_DestroyTexture(texture);
+		return 0;
 	}
-	u8 rgba[44 * 26 * 4];
-	for (int i = 0; i < 44 * 26; i++)
+	s_characterIconTextures[s_characterIconTextureCount++] = texture;
+	u8 rgba[NATIVE_CHARACTER_ICON_WIDTH * NATIVE_CHARACTER_ICON_HEIGHT * 4];
+	for (int i = 0; i < NATIVE_CHARACTER_ICON_WIDTH * NATIVE_CHARACTER_ICON_HEIGHT; i++)
 	{
 		u16 pixel = pixels[i];
 		rgba[i * 4] = (u8)((pixel & 31) * 255 / 31);
@@ -1207,15 +1229,15 @@ u32 NativeRenderer_UploadCharacterIcon(const u16 *pixels)
 		rgba[i * 4 + 3] = pixel == 0 ? 0 : 255;
 	}
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, s_characterIconTexture);
+	glBindTexture(GL_TEXTURE_2D, texture);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 44, 26, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, NATIVE_CHARACTER_ICON_WIDTH, NATIVE_CHARACTER_ICON_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
 	s_lastBoundTexture = (TextureID)-1;
-	return s_characterIconTexture;
+	return texture;
 }
 
 u32 NativeRenderer_UploadTrackMap(const u16 *pixels)

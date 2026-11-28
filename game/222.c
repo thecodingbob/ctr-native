@@ -1,4 +1,5 @@
 #include <common.h>
+#include <custom-characters/character_resources.h>
 #include <extended_lap_times.h>
 #include "UI/UI_ResultGrid.h"
 
@@ -403,7 +404,6 @@ void AA_EndEvent_DrawMenu(void)
 	    (GAME_TRACKER->numPlyrCurrGame == 1))
 	{
 		struct GameTracker *iconGameTracker;
-		register struct MetaDataCHAR *characterMetadata CTR_PSX_REGISTER("$23");
 		register s32 totalRacers CTR_PSX_REGISTER("$6");
 		register s32 totalRacersPending CTR_PSX_REGISTER("$7");
 		s32 loopTotalRacers;
@@ -441,28 +441,19 @@ void AA_EndEvent_DrawMenu(void)
 		i = 0;
 		if (gameNumIconsEOR > 0 && totalRacers > 0)
 		{
-			register u32 characterMetadataPage CTR_PSX_REGISTER("$2");
-
 			loopTotalRacers = totalRacersPending;
 			CTR_PSX_KEEP_VALUE(loopTotalRacers);
 			lastRacerIndex = loopTotalRacers - 1;
 			CTR_PSX_KEEP_VALUE(lastRacerIndex);
-			// NOTE(aalhendi): Materialize the absolute table address in retail's
-			// two steps so the icon loop keeps the same register allocation.
-			CTR_PSX_LOAD_SYMBOL_PAGE(characterMetadataPage, RETAIL_CHARACTER_METADATA_ASM_NAME);
-			CTR_PSX_ADD_SYMBOL_LOW(characterMetadata, characterMetadataPage, RETAIL_CHARACTER_METADATA_ASM_NAME, GAME_CHARACTER_METADATA);
 			driverIconLerpFrame = driverIconFrame;
 
 			// loop through all the driver icons
 			do
 			{
-				register s16 *characterIDs CTR_PSX_REGISTER("$3");
 				char rankText[12];
 				u32 iconColor;
-				s32 characterID;
 				s32 driverIconCurrentFrame;
 				s32 driverIconTargetX;
-				s32 iconID;
 
 				int row = 0;
 				const bool expanded = loopTotalRacers > RACE_FIELD_FULL_GRID_RACERS;
@@ -496,14 +487,11 @@ void AA_EndEvent_DrawMenu(void)
 
 				iconColor = MakeColorPacked(AA_DRIVER_ICON_GRAY_CHANNEL, AA_DRIVER_ICON_GRAY_CHANNEL, AA_DRIVER_ICON_GRAY_CHANNEL);
 				CTR_PSX_FORGET_VALUE(iconColor);
-				characterIDs = GAME_CHARACTER_IDS;
-				characterID = characterIDs[GAME_TRACKER->driversInRaceOrder[i]->driverID];
-				iconID = characterMetadata[characterID].iconID;
 
 				// Draw the driver's character icon
 				UI_DrawDriverIcon(
 
-				    GAME_TRACKER->ptrIcons[iconID],
+				    LOAD_GetDriverIcon(GAME_TRACKER->driversInRaceOrder[i]->driverID),
 
 				    pos.x, iconY, &GAME_TRACKER->backBuffer->primMem,
 

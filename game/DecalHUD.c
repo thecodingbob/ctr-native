@@ -1,5 +1,6 @@
 #include <common.h>
 #include <widescreen.h>
+#include "DecalGlobal.h"
 
 enum
 {
@@ -9,6 +10,36 @@ enum
 	DECAL_HUD_TPAGE_TRANSPARENCY_MASK = 0xff9fffffu,
 };
 
+
+static void DecalHUD_IconTextureCommand(u32 texture, int width, int height, struct PrimMem *primMem, u32 *ot)
+{
+	DR_PSYX_TEX *command = primMem->cursor;
+	SetPsyXTexture(command, texture, width, height);
+	AddPrim(ot, command);
+	primMem->cursor = command + 1;
+}
+
+int DecalHUD_BeginIcon(struct Icon *icon, struct PrimMem *primMem, u32 *ot, size_t primitiveBytes, u32 *texture)
+{
+	if (icon == NULL) { return 0; }
+	*texture = DecalGlobal_GetIconTexture(icon);
+	if (*texture == 0) { return 1; }
+	size_t needed = primitiveBytes + 2 * sizeof(DR_PSYX_TEX);
+	if ((uintptr_t)primMem->cursor > (uintptr_t)primMem->guardEnd ||
+	    (uintptr_t)primMem->guardEnd - (uintptr_t)primMem->cursor < needed) { return 0; }
+	// OT prepends packets: bind, draw, then reset when the chain is rendered.
+	DecalHUD_IconTextureCommand(0, 0, 0, primMem, ot);
+	return 1;
+}
+
+void DecalHUD_EndIcon(struct Icon *icon, u32 texture, struct PrimMem *primMem, u32 *ot)
+{
+	if (texture != 0)
+	{
+		DecalHUD_IconTextureCommand(texture, icon->texLayout.u1 - icon->texLayout.u0 + 1,
+		                            icon->texLayout.v2 - icon->texLayout.v0 + 1, primMem, ot);
+	}
+}
 
 void DecalHUD_DrawPolyFT4(struct Icon *icon, s32 posX, s32 posY, struct PrimMem *primMem, u32 *ot, u8 transparency, s16 scale)
 {
@@ -20,8 +51,9 @@ void DecalHUD_DrawPolyFT4(struct Icon *icon, s32 posX, s32 posY, struct PrimMem 
 
 	POLY_FT4 *p;
 
-	if (!icon)
-		return;
+	u32 texture;
+	if (!DecalHUD_BeginIcon(icon, primMem, ot, sizeof(POLY_FT4), &texture)) { return; }
+	if (texture != 0) { transparency = 0; }
 	uvTopRight = CTR_ReadU32LE(&icon->texLayout.u1);
 	uvTopLeft = CTR_ReadU32LE(&icon->texLayout.u0);
 	width = (s32)(((uvTopRight & 0xff) - (uvTopLeft & 0xff)) * scale) >> 12;
@@ -57,6 +89,7 @@ void DecalHUD_DrawPolyFT4(struct Icon *icon, s32 posX, s32 posY, struct PrimMem 
 	p->tag = *ot | 0x09000000;
 	*ot = CtrGpu_PrimToOTLink24(p);
 	primMem->cursor = p + 1;
+	DecalHUD_EndIcon(icon, texture, primMem, ot);
 }
 
 
@@ -191,8 +224,9 @@ void DecalHUD_DrawPolyGT4(struct Icon *icon, s32 posX, s32 inputY, struct PrimMe
 	u32 tint, right, bottom, xy0, xy1, xy2, xy3;
 	register u32 code CTR_PSX_REGISTER("$3");
 
-	if (!icon)
-		return;
+	u32 texture;
+	if (!DecalHUD_BeginIcon(icon, primMem, ot, sizeof(POLY_GT4), &texture)) { return; }
+	if (texture != 0) { transparency = 0; }
 
 	uv1 = CTR_ReadU32LE(&icon->texLayout.u1);
 	uv0 = CTR_ReadU32LE(&icon->texLayout.u0);
@@ -245,6 +279,7 @@ void DecalHUD_DrawPolyGT4(struct Icon *icon, s32 posX, s32 inputY, struct PrimMe
 	p->tag = *ot | DECAL_HUD_GPU_TAG_LENGTH_POLY_GT4;
 	*ot = CtrGpu_PrimToOTLink24(p);
 	primMem->cursor = p + 1;
+	DecalHUD_EndIcon(icon, texture, primMem, ot);
 }
 
 

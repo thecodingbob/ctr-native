@@ -716,6 +716,8 @@ void UI_RaceStart_IntroText1P(void);
 void UI_DrawRankedDrivers(void);
 u32 UI_PosSuffix_ReverseWarmRamp(u32 color);
 void UI_DrawDriverIcon(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, u32 *ot, char transparency, s16 scale, u32 color);
+int DecalHUD_BeginIcon(struct Icon *icon, struct PrimMem *primMem, u32 *ot, size_t primitiveBytes, u32 *texture);
+void DecalHUD_EndIcon(struct Icon *icon, u32 texture, struct PrimMem *primMem, u32 *ot);
 void UI_RenderFrame_AdvHub(void);
 void UI_RenderFrame_Racing(void);
 void UI_DrawWrongWay(const struct Driver *driver);

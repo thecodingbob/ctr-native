@@ -194,6 +194,7 @@ struct Model *LOAD_GetCharacterPreviewModel(int driverID, int baseID, const char
 void LOAD_FinalizeCharacterModels(void)
 {
 	struct GameTracker *gGT = sdata->gGT;
+	if ((gGT->gameMode1 & MAIN_MENU) == 0) { LOAD_FinalizeCharacterIcons(); }
 	int reservedBytes = MainInit_GetPlayerModelMemoryReserve(gGT);
 	for (int driverID = 0; driverID < gGT->numPlyrCurrGame; driverID++)
 	{

@@ -230,10 +230,15 @@ static int NativeCharacterLibrary_ReadExact(const char *path, unsigned char *byt
 
 int NativeCharacterLibrary_ReadIcon(const struct NativeCharacterMetadata *metadata, unsigned short *pixels)
 {
-	unsigned char packed[44 * 26 / 2], clut[32];
-	if (metadata == NULL || pixels == NULL || !NativeCharacterLibrary_ReadExact(metadata->iconPixels, packed, sizeof(packed)) ||
-	    !NativeCharacterLibrary_ReadExact(metadata->iconClut, clut, sizeof(clut))) { return 0; }
-	for (size_t i = 0; i < 44 * 26; i++)
+	return metadata != NULL && NativeCharacterLibrary_ReadIconFiles(metadata->iconPixels, metadata->iconClut, pixels);
+}
+
+int NativeCharacterLibrary_ReadIconFiles(const char *pixelPath, const char *palettePath, unsigned short *pixels)
+{
+	unsigned char packed[NATIVE_CHARACTER_ICON_WIDTH * NATIVE_CHARACTER_ICON_HEIGHT / 2], clut[32];
+	if (pixelPath == NULL || palettePath == NULL || pixels == NULL || !NativeCharacterLibrary_ReadExact(pixelPath, packed, sizeof(packed)) ||
+	    !NativeCharacterLibrary_ReadExact(palettePath, clut, sizeof(clut))) { return 0; }
+	for (size_t i = 0; i < NATIVE_CHARACTER_ICON_WIDTH * NATIVE_CHARACTER_ICON_HEIGHT; i++)
 	{
 		unsigned int index = (packed[i / 2] >> ((i % 2) * 4)) & 15;
 		pixels[i] = (unsigned short)((unsigned int)clut[index * 2] | (unsigned int)clut[index * 2 + 1] << 8);

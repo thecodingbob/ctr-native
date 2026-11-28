@@ -6,6 +6,7 @@
 
 struct Model;
 struct OtherFX;
+struct Icon;
 
 bool Bank_CustomCharacterVoice(uint16_t soundID, struct OtherFX *meta, uint16_t *spuAddr);
 
@@ -16,5 +17,10 @@ void LOAD_FinalizeCharacterModels(void);
 struct Model *LOAD_GetDriverModel(int driverID, int baseID);
 struct Model *LOAD_GetCharacterPreviewModel(int driverID, int baseID, const char *identity);
 struct Model *LOAD_GetRetailCharacterModel(const char *name);
+
+void LOAD_RefreshCharacterIcons(void);
+void LOAD_FinalizeCharacterIcons(void);
+struct Icon *LOAD_GetCharacterPreviewIcon(int baseID, const char *identity);
+struct Icon *LOAD_GetDriverIcon(int driverID);
 
 #endif

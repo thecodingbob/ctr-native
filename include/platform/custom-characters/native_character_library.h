@@ -4,7 +4,8 @@
 #include <stddef.h>
 
 enum { NATIVE_CHARACTER_TEXT_BYTES = 256, NATIVE_CHARACTER_PATH_BYTES = 1024,
-       NATIVE_CHARACTER_SHORT_VOICES = 2, NATIVE_CHARACTER_XA_VOICES = 19 };
+       NATIVE_CHARACTER_SHORT_VOICES = 2, NATIVE_CHARACTER_XA_VOICES = 19,
+       NATIVE_CHARACTER_ICON_WIDTH = 44, NATIVE_CHARACTER_ICON_HEIGHT = 26 };
 
 struct NativeCharacterMetadata
 {
@@ -35,6 +36,7 @@ size_t NativeCharacterLibrary_Count(void);
 const struct NativeCharacterMetadata *NativeCharacterLibrary_Get(size_t index);
 void NativeCharacterLibrary_Shutdown(void);
 int NativeCharacterLibrary_ReadIcon(const struct NativeCharacterMetadata *metadata, unsigned short *pixels);
+int NativeCharacterLibrary_ReadIconFiles(const char *pixelPath, const char *palettePath, unsigned short *pixels);
 /* Audio indices are character-local, not retail sound IDs. Returned paths live until refresh. */
 int NativeCharacterLibrary_ReadVoice(const char *directory, int index, struct NativeCharacterVoiceSample *sample);
 const char *NativeCharacterLibrary_GetVoicePath(const char *directory, int index, int xa);
