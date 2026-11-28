@@ -363,184 +363,74 @@ struct OverlayDATA_230 D230 CTR_PSX_MATCH_SECTION(".D230") =
                 .textY = {0x46, 0x46, 0x36, 0x36, 0x52, 0x52},
             },
 
-        .characterSelectMeta1P2PLimited =
-            {// Crash
-             {0x80, 0x80, {0, 4, 8, 1}, 0, 0xFFFF},
-             // Cortex
-             {0xC0, 0x80, {1, 5, 0, 2}, 1, 0xFFFF},
-             // Tiny
-             {0x100, 0x80, {2, 6, 1, 3}, 2, 0xFFFF},
-             // Coco
-             {0x140, 0x80, {3, 7, 2, 9}, 3, 0xFFFF},
-             // N. Gin
-             {0x80, 0xA7, {0, 12, 10, 5}, 4, 0xFFFF},
-             // Dingo
-             {0xC0, 0xA7, {1, 13, 4, 6}, 5, 0xFFFF},
-             // Polar
-             {0x100, 0xA7, {2, 14, 5, 7}, 6, 0xFFFF},
-             // Pura
-             {0x140, 0xA7, {3, 15, 6, 11}, 7, 0xFFFF},
-             // N. Tropy
-             {0x40, 0x80, {8, 10, 8, 0}, 12, 0x5},
-             // Pinstripe
-             {0x180, 0x80, {9, 11, 3, 9}, 8, 0xA},
-             // Roo
-             {0x40, 0xA7, {8, 10, 10, 4}, 10, 0x7},
-             // Papu
-             {0x180, 0xA7, {9, 11, 7, 11}, 9, 0x8},
-             // Komodo Joe
-             {0x80, 0xCE, {4, 12, 12, 13}, 11, 0x9},
-             // Penta
-             {0xC0, 0xCE, {5, 13, 12, 14}, 13, 0x6},
-             // Fake Crash
-             {0x100, 0xCE, {6, 15, 13, 15}, 14, 0xB},
-             // Nitros Oxide
-             {0x140, 0xCE, {7, 15, 14, 11}, NITROS_OXIDE, 0xFFFF}},
-
-        .characterSelectMeta1P2P =
-            {// Crash
-             {0x80, 0x60, {0, 4, 8, 1}, 0, 0xFFFF},
-             // Cortex
-             {0xC0, 0x60, {1, 5, 0, 2}, 1, 0xFFFF},
-             // Tiny
-             {0x100, 0x60, {2, 6, 1, 3}, 2, 0xFFFF},
-             // Coco
-             {0x140, 0x60, {3, 7, 2, 9}, 3, 0xFFFF},
-             // N. Gin
-             {0x80, 0x87, {0, 12, 10, 5}, 4, 0xFFFF},
-             // Dingo
-             {0xC0, 0x87, {1, 13, 4, 6}, 5, 0xFFFF},
-             // Polar
-             {0x100, 0x87, {2, 14, 5, 7}, 6, 0xFFFF},
-             // Pura
-             {0x140, 0x87, {3, 15, 6, 11}, 7, 0xFFFF},
-             // N. Tropy
-             {0x40, 0x60, {8, 10, 8, 0}, 12, 0x5},
-             // Pinstripe
-             {0x180, 0x60, {9, 11, 3, 9}, 8, 0xA},
-             // Roo
-             {0x40, 0x87, {8, 10, 10, 4}, 10, 0x7},
-             // Papu
-             {0x180, 0x87, {9, 11, 7, 11}, 9, 0x8},
-             // Komodo Joe
-             {0x80, 0xAE, {4, 12, 12, 13}, 11, 0x9},
-             // Penta
-             {0xC0, 0xAE, {5, 13, 12, 14}, 13, 0x6},
-             // Fake Crash
-             {0x100, 0xAE, {6, 15, 13, 15}, 14, 0xB},
-             // Nitros Oxide
-             {0x140, 0xAE, {7, 15, 14, 11}, NITROS_OXIDE, 0xFFFF}},
-
-        .characterSelectMeta3P =
-            {// Crash
-             {0x20, 0x47, {12, 4, 0, 1}, 0, 0xFFFF},
-             // Cortex
-             {0x60, 0x47, {13, 5, 0, 2}, 1, 0xFFFF},
-             // Tiny
-             {0xA0, 0x47, {14, 6, 1, 3}, 2, 0xFFFF},
-             // Coco
-             {0xE0, 0x47, {15, 7, 2, 3}, 3, 0xFFFF},
-             // N. Gin
-             {0x20, 0x6E, {0, 8, 4, 5}, 4, 0xFFFF},
-             // Dingo
-             {0x60, 0x6E, {1, 9, 4, 6}, 5, 0xFFFF},
-             // Polar
-             {0xA0, 0x6E, {2, 10, 5, 7}, 6, 0xFFFF},
-             // Pura
-             {0xE0, 0x6E, {3, 11, 6, 7}, 7, 0xFFFF},
-             // N. Tropy
-             {0x20, 0x95, {4, 8, 8, 9}, 12, 0x5},
-             // Pinstripe
-             {0x60, 0x95, {5, 9, 8, 10}, 8, 0xA},
-             // Roo
-             {0xA0, 0x95, {6, 10, 9, 11}, 10, 0x7},
-             // Papu
-             {0xE0, 0x95, {7, 11, 10, 11}, 9, 0x8},
-             // Komodo Joe
-             {0x20, 0x20, {12, 1, 12, 13}, 11, 0x9},
-             // Penta
-             {0x60, 0x20, {13, 2, 12, 14}, 13, 0x6},
-             // Fake Crash
-             {0xA0, 0x20, {14, 3, 13, 15}, 14, 0xB},
-             // Nitros Oxide
-             {0xE0, 0x20, {15, 3, 14, 15}, NITROS_OXIDE, 0xFFFF}},
-
-        .characterSelectMeta4P =
-            {// Crash
-             {0x80, 0x47, {0, 4, 10, 1}, 0, 0xFFFF},
-             // Cortex
-             {0xC0, 0x47, {14, 5, 0, 2}, 1, 0xFFFF},
-             // Tiny
-             {0x100, 0x47, {15, 6, 1, 3}, 2, 0xFFFF},
-             // Coco
-             {0x140, 0x47, {3, 7, 2, 11}, 3, 0xFFFF},
-             // N. Gin
-             {0x80, 0x6E, {0, 4, 12, 5}, 4, 0xFFFF},
-             // Dingo
-             {0xC0, 0x6E, {1, 8, 4, 6}, 5, 0xFFFF},
-             // Polar
-             {0x100, 0x6E, {2, 9, 5, 7}, 6, 0xFFFF},
-             // Pura
-             {0x140, 0x6E, {3, 7, 6, 13}, 7, 0xFFFF},
-             // N. Tropy
-             {0xC0, 0x95, {5, 8, 8, 9}, 12, 0x5},
-             // Fake Crash
-             {0x100, 0x95, {6, 9, 8, 9}, 14, 0xB},
-             // Roo
-             {0x40, 0x47, {10, 12, 10, 0}, 10, 0x7},
-             // Papu
-             {0x180, 0x47, {11, 13, 3, 11}, 9, 0x8},
-             // Komodo Joe
-             {0x40, 0x6E, {10, 12, 12, 4}, 11, 0x9},
-             // Pinstripe
-             {0x180, 0x6E, {11, 13, 7, 13}, 8, 0xA},
-             // Penta
-             {0xC0, 0x20, {14, 1, 14, 15}, 13, 0x6},
-             // Nitros Oxide
-             {0x100, 0x20, {15, 2, 14, 15}, NITROS_OXIDE, 0xFFFF}},
-
-        .characterSelectMetaByLayout = {&D230.characterSelectMeta1P2P[0], &D230.characterSelectMeta1P2P[0], &D230.characterSelectMeta3P[0],
-                                        &D230.characterSelectMeta4P[0], &D230.characterSelectMeta1P2PLimited[0], &D230.characterSelectMeta1P2PLimited[0]},
-
-        .characterMenuID =
-            {
-                -1,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-            },
+        .characterSelectGrids = {
+            // 1P/2P full: eight EMPTY cells, the first custom goes below Papu.
+            {.columnX = {0, 64, 128, 192, 256, 320, 384, 448}, .rowY = {96, 135, 174}, .firstCustom = {2, 6},
+             .cells = {
+                 {CHARACTER_GRID_EMPTY, N_TROPY, CRASH_BANDICOOT, NEO_CORTEX, TINY_TIGER, COCO_BANDICOOT, PINSTRIPE, CHARACTER_GRID_EMPTY},
+                 {CHARACTER_GRID_EMPTY, RIPPER_ROO, N_GIN, DINGODILE, POLAR, PURA, PAPU_PAPU, CHARACTER_GRID_EMPTY},
+                 {CHARACTER_GRID_EMPTY, CHARACTER_GRID_EMPTY, KOMODO_JOE, PENTA_PENGUIN, FAKE_CRASH, NITROS_OXIDE, CHARACTER_GRID_EMPTY, CHARACTER_GRID_EMPTY},
+                 {CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE},
+                 {CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE},
+                 {CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE}}},
+            // 3P: four extra cells above and four below the original four rows.
+            {.columnX = {32, 96, 160, 224}, .rowY = {0, 32, 71, 110, 149, 183}, .firstCustom = {5, 3},
+             .cells = {
+                 {CHARACTER_GRID_EMPTY, CHARACTER_GRID_EMPTY, CHARACTER_GRID_EMPTY, CHARACTER_GRID_EMPTY, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE},
+                 {KOMODO_JOE, PENTA_PENGUIN, FAKE_CRASH, NITROS_OXIDE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE},
+                 {CRASH_BANDICOOT, NEO_CORTEX, TINY_TIGER, COCO_BANDICOOT, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE},
+                 {N_GIN, DINGODILE, POLAR, PURA, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE},
+                 {N_TROPY, PINSTRIPE, RIPPER_ROO, PAPU_PAPU, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE},
+                 {CHARACTER_GRID_EMPTY, CHARACTER_GRID_EMPTY, CHARACTER_GRID_EMPTY, CHARACTER_GRID_EMPTY, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE}}},
+            // 4P: two cells per outside edge, preserving the four preview corners.
+            // New edge rows stay inside the screen; retail rows keep their exact Y coordinates.
+            {.columnX = {0, 64, 128, 192, 256, 320, 384, 448}, .rowY = {0, 32, 71, 110, 149, 183}, .firstCustom = {2, 7},
+             .cells = {
+                 {CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_EMPTY, CHARACTER_GRID_EMPTY, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE},
+                 {CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, PENTA_PENGUIN, NITROS_OXIDE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE},
+                 {CHARACTER_GRID_EMPTY, RIPPER_ROO, CRASH_BANDICOOT, NEO_CORTEX, TINY_TIGER, COCO_BANDICOOT, PAPU_PAPU, CHARACTER_GRID_EMPTY},
+                 {CHARACTER_GRID_EMPTY, KOMODO_JOE, N_GIN, DINGODILE, POLAR, PURA, PINSTRIPE, CHARACTER_GRID_EMPTY},
+                 {CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, N_TROPY, FAKE_CRASH, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE},
+                 {CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_EMPTY, CHARACTER_GRID_EMPTY, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE}}},
+            // Limited 1P/2P uses the retail spacing; custom entries use the full layout.
+            {.columnX = {0, 64, 128, 192, 256, 320, 384, 448}, .rowY = {128, 167, 206}, .firstCustom = {2, 6},
+             .cells = {
+                 {CHARACTER_GRID_EMPTY, N_TROPY, CRASH_BANDICOOT, NEO_CORTEX, TINY_TIGER, COCO_BANDICOOT, PINSTRIPE, CHARACTER_GRID_EMPTY},
+                 {CHARACTER_GRID_EMPTY, RIPPER_ROO, N_GIN, DINGODILE, POLAR, PURA, PAPU_PAPU, CHARACTER_GRID_EMPTY},
+                 {CHARACTER_GRID_EMPTY, CHARACTER_GRID_EMPTY, KOMODO_JOE, PENTA_PENGUIN, FAKE_CRASH, NITROS_OXIDE, CHARACTER_GRID_EMPTY, CHARACTER_GRID_EMPTY},
+                 {CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE},
+                 {CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE},
+                 {CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE, CHARACTER_GRID_UNUSABLE}}},
+        },
 
         .characterSelectTransition1P2P =
             {
                 {0, 0xC8, 6, 0, 0}, {0, 0xC8, 5, 0, 0}, {0, 0xC8, 4, 0, 0}, {0, 0xC8, 3, 0, 0}, {0, 0xC8, 5, 0, 0}, {0, 0xC8, 4, 0, 0}, {0, 0xC8, 3, 0, 0},
                 {0, 0xC8, 2, 0, 0}, {0, 0xC8, 7, 0, 0}, {0, 0xC8, 1, 0, 0}, {0, 0xC8, 6, 0, 0}, {0, 0xC8, 0, 0, 0}, {0, 0xC8, 4, 0, 0}, {0, 0xC8, 3, 0, 0},
-                {0, 0xC8, 2, 0, 0}, {0, 0xC8, 1, 0, 0}, {-512, 0, 0, 0, 0}, {512, 0, 3, 0, 0},  {512, 0, 1, 0, 0},  {512, 0, 7, 0, 0},  {512, 0, 5, 0, 0},  {0, 0, -1, 0, 0},
+                {0, 0xC8, 2, 0, 0}, {0, 0xC8, 1, 0, 0},
+                {0, 0xC8, 0, 0, 0}, {0, 0xC8, 0, 0, 0}, {0, 0xC8, 0, 0, 0}, {0, 0xC8, 0, 0, 0},
+                {0, 0xC8, 0, 0, 0}, {0, 0xC8, 0, 0, 0}, {0, 0xC8, 0, 0, 0}, {0, 0xC8, 0, 0, 0},
+                {-512, 0, 0, 0, 0}, {512, 0, 3, 0, 0}, {512, 0, 1, 0, 0}, {512, 0, 7, 0, 0}, {512, 0, 5, 0, 0}, {0, 0, -1, 0, 0},
             },
 
         .characterSelectTransition3P =
             {
                 {-512, 0, 2, 0, 0}, {-512, 0, 3, 0, 0}, {-512, 0, 4, 0, 0}, {-512, 0, 5, 0, 0}, {-512, 0, 1, 0, 0}, {-512, 0, 2, 0, 0}, {-512, 0, 3, 0, 0},
                 {-512, 0, 4, 0, 0}, {-512, 0, 0, 0, 0}, {-512, 0, 1, 0, 0}, {-512, 0, 2, 0, 0}, {-512, 0, 3, 0, 0}, {-512, 0, 2, 0, 0}, {-512, 0, 3, 0, 0},
-                {-512, 0, 4, 0, 0}, {-512, 0, 0, 0, 0}, {-512, 0, 1, 0, 0}, {512, 0, 5, 0, 0},  {512, 0, 3, 0, 0},  {512, 0, 1, 0, 0},  {512, 0, 5, 0, 0},  {0, 0, -1, 0, 0},
+                {-512, 0, 4, 0, 0}, {-512, 0, 0, 0, 0},
+                {-512, 0, 0, 0, 0}, {-512, 0, 0, 0, 0}, {-512, 0, 0, 0, 0}, {-512, 0, 0, 0, 0},
+                {-512, 0, 0, 0, 0}, {-512, 0, 0, 0, 0}, {-512, 0, 0, 0, 0}, {-512, 0, 0, 0, 0},
+                {-512, 0, 1, 0, 0}, {512, 0, 5, 0, 0}, {512, 0, 3, 0, 0}, {512, 0, 1, 0, 0}, {512, 0, 5, 0, 0}, {0, 0, -1, 0, 0},
             },
 
         .characterSelectTransition4P =
             {
                 {-512, 0, 1, 0, 0}, {-512, 0, 2, 0, 0}, {-512, 0, 3, 0, 0}, {-512, 0, 4, 0, 0}, {-512, 0, 2, 0, 0}, {-512, 0, 3, 0, 0}, {-512, 0, 4, 0, 0},
                 {-512, 0, 5, 0, 0}, {-512, 0, 3, 0, 0}, {-512, 0, 4, 0, 0}, {-512, 0, 0, 0, 0}, {-512, 0, 5, 0, 0}, {-512, 0, 1, 0, 0}, {-512, 0, 6, 0, 0},
-                {-512, 0, 2, 0, 0}, {-512, 0, 0, 0, 0}, {-512, 0, 1, 0, 0}, {512, 0, 3, 0, 0},  {512, 0, 1, 0, 0},  {512, 0, 7, 0, 0},  {512, 0, 5, 0, 0},  {0, 0, -1, 0, 0},
+                {-512, 0, 2, 0, 0}, {-512, 0, 0, 0, 0},
+                {-512, 0, 0, 0, 0}, {-512, 0, 0, 0, 0}, {-512, 0, 0, 0, 0}, {-512, 0, 0, 0, 0},
+                {-512, 0, 0, 0, 0}, {-512, 0, 0, 0, 0}, {-512, 0, 0, 0, 0}, {-512, 0, 0, 0, 0},
+                {-512, 0, 1, 0, 0}, {512, 0, 3, 0, 0}, {512, 0, 1, 0, 0}, {512, 0, 7, 0, 0}, {512, 0, 5, 0, 0}, {0, 0, -1, 0, 0},
             },
 
         .characterSelectTransitionByPlayerCount = {&D230.characterSelectTransition1P2P[0], &D230.characterSelectTransition1P2P[0],
@@ -556,9 +446,6 @@ struct OverlayDATA_230 D230 CTR_PSX_MATCH_SECTION(".D230") =
 
         .playerNumberStrings = {&R230.s_1[0], &R230.s_2[0], &R230.s_3[0], &R230.s_4[0]},
 
-        .characterSelectFallbackDirection1 = {2, 2, 1, 1},
-
-        .characterSelectFallbackDirection2 = {3, 3, 0, 0},
 
         .characterSelect_Outline = COLOR_CODE_PACKED_INIT(0),
 

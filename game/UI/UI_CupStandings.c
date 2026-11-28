@@ -1,4 +1,5 @@
 #include <common.h>
+#include <custom-characters/character_resources.h>
 #include <level_info.h>
 #include <track_text.h>
 #include "UI_CupPoints.h"
@@ -439,7 +440,7 @@ void UI_CupStandings_InputAndDraw(void)
 		}
 
 		// Draw character icon
-		struct Icon *icon = gGT->ptrIcons[data.MetaDataCharacters[data.characterIDs[d->driverID]].iconID];
+		struct Icon *icon = LOAD_GetDriverIcon(d->driverID);
 		UI_DrawDriverIcon(icon,
 
 		                  drawPos.x, drawPos.y, &gGT->backBuffer->primMem,

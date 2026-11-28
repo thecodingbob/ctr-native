@@ -1,4 +1,41 @@
 #include <common.h>
+#include "DecalGlobal.h"
+
+static struct DecalIconTexture *s_iconTextures;
+
+void DecalGlobal_UnregisterIconTexture(struct DecalIconTexture *binding)
+{
+	struct DecalIconTexture **link = &s_iconTextures;
+	while (*link != NULL)
+	{
+		if (*link == binding)
+		{
+			*link = binding->next;
+			break;
+		}
+		link = &(*link)->next;
+	}
+	memset(binding, 0, sizeof(*binding));
+}
+
+void DecalGlobal_RegisterIconTexture(struct DecalIconTexture *binding, const struct Icon *icon, u32 texture)
+{
+	DecalGlobal_UnregisterIconTexture(binding);
+	if (icon == NULL || texture == 0) { return; }
+	binding->icon = icon;
+	binding->texture = texture;
+	binding->next = s_iconTextures;
+	s_iconTextures = binding;
+}
+
+u32 DecalGlobal_GetIconTexture(const struct Icon *icon)
+{
+	for (const struct DecalIconTexture *binding = s_iconTextures; binding != NULL; binding = binding->next)
+	{
+		if (binding->icon == icon) { return binding->texture; }
+	}
+	return 0;
+}
 
 // Asset names and lookup keys are fixed 16-byte fields, word-aligned on PSX.
 static inline u32 DecalGlobal_ReadNameWord(const char *name, s32 wordIndex)

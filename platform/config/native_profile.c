@@ -2,6 +2,7 @@
 #include <platform/config/native_profile.h>
 #include <platform/native_assets.h>
 #include <platform/native_path.h>
+#include <platform/native_ini.h>
 #include "native_config_internal.h"
 
 static const ConfigEnumValue kProfileValues[] = {
@@ -66,6 +67,12 @@ ConfigLoadResult NativeConfig_LoadProfile(ConfigProfile *profile)
     return CONFIG_LOAD_OK;
 }
 
+static bool NativeProfile_WriteIni(FILE *file, const void *context)
+{
+    return NativeIni_WriteSection(file, kProfileEntry.section) &&
+           NativeConfig_WriteValue(file, &kProfileEntry, context, NULL);
+}
+
 bool NativeConfig_SaveProfile(ConfigProfile profile)
 {
     int value = (int)profile;
@@ -74,18 +81,11 @@ bool NativeConfig_SaveProfile(ConfigProfile profile)
         return false;
     }
     char path[512];
-    NativePath_Join(path, sizeof(path), NativeStr8_FromCString(NativeAssets_GetBaseDir()), NATIVE_STR8_LIT("profile.ini"));
-    FILE *file = fopen(path, "w");
-    if (file == NULL)
+    if (!NativePath_Join(path, sizeof(path), NativeStr8_FromCString(NativeAssets_GetBaseDir()), NATIVE_STR8_LIT("profile.ini")))
     {
         return false;
     }
-    bool written = fprintf(file, "[%s]\n", kProfileEntry.section) >= 0;
-    if (!NativeConfig_WriteValue(file, &kProfileEntry, &value, NULL))
-    {
-        written = false;
-    }
-    return fclose(file) == 0 && written;
+    return NativeIni_Save(path, NativeProfile_WriteIni, &value);
 }
 
 ConfigLoadResult NativeProfile_Select(ConfigProfile profile, bool apply)

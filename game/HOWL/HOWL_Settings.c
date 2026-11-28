@@ -367,6 +367,8 @@ void OptionsMenu_TestSound(s32 newRow, b32 newBoolPlay)
 		u32 frames = gGT->frameTimer_MainFrame_ResetDB;
 		if (frames == (frames / 25) * 25)
 		{
+			int previousDriver = sdata->customCharacterAudioDriver;
+			sdata->customCharacterAudioDriver = driverID + 1;
 			if (frames == (frames / 50) * 50)
 			{
 				HOWL_SLIDER_SOUND = OtherFX_Play((u16)(characterID + 0x1c), 0);
@@ -375,6 +377,7 @@ void OptionsMenu_TestSound(s32 newRow, b32 newBoolPlay)
 			{
 				HOWL_SLIDER_SOUND = OtherFX_Play((u16)(characterID + 0x2c), 0);
 			}
+			sdata->customCharacterAudioDriver = previousDriver;
 		}
 	}
 	Chaos_SetAudioOwner(previousAudio);

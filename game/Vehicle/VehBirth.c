@@ -1,4 +1,5 @@
 #include "VehCommon.h"
+#include <custom-characters/character_resources.h>
 
 enum
 {
@@ -564,73 +565,10 @@ void VehBirth_TeleportAll(struct GameTracker *gGT, u32 spawnFlags)
 	}
 }
 
-enum
-{
-	VEH_EXTRA_DRIVER_MODEL_COUNT = 3,
-};
-
-typedef u32 VehBirthModelNameWord CTR_MAY_ALIAS;
-
-#define VEH_BIRTH_MODEL_NAME_EQUALS(model, search)                                                          \
-	((((const VehBirthModelNameWord *)(model)->name)[0] == ((const VehBirthModelNameWord *)(search))[0]) && \
-	 (((const VehBirthModelNameWord *)(model)->name)[1] == ((const VehBirthModelNameWord *)(search))[1]) && \
-	 (((const VehBirthModelNameWord *)(model)->name)[2] == ((const VehBirthModelNameWord *)(search))[2]) && \
-	 (((const VehBirthModelNameWord *)(model)->name)[3] == ((const VehBirthModelNameWord *)(search))[3]))
-
 struct Model *VehBirth_GetModelByName(char *searchName)
 {
-	int i;
-	register struct Model *m CTR_PSX_REGISTER("$6");
-	register struct Model **loadedModels CTR_PSX_REGISTER("$2");
-	struct Model *extraModel;
-	struct Model **models;
-
-	m = NULL;
-	i = (s32)(size_t)m;
-	// array to character models loaded,
-	// maximum of 4, used in VS mode
-	for (; i < VEH_EXTRA_DRIVER_MODEL_COUNT; i++)
-	{
-		extraModel = VEH_DRIVER_MODEL_EXTRAS[i].model;
-
-		if ((extraModel != NULL) && VEH_BIRTH_MODEL_NAME_EQUALS(extraModel, searchName))
-		{
-			// character found, return pointer
-			return extraModel;
-		}
-	}
-
-	loadedModels = VEH_PLAYER_OBJECT_LIST;
-
-	if (loadedModels != NULL)
-	{
-		models = loadedModels;
-		m = models[0];
-		if (m != NULL)
-		{
-			do
-			{
-				if (VEH_BIRTH_MODEL_NAME_EQUALS(m, searchName))
-				{
-					goto FoundModel;
-				}
-
-				models++;
-				m = models[0];
-			} while (m != NULL);
-		}
-	}
-
-	if (m == NULL)
-	{
-		m = LOAD_GetExtraCharacterModelByName(searchName);
-	}
-
-FoundModel:
-	return m;
+	return LOAD_GetRetailCharacterModel(searchName);
 }
-
-#undef VEH_BIRTH_MODEL_NAME_EQUALS
 
 #include "VehBirth_Consts.c"
 
@@ -667,10 +605,8 @@ void VehBirth_NonGhost(struct Thread *t, int index)
 {
 	register int playerIndex CTR_PSX_REGISTER("$19") = index;
 	struct Driver *d;
-	struct MetaDataCHAR *characterMetadata;
 	int collisionValue;
 	int id;
-	size_t characterMetadataAddress;
 	struct Model *m;
 	struct Instance *inst;
 	struct Instance *wakeInst;
@@ -696,7 +632,6 @@ void VehBirth_NonGhost(struct Thread *t, int index)
 	// The recycled pool payload includes native fields beyond the retail prefix.
 	memset(d, 0, sizeof(*d));
 	d->maskIsAku = -1;
-	characterMetadata = GAME_CHARACTER_METADATA;
 
 	if ((GAME_TRACKER->gameMode1 & MAIN_MENU) != 0)
 	{
@@ -712,8 +647,7 @@ void VehBirth_NonGhost(struct Thread *t, int index)
 		id = *characterID;
 	}
 
-	characterMetadataAddress = (size_t)characterMetadata + ((size_t)id * sizeof(*characterMetadata));
-	m = VehBirth_GetModelByName(((struct MetaDataCHAR *)characterMetadataAddress)->name_Debug);
+	m = LOAD_GetDriverModel(playerIndex, id);
 
 	inst = INSTANCE_Birth3D(m, m->name, t);
 

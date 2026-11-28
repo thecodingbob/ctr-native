@@ -1,4 +1,5 @@
 #include <common.h>
+#include <custom-characters/character_resources.h>
 
 static void LOAD_ResetExtraCharacterModels(void)
 {

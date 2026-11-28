@@ -1,5 +1,10 @@
 #include <common.h>
+#include <custom-characters/character_resources.h>
 #include <widescreen.h>
+#include <platform/custom-characters/native_character_library.h>
+#include <platform/native_assets.h>
+#include "character_select_grid.h"
+#include <game/custom-characters/character_policy.h>
 
 enum
 {
@@ -11,7 +16,6 @@ enum
 	MM_CHARACTER_SELECT_MODEL_MOVE_NEXT = 1,
 	MM_CHARACTER_SELECT_MODEL_MOVE_PREV = -1,
 	MM_CHARACTER_SELECT_ICON_COUNT = 0x10,
-	MM_CHARACTER_SELECT_EXPANSION_ICON_FIRST = 0xc,
 	MM_CHARACTER_SELECT_DEFAULT_DRIVER_COUNT = 8,
 	MM_CHARACTER_SELECT_MAX_PLAYERS = 4,
 	MM_CHARACTER_SELECT_LIMITED_LAYOUT_OFFSET = 4,
@@ -27,8 +31,8 @@ enum
 	MM_CHARACTER_SELECT_LAYOUT_4P = 3,
 	MM_CHARACTER_SELECT_LAYOUT_1P_LIMITED = 4,
 	MM_CHARACTER_SELECT_LAYOUT_2P_LIMITED = 5,
-	MM_CHARACTER_SELECT_TITLE_TRANSITION_INDEX = 16,
-	MM_CHARACTER_SELECT_DRIVER_WINDOW_TRANSITION_FIRST = 0x11,
+	MM_CHARACTER_SELECT_TITLE_TRANSITION_INDEX = CHARACTER_SELECT_TITLE_TRANSITION,
+	MM_CHARACTER_SELECT_DRIVER_WINDOW_TRANSITION_FIRST = CHARACTER_SELECT_FIRST_WINDOW_TRANSITION,
 	MM_CHARACTER_SELECT_3P_TITLE_X = 0x9c,
 	MM_CHARACTER_SELECT_3P_SELECT_Y = 0x14,
 	MM_CHARACTER_SELECT_3P_CHARACTER_Y = 0x26,
@@ -48,6 +52,10 @@ enum
 	MM_CHARACTER_SELECT_WHEEL_SIZE = 0xccc,
 	MM_CHARACTER_SELECT_CURSOR_LABEL_OFFSET_X = -6,
 	MM_CHARACTER_SELECT_CURSOR_LABEL_OFFSET_Y = -3,
+	MM_CHARACTER_SELECT_CUSTOM_ROWS_TOP = -MM_CHARACTER_SELECT_CURSOR_LABEL_OFFSET_Y,
+	MM_CHARACTER_SELECT_CUSTOM_ROW_STEP =
+	    (MM_CHARACTER_SELECT_SCREEN_H - MM_CHARACTER_SELECT_ICON_RECT_H - MM_CHARACTER_SELECT_CUSTOM_ROWS_TOP) /
+	    (CHARACTER_GRID_ROWS - 1),
 	MM_CHARACTER_SELECT_HIGHLIGHT_OFFSET_X = 3,
 	MM_CHARACTER_SELECT_HIGHLIGHT_OFFSET_Y = 2,
 	MM_CHARACTER_SELECT_HIGHLIGHT_W = 0x2e,
@@ -66,6 +74,13 @@ enum
 	MM_CHARACTER_SELECT_COLOR_PULSE_THRESHOLD = 0xc00,
 	MM_CHARACTER_SELECT_COLOR_PULSE_SCALE_SHIFT = 7,
 	MM_CHARACTER_SELECT_COLOR_PULSE_FP_SHIFT = 0xc,
+	MM_CHARACTER_UNLOCK_TROPY = 5,
+	MM_CHARACTER_UNLOCK_PENTA = 6,
+	MM_CHARACTER_UNLOCK_ROO = 7,
+	MM_CHARACTER_UNLOCK_PAPU = 8,
+	MM_CHARACTER_UNLOCK_JOE = 9,
+	MM_CHARACTER_UNLOCK_PINSTRIPE = 10,
+	MM_CHARACTER_UNLOCK_FAKE_CRASH = 11,
 };
 
 static int MM_Characters_GridX(int x)
@@ -80,8 +95,6 @@ static int MM_Characters_GridX(int x)
 // retain the same game-state operations without the PSX scheduling controls.
 #define MM_CHARACTERS_LOAD_OUTLINE_GAME_TRACKER(gameTracker)    ((gameTracker) = (u32)GAME_TRACKER)
 #define MM_CHARACTERS_LOAD_OUTER_LOOP_GAME_TRACKER(gameTracker) ((gameTracker) = GAME_TRACKER)
-#define MM_CHARACTERS_LOAD_COLLISION_GAME_TRACKER(gameTracker)  ((gameTracker) = GAME_TRACKER)
-#define MM_CHARACTERS_CAPTURE_FINAL_COLLISION_PAGE(gameTracker) ((gameTracker) = GAME_TRACKER)
 #define MM_CHARACTERS_BEGIN_ICON_COLOR_COPY(characterMetadata)  ((void)(characterMetadata))
 #define MM_CHARACTERS_END_ICON_COLOR_COPY()                     ((void)0)
 #define MM_CHARACTERS_LOAD_HIGHLIGHT_GAME_TRACKER(gameTracker, transitionY, metadataY) \
@@ -91,31 +104,42 @@ static int MM_Characters_GridX(int x)
 		(transitionY) += (metadataY);                                                  \
 	} while (0)
 
-extern unsigned char oxideModel[];
+static const struct NativeCharacterMetadata *s_characterSelectCustomEntries[CHARACTER_SELECT_EXTRA_SLOT_CAPACITY];
+static int s_characterSelectCustomCount;
 
-static struct Model *MM_Characters_GetOxideModel(void)
+static const struct NativeCharacterMetadata *MM_Characters_CustomEntry(int entry)
 {
-	static b32 initialized;
-	struct Model *model = (struct Model *)&oxideModel[4];
+	int index = entry - CHARACTER_SELECT_RETAIL_SLOT_COUNT;
+	return index >= 0 && index < s_characterSelectCustomCount ? s_characterSelectCustomEntries[index] : NULL;
+}
 
-	if (!initialized)
+static struct CharacterGrid *MM_Characters_ActiveGrid(void)
+{
+	int layout = MM_CHARACTER_SELECT_LAYOUT_INDEX;
+	int grid = layout >= MM_CHARACTER_SELECT_LAYOUT_1P_LIMITED ? 3 : layout < MM_CHARACTER_SELECT_LAYOUT_3P ? 0 : layout - 1;
+	return &D230.characterSelectGrids[grid];
+}
+
+static const char *MM_Characters_GetPreviewIdentity(int playerIndex)
+{
+	if (D230.nativeCharacterPreviewCurrent[playerIndex] < CHARACTER_SELECT_RETAIL_SLOT_COUNT)
 	{
-		u32 pointerMapOffset;
-		u32 pointerCount;
-		u8 *pointerMap;
-
-		memcpy(&pointerMapOffset, oxideModel, sizeof(pointerMapOffset));
-		pointerMap = (u8 *)model + pointerMapOffset;
-		memcpy(&pointerCount, pointerMap, sizeof(pointerCount));
-		LOAD_RunPtrMap((char *)model, (int *)(pointerMap + sizeof(pointerCount)), pointerCount >> 2);
-		initialized = true;
+		return NULL;
 	}
 
-	return model;
+	const struct NativeCharacterMetadata *entry = MM_Characters_CustomEntry(D230.nativeCharacterPreviewCurrent[playerIndex]);
+	return entry != NULL ? entry->identity : NULL;
 }
 
 static b32 MM_Characters_IsUnlocked(const struct CharacterSelectMeta *meta)
 {
+	for (int entry = CHARACTER_SELECT_RETAIL_SLOT_COUNT; entry < D230.nativeCharacterSlotCount; entry++)
+	{
+		if (meta == &D230.characterSelectEntries[entry])
+		{
+			return true;
+		}
+	}
     if (meta->characterID == NITROS_OXIDE)
     {
       return g_config.unlockNitrosOxide;
@@ -126,23 +150,20 @@ static b32 MM_Characters_IsUnlocked(const struct CharacterSelectMeta *meta)
             g_config.unlockAllCharacters;
 }
 
-static const struct CharacterSelectMeta *const kCharacterMetaByID[MM_CHARACTER_SELECT_ICON_COUNT] = {
-	[CRASH_BANDICOOT] = &MM_CHARACTER_SELECT_META_1P2P[0],
-	[NEO_CORTEX] = &MM_CHARACTER_SELECT_META_1P2P[1],
-	[TINY_TIGER] = &MM_CHARACTER_SELECT_META_1P2P[2],
-	[COCO_BANDICOOT] = &MM_CHARACTER_SELECT_META_1P2P[3],
-	[N_GIN] = &MM_CHARACTER_SELECT_META_1P2P[4],
-	[DINGODILE] = &MM_CHARACTER_SELECT_META_1P2P[5],
-	[POLAR] = &MM_CHARACTER_SELECT_META_1P2P[6],
-	[PURA] = &MM_CHARACTER_SELECT_META_1P2P[7],
-	[PINSTRIPE] = &MM_CHARACTER_SELECT_META_1P2P[9],
-	[PAPU_PAPU] = &MM_CHARACTER_SELECT_META_1P2P[11],
-	[RIPPER_ROO] = &MM_CHARACTER_SELECT_META_1P2P[10],
-	[KOMODO_JOE] = &MM_CHARACTER_SELECT_META_1P2P[12],
-	[N_TROPY] = &MM_CHARACTER_SELECT_META_1P2P[8],
-	[PENTA_PENGUIN] = &MM_CHARACTER_SELECT_META_1P2P[13],
-	[FAKE_CRASH] = &MM_CHARACTER_SELECT_META_1P2P[14],
-	[NITROS_OXIDE] = &MM_CHARACTER_SELECT_META_1P2P[15],
+static const u16 s_characterUnlockRequirements[MM_CHARACTER_SELECT_ICON_COUNT] = {
+	[CRASH_BANDICOOT] = MM_CHARACTER_UNLOCK_ALWAYS,
+	[NEO_CORTEX] = MM_CHARACTER_UNLOCK_ALWAYS,
+	[TINY_TIGER] = MM_CHARACTER_UNLOCK_ALWAYS,
+	[COCO_BANDICOOT] = MM_CHARACTER_UNLOCK_ALWAYS,
+	[N_GIN] = MM_CHARACTER_UNLOCK_ALWAYS,
+	[DINGODILE] = MM_CHARACTER_UNLOCK_ALWAYS,
+	[POLAR] = MM_CHARACTER_UNLOCK_ALWAYS,
+	[PURA] = MM_CHARACTER_UNLOCK_ALWAYS,
+	[PINSTRIPE] = MM_CHARACTER_UNLOCK_PINSTRIPE, [PAPU_PAPU] = MM_CHARACTER_UNLOCK_PAPU,
+	[RIPPER_ROO] = MM_CHARACTER_UNLOCK_ROO, [KOMODO_JOE] = MM_CHARACTER_UNLOCK_JOE,
+	[N_TROPY] = MM_CHARACTER_UNLOCK_TROPY, [PENTA_PENGUIN] = MM_CHARACTER_UNLOCK_PENTA,
+	[FAKE_CRASH] = MM_CHARACTER_UNLOCK_FAKE_CRASH,
+	[NITROS_OXIDE] = MM_CHARACTER_UNLOCK_ALWAYS,
 };
 
 b32 MM_Characters_IsCharacterUnlocked(s16 characterID)
@@ -152,7 +173,8 @@ b32 MM_Characters_IsCharacterUnlocked(s16 characterID)
 		return false;
 	}
 
-	return MM_Characters_IsUnlocked(kCharacterMetaByID[characterID]);
+	const struct CharacterSelectMeta meta = {.characterID = characterID, .unlockFlags = s_characterUnlockRequirements[characterID]};
+	return MM_Characters_IsUnlocked(&meta);
 }
 
 void MM_Characters_AnimateColors(u8 *colorData, s16 playerID, s16 flag)
@@ -211,21 +233,12 @@ void MM_Characters_AnimateColors(u8 *colorData, s16 playerID, s16 flag)
 }
 s32 MM_Characters_GetNextDriver(s32 direction, s16 characterID)
 {
-	register s16 nextIcon CTR_PSX_REGISTER("$5");
-	s32 characterIndex;
-	s32 directionIndex;
-
-	characterIndex = (s16)characterID;
-	directionIndex = (s16)direction;
-	nextIcon = *(u8 *)(directionIndex + &MM_ACTIVE_CHARACTER_SELECT_META[characterIndex].nextIconByDirection[0]);
-
-    if (!MM_Characters_IsUnlocked(&MM_ACTIVE_CHARACTER_SELECT_META[(s32)nextIcon]))
-    {
-      nextIcon = characterID;
-    }
-
-	// return new driver
-	return nextIcon;
+	bool selectable[CHARACTER_SELECT_TITLE_TRANSITION] = {false};
+	for (int i = 0; i < D230.nativeCharacterSlotCount; i++)
+	{
+		selectable[i] = MM_Characters_IsUnlocked(&MM_ACTIVE_CHARACTER_SELECT_META[i]);
+	}
+	return CharacterSelectGrid_Next(MM_Characters_ActiveGrid(), characterID, direction, selectable);
 }
 b32 MM_Characters_boolIsInvalid(s16 *iconPerPlayer, s16 characterID, s32 player)
 {
@@ -253,53 +266,9 @@ b32 MM_Characters_boolIsInvalid(s16 *iconPerPlayer, s16 characterID, s32 player)
 	return isInvalid;
 }
 
-// Search for character model by string,
-// specific to main menu lev, altered in oxide mod
-struct Model *MM_Characters_GetModelByName(const char *name)
-{
-	struct Model **models;
-	struct Model **modelList;
-	struct Model *model;
-	struct Level *level1 = GAME_TRACKER->level1;
-
-	model = NULL;
-
-	// if LEV is valid
-	if (level1 != NULL)
-	{
-		modelList = level1->ptrModelsPtrArray;
-
-		if (modelList != NULL)
-		{
-			CTR_PSX_KEEP_VALUE(modelList);
-			models = modelList;
-
-			// loop through all models in array
-			// of model pointers, until nullptr
-			for (model = models[0]; model != NULL; models++, model = models[0])
-			{
-				if ((CTR_ReadU32AlignedLE(&model->name[0]) == CTR_ReadU32AlignedLE(&name[0])) &&
-				    (CTR_ReadU32AlignedLE(&model->name[4]) == CTR_ReadU32AlignedLE(&name[4])) &&
-				    (CTR_ReadU32AlignedLE(&model->name[8]) == CTR_ReadU32AlignedLE(&name[8])) &&
-				    (CTR_ReadU32AlignedLE(&model->name[12]) == CTR_ReadU32AlignedLE(&name[12])))
-				{
-					break;
-				}
-			}
-		}
-	}
-    if ((model == NULL) &&
-    (strcmp(name, GAME_CHARACTER_METADATA[NITROS_OXIDE].name_Debug) == 0))
-    {
-      return MM_Characters_GetOxideModel();
-    }
-
-	return model;
-}
 void MM_Characters_DrawWindows(b32 showDrivers)
 {
 	register b32 boolShowDrivers CTR_PSX_REGISTER("$22");
-	register struct MetaDataCHAR *characterMetadata CTR_PSX_REGISTER("$23");
 	register s16 *desiredCharacterIDs CTR_PSX_REGISTER("$21");
 	register u32 dataPointer CTR_PSX_REGISTER("$2");
 	register u32 transitionOffsetOrPointer CTR_PSX_REGISTER("$3");
@@ -334,8 +303,6 @@ void MM_Characters_DrawWindows(b32 showDrivers)
 		goto LAB_Characters_DrawWindows_End;
 	}
 
-	CTR_PSX_LOAD_SYMBOL_PAGE(dataPointer, RETAIL_CHARACTER_METADATA_ASM_NAME);
-	CTR_PSX_ADD_SYMBOL_LOW(characterMetadata, dataPointer, RETAIL_CHARACTER_METADATA_ASM_NAME, GAME_CHARACTER_METADATA);
 	CTR_PSX_LOAD_SYMBOL_PAGE(dataPointer, MM_CHARACTER_SELECT_DESIRED_IDS_ASM_NAME);
 	CTR_PSX_ADD_SYMBOL_LOW(desiredCharacterIDs, dataPointer, MM_CHARACTER_SELECT_DESIRED_IDS_ASM_NAME, MM_CHARACTER_SELECT_DESIRED_IDS);
 
@@ -492,15 +459,6 @@ LAB_Characters_DrawWindows_Loop:
 	CTR_PSX_ADD_SYMBOL_LOW(dataPointer, dataPointer, MM_CHARACTER_SELECT_CURRENT_IDS_ASM_NAME, (u32)MM_CHARACTER_SELECT_CURRENT_IDS);
 	currCharacterID = (s16 *)(indexOrSlideFactor * sizeof(*currCharacterID) + dataPointer);
 
-	VehBirth_SetWheelSizeForCharacter(loopGameTracker->drivers[indexOrSlideFactor], *currCharacterID);
-	driverInst->animFrame = 0;
-	driverInst->animIndex = 0;
-
-	model = MM_Characters_GetModelByName(characterMetadata[(int)*currCharacterID].name_Debug);
-
-	// set modelPtr in Instance
-	driverInst->model = model;
-
 	// CameraDC, freecam mode
 	GAME_TRACKER->cameraDC[indexOrSlideFactor].cameraMode = CAMERA_MODE_FREECAM;
 
@@ -534,6 +492,7 @@ LAB_Characters_DrawWindows_Loop:
 
 			// make driver fly off screen
 			*currCharacterID = desiredCharacterIDs[indexOrSlideFactor];
+			D230.nativeCharacterPreviewCurrent[playerIndex] = D230.nativeCharacterPreviewDesired[playerIndex];
 			moveFrameScale = RaceFlag_MoveModels((int)nextMoveTimer, (int)moveFrames);
 
 			transitionOffsetOrPointer = (s16)MM_CHARACTER_SELECT_SLIDE_DISTANCE;
@@ -577,13 +536,20 @@ LAB_Characters_DrawWindows_Loop:
 	// If no transition between players
 	else
 	{
-		// compare to character ID
-		if (*currCharacterID != GAME_CHARACTER_IDS[indexOrSlideFactor])
+		int selectedEntry = CharacterSelectGrid_At(MM_Characters_ActiveGrid(), D230.nativeCharacterCursor[playerIndex]);
+		if (*currCharacterID != GAME_CHARACTER_IDS[indexOrSlideFactor] || D230.nativeCharacterPreviewCurrent[playerIndex] != selectedEntry)
 		{
 			*moveTimer = MM_CHARACTER_SELECT_MOVE_FRAMES * 2;
 			desiredCharacterIDs[indexOrSlideFactor] = GAME_CHARACTER_IDS[indexOrSlideFactor];
+			D230.nativeCharacterPreviewDesired[playerIndex] = selectedEntry;
 		}
 	}
+
+	VehBirth_SetWheelSizeForCharacter(loopGameTracker->drivers[indexOrSlideFactor], *currCharacterID);
+	driverInst->animFrame = 0;
+	driverInst->animIndex = 0;
+	model = LOAD_GetCharacterPreviewModel(playerIndex, *currCharacterID, MM_Characters_GetPreviewIdentity(playerIndex));
+	driverInst->model = model;
 
 	{
 		register s32 rotationY CTR_PSX_REGISTER("$6");
@@ -620,30 +586,26 @@ LAB_Characters_DrawWindows_End:
 }
 void MM_Characters_SetMenuLayout(void)
 {
-	struct CharacterSelectMeta *meta1P2P;
 	b16 expandRoster;
 	s16 layoutIndex;
-	s16 iconIndex;
 
-	expandRoster = false;
-	iconIndex = MM_CHARACTER_SELECT_EXPANSION_ICON_FIRST;
-	meta1P2P = MM_CHARACTER_SELECT_META_1P2P;
+	expandRoster = s_characterSelectCustomCount > 0;
 
 	layoutIndex = GAME_TRACKER->numPlyrNextGame - 1;
-
 	// By default, draw "Select character" in 3P menu
-	MM_CHARACTER_SELECT_ROSTER_EXPANDED = false;
+	MM_CHARACTER_SELECT_ROSTER_EXPANDED = expandRoster;
 
 	// Loop through bottom characters,
 	// if any are unlocked, use expanded
-        for (; iconIndex < MM_CHARACTER_SELECT_ICON_COUNT; iconIndex++)
-        {
-          if (MM_Characters_IsUnlocked(&meta1P2P[iconIndex]))
-          {
-            expandRoster = true;
-            MM_CHARACTER_SELECT_ROSTER_EXPANDED = true;
-          }
-        }
+	const int expandedCharacters[] = {KOMODO_JOE, PENTA_PENGUIN, FAKE_CRASH, NITROS_OXIDE};
+	for (size_t i = 0; i < len(expandedCharacters); i++)
+	{
+		if (MM_Characters_IsCharacterUnlocked(expandedCharacters[i]))
+		{
+			expandRoster = true;
+			MM_CHARACTER_SELECT_ROSTER_EXPANDED = true;
+		}
+	}
 
 	if (
 	    // if 1P or 2P
@@ -659,7 +621,25 @@ void MM_Characters_SetMenuLayout(void)
 	MM_CHARACTER_SELECT_LAYOUT_INDEX = layoutIndex;
 
 	MM_ACTIVE_CHARACTER_SELECT_WINDOW_POS = MM_CHARACTER_SELECT_WINDOW_POS_BY_LAYOUT[layoutIndex];
-	MM_ACTIVE_CHARACTER_SELECT_META = MM_CHARACTER_SELECT_META_BY_LAYOUT[layoutIndex];
+	MM_ACTIVE_CHARACTER_SELECT_META = D230.characterSelectEntries;
+	D230.nativeCharacterSlotCount = CHARACTER_SELECT_RETAIL_SLOT_COUNT + s_characterSelectCustomCount;
+	struct CharacterGrid *grid = MM_Characters_ActiveGrid();
+	CharacterSelectGrid_FillCustom(grid, s_characterSelectCustomCount);
+	bool uniformCustomRows = s_characterSelectCustomCount > 0 &&
+	                         (layoutIndex == MM_CHARACTER_SELECT_LAYOUT_3P || layoutIndex == MM_CHARACTER_SELECT_LAYOUT_4P);
+	for (int entry = 0; entry < D230.nativeCharacterSlotCount; entry++)
+	{
+		struct CharacterSelectMeta *meta = &D230.characterSelectEntries[entry];
+		struct CharacterGridPosition position = CharacterSelectGrid_Find(grid, entry);
+		meta->posX = grid->columnX[position.column];
+		// Fit all six rows with the smallest reduction from retail spacing.
+		meta->posY = uniformCustomRows
+		                 ? MM_CHARACTER_SELECT_CUSTOM_ROWS_TOP + position.row * MM_CHARACTER_SELECT_CUSTOM_ROW_STEP
+		                 : grid->rowY[position.row];
+		const struct NativeCharacterMetadata *custom = MM_Characters_CustomEntry(entry);
+		meta->characterID = custom == NULL ? entry : CustomCharacter_GetBaseID(custom->base);
+		meta->unlockFlags = s_characterUnlockRequirements[meta->characterID];
+	}
 
 	MM_CHARACTER_SELECT_WINDOW_WIDTH = MM_CHARACTER_SELECT_LAYOUT_WINDOW_W[layoutIndex];
 	MM_CHARACTER_SELECT_WINDOW_HEIGHT = MM_CHARACTER_SELECT_LAYOUT_WINDOW_H[layoutIndex];
@@ -671,14 +651,7 @@ void MM_Characters_SetMenuLayout(void)
 }
 void MM_Characters_BackupIDs(void)
 {
-	s16 driverIndex;
-
-	for (driverIndex = 0; driverIndex < MM_CHARACTER_SELECT_DEFAULT_DRIVER_COUNT; driverIndex++)
-	{
-		// make a backup when you leave character selection,
-		// backup is restored when you go back to selection
-		MM_CHARACTER_IDS_BACKUP[driverIndex] = GAME_CHARACTER_IDS[driverIndex];
-	}
+	CustomCharacter_BackupSelections();
 	return;
 }
 void MM_Characters_PreventOverlap(void)
@@ -718,6 +691,13 @@ void MM_Characters_PreventOverlap(void)
 			// if two characters are the same
 			if (GAME_CHARACTER_IDS[playerIndex] == GAME_CHARACTER_IDS[previousPlayer])
 			{
+				bool custom = CustomCharacter_IsSelected(playerIndex);
+				bool previousCustom = CustomCharacter_IsSelected(previousPlayer);
+				if (custom != previousCustom || (custom && strcmp(sdata->customCharacters[playerIndex].identity,
+				    sdata->customCharacters[previousPlayer].identity) != 0))
+				{
+					continue;
+				}
 				// look for a new character
 				for (defaultIndex = 0; defaultIndex < MM_CHARACTER_SELECT_DEFAULT_DRIVER_COUNT; defaultIndex++)
 				{
@@ -730,6 +710,7 @@ void MM_Characters_PreventOverlap(void)
 					{
 						// assign free character
 						GAME_CHARACTER_IDS[playerIndex] = (s16)freeCharacter;
+						CustomCharacter_Select(playerIndex, NULL);
 
 						// character is now taken
 						*defaultCharacter = -1;
@@ -745,9 +726,11 @@ void MM_Characters_PreventOverlap(void)
 
 void MM_Characters_RestoreIDs(void)
 {
-	s16 iconIndex;
 	s16 playerIndex;
-	s16 driverIndex;
+	NativeCharacterLibrary_RefreshAssets();
+	MM_ACTIVE_CHARACTER_SELECT_META = NULL;
+	LOAD_RefreshCharacterIcons();
+	s_characterSelectCustomCount = CustomCharacter_PrepareAvailableEntries(s_characterSelectCustomEntries, len(s_characterSelectCustomEntries));
 
 	memset(sdata->selectedEngineClass, 0, sizeof(sdata->selectedEngineClass));
 
@@ -756,25 +739,9 @@ void MM_Characters_RestoreIDs(void)
 	MM_CHARACTER_SELECT_TRANSITION_FRAME = MM_CHARACTER_SELECT_TRANSITION_FRAMES;
 	MM_CHARACTER_SELECT_MENU_STATE = ENTERING_MENU;
 
-	// This uses 80086e84, which controls character IDs
-	for (driverIndex = 0; driverIndex < MM_CHARACTER_SELECT_DEFAULT_DRIVER_COUNT; driverIndex++)
-	{
-		// set character ID to the last ID you entered
-		GAME_CHARACTER_IDS[driverIndex] = MM_CHARACTER_IDS_BACKUP[driverIndex];
-	}
+	CustomCharacter_RestoreSelections();
 
 	MM_Characters_SetMenuLayout();
-
-	for (iconIndex = 0; iconIndex < MM_CHARACTER_SELECT_ICON_COUNT; iconIndex++)
-	{
-		// would not need this if CSM was sorted
-		// by order of character ID
-
-		// Basically sets them to 0, 1, 2, 3, 4... up to 0xE,
-		// setting Oxide's manually to 0xF is needed to make his icon appear
-
-		MM_CHARACTER_MENU_ID[(s32)MM_ACTIVE_CHARACTER_SELECT_META[iconIndex].characterID] = iconIndex;
-	}
 
 	{
 		struct CharacterSelectMeta *activeMeta;
@@ -808,7 +775,7 @@ void MM_Characters_RestoreIDs(void)
 				currID = (s16 *)((u32)(unlockPlayerIndex * sizeof(*currID)) + (u32)characterIDs);
 				unlocked = activeMeta[(s32)*currID].unlockFlags;
 
-				if (unlocked != unlockAlways)
+				if (unlocked != unlockAlways && !CustomCharacter_IsSelected(unlockPlayerIndex))
 				{
 					// NOTE(aalhendi): Keep the shared loop increment available to both
 					// retail branch delay slots without changing native control flow.
@@ -825,6 +792,13 @@ void MM_Characters_RestoreIDs(void)
 
 	MM_Characters_PreventOverlap();
 
+	for (playerIndex = 0; playerIndex < MM_CHARACTER_SELECT_MAX_PLAYERS; playerIndex++)
+	{
+		D230.nativeCharacterCursor[playerIndex] = CharacterSelectGrid_Find(MM_Characters_ActiveGrid(), CRASH_BANDICOOT);
+		D230.nativeCharacterPreviewCurrent[playerIndex] = CRASH_BANDICOOT;
+		D230.nativeCharacterPreviewDesired[playerIndex] = CRASH_BANDICOOT;
+	}
+
 	for (playerIndex = 0; playerIndex < GAME_TRACKER->numPlyrNextGame; playerIndex++)
 	{
 		s16 characterID;
@@ -839,6 +813,21 @@ void MM_Characters_RestoreIDs(void)
 
 		// rotation of each driver, 90 degrees difference
 		MM_CHARACTER_SELECT_ANGLE[playerIndex] = (playerIndex * MM_CHARACTER_SELECT_ANGLE_STEP) + MM_CHARACTER_SELECT_ANGLE_OFFSET;
+		D230.nativeCharacterCursor[playerIndex] = CharacterSelectGrid_Find(MM_Characters_ActiveGrid(), GAME_CHARACTER_IDS[playerIndex]);
+		if (CustomCharacter_IsSelected(playerIndex))
+		{
+			for (int index = 0; index < s_characterSelectCustomCount; index++)
+			{
+				if (strcmp(sdata->customCharacters[playerIndex].identity, s_characterSelectCustomEntries[index]->identity) == 0)
+				{
+					D230.nativeCharacterCursor[playerIndex] = CharacterSelectGrid_Find(MM_Characters_ActiveGrid(), CHARACTER_SELECT_RETAIL_SLOT_COUNT + index);
+					break;
+				}
+			}
+		}
+		int entry = CharacterSelectGrid_At(MM_Characters_ActiveGrid(), D230.nativeCharacterCursor[playerIndex]);
+		D230.nativeCharacterPreviewCurrent[playerIndex] = entry;
+		D230.nativeCharacterPreviewDesired[playerIndex] = entry;
 	}
 
 	MM_Characters_DrawWindows(0);
@@ -872,8 +861,6 @@ void MM_Characters_MenuProc(struct RectMenu *unused)
 	SVec2 *windowPos;
 	RECT drawRect;
 	s32 iconPosX;
-	int navigationPlayerIndex;
-	s32 collisionPlayerIndexStart;
 	u32 outerGameTrackerPage;
 	register struct GameTracker *outerGameTracker CTR_PSX_REGISTER("$2");
 	register struct GameTracker *outerLoopGameTracker CTR_PSX_REGISTER("$3");
@@ -885,7 +872,8 @@ void MM_Characters_MenuProc(struct RectMenu *unused)
 
 	for (playerIndex = 0; playerIndex < MM_CHARACTER_SELECT_MAX_PLAYERS; playerIndex++)
 	{
-		iconPerPlayer[playerIndex] = MM_CHARACTER_MENU_ID[GAME_CHARACTER_IDS[playerIndex]];
+		int entry = CharacterSelectGrid_At(MM_Characters_ActiveGrid(), D230.nativeCharacterCursor[playerIndex]);
+		iconPerPlayer[playerIndex] = entry >= 0 ? entry : CRASH_BANDICOOT;
 	}
 
 	switch (MM_CHARACTER_SELECT_MENU_STATE)
@@ -1001,7 +989,7 @@ void MM_Characters_MenuProc(struct RectMenu *unused)
 	case MM_CHARACTER_SELECT_LAYOUT_4P:
 
 		// If Fake Crash is unlocked, do not draw "Select Character"
-		if (GAME_PROGRESS.unlocks[0] & UNLOCK_FAKE_CRASH)
+		if (D230.nativeCharacterSlotCount > CHARACTER_SELECT_RETAIL_SLOT_COUNT || (GAME_PROGRESS.unlocks[0] & UNLOCK_FAKE_CRASH) != 0)
 		{
 			goto dontDrawSelectCharacter;
 		}
@@ -1052,11 +1040,8 @@ dontDrawSelectCharacter:
 		s32 candidateIconIndex;
 		Color playerColor;
 		u32 button;
-		s16 hitNavigationDeadEnd;
-		s16 *navigationIconBase;
 
 		candidateIcon = (u16)iconPerPlayer[playerIndex];
-		navigationIconBase = iconPerPlayer;
 		MM_Characters_AnimateColors((u8 *)&playerColor, playerIndex, (int)(s16)(MM_CHARACTER_SELECT_FLAGS & (u16)(1 << playerIndex)));
 
 		preInputCharacterMeta = &MM_ACTIVE_CHARACTER_SELECT_META[(s16)candidateIcon];
@@ -1084,29 +1069,10 @@ dontDrawSelectCharacter:
 			// if character has not been selected by this player
 			if (!playerSelectedBeforeInput)
 			{
-				s16 otherPlayerIndex;
-
 				// If you pressed any of the D-pad buttons
 				if ((button & MM_CHARACTER_SELECT_INPUT_DPAD) != 0)
 				{
-					b32 deadEndCandidateInUse;
-					b32 candidateInUseByOtherPlayer;
-					b32 navigationCandidateInvalid;
-					register s32 collisionCandidateWord CTR_PSX_REGISTER("$2");
-					register struct GameTracker *collisionGameTracker CTR_PSX_REGISTER("$3");
-					s32 collisionPlayerCount;
-					s32 collisionCandidate;
-					register b32 loopCandidateInUse CTR_PSX_REGISTER("$2");
-					s16 stepIcon;
-					register s32 direction CTR_PSX_REGISTER("$19");
-					register s32 inputDirection CTR_PSX_REGISTER("$4");
-					s32 alternateIcon;
-					u32 previousCandidateIcon;
-					s16 *playerIconPtr;
-					register u8 *fallbackTable CTR_PSX_REGISTER("$2");
-
-					hitNavigationDeadEnd = 0;
-
+					int inputDirection;
 					if ((button & BTN_UP) != 0)
 					{
 						inputDirection = CHARACTER_SELECT_DIR_UP;
@@ -1128,137 +1094,15 @@ dontDrawSelectCharacter:
 						MM_CHARACTER_SELECT_MOVE_DIR[playerIndex] = MM_CHARACTER_SELECT_MODEL_MOVE_NEXT;
 					}
 
-					collisionPlayerIndexStart = 0;
-					direction = inputDirection;
-					navigationPlayerIndex = playerIndex;
-					playerIconPtr = &iconPerPlayer[navigationPlayerIndex];
-					do
+					bool selectable[CHARACTER_SELECT_TITLE_TRANSITION] = {false};
+					for (int entry = 0; entry < D230.nativeCharacterSlotCount; entry++)
 					{
-						s16 otherPlayerIndex;
-
-						previousCandidateIcon = candidateIcon;
-						candidateIcon = MM_Characters_GetNextDriver(direction, previousCandidateIcon);
-						alternateIcon = (s16)candidateIcon;
-
-						if (candidateIcon << 16 == previousCandidateIcon << 16)
-						{
-							hitNavigationDeadEnd = 1;
-							stepIcon = (s16)MM_Characters_GetNextDriver(direction, *playerIconPtr);
-							candidateIcon = MM_Characters_GetNextDriver(MM_CHARACTER_SELECT_FALLBACK_1[direction], stepIcon);
-
-							if (((s16)candidateIcon == alternateIcon) || (stepIcon == alternateIcon) || (stepIcon == (s16)candidateIcon) ||
-							    ((navigationCandidateInvalid = MM_Characters_boolIsInvalid(navigationIconBase, candidateIcon, navigationPlayerIndex)),
-							     ((u32)navigationCandidateInvalid << 16) != 0))
-							{
-								fallbackTable = MM_CHARACTER_SELECT_FALLBACK_1_REPEAT;
-								CTR_PSX_OBSERVE_VALUE(fallbackTable);
-								fallbackTable = (u8 *)((u32)direction + (u32)fallbackTable);
-								stepIcon = (s16)MM_Characters_GetNextDriver(fallbackTable[0], *playerIconPtr);
-								candidateIcon = MM_Characters_GetNextDriver(direction, stepIcon);
-
-								if (((s16)candidateIcon == (s16)previousCandidateIcon) || (stepIcon == (s16)previousCandidateIcon) ||
-								    (stepIcon == (s16)candidateIcon) ||
-								    ((navigationCandidateInvalid = MM_Characters_boolIsInvalid(navigationIconBase, candidateIcon, navigationPlayerIndex)),
-								     ((u32)navigationCandidateInvalid << 16) != 0))
-								{
-									stepIcon = (s16)MM_Characters_GetNextDriver(direction, *playerIconPtr);
-									candidateIcon = MM_Characters_GetNextDriver(MM_CHARACTER_SELECT_FALLBACK_2[direction], stepIcon);
-
-									if (((s16)candidateIcon == (s16)previousCandidateIcon) || (stepIcon == (s16)previousCandidateIcon) ||
-									    (stepIcon == (s16)candidateIcon) ||
-									    ((navigationCandidateInvalid = MM_Characters_boolIsInvalid(navigationIconBase, candidateIcon, navigationPlayerIndex)),
-									     ((u32)navigationCandidateInvalid << 16) != 0))
-									{
-										fallbackTable = MM_CHARACTER_SELECT_FALLBACK_2_REPEAT;
-										CTR_PSX_OBSERVE_VALUE(fallbackTable);
-										fallbackTable = (u8 *)((u32)direction + (u32)fallbackTable);
-										stepIcon = (s16)MM_Characters_GetNextDriver(fallbackTable[0], *playerIconPtr);
-										candidateIcon = MM_Characters_GetNextDriver(direction, stepIcon);
-
-										if (((s16)candidateIcon == (s16)previousCandidateIcon) || (stepIcon == (s16)previousCandidateIcon) ||
-										    (stepIcon == (s16)candidateIcon) ||
-										    ((navigationCandidateInvalid =
-										          MM_Characters_boolIsInvalid(navigationIconBase, candidateIcon, navigationPlayerIndex)),
-										     ((u32)navigationCandidateInvalid << 16) != 0))
-										{
-											candidateIcon = (u16)*playerIconPtr;
-										}
-									}
-								}
-							}
-						}
-
-						candidateInUseByOtherPlayer = false;
-						otherPlayerIndex = collisionPlayerIndexStart;
-						if (GAME_TRACKER_RELOAD()->numPlyrNextGame != 0)
-						{
-							collisionCandidateWord = candidateIcon << 16;
-							CTR_PSX_OBSERVE_VALUE(collisionCandidateWord);
-							MM_CHARACTERS_LOAD_COLLISION_GAME_TRACKER(collisionGameTracker);
-							collisionCandidate = collisionCandidateWord >> 16;
-							collisionPlayerCount = collisionGameTracker->numPlyrNextGame;
-						collisionScan:
-							if ((otherPlayerIndex != navigationPlayerIndex) && (collisionCandidate == iconPerPlayer[otherPlayerIndex]))
-							{
-								candidateInUseByOtherPlayer = true;
-								goto collisionScanComplete;
-							}
-							otherPlayerIndex++;
-							if (otherPlayerIndex < collisionPlayerCount)
-							{
-								goto collisionScan;
-							}
-						}
-					collisionScanComplete:
-
-						if (previousCandidateIcon << 0x10 != candidateIcon << 0x10)
-						{
-							// Play sound
-							OtherFX_Play(0, 1);
-						}
-						if (hitNavigationDeadEnd != 0)
-						{
-							deadEndCandidateInUse = candidateInUseByOtherPlayer;
-							if (!deadEndCandidateInUse)
-							{
-								candidateInUseByOtherPlayer = false;
-								break;
-							}
-
-							candidateInUseByOtherPlayer = false;
-							candidateIcon = (u16)*playerIconPtr;
-						}
-						previousCandidateIcon = candidateIcon;
-						loopCandidateInUse = candidateInUseByOtherPlayer;
-					} while (loopCandidateInUse);
-				}
-				{
-					register struct GameTracker *finalCollisionGameTracker CTR_PSX_REGISTER("$2");
-					register s32 finalCollisionPlayerOffset CTR_PSX_REGISTER("$3");
-					register s16 *finalCollisionPlayerIcon CTR_PSX_REGISTER("$7");
-					s32 finalCollisionPlayerCount;
-					s32 finalCollisionPlayerIndex;
-
-					otherPlayerIndex = 0;
-					if (GAME_TRACKER_RELOAD()->numPlyrNextGame != 0)
-					{
-						finalCollisionPlayerIndex = (s16)playerIndex;
-						finalCollisionPlayerOffset = finalCollisionPlayerIndex * sizeof(*finalCollisionPlayerIcon);
-						CTR_PSX_OBSERVE_VALUE(finalCollisionPlayerOffset);
-						MM_CHARACTERS_CAPTURE_FINAL_COLLISION_PAGE(finalCollisionGameTracker);
-						finalCollisionPlayerIcon = (s16 *)((u32)navigationIconBase + finalCollisionPlayerOffset);
-						finalCollisionGameTracker =
-						    CTR_PSX_PAGE_LVALUE(struct GameTracker *volatile, finalCollisionGameTracker, MM_GAME_TRACKER_PAGE_OFFSET, GAME_TRACKER);
-						finalCollisionPlayerCount = finalCollisionGameTracker->numPlyrNextGame;
-						do
-						{
-							if ((otherPlayerIndex != finalCollisionPlayerIndex) && ((s16)candidateIcon == iconPerPlayer[otherPlayerIndex]))
-							{
-								candidateIcon = (u32)(u16)*finalCollisionPlayerIcon;
-							}
-							otherPlayerIndex++;
-						} while (otherPlayerIndex < finalCollisionPlayerCount);
+						selectable[entry] = MM_Characters_IsUnlocked(&MM_ACTIVE_CHARACTER_SELECT_META[entry]) &&
+						                    !MM_Characters_boolIsInvalid(iconPerPlayer, entry, playerIndex);
 					}
+					int next = CharacterSelectGrid_Next(MM_Characters_ActiveGrid(), candidateIcon, inputDirection, selectable);
+					if (next != (int)candidateIcon) { OtherFX_Play(0, 1); }
+					candidateIcon = next;
 				}
 
 				// If this player pressed Cross or Circle
@@ -1345,7 +1189,7 @@ dontDrawSelectCharacter:
 			// draw string
 			// "1", "2", "3", "4", above the character icon
 			DecalFont_DrawLine(MM_PLAYER_NUMBER_STRINGS[playerIndex], drawRect.x + MM_CHARACTER_SELECT_CURSOR_LABEL_OFFSET_X,
-			                   currentIconTransition->currY + (u32)preInputCharacterMeta->posY - 3, FONT_BIG, WHITE);
+			                   currentIconTransition->currY + preInputCharacterMeta->posY + MM_CHARACTER_SELECT_CURSOR_LABEL_OFFSET_Y, FONT_BIG, WHITE);
 			outlineColor = &playerColor;
 		}
 		else
@@ -1367,7 +1211,7 @@ outerPlayerLoopComplete:
 		iconMetaTail = &preInputCharacterMeta->posY;
 
 		// loop through character icons
-		for (playerIndex = 0; playerIndex < MM_CHARACTER_SELECT_ICON_COUNT; playerIndex++, iconMetaTail += 6, preInputCharacterMeta++)
+		for (playerIndex = 0; playerIndex < D230.nativeCharacterSlotCount; playerIndex++, iconMetaTail += 6, preInputCharacterMeta++)
 		{
 			if (MM_Characters_IsUnlocked(preInputCharacterMeta))
 			{
@@ -1408,10 +1252,10 @@ outerPlayerLoopComplete:
 				iconTransitionByteOffset += iconWork;
 				iconTransition = (struct TransitionMeta *)iconTransitionByteOffset;
 				iconPosX = MM_Characters_GridX(iconTransition->currX + preInputCharacterMeta->posX) + MM_CHARACTER_SELECT_ICON_DECAL_OFFSET_X;
+				const struct NativeCharacterMetadata *custom = MM_Characters_CustomEntry(playerIndex);
 
 				MM_RECTMENU_DRAW_POLY_GT4(
-				    CTR_PSX_PAGE_LVALUE(struct GameTracker *, iconGameTrackerPage, MM_GAME_TRACKER_PAGE_OFFSET, GAME_TRACKER)
-				        ->ptrIcons[iconCharacterMetadata[iconMetaTail[3]].iconID],
+				    LOAD_GetCharacterPreviewIcon(iconMetaTail[3], custom != NULL ? custom->identity : NULL),
 				    iconPosX, iconTransition->currY + iconMetaTail[0] + MM_CHARACTER_SELECT_ICON_DECAL_OFFSET_Y,
 
 				    &CTR_PSX_PAGE_LVALUE(struct GameTracker *, iconGameTrackerPage, MM_GAME_TRACKER_PAGE_OFFSET, GAME_TRACKER)->backBuffer->primMem,
@@ -1441,6 +1285,10 @@ outerPlayerLoopComplete:
 			iconPerPlayerAtIndex = iconPerPlayerBase;
 			iconPerPlayerAtIndex = (s16 *)((u8 *)iconPerPlayerAtIndex + iconPerPlayerOffset);
 			characterIDOutput[playerIndex] = characterIDMeta[(int)*iconPerPlayerAtIndex].characterID;
+			D230.nativeCharacterCursor[playerIndex] = CharacterSelectGrid_Find(MM_Characters_ActiveGrid(), *iconPerPlayerAtIndex);
+			const struct NativeCharacterMetadata *custom = playerIndex < GAME_TRACKER->numPlyrNextGame
+			                                               ? MM_Characters_CustomEntry(*iconPerPlayerAtIndex) : NULL;
+			CustomCharacter_Select(playerIndex, custom);
 		}
 	}
 
@@ -1501,7 +1349,8 @@ outerPlayerLoopComplete:
 				                                &highlightGameTracker->backBuffer->primMem);
 			}
 			if ((MM_CHARACTER_SELECT_MOVE_TIMERS[menuPlayerIndex] == 0) &&
-			    (MM_CHARACTER_SELECT_CURRENT_IDS[menuPlayerIndex] == GAME_CHARACTER_IDS[menuPlayerIndex]))
+			    (MM_CHARACTER_SELECT_CURRENT_IDS[menuPlayerIndex] == GAME_CHARACTER_IDS[menuPlayerIndex]) &&
+			    D230.nativeCharacterPreviewCurrent[menuPlayerIndex] == playerIcon)
 			{
 				struct TransitionMeta *driverWindowTransition;
 				struct TransitionMeta *transitionBase;
@@ -1565,7 +1414,8 @@ outerPlayerLoopComplete:
 				CTR_PSX_OBSERVE_VALUE(namePosY);
 
 				// draw string
-				DecalFont_DrawLine(*characterNameSlot, namePosX, namePosY, fontType, (JUSTIFY_CENTER | ORANGE));
+				const struct NativeCharacterMetadata *customName = MM_Characters_CustomEntry(playerIcon);
+				DecalFont_DrawLine(customName != NULL ? (char *)customName->name : *characterNameSlot, namePosX, namePosY, fontType, (JUSTIFY_CENTER | ORANGE));
 			}
 
 			// spin the character
@@ -1579,7 +1429,7 @@ outerPlayerLoopComplete:
 	preInputCharacterMeta = MM_ACTIVE_CHARACTER_SELECT_META;
 
 	// loop through all icons
-	for (; playerIndex < MM_CHARACTER_SELECT_ICON_COUNT; playerIndex++, preInputCharacterMeta++)
+	for (; playerIndex < D230.nativeCharacterSlotCount; playerIndex++, preInputCharacterMeta++)
 	{
 		RECT iconRect;
 

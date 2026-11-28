@@ -1,4 +1,5 @@
 #include <common.h>
+#include <custom-characters/character_resources.h>
 
 enum UIRankConstants
 {
@@ -102,7 +103,7 @@ void UI_DrawRankedDrivers(void)
 				DecalFont_DrawLine(text, UI_RANK_TEXT_X, UI_RANK_TEXT_START_Y + rowOffset, FONT_SMALL,
 				                   (driver->actionsFlagSet & ACTION_RACE_FINISHED) != 0 ? RED : WHITE);
 				const int id = driver->driverID;
-				UI_DrawDriverIcon(gGT->ptrIcons[data.MetaDataCharacters[data.characterIDs[id]].iconID], UI_RANK_ICON_X,
+				UI_DrawDriverIcon(LOAD_GetDriverIcon(id), UI_RANK_ICON_X,
 				                  UI_RANK_ICON_BASE_Y + rowOffset, &gGT->backBuffer->primMem, gGT->pushBuffer_UI.ptrOT, 1,
 				                  UI_RANK_ICON_SCALE, UI_Rank_GetDamageColor(id));
 			}
@@ -224,7 +225,7 @@ void UI_DrawRankedDrivers(void)
 
 				UI_DrawDriverIcon(
 
-				    gGT->ptrIcons[data.MetaDataCharacters[data.characterIDs[driverIndex]].iconID],
+				    LOAD_GetDriverIcon(driverIndex),
 
 				    pos.x, pos.y, &gGT->backBuffer->primMem,
 
@@ -335,7 +336,7 @@ void UI_DrawRankedDrivers(void)
 			Color color;
 			ColorCode_SetPacked(&color, damageColor);
 
-			DecalHUD_DrawPolyGT4(gGT->ptrIcons[data.MetaDataCharacters[data.characterIDs[driverIndex]].iconID], posX, posY,
+			DecalHUD_DrawPolyGT4(LOAD_GetDriverIcon(driverIndex), posX, posY,
 
 			                     // pointer to PrimMem struct
 			                     &gGT->backBuffer->primMem,

@@ -1,5 +1,6 @@
 #include <SDL3/SDL.h>
 #include <platform/config/native_controls.h>
+#include <platform/native_ini.h>
 
 #include <macros.h>
 
@@ -427,28 +428,6 @@ internal bool NativeControls_FilePath(char *dst, size_t dstSize)
 	                       NativeStr8_FromCString(NATIVE_CONTROLS_FILE_NAME)) != 0;
 }
 
-internal char *NativeControls_Trim(char *text)
-{
-	while ((*text == ' ') || (*text == '\t') || (*text == '\r') || (*text == '\n'))
-	{
-		text++;
-	}
-
-	char *end = text + strlen(text);
-	while (end > text)
-	{
-		char c = end[-1];
-		if ((c != ' ') && (c != '\t') && (c != '\r') && (c != '\n'))
-		{
-			break;
-		}
-		end--;
-	}
-	*end = '\0';
-
-	return text;
-}
-
 internal int NativeControls_PlayerForKey(const char *key)
 {
 	static const char prefix[] = "player";
@@ -470,7 +449,7 @@ internal int NativeControls_PlayerForKey(const char *key)
 	return (int)player - 1;
 }
 
-internal void NativeControls_ApplyAssignmentKey(char *key, char *value)
+internal void NativeControls_ApplyAssignmentKey(const char *key, const char *value)
 {
 	const int player = NativeControls_PlayerForKey(key);
 	if (!NativeControls_IsValidPlayer(player))
@@ -519,7 +498,7 @@ internal void NativeControls_ApplyVibrationKey(const char *key, const char *valu
 // Applies one key from a device section. A key or value this build does not
 // recognise is skipped and the binding keeps whatever it already had, so a
 // hand-edited file can be wrong in one line without corrupting the rest.
-internal void NativeControls_ApplyDeviceKey(int profile, char *key, char *value)
+internal void NativeControls_ApplyDeviceKey(int profile, const char *key, const char *value)
 {
 	if (NativeControls_StrEqual(key, NATIVE_CONTROLS_KEY_NAME))
 	{
@@ -618,42 +597,29 @@ internal void NativeControls_Load(void)
 	bool inAssignment = false;
 	bool inVibration = false;
 	char section[96] = "";
-	char line[512];
+	char buffer[512];
+	struct NativeIniLine line;
 
-	while (fgets(line, sizeof(line), file) != NULL)
+	while (NativeIni_Read(file, buffer, sizeof(buffer), false, &line) == NATIVE_INI_READ_RECORD)
 	{
-		char *cursor = NativeControls_Trim(line);
-
-		if ((*cursor == '\0') || (*cursor == ';') || (*cursor == '#'))
+		if (line.type == NATIVE_INI_SECTION)
 		{
-			continue;
-		}
-
-		if (*cursor == '[')
-		{
-			char *end = strchr(cursor + 1, ']');
-			if (end == NULL)
+			if (line.section == NULL)
 			{
 				continue;
 			}
 
-			*end = '\0';
-			snprintf(section, sizeof(section), "%s", cursor + 1);
+			snprintf(section, sizeof(section), "%s", line.section);
 			inAssignment = NativeControls_StrEqual(section, NATIVE_CONTROLS_SECTION_ASSIGNMENT);
 			inVibration = NativeControls_StrEqual(section, NATIVE_CONTROLS_SECTION_VIBRATION);
 			profile = inAssignment || inVibration ? -1 : NativeControls_ProfileForSection(section);
 			continue;
 		}
 
-		char *equals = strchr(cursor, '=');
-		if (equals == NULL)
+		if (line.type == NATIVE_INI_MALFORMED)
 		{
 			continue;
 		}
-
-		*equals = '\0';
-		char *key = NativeControls_Trim(cursor);
-		char *value = NativeControls_Trim(equals + 1);
 
 		if (section[0] == '\0')
 		{
@@ -662,39 +628,28 @@ internal void NativeControls_Load(void)
 
 		if (inAssignment)
 		{
-			NativeControls_ApplyAssignmentKey(key, value);
+			NativeControls_ApplyAssignmentKey(line.key, line.value);
 		}
 		else if (inVibration)
 		{
-			NativeControls_ApplyVibrationKey(key, value);
+			NativeControls_ApplyVibrationKey(line.key, line.value);
 		}
 		else if (profile >= 0)
 		{
-			NativeControls_ApplyDeviceKey(profile, key, value);
+			NativeControls_ApplyDeviceKey(profile, line.key, line.value);
 		}
 	}
 
 	fclose(file);
 }
 
-void NativeControls_Save(void)
+static bool NativeControls_WriteIni(FILE *file, const void *context)
 {
-	char path[512];
-
-	if (!NativeControls_FilePath(path, sizeof(path)))
+	(void)context;
+	if (!NativeIni_WriteSection(file, NATIVE_CONTROLS_SECTION_ASSIGNMENT))
 	{
-		Platform_LogWarn("[Controls] Could not build a path for %s\n", NATIVE_CONTROLS_FILE_NAME);
-		return;
+		return false;
 	}
-
-	FILE *file = fopen(path, "w");
-	if (file == NULL)
-	{
-		Platform_LogWarn("[Controls] Could not write %s\n", path);
-		return;
-	}
-
-	fprintf(file, "[%s]\n", NATIVE_CONTROLS_SECTION_ASSIGNMENT);
 	for (int player = 0; player < PLATFORM_INPUT_PAD_COUNT; player++)
 	{
 		const struct NativeControlsPlayer *pref = &s_playerPref[player];
@@ -709,13 +664,22 @@ void NativeControls_Save(void)
 			value = pref->deviceKey;
 		}
 
-		fprintf(file, "player%d = %s\n", player + 1, value);
+		if (fprintf(file, "player%d = %s\n", player + 1, value) < 0)
+		{
+			return false;
+		}
 	}
 
-	fprintf(file, "\n[%s]\n", NATIVE_CONTROLS_SECTION_VIBRATION);
+	if (fputc('\n', file) == EOF || !NativeIni_WriteSection(file, NATIVE_CONTROLS_SECTION_VIBRATION))
+	{
+		return false;
+	}
 	for (int player = 0; player < PLATFORM_INPUT_PAD_COUNT; player++)
 	{
-		fprintf(file, "player%d = %s\n", player + 1, s_playerPref[player].vibrationEnabled ? "true" : "false");
+		if (fprintf(file, "player%d = %s\n", player + 1, s_playerPref[player].vibrationEnabled ? "true" : "false") < 0)
+		{
+			return false;
+		}
 	}
 
 	char value[64];
@@ -726,19 +690,39 @@ void NativeControls_Save(void)
 			continue;
 		}
 
-		fprintf(file, "\n[%s%s]\n", NATIVE_CONTROLS_SECTION_PREFIX, s_profiles[i].key);
-		fprintf(file, "%s = %s\n", NATIVE_CONTROLS_KEY_NAME, s_profiles[i].name);
-		fprintf(file, "%s = %d\n", NATIVE_CONTROLS_KEY_DEADZONE, s_profiles[i].deadzone);
+		if (fprintf(file, "\n[%s%s]\n", NATIVE_CONTROLS_SECTION_PREFIX, s_profiles[i].key) < 0 ||
+		    !NativeIni_WriteValue(file, NATIVE_CONTROLS_KEY_NAME, s_profiles[i].name) ||
+		    !NativeIni_WriteInt(file, NATIVE_CONTROLS_KEY_DEADZONE, s_profiles[i].deadzone))
+		{
+			return false;
+		}
 
 		for (int binding = 0; binding < NATIVE_CONTROLS_BIND_COUNT; binding++)
 		{
 			NativeControls_BindingToText(s_profiles[i].kind, s_profiles[i].bindings[binding], value, sizeof(value),
 			                             NATIVE_CONTROLS_NAME_FILE);
-			fprintf(file, "%s = %s\n", s_bindingInfo[binding].key, value);
+			if (!NativeIni_WriteValue(file, s_bindingInfo[binding].key, value))
+			{
+				return false;
+			}
 		}
 	}
 
-	fclose(file);
+	return true;
+}
+
+void NativeControls_Save(void)
+{
+	char path[512];
+	if (!NativeControls_FilePath(path, sizeof(path)))
+	{
+		Platform_LogWarn("[Controls] Could not build a path for %s\n", NATIVE_CONTROLS_FILE_NAME);
+		return;
+	}
+	if (!NativeIni_Save(path, NativeControls_WriteIni, NULL))
+	{
+		Platform_LogWarn("[Controls] Could not write %s\n", path);
+	}
 }
 
 // ---------------------------------------------------------------------------

@@ -45,7 +45,8 @@
 // NOTE(aalhendi): Little-endian tag `CTRA` = CTR native Audio snapshot.
 #define NATIVE_AUDIO_STATE_MAGIC             0x41525443
 // v2: voices snapshot streaming decode state, not decoded-PCM indices -penta3
-#define NATIVE_AUDIO_STATE_VERSION           4
+#define NATIVE_AUDIO_STATE_VERSION           5
+#define NATIVE_AUDIO_CUSTOM_PATH_BYTES       1024
 #define NATIVE_AUDIO_ADSR_MIN                (-0x8000)
 #define NATIVE_AUDIO_ADSR_MAX                0x7fff
 #define NATIVE_AUDIO_ADSR_STEP_BIT           0x8000u
@@ -215,6 +216,7 @@ struct NativeAudioXaDecodeState
 
 struct NativeAudioXA
 {
+	char customSourcePath[NATIVE_AUDIO_CUSTOM_PATH_BYTES];
 	int frameCount;
 	int sampleRate;
 	int categoryID;
@@ -332,6 +334,7 @@ struct NativeAudioVoiceState
 
 struct NativeAudioXAState
 {
+	char customSourcePath[NATIVE_AUDIO_CUSTOM_PATH_BYTES];
 	int frameCount;
 	int sampleRate;
 	int categoryID;
@@ -372,6 +375,12 @@ struct NativeAudioSnapshot
 };
 
 global_variable struct NativeAudioState s_audio;
+static NativeAudioXaOverrideResolver s_audioXaOverrideResolver;
+
+void NativeAudio_SetXaOverrideResolver(NativeAudioXaOverrideResolver resolver)
+{
+	s_audioXaOverrideResolver = resolver;
+}
 
 internal b32 NativeAudio_OutputOpen(void)
 {
@@ -1494,6 +1503,7 @@ internal void NativeAudio_CopyStateToVoice(struct NativeAudioVoice *dst, const s
 
 internal void NativeAudio_CopyXAToState(struct NativeAudioXAState *dst, const struct NativeAudioXA *src)
 {
+	memcpy(dst->customSourcePath, src->customSourcePath, sizeof(dst->customSourcePath));
 	dst->frameCount = src->frameCount;
 	dst->sampleRate = src->sampleRate;
 	dst->categoryID = src->categoryID;
@@ -2002,9 +2012,36 @@ internal int NativeAudio_XaSourceReadSector(struct NativeAudioXaSource *src, int
 	return 0;
 }
 
+/* Imported clips are local raw XA sectors, isolated from the retail stream. */
+internal int NativeAudio_OpenCharacterXA(const char *path, struct NativeAudioXaTrackInfo *info, struct NativeAudioXaSource *source)
+{
+	memset(source, 0, sizeof(*source));
+	source->file = fopen(path, "rb");
+	if (source->file == NULL) { return 0; }
+	long size;
+	if (fseek(source->file, 0, SEEK_END) != 0 || (size = ftell(source->file)) <= 0 || size > INT_MAX ||
+	    !NativeAudio_GetXASectorLayout((int)size, &source->sectorSize, &source->sectorBase, &source->totalSectors))
+	{
+		NativeAudio_XaSourceClose(source);
+		return 0;
+	}
+	source->kind = NATIVE_AUDIO_XA_SOURCE_HOST_FILE;
+	u8 sector[XA_FULL_SECTOR_SIZE];
+	if (!NativeAudio_XaSourceReadSector(source, 0, sector) ||
+	    !NativeAudio_IsXAAudioSector(sector, source->sectorBase, sector[source->sectorBase + 1]))
+	{
+		NativeAudio_XaSourceClose(source);
+		return 0;
+	}
+	info->channelFilter = sector[source->sectorBase + 1];
+	info->numSectors = source->totalSectors;
+	info->fileNumber = 0;
+	return 1;
+}
+
 // Resolve metadata and audio from the same language and disc; a missing
 // individual European resource falls back to its base English counterpart.
-internal int NativeAudio_ResolveXATrack(int category, int track, struct NativeAudioXaTrackInfo *info, struct NativeAudioXaSource *source, bool localizedOnly)
+internal int NativeAudio_ResolveRetailXATrack(int category, int track, struct NativeAudioXaTrackInfo *info, struct NativeAudioXaSource *source, bool localizedOnly)
 {
 	char path[128];
 	int language = category == 1 || category == 2 ? g_config.voiceLanguage : 1;
@@ -2037,6 +2074,20 @@ internal int NativeAudio_ResolveXATrack(int category, int track, struct NativeAu
 		language = 1;
 	}
 	return 0;
+}
+
+internal int NativeAudio_ResolveXATrack(int category, int track, struct NativeAudioXaTrackInfo *info,
+                                      struct NativeAudioXaSource *source, bool localizedOnly, char *customPath)
+{
+	customPath[0] = '\0';
+	const char *override = s_audioXaOverrideResolver != NULL ? s_audioXaOverrideResolver(category, track) : NULL;
+	if (override != NULL && override[0] != '\0' && strlen(override) < NATIVE_AUDIO_CUSTOM_PATH_BYTES &&
+	    NativeAudio_OpenCharacterXA(override, info, source))
+	{
+		memcpy(customPath, override, strlen(override) + 1);
+		return 1;
+	}
+	return NativeAudio_ResolveRetailXATrack(category, track, info, source, localizedOnly);
 }
 
 internal void NativeAudio_XaPreparedStreamClose(struct NativeAudioXaPreparedStream *prepared)
@@ -2616,6 +2667,7 @@ int NativeAudio_RestoreState(const void *src, int srcSize)
 	{
 		return 0;
 	}
+	if (memchr(snapshot->xa.customSourcePath, '\0', sizeof(snapshot->xa.customSourcePath)) == NULL) { return 0; }
 	if (!NativeAudio_ValidateReverbSnapshot(&snapshot->reverb))
 	{
 		return 0;
@@ -2629,7 +2681,10 @@ int NativeAudio_RestoreState(const void *src, int srcSize)
 
 	if (snapshot->xa.active && snapshot->xa.hasTrackIdentity)
 	{
-		if (!NativeAudio_ResolveXATrack(snapshot->xa.categoryID, snapshot->xa.xaID, &xaInfo, &xaSource, false))
+		int opened = snapshot->xa.customSourcePath[0] != '\0' ?
+		             NativeAudio_OpenCharacterXA(snapshot->xa.customSourcePath, &xaInfo, &xaSource) :
+		             NativeAudio_ResolveRetailXATrack(snapshot->xa.categoryID, snapshot->xa.xaID, &xaInfo, &xaSource, false);
+		if (!opened)
 		{
 			return 0;
 		}
@@ -2660,6 +2715,7 @@ int NativeAudio_RestoreState(const void *src, int srcSize)
 	s_audio.reverbAttr = snapshot->reverbAttr;
 	s_audio.reverb = snapshot->reverb;
 	s_audio.commonAttr = snapshot->commonAttr;
+	memcpy(s_audio.xa.customSourcePath, snapshot->xa.customSourcePath, sizeof(s_audio.xa.customSourcePath));
 	memcpy(s_audio.spu.memory, snapshot->spuSampleMem, sizeof(s_audio.spu.memory));
 	s_audio.spu.transferOffset = snapshot->spuTransferOffset;
 	for (i = 0; i < NATIVE_AUDIO_SPU_VOICE_COUNT; i++)
@@ -3333,8 +3389,9 @@ int NativeAudio_GetXATrackLength(int categoryID, int xaID)
 {
 	struct NativeAudioXaTrackInfo info;
 	struct NativeAudioXaSource source;
+	char customPath[NATIVE_AUDIO_CUSTOM_PATH_BYTES];
 
-	if (!NativeAudio_ResolveXATrack(categoryID, xaID, &info, &source, false))
+	if (!NativeAudio_ResolveXATrack(categoryID, xaID, &info, &source, false, customPath))
 	{
 		return 0;
 	}
@@ -3381,20 +3438,30 @@ internal int NativeAudio_PlayXATrackInternal(int categoryID, int xaID, int volum
 	struct NativeAudioXaTrackInfo info;
 	struct NativeAudioXaSource source;
 	struct NativeAudioXaPreparedStream prepared;
+	char customPath[NATIVE_AUDIO_CUSTOM_PATH_BYTES];
 
 	if (!NativeAudio_SpuInit())
 	{
 		return 0;
 	}
 
-	if (!NativeAudio_ResolveXATrack(categoryID, xaID, &info, &source, localizedOnly))
+	if (!NativeAudio_ResolveXATrack(categoryID, xaID, &info, &source, localizedOnly, customPath))
 	{
 		return 0;
 	}
 	if (!NativeAudio_PrepareXAStream(&source, info.channelFilter, info.numSectors, &prepared))
 	{
 		NativeAudio_XaSourceClose(&source);
-		return 0;
+		if (customPath[0] == '\0' || !NativeAudio_ResolveRetailXATrack(categoryID, xaID, &info, &source, localizedOnly))
+		{
+			return 0;
+		}
+		customPath[0] = '\0';
+		if (!NativeAudio_PrepareXAStream(&source, info.channelFilter, info.numSectors, &prepared))
+		{
+			NativeAudio_XaSourceClose(&source);
+			return 0;
+		}
 	}
 	NativeAudio_XaSourceClose(&source);
 
@@ -3407,6 +3474,7 @@ internal int NativeAudio_PlayXATrackInternal(int categoryID, int xaID, int volum
 	s_audio.xa.categoryID = categoryID;
 	s_audio.xa.xaID = xaID;
 	s_audio.xa.hasTrackIdentity = 1;
+	memcpy(s_audio.xa.customSourcePath, customPath, strlen(customPath) + 1);
 	s_audio.xa.positionFp = 0;
 	s_audio.xa.outputFrame = 0;
 	s_audio.xa.stepFp = (u32)(((u64)prepared.sampleRate << NATIVE_AUDIO_FP_SHIFT) / NATIVE_AUDIO_SAMPLE_RATE);
@@ -3437,7 +3505,7 @@ void NativeAudio_RefreshVoiceLanguage(void)
 {
 	int category, track, left, right, restart;
 	NativeAudio_LockOutput();
-	restart = s_audio.xa.active && s_audio.xa.hasTrackIdentity && s_audio.xa.categoryID != 0;
+	restart = s_audio.xa.active && s_audio.xa.hasTrackIdentity && s_audio.xa.categoryID != 0 && s_audio.xa.customSourcePath[0] == '\0';
 	category = s_audio.xa.categoryID;
 	track = s_audio.xa.xaID;
 	left = s_audio.xa.volumeLeft;

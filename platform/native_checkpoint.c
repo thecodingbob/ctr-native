@@ -1,6 +1,7 @@
 #include "platform/native_checkpoint.h"
 
 #include <common.h>
+#include <custom-characters/character_resources.h>
 #include <macros.h>
 
 #include <platform.h>
@@ -1442,6 +1443,14 @@ internal void NativeCheckpoint_RelocateHowlLists(const struct NativeCheckpointHe
 internal void NativeCheckpoint_RelocateBotModels(const struct NativeCheckpointHeader *oldHeader, const struct NativeCheckpointHeader *liveHeader)
 {
 	NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.standaloneBotModels);
+	for (size_t index = 0; index < len(sdata_static.customDriverModels); index++)
+	{
+		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.customDriverModels[index].model);
+	}
+	for (size_t index = 0; index < len(sdata_static.customPreviewModels); index++)
+	{
+		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &sdata_static.customPreviewModels[index].model);
+	}
 	struct LoadBotModelSlot *slots = sdata_static.standaloneBotModels;
 	const unsigned int count = sdata_static.standaloneBotModelCount;
 	u32 offset = 0;
@@ -1645,10 +1654,6 @@ internal void NativeCheckpoint_RelocateD230Pointers(const struct NativeCheckpoin
 	for (u32 i = 0; i < len(D230.characterSelectWindowPosByLayout); i++)
 	{
 		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &D230.characterSelectWindowPosByLayout[i]);
-	}
-	for (u32 i = 0; i < len(D230.characterSelectMetaByLayout); i++)
-	{
-		NativeCheckpoint_RelocatePointerSlot(oldHeader, liveHeader, &D230.characterSelectMetaByLayout[i]);
 	}
 	for (u32 i = 0; i < len(D230.characterSelectTransitionByPlayerCount); i++)
 	{
@@ -2278,6 +2283,17 @@ int NativeCheckpoint_Restore(const void *src, int srcSize)
 		}
 	}
 	LANG_Refresh(g_config.textLanguage);
+	if (sdata->gGT != NULL)
+	{
+		if ((sdata->gGT->gameMode1 & MAIN_MENU) != 0)
+		{
+			LOAD_RefreshCharacterIcons();
+		}
+		else
+		{
+			LOAD_FinalizeCharacterIcons();
+		}
+	}
 
 	return 1;
 }

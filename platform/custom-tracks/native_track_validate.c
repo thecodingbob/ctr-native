@@ -1,4 +1,5 @@
 #include <platform/custom-tracks/native_track_validate.h>
+#include <platform/native_dram_validate.h>
 
 #include <stdint.h>
 
@@ -23,37 +24,7 @@ static uint16_t NativeTrackValidate_Read16(const unsigned char *bytes)
 
 int NativeTrackValidate_Lev(const void *data, size_t size)
 {
-	if (data == NULL || size < 2 * NATIVE_TRACK_WORD_BYTES)
-	{
-		return 0;
-	}
-	const unsigned char *bytes = data;
-	size_t payload = size - NATIVE_TRACK_WORD_BYTES;
-	uint32_t mapOffset = NativeTrackValidate_Read32(bytes);
-	if (mapOffset < NATIVE_TRACK_LEV_HEADER_MIN_BYTES || mapOffset > payload || payload - mapOffset < NATIVE_TRACK_WORD_BYTES)
-	{
-		return 0;
-	}
-	const unsigned char *map = bytes + NATIVE_TRACK_WORD_BYTES + mapOffset;
-	uint32_t mapSize = NativeTrackValidate_Read32(map);
-	if (mapSize % NATIVE_TRACK_WORD_BYTES != 0 || mapSize > payload - mapOffset - NATIVE_TRACK_WORD_BYTES)
-	{
-		return 0;
-	}
-	for (size_t i = 0; i < mapSize; i += NATIVE_TRACK_WORD_BYTES)
-	{
-		uint32_t slot = NativeTrackValidate_Read32(map + NATIVE_TRACK_WORD_BYTES + i) & ~UINT32_C(3);
-		if (slot > mapOffset || mapOffset - slot < NATIVE_TRACK_WORD_BYTES)
-		{
-			return 0;
-		}
-		uint32_t target = NativeTrackValidate_Read32(bytes + NATIVE_TRACK_WORD_BYTES + slot);
-		if (target >= mapOffset)
-		{
-			return 0;
-		}
-	}
-	return 1;
+	return NativeDramValidate_PointerMap(data, size, NATIVE_TRACK_LEV_HEADER_MIN_BYTES);
 }
 
 static int NativeTrackValidate_VramImage(const unsigned char *bytes, size_t size)

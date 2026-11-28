@@ -1,4 +1,6 @@
 #include <common.h>
+#include <game/custom-characters/character_policy.h>
+#include <platform/native_audio.h>
 
 u32 howl_InstrumentPitch(int basePitch, int pitchIndex, u32 distort)
 {
@@ -25,6 +27,8 @@ int howl_InitGlobals(char *filename)
 	{
 		return 0;
 	}
+
+	NativeAudio_SetXaOverrideResolver(CustomCharacter_ResolveXAVoice);
 
 	sdata->vol_FX = 215;
 	sdata->vol_Music = 175;

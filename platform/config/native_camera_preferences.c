@@ -3,6 +3,7 @@
 #include <platform/config/native_camera_preferences.h>
 #include <platform/native_assets.h>
 #include <platform/native_path.h>
+#include <platform/native_ini.h>
 
 enum { CAMERA_PREFERENCE_PLAYERS = 4 };
 static int g_cameraZoom[CAMERA_PREFERENCE_PLAYERS];
@@ -44,6 +45,19 @@ int NativeCameraPreferences_GetZoom(int player)
     return g_cameraZoom[player];
 }
 
+static bool NativeCameraPreferences_WriteIni(FILE *file, const void *context)
+{
+    const int *zoom = context;
+    for (int i = 0; i < CAMERA_PREFERENCE_PLAYERS; i++)
+    {
+        if (fprintf(file, "%d\n", zoom[i]) < 0)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 void NativeCameraPreferences_SetZoom(int player, int zoom)
 {
     if (player < 0 || player >= CAMERA_PREFERENCE_PLAYERS)
@@ -53,15 +67,9 @@ void NativeCameraPreferences_SetZoom(int player, int zoom)
     NativeCameraPreferences_Load();
     g_cameraZoom[player] = zoom == 1;
     char path[512];
-    NativePath_Join(path, sizeof(path), NativeStr8_FromCString(NativeAssets_GetBaseDir()), NATIVE_STR8_LIT("camera.ini"));
-    FILE *f = fopen(path, "w");
-    if (f == NULL)
+    if (!NativePath_Join(path, sizeof(path), NativeStr8_FromCString(NativeAssets_GetBaseDir()), NATIVE_STR8_LIT("camera.ini")) ||
+        !NativeIni_Save(path, NativeCameraPreferences_WriteIni, g_cameraZoom))
     {
-        return;
+        fprintf(stderr, "[Camera] Could not save camera.ini\n");
     }
-    for (int i = 0; i < CAMERA_PREFERENCE_PLAYERS; i++)
-    {
-        fprintf(f, "%d\n", g_cameraZoom[i]);
-    }
-    fclose(f);
 }

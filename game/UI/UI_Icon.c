@@ -275,10 +275,9 @@ void UI_TrackerBG(struct Icon *targetIcon, s16 centerX, s16 centerY, struct Prim
 
 void UI_DrawDriverIcon(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *primMem, u32 *ot, char transparency, s16 scale, u32 color)
 {
-	if (icon == NULL)
-	{
-		return;
-	}
+	u32 texture;
+	if (!DecalHUD_BeginIcon(icon, primMem, ot, sizeof(POLY_FT4), &texture)) { return; }
+	if (texture != 0) { transparency = 0; }
 	PolyFT4 *p = primMem->cursor;
 	const PrimCode primCode = {.kind.poly = {.renderCode = RenderCode_Polygon, .quad = 1, .textured = 1}};
 	ColorCode_SetPacked(&p->colorCode, color);
@@ -332,4 +331,5 @@ void UI_DrawDriverIcon(struct Icon *icon, s16 posX, s16 posY, struct PrimMem *pr
 
 	AddPrimitive(p, ot);
 	primMem->cursor = p + 1;
+	DecalHUD_EndIcon(icon, texture, primMem, ot);
 }

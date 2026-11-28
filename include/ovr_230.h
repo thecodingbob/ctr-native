@@ -265,6 +265,8 @@ struct MainMenu_LevelRow
 	// Complete 0x10-byte structure
 };
 
+#include <game/230/character_grid_types.h>
+
 struct CharacterSelectMeta
 {
 	// 0x0
@@ -272,8 +274,8 @@ struct CharacterSelectMeta
 	s16 posY;
 
 	// 0x4
-	// up, down, left, right
-	u8 nextIconByDirection[CHARACTER_SELECT_DIRECTION_COUNT];
+	// Preserve the stride used by the menu's packed metadata access.
+	u32 reserved;
 
 	// 0x8
 	s16 characterID;
@@ -623,6 +625,13 @@ struct OverlayRDATA_230
 };
 
 // 800b44e4
+enum
+{
+	CHARACTER_SELECT_RETAIL_SLOT_COUNT = 16,
+	CHARACTER_SELECT_EXTRA_SLOT_CAPACITY = 8,
+	CHARACTER_SELECT_RETAIL_TRANSITION_COUNT = 22,
+};
+
 struct OverlayDATA_230
 {
 	// =========== Main Menu CONST =============
@@ -749,47 +758,30 @@ struct OverlayDATA_230
 	// 800B4D90
 	struct CharacterSelectLayoutTables characterSelectLayout;
 
-	// 800b4dcc
-	struct CharacterSelectMeta characterSelectMeta1P2PLimited[0x10];
+	// Native matrix layouts and their derived per-entry draw data.
+	struct CharacterGrid characterSelectGrids[4];
 
-	// 800b4e80
-	struct CharacterSelectMeta characterSelectMeta1P2P[0x10];
+	struct CharacterSelectMeta characterSelectEntries[CHARACTER_SELECT_RETAIL_SLOT_COUNT + CHARACTER_SELECT_EXTRA_SLOT_CAPACITY];
 
-	// 800b4f34
-	struct CharacterSelectMeta characterSelectMeta3P[0x10];
-
-	// 800b4fe8
-	struct CharacterSelectMeta characterSelectMeta4P[0x10];
-
-	// 800b509C
-	struct CharacterSelectMeta *characterSelectMetaByLayout[6];
-
-	// 800b50B4
-	// the character select menu has a different order for playable characters
-	// this array contains the IDs used for each character in the character select menu
-	// each member of the array corresponds to the character order used in the rest of the game, see enum Characters
-	s16 characterMenuID[0x10];
-
-	// 0x16 for transition meta array:
-	// 16 character icons + title text + 4 kart screens + one terminator.
+	// 24 roster entries + title + 4 kart screens + one terminator.
 
 	// 800b50D4
 	// 1P/2P mode
-	struct TransitionMeta characterSelectTransition1P2P[0x16];
+	struct TransitionMeta characterSelectTransition1P2P[CHARACTER_SELECT_RETAIL_TRANSITION_COUNT + CHARACTER_SELECT_EXTRA_SLOT_CAPACITY];
 
 	// 0x2 byte padding
 	s16 padding800b51A6;
 
 	// 3P mode
 	// 800b51A8
-	struct TransitionMeta characterSelectTransition3P[0x16];
+	struct TransitionMeta characterSelectTransition3P[CHARACTER_SELECT_RETAIL_TRANSITION_COUNT + CHARACTER_SELECT_EXTRA_SLOT_CAPACITY];
 
 	// 0x2 byte padding
 	s16 padding800B527A;
 
 	// 4P mode
 	// 800b527c
-	struct TransitionMeta characterSelectTransition4P[0x16];
+	struct TransitionMeta characterSelectTransition4P[CHARACTER_SELECT_RETAIL_TRANSITION_COUNT + CHARACTER_SELECT_EXTRA_SLOT_CAPACITY];
 
 	// 0x2 byte padding
 	s16 padding800B534E;
@@ -805,10 +797,8 @@ struct OverlayDATA_230
 	char *playerNumberStrings[4];
 
 	// 800b5384
-	u8 characterSelectFallbackDirection1[CHARACTER_SELECT_DIRECTION_COUNT];
 
 	// 800b5388
-	u8 characterSelectFallbackDirection2[CHARACTER_SELECT_DIRECTION_COUNT];
 
 	// 800b538c
 	Color characterSelect_Outline;
@@ -1061,6 +1051,12 @@ struct OverlayDATA_230
 
 	struct MenuRow rowsChaosPrompt[3]; // Chaos, Regular, NULL
 	struct RectMenu menuChaosPrompt;
+
+	// Native selection cursors and preview slots, separate from retail base IDs.
+	struct CharacterGridPosition nativeCharacterCursor[4];
+	s16 nativeCharacterSlotCount;
+	s16 nativeCharacterPreviewCurrent[4];
+	s16 nativeCharacterPreviewDesired[4];
 };
 
 // starts at 800b67ac
@@ -1183,7 +1179,7 @@ CTR_STATIC_ASSERT(offsetof(struct OverlayRDATA_230, s_title) == 0x1c);
 CTR_STATIC_ASSERT(offsetof(struct OverlayRDATA_230, packedDefaultCharacterIDWords) == 0x24);
 CTR_STATIC_ASSERT(sizeof(struct OverlayRDATA_230) == 0xb8);
 CTR_STATIC_ASSERT(sizeof(struct CharacterSelectMeta) == 0xC);
-CTR_STATIC_ASSERT(offsetof(struct CharacterSelectMeta, nextIconByDirection) == 0x4);
+CTR_STATIC_ASSERT(offsetof(struct CharacterSelectMeta, reserved) == 0x4);
 CTR_STATIC_ASSERT(offsetof(struct CharacterSelectMeta, characterID) == 0x8);
 CTR_STATIC_ASSERT(offsetof(struct CharacterSelectMeta, unlockFlags) == 0xa);
 CTR_STATIC_ASSERT(sizeof(struct CupDifficultyTables) == 0x18);

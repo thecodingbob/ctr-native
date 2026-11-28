@@ -16,6 +16,7 @@
 
 #include <common.h>
 #include <platform/native_memtrack.h>
+#include <platform/custom-tracks/native_track_library.h>
 
 // The arena the arenas above are carved out of, and the size the budget is
 // measured against. Compiled in so the number is the real one.
@@ -24,15 +25,40 @@
 // Declared extern by regionsEXE.h; MainDB_GetClipSize reads the split-screen flag
 // out of it, and the linker wants the storage regardless.
 struct sData sdata_static;
+struct Data data;
+struct rData rdata;
+static int s_allocatedBytes;
+static bool s_customTrack;
 
-// The two things MainDB.c calls but does not define. MEMPACK_AllocMem traps when
-// the arena is full, which is the failure this suite is about to make impossible,
-// so it is never reached: the budget is arithmetic, not an allocation.
+// Count the real allocation requests without allocating the pools themselves.
 void *MEMPACK_AllocMem(s32 size, const char *name)
 {
-	(void)size;
 	(void)name;
+	s_allocatedBytes += MEMPACK_ALIGN_SIZE(size);
 	return NULL;
+}
+
+s32 MEMPACK_PushState(void) { return 0; }
+void Chaos_InitThreadOwners(void) { MEMPACK_AllocMem(sdata->gGT->JitPools.thread.maxItems, NULL); }
+void Chaos_InitParticleOwners(void) { MEMPACK_AllocMem(sdata->gGT->JitPools.particle.maxItems, NULL); }
+void JitPool_Clear(struct JitPool *pool) { (void)pool; }
+
+void JitPool_Init(struct JitPool *pool, int count, int itemSize, char *name)
+{
+	pool->maxItems = count;
+	pool->itemSize = itemSize;
+	pool->free.first = NULL;
+	MEMPACK_AllocMem(count * itemSize, name);
+}
+
+const struct NativeTrackRegistry *NativeTrackLibrary_Current(void) { return NULL; }
+
+const struct NativeTrackMetadata *NativeTrackRegistry_Get(const struct NativeTrackRegistry *registry, int levelID)
+{
+	(void)registry;
+	(void)levelID;
+	static const struct NativeTrackMetadata track = {0};
+	return s_customTrack ? &track : NULL;
 }
 
 void NativePgxp_SetPrimRegion(int index, const void *start, size_t size)
@@ -43,6 +69,7 @@ void NativePgxp_SetPrimRegion(int index, const void *start, size_t size)
 }
 
 #include "game/MAIN/MainDB.c"
+#include "game/MAIN/MainPools.c"
 
 // The largest primitive arena the game can ask for, from the constant branches of
 // MainInit_GetPrimMemSize. That function also has per-level branches reading a
@@ -146,6 +173,103 @@ static void TestTheScaleDoesNotOverflow(void)
 	CTR_TEST_CHECK(largest < 0x40000000, "the scaled primitive arena stays under 1 GiB");
 }
 
+static void TestCustomCharacterRaceReserve(void)
+{
+	CTR_TEST_SECTION("custom characters retain the actual remaining solo race budget");
+	static struct GameTracker tracker;
+	static struct mesh_info mesh;
+	static struct VisMem visibility;
+	static struct Level level;
+	level.ptr_mesh_info = &mesh;
+	level.visMem = &visibility;
+	mesh.bspRoot = (void *)&mesh;
+	mesh.numBspNodes = 17;
+	tracker.gameMode1 = ARCADE_MODE;
+	tracker.numPlyrCurrGame = 1;
+	tracker.level1 = &level;
+	sdata->gGT = &tracker;
+	sdata->highDetailSplitScreenLevel = false;
+	const int fieldSizes[] = {8, 16};
+	const int instanceCounts[] = {0, 37, 2000};
+	for (int custom = 0; custom < 2; custom++)
+	{
+		s_customTrack = custom != 0;
+		for (u32 f = 0; f < len(fieldSizes); f++)
+		{
+			sdata->loadedRaceFieldSize = fieldSizes[f];
+			for (u32 n = 0; n < len(instanceCounts); n++)
+			{
+				level.numInstances = instanceCounts[n];
+				tracker.levelID = n == 0 ? SEWER_SPEEDWAY : CRASH_COVE;
+				s_allocatedBytes = 0;
+				int reserve = MainInit_GetPlayerModelMemoryReserve(&tracker);
+				CTR_TEST_CHECK(s_allocatedBytes == 0, "estimating the reserve does not allocate or initialize pools");
+				MainInit_JitPoolsNew(&tracker);
+				CTR_TEST_CHECK(reserve == s_allocatedBytes + MEMPACK_ALIGN_SIZE(mesh.numBspNodes * sizeof(struct VisMemBspListNode)),
+				               "the reserve matches aligned pool, clipping and visibility allocations");
+				if (custom && instanceCounts[n] == 2000)
+				{
+					CTR_TEST_CHECK(tracker.JitPools.instance.maxItems == 1024, "custom instance reserves honor the actual pool cap");
+				}
+			}
+		}
+	}
+	mesh.bspRoot = NULL;
+	CTR_TEST_CHECK(MainInit_GetPlayerModelMemoryReserve(&tracker) == s_allocatedBytes,
+	               "a missing BSP tree does not reserve an unused visibility list");
+	mesh.bspRoot = (void *)&mesh;
+	level.visMem = NULL;
+	CTR_TEST_CHECK(MainInit_GetPlayerModelMemoryReserve(&tracker) == s_allocatedBytes,
+	               "a missing visibility header does not reserve an unused BSP list");
+	s_customTrack = false;
+}
+
+static void TestPoolLayoutsRemainUnchanged(void)
+{
+	CTR_TEST_SECTION("shared pool specifications retain the menu, hub and race layouts");
+	static struct GameTracker tracker;
+	sdata->gGT = &tracker;
+	sdata->loadedRaceFieldSize = 0;
+	s_customTrack = false;
+	const struct
+	{
+		u32 mode;
+		int level;
+		int threads;
+		int instances;
+		int smallStacks;
+		int mediumStacks;
+		int largeStacks;
+		int particles;
+		int rain;
+	} cases[] = {
+		{MAIN_MENU, MAIN_MENU_LEVEL, 24, 32, 25, 8, 4, 32, 2},
+		{MAIN_MENU, ADVENTURE_GARAGE, 48, 64, 25, 8, 4, 32, 2},
+		{ADVENTURE_ARENA, GEM_STONE_VALLEY, 48, 64, 50, 16, 4, 64, 4},
+		{ARCADE_MODE, CRASH_COVE, 96, 128, 100, 32, 8, 128, 8},
+	};
+	for (u32 i = 0; i < len(cases); i++)
+	{
+		tracker.gameMode1 = cases[i].mode;
+		tracker.levelID = cases[i].level;
+		for (int players = 1; players <= 4; players++)
+		{
+			tracker.numPlyrCurrGame = players;
+			MainInit_JitPoolsNew(&tracker);
+			CTR_TEST_CHECK(tracker.JitPools.thread.maxItems == cases[i].threads && tracker.JitPools.instance.maxItems == cases[i].instances,
+			               "thread and instance capacities retain their original mode-dependent sizes");
+			CTR_TEST_CHECK(tracker.JitPools.smallStack.maxItems == cases[i].smallStacks && tracker.JitPools.mediumStack.maxItems == cases[i].mediumStacks &&
+			                   tracker.JitPools.largeStack.maxItems == cases[i].largeStacks,
+			               "stack capacities retain their original mode-dependent sizes");
+			CTR_TEST_CHECK(tracker.JitPools.particle.maxItems == cases[i].particles && tracker.JitPools.oscillator.maxItems == cases[i].particles &&
+			                   tracker.JitPools.rain.maxItems == cases[i].rain,
+			               "particle, oscillator and rain capacities retain their original mode-dependent sizes");
+			CTR_TEST_CHECK(tracker.JitPools.instance.itemSize == sizeof(struct Instance) + sizeof(struct InstDrawPerPlayer) * players,
+			               "each instance retains draw storage for every viewport");
+		}
+	}
+}
+
 int main(void)
 {
 	TestEveryLevelFitsTheMempack();
@@ -153,6 +277,8 @@ int main(void)
 	TestTheBudgetLeavesRoomForTheLevel();
 	TestEveryArenaIsScaledFromRetail();
 	TestTheScaleDoesNotOverflow();
+	TestCustomCharacterRaceReserve();
+	TestPoolLayoutsRemainUnchanged();
 
 	return CtrTest_Summary();
 }

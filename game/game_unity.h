@@ -93,6 +93,8 @@
 #include "LOAD/LOAD_Howl.c"
 #include "LOAD/LOAD_BotModels.c"
 #include "LOAD/LOAD_Assets.c"
+#include "LOAD/custom-characters/LOAD_CharacterModels.c"
+#include "LOAD/custom-characters/LOAD_CharacterIcons.c"
 #include "LOAD/LOAD_Queue.c"
 #include "LOAD/LOAD_Hub.c"
 #include "LOAD/LOAD_Overlays.c"
@@ -101,6 +103,7 @@
 #include "LOAD/LOAD_IsOpen.c"
 
 #include "MAIN/MainInit.c"
+#include "MAIN/MainPools.c"
 #include "MAIN/MainKillGame.c"
 #include "MAIN/MainLoadVLC.c"
 #include "MAIN/MainMain.c"

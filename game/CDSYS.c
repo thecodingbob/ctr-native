@@ -592,7 +592,6 @@ int CDSYS_XAGetTrackLength(int categoryID, int xaID)
 	if (sdata->boolUseDisc == 0)
 	{
 		return NativeAudio_GetXATrackLength(categoryID, xaID);
-		return 0;
 	}
 
 	if (sdata->bool_XnfLoaded == 0)

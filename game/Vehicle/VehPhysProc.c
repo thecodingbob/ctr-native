@@ -2498,6 +2498,11 @@ void VehPhysProc_SlamWall_Animate(struct Thread *t, struct Driver *d)
 
 	animFrame = inst->animFrame;
 	numFrames = VehFrameInst_GetNumAnimFrames(inst, inst->animIndex);
+	if (numFrames <= 0)
+	{
+		// Static models still run the wall-impact transform and must finish it.
+		numFrames = VEH_BAKED_GTE_NUM_ENTRIES(BAKED_GTE_MATRIX_CRASH_FALL);
+	}
 
 	if (animFrame < (numFrames - 1))
 	{
@@ -2505,13 +2510,10 @@ void VehPhysProc_SlamWall_Animate(struct Thread *t, struct Driver *d)
 	}
 
 	numFrames = VehFrameInst_GetNumAnimFrames(inst, 0);
-	if (numFrames > 0)
-	{
-		inst->animIndex = 0;
-		inst->animFrame = VehFrameInst_GetStartFrame(0, numFrames);
-		d->matrixArray = BAKED_GTE_MATRIX_NONE;
-		d->matrixIndex = 0;
-	}
+	inst->animIndex = 0;
+	inst->animFrame = VehFrameInst_GetStartFrame(0, numFrames);
+	d->matrixArray = BAKED_GTE_MATRIX_NONE;
+	d->matrixIndex = 0;
 
 	d->funcPtrs[DRIVER_FUNC_INIT] = VehPhysProc_Driving_Init;
 }

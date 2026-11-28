@@ -23,6 +23,8 @@ static bool s_previewUIAudio;
 static int s_previewSound;
 static int s_localizedReads;
 static bool s_localizedAvailable;
+static int s_customReads;
+static bool s_customAvailable;
 
 enum ChaosAudioOwner Chaos_SetAudioOwner(enum ChaosAudioOwner owner)
 {
@@ -53,6 +55,24 @@ bool Chaos_ShouldFreezeAudioChannel(const struct ChannelStats *channel)
 #include <game/HOWL/HOWL_Settings.c>
 #include <game/HOWL/HOWL_Playback.c>
 #include <game/LIST.c>
+
+int NativeCharacterLibrary_ReadVoice(const char *directory, int index, struct NativeCharacterVoiceSample *sample)
+{
+	s_customReads++;
+	bool secondPlayer = strcmp(directory, "fixture-voices-2") == 0;
+	if (!s_customAvailable || (!secondPlayer && strcmp(directory, "fixture-voices") != 0) || index != 0)
+	{
+		return 0;
+	}
+	*sample = (struct NativeCharacterVoiceSample){.data = malloc(32), .size = 32, .pitch = 1024, .duration = 77, .flags = 4, .volume = 90};
+	if (secondPlayer) { sample->pitch = 1536; }
+	if (sample->data == NULL)
+	{
+		CtrTest_Bail("custom sample allocation failed");
+	}
+	memset(sample->data, 0x6b, sample->size);
+	return 1;
+}
 
 int NativeLanguageDisc_ReadVoiceSample(int language, int soundID, struct NativeLanguageVoiceSample *sample)
 {
@@ -209,6 +229,8 @@ static void Reset(void)
 	s_failRead = 0;
 	s_localizedReads = 0;
 	s_localizedAvailable = false;
+	s_customReads = 0;
+	s_customAvailable = false;
 	g_config.voiceLanguage = 1;
 	Bank_InvalidateLocalizedVoices();
 }
@@ -395,5 +417,83 @@ int main(void)
 	g_config.voiceLanguage = 1;
 	OtherFX_Play(28, 1);
 	CTR_TEST_CHECK_EQ((u32)sdata->channelAttrNew[0].spuStartAddr, CTR_SPU_BYTES_AT(0x101), "switching to English uses the original sample immediately");
+
+	CTR_TEST_SECTION("custom sampled voices share upload and cache lifetime with localized voices");
+	Reset();
+	s_header.numOtherFX = len(voiceEffects);
+	sdata->howl_metaOtherFX = voiceEffects;
+	s_samples[1].spuAddr = 0x101;
+	s_customAvailable = true;
+	s_localizedAvailable = true;
+	g_config.voiceLanguage = 5;
+	GAME_CHARACTER_METADATA[CRASH_BANDICOOT].name_Debug = "crash";
+	GAME_CHARACTER_IDS[0] = CRASH_BANDICOOT;
+	const struct NativeCharacterMetadata custom = {.identity = "fixture", .base = "crash", .directory = "fixture-voices"};
+	CustomCharacter_Select(0, &custom);
+	s_tracker.numPlyrCurrGame = 1;
+	sdata->customCharacterAudioDriver = 1;
+	CTR_TEST_CHECK(OtherFX_Play(28, 1) != 0 && s_customReads == 1 && s_localizedReads == 0,
+	               "custom playback takes precedence over the selected voice language");
+	CTR_TEST_CHECK_EQ((u32)sdata->channelAttrNew[0].spuStartAddr, s_expectedDestination, "custom playback uses its uploaded SPU address");
+	CTR_TEST_CHECK(sdata->channelAttrNew[0].pitch == 1024 && s_channel.timeLeft == 77,
+	               "the shared cache preserves custom sample metadata");
+	OtherFX_Play(28, 1);
+	CTR_TEST_CHECK_EQ(s_customReads, 1, "repeated custom playback reuses the cached sample");
+	Bank_DestroyUntilIndex(0);
+	CTR_TEST_CHECK_EQ(sdata->audioAllocPtr, 0x106, "teardown releases custom SPU storage");
+	s_customAvailable = false;
+	s_writtenCount = 0;
+	CTR_TEST_CHECK(OtherFX_Play(28, 1) != 0 && s_customReads == 2 && s_localizedReads == 1,
+	               "a missing custom sample falls back to the selected language after cache teardown");
+
+	CTR_TEST_SECTION("multiplayer sampled voices keep independent caches and speaker context");
+	Reset();
+	s_header.numOtherFX = len(voiceEffects);
+	sdata->howl_metaOtherFX = voiceEffects;
+	s_customAvailable = true;
+	s_tracker.numPlyrCurrGame = 2;
+	GAME_CHARACTER_IDS[0] = GAME_CHARACTER_IDS[1] = CRASH_BANDICOOT;
+	CustomCharacter_Select(0, &custom);
+	struct NativeCharacterMetadata second = custom;
+	strcpy(second.identity, "fixture-2");
+	strcpy(second.directory, "fixture-voices-2");
+	CustomCharacter_Select(1, &second);
+	sdata->customCharacterAudioDriver = 1;
+	OtherFX_Play(28, 1);
+	u32 firstAddress = (u32)sdata->channelAttrNew[0].spuStartAddr;
+	s_writtenCount = 0;
+	s_expectedDestination = CTR_SPU_BYTES_AT((u32)sdata->audioAllocPtr);
+	sdata->customCharacterAudioDriver = 2;
+	CTR_TEST_CHECK(OtherFX_Play(28, 1) != 0 && s_customReads == 2 &&
+	               (u32)sdata->channelAttrNew[0].spuStartAddr != firstAddress && sdata->channelAttrNew[0].pitch == 1536,
+	               "a second human with the same base loads its own sample and metadata");
+	sdata->customCharacterAudioDriver = 1;
+	CTR_TEST_CHECK(OtherFX_Play(28, 1) != 0 && s_customReads == 2 &&
+	               (u32)sdata->channelAttrNew[0].spuStartAddr == firstAddress && sdata->channelAttrNew[0].pitch == 1024,
+	               "alternating speakers reuses both caches without borrowing or reuploading samples");
+	s_tracker.gameMode1 = MAIN_MENU;
+	s_tracker.frameTimer_MainFrame_ResetDB = 0;
+	sdata->customCharacterAudioDriver = 2;
+	OptionsMenu_TestSound(HOWL_VOLUME_TYPE_VOICE, true);
+	CTR_TEST_CHECK(sdata->channelAttrNew[0].pitch == 1024 && sdata->customCharacterAudioDriver == 2,
+	               "the menu voice preview uses player one's sample and restores its caller's speaker context");
+	CTR_TEST_SECTION("expanded-grid AI voices use independent driver caches");
+	s_tracker.gameMode1 = ARCADE_MODE;
+	int bot = len(GAME_CHARACTER_IDS) - 1;
+	GAME_CHARACTER_IDS[bot] = CRASH_BANDICOOT;
+	CustomCharacter_Select(bot, &second);
+	s_writtenCount = 0;
+	s_expectedDestination = CTR_SPU_BYTES_AT((u32)sdata->audioAllocPtr);
+	sdata->customCharacterAudioDriver = bot + 1;
+	int before = s_customReads;
+	CTR_TEST_CHECK(OtherFX_Play(28, 1) != 0 && s_customReads == before + 1 &&
+	               sdata->channelAttrNew[0].pitch == 1536,
+	               "the last AI driver uploads its own custom short voice");
+	CTR_TEST_CHECK(OtherFX_Play(28, 1) != 0 && s_customReads == before + 1,
+	               "repeated AI voices reuse the driver's cache");
+	sdata->customCharacterAudioDriver = 1;
+	CTR_TEST_CHECK(OtherFX_Play(28, 1) != 0 && s_customReads == before + 1 &&
+	               sdata->channelAttrNew[0].pitch == 1024,
+	               "AI playback leaves the human speaker's sample untouched");
 	return CtrTest_Summary();
 }

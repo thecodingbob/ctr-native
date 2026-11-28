@@ -1,4 +1,5 @@
 #include <common.h>
+#include <custom-characters/character_resources.h>
 #include <platform/native_spu_memory.h>
 
 static void OtherFX_InitResolvedAttr(struct OtherFX *base, struct OtherFX *localized, u16 localizedAddr,
@@ -85,7 +86,8 @@ int OtherFX_Play_LowLevel(u32 soundID, u8 boolAntiSpam, u32 flags)
 	// get pointer to cseq audio, given soundID
 	ptrOtherFX = &sdata->howl_metaOtherFX[id];
 
-	if (!Bank_LocalizedVoice(id, &localized, &localizedAddr) && !Bank_EnsureOtherFX(id))
+	if (!Bank_CustomCharacterVoice(id, &localized, &localizedAddr) &&
+	    !Bank_LocalizedVoice(id, &localized, &localizedAddr) && !Bank_EnsureOtherFX(id))
 	{
 		return 0;
 	}

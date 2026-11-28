@@ -52,6 +52,8 @@
 #include "platform/custom-tracks/native_track_library.c"
 #include "platform/custom-tracks/native_track_file.c"
 #include "platform/custom-tracks/native_track_validate.c"
+#include "platform/custom-characters/native_character_model.c"
+#include "platform/custom-characters/native_character_library.c"
 #include "platform/custom-tracks/native_track_import.c"
 #include "platform/custom-tracks/native_track_patch.c"
 #include "platform/custom-tracks/native_track_records.c"
@@ -260,9 +262,11 @@ Platform_Init("Crash Team Racing Expanded", 800, 600);
 		fprintf(stderr, "[Custom Tracks] Asset path is too long.\n");
 	}
 
+	NativeCharacterLibrary_RefreshAssets();
 	const int result = CTR_Main();
 
 	NativeTrackLibrary_Shutdown();
+	NativeCharacterLibrary_Shutdown();
 	Platform_Shutdown();
 	return NativeConsole_Return(result);
 }
